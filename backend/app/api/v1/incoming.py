@@ -1,0 +1,76 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from datetime import datetime
+from app.database import get_db
+from app.models.recharge import IncomingFlow, CurrencyEnum, MatchStatus
+from app.models.user import User
+from app.core.permissions import get_current_user, Role
+from app.schemas.business import IncomingCreate, IncomingBatchImport
+
+router = APIRouter()
+
+@router.get("")
+async def list_incoming(
+    page: int = 1, page_size: int = 20, month: str = None, status: str = None,
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    query = select(IncomingFlow); count_q = select(func.count(IncomingFlow.id))
+    if current_user.role != Role.SUPER_ADMIN:
+        query = query.where(IncomingFlow.warehouse_id == current_user.warehouse_id)
+        count_q = count_q.where(IncomingFlow.warehouse_id == current_user.warehouse_id)
+    if month:
+        query = query.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
+        count_q = count_q.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
+    if status:
+        query = query.where(IncomingFlow.match_status == status)
+        count_q = count_q.where(IncomingFlow.match_status == status)
+    total = (await db.execute(count_q)).scalar()
+    result = await db.execute(query.order_by(IncomingFlow.created_at.desc()).offset((page-1)*page_size).limit(page_size))
+    records = result.scalars().all()
+    user_ids = list(set(r.entrant_id for r in records if r.entrant_id))
+    user_map = {}
+    if user_ids:
+        users = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+        user_map = {u.id: u.display_name for u in users}
+    return {"data": [{
+        "id": r.id, "warehouse_id": r.warehouse_id,
+        "received_date": r.received_date.isoformat() if r.received_date else None,
+        "amount": r.amount, "currency": r.currency or "THB",
+        "payer_name": r.payer_name, "payment_method": r.payment_method, "remark": r.remark,
+        "match_status": r.match_status or "unmatched",
+        "entrant_name": user_map.get(r.entrant_id, ""),
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in records], "total": total, "page": page, "page_size": page_size}
+
+@router.post("")
+async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_current_user),
+                          db: AsyncSession = Depends(get_db)):
+    if current_user.role != Role.SUPER_ADMIN:
+        raise HTTPException(403, "仅超级管理员可操作")
+    wh_id = current_user.warehouse_id or 1  # default to warehouse 1 for super admin
+    r = IncomingFlow(
+        warehouse_id=wh_id,
+        received_date=datetime.fromisoformat(req.received_date),
+        amount=req.amount, currency=req.currency,
+        payer_name=req.payer_name, payment_method=req.payment_method,
+        remark=req.remark, entrant_id=current_user.id,
+    )
+    db.add(r); await db.flush(); return {"id": r.id, "message": "录入成功"}
+
+@router.post("/batch-import")
+async def batch_import(req: IncomingBatchImport, current_user: User = Depends(get_current_user),
+                       db: AsyncSession = Depends(get_db)):
+    if current_user.role != Role.SUPER_ADMIN:
+        raise HTTPException(403, "仅超级管理员可操作")
+    imported = 0
+    for rec in req.records:
+        r = IncomingFlow(
+            warehouse_id=rec.get("warehouse_id", current_user.warehouse_id),
+            received_date=datetime.fromisoformat(rec["received_date"]),
+            amount=rec["amount"], currency=rec.get("currency", "THB"),
+            payer_name=rec.get("payer_name"), payment_method=rec.get("payment_method"),
+            remark=rec.get("remark"), entrant_id=current_user.id,
+        )
+        db.add(r); imported += 1
+    await db.flush(); return {"imported": imported, "message": f"成功导入{imported}条记录"}
