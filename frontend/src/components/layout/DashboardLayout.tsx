@@ -68,9 +68,27 @@ const navItems: NavItem[] = [
 ];
 
 
-function hasAccess(roles: string[], userRole: string | undefined): boolean {
-  if (!userRole) return false;
-  return roles.includes(userRole);
+// Staff 扩展权限 → 菜单映射
+const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
+  incoming: "incoming_entry",
+  income_expense: ["confirm_income", "confirm_expense"],
+  credit: "manage_credit",
+  audit_logs: "operation_log",
+};
+
+function hasAccess(item: NavItem, user: any): boolean {
+  if (!user || !user.role) return false;
+  // 直接角色匹配
+  if (item.roles.includes(user.role)) return true;
+  // Staff 扩展权限匹配
+  if (user.role === "staff" && item.key) {
+    const perms: string[] = user.extra_permissions || [];
+    const required = STAFF_EXTRA_MAP[item.key];
+    if (!required) return false;
+    if (Array.isArray(required)) return required.some((p: string) => perms.includes(p));
+    return perms.includes(required);
+  }
+  return false;
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -104,8 +122,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const filteredNav = navItems.filter((item) => {
-    if (!item.children) return hasAccess(item.roles, user?.role);
-    return item.children.some((c) => hasAccess(c.roles, user?.role));
+    if (!item.children) return hasAccess(item, user);
+    return item.children.some((c) => hasAccess(c, user));
   });
 
   return (
@@ -132,7 +150,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   </button>
                   {expandedMenu === item.key && sidebarOpen && (
                     <div className="bg-slate-800">
-                      {item.children.filter((c) => hasAccess(c.roles, user?.role)).map((child) => (
+                      {item.children.filter((c) => hasAccess(c, user)).map((child) => (
                         <Link key={child.key} href={child.href || "#"} className="flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-700">
                           {child.icon}
                           <span>{t(child.label)}</span>
