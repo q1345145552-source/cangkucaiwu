@@ -2,10 +2,12 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 
 export default function CategoriesPage() {
-  const { t } = useI18n(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const router = useRouter();
   const [cats, setCats] = useState<any[]>([]);
   const [tab, setTab] = useState("income");
   const [name, setName] = useState("");
@@ -20,7 +22,11 @@ export default function CategoriesPage() {
     } catch (err) { console.error("加载失败:", err); }
     setLoading(false);
   }
-  async function add() { await api.post("/income-expense/categories", { type: tab, name }); setName(""); load(); }
+  async function add() { try {
+      await api.post("/income-expense/categories", { type: tab, name });
+      toast("success", "添加成功");
+      setName(""); load();
+    } catch (err: any) { toast("error", "添加失败"); } }
 
   return (
     <>

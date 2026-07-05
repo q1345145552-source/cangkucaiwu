@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 
 export default function ReimbursementPage() {
-  const { t } = useI18n(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
   const [items, setItems] = useState<any[]>([]);
@@ -31,8 +33,11 @@ export default function ReimbursementPage() {
   }
 
   async function handleCreate() {
-    await api.post("/reimbursement", { items, ...form });
-    setShowForm(false); setItems([]); load();
+    try {
+      await api.post("/reimbursement", { items, ...form });
+      toast("success", "创建成功");
+      setShowForm(false); setItems([]); load();
+    } catch (err: any) { toast("error", "创建失败"); }
   }
 
   async function viewDetail(id: number) {

@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 
 export default function IncomingPage() {
-  const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);

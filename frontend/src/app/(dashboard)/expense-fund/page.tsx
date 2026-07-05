@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 
 export default function ExpenseFundPage() {
-  const { t } = useI18n(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -26,8 +28,11 @@ export default function ExpenseFundPage() {
     try { const r = await api.get<any>("/expense-fund/balance"); setBalance(r.data); } catch {}
   }
   async function handleCreate() {
-    await api.post("/expense-fund", form);
+    try {
+      await api.post("/expense-fund", form);
+      toast("success", "创建成功");
     setShowForm(false); setForm({ receive_date: "", amount: 0, purpose: "" }); load(); loadBalance();
+    } catch (err: any) { toast("error", "创建失败"); }
   }
   async function selectFund(fund: any) {
     setSelectedFund(fund);
@@ -35,10 +40,13 @@ export default function ExpenseFundPage() {
     setItems(r.data);
   }
   async function addItem() {
-    await api.post(`/expense-fund/${selectedFund.id}/items`, itemForm);
+    try {
+      await api.post(`/expense-fund/${selectedFund.id}/items`, itemForm);
+      toast("success", "添加成功");
     setItemForm({ expense_date: "", category: "", amount: 0, description: "" });
-    selectFund(selectedFund);
-    loadBalance();
+      selectFund(selectedFund);
+      loadBalance();
+    } catch (err: any) { toast("error", "添加失败"); }
   }
 
   return (

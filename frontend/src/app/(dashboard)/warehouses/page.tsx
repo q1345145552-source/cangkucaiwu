@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { Warehouse, Plus, Pencil, Trash2 } from "lucide-react";
 
@@ -17,6 +18,7 @@ interface WhItem {
 
 export default function WarehousesPage() {
   const { t } = useI18n();
+  const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<WhItem[]>([]);
@@ -40,8 +42,10 @@ export default function WarehousesPage() {
   async function handleSave() {
     if (editId) {
       await api.put(`/warehouses/${editId}`, form);
+        toast("success", "更新成功");
     } else {
       await api.post("/warehouses", form);
+        toast("success", "创建成功");
     }
     setShowForm(false);
     setEditId(null);

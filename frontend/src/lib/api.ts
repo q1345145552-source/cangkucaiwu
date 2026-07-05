@@ -24,6 +24,13 @@ export function clearToken() {
   }
 }
 
+// 全局错误事件，Toast 组件可监听
+export function showGlobalToast(type: "success" | "error", message: string) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("global-toast", { detail: { type, message } }));
+  }
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}

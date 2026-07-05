@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
@@ -9,7 +10,8 @@ import DataTable from "@/components/common/DataTable";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function RechargePage() {
-  const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -29,7 +31,9 @@ export default function RechargePage() {
   }
 
   async function handleCreate() {
-    const res = await api.post<any>("/recharge", form);
+    try {
+      const res = await api.post<any>("/recharge", form);
+      toast("success", "创建成功");
     const rechargeId = res.id;
 
     if (selectedFile) {
@@ -58,6 +62,9 @@ export default function RechargePage() {
     setSelectedFile(null);
     setForm({ customer_id: 0, declare_date: "", amount: 0, currency: "THB", payment_method: "", transaction_no: "", remark: "" });
     load();
+    } catch (err: any) {
+      toast("error", "创建失败");
+    }
   }
 
   const columns = [

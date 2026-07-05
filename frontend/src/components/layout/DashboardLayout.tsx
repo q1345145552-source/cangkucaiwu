@@ -10,6 +10,7 @@ import {
   Globe, LogOut, Key, UserCog,
 } from "lucide-react";
 import Link from "next/link";
+import BackToTop from "@/components/ui/BackToTop";
 
 interface NavItem {
   key: string;
@@ -174,7 +175,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-6 bg-gray-50 overflow-auto">
-          {children}
+          <div key={pathname} className="animate-fade-in">
+            {children}
+          </div>
+          <BackToTop />
         </main>
       </div>
     </div>

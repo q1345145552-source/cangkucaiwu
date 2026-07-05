@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
@@ -9,6 +10,7 @@ import FormModal from "@/components/common/FormModal";
 
 export default function CustomersPage() {
   const { t } = useI18n();
+  const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
@@ -33,9 +35,12 @@ export default function CustomersPage() {
   useEffect(() => { load(); }, [page, search]);
 
   async function handleCreate() {
-    await api.post("/customers", form);
-    setShowForm(false); setForm({ customer_code: "", company_name: "", contact_person: "", contact_info: "", credit_status: false, credit_limit: 0, remark: "" });
-    load();
+    try {
+      await api.post("/customers", form);
+      toast("success", "创建成功");
+      setShowForm(false); setForm({ customer_code: "", company_name: "", contact_person: "", contact_info: "", credit_status: false, credit_limit: 0, remark: "" });
+      load();
+    } catch (err: any) { toast("error", "创建失败"); }
   }
 
   const columns = [

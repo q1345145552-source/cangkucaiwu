@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
@@ -30,8 +31,11 @@ export default function ReconciliationPage() {
   }
 
   async function runRecon() {
-    const res = await api.post<any>("/reconciliation/run", { month, warehouse_id: whId });
-    setResult(res); loadResults();
+    try {
+      const res = await api.post<any>("/reconciliation/run", { month, warehouse_id: whId });
+      toast("success", "对账完成");
+      setResult(res); loadResults();
+    } catch (err: any) { toast("error", "对账失败"); }
   }
 
   async function loadResults() {

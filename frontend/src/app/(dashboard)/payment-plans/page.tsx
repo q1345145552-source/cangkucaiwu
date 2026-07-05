@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 
 export default function PaymentPlansPage() {
-  const { t } = useI18n(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const router = useRouter();
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<any[]>([]);
@@ -30,8 +32,11 @@ export default function PaymentPlansPage() {
   }
 
   async function handleCreate() {
-    await api.post("/payable/plans", { ...form, bill_ids: selectedBills });
-    setShowForm(false); load();
+    try {
+      await api.post("/payable/plans", { ...form, bill_ids: selectedBills });
+      toast("success", "创建成功");
+      setShowForm(false); load();
+    } catch (err: any) { toast("error", "创建失败"); }
   }
 
   return (

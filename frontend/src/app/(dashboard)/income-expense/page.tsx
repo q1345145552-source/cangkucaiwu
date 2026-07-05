@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 
 export default function IncomeExpensePage() {
-  const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [tab, setTab] = useState("income");
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [month, setMonth] = useState("");
@@ -38,8 +40,11 @@ export default function IncomeExpensePage() {
 
   async function handleCreate() {
     const ep = tab === "income" ? "/income-expense/income" : "/income-expense/expense";
-    await api.post(ep, { ...form, [tab === "income" ? "income_date" : "expense_date"]: form.date });
-    setShowForm(false); load();
+    try {
+      await api.post(ep, { ...form, [tab === "income" ? "income_date" : "expense_date"]: form.date });
+      toast("success", "创建成功");
+      setShowForm(false); load();
+    } catch (err: any) { toast("error", "创建失败"); }
   }
 
   const columns = [

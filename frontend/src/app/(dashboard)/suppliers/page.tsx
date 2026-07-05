@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 
 export default function SuppliersPage() {
-  const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -18,7 +20,7 @@ export default function SuppliersPage() {
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [page]);
 
   async function load() { const r = await api.get<any>(`/suppliers?page=${page}&page_size=20`); setData(r.data); setTotal(r.total); }
-  async function handleCreate() { await api.post("/suppliers", form); setShowForm(false); load(); }
+  async function handleCreate() { try { await api.post("/suppliers", form); toast("success", "创建成功"); setShowForm(false); load(); } catch (err: any) { toast("error", "创建失败"); } }
 
   async function aiEvaluate(sid: number) {
     setAiResult("评估中...");

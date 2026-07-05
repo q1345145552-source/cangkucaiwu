@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Key, UserPlus, MessageCircle, Pencil } from "lucide-react";
@@ -17,7 +18,8 @@ const PERM_LABELS: Record<string, string> = {
 };
 
 export default function SettingsPage() {
-  const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [tab, setTab] = useState<"profile"|"users">("profile");
   const [pw, setPw] = useState({ old: "", new: "" });
   const [pwMsg, setPwMsg] = useState("");
@@ -46,9 +48,12 @@ export default function SettingsPage() {
   }
 
   async function createUser() {
-    await api.post("/users", newUser);
-    setNewUser({ username: "", display_name: "", password: "", role: "staff" });
-    loadUsers();
+    try {
+      await api.post("/users", newUser);
+      toast("success", "创建成功");
+      setNewUser({ username: "", display_name: "", password: "", role: "staff" });
+      loadUsers();
+    } catch (err: any) { toast("error", "创建失败"); }
   }
 
   function openEdit(u: any) {
@@ -64,9 +69,12 @@ export default function SettingsPage() {
 
   async function saveEdit() {
     if (!editUser) return;
-    await api.put(`/users/${editUser.id}`, { extra_permissions: editPerms });
-    setEditUser(null);
-    loadUsers();
+    try {
+      await api.put(`/users/${editUser.id}`, { extra_permissions: editPerms });
+      toast("success", "更新成功");
+      setEditUser(null);
+      loadUsers();
+    } catch (err: any) { toast("error", "更新失败"); }
   }
 
   return (

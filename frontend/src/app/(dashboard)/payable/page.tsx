@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 
 export default function PayablePage() {
-  const { t } = useI18n(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -23,8 +25,11 @@ export default function PayablePage() {
   async function loadCashflow() { try { const r = await api.get<any>("/payable/cashflow-prediction"); setCashflow(r.total_pending_payable); } catch {} }
 
   async function handleCreate() {
-    await api.post("/payable", form);
-    setShowForm(false); load(); loadCashflow();
+    try {
+      await api.post("/payable", form);
+      toast("success", "创建成功");
+      setShowForm(false); load();
+    } catch (err: any) { toast("error", "创建失败"); } loadCashflow();
   }
   async function handlePay(billId: number) {
     await api.put(`/payable/${billId}/pay`, {});

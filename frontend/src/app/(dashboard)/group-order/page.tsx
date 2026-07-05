@@ -2,11 +2,13 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function GroupOrderPage() {
   const { t } = useI18n(); const router = useRouter(); const { user } = useAuth();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ item_name: "", target_quantity: 0, target_price: 0, deadline: "", reason: "" });
@@ -33,14 +35,18 @@ export default function GroupOrderPage() {
 
   async function handleCreate() {
     if (!confirm("确认发起拼单？规则：参与后不可中途退出。")) return;
-    await api.post("/group-order", form);
-    setShowForm(false); load();
+    try {
+      await api.post("/group-order", form);
+      toast("success", "发起成功");
+      setShowForm(false); load();
+    } catch (err: any) { toast("error", "发起失败"); }
   }
 
   async function handleJoin(orderId: number) {
     if (!confirm("参与拼单规则：\n1. 确认后不可中途退出\n2. 强行退出者下次禁止参与\n3. 最终采购价与目标价不一致时拼单取消\n4. 物流费按参与方数量均摊\n\n同意以上规则？")) return;
     const qty = prompt("参与数量:"); 
-    if (qty) { await api.post(`/group-order/${orderId}/join`, { quantity: +qty, agreed_rules: true }); load(); }
+    if (qty) { try { await api.post(`/group-order/${orderId}/join`, { quantity: +qty, agreed_rules: true });
+      toast("success", "参与成功"); load(); } catch (err: any) { toast("error", "参与失败"); } }
   }
 
   async function viewParticipants(order: any) {
@@ -50,12 +56,14 @@ export default function GroupOrderPage() {
   }
 
   async function handleClose(orderId: number) {
-    await api.put(`/group-order/${orderId}/close`, {}); load();
+    try { await api.put(`/group-order/${orderId}/close`, {});
+      toast("success", "关闭成功"); load(); } catch (err: any) { toast("error", "操作失败"); }
   }
 
   async function handleComplete(orderId: number) {
     const price = prompt("最终成交单价:"); const supplier = prompt("供应商名称:");
-    if (price) { await api.put(`/group-order/${orderId}/complete`, { final_price: +price, final_supplier: supplier || "" }); load(); }
+    if (price) { try { await api.put(`/group-order/${orderId}/complete`, { final_price: +price, final_supplier: supplier || "" });
+      toast("success", "完成成功"); load(); } catch (err: any) { toast("error", "操作失败"); } }
   }
 
   const statusColors: any = { open: "text-green-600", closed: "text-yellow-600", completed: "text-blue-600", cancelled: "text-gray-400" };

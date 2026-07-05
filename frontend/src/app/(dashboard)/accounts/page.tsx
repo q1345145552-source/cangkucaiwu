@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 export default function AccountsPage() {
-  const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
+  const { t } = useI18n();
+  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,7 +25,7 @@ export default function AccountsPage() {
     setLoading(false);
   }
 
-  async function handleCreate() { await api.post("/accounts", form); setShowForm(false); load(); }
+  async function handleCreate() { try { await api.post("/accounts", form); toast("success", "创建成功"); setShowForm(false); load(); } catch (err: any) { toast("error", "创建失败"); } }
 
   return (
     <>

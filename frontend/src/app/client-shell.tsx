@@ -1,5 +1,6 @@
 "use client";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ToastProvider } from "@/components/ui/Toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { usePathname } from "next/navigation";
 
@@ -9,11 +10,13 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
   return (
     <AuthProvider>
-      {isLogin ? (
-        children
-      ) : (
-        <DashboardLayout>{children}</DashboardLayout>
-      )}
+      <ToastProvider>
+        {isLogin ? (
+          children
+        ) : (
+          <DashboardLayout>{children}</DashboardLayout>
+        )}
+      </ToastProvider>
     </AuthProvider>
   );
 }

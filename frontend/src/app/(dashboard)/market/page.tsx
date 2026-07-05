@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Package, ShoppingCart, Check, X } from "lucide-react";
 
 export default function MarketPage() {
   const { t } = useI18n(); const router = useRouter(); const { user } = useAuth();
+  const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]); const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -30,22 +32,35 @@ export default function MarketPage() {
   }
 
   async function handleCreate() {
-    await api.post("/market", form);
+    try {
+      await api.post("/market", form);
+      toast("success", "上架成功");
     setShowForm(false); setForm({ name: "", quantity: 1, price: 0, description: "" }); load();
+    } catch (err: any) { toast("error", "上架失败"); }
   }
 
   async function handleReview(itemId: number, status: string) {
-    await api.put(`/market/${itemId}/review`, { status });
-    load();
+    try {
+      await api.put(`/market/${itemId}/review`, { status });
+      toast("success", "审核完成");
+      load();
+    } catch (err: any) { toast("error", "审核失败"); }
   }
 
   async function handlePurchase(itemId: number) {
     const contact = prompt("请输入联系方式:");
-    if (contact) { await api.post(`/market/${itemId}/purchase`, { contact_info: contact }); alert("购买申请已提交"); }
+    if (contact) { try {
+      await api.post(`/market/${itemId}/purchase`, { contact_info: contact });
+      toast("success", "购买申请已发送"); alert("购买申请已提交");
+    } catch (err: any) { toast("error", "操作失败"); } }
   }
 
   async function handleConfirm(itemId: number) {
-    await api.put(`/market/${itemId}/confirm`, {}); load();
+    try {
+      await api.put(`/market/${itemId}/confirm`, {});
+      toast("success", "确认成功");
+      load();
+    } catch (err: any) { toast("error", "操作失败"); }
   }
 
   const statusColors: any = { pending: "bg-yellow-100 text-yellow-700", approved: "bg-green-100 text-green-700", rejected: "bg-red-100 text-red-700", sold: "bg-gray-100 text-gray-600" };
