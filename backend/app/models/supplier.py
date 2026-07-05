@@ -3,11 +3,19 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
+class SupplierCategory(Base):
+    __tablename__ = "supplier_categories"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    sort_order = Column(Integer, default=0)
+    is_active = Column(String(5), default="true")
+
 class Supplier(Base):
     __tablename__ = "suppliers"
 
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=True, index=True)
+    category_id = Column(Integer, ForeignKey("supplier_categories.id"), nullable=True)
     name = Column(String(200), nullable=False)
     contact_person = Column(String(100), nullable=True)
     contact_info = Column(String(200), nullable=True)
@@ -22,4 +30,19 @@ class Supplier(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    category = relationship("SupplierCategory")
     payable_bills = relationship("PayableBill", back_populates="supplier")
+    products = relationship("SupplierProduct", back_populates="supplier", cascade="all, delete-orphan")
+
+class SupplierProduct(Base):
+    __tablename__ = "supplier_products"
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False, index=True)
+    product_name = Column(String(200), nullable=False, comment="产品名称")
+    spec = Column(String(300), nullable=True, comment="规格")
+    unit_price = Column(Float, nullable=False, comment="单价")
+    unit = Column(String(20), nullable=True, default="个", comment="单位")
+    remark = Column(String(500), nullable=True, comment="备注")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    supplier = relationship("Supplier", back_populates="products")

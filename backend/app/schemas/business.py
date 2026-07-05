@@ -56,13 +56,13 @@ class PaymentAccountResponse(BaseModel):
 class SupplierCreate(BaseModel):
     name: str; contact_person: Optional[str] = None
     contact_info: Optional[str] = None; address: Optional[str] = None
-    payment_terms: Optional[str] = None; cooperation_content: Optional[str] = None
+    payment_terms: Optional[str] = None; category_id: Optional[int] = None; cooperation_content: Optional[str] = None
     settlement_cycle: Optional[str] = None; history_notes: Optional[dict] = None
 
 class SupplierUpdate(BaseModel):
     name: Optional[str] = None; contact_person: Optional[str] = None
     contact_info: Optional[str] = None; address: Optional[str] = None
-    payment_terms: Optional[str] = None; cooperation_content: Optional[str] = None
+    payment_terms: Optional[str] = None; category_id: Optional[int] = None; cooperation_content: Optional[str] = None
     settlement_cycle: Optional[str] = None; history_notes: Optional[dict] = None
     is_active: Optional[str] = None
 
@@ -70,6 +70,7 @@ class SupplierResponse(BaseModel):
     id: int; warehouse_id: Optional[int] = None; name: str
     contact_person: Optional[str] = None; contact_info: Optional[str] = None
     address: Optional[str] = None; payment_terms: Optional[str] = None
+    category_id: Optional[int] = None; category_name: Optional[str] = None
     cooperation_content: Optional[str] = None; settlement_cycle: Optional[str] = None
     history_notes: Optional[dict] = None; ai_evaluation: Optional[dict] = None
     is_active: str; created_at: Optional[datetime] = None
@@ -191,3 +192,8 @@ class WarehouseSummary(BaseModel):
     warehouse_id: int; warehouse_name: str
     recharge_total: float = 0; incoming_total: float = 0
     unmatched_count: int = 0
+
+# ---- Supplier Product ----
+class SupplierProductCreate(BaseModel):
+    product_name: str; spec: Optional[str] = None
+    unit_price: float; unit: str = "个"; remark: Optional[str] = None
