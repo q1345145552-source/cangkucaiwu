@@ -50,5 +50,7 @@
   "dashboard_group": "仪表盘",
   "finance_group": "财务",
   "group_order_group": "拼单",
-  "settings_group": "系统设置"
+  "settings_group": "系统设置",
+  "supplier_group": "供应商管理",
+  "payment_plans": "付款计划"
 }

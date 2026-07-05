@@ -14,6 +14,7 @@ const PERM_LABELS: Record<string, string> = {
   "收付款管理": "收付款管理",
   "账期管理": "账期管理",
   "操作日志": "操作日志",
+  "供应商管理": "供应商管理",
 };
 
 export default function SettingsPage() {

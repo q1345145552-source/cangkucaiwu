@@ -36,17 +36,24 @@ const navItems: NavItem[] = [
       { key: "customers", label: "customers", icon: <Users size={18} />, href: "/customers", roles: ["warehouse_admin", "staff"] },
       { key: "warehouses", label: "warehouses", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["super_admin"] },
       { key: "accounts", label: "accounts", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin"] },
-      { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin"] },
       { key: "recharge", label: "recharge", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
       { key: "incoming", label: "incoming", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin"] },
       { key: "reconciliation", label: "reconciliation", icon: <CheckCircle size={18} />, href: "/reconciliation", roles: ["warehouse_admin"] },
       { key: "income_expense", label: "income_expense", icon: <BarChart3 size={18} />, href: "/income-expense", roles: ["warehouse_admin"] },
       { key: "expense_fund", label: "expense_fund", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff"] },
       { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff"] },
-      { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin"] },
       { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin"] },
       { key: "reports", label: "reports", icon: <BarChart3 size={18} />, href: "/reports", roles: ["warehouse_admin", "staff"] },
       { key: "ledger", label: "ledger", icon: <FileText size={18} />, href: "/ledger", roles: ["super_admin", "warehouse_admin"] },
+    ],
+  },
+  {
+    key: "supplier_group", label: "supplier_group", icon: <Truck size={20} />,
+    roles: ["super_admin", "warehouse_admin", "staff"],
+    children: [
+      { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin"] },
+      { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin"] },
+      { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin"] },
     ],
   },
   {
@@ -75,6 +82,9 @@ const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
   reimbursement: "报销管理",
   income_expense: "收付款管理",
   credit: "账期管理",
+  suppliers: "供应商管理",
+  payable: "供应商管理",
+  payment_plans: "供应商管理",
   audit_logs: "操作日志",
 };
 
