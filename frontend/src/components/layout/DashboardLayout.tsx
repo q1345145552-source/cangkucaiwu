@@ -1,5 +1,5 @@
 "use client";
-import { useState, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
@@ -76,6 +76,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   const [expandedMenu, setExpandedMenu] = useState<string | null>(getParentKey(pathname));
+
+  // 页面切换时自动匹配父菜单，处理从非子菜单页面跳转到子页面的情况
+  useEffect(() => {
+    if (!pathname) return;
+    const parent = getParentKey(pathname);
+    if (parent) setExpandedMenu(parent);
+  }, [pathname]);
 
   const filteredNav = navItems.filter((item) => hasAccess(item.roles, user?.role));
 
