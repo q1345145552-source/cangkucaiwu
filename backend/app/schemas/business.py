@@ -56,19 +56,23 @@ class PaymentAccountResponse(BaseModel):
 class SupplierCreate(BaseModel):
     name: str; contact_person: Optional[str] = None
     contact_info: Optional[str] = None; address: Optional[str] = None
-    payment_terms: Optional[str] = None
+    payment_terms: Optional[str] = None; cooperation_content: Optional[str] = None
+    settlement_cycle: Optional[str] = None; history_notes: Optional[dict] = None
 
 class SupplierUpdate(BaseModel):
     name: Optional[str] = None; contact_person: Optional[str] = None
     contact_info: Optional[str] = None; address: Optional[str] = None
-    payment_terms: Optional[str] = None; is_active: Optional[str] = None
+    payment_terms: Optional[str] = None; cooperation_content: Optional[str] = None
+    settlement_cycle: Optional[str] = None; history_notes: Optional[dict] = None
+    is_active: Optional[str] = None
 
 class SupplierResponse(BaseModel):
     id: int; warehouse_id: Optional[int] = None; name: str
     contact_person: Optional[str] = None; contact_info: Optional[str] = None
     address: Optional[str] = None; payment_terms: Optional[str] = None
-    ai_evaluation: Optional[dict] = None; is_active: str
-    created_at: Optional[datetime] = None
+    cooperation_content: Optional[str] = None; settlement_cycle: Optional[str] = None
+    history_notes: Optional[dict] = None; ai_evaluation: Optional[dict] = None
+    is_active: str; created_at: Optional[datetime] = None
     class Config: from_attributes = True
 
 

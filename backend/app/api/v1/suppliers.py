@@ -25,7 +25,11 @@ async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
     result = await db.execute(query.order_by(Supplier.created_at.desc()).offset((page-1)*page_size).limit(page_size))
     suppliers = result.scalars().all()
     return {"data": [{"id": s.id, "name": s.name, "contact_person": s.contact_person, "contact_info": s.contact_info,
-                      "address": s.address, "payment_terms": s.payment_terms, "ai_evaluation": s.ai_evaluation,
+                      "address": s.address, "payment_terms": s.payment_terms,
+                      "cooperation_content": s.cooperation_content,
+                      "settlement_cycle": s.settlement_cycle,
+                      "history_notes": s.history_notes,
+                      "ai_evaluation": s.ai_evaluation,
                       "is_active": s.is_active} for s in suppliers],
             "total": total, "page": page, "page_size": page_size}
 
@@ -54,6 +58,41 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
         setattr(s, k, v)
     await db.flush(); return {"message": "更新成功"}
 
+@router.get("/procurement-summary")
+async def procurement_summary(current_user: User = Depends(get_current_user),
+                               db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    from app.models.payable import PayableBill
+    from app.models.warehouse import Warehouse
+    sq = select(Supplier)
+    if current_user.role != Role.SUPER_ADMIN:
+        sq = sq.where(Supplier.warehouse_id == current_user.warehouse_id)
+    suppliers = (await db.execute(sq)).scalars().all()
+    result = []
+    for s in suppliers:
+        bq = (
+            select(PayableBill.warehouse_id, func.sum(PayableBill.amount).label("total"))
+            .where(PayableBill.supplier_id == s.id)
+            .group_by(PayableBill.warehouse_id)
+        )
+        if current_user.role != Role.SUPER_ADMIN:
+            bq = bq.where(PayableBill.warehouse_id == current_user.warehouse_id)
+        bill_rows = (await db.execute(bq)).all()
+        wids = [r.warehouse_id for r in bill_rows]
+        wh_map = {}
+        if wids:
+            whs = (await db.execute(select(Warehouse).where(Warehouse.id.in_(wids)))).scalars().all()
+            wh_map = {w.id: w.name for w in whs}
+        warehouses = [{"warehouse_id": r.warehouse_id, "warehouse_name": wh_map.get(r.warehouse_id, ""), "total_amount": float(r.total or 0)} for r in bill_rows]
+        if warehouses:
+            result.append({
+                "supplier_id": s.id, "supplier_name": s.name,
+                "warehouses": warehouses,
+                "grand_total": sum(w["total_amount"] for w in warehouses),
+            })
+    return {"data": result}
+
 @router.get("/{supplier_id}")
 async def get_supplier(supplier_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
@@ -62,7 +101,11 @@ async def get_supplier(supplier_id: int, current_user: User = Depends(get_curren
     if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != current_user.warehouse_id:
         raise HTTPException(403, "只能查看自己仓库的供应商")
     return {"id": s.id, "name": s.name, "contact_person": s.contact_person, "contact_info": s.contact_info,
-            "address": s.address, "payment_terms": s.payment_terms, "ai_evaluation": s.ai_evaluation}
+            "address": s.address, "payment_terms": s.payment_terms,
+            "cooperation_content": s.cooperation_content,
+            "settlement_cycle": s.settlement_cycle,
+            "history_notes": s.history_notes,
+            "ai_evaluation": s.ai_evaluation}
 
 @router.get("/{supplier_id}/ai-evaluation")
 async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current_user),
@@ -72,7 +115,6 @@ async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
-    # Try DeepSeek API if key configured
     from app.config import get_settings
     settings = get_settings()
     if settings.DEEPSEEK_API_KEY:

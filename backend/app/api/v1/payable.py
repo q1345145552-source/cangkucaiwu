@@ -1,5 +1,5 @@
 from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime
@@ -15,7 +15,10 @@ router = APIRouter()
 
 class BillCreate(BaseModel):
     supplier_id: int; bill_number: str; bill_date: str; due_date: str
-    amount: float; currency: str = "THB"; remark: Optional[str] = None
+    amount: float; confirmed_amount: Optional[float] = None
+    currency: str = "THB"; remark: Optional[str] = None
+    payment_commitment_days: Optional[int] = None
+    is_fund_linked: Optional[str] = None
 
 class PlanCreate(BaseModel):
     plan_name: str; planned_date: str; bill_ids: List[int]; remark: Optional[str] = None
@@ -52,15 +55,36 @@ async def list_bills(
     if sids:
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
         smap = {s.id: s.name for s in sups}
-    return {"data": [{
-        "id": b.id, "warehouse_id": b.warehouse_id, "supplier_id": b.supplier_id,
-        "supplier_name": smap.get(b.supplier_id, ""),
-        "bill_number": b.bill_number,
-        "bill_date": b.bill_date.isoformat() if b.bill_date else None,
-        "due_date": b.due_date.isoformat() if b.due_date else None,
-        "amount": b.amount, "currency": b.currency, "paid_amount": b.paid_amount,
-        "status": b.status, "remark": b.remark,
-    } for b in bills], "total": total, "page": page, "page_size": page_size}
+    # 自动标记逾期（due_date < now 且未付）
+    from sqlalchemy import update as sql_update
+    import sqlalchemy
+    expire_sql = (
+        sql_update(PayableBill)
+        .where(PayableBill.due_date < datetime.now())
+        .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
+        .values(status=PayableStatus.OVERDUE.value)
+    )
+    try:
+        await db.execute(expire_sql)
+        await db.flush()
+    except: pass
+
+    return {
+        "data": [{
+            "id": b.id, "warehouse_id": b.warehouse_id, "supplier_id": b.supplier_id,
+            "supplier_name": smap.get(b.supplier_id, ""),
+            "bill_number": b.bill_number,
+            "bill_date": b.bill_date.isoformat() if b.bill_date else None,
+            "due_date": b.due_date.isoformat() if b.due_date else None,
+            "amount": b.amount, "confirmed_amount": b.confirmed_amount,
+            "currency": b.currency, "paid_amount": b.paid_amount,
+            "status": b.status, "is_duplicate_warned": b.is_duplicate_warned,
+            "payment_commitment_days": b.payment_commitment_days,
+            "payment_voucher": b.payment_voucher, "is_fund_linked": b.is_fund_linked,
+            "remark": b.remark,
+        } for b in bills],
+        "total": total, "page": page, "page_size": page_size,
+    }
 
 @router.post("")
 async def create_bill(req: BillCreate, current_user: User = Depends(get_current_user),
@@ -69,15 +93,58 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
+    # 重复检测
+    existing = (await db.execute(
+        select(PayableBill).where(
+            PayableBill.warehouse_id == get_wh(current_user),
+            PayableBill.bill_number == req.bill_number,
+            PayableBill.supplier_id == req.supplier_id,
+        )
+    )).scalar_one_or_none()
+    if existing and not existing.is_duplicate_warned:
+        raise HTTPException(409, f"重复账单警告: 账单号 {req.bill_number} 已存在，请确认是否新账单")
+
+    # 对账差异检测
+    has_diff = False
+    diff_note = None
+    if req.confirmed_amount is not None and req.confirmed_amount != req.amount:
+        has_diff = True
+        diff_note = f"供应商确认金额 {req.confirmed_amount} 与仓库记录 {req.amount} 不一致"
+    
     b = PayableBill(
         warehouse_id=get_wh(current_user), supplier_id=req.supplier_id,
         bill_number=req.bill_number,
         bill_date=datetime.fromisoformat(req.bill_date),
         due_date=datetime.fromisoformat(req.due_date),
-        amount=req.amount, currency=req.currency, remark=req.remark,
+        amount=req.amount, confirmed_amount=req.confirmed_amount,
+        currency=req.currency, remark=req.remark,
+        payment_commitment_days=req.payment_commitment_days,
+        is_fund_linked=req.is_fund_linked,
         created_by=current_user.id,
     )
-    db.add(b); await db.flush(); return {"id": b.id, "message": "账单创建成功"}
+    db.add(b); await db.flush()
+    return {"id": b.id, "message": "账单创建成功", "has_diff": has_diff, "diff_note": diff_note}
+
+@router.post("/{bill_id}/upload-voucher")
+async def upload_voucher(bill_id: int, file: UploadFile = File(...),
+                         current_user: User = Depends(get_current_user),
+                         db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+        raise HTTPException(403, "无权限")
+    result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
+    b = result.scalar_one_or_none()
+    if not b: raise HTTPException(404, "账单不存在")
+    import os, uuid
+    upload_dir = "/app/uploads/payment_vouchers"
+    os.makedirs(upload_dir, exist_ok=True)
+    ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "png"
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    fpath = os.path.join(upload_dir, fname)
+    content = await file.read()
+    with open(fpath, "wb") as f: f.write(content)
+    b.payment_voucher = f"/uploads/payment_vouchers/{fname}"
+    await db.flush()
+    return {"message": "凭证上传成功", "path": b.payment_voucher}
 
 @router.put("/{bill_id}/pay")
 async def pay_bill(bill_id: int, paid_amount: float = None,
@@ -90,10 +157,16 @@ async def pay_bill(bill_id: int, paid_amount: float = None,
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
-    pay = paid_amount if paid_amount is not None else b.amount
+    pay = paid_amount if paid_amount is not None else (b.amount - b.paid_amount)
     b.paid_amount += pay
     b.paid_at = datetime.now()
-    b.status = PayableStatus.PAID.value if b.paid_amount >= b.amount else PayableStatus.PARTIALLY_PAID.value
+    if b.paid_amount >= b.amount:
+        b.status = PayableStatus.PAID.value
+    else:
+        b.status = PayableStatus.PARTIALLY_PAID.value
+    # 清除逾期标记
+    if b.status in (PayableStatus.PAID.value, PayableStatus.PARTIALLY_PAID.value) and b.status != PayableStatus.OVERDUE.value:
+        pass
     await db.flush(); return {"message": "付款记录成功"}
 
 # === Plans ===
@@ -106,10 +179,21 @@ async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSe
         query = query.where(PayablePlan.warehouse_id == current_user.warehouse_id)
     result = await db.execute(query.order_by(PayablePlan.planned_date.desc()))
     plans = result.scalars().all()
-    return {"data": [{"id": p.id, "plan_name": p.plan_name,
-                      "planned_date": p.planned_date.isoformat() if p.planned_date else None,
-                      "total_amount": p.total_amount, "status": p.status,
-                      "bill_ids": p.bill_ids, "remark": p.remark} for p in plans]}
+    # 自动标记逾期（due_date < now 且未付）
+    from sqlalchemy import update as sql_update
+    import sqlalchemy
+    expire_sql = (
+        sql_update(PayableBill)
+        .where(PayableBill.due_date < datetime.now())
+        .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
+        .values(status=PayableStatus.OVERDUE.value)
+    )
+    try:
+        await db.execute(expire_sql)
+        await db.flush()
+    except: pass
+
+    return {"data": [{"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_ids": p.bill_ids, "remark": p.remark} for p in plans]}
 
 @router.post("/plans")
 async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_user),
@@ -155,9 +239,21 @@ async def batch_export(current_user: User = Depends(get_current_user), db: Async
     if sids:
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
         smap = {s.id: {"name": s.name, "bank": s.contact_info} for s in sups}
-    return {"data": [{"supplier": smap.get(b.supplier_id, {}).get("name", ""),
-                      "amount": b.amount - b.paid_amount, "currency": b.currency,
-                      "due_date": str(b.due_date), "bill_number": b.bill_number} for b in bills]}
+    # 自动标记逾期（due_date < now 且未付）
+    from sqlalchemy import update as sql_update
+    import sqlalchemy
+    expire_sql = (
+        sql_update(PayableBill)
+        .where(PayableBill.due_date < datetime.now())
+        .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
+        .values(status=PayableStatus.OVERDUE.value)
+    )
+    try:
+        await db.execute(expire_sql)
+        await db.flush()
+    except: pass
+
+    return {"data": [{"supplier": smap.get(b.supplier_id, {}).get("name", ""), "amount": b.amount - b.paid_amount, "currency": b.currency, "due_date": str(b.due_date), "bill_number": b.bill_number} for b in bills]}
 
 @router.get("/supplier-statement")
 async def supplier_statement(supplier_id: int = None, current_user: User = Depends(get_current_user),
