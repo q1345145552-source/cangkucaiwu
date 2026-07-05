@@ -10,12 +10,17 @@ export default function LedgerPage() {
   const { t } = useI18n(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [month, setMonth] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [page, month]);
 
   async function load() {
-    const r = await api.get<any>(`/income-expense/ledger?page=${page}&page_size=30${month?"&month="+month:""}`);
-    setData(r.data); setTotal(r.total);
+    setLoading(true);
+    try {
+      const r = await api.get<any>(`/income-expense/ledger?page=${page}&page_size=30${month?"&month="+month:""}`);
+      setData(r.data); setTotal(r.total);
+    } catch (err) { console.error("加载失败:", err); }
+    setLoading(false);
   }
 
   return (
@@ -23,12 +28,12 @@ export default function LedgerPage() {
       <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">资金流水总览</h1>
         <input type="month" value={month} onChange={e=>{setMonth(e.target.value);setPage(1);}} className="border rounded px-3 py-2 text-sm" />
       </div>
-      <DataTable columns={[
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "date", label: "日期", render: (v:any)=>v?.slice(0,10) },
         { key: "type", label: "类型", render: (v:any)=><span className={v==="income"?"text-green-600":"text-red-600"}>{v==="income"?"收款":"付款"}</span> },
         { key: "amount", label: "金额" }, { key: "currency", label: "币种" },
         { key: "remark", label: "备注" }, { key: "source", label: "来源" },
-      ]} data={data} total={total} page={page} pageSize={30} onPageChange={setPage} />
+      ]} data={data} total={total} page={page} pageSize={30} onPageChange={setPage} />}
     </DashboardLayout>
   );
 }

@@ -13,12 +13,17 @@ export default function ReimbursementPage() {
   const [items, setItems] = useState<any[]>([]);
   const [form, setForm] = useState({ submit_date: "", currency: "THB" });
   const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [page]);
 
   async function load() {
-    const r = await api.get<any>(`/reimbursement?page=${page}&page_size=20`);
-    setData(r.data); setTotal(r.total);
+    setLoading(true);
+    try {
+      const r = await api.get<any>(`/reimbursement?page=${page}&page_size=20`);
+      setData(r.data); setTotal(r.total);
+    } catch (err) { console.error("加载失败:", err); }
+    setLoading(false);
   }
 
   function addLine() { setItems([...items, { category: "", amount: 0, description: "" }]); }
@@ -43,11 +48,11 @@ export default function ReimbursementPage() {
       <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">{t("reimbursement")}</h1>
         <button onClick={() => { setItems([{category:"",amount:0,description:""}]); setShowForm(true); }} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建报销</button>
       </div>
-      <DataTable onRowClick={(row:any) => viewDetail(row.id)} columns={[
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable onRowClick={(row:any) => viewDetail(row.id)} columns={[
         { key: "employee_name", label: "报销人" }, { key: "submit_date", label: "提交日期", render: (v:any)=>v?.slice(0,10) },
         { key: "total_amount", label: "金额" }, { key: "currency", label: "币种" },
         { key: "status", label: "状态", render: (v:any) => <span className={statusColors[v]||""}>{v}</span> },
-      ]} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
+      ]} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />}
 
       {detail && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-[500px] max-h-[80vh] overflow-auto">

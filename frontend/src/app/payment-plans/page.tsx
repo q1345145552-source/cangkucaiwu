@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 export default function PaymentPlansPage() {
   const { t } = useI18n(); const router = useRouter();
   const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ plan_name: "", planned_date: "", bill_ids: [] as number[], remark: "" });
@@ -16,7 +17,13 @@ export default function PaymentPlansPage() {
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadBills(); }, []);
 
-  async function load() { const r = await api.get<any>("/payable/plans"); setPlans(r.data); }
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await api.get<any>("/payable/plans"); setPlans(r.data);
+    } catch (err) { console.error("加载失败:", err); }
+    setLoading(false);
+  }
   async function loadBills() { const r = await api.get<any>("/payable?page_size=100&status=pending"); setBills(r.data); }
 
   function toggleBill(id: number) {
@@ -33,12 +40,12 @@ export default function PaymentPlansPage() {
       <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">付款计划管理</h1>
         <button onClick={()=>setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded text-sm">新建计划</button>
       </div>
-      <DataTable columns={[
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "plan_name", label: "计划名称" },
         { key: "planned_date", label: "计划日期", render: (v:any)=>v?.slice(0,10) },
         { key: "total_amount", label: "金额" },
         { key: "status", label: "状态" },
-      ]} data={plans} total={plans.length} page={1} pageSize={100} onPageChange={()=>{}} />
+      ]} data={plans} total={plans.length} page={1} pageSize={100} onPageChange={()=>{}} />}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-[600px] max-h-[80vh] overflow-auto">
           <h2 className="font-semibold mb-4">新建付款计划</h2>

@@ -10,10 +10,17 @@ export default function CategoriesPage() {
   const [cats, setCats] = useState<any[]>([]);
   const [tab, setTab] = useState("income");
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [tab]);
 
-  async function load() { const r = await api.get<any>(`/income-expense/categories?type=${tab}`); setCats(r.data); }
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await api.get<any>(`/income-expense/categories?type=${tab}`); setCats(r.data);
+    } catch (err) { console.error("加载失败:", err); }
+    setLoading(false);
+  }
   async function add() { await api.post("/income-expense/categories", { type: tab, name }); setName(""); load(); }
 
   return (
@@ -27,9 +34,9 @@ export default function CategoriesPage() {
         <input className="border rounded px-3 py-2 text-sm w-64" placeholder="新类别名称" value={name} onChange={e=>setName(e.target.value)} />
         <button onClick={add} className="bg-primary text-white px-4 py-2 rounded text-sm">添加</button>
       </div>
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <div className="bg-white rounded-xl shadow-sm p-4">
         {cats.map((c:any) => <div key={c.id} className="flex justify-between py-2 border-b text-sm"><span>{c.name}</span><span className={`px-2 py-0.5 rounded text-xs ${c.status==="active"?"bg-green-100 text-green-700":"bg-gray-100"}`}>{c.status}</span></div>)}
-      </div>
+      </div>}
     </DashboardLayout>
   );
 }

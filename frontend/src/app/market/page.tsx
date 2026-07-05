@@ -10,6 +10,7 @@ import { Package, ShoppingCart, Check, X } from "lucide-react";
 export default function MarketPage() {
   const { t } = useI18n(); const router = useRouter(); const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]); const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", quantity: 1, price: 0, description: "" });
   const [tab, setTab] = useState<"all"|"review">("all");
@@ -18,11 +19,15 @@ export default function MarketPage() {
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [tab, search]);
 
   async function load() {
-    if (tab === "review" && user?.role === "super_admin") {
-      const r = await api.get<any>("/market/review-list"); setReviews(r.data);
-    } else {
-      const r = await api.get<any>(`/market?page_size=100&search=${search}`); setItems(r.data);
-    }
+    setLoading(true);
+    try {
+      if (tab === "review" && user?.role === "super_admin") {
+        const r = await api.get<any>("/market/review-list"); setReviews(r.data);
+      } else {
+        const r = await api.get<any>(`/market?page_size=100&search=${search}`); setItems(r.data);
+      }
+    } catch (err) { console.error("加载失败:", err); }
+    setLoading(false);
   }
 
   async function handleCreate() {
@@ -87,7 +92,7 @@ export default function MarketPage() {
 
       {/* Market grid */}
       {tab === "all" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((i: any) => (
             <div key={i.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="h-40 bg-gray-100 flex items-center justify-center">

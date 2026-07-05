@@ -15,16 +15,21 @@ export default function GroupOrderPage() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [tab, setTab] = useState<"active"|"history">("active");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [tab]);
 
   async function load() {
-    if (tab === "history") {
-      const r = await api.get<any>("/group-order/history"); setHistory(r.data);
-    } else {
-      const r = await api.get<any>("/group-order?page_size=100");
-      setOrders(r.data);
-    }
+    setLoading(true);
+    try {
+      if (tab === "history") {
+        const r = await api.get<any>("/group-order/history"); setHistory(r.data);
+      } else {
+        const r = await api.get<any>("/group-order?page_size=100");
+        setOrders(r.data);
+      }
+    } catch (err) { console.error("加载失败:", err); }
+    setLoading(false);
   }
 
   async function handleCreate() {
@@ -71,7 +76,7 @@ export default function GroupOrderPage() {
         </div>
       </div>
 
-      {tab === "active" && (
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : tab === "active" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {orders.map((o: any) => (
             <div key={o.id} className="bg-white rounded-xl shadow-sm p-4" onClick={() => viewParticipants(o)}>
