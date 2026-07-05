@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, ReactNode } from "react";
+import { useState, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
@@ -58,16 +58,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t, toggleLocale } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
 
-  // 根据当前路径自动展开对应父菜单
-  function getParentKey(path: string): string | null {
+  // 根据当前路径计算父菜单 key，初始化时直接展开，避免 useEffect 导致的闪烁
+  function getParentKey(path: string | null): string | null {
+    if (!path) return null;
     for (const item of navItems) {
       if (!item.children) continue;
       for (const child of item.children) {
-        if (child.href && path && path.startsWith(child.href)) {
+        if (child.href && path.startsWith(child.href)) {
           return item.key;
         }
       }
@@ -75,11 +75,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return null;
   }
 
-  useEffect(() => {
-    if (!pathname) return;
-    const parent = getParentKey(pathname);
-    if (parent) setExpandedMenu(parent);
-  }, [pathname]);
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(getParentKey(pathname));
 
   const filteredNav = navItems.filter((item) => hasAccess(item.roles, user?.role));
 
