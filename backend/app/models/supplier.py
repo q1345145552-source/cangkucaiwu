@@ -46,3 +46,18 @@ class SupplierProduct(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     supplier = relationship("Supplier", back_populates="products")
+
+class SupplierLogisticsPrice(Base):
+    """物流供应商路线报价"""
+    __tablename__ = "supplier_logistics_prices"
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False, index=True)
+    route_name = Column(String(200), nullable=False, comment="路线名称，如 曼谷→龙仔厝")
+    cargo_type = Column(String(100), nullable=False, comment="货物类型，如 普货/易碎品/大件")
+    starting_price = Column(Float, nullable=False, default=0, comment="起步价")
+    price_per_kg = Column(Float, nullable=False, comment="每公斤价格")
+    estimated_days = Column(String(50), nullable=True, comment="预计时效，如 1-2天")
+    remark = Column(String(300), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    supplier = relationship("Supplier", backref="logistics_prices")
