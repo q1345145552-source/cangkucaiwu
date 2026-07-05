@@ -46,5 +46,9 @@
   "warehouse": "所属仓库",
   "ledger": "资金流水总览",
   "audit_logs": "操作日志",
-  "categories_page": "收支类别"
+  "categories_page": "收支类别",
+  "dashboard_group": "仪表盘",
+  "finance_group": "财务",
+  "group_order_group": "拼单",
+  "settings_group": "系统设置"
 }

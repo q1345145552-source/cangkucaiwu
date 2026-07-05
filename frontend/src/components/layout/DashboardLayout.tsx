@@ -22,33 +22,51 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { key: "dashboard", label: "dashboard", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ["super_admin", "warehouse_admin", "staff"] },
   {
-    key: "basic_archive", label: "basic_archive", icon: <Warehouse size={20} />,
-    roles: ["warehouse_admin", "staff"],
+    key: "dashboard_group", label: "dashboard_group", icon: <LayoutDashboard size={20} />,
+    roles: ["super_admin", "warehouse_admin", "staff"],
+    children: [
+      { key: "dashboard", label: "dashboard", icon: <LayoutDashboard size={18} />, href: "/dashboard", roles: ["super_admin", "warehouse_admin", "staff"] },
+    ],
+  },
+  {
+    key: "finance_group", label: "finance_group", icon: <CreditCard size={20} />,
+    roles: ["super_admin", "warehouse_admin", "staff"],
     children: [
       { key: "customers", label: "customers", icon: <Users size={18} />, href: "/customers", roles: ["warehouse_admin", "staff"] },
       { key: "warehouses", label: "warehouses", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["super_admin"] },
       { key: "accounts", label: "accounts", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin"] },
       { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin"] },
-      
+      { key: "recharge", label: "recharge", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
+      { key: "incoming", label: "incoming", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin"] },
+      { key: "reconciliation", label: "reconciliation", icon: <CheckCircle size={18} />, href: "/reconciliation", roles: ["warehouse_admin"] },
+      { key: "income_expense", label: "income_expense", icon: <BarChart3 size={18} />, href: "/income-expense", roles: ["warehouse_admin"] },
+      { key: "expense_fund", label: "expense_fund", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff"] },
+      { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff"] },
+      { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin"] },
+      { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin"] },
+      { key: "reports", label: "reports", icon: <BarChart3 size={18} />, href: "/reports", roles: ["warehouse_admin", "staff"] },
+      { key: "ledger", label: "ledger", icon: <FileText size={18} />, href: "/ledger", roles: ["super_admin", "warehouse_admin"] },
     ],
   },
-  { key: "recharge", label: "recharge", href: "/recharge", icon: <ArrowDownUp size={20} />, roles: ["warehouse_admin", "staff"] },
-  { key: "incoming", label: "incoming", href: "/incoming", icon: <TrendingUp size={20} />, roles: ["warehouse_admin"] },
-  { key: "reconciliation", label: "reconciliation", href: "/reconciliation", icon: <CheckCircle size={20} />, roles: ["warehouse_admin"] },
-  { key: "income_expense", label: "income_expense", href: "/income-expense", icon: <CreditCard size={20} />, roles: ["warehouse_admin"] },
-  { key: "expense_fund", label: "expense_fund", href: "/expense-fund", icon: <PiggyBank size={20} />, roles: ["warehouse_admin", "staff"] },
-  { key: "reimbursement", label: "reimbursement", href: "/reimbursement", icon: <Receipt size={20} />, roles: ["warehouse_admin", "staff"] },
-  { key: "payable", label: "payable", href: "/payable", icon: <FileText size={20} />, roles: ["warehouse_admin"] },
-  { key: "credit", label: "credit", href: "/credit", icon: <Clock size={20} />, roles: ["warehouse_admin"] },
-  { key: "market", label: "market", href: "/market", icon: <ShoppingBag size={20} />, roles: ["super_admin", "warehouse_admin", "staff"] },
-  { key: "group_order", label: "group_order", href: "/group-order", icon: <PackageOpen size={20} />, roles: ["super_admin", "warehouse_admin"] },
-  { key: "reports", label: "reports", href: "/reports", icon: <BarChart3 size={20} />, roles: ["warehouse_admin", "staff"] },
-  { key: "ledger", label: "ledger", href: "/ledger", icon: <FileText size={20} />, roles: ["super_admin", "warehouse_admin"] },
-  { key: "audit_logs", label: "audit_logs", href: "/audit-logs", icon: <FileText size={20} />, roles: ["super_admin"] },
-  { key: "settings", label: "settings", href: "/settings", icon: <Settings size={20} />, roles: ["super_admin", "warehouse_admin", "staff"] },
+  {
+    key: "group_order_group", label: "group_order_group", icon: <PackageOpen size={20} />,
+    roles: ["super_admin", "warehouse_admin", "staff"],
+    children: [
+      { key: "market", label: "market", icon: <ShoppingBag size={18} />, href: "/market", roles: ["super_admin", "warehouse_admin", "staff"] },
+      { key: "group_order", label: "group_order", icon: <PackageOpen size={18} />, href: "/group-order", roles: ["super_admin", "warehouse_admin"] },
+    ],
+  },
+  {
+    key: "settings_group", label: "settings_group", icon: <Settings size={20} />,
+    roles: ["super_admin", "warehouse_admin", "staff"],
+    children: [
+      { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff"] },
+      { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin"] },
+    ],
+  },
 ];
+
 
 function hasAccess(roles: string[], userRole: string | undefined): boolean {
   if (!userRole) return false;
@@ -85,7 +103,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (parent) setExpandedMenu(parent);
   }, [pathname]);
 
-  const filteredNav = navItems.filter((item) => hasAccess(item.roles, user?.role));
+  const filteredNav = navItems.filter((item) => {
+    if (!item.children) return hasAccess(item.roles, user?.role);
+    return item.children.some((c) => hasAccess(c.roles, user?.role));
+  });
 
   return (
     <div className="flex min-h-screen">

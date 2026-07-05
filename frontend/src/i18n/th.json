@@ -44,7 +44,11 @@
   "display_name": "ชื่อที่แสดง",
   "role": "บทบาท",
   "warehouse": "คลังสินค้า",
-  "ledger": "ภาพรวมกระแสเงิน",
+  "ledger": "ภาพรวมบัญชี",
   "audit_logs": "บันทึกการดำเนินงาน",
-  "categories_page": "หมวดหมู่รายรับรายจ่าย"
+  "categories_page": "หมวดหมู่รายรับรายจ่าย",
+  "dashboard_group": "แดชบอร์ด",
+  "finance_group": "การเงิน",
+  "group_order_group": "สั่งซื้อกลุ่ม",
+  "settings_group": "ตั้งค่าระบบ"
 }
