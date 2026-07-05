@@ -136,7 +136,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
                        db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "approve_reimbursement" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "报销管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无审批报销权限")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无审批权限")

@@ -91,7 +91,7 @@ async def create_income(req: IncomeRecordCreate, current_user: User = Depends(ge
                         db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "confirm_income" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "收付款管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无确认入账权限")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
@@ -153,7 +153,7 @@ async def create_expense(req: ExpenseRecordCreate, current_user: User = Depends(
                          db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "confirm_expense" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "收付款管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无确认出账权限")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")

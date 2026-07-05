@@ -183,7 +183,7 @@ async def create_shipment(credit_id: int, req: ShipmentCreate,
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN,) and current_user.role != Role.STAFF:
         raise HTTPException(403, "无权限")
-    if current_user.role == Role.STAFF and "manage_credit" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "账期管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无管理账期权限")
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()
@@ -214,7 +214,7 @@ async def record_repayment(credit_id: int, req: RepaymentCreate,
                            db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "manage_credit" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "账期管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无管理账期权限")
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()

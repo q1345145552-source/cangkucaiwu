@@ -17,7 +17,7 @@ async def list_incoming(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "incoming_entry" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "到账流水" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无录入到账流水权限")
     query = select(IncomingFlow); count_q = select(func.count(IncomingFlow.id))
     query = query.where(IncomingFlow.warehouse_id == current_user.warehouse_id)
@@ -51,7 +51,7 @@ async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_
                           db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "仅仓库管理员可操作")
-    if current_user.role == Role.STAFF and "incoming_entry" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "到账流水" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无录入到账流水权限")
     wh_id = current_user.warehouse_id
     if not wh_id:

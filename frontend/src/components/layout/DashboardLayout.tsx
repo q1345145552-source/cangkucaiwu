@@ -70,25 +70,26 @@ const navItems: NavItem[] = [
 
 // Staff 扩展权限 → 菜单映射
 const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
-  incoming: "incoming_entry",
-  income_expense: ["confirm_income", "confirm_expense"],
-  credit: "manage_credit",
-  audit_logs: "operation_log",
+  incoming: "到账流水",
+  expense_fund: "备用金管理",
+  reimbursement: "报销管理",
+  income_expense: "收付款管理",
+  credit: "账期管理",
+  audit_logs: "操作日志",
 };
 
 function hasAccess(item: NavItem, user: any): boolean {
   if (!user || !user.role) return false;
-  // 直接角色匹配
-  if (item.roles.includes(user.role)) return true;
-  // Staff 扩展权限匹配
-  if (user.role === "staff" && item.key) {
-    const perms: string[] = user.extra_permissions || [];
-    const required = STAFF_EXTRA_MAP[item.key];
-    if (!required) return false;
-    if (Array.isArray(required)) return required.some((p: string) => perms.includes(p));
-    return perms.includes(required);
-  }
-  return false;
+  // 非 staff 角色走原有角色匹配
+  if (user.role !== "staff") return item.roles.includes(user.role);
+  // Staff 角色：仪表盘始终可见，其余菜单需扩展权限
+  if (item.key === "dashboard") return true;
+  const perms: string[] = user.extra_permissions || [];
+  if (perms.length === 0) return false;
+  const required = STAFF_EXTRA_MAP[item.key];
+  if (!required) return false;
+  if (Array.isArray(required)) return required.some((p: string) => perms.includes(p));
+  return perms.includes(required);
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {

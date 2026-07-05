@@ -149,7 +149,7 @@ async def do_review(fund_id: int, req: ReviewRequest, current_user: User = Depen
                     db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "approve_expense_fund" not in (current_user.extra_permissions or []):
+    if current_user.role == Role.STAFF and "备用金管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无审批备用金权限")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无审核权限")

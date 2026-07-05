@@ -8,13 +8,12 @@ import { useRouter } from "next/navigation";
 import { Key, UserPlus, MessageCircle, Pencil } from "lucide-react";
 
 const PERM_LABELS: Record<string, string> = {
-  incoming_entry: "录入到账流水",
-  approve_expense_fund: "审批备用金",
-  approve_reimbursement: "审批报销",
-  confirm_income: "确认入账",
-  confirm_expense: "确认出账",
-  manage_credit: "管理账期",
-  operation_log: "查看操作日志",
+  "到账流水": "到账流水",
+  "备用金管理": "备用金管理",
+  "报销管理": "报销管理",
+  "收付款管理": "收付款管理",
+  "账期管理": "账期管理",
+  "操作日志": "操作日志",
 };
 
 export default function SettingsPage() {
