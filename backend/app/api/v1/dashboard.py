@@ -49,9 +49,12 @@ async def dashboard_stats(current_user: User = Depends(get_current_user), db: As
     gq = select(func.count(GroupOrder.id)).where(GroupOrder.status == 'open')
     pending_group = (await db.execute(gq)).scalar() or 0
 
-    # Pending expense fund item reviews
-    efq = select(func.count(ExpenseFundItem.id)).where(ExpenseFundItem.review_status == ReviewStatus.PENDING.value)
-    efq = _wh_filter(efq, ExpenseFundItem, current_user)
+    # Pending expense fund item reviews (join through ExpenseFund for warehouse filter)
+    efq = select(func.count(ExpenseFundItem.id)).join(
+        ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id
+    ).where(ExpenseFundItem.review_status == ReviewStatus.PENDING.value)
+    if current_user.role != Role.SUPER_ADMIN:
+        efq = efq.where(ExpenseFund.warehouse_id == current_user.warehouse_id)
     pending_expense_fund = (await db.execute(efq)).scalar() or 0
 
     # Pending reimbursement approvals
@@ -79,6 +82,8 @@ async def pending_tasks(current_user: User = Depends(get_current_user), db: Asyn
     ).join(
         User, ExpenseFund.employee_id == User.id
     ).where(ExpenseFundItem.review_status == ReviewStatus.PENDING.value)
+    if current_user.role != Role.SUPER_ADMIN:
+        efq = efq.where(ExpenseFund.warehouse_id == current_user.warehouse_id)
     efq = efq.order_by(ExpenseFundItem.created_at.desc()).limit(20)
     ef_result = (await db.execute(efq)).all()
     for item, fund, emp in ef_result:
