@@ -54,9 +54,9 @@ async def seed():
 
         # === Suppliers ===
         suppliers = [
-            Supplier(warehouse_id=1, supplier_code="S001", company_name="纸箱王包装", contact_person="林老板", contact_info="089-111-2222"),
-            Supplier(warehouse_id=2, supplier_code="S002", company_name="大象物流设备", contact_person="马经理", contact_info="086-333-4444"),
-            Supplier(warehouse_id=3, supplier_code="S003", company_name="泰丰耗材批发", contact_person="杨先生", contact_info="085-555-6666"),
+            Supplier(warehouse_id=1, name="纸箱王包装", contact_person="林老板", contact_info="089-111-2222"),
+            Supplier(warehouse_id=2, name="大象物流设备", contact_person="马经理", contact_info="086-333-4444"),
+            Supplier(warehouse_id=3, name="泰丰耗材批发", contact_person="杨先生", contact_info="085-555-6666"),
         ]
         session.add_all(suppliers); await session.flush()
 
