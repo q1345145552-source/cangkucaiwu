@@ -45,6 +45,5 @@ client.close()
 echo ""
 echo "============================================"
 echo "  部署完成 ✅"
-echo "  前端: http://${SERVER_IP}:3000"
-echo "  API:  http://${SERVER_IP}:8000/docs"
+echo "  访问: http://${SERVER_IP}"
 echo "============================================"
