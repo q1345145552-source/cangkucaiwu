@@ -11,11 +11,19 @@ export default function AccountsPage() {
   const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ account_name: "", account_type: "bank", account_number: "", opening_balance: 0 });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, []);
 
-  async function load() { const r = await api.get<any>("/accounts"); setData(r.data); }
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await api.get<any>("/accounts"); setData(r.data);
+    } catch {}
+    setLoading(false);
+  }
+
   async function handleCreate() { await api.post("/accounts", form); setShowForm(false); load(); }
 
   return (
@@ -26,10 +34,14 @@ export default function AccountsPage() {
           <button onClick={() => setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建账户</button>
         )}
       </div>
-      <DataTable columns={[
-        { key: "account_name", label: "账户名称" }, { key: "account_type", label: "类型" },
-        { key: "account_number", label: "账号" }, { key: "opening_balance", label: "月初余额" },
-      ]} data={data} total={data.length} page={1} pageSize={100} onPageChange={()=>{}} />
+      {loading ? (
+        <div className="text-center py-8 text-gray-400">加载中...</div>
+      ) : (
+        <DataTable columns={[
+          { key: "account_name", label: "账户名称" }, { key: "account_type", label: "类型" },
+          { key: "account_number", label: "账号" }, { key: "opening_balance", label: "月初余额" },
+        ]} data={data} total={data.length} page={1} pageSize={100} onPageChange={()=>{}} />
+      )}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96">
           <h2 className="font-semibold mb-4">新建收款账户</h2>

@@ -17,13 +17,18 @@ export default function CustomersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ customer_code: "", company_name: "", contact_person: "", contact_info: "", credit_status: false, credit_limit: 0, remark: "" });
 
   useEffect(() => { if (!getToken()) router.push("/login"); }, []);
 
   async function load() {
-    const res = await api.get<any>(`/customers?page=${page}&page_size=20&search=${search}`);
-    setData(res.data); setTotal(res.total);
+    setLoading(true);
+    try {
+      const res = await api.get<any>(`/customers?page=${page}&page_size=20&search=${search}`);
+      setData(res.data); setTotal(res.total);
+    } catch {}
+    setLoading(false);
   }
 
   useEffect(() => { load(); }, [page, search]);
@@ -52,7 +57,11 @@ export default function CustomersPage() {
         )}
       </div>
       <div className="mb-4"><input type="text" placeholder={t("search") + "..."} value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="border rounded-lg px-3 py-2 w-64 text-sm" /></div>
-      <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
+      {loading ? (
+        <div className="text-center py-8 text-gray-400">加载中...</div>
+      ) : (
+        <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
+      )}
       {showForm && (
         <FormModal title="新建客户" onClose={() => setShowForm(false)} onSave={handleCreate}>
           <div className="space-y-3">

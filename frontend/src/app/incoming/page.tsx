@@ -11,13 +11,18 @@ export default function IncomingPage() {
   const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ received_date: "", amount: 0, currency: "THB", payer_name: "", payment_method: "", remark: "" });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [page]);
 
   async function load() {
-    const res = await api.get<any>(`/incoming?page=${page}&page_size=20`);
-    setData(res.data); setTotal(res.total);
+    setLoading(true);
+    try {
+      const res = await api.get<any>(`/incoming?page=${page}&page_size=20`);
+      setData(res.data); setTotal(res.total);
+    } catch {}
+    setLoading(false);
   }
 
   async function handleCreate() {
@@ -48,7 +53,11 @@ export default function IncomingPage() {
           }; input.click();
         }} className="border px-4 py-2 rounded-lg text-sm">批量导入Excel</button>
       </div>
-      <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
+      {loading ? (
+        <div className="text-center py-8 text-gray-400">加载中...</div>
+      ) : (
+        <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
+      )}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
           <div className="bg-white rounded-xl w-full max-w-md p-6">
