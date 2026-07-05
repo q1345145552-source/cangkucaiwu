@@ -31,6 +31,7 @@ class PayableBill(Base):
     confirmed_amount = Column(Float, nullable=True, comment="供应商确认金额，与amount不同时标差异")
     payment_commitment_days = Column(Integer, nullable=True, comment="付款承诺天数")
     payment_voucher = Column(String(500), nullable=True, comment="付款凭证截图路径")
+    payment_method = Column(String(50), nullable=True, comment="付款方式：银行转账/现金/支票等")
     is_fund_linked = Column(String(10), nullable=True, comment="是否备用金关联标记")
     is_duplicate_warned = Column(String(10), nullable=True, comment="重复账单警告标记")
     remark = Column(String(500), nullable=True)

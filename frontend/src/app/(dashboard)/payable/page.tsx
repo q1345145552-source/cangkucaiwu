@@ -21,6 +21,7 @@ export default function PayablePage() {
   const [payAmounts, setPayAmounts] = useState<Record<number, number>>({});
   const [voucherFile, setVoucherFile] = useState<File | null>(null);
   const [payingBillId, setPayingBillId] = useState(0);
+  const [payMethod, setPayMethod] = useState("银行转账");
   const [showPayModal, setShowPayModal] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadCashflow(); }, [page]);
@@ -56,7 +57,7 @@ export default function PayablePage() {
     const payAmount = payAmounts[payingBillId] || 0;
     try {
       const token = getToken();
-      await fetch(`${API_URL}/payable/${payingBillId}/pay?paid_amount=${payAmount}`, {
+      await fetch(`${API_URL}/payable/${payingBillId}/pay?paid_amount=${payAmount}&payment_method=${payMethod}`, {
         method: "PUT", headers: { "Authorization": `Bearer ${token}` },
       });
       
@@ -125,6 +126,7 @@ export default function PayablePage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96">
           <h2 className="font-semibold mb-4">付款</h2>
           <div><label className="text-sm">付款金额</label><input type="number" className="border rounded px-3 py-2 w-full" value={payAmounts[payingBillId]||0} onChange={e=>setPayAmounts(prev=>({...prev,[payingBillId]:+e.target.value}))} /></div>
+          <div className="mt-3"><label className="text-sm">付款方式</label><select className="border rounded px-3 py-2 w-full text-sm" value={payMethod} onChange={e=>setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
           <div className="mt-3"><label className="text-sm">上传凭证 (非必填)</label><input type="file" accept="image/*" onChange={e=>setVoucherFile(e.target.files?.[0]||null)} className="border rounded px-3 py-2 w-full text-sm" /></div>
           <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowPayModal(false)} className="px-4 py-2 border rounded text-sm">取消</button><button onClick={handlePay} className="px-4 py-2 bg-primary text-white rounded text-sm">确认付款</button></div>
         </div></div>

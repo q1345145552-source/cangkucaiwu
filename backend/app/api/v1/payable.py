@@ -80,7 +80,7 @@ async def list_bills(
             "currency": b.currency, "paid_amount": b.paid_amount,
             "status": b.status, "is_duplicate_warned": b.is_duplicate_warned,
             "payment_commitment_days": b.payment_commitment_days,
-            "payment_voucher": b.payment_voucher, "is_fund_linked": b.is_fund_linked,
+            "payment_voucher": b.payment_voucher, "payment_method": b.payment_method, "is_fund_linked": b.is_fund_linked,
             "remark": b.remark,
         } for b in bills],
         "total": total, "page": page, "page_size": page_size,
@@ -147,7 +147,7 @@ async def upload_voucher(bill_id: int, file: UploadFile = File(...),
     return {"message": "凭证上传成功", "path": b.payment_voucher}
 
 @router.put("/{bill_id}/pay")
-async def pay_bill(bill_id: int, paid_amount: float = None,
+async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str = None,
                    current_user: User = Depends(get_current_user),
                    db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
@@ -160,6 +160,8 @@ async def pay_bill(bill_id: int, paid_amount: float = None,
     pay = paid_amount if paid_amount is not None else (b.amount - b.paid_amount)
     b.paid_amount += pay
     b.paid_at = datetime.now()
+    if payment_method:
+        b.payment_method = payment_method
     if b.paid_amount >= b.amount:
         b.status = PayableStatus.PAID.value
     else:
