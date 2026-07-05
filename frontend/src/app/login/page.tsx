@@ -17,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     // Check backend connectivity on page load
-    fetch(`${API_URL.replace("/api/v1", "")}/health`)
+    fetch("/health")
       .then(r => r.json())
       .then(d => setApiStatus(d.status === "ok" ? "ok" : "error"))
       .catch(() => setApiStatus("error"));
