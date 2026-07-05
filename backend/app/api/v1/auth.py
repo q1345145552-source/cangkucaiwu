@@ -32,6 +32,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
         role=str(user.role),
         warehouse_id=user.warehouse_id,
         warehouse_name=warehouse_name,
+        extra_permissions=user.extra_permissions or [],
     )
 
 @router.get("/me")
@@ -42,7 +43,9 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "display_name": current_user.display_name,
         "role": str(current_user.role),
         "warehouse_id": current_user.warehouse_id,
+        "warehouse_name": current_user.warehouse.name if current_user.warehouse else None,
         "is_active": current_user.is_active,
+        "extra_permissions": current_user.extra_permissions or [],
     }
 
 @router.post("/change-password")

@@ -28,6 +28,7 @@ export function AuthProvider({ children }) {
       role: res.role,
       warehouse_id: res.warehouse_id,
       warehouse_name: res.warehouse_name,
+      extra_permissions: res.extra_permissions || [],
       is_active: true,
     };
     setUser(u);

@@ -13,6 +13,7 @@ class TokenResponse(BaseModel):
     role: str
     warehouse_id: int | None = None
     warehouse_name: str | None = None
+    extra_permissions: list | None = None
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
