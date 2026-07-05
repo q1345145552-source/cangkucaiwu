@@ -38,6 +38,9 @@ async def list_group_orders(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(GroupOrder); count_q = select(func.count(GroupOrder.id))
+    if current_user.role != Role.SUPER_ADMIN:
+        query = query.where(GroupOrder.warehouse_id == get_wh(current_user))
+        count_q = count_q.where(GroupOrder.warehouse_id == get_wh(current_user))
     if status:
         query = query.where(GroupOrder.status == status)
         count_q = count_q.where(GroupOrder.status == status)

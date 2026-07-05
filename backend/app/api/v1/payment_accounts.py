@@ -43,6 +43,8 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
     result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id))
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
+    if current_user.role != Role.SUPER_ADMIN and a.warehouse_id != current_user.warehouse_id:
+        raise HTTPException(403, "只能修改自己仓库的账户")
     a.account_name = req.account_name; a.account_type = req.account_type
     a.account_number = req.account_number; a.opening_balance = req.opening_balance
     await db.flush(); return {"message": "更新成功"}

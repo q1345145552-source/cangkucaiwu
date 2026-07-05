@@ -167,9 +167,9 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
 @router.get("/reconciliation-diff")
 async def reconciliation_diff_report(month: str, warehouse_id: int = None, format: str = "json",
                                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    wh = get_wh_filter(current_user)
     query = select(ReconciliationResult).where(ReconciliationResult.reconciliation_month == month)
+    if wh: query = query.where(ReconciliationResult.warehouse_id == wh)
     if warehouse_id: query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ReconciliationResult.id))
     records = result.scalars().all()
