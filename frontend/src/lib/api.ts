@@ -35,6 +35,7 @@ async function request<T>(
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
+  // API_URL 支持相对路径 (/api/v1) 和绝对路径 (http://localhost:8000/api/v1)
   const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
   if (res.status === 401) {
     clearToken();
