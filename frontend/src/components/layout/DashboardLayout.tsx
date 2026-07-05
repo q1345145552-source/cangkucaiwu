@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     for (const item of navItems) {
       if (!item.children) continue;
       for (const child of item.children) {
-        if (child.href && path.startsWith(child.href)) {
+        if (child.href && path && path.startsWith(child.href)) {
           return item.key;
         }
       }
@@ -76,6 +76,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    if (!pathname) return;
     const parent = getParentKey(pathname);
     if (parent) setExpandedMenu(parent);
   }, [pathname]);
