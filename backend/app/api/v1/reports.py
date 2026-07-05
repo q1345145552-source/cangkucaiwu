@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -44,6 +44,8 @@ def to_excel(headers, rows, sheet_name="Sheet1"):
 @router.get("/recharge-summary")
 async def recharge_summary(month: str = None, warehouse_id: int = None, format: str = "json",
                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(RechargeDeclaration)
     wh = get_wh_filter(current_user)
     if wh: query = query.where(RechargeDeclaration.warehouse_id == wh)
@@ -59,6 +61,8 @@ async def recharge_summary(month: str = None, warehouse_id: int = None, format: 
 @router.get("/incoming-summary")
 async def incoming_summary(month: str = None, warehouse_id: int = None, format: str = "json",
                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomingFlow)
     wh = get_wh_filter(current_user)
     if wh: query = query.where(IncomingFlow.warehouse_id == wh)
@@ -74,6 +78,8 @@ async def incoming_summary(month: str = None, warehouse_id: int = None, format: 
 @router.get("/income-expense")
 async def income_expense_report(month: str = None, warehouse_id: int = None, format: str = "json",
                                  current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh = get_wh_filter(current_user)
     iq = select(IncomeRecord); eq = select(ExpenseRecord)
     if wh: iq = iq.where(IncomeRecord.warehouse_id == wh); eq = eq.where(ExpenseRecord.warehouse_id == wh)
@@ -93,6 +99,8 @@ async def income_expense_report(month: str = None, warehouse_id: int = None, for
 @router.get("/payable")
 async def payable_report(month: str = None, warehouse_id: int = None, format: str = "json",
                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
     wh = get_wh_filter(current_user)
     if wh: query = query.where(PayableBill.warehouse_id == wh)
@@ -109,6 +117,8 @@ async def payable_report(month: str = None, warehouse_id: int = None, format: st
 @router.get("/expense-fund")
 async def expense_fund_report(warehouse_id: int = None, format: str = "json",
                                current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseFund)
     wh = get_wh_filter(current_user)
     if wh: query = query.where(ExpenseFund.warehouse_id == wh)
@@ -123,6 +133,8 @@ async def expense_fund_report(warehouse_id: int = None, format: str = "json",
 @router.get("/reimbursement")
 async def reimbursement_report(month: str = None, warehouse_id: int = None, format: str = "json",
                                 current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Reimbursement)
     wh = get_wh_filter(current_user)
     if wh: query = query.where(Reimbursement.warehouse_id == wh)
@@ -138,6 +150,8 @@ async def reimbursement_report(month: str = None, warehouse_id: int = None, form
 @router.get("/credit")
 async def credit_report(warehouse_id: int = None, format: str = "json",
                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(CreditCustomer)
     wh = get_wh_filter(current_user)
     if wh: query = query.where(CreditCustomer.warehouse_id == wh)
@@ -153,6 +167,8 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
 @router.get("/reconciliation-diff")
 async def reconciliation_diff_report(month: str, warehouse_id: int = None, format: str = "json",
                                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ReconciliationResult).where(ReconciliationResult.reconciliation_month == month)
     if warehouse_id: query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ReconciliationResult.id))

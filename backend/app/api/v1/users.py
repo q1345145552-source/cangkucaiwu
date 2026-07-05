@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.user import User
 from app.models.warehouse import Warehouse
 from app.core.security import hash_password
-from app.core.permissions import get_current_user, require_role, Role
+from app.core.permissions import get_current_user, require_role, Role, STAFF_PERMISSIONS
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 
 router = APIRouter()
@@ -19,7 +20,7 @@ async def list_users(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(User)
+    query = select(User).options(selectinload(User.warehouse))
     count_query = select(func.count(User.id))
 
     # Non-superadmin can only see users in their warehouse or created by them
@@ -47,6 +48,7 @@ async def list_users(
                 "role": u.role,
                 "warehouse_id": u.warehouse_id,
                 "warehouse_name": u.warehouse.name if u.warehouse else None,
+                "extra_permissions": u.extra_permissions or [],
                 "is_active": u.is_active,
                 "created_at": u.created_at.isoformat() if u.created_at else None,
             }
@@ -56,6 +58,11 @@ async def list_users(
         "page": page,
         "page_size": page_size,
     }
+
+@router.get("/permissions")
+async def list_available_permissions():
+    """Return all available staff extra permissions."""
+    return [{"key": k, "label": v} for k, v in STAFF_PERMISSIONS.items()]
 
 @router.post("")
 async def create_user(
@@ -101,8 +108,18 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    if current_user.role != Role.SUPER_ADMIN and user.warehouse_id != current_user.warehouse_id:
-        raise HTTPException(status_code=403, detail="无权限")
+    # Permission check: super_admin can edit anyone, warehouse_admin can only edit own warehouse users
+    if current_user.role != Role.SUPER_ADMIN:
+        if current_user.role != Role.WAREHOUSE_ADMIN:
+            raise HTTPException(status_code=403, detail="无权限编辑用户")
+        if user.warehouse_id != current_user.warehouse_id:
+            raise HTTPException(status_code=403, detail="只能编辑自己仓库的用户")
+        # warehouse_admin can only edit staff users
+        if user.role != Role.STAFF.value:
+            raise HTTPException(status_code=403, detail="只能编辑staff角色的用户")
+        # warehouse_admin can only set extra_permissions, not change role
+        if req.role is not None and req.role != user.role:
+            raise HTTPException(status_code=403, detail="无权修改用户角色")
 
     if req.display_name is not None:
         user.display_name = req.display_name
@@ -114,6 +131,8 @@ async def update_user(
         user.is_active = req.is_active
     if req.line_user_id is not None:
         user.line_user_id = req.line_user_id
+    if req.extra_permissions is not None:
+        user.extra_permissions = req.extra_permissions
 
     await db.flush()
     return {"message": "用户更新成功"}

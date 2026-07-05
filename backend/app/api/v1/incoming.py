@@ -5,7 +5,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models.recharge import IncomingFlow, CurrencyEnum, MatchStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, Role, check_staff_permission
 from app.schemas.business import IncomingCreate, IncomingBatchImport
 
 router = APIRouter()
@@ -15,10 +15,13 @@ async def list_incoming(
     page: int = 1, page_size: int = 20, month: str = None, status: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role == Role.STAFF and "incoming_entry" not in (current_user.extra_permissions or []):
+        raise HTTPException(403, "无录入到账流水权限")
     query = select(IncomingFlow); count_q = select(func.count(IncomingFlow.id))
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(IncomingFlow.warehouse_id == current_user.warehouse_id)
-        count_q = count_q.where(IncomingFlow.warehouse_id == current_user.warehouse_id)
+    query = query.where(IncomingFlow.warehouse_id == current_user.warehouse_id)
+    count_q = count_q.where(IncomingFlow.warehouse_id == current_user.warehouse_id)
     if month:
         query = query.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
@@ -46,9 +49,13 @@ async def list_incoming(
 @router.post("")
 async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
-    if current_user.role != Role.SUPER_ADMIN:
-        raise HTTPException(403, "仅超级管理员可操作")
-    wh_id = current_user.warehouse_id or 1  # default to warehouse 1 for super admin
+    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+        raise HTTPException(403, "仅仓库管理员可操作")
+    if current_user.role == Role.STAFF and "incoming_entry" not in (current_user.extra_permissions or []):
+        raise HTTPException(403, "无录入到账流水权限")
+    wh_id = current_user.warehouse_id
+    if not wh_id:
+        raise HTTPException(400, "无法确定仓库")
     r = IncomingFlow(
         warehouse_id=wh_id,
         received_date=datetime.fromisoformat(req.received_date),
@@ -61,8 +68,8 @@ async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_
 @router.post("/batch-import")
 async def batch_import(req: IncomingBatchImport, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db)):
-    if current_user.role != Role.SUPER_ADMIN:
-        raise HTTPException(403, "仅超级管理员可操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+        raise HTTPException(403, "仅仓库管理员可操作")
     imported = 0
     for rec in req.records:
         r = IncomingFlow(

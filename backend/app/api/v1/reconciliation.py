@@ -85,12 +85,22 @@ async def list_results(month: str, warehouse_id: int = None,
                        match_status: str = None, page: int = 1, page_size: int = 20,
                        current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ReconciliationResult); count_q = select(func.count(ReconciliationResult.id))
     query = query.where(ReconciliationResult.reconciliation_month == month)
     count_q = count_q.where(ReconciliationResult.reconciliation_month == month)
-    if warehouse_id:
+
+    # Data isolation: non-super-admin can only see their own warehouse
+    if current_user.role != Role.SUPER_ADMIN:
+        if warehouse_id and warehouse_id != current_user.warehouse_id:
+            raise HTTPException(403, "无权查看其他仓库的对账结果")
+        query = query.where(ReconciliationResult.warehouse_id == current_user.warehouse_id)
+        count_q = count_q.where(ReconciliationResult.warehouse_id == current_user.warehouse_id)
+    elif warehouse_id:
         query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
         count_q = count_q.where(ReconciliationResult.warehouse_id == warehouse_id)
+
     if match_status:
         query = query.where(ReconciliationResult.match_status == match_status)
         count_q = count_q.where(ReconciliationResult.match_status == match_status)
@@ -101,10 +111,20 @@ async def list_results(month: str, warehouse_id: int = None,
     # Prefetch related data
     decl_ids = [r.declaration_id for r in records if r.declaration_id]
     flow_ids = [r.flow_id for r in records if r.flow_id]
-    decl_map = {}; flow_map = {}
+    decl_map = {}; flow_map = {}; decl_customer_map = {}
     if decl_ids:
         decls = (await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id.in_(decl_ids)))).scalars().all()
         decl_map = {d.id: {"amount": d.amount, "currency": d.currency or "", "declare_date": str(d.declare_date)} for d in decls}
+
+        # Build customer_name mapping through declarations
+        cust_ids = [d.customer_id for d in decls if d.customer_id]
+        customer_map = {}
+        if cust_ids:
+            customers = (await db.execute(select(Customer).where(Customer.id.in_(cust_ids)))).scalars().all()
+            customer_map = {c.id: c.company_name for c in customers}
+        for d in decls:
+            decl_customer_map[d.id] = customer_map.get(d.customer_id, "")
+
     if flow_ids:
         fls = (await db.execute(select(IncomingFlow).where(IncomingFlow.id.in_(flow_ids)))).scalars().all()
         flow_map = {f.id: {"amount": f.amount, "currency": f.currency or "", "received_date": str(f.received_date)} for f in fls}
@@ -114,6 +134,7 @@ async def list_results(month: str, warehouse_id: int = None,
         "declaration_id": r.declaration_id, "flow_id": r.flow_id,
         "match_status": r.match_status or "",
         "amount_diff": r.amount_diff, "handling_note": r.handling_note,
+        "customer_name": decl_customer_map.get(r.declaration_id, ""),
         "declaration": decl_map.get(r.declaration_id),
         "flow": flow_map.get(r.flow_id),
         "created_at": r.created_at.isoformat() if r.created_at else None,
@@ -157,10 +178,21 @@ async def unmatch_record(req: UnmatchRequest, current_user: User = Depends(get_c
 
 @router.get("/export")
 async def export_reconciliation(month: str, warehouse_id: int = None,
+                                 current_user: User = Depends(get_current_user),
                                  db: AsyncSession = Depends(get_db)):
     """导出对账报表为Excel"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ReconciliationResult).where(ReconciliationResult.reconciliation_month == month)
-    if warehouse_id: query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
+
+    # Data isolation: non-super-admin can only export their own warehouse
+    if current_user.role != Role.SUPER_ADMIN:
+        if warehouse_id and warehouse_id != current_user.warehouse_id:
+            raise HTTPException(403, "无权导出其他仓库的对账报表")
+        query = query.where(ReconciliationResult.warehouse_id == current_user.warehouse_id)
+    elif warehouse_id:
+        query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
+
     result = await db.execute(query.order_by(ReconciliationResult.id))
     records = result.scalars().all()
     from openpyxl import Workbook

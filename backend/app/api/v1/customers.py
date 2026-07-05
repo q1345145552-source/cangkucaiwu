@@ -15,6 +15,8 @@ async def list_customers(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Customer); count_q = select(func.count(Customer.id))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(Customer.warehouse_id == current_user.warehouse_id)
@@ -37,6 +39,8 @@ async def list_customers(
 @router.post("")
 async def create_customer(req: CustomerCreate, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
     wh_id = current_user.warehouse_id
@@ -59,6 +63,8 @@ async def get_customer(customer_id: int, db: AsyncSession = Depends(get_db)):
 async def update_customer(customer_id: int, req: CustomerUpdate,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "客户不存在")
@@ -71,6 +77,8 @@ async def update_customer(customer_id: int, req: CustomerUpdate,
 @router.delete("/{customer_id}")
 async def delete_customer(customer_id: int, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role != Role.SUPER_ADMIN:
         raise HTTPException(403, "仅超级管理员可删除")
     result = await db.execute(select(Customer).where(Customer.id == customer_id))

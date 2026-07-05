@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
-import { Lock, User } from "lucide-react";
+import { Lock, User, Wifi, WifiOff } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -11,6 +13,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState<"checking" | "ok" | "error">("checking");
+
+  useEffect(() => {
+    // Check backend connectivity on page load
+    fetch("http://localhost:8000/health")
+      .then(r => r.json())
+      .then(d => setApiStatus(d.status === "ok" ? "ok" : "error"))
+      .catch(() => setApiStatus("error"));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +30,8 @@ export default function LoginPage() {
     try {
       await login(username, password);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("login_error"));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || t("login_error"));
     } finally {
       setLoading(false);
     }
@@ -35,6 +47,13 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-8 shadow-lg">
           <h2 className="mb-6 text-xl font-semibold text-gray-700">{t("login")}</h2>
+
+          {apiStatus === "error" && (
+            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
+              <WifiOff size={16} />
+              <span>无法连接后端服务，请确认 Docker 容器已启动</span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
@@ -72,11 +91,19 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || apiStatus === "error"}
             className="w-full rounded-lg bg-primary py-2.5 text-white font-medium hover:bg-primary-dark disabled:opacity-50 transition-colors"
           >
-            {loading ? "..." : t("login_btn")}
+            {loading ? "登录中..." : t("login_btn")}
           </button>
+
+          <div className="mt-3 text-center">
+            <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+              {apiStatus === "checking" && <span>检测服务连接中...</span>}
+              {apiStatus === "ok" && <><Wifi size={12} className="text-green-500" /> 服务已连接</>}
+              {apiStatus === "error" && <><WifiOff size={12} className="text-red-500" /> 服务未连接</>}
+            </span>
+          </div>
         </form>
 
         <button
@@ -85,6 +112,10 @@ export default function LoginPage() {
         >
           {t("switch_lang")}
         </button>
+
+        <div className="mt-2 text-center text-xs text-gray-300">
+          默认账号: admin / admin123
+        </div>
       </div>
     </div>
   );

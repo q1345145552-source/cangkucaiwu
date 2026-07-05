@@ -17,6 +17,7 @@ class UserUpdate(BaseModel):
     warehouse_id: int | None = None
     is_active: bool | None = None
     line_user_id: str | None = None
+    extra_permissions: list[str] | None = None
 
 class UserResponse(BaseModel):
     id: int
@@ -25,6 +26,7 @@ class UserResponse(BaseModel):
     role: str
     warehouse_id: int | None = None
     warehouse_name: str | None = None
+    extra_permissions: list[str] | None = None
     is_active: bool
     created_at: datetime | None = None
 

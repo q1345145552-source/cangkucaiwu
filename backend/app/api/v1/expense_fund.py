@@ -5,7 +5,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus, ReviewAction
 from app.models.user import User
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, Role, check_staff_permission
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -34,6 +34,8 @@ async def list_funds(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseFund); count_q = select(func.count(ExpenseFund.id))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(ExpenseFund.warehouse_id == current_user.warehouse_id)
@@ -65,6 +67,8 @@ async def list_funds(
 @router.post("")
 async def create_fund(req: FundCreate, current_user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role == Role.STAFF:
         raise HTTPException(403, "仓库财务无权领用")
     f = ExpenseFund(
@@ -79,6 +83,8 @@ async def create_fund(req: FundCreate, current_user: User = Depends(get_current_
 @router.get("/{fund_id}/items")
 async def list_items(fund_id: int, current_user: User = Depends(get_current_user),
                      db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.fund_id == fund_id).order_by(ExpenseFundItem.expense_date.desc()))
     items = result.scalars().all()
     return {"data": [{
@@ -91,6 +97,8 @@ async def list_items(fund_id: int, current_user: User = Depends(get_current_user
 @router.post("/{fund_id}/items")
 async def add_item(fund_id: int, req: FundItemCreate, current_user: User = Depends(get_current_user),
                    db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(ExpenseFund).where(ExpenseFund.id == fund_id))
     fund = result.scalar_one_or_none()
     if not fund: raise HTTPException(404, "备用金记录不存在")
@@ -105,6 +113,8 @@ async def add_item(fund_id: int, req: FundItemCreate, current_user: User = Depen
 @router.post("/{fund_id}/submit-review")
 async def submit_review(fund_id: int, current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(ExpenseFund).where(ExpenseFund.id == fund_id))
     fund = result.scalar_one_or_none()
     if not fund: raise HTTPException(404, "备用金记录不存在")
@@ -121,6 +131,8 @@ async def submit_review(fund_id: int, current_user: User = Depends(get_current_u
 @router.get("/{fund_id}/review")
 async def review_board(fund_id: int, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无审核权限")
     items = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.fund_id == fund_id).order_by(ExpenseFundItem.id))).scalars().all()
@@ -135,7 +147,11 @@ async def review_board(fund_id: int, current_user: User = Depends(get_current_us
 @router.post("/{fund_id}/review")
 async def do_review(fund_id: int, req: ReviewRequest, current_user: User = Depends(get_current_user),
                     db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role == Role.STAFF and "approve_expense_fund" not in (current_user.extra_permissions or []):
+        raise HTTPException(403, "无审批备用金权限")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无审核权限")
     for item_data in req.items:
         item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == item_data["item_id"]))).scalar_one_or_none()
@@ -149,6 +165,8 @@ async def do_review(fund_id: int, req: ReviewRequest, current_user: User = Depen
 @router.get("/balance")
 async def balance_summary(current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseFund).where(ExpenseFund.status == FundStatus.ACTIVE.value)
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(ExpenseFund.warehouse_id == current_user.warehouse_id)
@@ -166,6 +184,8 @@ async def balance_summary(current_user: User = Depends(get_current_user),
 
 @router.get("/alert")
 async def alert_list(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseFund).where(
         ExpenseFund.status == FundStatus.ACTIVE.value,
         ExpenseFund.remaining_balance <= ExpenseFund.alert_threshold,

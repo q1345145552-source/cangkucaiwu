@@ -5,7 +5,17 @@ import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Key, UserPlus, MessageCircle } from "lucide-react";
+import { Key, UserPlus, MessageCircle, Pencil } from "lucide-react";
+
+const PERM_LABELS: Record<string, string> = {
+  incoming_entry: "录入到账流水",
+  approve_expense_fund: "审批备用金",
+  approve_reimbursement: "审批报销",
+  confirm_income: "确认入账",
+  confirm_expense: "确认出账",
+  manage_credit: "管理账期",
+  operation_log: "查看操作日志",
+};
 
 export default function SettingsPage() {
   const { t } = useI18n(); const { user } = useAuth(); const router = useRouter();
@@ -15,6 +25,10 @@ export default function SettingsPage() {
   const [lineId, setLineId] = useState("");
   const [users, setUsers] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "staff" });
+
+  // Edit user state
+  const [editUser, setEditUser] = useState<any>(null);
+  const [editPerms, setEditPerms] = useState<string[]>([]);
 
   useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") loadUsers(); }, [tab]);
 
@@ -35,6 +49,24 @@ export default function SettingsPage() {
   async function createUser() {
     await api.post("/users", newUser);
     setNewUser({ username: "", display_name: "", password: "", role: "staff" });
+    loadUsers();
+  }
+
+  function openEdit(u: any) {
+    setEditUser(u);
+    setEditPerms(u.extra_permissions || []);
+  }
+
+  function togglePerm(perm: string) {
+    setEditPerms((prev) =>
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+    );
+  }
+
+  async function saveEdit() {
+    if (!editUser) return;
+    await api.put(`/users/${editUser.id}`, { extra_permissions: editPerms });
+    setEditUser(null);
     loadUsers();
   }
 
@@ -94,16 +126,55 @@ export default function SettingsPage() {
           {/* User list */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b"><tr><th className="text-left px-4 py-2">用户名</th><th>显示名</th><th>角色</th><th>仓库</th><th>状态</th></tr></thead>
+              <thead className="bg-gray-50 border-b"><tr><th className="text-left px-4 py-2">用户名</th><th>显示名</th><th>角色</th><th>仓库</th><th>扩展权限</th><th>状态</th><th>操作</th></tr></thead>
               <tbody>{users.map((u:any)=>(
                 <tr key={u.id} className="border-b">
                   <td className="px-4 py-2">{u.username}</td><td>{u.display_name}</td>
                   <td>{t(`role_${u.role}`)}</td><td>{u.warehouse_name || "-"}</td>
+                  <td className="text-xs text-gray-500">
+                    {u.extra_permissions && u.extra_permissions.length > 0
+                      ? u.extra_permissions.map((p: string) => PERM_LABELS[p] || p).join(", ")
+                      : "-"}
+                  </td>
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
+                  <td>
+                    {u.role === "staff" && (user?.role === "super_admin" || user?.role === "warehouse_admin") && (
+                      <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
+                        <Pencil size={12} /> 权限
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
+
+          {/* Edit permissions modal */}
+          {editUser && (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setEditUser(null)}>
+              <div className="bg-white rounded-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-lg font-semibold mb-1">编辑扩展权限</h2>
+                <p className="text-sm text-gray-500 mb-4">{editUser.display_name} ({editUser.username})</p>
+                <div className="space-y-2 mb-6">
+                  {Object.entries(PERM_LABELS).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
+                      <input
+                        type="checkbox"
+                        checked={editPerms.includes(key)}
+                        onChange={() => togglePerm(key)}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button onClick={() => setEditUser(null)} className="px-4 py-2 border rounded-lg text-sm">取消</button>
+                  <button onClick={saveEdit} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </DashboardLayout>

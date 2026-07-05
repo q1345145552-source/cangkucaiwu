@@ -13,6 +13,8 @@ router = APIRouter()
 async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
                          current_user: User = Depends(get_current_user),
                          db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Supplier); count_q = select(func.count(Supplier.id))
     if search:
         query = query.where(Supplier.name.ilike(f"%{search}%")); count_q = count_q.where(Supplier.name.ilike(f"%{search}%"))
@@ -27,6 +29,8 @@ async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
 @router.post("")
 async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
     s = Supplier(warehouse_id=current_user.warehouse_id, **req.model_dump())
@@ -36,6 +40,8 @@ async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_
 async def update_supplier(supplier_id: int, req: SupplierUpdate,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
@@ -54,6 +60,8 @@ async def get_supplier(supplier_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/{supplier_id}/ai-evaluation")
 async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role != Role.SUPER_ADMIN:
         raise HTTPException(403, "仅超级管理员可用")
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))

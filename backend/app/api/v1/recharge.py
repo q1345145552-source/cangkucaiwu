@@ -19,6 +19,8 @@ async def list_recharges(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(RechargeDeclaration); count_q = select(func.count(RechargeDeclaration.id))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(RechargeDeclaration.warehouse_id == current_user.warehouse_id)
@@ -64,6 +66,8 @@ async def list_recharges(
 @router.post("")
 async def create_recharge(req: RechargeCreate, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = current_user.warehouse_id
     if current_user.role == Role.SUPER_ADMIN:
         cust = (await db.execute(select(Customer).where(Customer.id == req.customer_id))).scalar_one_or_none()

@@ -29,6 +29,8 @@ async def list_bills(
     status: str = None, month: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill); count_q = select(func.count(PayableBill.id))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(PayableBill.warehouse_id == current_user.warehouse_id)
@@ -63,6 +65,8 @@ async def list_bills(
 @router.post("")
 async def create_bill(req: BillCreate, current_user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
     b = PayableBill(
@@ -79,6 +83,8 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
 async def pay_bill(bill_id: int, paid_amount: float = None,
                    current_user: User = Depends(get_current_user),
                    db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
@@ -93,6 +99,8 @@ async def pay_bill(bill_id: int, paid_amount: float = None,
 # === Plans ===
 @router.get("/plans")
 async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayablePlan)
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(PayablePlan.warehouse_id == current_user.warehouse_id)
@@ -106,6 +114,8 @@ async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSe
 @router.post("/plans")
 async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     total = 0
     if req.bill_ids:
         bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(req.bill_ids)))).scalars().all()
@@ -122,6 +132,8 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_
 @router.get("/cashflow-prediction")
 async def cashflow_prediction(current_user: User = Depends(get_current_user),
                               db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(func.coalesce(func.sum(PayableBill.amount - PayableBill.paid_amount), 0))
     query = query.where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
     if current_user.role != Role.SUPER_ADMIN:
@@ -132,6 +144,8 @@ async def cashflow_prediction(current_user: User = Depends(get_current_user),
 # === Batch export ===
 @router.get("/batch-export")
 async def batch_export(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill).where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(PayableBill.warehouse_id == current_user.warehouse_id)
@@ -149,6 +163,8 @@ async def batch_export(current_user: User = Depends(get_current_user), db: Async
 async def supplier_statement(supplier_id: int = None, current_user: User = Depends(get_current_user),
                               db: AsyncSession = Depends(get_db)):
     """生成供应商对账单"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
     if supplier_id: query = query.where(PayableBill.supplier_id == supplier_id)
     if current_user.role != Role.SUPER_ADMIN:

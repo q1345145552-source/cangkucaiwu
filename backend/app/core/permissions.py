@@ -20,6 +20,32 @@ ROLE_HIERARCHY = {
     Role.STAFF: 1,
 }
 
+# Available extra permissions for staff
+STAFF_PERMISSIONS = {
+    "incoming_entry": "录入到账流水",
+    "approve_expense_fund": "审批备用金",
+    "approve_reimbursement": "审批报销",
+    "confirm_income": "确认入账",
+    "confirm_expense": "确认出账",
+    "manage_credit": "管理账期",
+    "operation_log": "查看操作日志",
+}
+
+def check_staff_permission(perm_key: str):
+    """Returns a FastAPI dependency that checks if the current staff user has the given extra permission.
+    Warehouse admins and super admins pass through automatically.
+    """
+    async def dependency(current_user = Depends(get_current_user)):
+        if current_user.role == Role.STAFF:
+            perms = current_user.extra_permissions or []
+            if perm_key not in perms:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"无此操作权限，需要: {STAFF_PERMISSIONS.get(perm_key, perm_key)}"
+                )
+        return current_user
+    return dependency
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     db: AsyncSession = Depends(get_db),
