@@ -47,7 +47,6 @@ export default function SuppliersPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
   // New category
-  const [newCatName, setNewCatName] = useState("");
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
 
@@ -154,11 +153,6 @@ export default function SuppliersPage() {
     } catch (e: any) { setAiCompareResult(e.message); }
   }
 
-  async function addCategory() {
-    if (!newCatName.trim()) return;
-    try { await api.post(`/suppliers/categories?name=${encodeURIComponent(newCatName.trim())}`); toast("success", "类别已添加"); setNewCatName(""); loadCategories(); }
-    catch { toast("error", "添加失败"); }
-  }
 
   async function viewDetail(sid: number) {
     try { const r = await api.get<any>(`/suppliers/${sid}`); setDetail(r); } catch {}
@@ -481,10 +475,7 @@ export default function SuppliersPage() {
               <div><label className="text-sm">结算周期</label><input className="border rounded px-3 py-2 w-full" value={form.settlement_cycle} onChange={e=>setForm({...form,settlement_cycle:e.target.value})} placeholder="如: 月结30天" /></div>
             </div>
             <div className="mt-3"><label className="text-sm">合作内容</label><textarea className="border rounded px-3 py-2 w-full" rows={2} value={form.cooperation_content} onChange={e=>setForm({...form,cooperation_content:e.target.value})} /></div>
-            <div className="mt-3 flex items-center gap-2">
-              <input className="border rounded px-3 py-2 text-sm flex-1" placeholder="自定义新类别" value={newCatName} onChange={e=>setNewCatName(e.target.value)} />
-              <button onClick={addCategory} className="px-3 py-2 bg-gray-100 rounded text-sm">+添加类别</button>
-            </div>
+
             <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">保存</button></div>
           </div></div>
       )}
