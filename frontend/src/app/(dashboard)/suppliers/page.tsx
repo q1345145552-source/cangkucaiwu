@@ -206,7 +206,7 @@ export default function SuppliersPage() {
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "name", label: "名称" },
-        { key: "category_name", label: "类别", render: (v:any)=>v||"-" },
+        { key: "category_name", label: "类别", render: (v:any) => v ? <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${v==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>{v}</span> : "-" },
         { key: "contact_person", label: "联系人" },
         { key: "contact_info", label: "联系方式" },
         { key: "settlement_cycle", label: "结算周期", render: (v:any)=>v||"-" },
