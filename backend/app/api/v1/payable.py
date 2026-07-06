@@ -18,6 +18,7 @@ class BillCreate(BaseModel):
     amount: float; confirmed_amount: Optional[float] = None
     currency: str = "THB"; remark: Optional[str] = None
     payment_commitment_days: Optional[int] = None
+    detail: Optional[str] = None
     is_fund_linked: Optional[str] = None
 
 class PlanCreate(BaseModel):
@@ -80,8 +81,8 @@ async def list_bills(
             "currency": b.currency, "paid_amount": b.paid_amount,
             "status": b.status, "is_duplicate_warned": b.is_duplicate_warned,
             "payment_commitment_days": b.payment_commitment_days,
-            "payment_voucher": b.payment_voucher, "payment_method": b.payment_method, "is_fund_linked": b.is_fund_linked,
-            "remark": b.remark,
+            "payment_voucher": b.payment_voucher, "payment_method": b.payment_method, "bill_attachment": b.bill_attachment,
+            "is_fund_linked": b.is_fund_linked, "detail": b.detail, "remark": b.remark,
         } for b in bills],
         "total": total, "page": page, "page_size": page_size,
     }
@@ -117,7 +118,7 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
         bill_date=datetime.fromisoformat(req.bill_date),
         due_date=datetime.fromisoformat(req.due_date),
         amount=req.amount, confirmed_amount=req.confirmed_amount,
-        currency=req.currency, remark=req.remark,
+        currency=req.currency, detail=req.detail, remark=req.remark,
         payment_commitment_days=req.payment_commitment_days,
         is_fund_linked=req.is_fund_linked,
         created_by=current_user.id,
@@ -146,6 +147,27 @@ async def upload_voucher(bill_id: int, file: UploadFile = File(...),
     await db.flush()
     return {"message": "凭证上传成功", "path": b.payment_voucher}
 
+@router.post("/{bill_id}/upload-attachment")
+async def upload_bill_attachment(bill_id: int, file: UploadFile = File(...),
+                                 current_user: User = Depends(get_current_user),
+                                 db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+        raise HTTPException(403, "无权限")
+    result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
+    b = result.scalar_one_or_none()
+    if not b: raise HTTPException(404, "账单不存在")
+    import os, uuid
+    upload_dir = "/app/uploads/bill_attachments"
+    os.makedirs(upload_dir, exist_ok=True)
+    ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "pdf"
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    fpath = os.path.join(upload_dir, fname)
+    content = await file.read()
+    with open(fpath, "wb") as f: f.write(content)
+    b.bill_attachment = f"/uploads/bill_attachments/{fname}"
+    await db.flush()
+    return {"message": "账单附件上传成功", "path": b.bill_attachment}
+
 @router.put("/{bill_id}/pay")
 async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str = None,
                    current_user: User = Depends(get_current_user),
@@ -170,6 +192,54 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     if b.status in (PayableStatus.PAID.value, PayableStatus.PARTIALLY_PAID.value) and b.status != PayableStatus.OVERDUE.value:
         pass
     await db.flush(); return {"message": "付款记录成功"}
+
+# === Stats Dashboard ===
+@router.get("/stats")
+async def payable_stats(current_user: User = Depends(get_current_user),
+                         db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    from datetime import date
+    from sqlalchemy import extract
+    wh_id = current_user.warehouse_id
+    today = date.today()
+
+    def wh(q):
+        return q.where(PayableBill.warehouse_id == wh_id)
+
+    # Month totals
+    month_cond = [extract("year", PayableBill.bill_date) == today.year, extract("month", PayableBill.bill_date) == today.month]
+    month_total = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.amount), 0))).where(*month_cond))).scalar() or 0)
+    month_paid = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.paid_amount), 0))).where(*month_cond))).scalar() or 0)
+    month_unpaid = month_total - month_paid
+
+    # Overdue
+    overdue_total = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.amount - PayableBill.paid_amount), 0)))
+        .where(PayableBill.status == PayableStatus.OVERDUE.value))).scalar() or 0)
+
+    # Supplier summary (month)
+    sup_q = wh(select(PayableBill.supplier_id,
+        func.count(PayableBill.id).label("count"),
+        func.sum(PayableBill.amount).label("total"),
+        func.sum(PayableBill.paid_amount).label("paid"))
+        .where(*month_cond).group_by(PayableBill.supplier_id).order_by(func.sum(PayableBill.amount).desc()))
+    sup_rows = (await db.execute(sup_q)).all()
+    sids = [r.supplier_id for r in sup_rows]
+    smap = {}
+    if sids:
+        sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
+        smap = {s.id: s.name for s in sups}
+    supplier_summary = [{
+        "supplier_id": r.supplier_id, "supplier_name": smap.get(r.supplier_id, ""),
+        "bill_count": r.count, "total_amount": float(r.total or 0),
+        "paid_amount": float(r.paid or 0), "unpaid_amount": float((r.total or 0) - (r.paid or 0)),
+    } for r in sup_rows]
+
+    return {
+        "month_total": month_total, "overdue_total": overdue_total,
+        "month_paid": month_paid, "month_unpaid": month_unpaid,
+        "supplier_summary": supplier_summary,
+    }
 
 # === Plans ===
 @router.get("/plans")
