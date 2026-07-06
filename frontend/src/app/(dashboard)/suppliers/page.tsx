@@ -164,6 +164,12 @@ export default function SuppliersPage() {
     try { const r = await api.get<any>(`/suppliers/${sid}`); setDetail(r); } catch {}
   }
 
+  async function deleteSupplier(sid: number) {
+    if (!confirm("确定要删除该供应商吗？")) return;
+    try { await api.delete(`/suppliers/${sid}`); toast("success", "已删除"); load(); }
+    catch (err: any) { toast("error", err.message || "删除失败"); }
+  }
+
   const isAdmin = user?.role === "super_admin" || user?.role === "warehouse_admin";
 
   return (
@@ -219,6 +225,9 @@ export default function SuppliersPage() {
               <button onClick={()=>openLogistics(row.id)} className="text-orange-600 flex items-center gap-1 text-xs"><TrendingUp size={12}/>物流</button>
             )}
             <button onClick={()=>viewDetail(row.id)} className="text-blue-500 flex items-center gap-1 text-xs"><Eye size={12}/>详情</button>
+            {isAdmin && (
+              <button onClick={()=>deleteSupplier(row.id)} className="text-red-500 flex items-center gap-1 text-xs"><Trash2 size={12}/>删除</button>
+            )}
           </div>
         )},
       ]} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />}

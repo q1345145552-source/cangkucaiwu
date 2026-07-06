@@ -408,6 +408,19 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
         setattr(s, k, v)
     await db.flush(); return {"message": "更新成功"}
 
+@router.delete("/{supplier_id}")
+async def delete_supplier(supplier_id: int, current_user: User = Depends(get_current_user),
+                          db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
+    s = result.scalar_one_or_none()
+    if not s: raise HTTPException(404, "供应商不存在")
+    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != current_user.warehouse_id:
+        raise HTTPException(403, "只能删除自己仓库的供应商")
+    await db.delete(s); await db.flush()
+    return {"message": "删除成功"}
+
 @router.get("/procurement-summary")
 async def procurement_summary(current_user: User = Depends(get_current_user),
                                db: AsyncSession = Depends(get_db)):
