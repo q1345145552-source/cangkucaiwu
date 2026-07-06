@@ -6,7 +6,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Sparkles, Eye, TrendingUp, Scale, Plus, Trash2, Download, Upload } from "lucide-react";
+import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload } from "lucide-react";
 
 export default function SuppliersPage() {
   const { t } = useI18n();
@@ -380,7 +380,7 @@ export default function SuppliersPage() {
                 <div className="text-2xl font-bold">¥{(procurement?.overview?.month_total || 0).toLocaleString()}</div>
                 {procurement?.overview?.pct_change != null && (
                   <div className={`text-xs mt-2 flex items-center gap-1 ${(procurement?.overview?.pct_change>=0) ? "text-green-200" : "text-red-200"}`}>
-                    {(procurement?.overview?.pct_change >= 0) ? "↑" : "↓"} 较上月 {Math.abs(procurement.overview.pct_change)}%
+                    {(procurement?.overview?.pct_change >= 0) ? <TrendingUp size={14} className="inline"/> : <TrendingDown size={14} className="inline"/>} 较上月 {Math.abs(procurement.overview.pct_change)}%
                   </div>
                 )}
               </div>
@@ -397,7 +397,7 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 左侧：供应商排名 */}
               <div>
-                <h3 className="font-semibold mb-3 text-base flex items-center gap-2">📊 供应商支出排名</h3>
+                <h3 className="font-semibold mb-3 text-base flex items-center gap-2"><BarChart3 size={18} className="text-blue-500"/>供应商支出排名</h3>
                 <div className="space-y-2 max-h-[400px] overflow-auto">
                   {(procurement?.supplier_ranking || []).length === 0 ? <div className="text-gray-400 text-sm py-4">暂无支出数据</div> :
                     (procurement?.supplier_ranking || []).map((r: any, i: number) => (
@@ -418,7 +418,7 @@ export default function SuppliersPage() {
 
               {/* 右侧：产品比价汇总 + 省钱提示 */}
               <div>
-                <h3 className="font-semibold mb-3 text-base flex items-center gap-2">💰 产品比价一览</h3>
+                <h3 className="font-semibold mb-3 text-base flex items-center gap-2"><DollarSign size={18} className="text-green-500"/>产品比价一览</h3>
                 <div className="space-y-2 max-h-[200px] overflow-auto mb-4">
                   {(procurement?.product_compare || []).length === 0 ? <div className="text-gray-400 text-sm py-4">暂无产品数据</div> :
                     (procurement?.product_compare || []).map((p: any) => (
@@ -439,12 +439,12 @@ export default function SuppliersPage() {
                 {/* 省钱提示 */}
                 {(procurement?.savings_tips || []).length > 0 && (
                   <>
-                    <h3 className="font-semibold mb-3 text-base flex items-center gap-2">💡 省钱建议</h3>
+                    <h3 className="font-semibold mb-3 text-base flex items-center gap-2"><Lightbulb size={18} className="text-amber-500"/>省钱建议</h3>
                     <div className="space-y-2 max-h-[180px] overflow-auto">
                       {(procurement?.savings_tips || []).map((t: any, i: number) => (
                         <div key={i} className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
                           <div className="flex items-start gap-2">
-                            <span className="text-amber-500 mt-0.5">💡</span>
+                            <Lightbulb size={16} className="text-amber-500 mt-0.5 flex-shrink-0"/>
                             <div>
                               <span className="font-medium">{t.product_name}{t.spec ? ` (${t.spec})` : ""}</span>
                               <span className="text-gray-600 ml-1">当前最便宜 <span className="text-green-600 font-semibold">{t.cheapest_supplier} ¥{t.cheapest_price}</span></span>
