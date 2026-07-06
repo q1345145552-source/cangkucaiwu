@@ -16,7 +16,7 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
-  const [filterCat, setFilterCat] = useState(0);
+  const [filterCat, setFilterCat] = useState(1);
   const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "", category_id: 0 });
   const [aiResult, setAiResult] = useState("");
   const [procurement, setProcurement] = useState<any[]>([]);
@@ -173,12 +173,15 @@ export default function SuppliersPage() {
     <>
       <div className="flex justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold">{t("suppliers")}</h1>
-          <select value={filterCat} onChange={e => { setFilterCat(+e.target.value); setPage(1); }}
-            className="border rounded px-3 py-1.5 text-sm">
-            <option value={0}>全部类别</option>
-            {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <h1 className="text-xl font-bold mr-2">{t("suppliers")}</h1>
+          <button onClick={() => { setFilterCat(1); setPage(1); }}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 1 ? "bg-blue-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+            耗材商
+          </button>
+          <button onClick={() => { setFilterCat(2); setPage(1); }}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 2 ? "bg-green-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+            物流
+          </button>
         </div>
         <div className="flex gap-2 flex-wrap">
           {isAdmin && (
@@ -199,7 +202,7 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
               <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r.data); setShowProcurement(true); } catch {} }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
-              <button onClick={()=>setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建供应商</button>
+              <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建供应商</button>
             </>
           )}
         </div>
