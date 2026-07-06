@@ -31,15 +31,16 @@ export default function SuppliersPage() {
   const [logisticsPrices, setLogisticsPrices] = useState<any[]>([]);
   const [showLogistics, setShowLogistics] = useState(false);
   const [logisticsSupplierId, setLogisticsSupplierId] = useState(0);
-  const [logisticsForm, setLogisticsForm] = useState({ route_name: "", cargo_type: "普货", starting_price: 0, price_per_kg: 0, estimated_days: "" });
+  const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: 0, estimated_days: "", currency: "人民币" });
   // Compare
   const [compareData, setCompareData] = useState<any[]>([]);
   const [showCompare, setShowCompare] = useState(false);
   const [compareMode, setCompareMode] = useState<"product"|"logistics">("product");
   const [compareProduct, setCompareProduct] = useState("");
   const [compareSpec, setCompareSpec] = useState("");
-  const [compareRoute, setCompareRoute] = useState("");
+  const [compareTransport, setCompareTransport] = useState("陆运");
   const [compareCargo, setCompareCargo] = useState("普货");
+  const [compareWarehouse, setCompareWarehouse] = useState("深圳仓");
   const [compareCat, setCompareCat] = useState(0);
   const [aiCompareResult, setAiCompareResult] = useState("");
   // Import
@@ -115,9 +116,9 @@ export default function SuppliersPage() {
     setShowLogistics(true);
   }
   async function addLogisticsPrice() {
-    try { await api.post(`/suppliers/${logisticsSupplierId}/logistics-prices`, logisticsForm); toast("success", "路线报价添加成功");
+    try { await api.post(`/suppliers/${logisticsSupplierId}/logistics-prices`, logisticsForm); toast("success", "报价添加成功");
       const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);
-      setLogisticsForm({ route_name: "", cargo_type: "普货", starting_price: 0, price_per_kg: 0, estimated_days: "" });
+      setLogisticsForm({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: 0, estimated_days: "", currency: "人民币" });
     } catch { toast("error", "添加失败"); }
   }
   async function deleteLogisticsPrice(pid: number) {
@@ -131,12 +132,8 @@ export default function SuppliersPage() {
     setCompareMode(mode as any);
     try {
       if (mode === "logistics") {
-        let url = `/suppliers/compare-logistics`;
-        const params: string[] = [];
-        if (compareRoute) params.push(`route_name=${encodeURIComponent(compareRoute)}`);
-        if (compareCargo) params.push(`cargo_type=${encodeURIComponent(compareCargo)}`);
-        if (compareCat) params.push(`category_id=${compareCat}`);
-        if (params.length) url += "?" + params.join("&");
+        let url = `/suppliers/compare-logistics?transport_method=${encodeURIComponent(compareTransport)}&cargo_type=${encodeURIComponent(compareCargo)}&origin_warehouse=${encodeURIComponent(compareWarehouse)}`;
+        if (compareCat) url += `&category_id=${compareCat}`;
         const r = await api.get<any>(url);
         setCompareData(r.data.map((x: any) => ({ ...x, _type: "logistics" })));
       } else {
@@ -247,20 +244,27 @@ export default function SuppliersPage() {
       {showLogistics && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setShowLogistics(false)}>
           <div className="bg-white rounded-xl p-6 w-[700px] max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-            <h2 className="font-semibold mb-4">物流路线报价</h2>
-            <div className="grid grid-cols-6 gap-2 mb-4 p-3 bg-gray-50 rounded">
-              <input className="border rounded px-2 py-1.5 text-sm" placeholder="路线名" value={logisticsForm.route_name} onChange={e=>setLogisticsForm({...logisticsForm,route_name:e.target.value})} />
-              <select className="border rounded px-2 py-1.5 text-sm" value={logisticsForm.cargo_type} onChange={e=>setLogisticsForm({...logisticsForm,cargo_type:e.target.value})}>
-                <option>普货</option><option>易碎品</option><option>大件</option><option>急件</option>
+            <h2 className="font-semibold mb-4">跨境物流报价</h2>
+            <div className="grid grid-cols-3 gap-2 mb-2 p-3 bg-gray-50 rounded">
+              <select className="border rounded px-2 py-1.5 text-sm" value={logisticsForm.transport_method} onChange={e=>setLogisticsForm({...logisticsForm,transport_method:e.target.value})}>
+                <option>陆运</option><option>海运</option>
               </select>
-              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="起步价" value={logisticsForm.starting_price||""} onChange={e=>setLogisticsForm({...logisticsForm,starting_price:+e.target.value})} />
-              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="每公斤价" value={logisticsForm.price_per_kg||""} onChange={e=>setLogisticsForm({...logisticsForm,price_per_kg:+e.target.value})} />
-              <input className="border rounded px-2 py-1.5 text-sm" placeholder="时效" value={logisticsForm.estimated_days} onChange={e=>setLogisticsForm({...logisticsForm,estimated_days:e.target.value})} />
-              <button onClick={addLogisticsPrice} className="bg-green-600 text-white rounded px-2 py-1.5 text-sm">+添加</button>
+              <select className="border rounded px-2 py-1.5 text-sm" value={logisticsForm.cargo_type} onChange={e=>setLogisticsForm({...logisticsForm,cargo_type:e.target.value})}>
+                <option>普货</option><option>商检货</option><option>敏感货</option>
+              </select>
+              <select className="border rounded px-2 py-1.5 text-sm" value={logisticsForm.origin_warehouse} onChange={e=>setLogisticsForm({...logisticsForm,origin_warehouse:e.target.value})}>
+                <option>深圳仓</option><option>义乌仓</option><option>广州仓</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mb-4 p-3 bg-gray-50 rounded">
+              <div><label className="text-xs text-gray-500">单价(元/方)</label><input type="number" className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.price_per_cbm||""} onChange={e=>setLogisticsForm({...logisticsForm,price_per_cbm:+e.target.value})} /></div>
+              <div><label className="text-xs text-gray-500">时效</label><input className="border rounded px-2 py-1.5 text-sm w-full" placeholder="如 5-7天" value={logisticsForm.estimated_days} onChange={e=>setLogisticsForm({...logisticsForm,estimated_days:e.target.value})} /></div>
+              <div><label className="text-xs text-gray-500">币种</label><input className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.currency} onChange={e=>setLogisticsForm({...logisticsForm,currency:e.target.value})} /></div>
+              <button onClick={addLogisticsPrice} className="bg-green-600 text-white rounded px-2 py-1.5 text-sm self-end">+添加</button>
             </div>
             {logisticsPrices.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无报价</div> : (
-              <table className="w-full text-sm"><thead><tr className="bg-gray-100"><th className="p-2 text-left">路线</th><th>货物类型</th><th>起步价</th><th>每公斤</th><th>时效</th><th></th></tr></thead>
-                <tbody>{logisticsPrices.map((p:any)=><tr key={p.id} className="border-t"><td className="p-2">{p.route_name}</td><td>{p.cargo_type}</td><td>{p.starting_price}</td><td>{p.price_per_kg}</td><td>{p.estimated_days||"-"}</td>
+              <table className="w-full text-sm"><thead><tr className="bg-gray-100"><th className="p-2 text-left">运输方式</th><th>货物类型</th><th>发货仓库</th><th>单价(元/方)</th><th>时效</th><th></th></tr></thead>
+                <tbody>{logisticsPrices.map((p:any)=><tr key={p.id} className="border-t"><td className="p-2">{p.transport_method}</td><td>{p.cargo_type}</td><td>{p.origin_warehouse}</td><td>{p.price_per_cbm}</td><td>{p.estimated_days||"-"}</td>
                   <td><button onClick={()=>deleteLogisticsPrice(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></td></tr>)}</tbody></table>
             )}
             <button onClick={()=>setShowLogistics(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
@@ -312,10 +316,12 @@ export default function SuppliersPage() {
                       <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.category_name||"-"}</td><td>{r.product_name}</td><td>{r.spec||"-"}</td>
                       <td className="font-semibold text-green-700">{r.unit_price}{r.unit}</td></tr>)}</tbody></table>
                 ) : (
-                  <table className="w-full text-sm mb-4"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>路线</th><th>货物类型</th><th>起步价</th><th>每公斤</th><th>时效</th></tr></thead>
+                  <table className="w-full text-sm mb-4"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>运输</th><th>货物</th><th>发货仓</th><th>单价(元/方)</th><th>最低消费</th><th>时效</th><th>备注</th></tr></thead>
                     <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
-                      <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.route_name}</td><td>{r.cargo_type}</td><td>{r.starting_price}</td>
-                      <td className="font-semibold text-green-700">{r.price_per_kg}</td><td>{r.estimated_days||"-"}</td></tr>)}</tbody></table>
+                      <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.transport_method}</td><td>{r.cargo_type}</td>
+                      <td>{r.origin_warehouse}</td><td className="font-semibold text-green-700">{r.price_per_cbm}</td>
+                      <td className="text-xs">{r.min_cbm}方起 / ¥{r.min_amount}</td><td>{r.estimated_days||"-"}</td>
+                      <td className="text-xs text-orange-600">{r.price_note}{r.heavy_cargo_warning&&<><br/>{r.heavy_cargo_warning}</>}</td></tr>)}</tbody></table>
                 )}
                 <button onClick={doAiCompare} className="bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1 mb-4"><Sparkles size={16}/>AI比价分析</button>
                 {aiCompareResult && <div className="bg-purple-50 rounded-lg p-4 text-sm whitespace-pre-wrap">{aiCompareResult}</div>}

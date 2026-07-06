@@ -61,3 +61,21 @@ class SupplierLogisticsPrice(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     supplier = relationship("Supplier", backref="logistics_prices")
+
+
+# 替换旧的 SupplierLogisticsPrice（保留兼容，新功能用下表）
+class SupplierCrossBorderPrice(Base):
+    """跨境物流三维定价：运输方式×货物类型×发货仓库"""
+    __tablename__ = "supplier_cross_border_prices"
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False, index=True)
+    transport_method = Column(String(20), nullable=False, comment="运输方式：海运/陆运")
+    cargo_type = Column(String(20), nullable=False, comment="货物类型：普货/商检货/敏感货")
+    origin_warehouse = Column(String(20), nullable=False, comment="发货仓库：深圳仓/义乌仓/广州仓")
+    price_per_cbm = Column(Float, nullable=False, comment="每立方米价格（人民币）")
+    estimated_days = Column(String(30), nullable=True, comment="预计时效")
+    currency = Column(String(10), nullable=False, default="人民币")
+    remark = Column(String(300), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    supplier = relationship("Supplier", backref="cross_border_prices")

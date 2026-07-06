@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
-from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, SupplierLogisticsPrice
+from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, SupplierLogisticsPrice, SupplierCrossBorderPrice
 from app.models.user import User
 from app.core.permissions import get_current_user, Role
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
@@ -47,21 +47,21 @@ async def download_products_template():
 
 @router.get("/import-template/logistics")
 async def download_logistics_template():
-    """下载物流价格导入模板"""
+    """下载跨境物流价格导入模板"""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
-    wb = Workbook(); ws = wb.active; ws.title = "物流价格导入"
+    wb = Workbook(); ws = wb.active; ws.title = "跨境物流价格导入"
     hfill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
-    for c, h in enumerate(["供应商名称", "路线名称", "货物类型", "起步价", "每公斤价格", "预计时效"], 1):
+    for c, h in enumerate(["供应商名称", "运输方式", "货物类型", "发货仓库", "单价(元/方)", "时效", "币种"], 1):
         cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hfill
-    for c, v in enumerate(["示例: 物流公司A", "曼谷→龙仔厝", "普货", 200, 5, "1-2天"], 1):
+    for c, v in enumerate(["示例: 物流公司A", "陆运", "普货", "深圳仓", 800, "5-7天", "人民币"], 1):
         ws.cell(row=2, column=c, value=v)
-    for col, w in [('A',20),('B',22),('C',12),('D',10),('E',12),('F',12)]:
+    for col, w in [('A',22),('B',10),('C',10),('D',10),('E',12),('F',10),('G',8)]:
         ws.column_dimensions[col].width = w
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            headers={"Content-Disposition": "attachment; filename=logistics_import_template.xlsx"})
+                            headers={"Content-Disposition": "attachment; filename=cross_border_logistics_template.xlsx"})
 
 # ═══ Import ══════════════════════════════════════
 @router.post("/import/products")
@@ -100,12 +100,12 @@ async def import_products(file: UploadFile = File(...), current_user: User = Dep
 @router.post("/import/logistics")
 async def import_logistics(file: UploadFile = File(...), current_user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_db)):
-    """批量导入物流价格 Excel"""
+    """批量导入跨境物流价格 Excel"""
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "无权限")
     from openpyxl import load_workbook
-    content = await file.read()
-    wb = load_workbook(io.BytesIO(content)); ws = wb.active
+    data = await file.read()
+    wb = load_workbook(io.BytesIO(data)); ws = wb.active
     imported, skipped, errors = 0, 0, []
     sups = (await db.execute(select(Supplier).where(Supplier.warehouse_id == current_user.warehouse_id))).scalars().all()
     sup_map = {s.name.strip(): s.id for s in sups}
@@ -116,19 +116,20 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
         if sup_name not in sup_map:
             errors.append(f"供应商「{sup_name}」不存在"); skipped += 1; continue
         try:
-            p = SupplierLogisticsPrice(
+            p = SupplierCrossBorderPrice(
                 supplier_id=sup_map[sup_name],
-                route_name=str(row[1] or "").strip(),
+                transport_method=str(row[1] or "").strip(),
                 cargo_type=str(row[2] or "").strip(),
-                starting_price=float(row[3] or 0),
-                price_per_kg=float(row[4] or 0),
+                origin_warehouse=str(row[3] or "").strip(),
+                price_per_cbm=float(row[4] or 0),
                 estimated_days=str(row[5] or "").strip() if row[5] else None,
+                currency=str(row[6] or "人民币").strip(),
             )
             db.add(p); imported += 1
         except Exception as e:
             errors.append(f"行解析失败: {e}"); skipped += 1
     await db.flush()
-    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条物流价格"}
+    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条跨境物流价格"}
 
 # ═══ Product CRUD ════════════════════════════════
 @router.get("/{supplier_id}/products")
@@ -156,16 +157,16 @@ async def delete_product(supplier_id: int, product_id: int, current_user: User =
 # ═══ Logistics Price CRUD ════════════════════════
 @router.get("/{supplier_id}/logistics-prices")
 async def list_logistics_prices(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    prices = (await db.execute(select(SupplierLogisticsPrice).where(SupplierLogisticsPrice.supplier_id == supplier_id).order_by(SupplierLogisticsPrice.route_name))).scalars().all()
-    return {"data": [{"id": p.id, "route_name": p.route_name, "cargo_type": p.cargo_type,
-                      "starting_price": p.starting_price, "price_per_kg": p.price_per_kg,
-                      "estimated_days": p.estimated_days} for p in prices]}
+    prices = (await db.execute(select(SupplierCrossBorderPrice).where(SupplierCrossBorderPrice.supplier_id == supplier_id).order_by(SupplierCrossBorderPrice.transport_method, SupplierCrossBorderPrice.origin_warehouse))).scalars().all()
+    return {"data": [{"id": p.id, "transport_method": p.transport_method, "cargo_type": p.cargo_type,
+                      "origin_warehouse": p.origin_warehouse, "price_per_cbm": p.price_per_cbm,
+                      "estimated_days": p.estimated_days, "currency": p.currency} for p in prices]}
 
 @router.post("/{supplier_id}/logistics-prices")
 async def add_logistics_price(supplier_id: int, req: dict, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "无权限")
-    p = SupplierLogisticsPrice(supplier_id=supplier_id, **req)
+    p = SupplierCrossBorderPrice(supplier_id=supplier_id, **req)
     db.add(p); await db.flush()
     return {"id": p.id, "message": "添加成功"}
 
@@ -173,7 +174,7 @@ async def add_logistics_price(supplier_id: int, req: dict, current_user: User = 
 async def delete_logistics_price(supplier_id: int, price_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "无权限")
-    p = (await db.execute(select(SupplierLogisticsPrice).where(SupplierLogisticsPrice.id == price_id, SupplierLogisticsPrice.supplier_id == supplier_id))).scalar_one_or_none()
+    p = (await db.execute(select(SupplierCrossBorderPrice).where(SupplierCrossBorderPrice.id == price_id, SupplierCrossBorderPrice.supplier_id == supplier_id))).scalar_one_or_none()
     if not p: raise HTTPException(404, "不存在")
     await db.delete(p); await db.flush()
     return {"message": "删除成功"}
@@ -220,40 +221,99 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
     return {"data": result, "total": len(result)}
 
 @router.get("/compare-logistics")
-async def compare_logistics(route_name: str = None, cargo_type: str = None, category_id: int = None,
+async def compare_logistics(transport_method: str = None, cargo_type: str = None, origin_warehouse: str = None,
+                             category_id: int = None,
                              current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """物流比价：按路线+货物类型对比物流供应商报价"""
+    """跨境物流比价：运输方式×货物类型×发货仓库，含义乌加价和最低消费"""
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无权限")
-    q = select(SupplierLogisticsPrice).join(Supplier, SupplierLogisticsPrice.supplier_id == Supplier.id).where(Supplier.is_active == "true")
-    if route_name:
-        q = q.where(SupplierLogisticsPrice.route_name.ilike(f"%{route_name}%"))
+    # 海运最低0.5方，陆运最低0.3方
+    MIN_CBM = {"海运": 0.5, "陆运": 0.3}
+    YIWU_MARKUP = 120  # 义乌仓加价每方120元
+    HEAVY_CARGO_THRESHOLD = 500  # 单方超500kg算重货
+
+    q = select(SupplierCrossBorderPrice).join(Supplier, SupplierCrossBorderPrice.supplier_id == Supplier.id).where(Supplier.is_active == "true")
+    if transport_method:
+        q = q.where(SupplierCrossBorderPrice.transport_method == transport_method)
     if cargo_type:
-        q = q.where(SupplierLogisticsPrice.cargo_type.ilike(f"%{cargo_type}%"))
+        q = q.where(SupplierCrossBorderPrice.cargo_type == cargo_type)
+    # 查询时：如果筛选义乌仓，同时查深圳仓和广州仓（做加价计算用）
+    is_yiwu = origin_warehouse and "义乌" in origin_warehouse
+    if origin_warehouse:
+        if is_yiwu:
+            # 查义乌+深圳+广州的所有报价
+            q = q.where(SupplierCrossBorderPrice.origin_warehouse.in_(["深圳仓", "广州仓", "义乌仓"]))
+        else:
+            q = q.where(SupplierCrossBorderPrice.origin_warehouse == origin_warehouse)
     if category_id:
         q = q.where(Supplier.category_id == category_id)
     if current_user.role != Role.SUPER_ADMIN:
         q = q.where(Supplier.warehouse_id == current_user.warehouse_id)
-    prices = (await db.execute(q.order_by(SupplierLogisticsPrice.price_per_kg.asc()))).scalars().all()
+    prices = (await db.execute(q.order_by(SupplierCrossBorderPrice.price_per_cbm.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prices})
     smap = {}
     if sids:
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
         smap = {s.id: s for s in sups}
+
+    # 构建按 supplier 分组的价格映射
+    # key: (supplier_id, transport_method, cargo_type)
+    price_map = {}  # {(sid, tm, ct): {warehouse: price}}
+    for p in prices:
+        key = (p.supplier_id, p.transport_method, p.cargo_type)
+        if key not in price_map:
+            price_map[key] = {}
+        price_map[key][p.origin_warehouse] = {"price_per_cbm": p.price_per_cbm, "price_id": p.id, "estimated_days": p.estimated_days}
+
+    # Build results
+    min_cbm = MIN_CBM.get(transport_method or "陆运", 0.3)
+    seen = set()
     result = []
     for p in prices:
+        key = (p.supplier_id, p.transport_method, p.cargo_type)
+        if key in seen: continue
+        seen.add(key)
         s = smap.get(p.supplier_id)
+        if not s: continue
+
+        # Determine final price
+        final_price = p.price_per_cbm
+        price_note = ""
+        actual_warehouse = p.origin_warehouse
+
+        if is_yiwu:
+            pw_map = price_map.get(key, {})
+            if "义乌仓" in pw_map:
+                final_price = pw_map["义乌仓"]["price_per_cbm"]
+                actual_warehouse = "义乌仓"
+            elif "深圳仓" in pw_map:
+                final_price = pw_map["深圳仓"]["price_per_cbm"] + YIWU_MARKUP
+                actual_warehouse = "义乌仓(深圳仓+120)"
+                price_note = f"无义乌仓报价，用深圳仓价格+{YIWU_MARKUP}元/方"
+            elif "广州仓" in pw_map:
+                final_price = pw_map["广州仓"]["price_per_cbm"] + YIWU_MARKUP
+                actual_warehouse = "义乌仓(广州仓+120)"
+                price_note = f"无义乌仓报价，用广州仓价格+{YIWU_MARKUP}元/方"
+
+        min_amount = round(final_price * min_cbm, 2)
         cat_name = ""
-        if s and s.category_id:
+        if s.category_id:
             cat = (await db.execute(select(SupplierCategory).where(SupplierCategory.id == s.category_id))).scalar_one_or_none()
             if cat: cat_name = cat.name
         result.append({
-            "price_id": p.id, "supplier_id": p.supplier_id, "supplier_name": s.name if s else "",
-            "category_name": cat_name, "route_name": p.route_name, "cargo_type": p.cargo_type,
-            "starting_price": p.starting_price, "price_per_kg": p.price_per_kg,
-            "estimated_days": p.estimated_days,
+            "price_id": p.id, "supplier_id": p.supplier_id, "supplier_name": s.name,
+            "category_name": cat_name,
+            "transport_method": p.transport_method, "cargo_type": p.cargo_type,
+            "origin_warehouse": actual_warehouse,
+            "price_per_cbm": final_price, "price_note": price_note,
+            "min_cbm": min_cbm, "min_amount": min_amount,
+            "estimated_days": p.estimated_days, "currency": p.currency,
+            "heavy_cargo_warning": "单方超500kg按重货计费" if transport_method == "陆运" else "",
         })
-    return {"data": result, "total": len(result)}
+
+    # Sort by final price
+    result.sort(key=lambda x: x["price_per_cbm"])
+    return {"data": result, "total": len(result), "yiwu_markup": YIWU_MARKUP, "min_cbm": min_cbm}
 
 # ═══ AI Price Analysis ═══════════════════════════
 @router.post("/ai-compare")
