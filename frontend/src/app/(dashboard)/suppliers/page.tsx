@@ -241,7 +241,7 @@ export default function SuppliersPage() {
               <input className="border rounded px-2 py-1.5 text-sm" placeholder="产品规格" value={productForm.spec} onChange={e=>setProductForm({...productForm,spec:e.target.value})} />
               <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="规格报价" value={productForm.spec_price||""} onChange={e=>setProductForm({...productForm,spec_price:+e.target.value})} />
               <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="单价" value={productForm.unit_price||""} onChange={e=>setProductForm({...productForm,unit_price:+e.target.value})} />
-              <button onClick={addProduct} className="bg-green-600 text-white rounded px-2 py-1.5 text-sm">+添加</button>
+              <button onClick={addProduct} disabled={!productForm.product_name.trim() || !productForm.unit_price} className={`rounded px-2 py-1.5 text-sm ${!productForm.product_name.trim() || !productForm.unit_price ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button>
             </div>
             {products.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无产品</div> : (
               <table className="w-full text-sm"><thead><tr className="bg-gray-100"><th className="p-2 text-left">产品名</th><th>产品规格</th><th>规格报价</th><th>单价</th><th></th></tr></thead>
@@ -272,7 +272,7 @@ export default function SuppliersPage() {
               <div><label className="text-xs text-gray-500">单价(元/方)</label><input type="number" className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.price_per_cbm||""} onChange={e=>setLogisticsForm({...logisticsForm,price_per_cbm:+e.target.value})} /></div>
               <div><label className="text-xs text-gray-500">时效</label><input className="border rounded px-2 py-1.5 text-sm w-full" placeholder="如 5-7天" value={logisticsForm.estimated_days} onChange={e=>setLogisticsForm({...logisticsForm,estimated_days:e.target.value})} /></div>
               <div><label className="text-xs text-gray-500">币种</label><input className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.currency} onChange={e=>setLogisticsForm({...logisticsForm,currency:e.target.value})} /></div>
-              <button onClick={addLogisticsPrice} className="bg-green-600 text-white rounded px-2 py-1.5 text-sm self-end">+添加</button>
+              <button onClick={addLogisticsPrice} disabled={!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim()} className={`rounded px-2 py-1.5 text-sm self-end ${!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim() ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button>
             </div>
             {logisticsPrices.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无报价</div> : (
               <table className="w-full text-sm"><thead><tr className="bg-gray-100"><th className="p-2 text-left">运输方式</th><th>货物类型</th><th>发货仓库</th><th>单价(元/方)</th><th>时效</th><th></th></tr></thead>
