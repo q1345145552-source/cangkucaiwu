@@ -28,7 +28,7 @@ class ShipmentCreate(BaseModel):
     ship_date: str; amount: float; order_no: Optional[str] = None; remark: Optional[str] = None
 
 def get_wh(user: User) -> int:
-    return user.warehouse_id or 1
+    return user.warehouse_id
 
 async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
     """Calculate current_debt and overdue_days from shipments and repayments."""
@@ -161,12 +161,23 @@ async def credit_detail(credit_id: int, current_user: User = Depends(get_current
     # Compute debt/overdue
     debt, overdue = await _compute_debt_and_overdue(db, credit_id)
 
+    # Get assessment for this single customer
+    ass_data = await _compute_assessment(current_user, db)
+    assessment = next((a for a in ass_data["data"] if a["customer_id"] == c.customer_id), None)
+
     return {
         "id": c.id, "warehouse_id": c.warehouse_id, "customer_id": c.customer_id,
         "customer_name": cust.company_name if cust else "",
         "credit_limit": c.credit_limit, "current_debt": debt,
         "overdue_days": overdue, "repayment_day": c.repayment_day,
         "status": c.status, "remark": c.remark,
+        "rating": assessment["rating"] if assessment else "B",
+        "coop_months": assessment["coop_months"] if assessment else 0,
+        "on_time_rate": assessment["on_time_rate"] if assessment else 100,
+        "overdue_count": assessment["overdue_count"] if assessment else 0,
+        "max_overdue_days": assessment["max_overdue_days"] if assessment else 0,
+        "avg_monthly_repay": assessment["avg_monthly_repay"] if assessment else 0,
+        "utilization_rate": assessment["utilization_rate"] if assessment else 0,
         "repayments": [{"id": r.id, "repayment_date": r.repayment_date.isoformat() if r.repayment_date else None,
                         "amount": r.amount, "remark": r.remark,
                         "created_at": r.created_at.isoformat() if r.created_at else None} for r in reps],
@@ -252,11 +263,173 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
     if current_user.role != Role.SUPER_ADMIN:
         overdue_q = overdue_q.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
     overdue_count = (await db.execute(overdue_q)).scalar() or 0
+
+    # Rating distribution
+    try:
+        assessment_result = await _compute_assessment(current_user, db)
+        rating_dist = {"A": 0, "B": 0, "C": 0}
+        for item in assessment_result["data"]:
+            r = item.get("rating", "B")
+            rating_dist[r] = rating_dist.get(r, 0) + 1
+    except:
+        rating_dist = {"A": 0, "B": 0, "C": 0}
+
     return {
         "total_debt": float(total_debt or 0), "total_credit_limit": float(total_limit or 0),
         "total_customers": total_cust or 0, "overdue_count": overdue_count,
         "utilization_rate": round(float(total_debt or 0) / float(total_limit or 1) * 100, 1) if total_limit else 0,
+        "rating_dist": rating_dist,
     }
+
+
+# ==== Assessment & Rating ====
+async def _compute_assessment(
+    current_user: User, db: AsyncSession,
+) -> dict:
+    """核心评级计算逻辑，供端点和看板复用"""
+    wh_id = current_user.warehouse_id
+    query = select(CreditCustomer).where(CreditCustomer.status == CreditStatus.ACTIVE.value)
+    if current_user.role != Role.SUPER_ADMIN:
+        query = query.where(CreditCustomer.warehouse_id == wh_id)
+    records = (await db.execute(query)).scalars().all()
+
+    cids = {r.customer_id for r in records}
+    cmap = {}
+    if cids:
+        custs = (await db.execute(select(Customer).where(Customer.id.in_(cids)))).scalars().all()
+        cmap = {c.id: {"name": c.company_name, "created_at": c.created_at} for c in custs}
+
+    today = date.today()
+    data = []
+    for r in records:
+        cust_info = cmap.get(r.customer_id, {"name": "", "created_at": None})
+
+        coop_months = 0
+        if cust_info["created_at"] and hasattr(cust_info["created_at"], 'date'):
+            coop_months = max(0, (today - cust_info["created_at"].date()).days // 30)
+
+        reps = (await db.execute(
+            select(CreditRepayment).where(CreditRepayment.credit_customer_id == r.id)
+            .order_by(CreditRepayment.repayment_date.asc())
+        )).scalars().all()
+
+        ships = (await db.execute(
+            select(CreditShipment).where(CreditShipment.credit_customer_id == r.id)
+            .order_by(CreditShipment.ship_date.asc())
+        )).scalars().all()
+
+        total_repayments = len(reps)
+        on_time_count = 0
+        overdue_count = 0
+        max_overdue_days = 0
+
+        for rep in reps:
+            rep_date = rep.repayment_date.date() if hasattr(rep.repayment_date, 'date') else rep.repayment_date
+            relevant_ship_date = None
+            for s in ships:
+                sd = s.ship_date.date() if hasattr(s.ship_date, 'date') else s.ship_date
+                if sd <= rep_date:
+                    relevant_ship_date = sd
+            if relevant_ship_date:
+                days_since = (rep_date - relevant_ship_date).days
+                if days_since <= (r.repayment_day or 15):
+                    on_time_count += 1
+                else:
+                    overdue_count += 1
+                    max_overdue_days = max(max_overdue_days, days_since - (r.repayment_day or 15))
+            else:
+                on_time_count += 1
+
+        on_time_rate = round(on_time_count / total_repayments * 100, 1) if total_repayments > 0 else 100
+
+        three_months_ago = today.replace(day=1)
+        if three_months_ago.month > 2:
+            three_months_ago = three_months_ago.replace(month=three_months_ago.month - 2)
+        else:
+            three_months_ago = three_months_ago.replace(year=three_months_ago.year - 1, month=three_months_ago.month + 10)
+
+        recent_reps = [rep for rep in reps if rep.repayment_date and
+                       (rep.repayment_date.date() if hasattr(rep.repayment_date, 'date') else rep.repayment_date) >= three_months_ago]
+        avg_monthly_repay = round(sum(rp.amount for rp in recent_reps) / 3, 1) if recent_reps else 0
+
+        utilization_rate = round((r.current_debt or 0) / (r.credit_limit or 1) * 100, 1)
+
+        if coop_months >= 6 and overdue_count == 0 and on_time_rate >= 95:
+            rating = "A"
+        elif coop_months < 3 or overdue_count >= 3 or max_overdue_days > 30:
+            rating = "C"
+        else:
+            rating = "B"
+
+        data.append({
+            "id": r.id, "customer_id": r.customer_id,
+            "customer_name": cust_info.get("name", ""),
+            "rating": rating,
+            "credit_limit": r.credit_limit or 0,
+            "current_debt": r.current_debt or 0,
+            "overdue_days": r.overdue_days or 0,
+            "coop_months": coop_months,
+            "on_time_rate": on_time_rate,
+            "total_repayments": total_repayments,
+            "overdue_count": overdue_count,
+            "max_overdue_days": max_overdue_days,
+            "avg_monthly_repay": avg_monthly_repay,
+            "utilization_rate": utilization_rate,
+        })
+
+    return {"data": data}
+
+
+@router.get("/assessment")
+async def credit_assessment(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """返回所有账期客户的评级和评估数据"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    return await _compute_assessment(current_user, db)
+
+
+@router.get("/assessment/export")
+async def export_assessment(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """导出账期客户评估报告"""
+    from fastapi.responses import StreamingResponse
+    import io, openpyxl
+
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+        raise HTTPException(403, "无权限")
+
+    # Reuse assessment logic
+    result = await _compute_assessment(current_user, db)
+    data = result["data"]
+
+    rating_labels = {"A": "A级-优质客户", "B": "B级-正常客户", "C": "C级-风险客户"}
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "账期客户评估"
+    ws.append(["客户名称", "评级", "信用额度", "当前欠款", "逾期天数", "还款准时率(%)",
+                "逾期次数", "最长逾期(天)", "合作时长(月)", "月均还款", "额度使用率(%)"])
+
+    for d in data:
+        ws.append([
+            d["customer_name"], rating_labels.get(d["rating"], d["rating"]),
+            d["credit_limit"], d["current_debt"], d["overdue_days"],
+            d["on_time_rate"], d["overdue_count"], d["max_overdue_days"],
+            d["coop_months"], d["avg_monthly_repay"], d["utilization_rate"],
+        ])
+
+    output = io.BytesIO()
+    wb.save(output); output.seek(0)
+    return StreamingResponse(output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=credit_assessment.xlsx"})
+
 
 @router.get("/alerts")
 async def credit_alerts(level: str = None, current_user: User = Depends(get_current_user),

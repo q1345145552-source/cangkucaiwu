@@ -13,7 +13,7 @@ export default function MarketPage() {
   const [items, setItems] = useState<any[]>([]); const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", quantity: 1, price: 0, description: "" });
+  const [form, setForm] = useState({ name: "", quantity: 1, price: "", description: "" });
   const [tab, setTab] = useState<"all"|"review">("all");
   const [search, setSearch] = useState("");
 
@@ -33,10 +33,10 @@ export default function MarketPage() {
 
   async function handleCreate() {
     try {
-      await api.post("/market", form);
+      await api.post("/market", { ...form, price: form.price || 0 });
       toast("success", "上架成功");
-    setShowForm(false); setForm({ name: "", quantity: 1, price: 0, description: "" }); load();
-    } catch (err: any) { toast("error", "上架失败"); }
+    setShowForm(false); setForm({ name: "", quantity: 1, price: "", description: "" }); load();
+    } catch (err: any) { toast("error", err.message || "上架失败"); }
   }
 
   async function handleReview(itemId: number, status: string) {
@@ -44,7 +44,7 @@ export default function MarketPage() {
       await api.put(`/market/${itemId}/review`, { status });
       toast("success", "审核完成");
       load();
-    } catch (err: any) { toast("error", "审核失败"); }
+    } catch (err: any) { toast("error", err.message || "审核失败"); }
   }
 
   async function handlePurchase(itemId: number) {
@@ -52,7 +52,7 @@ export default function MarketPage() {
     if (contact) { try {
       await api.post(`/market/${itemId}/purchase`, { contact_info: contact });
       toast("success", "购买申请已发送"); alert("购买申请已提交");
-    } catch (err: any) { toast("error", "操作失败"); } }
+    } catch (err: any) { toast("error", err.message || "操作失败"); } }
   }
 
   async function handleConfirm(itemId: number) {
@@ -60,7 +60,7 @@ export default function MarketPage() {
       await api.put(`/market/${itemId}/confirm`, {});
       toast("success", "确认成功");
       load();
-    } catch (err: any) { toast("error", "操作失败"); }
+    } catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
   const statusColors: any = { pending: "bg-yellow-100 text-yellow-700", approved: "bg-green-100 text-green-700", rejected: "bg-red-100 text-red-700", sold: "bg-gray-100 text-gray-600" };
@@ -144,7 +144,7 @@ export default function MarketPage() {
           <div className="space-y-3">
             <div><label className="form-label">物品名称</label><input className="form-input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
             <div><label className="form-label">数量</label><input type="number" className="form-input" value={form.quantity} onChange={e=>setForm({...form,quantity:+e.target.value})} /></div>
-            <div><label className="form-label">价格 (0=无偿)</label><input type="number" className="form-input" value={form.price} onChange={e=>setForm({...form,price:+e.target.value})} /></div>
+            <div><label className="form-label">价格 (0=无偿)</label><input type="number" className="form-input" value={form.price} onChange={e=>setForm({...form,price:e.target.value===""?"":+e.target.value})} /></div>
             <div><label className="form-label">描述</label><textarea className="form-input" rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} /></div>
           </div>
           <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">上架</button></div>

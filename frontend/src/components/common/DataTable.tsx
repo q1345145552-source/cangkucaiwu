@@ -5,6 +5,7 @@ interface Column {
   key: string;
   label: string;
   render?: (value: any, row: any) => React.ReactNode;
+  headerRender?: () => React.ReactNode;
   align?: "left" | "right" | "center";
 }
 
@@ -27,7 +28,7 @@ export default function DataTable({ columns, data, total, page, pageSize, onPage
             <tr>
               {columns.map(c => (
                 <th key={c.key} className={c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : ""}>
-                  {c.label}
+                  {c.headerRender ? c.headerRender() : c.label}
                 </th>
               ))}
             </tr>

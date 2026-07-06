@@ -5,7 +5,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Key, UserPlus, MessageCircle, Pencil } from "lucide-react";
+import { Key, UserPlus, MessageCircle, Pencil, DollarSign, Clock, History } from "lucide-react";
 
 const PERM_LABELS: Record<string, string> = {
   "到账流水": "到账流水",
@@ -15,15 +15,19 @@ const PERM_LABELS: Record<string, string> = {
   "账期管理": "账期管理",
   "操作日志": "操作日志",
   "供应商管理": "供应商管理",
+  "其他收支": "其他收支",
 };
 
 export default function SettingsPage() {
   const { t } = useI18n();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
-  const [tab, setTab] = useState<"profile"|"users">("profile");
+  const [tab, setTab] = useState<"profile"|"users"|"rates">("profile");
   const [pw, setPw] = useState({ old: "", new: "" });
   const [pwMsg, setPwMsg] = useState("");
   const [lineId, setLineId] = useState("");
+  const [rates, setRates] = useState<any[]>([]);
+  const [rateForm, setRateForm] = useState({ from_currency: "CNY", to_currency: "THB", rate: "" });
+  const [rateLoading, setRateLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "staff" });
 
@@ -31,7 +35,22 @@ export default function SettingsPage() {
   const [editUser, setEditUser] = useState<any>(null);
   const [editPerms, setEditPerms] = useState<string[]>([]);
 
-  useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") loadUsers(); }, [tab]);
+  useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") loadUsers(); if (tab === "rates") loadRates(); }, [tab]);
+
+  async function loadRates() {
+    setRateLoading(true);
+    try { const r = await api.get<any>("/rates"); setRates(r.data || []); } catch {}
+    setRateLoading(false);
+  }
+
+  async function setRate() {
+    try {
+      await api.post("/rates", { ...rateForm, rate: rateForm.rate ? +rateForm.rate : 0 });
+      toast("success", "汇率设定成功");
+      setRateForm({ from_currency: "CNY", to_currency: "THB", rate: "" });
+      loadRates();
+    } catch (err: any) { toast("error", err.message || "设定失败"); }
+  }
 
   async function loadUsers() {
     try { const r = await api.get<any>("/users?page_size=100"); setUsers(r.data); } catch {}
@@ -53,7 +72,7 @@ export default function SettingsPage() {
       toast("success", "创建成功");
       setNewUser({ username: "", display_name: "", password: "", role: "staff" });
       loadUsers();
-    } catch (err: any) { toast("error", "创建失败"); }
+    } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
   function openEdit(u: any) {
@@ -74,7 +93,7 @@ export default function SettingsPage() {
       toast("success", "更新成功");
       setEditUser(null);
       loadUsers();
-    } catch (err: any) { toast("error", "更新失败"); }
+    } catch (err: any) { toast("error", err.message || "更新失败"); }
   }
 
   return (
@@ -85,6 +104,9 @@ export default function SettingsPage() {
           <button onClick={()=>setTab("profile")} className={`px-4 py-1.5 rounded text-sm ${tab==="profile"?"bg-primary text-white":"border"}`}>个人设置</button>
           {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
             <button onClick={()=>setTab("users")} className={`px-4 py-1.5 rounded text-sm ${tab==="users"?"bg-primary text-white":"border"}`}>用户管理</button>
+          )}
+          {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
+            <button onClick={()=>setTab("rates")} className={`px-4 py-1.5 rounded text-sm ${tab==="rates"?"bg-primary text-white":"border"}`}>汇率管理</button>
           )}
         </div>
       </div>
@@ -182,6 +204,81 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === "rates" && (
+        <div>
+          {/* Set new rate */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4 max-w-md">
+            <h3 className="font-semibold mb-4 flex items-center gap-2"><DollarSign size={18} className="text-blue-600" /> 设定新汇率</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label text-xs">从币种</label>
+                  <select className="form-input text-sm" value={rateForm.from_currency} onChange={e => setRateForm({...rateForm, from_currency: e.target.value})}>
+                    <option value="CNY">CNY 人民币</option>
+                    <option value="THB">THB 泰铢</option>
+                    <option value="USD">USD 美元</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label text-xs">到币种</label>
+                  <select className="form-input text-sm" value={rateForm.to_currency} onChange={e => setRateForm({...rateForm, to_currency: e.target.value})}>
+                    <option value="THB">THB 泰铢</option>
+                    <option value="CNY">CNY 人民币</option>
+                    <option value="USD">USD 美元</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="form-label text-xs">汇率</label>
+                <input type="number" step="0.001" className="form-input text-sm" placeholder="例如 5.0" value={rateForm.rate} onChange={e => setRateForm({...rateForm, rate: e.target.value})} />
+              </div>
+              <div className="text-xs text-gray-400 flex items-center gap-1">
+                <Clock size={12} /> 保存时自动记录当前时间为生效时间，每次修改新增一条记录
+              </div>
+              <button onClick={setRate} className="btn-primary w-full">设定汇率</button>
+            </div>
+          </div>
+
+          {/* Rate history */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2"><History size={18} className="text-indigo-600" /> 汇率变更记录</h3>
+            {rateLoading ? (
+              <div className="flex items-center justify-center h-24 text-gray-400">
+                <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-2" />
+                加载中...
+              </div>
+            ) : rates.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">暂无汇率记录</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">生效时间</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">从币种</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">到币种</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-500">汇率</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">设定人</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rates.map((r: any) => (
+                      <tr key={r.id} className="border-b hover:bg-gray-50/50">
+                        <td className="px-4 py-3 text-gray-600">{r.effective_from ? new Date(r.effective_from).toLocaleString("zh-CN") : "-"}</td>
+                        <td className="px-4 py-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{r.from_currency}</span></td>
+                        <td className="px-4 py-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">{r.to_currency}</span></td>
+                        <td className="px-4 py-3 text-right font-mono font-medium">{r.rate?.toFixed(3)}</td>
+                        <td className="px-4 py-3 text-gray-500">{r.set_by_name || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>

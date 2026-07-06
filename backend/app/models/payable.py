@@ -38,6 +38,7 @@ class PayableBill(Base):
     bill_attachment = Column(String(500), nullable=True, comment="账单附件路径")
     remark = Column(String(500), nullable=True)
     voucher = Column(String(500), nullable=True)
+    diff_note = Column(String(1000), nullable=True, comment="差异处理说明")
     paid_at = Column(DateTime(timezone=True), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -58,4 +59,25 @@ class PayablePlan(Base):
     bill_attachment = Column(String(500), nullable=True, comment="账单附件路径")
     remark = Column(String(500), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PlanTemplate(Base):
+    __tablename__ = "plan_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    bill_ids = Column(JSON, nullable=False, comment="关联账单ID列表")
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class MonthlyOrderVolume(Base):
+    __tablename__ = "monthly_order_volumes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    month = Column(String(7), nullable=False, comment="YYYY-MM")
+    order_count = Column(Integer, nullable=False, default=0)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

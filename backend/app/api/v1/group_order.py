@@ -29,7 +29,7 @@ class BanRequest(BaseModel):
     warehouse_id: int; reason: Optional[str] = None
 
 def get_wh(user: User) -> int:
-    return user.warehouse_id or 1
+    return user.warehouse_id
 
 @router.get("")
 async def list_group_orders(
@@ -37,6 +37,8 @@ async def list_group_orders(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(GroupOrder); count_q = select(func.count(GroupOrder.id))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(GroupOrder.warehouse_id == get_wh(current_user))
@@ -74,6 +76,8 @@ async def list_group_orders(
 @router.post("")
 async def create_group_order(req: GOCreate, current_user: User = Depends(get_current_user),
                               db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "仅仓库管理员可发起")
     o = GroupOrder(
@@ -87,6 +91,8 @@ async def create_group_order(req: GOCreate, current_user: User = Depends(get_cur
 @router.post("/{go_id}/join")
 async def join_group_order(go_id: int, req: JoinRequest, current_user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
@@ -147,6 +153,8 @@ async def complete_order(go_id: int, req: CompleteRequest,
 
 @router.get("/history")
 async def history(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # Show only completed orders where this warehouse participated
     sub = select(GroupOrderParticipant.group_order_id).where(
         GroupOrderParticipant.warehouse_id == get_wh(current_user)

@@ -11,7 +11,7 @@ export default function GroupOrderPage() {
   const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ item_name: "", target_quantity: 0, target_price: 0, deadline: "", reason: "" });
+  const [form, setForm] = useState({ item_name: "", target_quantity: "", target_price: "", deadline: "", reason: "" });
   const [selected, setSelected] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -36,17 +36,17 @@ export default function GroupOrderPage() {
   async function handleCreate() {
     if (!confirm("确认发起拼单？规则：参与后不可中途退出。")) return;
     try {
-      await api.post("/group-order", form);
+      await api.post("/group-order", { ...form, target_quantity: form.target_quantity || 0, target_price: form.target_price || 0 });
       toast("success", "发起成功");
       setShowForm(false); load();
-    } catch (err: any) { toast("error", "发起失败"); }
+    } catch (err: any) { toast("error", err.message || "发起失败"); }
   }
 
   async function handleJoin(orderId: number) {
     if (!confirm("参与拼单规则：\n1. 确认后不可中途退出\n2. 强行退出者下次禁止参与\n3. 最终采购价与目标价不一致时拼单取消\n4. 物流费按参与方数量均摊\n\n同意以上规则？")) return;
     const qty = prompt("参与数量:"); 
     if (qty) { try { await api.post(`/group-order/${orderId}/join`, { quantity: +qty, agreed_rules: true });
-      toast("success", "参与成功"); load(); } catch (err: any) { toast("error", "参与失败"); } }
+      toast("success", "参与成功"); load(); } catch (err: any) { toast("error", err.message || "参与失败"); } }
   }
 
   async function viewParticipants(order: any) {
@@ -57,13 +57,13 @@ export default function GroupOrderPage() {
 
   async function handleClose(orderId: number) {
     try { await api.put(`/group-order/${orderId}/close`, {});
-      toast("success", "关闭成功"); load(); } catch (err: any) { toast("error", "操作失败"); }
+      toast("success", "关闭成功"); load(); } catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
   async function handleComplete(orderId: number) {
     const price = prompt("最终成交单价:"); const supplier = prompt("供应商名称:");
     if (price) { try { await api.put(`/group-order/${orderId}/complete`, { final_price: +price, final_supplier: supplier || "" });
-      toast("success", "完成成功"); load(); } catch (err: any) { toast("error", "操作失败"); } }
+      toast("success", "完成成功"); load(); } catch (err: any) { toast("error", err.message || "操作失败"); } }
   }
 
   const statusColors: any = { open: "text-green-600", closed: "text-yellow-600", completed: "text-blue-600", cancelled: "text-gray-400" };
@@ -139,8 +139,8 @@ export default function GroupOrderPage() {
           <h2 className="font-semibold mb-4">发起拼单</h2>
           <div className="space-y-3">
             <div><label className="form-label">物品名称</label><input className="form-input" value={form.item_name} onChange={e=>setForm({...form,item_name:e.target.value})} /></div>
-            <div><label className="form-label">目标数量</label><input type="number" className="form-input" value={form.target_quantity} onChange={e=>setForm({...form,target_quantity:+e.target.value})} /></div>
-            <div><label className="form-label">目标单价</label><input type="number" className="form-input" value={form.target_price} onChange={e=>setForm({...form,target_price:+e.target.value})} /></div>
+            <div><label className="form-label">目标数量</label><input type="number" className="form-input" value={form.target_quantity} onChange={e=>setForm({...form,target_quantity:e.target.value===""?"":+e.target.value})} /></div>
+            <div><label className="form-label">目标单价</label><input type="number" className="form-input" value={form.target_price} onChange={e=>setForm({...form,target_price:e.target.value===""?"":+e.target.value})} /></div>
             <div><label className="form-label">截止时间</label><input type="datetime-local" className="form-input" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} /></div>
             <div><label className="form-label">原因说明</label><input className="form-input" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} /></div>
           </div>

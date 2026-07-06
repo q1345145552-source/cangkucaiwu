@@ -10,6 +10,7 @@ class ReimbStatus(str, enum.Enum):
     PARTIALLY_APPROVED = "partially_approved"
     REJECTED = "rejected"
     PAID = "paid"
+    FUND_LINKED = "fund_linked"
 
 class Reimbursement(Base):
     __tablename__ = "reimbursements"
@@ -25,6 +26,8 @@ class Reimbursement(Base):
     review_remark = Column(String(500), nullable=True)
     paid_at = Column(DateTime(timezone=True), nullable=True)
     payment_method = Column(String(20), nullable=True, comment="bank_transfer/cash")
+    is_fund_linked = Column(String(5), default="0", comment="1=关联备用金扣款")
+    fund_item_id = Column(Integer, nullable=True, comment="关联的备用金开销记录ID")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     employee = relationship("User", foreign_keys=[employee_id])

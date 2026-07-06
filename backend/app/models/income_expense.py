@@ -20,6 +20,7 @@ class IncomeExpenseCategory(Base):
     type = Column(String(10), nullable=False)
     name = Column(String(100), nullable=False)
     sort_order = Column(Integer, default=0)
+    category_group = Column(String(20), nullable=False, default="other")  # operating or other
     status = Column(String(20), default=CategoryStatus.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

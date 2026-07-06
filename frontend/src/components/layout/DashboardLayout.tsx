@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, Key, UserCog,
+  Globe, LogOut, Key, UserCog, ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -39,7 +39,8 @@ const navItems: NavItem[] = [
       { key: "recharge", label: "recharge", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
       { key: "incoming", label: "incoming", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin"] },
       { key: "reconciliation", label: "reconciliation", icon: <CheckCircle size={18} />, href: "/reconciliation", roles: ["warehouse_admin"] },
-      { key: "income_expense", label: "income_expense", icon: <BarChart3 size={18} />, href: "/income-expense", roles: ["warehouse_admin"] },
+      { key: "operating", label: "operating", icon: <BarChart3 size={18} />, href: "/operating", roles: ["warehouse_admin", "staff"] },
+      { key: "other_income_expense", label: "other_income_expense", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin"] },
       { key: "expense_fund", label: "expense_fund", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff"] },
       { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff"] },
       { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin"] },
@@ -86,14 +87,16 @@ const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
   payable: "供应商管理",
   payment_plans: "供应商管理",
   audit_logs: "操作日志",
+  other_income_expense: "其他收支",
 };
 
 function hasAccess(item: NavItem, user: any): boolean {
   if (!user || !user.role) return false;
   // 非 staff 角色走原有角色匹配
   if (user.role !== "staff") return item.roles.includes(user.role);
-  // Staff 角色：仪表盘始终可见，其余菜单需扩展权限
-  if (item.key === "dashboard") return true;
+  // Staff 角色：roles 中包含 staff 的菜单直接可见
+  if (item.roles.includes("staff")) return true;
+  // roles 中不包含 staff 的菜单，需检查扩展权限
   const perms: string[] = user.extra_permissions || [];
   if (perms.length === 0) return false;
   const required = STAFF_EXTRA_MAP[item.key];

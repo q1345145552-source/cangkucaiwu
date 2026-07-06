@@ -42,6 +42,32 @@ async def seed():
                               display_name=f"{wh.name}财务", role="staff", warehouse_id=wh.id, is_active=True))
         await session.flush()
 
+        # === Expense Fund Accounts ===
+        from app.models.expense_fund import ExpenseFund
+        from datetime import datetime as dt
+        # Create account for each warehouse admin and staff
+        for wh in whs:
+            # Get admin and staff for this warehouse by name pattern
+            admin_user = (await session.execute(select(User).where(
+                User.warehouse_id == wh.id, User.role == "warehouse_admin"
+            ))).scalar_one()
+            staff_user = (await session.execute(select(User).where(
+                User.warehouse_id == wh.id, User.role == "staff"
+            ))).scalar_one()
+            session.add(ExpenseFund(
+                warehouse_id=wh.id, employee_id=admin_user.id,
+                receive_date=dt.utcnow(), amount=0, purpose="",
+                remaining_balance=0, fund_limit=5000, alert_threshold=500,
+                status="active",
+            ))
+            session.add(ExpenseFund(
+                warehouse_id=wh.id, employee_id=staff_user.id,
+                receive_date=dt.utcnow(), amount=0, purpose="",
+                remaining_balance=0, fund_limit=5000, alert_threshold=500,
+                status="active",
+            ))
+        await session.flush()
+
         # === Customers ===
         customers = [
             Customer(warehouse_id=1, customer_code="C001", company_name="华泰物流", contact_person="张经理", contact_info="081-234-5678", credit_status=True, credit_limit=100000),
@@ -93,7 +119,7 @@ async def seed():
 
         await session.commit()
         print("Seed complete:")
-        print("  3 warehouses, 7 users")
+        print("  3 warehouses, 7 users, 6 expense fund accounts")
         print("  5 customers, 3 suppliers")
         print("  2 recharge declarations, 1 incoming flow, 2 market items")
 

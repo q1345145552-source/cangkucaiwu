@@ -26,7 +26,7 @@ export default function CategoriesPage() {
       await api.post("/income-expense/categories", { type: tab, name });
       toast("success", "添加成功");
       setName(""); load();
-    } catch (err: any) { toast("error", "添加失败"); } }
+    } catch (err: any) { toast("error", err.message || "添加失败"); } }
 
   return (
     <>

@@ -52,7 +52,15 @@ async function request<T>(
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+    let msg = err.detail || `HTTP ${res.status}`;
+    // Handle 422 validation errors: detail is an array of {loc, msg, ...}
+    if (Array.isArray(err.detail)) {
+      msg = err.detail.map((e: any) => {
+        const field = e.loc ? e.loc[e.loc.length - 1] : "";
+        return field ? `${field}: ${e.msg}` : e.msg;
+      }).join("; ");
+    }
+    throw new Error(msg);
   }
   return res.json();
 }

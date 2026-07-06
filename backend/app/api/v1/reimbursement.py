@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from datetime import datetime
 from app.database import get_db
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbStatus
+from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
 from app.models.user import User
 from app.core.permissions import get_current_user, Role, check_staff_permission
 from pydantic import BaseModel
@@ -17,6 +18,7 @@ class ReimbItemCreate(BaseModel):
 
 class ReimbCreate(BaseModel):
     items: List[ReimbItemCreate]; submit_date: str; currency: str = "THB"
+    is_fund_linked: Optional[str] = "0"
 
 class ReimbReview(BaseModel):
     items: List[dict]  # [{"item_id": 1, "status": "approved"/"rejected", "remark": ""}]
@@ -26,7 +28,7 @@ class CategoryReq(BaseModel):
     name: str; description: Optional[str] = None
 
 def get_wh(user: User) -> int:
-    return user.warehouse_id or 1
+    return user.warehouse_id
 
 @router.get("")
 async def list_reimbursements(
@@ -62,6 +64,7 @@ async def list_reimbursements(
         "employee_name": umap.get(r.employee_id, ""),
         "submit_date": r.submit_date.isoformat() if r.submit_date else None,
         "total_amount": r.total_amount, "currency": r.currency, "status": r.status,
+        "is_fund_linked": r.is_fund_linked or "0", "fund_item_id": r.fund_item_id,
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
     } for r in reimbs], "total": total, "page": page, "page_size": page_size}
 
@@ -70,17 +73,113 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
                                 db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    wh_id = get_wh(current_user)
     total = sum(i.amount for i in req.items)
+
+    fund_item_id = None
+    if req.is_fund_linked == "1":
+        # 查找员工备用金账户
+        fund = (await db.execute(select(ExpenseFund).where(
+            ExpenseFund.warehouse_id == wh_id,
+            ExpenseFund.employee_id == current_user.id,
+            ExpenseFund.status == FundStatus.ACTIVE.value,
+        ))).scalar_one_or_none()
+        if not fund:
+            raise HTTPException(400, "该员工没有备用金账户，无法关联扣款")
+        if (fund.remaining_balance or 0) < total:
+            raise HTTPException(400, f"备用金余额不足（当前余额: {fund.remaining_balance:,.0f}，报销金额: {total:,.0f}）")
+
+        # 扣减备用金
+        fund.remaining_balance = (fund.remaining_balance or 0) - total
+
+        # 生成备用金开销记录
+        descriptions = "; ".join([f"{i.category}: {i.description or ''}" for i in req.items])
+        fund_item = ExpenseFundItem(
+            fund_id=fund.id,
+            expense_date=datetime.fromisoformat(req.submit_date) if req.submit_date else datetime.utcnow(),
+            category="报销",
+            amount=total,
+            currency=req.currency,
+            description=f"来自报销管理: {descriptions}",
+            review_status=ReviewStatus.PENDING.value,
+        )
+        db.add(fund_item)
+        await db.flush()
+        fund_item_id = fund_item.id
+
     r = Reimbursement(
-        warehouse_id=get_wh(current_user), employee_id=current_user.id,
+        warehouse_id=wh_id, employee_id=current_user.id,
         submit_date=datetime.fromisoformat(req.submit_date),
         total_amount=total, currency=req.currency,
+        is_fund_linked=req.is_fund_linked or "0",
+        fund_item_id=fund_item_id,
+        status=ReimbStatus.FUND_LINKED.value if req.is_fund_linked == "1" else ReimbStatus.PENDING.value,
     )
     db.add(r); await db.flush()
     for item in req.items:
         db.add(ReimbursementItem(reimbursement_id=r.id, category=item.category,
                                  amount=item.amount, description=item.description, receipt=item.receipt))
-    await db.flush(); return {"id": r.id, "message": "报销单创建成功"}
+    await db.flush()
+
+    msg = "报销单创建成功，已转入备用金审核" if req.is_fund_linked == "1" else "报销单创建成功"
+    return {"id": r.id, "message": msg}
+
+@router.get("/export")
+async def export_reimbursements(
+    month: str = Query(None), status: str = Query(None),
+    employee_id: int = Query(None),
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """导出报销单为 Excel"""
+    from fastapi.responses import StreamingResponse
+    import io, openpyxl
+
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    wh_id = current_user.warehouse_id
+
+    query = select(Reimbursement).where(Reimbursement.warehouse_id == wh_id)
+    if month:
+        query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
+    if status:
+        query = query.where(Reimbursement.status == status)
+    if employee_id:
+        query = query.where(Reimbursement.employee_id == employee_id)
+
+    result = await db.execute(query.order_by(Reimbursement.submit_date.desc()))
+    reimbs = result.scalars().all()
+
+    uids = {r.employee_id for r in reimbs}
+    umap = {}
+    if uids:
+        users = (await db.execute(select(User).where(User.id.in_(uids)))).scalars().all()
+        umap = {u.id: u.display_name for u in users}
+
+    status_labels = {"pending": "待审批", "approved": "已通过", "partially_approved": "部分通过",
+                     "rejected": "已驳回", "paid": "已付款", "fund_linked": "转入备用金审核"}
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "报销清单"
+    ws.append(["报销人", "提交日期", "金额", "币种", "状态", "审批备注", "付款时间", "关联备用金"])
+
+    for r in reimbs:
+        ws.append([
+            umap.get(r.employee_id, ""),
+            r.submit_date.strftime("%Y-%m-%d") if r.submit_date else "",
+            r.total_amount, r.currency,
+            status_labels.get(r.status, r.status),
+            r.review_remark or "",
+            r.paid_at.strftime("%Y-%m-%d %H:%M") if r.paid_at else "",
+            "是" if r.is_fund_linked == "1" else "否",
+        ])
+
+    output = io.BytesIO()
+    wb.save(output); output.seek(0)
+    return StreamingResponse(output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=reimbursements.xlsx"})
+
 
 @router.get("/{reimb_id}")
 async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_current_user),
@@ -93,6 +192,7 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
     items = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id))).scalars().all()
     return {
         "id": r.id, "warehouse_id": r.warehouse_id, "employee_id": r.employee_id,
+        "is_fund_linked": r.is_fund_linked or "0", "fund_item_id": r.fund_item_id,
         "submit_date": r.submit_date.isoformat() if r.submit_date else None,
         "total_amount": r.total_amount, "currency": r.currency, "status": r.status,
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
@@ -145,22 +245,37 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
     if not r: raise HTTPException(404, "报销单不存在")
     r.reviewer_id = current_user.id; r.review_remark = req.overall_remark
 
-    approved = sum(item.get("amount", 0) for item in req.items if item.get("status") == "approved")
-    rejected = sum(item.get("amount", 0) for item in req.items if item.get("status") != "approved")
+    approved_count = 0; rejected_count = 0; approved_amount = 0
+    for item_data in req.items:
+        item = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.id == item_data["item_id"]))).scalar_one_or_none()
+        if not item: continue
+        status = item_data.get("status", "rejected")
+        item.review_status = status
+        if status == "approved":
+            approved_count += 1
+            approved_amount += item.amount
+        else:
+            rejected_count += 1
 
-    if rejected == 0:
+    if rejected_count == 0:
         r.status = ReimbStatus.APPROVED.value
-    elif approved > 0:
+        if r.is_fund_linked == "1" and r.fund_item_id:
+            fund_item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id))).scalar_one_or_none()
+            if fund_item:
+                fund_item.review_status = ReviewStatus.APPROVED.value
+    elif approved_count > 0:
         r.status = ReimbStatus.PARTIALLY_APPROVED.value
     else:
         r.status = ReimbStatus.REJECTED.value
-    r.total_amount = approved
-
-    for item_data in req.items:
-        item = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.id == item_data["item_id"]))).scalar_one_or_none()
-        if item:
-            item.review_status = item_data.get("status", "rejected")
-    await db.flush(); return {"message": "审批完成", "status": r.status, "approved_amount": approved}
+        if r.is_fund_linked == "1" and r.fund_item_id:
+            fund_item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id))).scalar_one_or_none()
+            if fund_item:
+                fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == fund_item.fund_id))).scalar_one_or_none()
+                if fund:
+                    fund.remaining_balance = (fund.remaining_balance or 0) + fund_item.amount
+                fund_item.review_status = ReviewStatus.REJECTED.value
+    r.total_amount = approved_amount
+    await db.flush(); return {"message": "审批完成", "status": r.status, "approved_amount": approved_amount}
 
 @router.post("/{reimb_id}/pay")
 async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
@@ -177,6 +292,8 @@ async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user
     r.status = ReimbStatus.PAID.value; r.paid_at = datetime.now()
     await db.flush(); return {"message": "已标记付款"}
 
+
+# === Export ===
 
 # === Reimbursement Categories ===
 _reimb_categories = ["交通费", "餐饮费", "办公用品", "通讯费", "差旅费", "水电费", "维修费", "其他"]

@@ -12,7 +12,9 @@ router = APIRouter()
 @router.get("")
 async def list_warehouses(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role != Role.SUPER_ADMIN:
-        return {"data": [{"id": current_user.warehouse_id, "name": current_user.warehouse.name if current_user.warehouse else "", "code": ""}]}
+        wh = (await db.execute(select(Warehouse).where(Warehouse.id == current_user.warehouse_id))).scalar_one_or_none()
+        wh_name = wh.name if wh else ""
+        return {"data": [{"id": current_user.warehouse_id, "name": wh_name, "code": ""}]}
     result = await db.execute(select(Warehouse).order_by(Warehouse.id))
     whs = result.scalars().all()
     return {"data": [{"id": w.id, "name": w.name, "name_th": w.name_th, "code": w.code, "address": w.address, "is_active": w.is_active} for w in whs]}

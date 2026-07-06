@@ -7,6 +7,7 @@ import enum
 class FundStatus(str, enum.Enum):
     ACTIVE = "active"
     RETURNED = "returned"
+    SETTLED = "settled"
     PARTIALLY_RETURNED = "partially_returned"
 
 class ReviewStatus(str, enum.Enum):
@@ -22,6 +23,7 @@ class ExpenseFund(Base):
     __tablename__ = "expense_funds"
 
     id = Column(Integer, primary_key=True, index=True)
+    fund_number = Column(String(30), nullable=True, unique=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     employee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     receive_date = Column(DateTime, nullable=False)
@@ -30,6 +32,7 @@ class ExpenseFund(Base):
     expected_return_date = Column(DateTime, nullable=True)
     status = Column(String(30), default=FundStatus.ACTIVE.value)
     remaining_balance = Column(Float, default=0)
+    fund_limit = Column(Float, default=5000)
     alert_threshold = Column(Float, default=500)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -44,6 +47,7 @@ class ExpenseFundItem(Base):
     expense_date = Column(DateTime, nullable=False)
     category = Column(String(100), nullable=False)
     amount = Column(Float, nullable=False)
+    currency = Column(String(5), default="THB")
     description = Column(String(500), nullable=False)
     receipt = Column(String(500), nullable=True)
     review_status = Column(String(20), default=ReviewStatus.PENDING.value)
@@ -52,3 +56,14 @@ class ExpenseFundItem(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     fund = relationship("ExpenseFund", back_populates="items")
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False)
+    key = Column(String(100), nullable=False)
+    value = Column(String(500), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())

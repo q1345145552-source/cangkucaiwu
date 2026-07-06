@@ -17,7 +17,7 @@ export default function IncomeExpensePage() {
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: 0, currency: "THB", date: "", remark: "" });
+  const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: "", remark: "" });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); }, [page, tab, month]);
 
@@ -41,10 +41,10 @@ export default function IncomeExpensePage() {
   async function handleCreate() {
     const ep = tab === "income" ? "/income-expense/income" : "/income-expense/expense";
     try {
-      await api.post(ep, { ...form, [tab === "income" ? "income_date" : "expense_date"]: form.date });
+      await api.post(ep, { ...form, amount: form.amount || 0, [tab === "income" ? "income_date" : "expense_date"]: form.date });
       toast("success", "创建成功");
       setShowForm(false); load();
-    } catch (err: any) { toast("error", "创建失败"); }
+    } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
   const columns = [
@@ -83,7 +83,7 @@ export default function IncomeExpensePage() {
               <div><label className="block text-sm mb-1">类别</label><select className="form-input" value={form.category_id} onChange={e => setForm({...form, category_id: +e.target.value})}><option>选择类别</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               <div><label className="block text-sm mb-1">收款账户</label><select className="form-input" value={form.account_id} onChange={e => setForm({...form, account_id: +e.target.value})}><option>选择账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}</select></div>
               <div><label className="block text-sm mb-1">日期</label><input type="date" className="form-input" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
-              <div><label className="block text-sm mb-1">金额</label><input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({...form, amount: +e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">金额</label><input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({...form, amount: e.target.value===""?"":+e.target.value})} /></div>
               <div><label className="block text-sm mb-1">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
               <div><label className="block text-sm mb-1">备注</label><input className="form-input" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
             </div>

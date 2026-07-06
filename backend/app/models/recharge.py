@@ -81,7 +81,8 @@ class ExchangeRate(Base):
     __tablename__ = "exchange_rates"
 
     id = Column(Integer, primary_key=True, index=True)
-    month = Column(String(7), nullable=False, comment="YYYY-MM")
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=True, index=True)
+    effective_from = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     from_currency = Column(String(5), nullable=False)
     to_currency = Column(String(5), nullable=False)
     rate = Column(Float, nullable=False)

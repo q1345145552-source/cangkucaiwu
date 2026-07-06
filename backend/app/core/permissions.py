@@ -29,6 +29,7 @@ STAFF_PERMISSIONS = {
     "账期管理": "账期管理",
     "操作日志": "操作日志",
     "供应商管理": "供应商管理",
+    "其他收支": "其他收支",
 }
 
 def check_staff_permission(perm_key: str):

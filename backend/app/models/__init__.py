@@ -4,7 +4,7 @@ from app.models.warehouse import Warehouse
 from app.models.customer import Customer, PaymentAccount
 from app.models.recharge import RechargeDeclaration, IncomingFlow, ReconciliationResult, ExchangeRate
 from app.models.income_expense import IncomeExpenseCategory, IncomeRecord, ExpenseRecord
-from app.models.expense_fund import ExpenseFund, ExpenseFundItem
+from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.models.reimbursement import Reimbursement, ReimbursementItem
 from app.models.supplier import Supplier
 from app.models.payable import PayableBill, PayablePlan

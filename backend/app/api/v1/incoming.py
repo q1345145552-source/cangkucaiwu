@@ -81,3 +81,32 @@ async def batch_import(req: IncomingBatchImport, current_user: User = Depends(ge
         )
         db.add(r); imported += 1
     await db.flush(); return {"imported": imported, "message": f"成功导入{imported}条记录"}
+
+@router.get("/template")
+async def download_template(current_user: User = Depends(get_current_user)):
+    """下载到账流水导入模板"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from fastapi.responses import StreamingResponse
+    wb = Workbook(); ws = wb.active; ws.title = "到账流水导入模板"
+    hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+    hfont = Font(bold=True, color="FFFFFF")
+    headers = ["到账日期", "金额", "币种", "付款方", "付款方式", "备注"]
+    for c, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hf
+    # Example row
+    example = ["2026-07-01", 5000, "THB", "示例客户", "银行转账", "示例备注"]
+    ef = Font(italic=True, color="999999")
+    for c, v in enumerate(example, 1):
+        cell = ws.cell(row=2, column=c, value=v); cell.font = ef
+    ws.column_dimensions['A'].width = 14
+    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['C'].width = 8
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['F'].width = 20
+    import io; output = io.BytesIO(); wb.save(output); output.seek(0)
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            headers={"Content-Disposition": "attachment; filename=incoming_template.xlsx"})

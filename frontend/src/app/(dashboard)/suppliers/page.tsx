@@ -26,12 +26,12 @@ export default function SuppliersPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [productSupplierId, setProductSupplierId] = useState(0);
-  const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: 0, unit_price: 0, unit: "个", remark: "" });
+  const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "" });
   // Logistics prices
   const [logisticsPrices, setLogisticsPrices] = useState<any[]>([]);
   const [showLogistics, setShowLogistics] = useState(false);
   const [logisticsSupplierId, setLogisticsSupplierId] = useState(0);
-  const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: 0, estimated_days: "", currency: "人民币" });
+  const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "人民币" });
   // Compare
   const [compareData, setCompareData] = useState<any[]>([]);
   const [showCompare, setShowCompare] = useState(false);
@@ -97,10 +97,10 @@ export default function SuppliersPage() {
     setShowProducts(true);
   }
   async function addProduct() {
-    try { await api.post(`/suppliers/${productSupplierId}/products`, productForm); toast("success", "产品添加成功");
+    try { await api.post(`/suppliers/${productSupplierId}/products`, { ...productForm, spec_price: productForm.spec_price || 0, unit_price: productForm.unit_price || 0 }); toast("success", "产品添加成功");
       const r = await api.get<any>(`/suppliers/${productSupplierId}/products`); setProducts(r.data);
-      setProductForm({ product_name: "", spec: "", spec_price: 0, unit_price: 0, unit: "个", remark: "" });
-    } catch (err: any) { toast("error", "添加失败"); }
+      setProductForm({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "" });
+    } catch (err: any) { toast("error", err.message || "添加失败"); }
   }
   async function deleteProduct(pid: number) {
     try { await api.delete(`/suppliers/${productSupplierId}/products/${pid}`); toast("success", "已删除");
@@ -115,9 +115,9 @@ export default function SuppliersPage() {
     setShowLogistics(true);
   }
   async function addLogisticsPrice() {
-    try { await api.post(`/suppliers/${logisticsSupplierId}/logistics-prices`, logisticsForm); toast("success", "报价添加成功");
+    try { await api.post(`/suppliers/${logisticsSupplierId}/logistics-prices`, { ...logisticsForm, price_per_cbm: logisticsForm.price_per_cbm || 0 }); toast("success", "报价添加成功");
       const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);
-      setLogisticsForm({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: 0, estimated_days: "", currency: "人民币" });
+      setLogisticsForm({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "人民币" });
     } catch { toast("error", "添加失败"); }
   }
   async function deleteLogisticsPrice(pid: number) {
@@ -239,8 +239,8 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-5 gap-2 mb-4 p-3 bg-gray-50 rounded">
               <input className="border rounded px-2 py-1.5 text-sm" placeholder="产品名" value={productForm.product_name} onChange={e=>setProductForm({...productForm,product_name:e.target.value})} />
               <input className="border rounded px-2 py-1.5 text-sm" placeholder="产品规格" value={productForm.spec} onChange={e=>setProductForm({...productForm,spec:e.target.value})} />
-              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="规格报价" value={productForm.spec_price||""} onChange={e=>setProductForm({...productForm,spec_price:+e.target.value})} />
-              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="单价" value={productForm.unit_price||""} onChange={e=>setProductForm({...productForm,unit_price:+e.target.value})} />
+              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="规格报价" value={productForm.spec_price||""} onChange={e=>setProductForm({...productForm,spec_price:e.target.value===""?"":+e.target.value})} />
+              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="单价" value={productForm.unit_price||""} onChange={e=>setProductForm({...productForm,unit_price:e.target.value===""?"":+e.target.value})} />
               <button onClick={addProduct} disabled={!productForm.product_name.trim() || !productForm.unit_price} className={`rounded px-2 py-1.5 text-sm ${!productForm.product_name.trim() || !productForm.unit_price ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button>
             </div>
             {products.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无产品</div> : (
@@ -269,7 +269,7 @@ export default function SuppliersPage() {
               </select>
             </div>
             <div className="grid grid-cols-4 gap-2 mb-4 p-3 bg-gray-50 rounded">
-              <div><label className="text-xs text-gray-500">单价(元/方)</label><input type="number" className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.price_per_cbm||""} onChange={e=>setLogisticsForm({...logisticsForm,price_per_cbm:+e.target.value})} /></div>
+              <div><label className="text-xs text-gray-500">单价(元/方)</label><input type="number" className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.price_per_cbm||""} onChange={e=>setLogisticsForm({...logisticsForm,price_per_cbm:e.target.value===""?"":+e.target.value})} /></div>
               <div><label className="text-xs text-gray-500">时效</label><input className="border rounded px-2 py-1.5 text-sm w-full" placeholder="如 5-7天" value={logisticsForm.estimated_days} onChange={e=>setLogisticsForm({...logisticsForm,estimated_days:e.target.value})} /></div>
               <div><label className="text-xs text-gray-500">币种</label><input className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.currency} onChange={e=>setLogisticsForm({...logisticsForm,currency:e.target.value})} /></div>
               <button onClick={addLogisticsPrice} disabled={!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim()} className={`rounded px-2 py-1.5 text-sm self-end ${!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim() ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button>

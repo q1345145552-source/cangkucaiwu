@@ -26,18 +26,30 @@ class WarehouseResponse(BaseModel):
 class CustomerCreate(BaseModel):
     customer_code: str; company_name: str; warehouse_id: Optional[int] = None
     contact_person: Optional[str] = None; contact_info: Optional[str] = None
-    credit_status: bool = False; credit_limit: float = 0; remark: Optional[str] = None
+    line_id: Optional[str] = None; cargo_type: Optional[str] = None
+    logistics_channel: Optional[str] = None
+    default_currency: str = "THB"; default_payment_method: Optional[str] = None
+    credit_status: bool = False; credit_limit: float = 0
+    debt_amount: float = 0; remark: Optional[str] = None
 
 class CustomerUpdate(BaseModel):
     company_name: Optional[str] = None; contact_person: Optional[str] = None
-    contact_info: Optional[str] = None; credit_status: Optional[bool] = None
-    credit_limit: Optional[float] = None; remark: Optional[str] = None
+    contact_info: Optional[str] = None; line_id: Optional[str] = None
+    cargo_type: Optional[str] = None; logistics_channel: Optional[str] = None
+    credit_status: Optional[bool] = None; credit_limit: Optional[float] = None
+    debt_amount: Optional[float] = None; remark: Optional[str] = None
 
 class CustomerResponse(BaseModel):
     id: int; warehouse_id: int; customer_code: str; company_name: str
     contact_person: Optional[str] = None; contact_info: Optional[str] = None
-    credit_status: bool; credit_limit: float; remark: Optional[str] = None
-    tags: Optional[dict] = None; created_at: Optional[datetime] = None
+    line_id: Optional[str] = None; cargo_type: Optional[str] = None
+    logistics_channel: Optional[str] = None
+    total_shipments: int = 0; total_shipping_cost: float = 0
+    last_ship_date: Optional[datetime] = None
+    default_currency: str = "THB"; default_payment_method: Optional[str] = None
+    credit_status: bool; credit_limit: float; debt_amount: float = 0
+    remark: Optional[str] = None; tags: Optional[dict] = None
+    created_at: Optional[datetime] = None
     class Config: from_attributes = True
 
 
@@ -45,10 +57,17 @@ class CustomerResponse(BaseModel):
 class PaymentAccountCreate(BaseModel):
     account_name: str; account_type: str; account_number: str
     opening_balance: float = 0
+    bank_name: Optional[str] = None; branch_name: Optional[str] = None
+    account_holder: Optional[str] = None; currency: str = "THB"
+    status: str = "active"; remark: Optional[str] = None
 
 class PaymentAccountResponse(BaseModel):
     id: int; warehouse_id: int; account_name: str; account_type: str
-    account_number: str; opening_balance: float; created_at: Optional[datetime] = None
+    account_number: str; opening_balance: float
+    bank_name: Optional[str] = None; branch_name: Optional[str] = None
+    account_holder: Optional[str] = None; currency: str = "THB"
+    status: str = "active"; remark: Optional[str] = None
+    created_at: Optional[datetime] = None
     class Config: from_attributes = True
 
 
@@ -138,7 +157,13 @@ class UnmatchRequest(BaseModel):
 
 # ---- Exchange Rate ----
 class ExchangeRateCreate(BaseModel):
-    month: str; from_currency: str; to_currency: str; rate: float
+    from_currency: str; to_currency: str; rate: float
+    effective_from: Optional[str] = None  # ISO datetime, auto now() if not set
+
+class ExchangeRateResponse(BaseModel):
+    id: int; warehouse_id: int; effective_from: str; from_currency: str
+    to_currency: str; rate: float; set_by_name: Optional[str] = None
+    created_at: str
 
 
 # ---- Income Records ----

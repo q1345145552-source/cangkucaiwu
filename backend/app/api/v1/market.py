@@ -24,7 +24,7 @@ class PurchaseRequest(BaseModel):
     contact_info: str
 
 def get_wh(user: User) -> int:
-    return user.warehouse_id or 1
+    return user.warehouse_id
 
 @router.get("")
 async def list_items(
@@ -33,8 +33,10 @@ async def list_items(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(MarketItem); count_q = select(func.count(MarketItem.id))
-    # All warehouse visible for approved items; pending only for uploader or superadmin
+    # All warehouse visible for approved items; pending only for uploader
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(
             (MarketItem.status == MarketStatus.APPROVED.value) |
@@ -74,6 +76,8 @@ async def list_items(
 @router.post("")
 async def create_item(req: MarketCreate, current_user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "仅仓库管理员可上架")
     i = MarketItem(

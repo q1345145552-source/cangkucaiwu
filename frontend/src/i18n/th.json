@@ -52,5 +52,8 @@
   "group_order_group": "สั่งซื้อกลุ่ม",
   "settings_group": "ตั้งค่าระบบ",
   "supplier_group": "จัดการซัพพลายเออร์",
-  "payment_plans": "แผนการชำระเงิน"
+  "payment_plans": "แผนการชำระเงิน",
+  "operating": "รายรับรายจ่ายดำเนินงาน",
+  "other_income_expense": "รายได้อื่นๆ",
+  "fund_review": "ตรวจสอบเงินสำรอง"
 }

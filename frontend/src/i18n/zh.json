@@ -52,5 +52,8 @@
   "group_order_group": "拼单",
   "settings_group": "系统设置",
   "supplier_group": "供应商管理",
-  "payment_plans": "付款计划"
+  "payment_plans": "付款计划",
+  "operating": "运营收支",
+  "other_income_expense": "其他收入",
+  "fund_review": "备用金审核"
 }
