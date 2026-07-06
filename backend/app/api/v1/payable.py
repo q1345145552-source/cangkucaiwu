@@ -299,12 +299,19 @@ async def cashflow_prediction(current_user: User = Depends(get_current_user),
 
 # === Batch export ===
 @router.get("/batch-export")
-async def batch_export(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def batch_export(supplier_id: int = None, start_date: str = None, end_date: str = None,
+                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill).where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(PayableBill.warehouse_id == current_user.warehouse_id)
+    if supplier_id:
+        query = query.where(PayableBill.supplier_id == supplier_id)
+    if start_date:
+        query = query.where(PayableBill.due_date >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.where(PayableBill.due_date <= datetime.fromisoformat(end_date))
     bills = (await db.execute(query.order_by(PayableBill.due_date))).scalars().all()
     sids = {b.supplier_id for b in bills}
     smap = {}

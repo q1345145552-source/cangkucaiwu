@@ -20,6 +20,7 @@ export default function PayablePage() {
   const [form, setForm] = useState({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: 0, confirmed_amount: 0, payment_commitment_days: 0, currency: "THB", detail: "", remark: "", is_fund_linked: "" });
   const [billFile, setBillFile] = useState<File | null>(null);
   const [showExport, setShowExport] = useState(false);
+  const [exportFilters, setExportFilters] = useState({ supplier_id: 0, start_date: "", end_date: "" });
   const [payAmounts, setPayAmounts] = useState<Record<number, number>>({});
   const [voucherFile, setVoucherFile] = useState<File | null>(null);
   const [payingBillId, setPayingBillId] = useState(0);
@@ -28,11 +29,17 @@ export default function PayablePage() {
   const [showPayModal, setShowPayModal] = useState(false);
 
   async function downloadExport(type: string) {
-    const res = await fetch(`${API_URL}/payable/${type}`, { headers: { "Authorization": `Bearer ${getToken()}` } });
+    const params = new URLSearchParams();
+    if (exportFilters.supplier_id) params.set("supplier_id", String(exportFilters.supplier_id));
+    if (exportFilters.start_date) params.set("start_date", exportFilters.start_date);
+    if (exportFilters.end_date) params.set("end_date", exportFilters.end_date);
+    const qs = params.toString() ? "?" + params.toString() : "";
+    const url = `${API_URL}/payable/${type}${qs}`;
+    
+    const res = await fetch(url, { headers: { "Authorization": `Bearer ${getToken()}` } });
     const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${type}.xlsx`; a.click();
-    window.URL.revokeObjectURL(url);
+    const a = document.createElement("a"); a.href = window.URL.createObjectURL(blob);
+    a.download = `${type}.xlsx`; a.click();
   }
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadStats(); }, [page]);
@@ -137,21 +144,37 @@ export default function PayablePage() {
         </div>
       )}
 
-      {/* 操作栏 + 表格 */}
-      <div className="flex justify-end mb-4 gap-2">
-        <div className="relative">
-          <button onClick={()=>setShowExport(!showExport)} className="btn-secondary flex items-center gap-1"><Download size={16}/>导出</button>
-          {showExport && (
-            <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-40 w-44 py-1">
-              <button onClick={()=>{ downloadExport("batch-export"); setShowExport(false); }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导出待付账单</button>
-              <button onClick={()=>{ downloadExport("supplier-statement"); setShowExport(false); }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导出供应商对账单</button>
-            </div>
-          )}
+      {/* 导出筛选 + 操作栏 */}
+      <div className="card mb-4 p-4">
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="flex-1 min-w-[120px]"><label className="form-label">供应商</label>
+            <select className="form-input" value={exportFilters.supplier_id} onChange={e=>setExportFilters({...exportFilters,supplier_id:+e.target.value})}>
+              <option value={0}>全部供应商</option>
+              {suppliers.map((s:any)=><option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div className="w-[130px]"><label className="form-label">开始日期</label>
+            <input type="date" className="form-input" value={exportFilters.start_date} onChange={e=>setExportFilters({...exportFilters,start_date:e.target.value})} />
+          </div>
+          <div className="w-[130px]"><label className="form-label">结束日期</label>
+            <input type="date" className="form-input" value={exportFilters.end_date} onChange={e=>setExportFilters({...exportFilters,end_date:e.target.value})} />
+          </div>
+          <div className="relative">
+            <button onClick={()=>setShowExport(!showExport)} className="btn-secondary flex items-center gap-1 h-[42px]"><Download size={16}/>导出</button>
+            {showExport && (
+              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-40 w-44 py-1">
+                <button onClick={()=>{ downloadExport("batch-export"); setShowExport(false); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导出待付账单</button>
+                <button onClick={()=>{ downloadExport("supplier-statement"); setShowExport(false); }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导出供应商对账单</button>
+              </div>
+            )}
+          </div>
+          <div className="flex-1" />
+          <button onClick={()=>setShowForm(true)} className="btn-primary h-[42px]">新建账单</button>
         </div>
-        <button onClick={()=>setShowForm(true)} className="btn-primary">新建账单</button>
       </div>
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "supplier_name", label: "供应商" },
         { key: "bill_number", label: "账单编号" },
