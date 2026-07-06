@@ -5,7 +5,7 @@ import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
-import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, FileText, Receipt } from "lucide-react";
+import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, FileText, Receipt, Download } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -19,12 +19,21 @@ export default function PayablePage() {
   const [stats, setStats] = useState<any>(null);
   const [form, setForm] = useState({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: 0, confirmed_amount: 0, payment_commitment_days: 0, currency: "THB", detail: "", remark: "", is_fund_linked: "" });
   const [billFile, setBillFile] = useState<File | null>(null);
+  const [showExport, setShowExport] = useState(false);
   const [payAmounts, setPayAmounts] = useState<Record<number, number>>({});
   const [voucherFile, setVoucherFile] = useState<File | null>(null);
   const [payingBillId, setPayingBillId] = useState(0);
   const [payingRow, setPayingRow] = useState<any>(null);
   const [payMethod, setPayMethod] = useState("银行转账");
   const [showPayModal, setShowPayModal] = useState(false);
+
+  async function downloadExport(type: string) {
+    const res = await fetch(`${API_URL}/payable/${type}`, { headers: { "Authorization": `Bearer ${getToken()}` } });
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${type}.xlsx`; a.click();
+    window.URL.revokeObjectURL(url);
+  }
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadStats(); }, [page]);
 
@@ -129,7 +138,18 @@ export default function PayablePage() {
       )}
 
       {/* 操作栏 + 表格 */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 gap-2">
+        <div className="relative">
+          <button onClick={()=>setShowExport(!showExport)} className="btn-secondary flex items-center gap-1"><Download size={16}/>导出</button>
+          {showExport && (
+            <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-40 w-44 py-1">
+              <button onClick={()=>{ downloadExport("batch-export"); setShowExport(false); }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导出待付账单</button>
+              <button onClick={()=>{ downloadExport("supplier-statement"); setShowExport(false); }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导出供应商对账单</button>
+            </div>
+          )}
+        </div>
         <button onClick={()=>setShowForm(true)} className="btn-primary">新建账单</button>
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
