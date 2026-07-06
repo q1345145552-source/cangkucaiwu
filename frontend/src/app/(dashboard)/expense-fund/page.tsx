@@ -51,8 +51,9 @@ export default function ExpenseFundPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">{t("expense_fund")}</h1>
-        <button onClick={() => setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建领用</button>
+      <div className="page-header">
+        <h1 className="page-title">{t("expense_fund")}</h1>
+        <button onClick={() => setShowForm(true)} className="btn-primary">新建领用</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         {balance.map((b: any) => (
@@ -87,12 +88,12 @@ export default function ExpenseFundPage() {
         </div>
       )}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-96">
           <h2 className="font-semibold mb-4">备用金领用</h2>
           <div className="space-y-3">
-            <div><label className="text-sm">领用日期</label><input type="date" className="border rounded px-3 py-2 w-full" value={form.receive_date} onChange={e=>setForm({...form,receive_date:e.target.value})} /></div>
-            <div><label className="text-sm">金额</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.amount} onChange={e=>setForm({...form,amount:+e.target.value})} /></div>
-            <div><label className="text-sm">用途</label><input className="border rounded px-3 py-2 w-full" value={form.purpose} onChange={e=>setForm({...form,purpose:e.target.value})} /></div>
+            <div><label className="form-label">领用日期</label><input type="date" className="form-input" value={form.receive_date} onChange={e=>setForm({...form,receive_date:e.target.value})} /></div>
+            <div><label className="form-label">金额</label><input type="number" className="form-input" value={form.amount} onChange={e=>setForm({...form,amount:+e.target.value})} /></div>
+            <div><label className="form-label">用途</label><input className="form-input" value={form.purpose} onChange={e=>setForm({...form,purpose:e.target.value})} /></div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button>

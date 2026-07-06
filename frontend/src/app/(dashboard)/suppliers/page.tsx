@@ -175,7 +175,7 @@ export default function SuppliersPage() {
     <>
       <div className="flex justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold mr-2">{t("suppliers")}</h1>
+          <h1 className="page-title">{t("suppliers")}</h1>
           <button onClick={() => { setFilterCat(1); setPage(1); }}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 1 ? "bg-blue-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
             耗材商
@@ -204,7 +204,7 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
               <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
-              <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建供应商</button>
+              <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button>
             </>
           )}
         </div>
@@ -233,7 +233,7 @@ export default function SuppliersPage() {
       
       {/* Products Modal */}
       {showProducts && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setShowProducts(false)}>
+        <div className="modal-overlay" onClick={()=>setShowProducts(false)}>
           <div className="bg-white rounded-xl p-6 w-[600px] max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4">产品管理</h2>
             <div className="grid grid-cols-5 gap-2 mb-4 p-3 bg-gray-50 rounded">
@@ -254,7 +254,7 @@ export default function SuppliersPage() {
 
       {/* Logistics Prices Modal */}
       {showLogistics && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setShowLogistics(false)}>
+        <div className="modal-overlay" onClick={()=>setShowLogistics(false)}>
           <div className="bg-white rounded-xl p-6 w-[700px] max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4">跨境物流报价</h2>
             <div className="grid grid-cols-3 gap-2 mb-2 p-3 bg-gray-50 rounded">
@@ -285,7 +285,7 @@ export default function SuppliersPage() {
 
       {/* Compare Modal */}
       {showCompare && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setShowCompare(false)}>
+        <div className="modal-overlay" onClick={()=>setShowCompare(false)}>
           <div className="bg-white rounded-xl p-6 w-[800px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4 flex items-center gap-2"><Scale size={20}/>供应商比价</h2>
             {/* Mode tabs */}
@@ -304,7 +304,7 @@ export default function SuppliersPage() {
                   <option value={0}>全部类别</option>
                   {categories.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <button onClick={()=>doCompare("product")} className="bg-primary text-white px-4 py-2 rounded text-sm">查询</button>
+                <button onClick={()=>doCompare("product")} className="btn-primary">查询</button>
               </div>
             ) : (
               <div className="flex gap-2 mb-4 flex-wrap">
@@ -317,7 +317,7 @@ export default function SuppliersPage() {
                 <select className="border rounded px-3 py-2 text-sm" value={compareWarehouse} onChange={e=>setCompareWarehouse(e.target.value)}>
                   <option>深圳仓</option><option>义乌仓</option><option>广州仓</option>
                 </select>
-                <button onClick={()=>doCompare("logistics")} className="bg-primary text-white px-4 py-2 rounded text-sm">查询</button>
+                <button onClick={()=>doCompare("logistics")} className="btn-primary">查询</button>
               </div>
             )}
 
@@ -347,7 +347,7 @@ export default function SuppliersPage() {
 
       {/* Detail Modal */}
       {detail && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setDetail(null)}>
+        <div className="modal-overlay" onClick={()=>setDetail(null)}>
           <div className="bg-white rounded-xl w-[700px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             {/* 头部 */}
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
@@ -450,7 +450,7 @@ export default function SuppliersPage() {
 
       {/* Procurement Modal */}
       {showProcurement && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setShowProcurement(false)}>
+        <div className="modal-overlay" onClick={()=>setShowProcurement(false)}>
           <div className="bg-white rounded-xl w-[92vw] max-w-6xl max-h-[90vh] overflow-auto p-6" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">采购汇总报表</h2>
@@ -547,24 +547,24 @@ export default function SuppliersPage() {
 
       {/* Create Supplier Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setShowForm(false)}>
+        <div className="modal-overlay" onClick={()=>setShowForm(false)}>
           <div className="bg-white rounded-xl p-6 w-[500px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4">新建供应商</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-sm">名称</label><input className="border rounded px-3 py-2 w-full" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
-              <div><label className="text-sm">类别</label>
-                <select className="border rounded px-3 py-2 w-full" value={form.category_id} onChange={e=>setForm({...form,category_id:+e.target.value})}>
+              <div><label className="form-label">名称</label><input className="form-input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
+              <div><label className="form-label">类别</label>
+                <select className="form-input" value={form.category_id} onChange={e=>setForm({...form,category_id:+e.target.value})}>
                   <option value={0}>选择类别</option>
                   {categories.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
-              <div><label className="text-sm">联系人</label><input className="border rounded px-3 py-2 w-full" value={form.contact_person} onChange={e=>setForm({...form,contact_person:e.target.value})} /></div>
-              <div><label className="text-sm">联系方式</label><input className="border rounded px-3 py-2 w-full" value={form.contact_info} onChange={e=>setForm({...form,contact_info:e.target.value})} /></div>
-              <div><label className="text-sm">地址</label><input className="border rounded px-3 py-2 w-full" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
-              <div><label className="text-sm">付款条件</label><input className="border rounded px-3 py-2 w-full" value={form.payment_terms} onChange={e=>setForm({...form,payment_terms:e.target.value})} /></div>
-              <div><label className="text-sm">结算周期</label><input className="border rounded px-3 py-2 w-full" value={form.settlement_cycle} onChange={e=>setForm({...form,settlement_cycle:e.target.value})} placeholder="如: 月结30天" /></div>
+              <div><label className="form-label">联系人</label><input className="form-input" value={form.contact_person} onChange={e=>setForm({...form,contact_person:e.target.value})} /></div>
+              <div><label className="form-label">联系方式</label><input className="form-input" value={form.contact_info} onChange={e=>setForm({...form,contact_info:e.target.value})} /></div>
+              <div><label className="form-label">地址</label><input className="form-input" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
+              <div><label className="form-label">付款条件</label><input className="form-input" value={form.payment_terms} onChange={e=>setForm({...form,payment_terms:e.target.value})} /></div>
+              <div><label className="form-label">结算周期</label><input className="form-input" value={form.settlement_cycle} onChange={e=>setForm({...form,settlement_cycle:e.target.value})} placeholder="如: 月结30天" /></div>
             </div>
-            <div className="mt-3"><label className="text-sm">合作内容</label><textarea className="border rounded px-3 py-2 w-full" rows={2} value={form.cooperation_content} onChange={e=>setForm({...form,cooperation_content:e.target.value})} /></div>
+            <div className="mt-3"><label className="form-label">合作内容</label><textarea className="form-input" rows={2} value={form.cooperation_content} onChange={e=>setForm({...form,cooperation_content:e.target.value})} /></div>
 
             <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">保存</button></div>
           </div></div>

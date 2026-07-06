@@ -63,13 +63,13 @@ export default function ReconciliationPage() {
   return (
     <>
       <div className="mb-4">
-        <h1 className="text-xl font-bold mb-3">{t("reconciliation")}</h1>
+        <h1 className="page-title">{t("reconciliation")}</h1>
         <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm">
           <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="border rounded px-3 py-2 text-sm" />
           <select value={whId} onChange={e => setWhId(+e.target.value)} className="border rounded px-3 py-2 text-sm">
             {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
-          <button onClick={runRecon} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">发起对账</button>
+          <button onClick={runRecon} className="btn-primary">发起对账</button>
         </div>
       </div>
       {result && (

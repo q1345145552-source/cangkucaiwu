@@ -82,9 +82,9 @@ export default function PayablePage() {
   return (
     <>
       <div className="flex justify-between mb-4">
-        <div><h1 className="text-xl font-bold">{t("payable")}</h1>
+        <div><h1 className="page-title">{t("payable")}</h1>
           <div className="text-sm text-gray-500 mt-1">待付总额: <span className="text-red-600 font-semibold">{(cashflow||0).toLocaleString()}</span></div></div>
-        <button onClick={()=>setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建账单</button>
+        <button onClick={()=>setShowForm(true)} className="btn-primary">新建账单</button>
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "supplier_name", label: "供应商" }, { key: "bill_number", label: "账单编号" },
@@ -103,32 +103,32 @@ export default function PayablePage() {
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} />}
       
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-[500px] max-h-[85vh] overflow-auto">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-[500px] max-h-[85vh] overflow-auto">
           <h2 className="font-semibold mb-4">新建应付账单</h2>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-sm">供应商</label><select className="border rounded px-3 py-2 w-full" value={form.supplier_id} onChange={e=>setForm({...form,supplier_id:+e.target.value})}><option>选择</option>{suppliers.map((s:any)=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-            <div><label className="text-sm">账单编号</label><input className="border rounded px-3 py-2 w-full" value={form.bill_number} onChange={e=>setForm({...form,bill_number:e.target.value})} /></div>
-            <div><label className="text-sm">账单日期</label><input type="date" className="border rounded px-3 py-2 w-full" value={form.bill_date} onChange={e=>setForm({...form,bill_date:e.target.value})} /></div>
-            <div><label className="text-sm">到期日期</label><input type="date" className="border rounded px-3 py-2 w-full" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>
-            <div><label className="text-sm">金额</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.amount} onChange={e=>setForm({...form,amount:+e.target.value})} /></div>
-            <div><label className="text-sm">供应商确认金额</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.confirmed_amount} onChange={e=>setForm({...form,confirmed_amount:+e.target.value})} placeholder="不一致时自动标差异" /></div>
-            <div><label className="text-sm">付款承诺天数</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.payment_commitment_days} onChange={e=>setForm({...form,payment_commitment_days:+e.target.value})} /></div>
+            <div><label className="form-label">供应商</label><select className="form-input" value={form.supplier_id} onChange={e=>setForm({...form,supplier_id:+e.target.value})}><option>选择</option>{suppliers.map((s:any)=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+            <div><label className="form-label">账单编号</label><input className="form-input" value={form.bill_number} onChange={e=>setForm({...form,bill_number:e.target.value})} /></div>
+            <div><label className="form-label">账单日期</label><input type="date" className="form-input" value={form.bill_date} onChange={e=>setForm({...form,bill_date:e.target.value})} /></div>
+            <div><label className="form-label">到期日期</label><input type="date" className="form-input" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>
+            <div><label className="form-label">金额</label><input type="number" className="form-input" value={form.amount} onChange={e=>setForm({...form,amount:+e.target.value})} /></div>
+            <div><label className="form-label">供应商确认金额</label><input type="number" className="form-input" value={form.confirmed_amount} onChange={e=>setForm({...form,confirmed_amount:+e.target.value})} placeholder="不一致时自动标差异" /></div>
+            <div><label className="form-label">付款承诺天数</label><input type="number" className="form-input" value={form.payment_commitment_days} onChange={e=>setForm({...form,payment_commitment_days:+e.target.value})} /></div>
           </div>
           <div className="mt-3 flex items-center gap-2">
             <input type="checkbox" id="fund_linked" checked={form.is_fund_linked === "yes"} onChange={e=>setForm({...form,is_fund_linked: e.target.checked ? "yes" : ""})} />
             <label htmlFor="fund_linked" className="text-sm">备用金垫付</label>
           </div>
-          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded text-sm">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded text-sm">保存</button></div>
+          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="btn-secondary">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded text-sm">保存</button></div>
         </div></div>
       )}
 
       {showPayModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-96">
           <h2 className="font-semibold mb-4">付款</h2>
-          <div><label className="text-sm">付款金额</label><input type="number" className="border rounded px-3 py-2 w-full" value={payAmounts[payingBillId]||0} onChange={e=>setPayAmounts(prev=>({...prev,[payingBillId]:+e.target.value}))} /></div>
-          <div className="mt-3"><label className="text-sm">付款方式</label><select className="border rounded px-3 py-2 w-full text-sm" value={payMethod} onChange={e=>setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
-          <div className="mt-3"><label className="text-sm">上传凭证 (非必填)</label><input type="file" accept="image/*" onChange={e=>setVoucherFile(e.target.files?.[0]||null)} className="border rounded px-3 py-2 w-full text-sm" /></div>
-          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowPayModal(false)} className="px-4 py-2 border rounded text-sm">取消</button><button onClick={handlePay} className="px-4 py-2 bg-primary text-white rounded text-sm">确认付款</button></div>
+          <div><label className="form-label">付款金额</label><input type="number" className="form-input" value={payAmounts[payingBillId]||0} onChange={e=>setPayAmounts(prev=>({...prev,[payingBillId]:+e.target.value}))} /></div>
+          <div className="mt-3"><label className="form-label">付款方式</label><select className="form-input text-sm" value={payMethod} onChange={e=>setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
+          <div className="mt-3"><label className="form-label">上传凭证 (非必填)</label><input type="file" accept="image/*" onChange={e=>setVoucherFile(e.target.files?.[0]||null)} className="form-input text-sm" /></div>
+          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowPayModal(false)} className="btn-secondary">取消</button><button onClick={handlePay} className="px-4 py-2 bg-primary text-white rounded text-sm">确认付款</button></div>
         </div></div>
       )}
     </>

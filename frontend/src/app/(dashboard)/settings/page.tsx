@@ -80,7 +80,7 @@ export default function SettingsPage() {
   return (
     <>
       <div className="mb-4">
-        <h1 className="text-xl font-bold">{t("settings")}</h1>
+        <h1 className="page-title">{t("settings")}</h1>
         <div className="flex gap-3 mt-2">
           <button onClick={()=>setTab("profile")} className={`px-4 py-1.5 rounded text-sm ${tab==="profile"?"bg-primary text-white":"border"}`}>个人设置</button>
           {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
@@ -105,9 +105,9 @@ export default function SettingsPage() {
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <h3 className="font-semibold mb-3 flex items-center gap-2"><Key size={18}/> {t("change_password")}</h3>
             <div className="space-y-3">
-              <div><label className="text-sm">{t("old_password")}</label><input type="password" className="border rounded px-3 py-2 w-full text-sm" value={pw.old} onChange={e=>setPw({...pw,old:e.target.value})} /></div>
-              <div><label className="text-sm">{t("new_password")}</label><input type="password" className="border rounded px-3 py-2 w-full text-sm" value={pw.new} onChange={e=>setPw({...pw,new:e.target.value})} /></div>
-              <button onClick={changePassword} className="bg-primary text-white px-4 py-2 rounded text-sm">修改密码</button>
+              <div><label className="form-label">{t("old_password")}</label><input type="password" className="form-input text-sm" value={pw.old} onChange={e=>setPw({...pw,old:e.target.value})} /></div>
+              <div><label className="form-label">{t("new_password")}</label><input type="password" className="form-input text-sm" value={pw.new} onChange={e=>setPw({...pw,new:e.target.value})} /></div>
+              <button onClick={changePassword} className="btn-primary">修改密码</button>
               {pwMsg && <div className="text-sm text-green-600">{pwMsg}</div>}
             </div>
           </div>
@@ -119,14 +119,14 @@ export default function SettingsPage() {
           <div className="bg-white rounded-xl p-4 shadow-sm mb-4 max-w-md">
             <h3 className="font-semibold mb-3 flex items-center gap-2"><UserPlus size={18}/> {t("create_user")}</h3>
             <div className="space-y-3">
-              <div><label className="text-sm">用户名</label><input className="border rounded px-3 py-2 w-full text-sm" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})} /></div>
-              <div><label className="text-sm">显示名称</label><input className="border rounded px-3 py-2 w-full text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} /></div>
-              <div><label className="text-sm">密码</label><input type="password" className="border rounded px-3 py-2 w-full text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} /></div>
-              <div><label className="text-sm">角色</label><select className="border rounded px-3 py-2 w-full text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
+              <div><label className="form-label">用户名</label><input className="form-input text-sm" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})} /></div>
+              <div><label className="form-label">显示名称</label><input className="form-input text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} /></div>
+              <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} /></div>
+              <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
                 <option value="staff">Staff 仓库财务</option>
                 {user?.role === "super_admin" && <option value="warehouse_admin">WarehouseAdmin 仓库老板</option>}
               </select></div>
-              <button onClick={createUser} className="bg-primary text-white px-4 py-2 rounded text-sm">创建用户</button>
+              <button onClick={createUser} className="btn-primary">创建用户</button>
             </div>
           </div>
 
@@ -158,7 +158,7 @@ export default function SettingsPage() {
 
           {/* Edit permissions modal */}
           {editUser && (
-            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setEditUser(null)}>
+            <div className="modal-overlay" onClick={() => setEditUser(null)}>
               <div className="bg-white rounded-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
                 <h2 className="text-lg font-semibold mb-1">编辑扩展权限</h2>
                 <p className="text-sm text-gray-500 mb-4">{editUser.display_name} ({editUser.username})</p>
@@ -176,7 +176,7 @@ export default function SettingsPage() {
                   ))}
                 </div>
                 <div className="flex justify-end gap-3">
-                  <button onClick={() => setEditUser(null)} className="px-4 py-2 border rounded-lg text-sm">取消</button>
+                  <button onClick={() => setEditUser(null)} className="btn-secondary">取消</button>
                   <button onClick={saveEdit} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
                 </div>
               </div>

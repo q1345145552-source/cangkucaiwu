@@ -41,8 +41,9 @@ export default function PaymentPlansPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">付款计划管理</h1>
-        <button onClick={()=>setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded text-sm">新建计划</button>
+      <div className="page-header">
+        <h1 className="page-title">付款计划管理</h1>
+        <button onClick={()=>setShowForm(true)} className="btn-primary">新建计划</button>
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "plan_name", label: "计划名称" },
@@ -51,11 +52,11 @@ export default function PaymentPlansPage() {
         { key: "status", label: "状态" },
       ]} data={plans} total={plans.length} page={1} pageSize={100} onPageChange={()=>{}} />}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-[600px] max-h-[80vh] overflow-auto">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-[600px] max-h-[80vh] overflow-auto">
           <h2 className="font-semibold mb-4">新建付款计划</h2>
           <div className="space-y-3">
-            <div><input className="border rounded px-3 py-2 w-full text-sm" placeholder="计划名称" value={form.plan_name} onChange={e=>setForm({...form,plan_name:e.target.value})} /></div>
-            <div><input type="date" className="border rounded px-3 py-2 w-full text-sm" value={form.planned_date} onChange={e=>setForm({...form,planned_date:e.target.value})} /></div>
+            <div><input className="form-input text-sm" placeholder="计划名称" value={form.plan_name} onChange={e=>setForm({...form,plan_name:e.target.value})} /></div>
+            <div><input type="date" className="form-input text-sm" value={form.planned_date} onChange={e=>setForm({...form,planned_date:e.target.value})} /></div>
             <div className="text-sm font-medium">选择待付账单:</div>
             {bills.map((b:any) => (
               <div key={b.id} className="flex items-center gap-3 py-1">

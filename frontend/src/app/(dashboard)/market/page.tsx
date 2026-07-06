@@ -67,8 +67,8 @@ export default function MarketPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4">
-        <h1 className="text-xl font-bold">{t("market")}</h1>
+      <div className="page-header">
+        <h1 className="page-title">{t("market")}</h1>
         <div className="flex gap-2">
           {user?.role === "super_admin" && (
             <button onClick={() => setTab(tab === "review" ? "all" : "review")}
@@ -77,7 +77,7 @@ export default function MarketPage() {
             </button>
           )}
           {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
-            <button onClick={() => setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">上架商品</button>
+            <button onClick={() => setShowForm(true)} className="btn-primary">上架商品</button>
           )}
         </div>
       </div>
@@ -139,13 +139,13 @@ export default function MarketPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-96">
           <h2 className="font-semibold mb-4">上架商品</h2>
           <div className="space-y-3">
-            <div><label className="text-sm">物品名称</label><input className="border rounded px-3 py-2 w-full" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
-            <div><label className="text-sm">数量</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.quantity} onChange={e=>setForm({...form,quantity:+e.target.value})} /></div>
-            <div><label className="text-sm">价格 (0=无偿)</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.price} onChange={e=>setForm({...form,price:+e.target.value})} /></div>
-            <div><label className="text-sm">描述</label><textarea className="border rounded px-3 py-2 w-full" rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} /></div>
+            <div><label className="form-label">物品名称</label><input className="form-input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
+            <div><label className="form-label">数量</label><input type="number" className="form-input" value={form.quantity} onChange={e=>setForm({...form,quantity:+e.target.value})} /></div>
+            <div><label className="form-label">价格 (0=无偿)</label><input type="number" className="form-input" value={form.price} onChange={e=>setForm({...form,price:+e.target.value})} /></div>
+            <div><label className="form-label">描述</label><textarea className="form-input" rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} /></div>
           </div>
           <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">上架</button></div>
         </div></div>

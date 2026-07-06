@@ -61,14 +61,14 @@ export default function IncomeExpensePage() {
     <>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold">{t("income_expense")}</h1>
+          <h1 className="page-title">{t("income_expense")}</h1>
           <div className="flex gap-6 mt-2 text-sm">
             <span className="text-green-600">收入: ¥{totals.total_income.toLocaleString()}</span>
             <span className="text-red-600">支出: ¥{totals.total_expense.toLocaleString()}</span>
             <span className={totals.net >= 0 ? "text-blue-600" : "text-red-600"}>净额: ¥{totals.net.toLocaleString()}</span>
           </div>
         </div>
-        <button onClick={() => { loadRefs(); setShowForm(true); }} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建记录</button>
+        <button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary">新建记录</button>
       </div>
       <div className="flex items-center gap-3 mb-4">
         <div className="bg-white rounded-lg p-1 flex"><button onClick={() => { setTab("income"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "income" ? "bg-primary text-white" : ""}`}>收款</button><button onClick={() => { setTab("expense"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "expense" ? "bg-primary text-white" : ""}`}>付款</button></div>
@@ -76,19 +76,19 @@ export default function IncomeExpensePage() {
       </div>
       <DataTable columns={columns} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} />
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+        <div className="modal-overlay">
           <div className="bg-white rounded-xl w-full max-w-md p-6">
             <h2 className="text-lg font-semibold mb-4">{tab === "income" ? "新建收款" : "新建付款"}</h2>
             <div className="space-y-3">
-              <div><label className="block text-sm mb-1">类别</label><select className="border rounded px-3 py-2 w-full" value={form.category_id} onChange={e => setForm({...form, category_id: +e.target.value})}><option>选择类别</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-              <div><label className="block text-sm mb-1">收款账户</label><select className="border rounded px-3 py-2 w-full" value={form.account_id} onChange={e => setForm({...form, account_id: +e.target.value})}><option>选择账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}</select></div>
-              <div><label className="block text-sm mb-1">日期</label><input type="date" className="border rounded px-3 py-2 w-full" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
-              <div><label className="block text-sm mb-1">金额</label><input type="number" step="0.01" className="border rounded px-3 py-2 w-full" value={form.amount} onChange={e => setForm({...form, amount: +e.target.value})} /></div>
-              <div><label className="block text-sm mb-1">币种</label><select className="border rounded px-3 py-2 w-full" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
-              <div><label className="block text-sm mb-1">备注</label><input className="border rounded px-3 py-2 w-full" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">类别</label><select className="form-input" value={form.category_id} onChange={e => setForm({...form, category_id: +e.target.value})}><option>选择类别</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+              <div><label className="block text-sm mb-1">收款账户</label><select className="form-input" value={form.account_id} onChange={e => setForm({...form, account_id: +e.target.value})}><option>选择账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}</select></div>
+              <div><label className="block text-sm mb-1">日期</label><input type="date" className="form-input" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">金额</label><input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({...form, amount: +e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
+              <div><label className="block text-sm mb-1">备注</label><input className="form-input" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary">取消</button>
               <button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
             </div>
           </div>

@@ -49,8 +49,9 @@ export default function ReimbursementPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">{t("reimbursement")}</h1>
-        <button onClick={() => { setItems([{category:"",amount:0,description:""}]); setShowForm(true); }} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建报销</button>
+      <div className="page-header">
+        <h1 className="page-title">{t("reimbursement")}</h1>
+        <button onClick={() => { setItems([{category:"",amount:0,description:""}]); setShowForm(true); }} className="btn-primary">新建报销</button>
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable onRowClick={(row:any) => viewDetail(row.id)} columns={[
         { key: "employee_name", label: "报销人" }, { key: "submit_date", label: "提交日期", render: (v:any)=>v?.slice(0,10) },
@@ -59,7 +60,7 @@ export default function ReimbursementPage() {
       ]} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />}
 
       {detail && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-[500px] max-h-[80vh] overflow-auto">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-[500px] max-h-[80vh] overflow-auto">
           <h2 className="font-semibold mb-4">报销详情</h2>
           <div className="text-sm text-gray-500 mb-2">状态: <span className={statusColors[detail.status]}>{detail.status}</span> | 总额: ¥{detail.total_amount}</div>
           <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-1">类别</th><th>金额</th><th>说明</th><th>审核</th></tr></thead>
@@ -71,7 +72,7 @@ export default function ReimbursementPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-[550px] max-h-[85vh] overflow-auto">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-[550px] max-h-[85vh] overflow-auto">
           <h2 className="font-semibold mb-4">新建报销单</h2>
           <div className="flex gap-3 mb-4">
             <input type="date" className="border rounded px-3 py-2" value={form.submit_date} onChange={e=>setForm({...form,submit_date:e.target.value})} />
@@ -87,7 +88,7 @@ export default function ReimbursementPage() {
           ))}
           <button onClick={addLine} className="text-sm text-primary mb-4">+ 添加明细行</button>
           <div className="flex justify-end gap-3">
-            <button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded text-sm">取消</button>
+            <button onClick={()=>setShowForm(false)} className="btn-secondary">取消</button>
             <button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded text-sm">提交</button>
           </div>
         </div></div>

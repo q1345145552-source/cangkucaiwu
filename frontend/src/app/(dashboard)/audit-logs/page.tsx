@@ -25,8 +25,8 @@ export default function AuditLogsPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4">
-        <h1 className="text-xl font-bold">操作日志 & 数据备份</h1>
+      <div className="page-header">
+        <h1 className="page-title">操作日志 & 数据备份</h1>
         <button onClick={backup} className="flex items-center gap-1 bg-green-500 text-white px-4 py-2 rounded text-sm"><Download size={14}/> 备份全部数据</button>
       </div>
       <div className="mb-4"><input type="date" value={date} onChange={e=>{setDate(e.target.value);setPage(1);}} className="border rounded px-3 py-2 text-sm" /></div>

@@ -24,7 +24,8 @@ export default function LedgerPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">资金流水总览</h1>
+      <div className="page-header">
+        <h1 className="page-title">资金流水总览</h1>
         <input type="month" value={month} onChange={e=>{setMonth(e.target.value);setPage(1);}} className="border rounded px-3 py-2 text-sm" />
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[

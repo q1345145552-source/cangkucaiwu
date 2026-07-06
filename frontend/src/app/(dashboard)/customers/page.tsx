@@ -55,9 +55,9 @@ export default function CustomersPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">{t("customers")}</h1>
+        <h1 className="page-title">{t("customers")}</h1>
         {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
-          <button onClick={() => setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">{t("create")}</button>
+          <button onClick={() => setShowForm(true)} className="btn-primary">{t("create")}</button>
         )}
       </div>
       <div className="mb-4"><input type="text" placeholder={t("search") + "..."} value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="border rounded-lg px-3 py-2 w-64 text-sm" /></div>
@@ -69,13 +69,13 @@ export default function CustomersPage() {
       {showForm && (
         <FormModal title="新建客户" onClose={() => setShowForm(false)} onSave={handleCreate}>
           <div className="space-y-3">
-            <div><label className="block text-sm mb-1">客户编号</label><input className="border rounded px-3 py-2 w-full text-sm" value={form.customer_code} onChange={e => setForm({...form, customer_code: e.target.value})} /></div>
-            <div><label className="block text-sm mb-1">公司名称</label><input className="border rounded px-3 py-2 w-full text-sm" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} /></div>
-            <div><label className="block text-sm mb-1">联系人</label><input className="border rounded px-3 py-2 w-full text-sm" value={form.contact_person} onChange={e => setForm({...form, contact_person: e.target.value})} /></div>
-            <div><label className="block text-sm mb-1">联系方式</label><input className="border rounded px-3 py-2 w-full text-sm" value={form.contact_info} onChange={e => setForm({...form, contact_info: e.target.value})} /></div>
+            <div><label className="block text-sm mb-1">客户编号</label><input className="form-input text-sm" value={form.customer_code} onChange={e => setForm({...form, customer_code: e.target.value})} /></div>
+            <div><label className="block text-sm mb-1">公司名称</label><input className="form-input text-sm" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} /></div>
+            <div><label className="block text-sm mb-1">联系人</label><input className="form-input text-sm" value={form.contact_person} onChange={e => setForm({...form, contact_person: e.target.value})} /></div>
+            <div><label className="block text-sm mb-1">联系方式</label><input className="form-input text-sm" value={form.contact_info} onChange={e => setForm({...form, contact_info: e.target.value})} /></div>
             <div className="flex items-center gap-2"><input type="checkbox" checked={form.credit_status} onChange={e => setForm({...form, credit_status: e.target.checked})} /><span className="text-sm">账期客户</span></div>
-            {form.credit_status && <div><label className="block text-sm mb-1">额度</label><input type="number" className="border rounded px-3 py-2 w-full text-sm" value={form.credit_limit} onChange={e => setForm({...form, credit_limit: +e.target.value})} /></div>}
-            <div><label className="block text-sm mb-1">备注</label><input className="border rounded px-3 py-2 w-full text-sm" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
+            {form.credit_status && <div><label className="block text-sm mb-1">额度</label><input type="number" className="form-input text-sm" value={form.credit_limit} onChange={e => setForm({...form, credit_limit: +e.target.value})} /></div>}
+            <div><label className="block text-sm mb-1">备注</label><input className="form-input text-sm" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
           </div>
         </FormModal>
       )}

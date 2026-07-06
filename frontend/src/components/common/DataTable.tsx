@@ -1,10 +1,11 @@
 "use client";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, PackageOpen } from "lucide-react";
 
 interface Column {
   key: string;
   label: string;
   render?: (value: any, row: any) => React.ReactNode;
+  align?: "left" | "right" | "center";
 }
 
 export default function DataTable({ columns, data, total, page, pageSize, onPageChange, onRowClick }: {
@@ -19,23 +20,32 @@ export default function DataTable({ columns, data, total, page, pageSize, onPage
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="table-card">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+        <table>
+          <thead>
             <tr>
               {columns.map(c => (
-                <th key={c.key} className="text-left px-4 py-3 font-medium text-gray-600">{c.label}</th>
+                <th key={c.key} className={c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : ""}>
+                  {c.label}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.length === 0 ? (
-              <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-gray-400">暂无数据</td></tr>
+              <tr>
+                <td colSpan={columns.length}>
+                  <div className="empty-state py-12">
+                    <PackageOpen size={40} className="empty-state-icon" />
+                    <span className="empty-state-text">暂无数据</span>
+                  </div>
+                </td>
+              </tr>
             ) : data.map((row, i) => (
-              <tr key={row.id || i} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => onRowClick?.(row)}>
+              <tr key={row.id || i} className={onRowClick ? "cursor-pointer" : ""} onClick={() => onRowClick?.(row)}>
                 {columns.map(c => (
-                  <td key={c.key} className="px-4 py-3 text-gray-700">
+                  <td key={c.key} className={c.align === "right" ? "text-right font-medium tabular-nums" : c.align === "center" ? "text-center" : ""}>
                     {c.render ? c.render(row[c.key], row) : (row[c.key] ?? "-")}
                   </td>
                 ))}

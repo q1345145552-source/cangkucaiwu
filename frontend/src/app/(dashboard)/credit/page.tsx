@@ -37,8 +37,9 @@ export default function CreditPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4"><h1 className="text-xl font-bold">{t("credit")}</h1>
-        <button onClick={()=>setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建账期客户</button>
+      <div className="page-header">
+        <h1 className="page-title">{t("credit")}</h1>
+        <button onClick={()=>setShowForm(true)} className="btn-primary">新建账期客户</button>
       </div>
 
       {/* Dashboard cards */}
@@ -66,7 +67,7 @@ export default function CreditPage() {
       ]} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
 
       {detail && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-[500px] max-h-[80vh] overflow-auto">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-[500px] max-h-[80vh] overflow-auto">
           <h2 className="font-semibold mb-2">{detail.customer_name}</h2>
           <div className="text-sm text-gray-500 mb-4">额度: ¥{detail.credit_limit?.toLocaleString()} | 欠款: ¥{(detail.current_debt||0).toLocaleString()} | 逾期: {detail.overdue_days||0}天</div>
           <h3 className="text-sm font-semibold mb-2">还款记录</h3>
@@ -77,14 +78,14 @@ export default function CreditPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-96">
           <h2 className="font-semibold mb-4">新建账期客户</h2>
           <div className="space-y-3">
-            <div><label className="text-sm">客户</label><select className="border rounded px-3 py-2 w-full" value={form.customer_id} onChange={e=>setForm({...form,customer_id:+e.target.value})}><option>选择</option>{customers.map((c:any)=><option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
-            <div><label className="text-sm">信用额度</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.credit_limit} onChange={e=>setForm({...form,credit_limit:+e.target.value})} /></div>
-            <div><label className="text-sm">还款日(每月)</label><input type="number" min={1} max={31} className="border rounded px-3 py-2 w-full" value={form.repayment_day} onChange={e=>setForm({...form,repayment_day:+e.target.value})} /></div>
+            <div><label className="form-label">客户</label><select className="form-input" value={form.customer_id} onChange={e=>setForm({...form,customer_id:+e.target.value})}><option>选择</option>{customers.map((c:any)=><option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
+            <div><label className="form-label">信用额度</label><input type="number" className="form-input" value={form.credit_limit} onChange={e=>setForm({...form,credit_limit:+e.target.value})} /></div>
+            <div><label className="form-label">还款日(每月)</label><input type="number" min={1} max={31} className="form-input" value={form.repayment_day} onChange={e=>setForm({...form,repayment_day:+e.target.value})} /></div>
           </div>
-          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded text-sm">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded text-sm">保存</button></div>
+          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="btn-secondary">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded text-sm">保存</button></div>
         </div></div>
       )}
     </>

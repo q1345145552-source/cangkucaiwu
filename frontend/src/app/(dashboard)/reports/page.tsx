@@ -41,7 +41,7 @@ export default function ReportsPage() {
 
   return (
     <>
-      <div className="mb-4"><h1 className="text-xl font-bold">{t("reports")}</h1></div>
+      <div className="mb-4"><h1 className="page-title">{t("reports")}</h1></div>
 
       <div className="flex items-center gap-3 mb-6">
         <input type="month" value={month} onChange={e => { setMonth(e.target.value); if (selected) loadReport(selected); }} className="border rounded px-3 py-2 text-sm" />

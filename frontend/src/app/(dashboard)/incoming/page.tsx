@@ -44,15 +44,15 @@ export default function IncomingPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">{t("incoming")}</h1>
-        <button onClick={() => setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">录入到账</button>
+        <h1 className="page-title">{t("incoming")}</h1>
+        <button onClick={() => setShowForm(true)} className="btn-primary">录入到账</button>
         <button onClick={() => {
           const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls';
           input.onchange = async (e: any) => {
             const file = e.target.files?.[0]; if (!file) return;
             alert('Excel导入功能：请确保文件包含 received_date, amount, currency, payer_name 列');
           }; input.click();
-        }} className="border px-4 py-2 rounded-lg text-sm">批量导入Excel</button>
+        }} className="btn-secondary">批量导入Excel</button>
       </div>
       {loading ? (
         <div className="text-center py-8 text-gray-400">加载中...</div>
@@ -60,18 +60,18 @@ export default function IncomingPage() {
         <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
       )}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+        <div className="modal-overlay">
           <div className="bg-white rounded-xl w-full max-w-md p-6">
             <h2 className="text-lg font-semibold mb-4">录入到账流水</h2>
             <div className="space-y-3">
-              <div><label className="block text-sm mb-1">到账日期</label><input type="date" className="border rounded px-3 py-2 w-full" value={form.received_date} onChange={e => setForm({...form, received_date: e.target.value})} /></div>
-              <div><label className="block text-sm mb-1">金额</label><input type="number" step="0.01" className="border rounded px-3 py-2 w-full" value={form.amount} onChange={e => setForm({...form, amount: +e.target.value})} /></div>
-              <div><label className="block text-sm mb-1">币种</label><select className="border rounded px-3 py-2 w-full" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
-              <div><label className="block text-sm mb-1">付款方</label><input className="border rounded px-3 py-2 w-full" value={form.payer_name} onChange={e => setForm({...form, payer_name: e.target.value})} /></div>
-              <div><label className="block text-sm mb-1">备注</label><input className="border rounded px-3 py-2 w-full" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">到账日期</label><input type="date" className="form-input" value={form.received_date} onChange={e => setForm({...form, received_date: e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">金额</label><input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({...form, amount: +e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
+              <div><label className="block text-sm mb-1">付款方</label><input className="form-input" value={form.payer_name} onChange={e => setForm({...form, payer_name: e.target.value})} /></div>
+              <div><label className="block text-sm mb-1">备注</label><input className="form-input" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary">取消</button>
               <button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
             </div>
           </div>

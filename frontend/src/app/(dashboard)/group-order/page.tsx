@@ -70,15 +70,15 @@ export default function GroupOrderPage() {
 
   return (
     <>
-      <div className="flex justify-between mb-4">
-        <h1 className="text-xl font-bold">{t("group_order")}</h1>
+      <div className="page-header">
+        <h1 className="page-title">{t("group_order")}</h1>
         <div className="flex gap-2">
           <div className="bg-white rounded-lg p-1 flex">
             <button onClick={() => setTab("active")} className={`px-3 py-1 rounded text-sm ${tab==="active"?"bg-primary text-white":""}`}>进行中</button>
             <button onClick={() => setTab("history")} className={`px-3 py-1 rounded text-sm ${tab==="history"?"bg-primary text-white":""}`}>历史</button>
           </div>
           {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
-            <button onClick={() => setShowForm(true)} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">发起拼单</button>
+            <button onClick={() => setShowForm(true)} className="btn-primary">发起拼单</button>
           )}
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function GroupOrderPage() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96 max-h-[70vh] overflow-auto">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-96 max-h-[70vh] overflow-auto">
           <h2 className="font-semibold mb-3">{selected.item_name} - 参与列表</h2>
           <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-1">仓库</th><th>数量</th><th>地址</th></tr></thead>
             <tbody>{participants.map((p: any) => (<tr key={p.id} className="border-b"><td className="py-1">{p.warehouse_name}</td><td>{p.quantity}</td><td className="text-xs text-gray-400">{p.delivery_address}</td></tr>))}</tbody></table>
@@ -135,16 +135,16 @@ export default function GroupOrderPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded-xl p-6 w-96">
+        <div className="modal-overlay"><div className="bg-white rounded-xl p-6 w-96">
           <h2 className="font-semibold mb-4">发起拼单</h2>
           <div className="space-y-3">
-            <div><label className="text-sm">物品名称</label><input className="border rounded px-3 py-2 w-full" value={form.item_name} onChange={e=>setForm({...form,item_name:e.target.value})} /></div>
-            <div><label className="text-sm">目标数量</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.target_quantity} onChange={e=>setForm({...form,target_quantity:+e.target.value})} /></div>
-            <div><label className="text-sm">目标单价</label><input type="number" className="border rounded px-3 py-2 w-full" value={form.target_price} onChange={e=>setForm({...form,target_price:+e.target.value})} /></div>
-            <div><label className="text-sm">截止时间</label><input type="datetime-local" className="border rounded px-3 py-2 w-full" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} /></div>
-            <div><label className="text-sm">原因说明</label><input className="border rounded px-3 py-2 w-full" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} /></div>
+            <div><label className="form-label">物品名称</label><input className="form-input" value={form.item_name} onChange={e=>setForm({...form,item_name:e.target.value})} /></div>
+            <div><label className="form-label">目标数量</label><input type="number" className="form-input" value={form.target_quantity} onChange={e=>setForm({...form,target_quantity:+e.target.value})} /></div>
+            <div><label className="form-label">目标单价</label><input type="number" className="form-input" value={form.target_price} onChange={e=>setForm({...form,target_price:+e.target.value})} /></div>
+            <div><label className="form-label">截止时间</label><input type="datetime-local" className="form-input" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} /></div>
+            <div><label className="form-label">原因说明</label><input className="form-input" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} /></div>
           </div>
-          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded text-sm">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded text-sm">发起</button></div>
+          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="btn-secondary">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded text-sm">发起</button></div>
         </div></div>
       )}
     </>

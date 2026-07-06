@@ -62,7 +62,7 @@ export default function WarehousesPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold">仓库管理</h1>
+        <h1 className="page-title">仓库管理</h1>
         <button
           onClick={() => { setEditId(null); setForm({ name: "", name_th: "", code: "", address: "", is_active: true }); setShowForm(true); }}
           className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm"
@@ -106,25 +106,25 @@ export default function WarehousesPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold mb-4">{editId ? "编辑仓库" : "新建仓库"}</h2>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm mb-1">仓库名称（中文）</label>
-                <input className="border rounded px-3 py-2 w-full" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="如：曼谷1仓" />
+                <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="如：曼谷1仓" />
               </div>
               <div>
                 <label className="block text-sm mb-1">ชื่อคลังสินค้า (ไทย)</label>
-                <input className="border rounded px-3 py-2 w-full" value={form.name_th} onChange={e => setForm({ ...form, name_th: e.target.value })} placeholder="如：คลังสินค้ากรุงเทพ 1" />
+                <input className="form-input" value={form.name_th} onChange={e => setForm({ ...form, name_th: e.target.value })} placeholder="如：คลังสินค้ากรุงเทพ 1" />
               </div>
               <div>
                 <label className="block text-sm mb-1">仓库编码</label>
-                <input className="border rounded px-3 py-2 w-full" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="如：BKK1" />
+                <input className="form-input" value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="如：BKK1" />
               </div>
               <div>
                 <label className="block text-sm mb-1">地址（选填）</label>
-                <input className="border rounded px-3 py-2 w-full" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
+                <input className="form-input" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
@@ -132,7 +132,7 @@ export default function WarehousesPage() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary">取消</button>
               <button onClick={handleSave} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
             </div>
           </div>
