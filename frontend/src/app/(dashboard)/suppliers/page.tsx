@@ -6,7 +6,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload } from "lucide-react";
+import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck } from "lucide-react";
 
 export default function SuppliersPage() {
   const { t } = useI18n();
@@ -155,7 +155,12 @@ export default function SuppliersPage() {
 
 
   async function viewDetail(sid: number) {
-    try { const r = await api.get<any>(`/suppliers/${sid}`); setDetail(r); } catch {}
+    try {
+      const r = await api.get<any>(`/suppliers/${sid}`);
+      try { const prods = await api.get<any>(`/suppliers/${sid}/products`); r.products = prods.data; } catch { r.products = []; }
+      try { const lp = await api.get<any>(`/suppliers/${sid}/logistics-prices`); r.logistics_prices = lp.data; } catch { r.logistics_prices = []; }
+      setDetail(r);
+    } catch {}
   }
 
   async function deleteSupplier(sid: number) {
@@ -343,18 +348,103 @@ export default function SuppliersPage() {
       {/* Detail Modal */}
       {detail && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setDetail(null)}>
-          <div className="bg-white rounded-xl p-6 w-[500px] max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-            <h2 className="font-semibold mb-4">{detail.name} 详细信息</h2>
-            <div className="space-y-2 text-sm">
-              <div><span className="text-gray-500">类别:</span> {detail.category_name||"-"}</div>
-              <div><span className="text-gray-500">联系人:</span> {detail.contact_person||"-"}</div>
-              <div><span className="text-gray-500">联系方式:</span> {detail.contact_info||"-"}</div>
-              <div><span className="text-gray-500">地址:</span> {detail.address||"-"}</div>
-              <div><span className="text-gray-500">付款条件:</span> {detail.payment_terms||"-"}</div>
-              <div><span className="text-gray-500">合作内容:</span> {detail.cooperation_content||"-"}</div>
-              <div><span className="text-gray-500">结算周期:</span> {detail.settlement_cycle||"-"}</div>
+          <div className="bg-white rounded-xl w-[700px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
+            {/* 头部 */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold">{detail.name}</h2>
+                {detail.category_name && (
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${detail.category_name==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>
+                    {detail.category_name}
+                  </span>
+                )}
+              </div>
+              <button onClick={()=>setDetail(null)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">关闭</button>
             </div>
-            <button onClick={()=>setDetail(null)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
+
+            <div className="p-6 space-y-5">
+              {/* 第一块：基本信息 */}
+              <div className="bg-gray-50 rounded-xl p-5">
+                <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide">基本信息</h3>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <User size={15} className="text-gray-400 flex-shrink-0"/>
+                    <div><span className="text-gray-400 text-xs">联系人</span><div className="font-medium">{detail.contact_person||"-"}</div></div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone size={15} className="text-gray-400 flex-shrink-0"/>
+                    <div><span className="text-gray-400 text-xs">联系方式</span><div className="font-medium">{detail.contact_info||"-"}</div></div>
+                  </div>
+                  <div className="flex items-start gap-2 col-span-2">
+                    <MapPin size={15} className="text-gray-400 flex-shrink-0 mt-0.5"/>
+                    <div><span className="text-gray-400 text-xs">地址</span><div className="font-medium">{detail.address||"-"}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 第二块：合作信息 */}
+              <div className="bg-gray-50 rounded-xl p-5">
+                <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide">合作信息</h3>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <FileText size={15} className="text-gray-400 flex-shrink-0"/>
+                    <div><span className="text-gray-400 text-xs">合作内容</span><div className="font-medium">{detail.cooperation_content||"-"}</div></div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar size={15} className="text-gray-400 flex-shrink-0"/>
+                    <div><span className="text-gray-400 text-xs">结算周期</span><div className="font-medium">{detail.settlement_cycle||"-"}</div></div>
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <DollarSign size={15} className="text-gray-400 flex-shrink-0"/>
+                    <div><span className="text-gray-400 text-xs">付款条件</span><div className="font-medium">{detail.payment_terms||"-"}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 第三块：产品（仅耗材商） */}
+              {detail.category_name === "耗材商" && (
+                <div className="bg-gray-50 rounded-xl p-5">
+                  <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
+                    <Package size={15} className="text-blue-500"/>产品与价格
+                  </h3>
+                  {(!detail.products || detail.products.length === 0) ? (
+                    <div className="text-gray-400 text-sm py-3 text-center">暂无产品</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b text-gray-500 text-xs"><th className="text-left pb-2 font-medium">产品名</th><th className="text-left pb-2 font-medium">产品规格</th><th className="text-right pb-2 font-medium">规格报价</th><th className="text-right pb-2 font-medium">单价</th></tr></thead>
+                      <tbody>{detail.products.map((p:any)=><tr key={p.id} className="border-b border-gray-100">
+                        <td className="py-2">{p.product_name}</td><td className="py-2 text-gray-500">{p.spec||"-"}</td>
+                        <td className="py-2 text-right">{p.spec_price != null ? p.spec_price : "-"}</td><td className="py-2 text-right font-medium">{p.unit_price}</td>
+                      </tr>)}</tbody></table>
+                  )}
+                </div>
+              )}
+
+              {/* 第四块：物流报价（仅物流商） */}
+              {detail.category_name === "物流" && (
+                <div className="bg-gray-50 rounded-xl p-5">
+                  <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
+                    <Truck size={15} className="text-orange-500"/>物流报价
+                  </h3>
+                  {(!detail.logistics_prices || detail.logistics_prices.length === 0) ? (
+                    <div className="text-gray-400 text-sm py-3 text-center">暂无报价</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b text-gray-500 text-xs"><th className="text-left pb-2 font-medium">运输方式</th><th className="text-left pb-2 font-medium">货物类型</th><th className="text-left pb-2 font-medium">发货仓库</th><th className="text-right pb-2 font-medium">单价(元/方)</th><th className="text-right pb-2 font-medium">时效</th></tr></thead>
+                      <tbody>{detail.logistics_prices.map((p:any)=><tr key={p.id} className="border-b border-gray-100">
+                        <td className="py-2">{p.transport_method}</td><td className="py-2 text-gray-500">{p.cargo_type}</td>
+                        <td className="py-2 text-gray-500">{p.origin_warehouse}</td><td className="py-2 text-right font-medium">{p.price_per_cbm}</td>
+                        <td className="py-2 text-right text-gray-500">{p.estimated_days||"-"}</td>
+                      </tr>)}</tbody></table>
+                  )}
+                </div>
+              )}
+
+              {/* 底部操作 */}
+              <div className="flex justify-end pt-2">
+                <button onClick={()=>setDetail(null)} className="px-5 py-2 border rounded-lg text-sm hover:bg-gray-50">关闭</button>
+              </div>
+            </div>
           </div></div>
       )}
 
