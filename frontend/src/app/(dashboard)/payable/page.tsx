@@ -175,7 +175,6 @@ export default function PayablePage() {
         </div>
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
-      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "supplier_name", label: "供应商" },
         { key: "bill_number", label: "账单编号" },
         { key: "bill_date", label: "账单日期", render: (v:any)=>v?.slice(0,10) },
