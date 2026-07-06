@@ -300,13 +300,14 @@ export default function SuppliersPage() {
               </div>
             ) : (
               <div className="flex gap-2 mb-4 flex-wrap">
-                <input className="border rounded px-3 py-2 text-sm flex-1 min-w-[150px]" placeholder="路线名称" value={compareRoute} onChange={e=>setCompareRoute(e.target.value)} />
-                <select className="border rounded px-3 py-2 text-sm" value={compareCargo} onChange={e=>setCompareCargo(e.target.value)}>
-                  <option>普货</option><option>易碎品</option><option>大件</option><option>急件</option>
+                <select className="border rounded px-3 py-2 text-sm" value={compareTransport} onChange={e=>setCompareTransport(e.target.value)}>
+                  <option>陆运</option><option>海运</option>
                 </select>
-                <select className="border rounded px-3 py-2 text-sm" value={compareCat} onChange={e=>setCompareCat(+e.target.value)}>
-                  <option value={0}>全部类别</option>
-                  {categories.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
+                <select className="border rounded px-3 py-2 text-sm" value={compareCargo} onChange={e=>setCompareCargo(e.target.value)}>
+                  <option>普货</option><option>商检货</option><option>敏感货</option>
+                </select>
+                <select className="border rounded px-3 py-2 text-sm" value={compareWarehouse} onChange={e=>setCompareWarehouse(e.target.value)}>
+                  <option>深圳仓</option><option>义乌仓</option><option>广州仓</option>
                 </select>
                 <button onClick={()=>doCompare("logistics")} className="bg-primary text-white px-4 py-2 rounded text-sm">查询</button>
               </div>
