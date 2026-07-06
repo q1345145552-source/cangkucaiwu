@@ -34,13 +34,12 @@ async def download_products_template():
     wb = Workbook(); ws = wb.active; ws.title = "耗材产品导入"
     hfill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
-    for c, h in enumerate(["供应商名称", "产品名称", "规格", "单价", "单位"], 1):
+    for c, h in enumerate(["供应商名称", "产品名", "产品规格", "规格报价", "单价"], 1):
         cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hfill
-    # example row
-    for c, v in enumerate(["示例: 耗材商A", "纸箱", "50x40x30", 8, "个"], 1):
+    for c, v in enumerate(["示例: 耗材商A", "快递袋", "一打80个", 80, 1], 1):
         ws.cell(row=2, column=c, value=v)
-    ws.column_dimensions['A'].width = 20; ws.column_dimensions['B'].width = 20
-    ws.column_dimensions['C'].width = 20; ws.column_dimensions['D'].width = 12; ws.column_dimensions['E'].width = 10
+    for col, w in [('A',20),('B',16),('C',16),('D',12),('E',12)]:
+        ws.column_dimensions[col].width = w
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"})
@@ -88,8 +87,8 @@ async def import_products(file: UploadFile = File(...), current_user: User = Dep
                 supplier_id=sup_map[sup_name],
                 product_name=str(row[1] or "").strip(),
                 spec=str(row[2] or "").strip() if row[2] else None,
-                unit_price=float(row[3] or 0),
-                unit=str(row[4] or "个").strip(),
+                spec_price=float(row[3] or 0) if row[3] else None,
+                unit_price=float(row[4] or 0),
             )
             db.add(p); imported += 1
         except Exception as e:
@@ -135,7 +134,7 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
 @router.get("/{supplier_id}/products")
 async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     prods = (await db.execute(select(SupplierProduct).where(SupplierProduct.supplier_id == supplier_id).order_by(SupplierProduct.created_at.desc()))).scalars().all()
-    return {"data": [{"id": p.id, "product_name": p.product_name, "spec": p.spec, "unit_price": p.unit_price, "unit": p.unit, "remark": p.remark} for p in prods]}
+    return {"data": [{"id": p.id, "product_name": p.product_name, "spec": p.spec, "spec_price": p.spec_price, "unit_price": p.unit_price, "unit": p.unit, "remark": p.remark} for p in prods]}
 
 @router.post("/{supplier_id}/products")
 async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -216,7 +215,7 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
         result.append({
             "product_id": p.id, "supplier_id": p.supplier_id, "supplier_name": s.name if s else "",
             "category_name": cat_name, "product_name": p.product_name, "spec": p.spec,
-            "unit_price": p.unit_price, "unit": p.unit, "remark": p.remark,
+            "spec_price": p.spec_price, "unit_price": p.unit_price, "unit": p.unit, "remark": p.remark,
         })
     return {"data": result, "total": len(result)}
 

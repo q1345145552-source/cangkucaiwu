@@ -196,4 +196,5 @@ class WarehouseSummary(BaseModel):
 # ---- Supplier Product ----
 class SupplierProductCreate(BaseModel):
     product_name: str; spec: Optional[str] = None
-    unit_price: float; unit: str = "个"; remark: Optional[str] = None
+    spec_price: Optional[float] = None; unit_price: float
+    unit: str = "个"; remark: Optional[str] = None

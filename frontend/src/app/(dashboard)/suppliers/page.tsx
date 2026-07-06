@@ -26,7 +26,7 @@ export default function SuppliersPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [productSupplierId, setProductSupplierId] = useState(0);
-  const [productForm, setProductForm] = useState({ product_name: "", spec: "", unit_price: 0, unit: "个", remark: "" });
+  const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: 0, unit_price: 0, unit: "个", remark: "" });
   // Logistics prices
   const [logisticsPrices, setLogisticsPrices] = useState<any[]>([]);
   const [showLogistics, setShowLogistics] = useState(false);
@@ -100,7 +100,7 @@ export default function SuppliersPage() {
   async function addProduct() {
     try { await api.post(`/suppliers/${productSupplierId}/products`, productForm); toast("success", "产品添加成功");
       const r = await api.get<any>(`/suppliers/${productSupplierId}/products`); setProducts(r.data);
-      setProductForm({ product_name: "", spec: "", unit_price: 0, unit: "个", remark: "" });
+      setProductForm({ product_name: "", spec: "", spec_price: 0, unit_price: 0, unit: "个", remark: "" });
     } catch (err: any) { toast("error", "添加失败"); }
   }
   async function deleteProduct(pid: number) {
@@ -226,14 +226,14 @@ export default function SuppliersPage() {
             <h2 className="font-semibold mb-4">产品管理</h2>
             <div className="grid grid-cols-5 gap-2 mb-4 p-3 bg-gray-50 rounded">
               <input className="border rounded px-2 py-1.5 text-sm" placeholder="产品名" value={productForm.product_name} onChange={e=>setProductForm({...productForm,product_name:e.target.value})} />
-              <input className="border rounded px-2 py-1.5 text-sm" placeholder="规格" value={productForm.spec} onChange={e=>setProductForm({...productForm,spec:e.target.value})} />
+              <input className="border rounded px-2 py-1.5 text-sm" placeholder="产品规格" value={productForm.spec} onChange={e=>setProductForm({...productForm,spec:e.target.value})} />
+              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="规格报价" value={productForm.spec_price||""} onChange={e=>setProductForm({...productForm,spec_price:+e.target.value})} />
               <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="单价" value={productForm.unit_price||""} onChange={e=>setProductForm({...productForm,unit_price:+e.target.value})} />
-              <input className="border rounded px-2 py-1.5 text-sm" placeholder="单位" value={productForm.unit} onChange={e=>setProductForm({...productForm,unit:e.target.value})} />
               <button onClick={addProduct} className="bg-green-600 text-white rounded px-2 py-1.5 text-sm">+添加</button>
             </div>
             {products.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无产品</div> : (
-              <table className="w-full text-sm"><thead><tr className="bg-gray-100"><th className="p-2 text-left">产品</th><th>规格</th><th>单价</th><th>单位</th><th></th></tr></thead>
-                <tbody>{products.map((p:any)=><tr key={p.id} className="border-t"><td className="p-2">{p.product_name}</td><td>{p.spec||"-"}</td><td>{p.unit_price}</td><td>{p.unit}</td>
+              <table className="w-full text-sm"><thead><tr className="bg-gray-100"><th className="p-2 text-left">产品名</th><th>产品规格</th><th>规格报价</th><th>单价</th><th></th></tr></thead>
+                <tbody>{products.map((p:any)=><tr key={p.id} className="border-t"><td className="p-2">{p.product_name}</td><td>{p.spec||"-"}</td><td>{p.spec_price != null ? p.spec_price : "-"}</td><td>{p.unit_price}</td>
                   <td><button onClick={()=>deleteProduct(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></td></tr>)}</tbody></table>
             )}
             <button onClick={()=>setShowProducts(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
@@ -311,9 +311,10 @@ export default function SuppliersPage() {
             {compareData.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">请填写查询条件</div> : (
               <>
                 {compareMode === "product" ? (
-                  <table className="w-full text-sm mb-4"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>类别</th><th>产品</th><th>规格</th><th>单价</th></tr></thead>
+                  <table className="w-full text-sm mb-4"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>类别</th><th>产品</th><th>规格</th><th>规格报价</th><th>单价</th></tr></thead>
                     <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
                       <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.category_name||"-"}</td><td>{r.product_name}</td><td>{r.spec||"-"}</td>
+                      <td className="text-sm">{r.spec_price != null ? r.spec_price + (r.unit||"") : "-"}</td>
                       <td className="font-semibold text-green-700">{r.unit_price}{r.unit}</td></tr>)}</tbody></table>
                 ) : (
                   <table className="w-full text-sm mb-4"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>运输</th><th>货物</th><th>发货仓</th><th>单价(元/方)</th><th>最低消费</th><th>时效</th><th>备注</th></tr></thead>
