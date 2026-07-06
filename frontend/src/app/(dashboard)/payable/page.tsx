@@ -5,7 +5,7 @@ import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
-import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, FileText, Receipt } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -152,29 +152,66 @@ export default function PayablePage() {
       {/* 新建账单弹窗 */}
       {showForm && (
         <div className="modal-overlay" onClick={()=>setShowForm(false)}>
-          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-            <div className="modal-header"><h2 className="modal-title">新建应付账单</h2><button onClick={()=>setShowForm(false)} className="btn-secondary btn-sm">取消</button></div>
-            <div className="modal-body">
-              <div className="form-grid">
-                <div className="form-group"><label className="form-label">供应商</label><select className="form-input" value={form.supplier_id} onChange={e=>setForm({...form,supplier_id:+e.target.value})}><option value={0}>选择</option>{suppliers.map((s:any)=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-                <div className="form-group"><label className="form-label">账单编号</label><input className="form-input" value={form.bill_number} onChange={e=>setForm({...form,bill_number:e.target.value})} /></div>
-                <div className="form-group"><label className="form-label">账单日期</label><input type="date" className="form-input" value={form.bill_date} onChange={e=>setForm({...form,bill_date:e.target.value})} /></div>
-                <div className="form-group"><label className="form-label">到期日期</label><input type="date" className="form-input" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>
-                <div className="form-group"><label className="form-label">金额</label><input type="number" className="form-input" value={form.amount} onChange={e=>setForm({...form,amount:+e.target.value})} /></div>
-                <div className="form-group"><label className="form-label">供应商确认金额</label><input type="number" className="form-input" value={form.confirmed_amount} onChange={e=>setForm({...form,confirmed_amount:+e.target.value})} placeholder="不一致时自动标差异" /></div>
-                <div className="form-group"><label className="form-label">付款承诺天数</label><input type="number" className="form-input" value={form.payment_commitment_days} onChange={e=>setForm({...form,payment_commitment_days:+e.target.value})} /></div>
+          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
+            {/* 蓝条标题 */}
+            <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
+              <FileText size={22} />
+              <div><h2 className="text-lg font-semibold">新建应付账单</h2><div className="text-xs text-blue-100 mt-0.5">录入供应商账单信息</div></div>
+              <button onClick={()=>setShowForm(false)} className="ml-auto text-blue-200 hover:text-white"><span className="text-xl leading-none">&times;</span></button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* 第一组：基本信息 */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-500 uppercase tracking-wide">基本信息</div>
+                <div className="form-grid">
+                  <div className="form-group"><label className="form-label">供应商</label><select className="form-input" value={form.supplier_id} onChange={e=>setForm({...form,supplier_id:+e.target.value})}><option value={0}>选择</option>{suppliers.map((s:any)=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                  <div className="form-group"><label className="form-label">账单编号</label><input className="form-input" value={form.bill_number} onChange={e=>setForm({...form,bill_number:e.target.value})} /></div>
+                  <div className="form-group"><label className="form-label">账单日期</label><input type="date" className="form-input" value={form.bill_date} onChange={e=>setForm({...form,bill_date:e.target.value})} /></div>
+                  <div className="form-group"><label className="form-label">到期日期</label><input type="date" className="form-input" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})} /></div>
+                </div>
               </div>
-              <div className="form-group"><label className="form-label">费用明细</label><textarea className="form-input" rows={2} value={form.detail} onChange={e=>setForm({...form,detail:e.target.value})} placeholder="如：纸箱500个x8元=4000元" /></div>
-              <div className="form-group"><label className="form-label">备注</label><input className="form-input" value={form.remark} onChange={e=>setForm({...form,remark:e.target.value})} /></div>
-              <div className="form-group"><label className="form-label">上传账单附件</label><input type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls" onChange={e=>setBillFile(e.target.files?.[0]||null)} className="form-input text-sm" /></div>
-              <div className="flex items-center gap-2 mt-2">
+
+              <div className="border-t" />
+
+              {/* 第二组：金额信息 */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-500 uppercase tracking-wide">金额信息</div>
+                <div className="form-grid">
+                  <div className="form-group"><label className="form-label">金额</label><input type="number" className="form-input" value={form.amount} onChange={e=>setForm({...form,amount:+e.target.value})} /></div>
+                  <div className="form-group"><label className="form-label">供应商确认金额</label><input type="number" className="form-input" value={form.confirmed_amount} onChange={e=>setForm({...form,confirmed_amount:+e.target.value})} placeholder="差异自动标记" /></div>
+                  <div className="form-group col-span-2"><label className="form-label">付款承诺天数</label><input type="number" className="form-input" value={form.payment_commitment_days} onChange={e=>setForm({...form,payment_commitment_days:+e.target.value})} placeholder="账单收到后承诺多少天内付款" /></div>
+                </div>
+              </div>
+
+              <div className="border-t" />
+
+              {/* 第三组：补充信息 */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-500 uppercase tracking-wide">补充信息</div>
+                <div className="space-y-3">
+                  <div className="form-group"><label className="form-label">费用明细</label><textarea className="form-input" rows={2} value={form.detail} onChange={e=>setForm({...form,detail:e.target.value})} placeholder="如：纸箱500个x8元=4000元" /></div>
+                  <div className="form-group"><label className="form-label">备注</label><input className="form-input" value={form.remark} onChange={e=>setForm({...form,remark:e.target.value})} /></div>
+                  <div className="form-group">
+                    <label className="form-label">上传账单附件</label>
+                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
+                      <Upload size={24} className="mx-auto text-gray-300 mb-2" />
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls" onChange={e=>setBillFile(e.target.files?.[0]||null)} className="text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                      <div className="text-xs text-gray-400 mt-2">支持 PDF、图片、Excel，上传供应商发来的账单文件</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <input type="checkbox" id="fund_linked" checked={form.is_fund_linked === "yes"} onChange={e=>setForm({...form,is_fund_linked: e.target.checked ? "yes" : ""})} />
-                <label htmlFor="fund_linked" className="text-sm">备用金垫付</label>
+                <label htmlFor="fund_linked" className="text-sm text-gray-600">备用金垫付</label>
               </div>
             </div>
-            <div className="modal-footer">
-              <button onClick={()=>setShowForm(false)} className="btn-secondary">取消</button>
-              <button onClick={handleCreate} className="btn-primary">保存</button>
+
+            <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+              <button onClick={()=>setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={handleCreate} className="btn-primary min-w-[80px]">保存</button>
             </div>
           </div></div>
       )}
@@ -182,23 +219,60 @@ export default function PayablePage() {
       {/* 付款弹窗 */}
       {showPayModal && payingRow && (
         <div className="modal-overlay" onClick={()=>setShowPayModal(false)}>
-          <div className="bg-white rounded-xl w-full max-w-md max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-            <div className="modal-header"><h2 className="modal-title">付款</h2></div>
-            <div className="modal-body space-y-4">
-              {/* 付款信息 */}
-              <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-gray-400">应付总额</span><div className="font-semibold text-lg">¥{payingRow.amount.toLocaleString()}</div></div>
-                <div><span className="text-gray-400">已付金额</span><div className="font-semibold text-lg text-green-600">¥{payingRow.paid_amount.toLocaleString()}</div></div>
-                <div><span className="text-gray-400">本次付款</span><div className="font-semibold text-lg text-blue-600">¥{(payAmounts[payingBillId]||0).toLocaleString()}</div></div>
-                <div><span className="text-gray-400">付款后余额</span><div className={`font-semibold text-lg ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId]||0)) > 0 ? "text-orange-600" : "text-green-600"}`}>¥{(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId]||0)).toLocaleString()}</div></div>
+          <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
+            {/* 绿色标题条 */}
+            <div className="bg-green-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
+              <Receipt size={22} />
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold">付款</h2>
+                <div className="text-xs text-green-100 mt-0.5">
+                  账单编号：{payingRow.bill_number} · 供应商：{payingRow.supplier_name}
+                </div>
               </div>
-              <div className="form-group"><label className="form-label">付款金额</label><input type="number" className="form-input" value={payAmounts[payingBillId]||0} onChange={e=>setPayAmounts(prev=>({...prev,[payingBillId]:+e.target.value}))} /></div>
-              <div className="form-group"><label className="form-label">付款方式</label><select className="form-input" value={payMethod} onChange={e=>setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
-              <div className="form-group"><label className="form-label">上传付款凭证（非必填）</label><input type="file" accept="image/*" onChange={e=>setVoucherFile(e.target.files?.[0]||null)} className="form-input text-sm" /></div>
+              <button onClick={()=>setShowPayModal(false)} className="text-green-200 hover:text-white"><span className="text-xl leading-none">&times;</span></button>
             </div>
-            <div className="modal-footer">
-              <button onClick={()=>setShowPayModal(false)} className="btn-secondary">取消</button>
-              <button onClick={handlePay} className="btn-primary">确认付款</button>
+
+            <div className="p-6 space-y-5">
+              {/* 四张金额卡片 */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-blue-500 mb-1">应付总额</div>
+                  <div className="font-bold text-lg text-blue-700">¥{payingRow.amount.toLocaleString()}</div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-green-500 mb-1">已付金额</div>
+                  <div className="font-bold text-lg text-green-700">¥{payingRow.paid_amount.toLocaleString()}</div>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-purple-500 mb-1">本次付款</div>
+                  <div className="font-bold text-lg text-purple-700">¥{(payAmounts[payingBillId]||0).toLocaleString()}</div>
+                </div>
+                <div className={`rounded-lg p-3 text-center ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId]||0)) > 0 ? "bg-orange-50" : "bg-green-100"}`}>
+                  <div className={`text-xs mb-1 ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId]||0)) > 0 ? "text-orange-500" : "text-green-600"}`}>付款后余额</div>
+                  <div className={`font-bold text-lg ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId]||0)) > 0 ? "text-orange-700" : "text-green-700"}`}>¥{(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId]||0)).toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="border-t" />
+
+              {/* 付款表单 */}
+              <div className="form-grid">
+                <div className="form-group"><label className="form-label">付款金额</label><input type="number" className="form-input text-lg font-semibold" value={payAmounts[payingBillId]||0} onChange={e=>setPayAmounts(prev=>({...prev,[payingBillId]:+e.target.value}))} /></div>
+                <div className="form-group"><label className="form-label">付款方式</label><select className="form-input" value={payMethod} onChange={e=>setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">上传付款凭证（非必填）</label>
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-green-400 transition-colors">
+                  <Upload size={24} className="mx-auto text-gray-300 mb-2" />
+                  <input type="file" accept="image/*" onChange={e=>setVoucherFile(e.target.files?.[0]||null)} className="text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+                  <div className="text-xs text-gray-400 mt-2">可选，上传转账截图或回单</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+              <button onClick={()=>setShowPayModal(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={handlePay} className="btn-primary min-w-[80px]">确认付款</button>
             </div>
           </div></div>
       )}
