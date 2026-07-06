@@ -428,33 +428,120 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         raise HTTPException(403, "无权限")
     from app.models.payable import PayableBill
     from app.models.warehouse import Warehouse
-    sq = select(Supplier)
-    if current_user.role != Role.SUPER_ADMIN:
-        sq = sq.where(Supplier.warehouse_id == current_user.warehouse_id)
-    suppliers = (await db.execute(sq)).scalars().all()
-    result = []
-    for s in suppliers:
-        bq = (
-            select(PayableBill.warehouse_id, func.sum(PayableBill.amount).label("total"))
-            .where(PayableBill.supplier_id == s.id)
-            .group_by(PayableBill.warehouse_id)
-        )
-        if current_user.role != Role.SUPER_ADMIN:
-            bq = bq.where(PayableBill.warehouse_id == current_user.warehouse_id)
-        bill_rows = (await db.execute(bq)).all()
-        wids = [r.warehouse_id for r in bill_rows]
-        wh_map = {}
-        if wids:
-            whs = (await db.execute(select(Warehouse).where(Warehouse.id.in_(wids)))).scalars().all()
-            wh_map = {w.id: w.name for w in whs}
-        warehouses = [{"warehouse_id": r.warehouse_id, "warehouse_name": wh_map.get(r.warehouse_id, ""), "total_amount": float(r.total or 0)} for r in bill_rows]
-        if warehouses:
-            result.append({
-                "supplier_id": s.id, "supplier_name": s.name,
-                "warehouses": warehouses,
-                "grand_total": sum(w["total_amount"] for w in warehouses),
+    from datetime import date, timedelta
+    from sqlalchemy import extract
+
+    wh_id = current_user.warehouse_id if current_user.role != Role.SUPER_ADMIN else None
+    today = date.today()
+    this_month_start = today.replace(day=1)
+    last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
+    last_month_end = this_month_start - timedelta(days=1)
+
+    def wh_filter(q):
+        if wh_id: return q.where(PayableBill.warehouse_id == wh_id)
+        return q
+
+    # --- 本月支出 ---
+    month_q = wh_filter(select(func.coalesce(func.sum(PayableBill.amount), 0)))
+    month_total = float((await db.execute(month_q.where(extract("year",PayableBill.bill_date)==today.year, extract("month",PayableBill.bill_date)==today.month))).scalar() or 0)
+
+    # --- 上月支出（同环比） ---
+    last_q = wh_filter(select(func.coalesce(func.sum(PayableBill.amount), 0)))
+    last_total = float((await db.execute(last_q.where(extract("year",PayableBill.bill_date)==last_month_start.year, extract("month",PayableBill.bill_date)==last_month_start.month))).scalar() or 0)
+
+    # --- 本月耗材/物流分类支出 ---
+    cat_month_q = wh_filter(select(Supplier.category_id, func.sum(PayableBill.amount).label("total")).join(Supplier, PayableBill.supplier_id==Supplier.id).where(extract("year",PayableBill.bill_date)==today.year, extract("month",PayableBill.bill_date)==today.month).group_by(Supplier.category_id))
+    cat_rows = (await db.execute(cat_month_q)).all()
+    cat_map = {}
+    cat_ids = [r.category_id for r in cat_rows if r.category_id]
+    if cat_ids:
+        cats = (await db.execute(select(SupplierCategory).where(SupplierCategory.id.in_(cat_ids)))).scalars().all()
+        cat_map = {c.id: c.name for c in cats}
+    cat_spending = {}
+    for r in cat_rows:
+        name = cat_map.get(r.category_id, "未分类")
+        cat_spending[name] = float(r.total or 0)
+
+    # --- 环比 ---
+    pct_change = 0
+    if last_total > 0:
+        pct_change = round((month_total - last_total) / last_total * 100, 1)
+
+    # --- 供应商排名 ---
+    sup_q = wh_filter(select(PayableBill.supplier_id, func.sum(PayableBill.amount).label("total"), func.max(PayableBill.bill_date).label("last_date")).group_by(PayableBill.supplier_id).order_by(func.sum(PayableBill.amount).desc()))
+    sup_rows = (await db.execute(sup_q)).all()
+    # 当月支出
+    sup_month_q = wh_filter(select(PayableBill.supplier_id, func.sum(PayableBill.amount).label("total")).where(extract("year",PayableBill.bill_date)==today.year, extract("month",PayableBill.bill_date)==today.month).group_by(PayableBill.supplier_id))
+    sup_month = {r.supplier_id: float(r.total or 0) for r in (await db.execute(sup_month_q)).all()}
+    sids = [r.supplier_id for r in sup_rows]
+    smap = {}
+    if sids:
+        sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
+        cat_ids2 = {s.category_id for s in sups if s.category_id}
+        cat2 = {}
+        if cat_ids2:
+            crows = (await db.execute(select(SupplierCategory).where(SupplierCategory.id.in_(cat_ids2)))).scalars().all()
+            cat2 = {c.id: c.name for c in crows}
+        smap = {s.id: {"name": s.name, "category": cat2.get(s.category_id, "")} for s in sups}
+    supplier_ranking = []
+    for r in sup_rows:
+        info = smap.get(r.supplier_id, {"name": "", "category": ""})
+        supplier_ranking.append({
+            "supplier_id": r.supplier_id, "supplier_name": info["name"],
+            "category_name": info["category"],
+            "month_amount": sup_month.get(r.supplier_id, 0),
+            "total_amount": float(r.total or 0),
+            "last_bill_date": r.last_date.isoformat()[:10] if r.last_date else None,
+        })
+
+    # --- 产品比价汇总 ---
+    prod_q = wh_filter(select(SupplierProduct.product_name, SupplierProduct.spec,
+        func.count(SupplierProduct.supplier_id.distinct()).label("supplier_count"),
+        func.min(SupplierProduct.unit_price).label("min_price"),
+        func.max(SupplierProduct.unit_price).label("max_price"))
+        .join(Supplier, SupplierProduct.supplier_id==Supplier.id)
+        .group_by(SupplierProduct.product_name, SupplierProduct.spec)
+        .order_by(SupplierProduct.product_name))
+    prod_rows = (await db.execute(prod_q)).all()
+    product_compare = []
+    for p in prod_rows:
+        if not p.product_name: continue
+        # Find which supplier has the min price
+        min_sup_q = wh_filter(select(SupplierProduct.supplier_id, Supplier.name)
+            .join(Supplier, SupplierProduct.supplier_id==Supplier.id)
+            .where(SupplierProduct.product_name==p.product_name, SupplierProduct.spec==p.spec, SupplierProduct.unit_price==p.min_price))
+        min_sup = (await db.execute(min_sup_q)).first()
+        product_compare.append({
+            "product_name": p.product_name, "spec": p.spec,
+            "supplier_count": p.supplier_count,
+            "min_price": float(p.min_price) if p.min_price else 0,
+            "max_price": float(p.max_price) if p.max_price else 0,
+            "min_supplier": min_sup[1] if min_sup else "",
+        })
+
+    # --- 省钱提示：对比同类产品不同供应商 ---
+    savings_tips = []
+    for prod in product_compare:
+        if prod["supplier_count"] >= 2 and prod["max_price"] > prod["min_price"]:
+            diff = round(prod["max_price"] - prod["min_price"], 2)
+            savings_tips.append({
+                "product_name": prod["product_name"], "spec": prod["spec"],
+                "cheapest_price": prod["min_price"], "cheapest_supplier": prod["min_supplier"],
+                "highest_price": prod["max_price"],
+                "savings_per_unit": diff,
+                "tip": f"{prod['product_name']}{prod['spec'] or ''}：最便宜 {prod['min_supplier']} ¥{prod['min_price']}，最贵 ¥{prod['max_price']}，用便宜的可省 ¥{diff}/件",
             })
-    return {"data": result}
+
+    return {
+        "overview": {
+            "month_total": month_total, "last_month_total": last_total,
+            "pct_change": pct_change,
+            "cat_spending": cat_spending,
+        },
+        "supplier_ranking": supplier_ranking,
+        "product_compare": product_compare,
+        "savings_tips": savings_tips,
+    }
 
 @router.get("/{supplier_id}")
 async def get_supplier(supplier_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):

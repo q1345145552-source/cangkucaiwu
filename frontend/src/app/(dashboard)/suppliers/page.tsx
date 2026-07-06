@@ -19,7 +19,7 @@ export default function SuppliersPage() {
   const [filterCat, setFilterCat] = useState(1);
   const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "", category_id: 0 });
   const [aiResult, setAiResult] = useState("");
-  const [procurement, setProcurement] = useState<any[]>([]);
+  const [procurement, setProcurement] = useState<any>(null);
   const [showProcurement, setShowProcurement] = useState(false);
   const [detail, setDetail] = useState<any>(null);
   // Products
@@ -203,7 +203,7 @@ export default function SuppliersPage() {
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
               <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
-              <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r.data); setShowProcurement(true); } catch {} }}
+              <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
               <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">新建供应商</button>
             </>
@@ -367,18 +367,97 @@ export default function SuppliersPage() {
       {/* Procurement Modal */}
       {showProcurement && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>setShowProcurement(false)}>
-          <div className="bg-white rounded-xl p-6 w-[600px] max-h-[70vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-            <h2 className="font-semibold mb-3">多仓采购汇总</h2>
-            {procurement.length === 0 ? <div className="text-gray-400 text-sm py-4">暂无数据</div> : procurement.map((r: any) => (
-              <div key={r.supplier_id} className="mb-4 p-3 bg-gray-50 rounded">
-                <div className="font-medium">{r.supplier_name}</div>
-                <div className="text-xs text-gray-500">总采购额: {(r.grand_total || 0).toLocaleString()}</div>
-                {r.warehouses.map((w: any) => (
-                  <div key={w.warehouse_id} className="ml-4 text-xs text-gray-600">- {w.warehouse_name}: {(w.total_amount || 0).toLocaleString()}</div>
-                ))}
+          <div className="bg-white rounded-xl w-[92vw] max-w-6xl max-h-[90vh] overflow-auto p-6" onClick={e=>e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">采购汇总报表</h2>
+              <button onClick={()=>setShowProcurement(false)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">关闭</button>
+            </div>
+
+            {/* 顶部总览卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-5 shadow">
+                <div className="text-sm opacity-80 mb-1">本月采购总支出</div>
+                <div className="text-2xl font-bold">¥{(procurement?.overview?.month_total || 0).toLocaleString()}</div>
+                {procurement?.overview?.pct_change != null && (
+                  <div className={`text-xs mt-2 flex items-center gap-1 ${(procurement?.overview?.pct_change>=0) ? "text-green-200" : "text-red-200"}`}>
+                    {(procurement?.overview?.pct_change >= 0) ? "↑" : "↓"} 较上月 {Math.abs(procurement.overview.pct_change)}%
+                  </div>
+                )}
               </div>
-            ))}
-            <button onClick={() => setShowProcurement(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
+              {Object.entries(procurement?.overview?.cat_spending || {}).map(([cat, amt]: [string, any]) => (
+                <div key={cat} className={`rounded-xl p-5 shadow text-white ${cat==="耗材商" ? "bg-gradient-to-br from-emerald-500 to-emerald-600" : "bg-gradient-to-br from-orange-500 to-orange-600"}`}>
+                  <div className="text-sm opacity-80 mb-1">{cat}采购</div>
+                  <div className="text-2xl font-bold">¥{(amt || 0).toLocaleString()}</div>
+                  <div className="text-xs mt-2 opacity-70">占比 {procurement?.overview?.month_total > 0 ? Math.round((amt || 0) / procurement.overview.month_total * 100) : 0}%</div>
+                </div>
+              ))}
+            </div>
+
+            {/* 主体两栏 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 左侧：供应商排名 */}
+              <div>
+                <h3 className="font-semibold mb-3 text-base flex items-center gap-2">📊 供应商支出排名</h3>
+                <div className="space-y-2 max-h-[400px] overflow-auto">
+                  {(procurement?.supplier_ranking || []).length === 0 ? <div className="text-gray-400 text-sm py-4">暂无支出数据</div> :
+                    (procurement?.supplier_ranking || []).map((r: any, i: number) => (
+                      <div key={r.supplier_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${i===0 ? "bg-yellow-500" : i===1 ? "bg-gray-400" : i===2 ? "bg-amber-700" : "bg-gray-300 text-gray-600"}`}>{i+1}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">{r.supplier_name}</div>
+                          <div className="text-xs text-gray-400">{r.category_name} · 最近采购 {r.last_bill_date || "-"}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-sm">¥{(r.month_amount || 0).toLocaleString()}</div>
+                          <div className="text-xs text-gray-400">累计 ¥{(r.total_amount || 0).toLocaleString()}</div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* 右侧：产品比价汇总 + 省钱提示 */}
+              <div>
+                <h3 className="font-semibold mb-3 text-base flex items-center gap-2">💰 产品比价一览</h3>
+                <div className="space-y-2 max-h-[200px] overflow-auto mb-4">
+                  {(procurement?.product_compare || []).length === 0 ? <div className="text-gray-400 text-sm py-4">暂无产品数据</div> :
+                    (procurement?.product_compare || []).map((p: any) => (
+                      <div key={p.product_name + p.spec} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
+                        <div className="flex-1">
+                          <span className="font-medium">{p.product_name}</span>
+                          <span className="text-gray-400 ml-1">{p.spec || ""}</span>
+                          <span className="text-xs text-gray-400 ml-2">{p.supplier_count}家供应商</span>
+                        </div>
+                        <div className="text-right text-xs">
+                          <div>最低 <span className="text-green-600 font-semibold">¥{p.min_price}</span> <span className="text-gray-400">({p.min_supplier})</span></div>
+                          <div>最高 <span className="text-red-500">¥{p.max_price}</span></div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {/* 省钱提示 */}
+                {(procurement?.savings_tips || []).length > 0 && (
+                  <>
+                    <h3 className="font-semibold mb-3 text-base flex items-center gap-2">💡 省钱建议</h3>
+                    <div className="space-y-2 max-h-[180px] overflow-auto">
+                      {(procurement?.savings_tips || []).map((t: any, i: number) => (
+                        <div key={i} className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                          <div className="flex items-start gap-2">
+                            <span className="text-amber-500 mt-0.5">💡</span>
+                            <div>
+                              <span className="font-medium">{t.product_name}{t.spec ? ` (${t.spec})` : ""}</span>
+                              <span className="text-gray-600 ml-1">当前最便宜 <span className="text-green-600 font-semibold">{t.cheapest_supplier} ¥{t.cheapest_price}</span></span>
+                              <div className="text-xs text-gray-500 mt-1">比最贵供应商省 ¥{t.savings_per_unit}/件</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div></div>
       )}
 
