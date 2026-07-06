@@ -212,8 +212,12 @@ export default function SuppliersPage() {
         { key: "settlement_cycle", label: "结算周期", render: (v:any)=>v||"-" },
         { key: "id", label: "操作", render: (_:any, row:any) => (
           <div className="flex gap-2 flex-wrap">
-            <button onClick={()=>openProducts(row.id)} className="text-green-600 flex items-center gap-1 text-xs"><Plus size={12}/>产品</button>
-            <button onClick={()=>openLogistics(row.id)} className="text-orange-600 flex items-center gap-1 text-xs"><TrendingUp size={12}/>物流</button>
+            {row.category_name === "耗材商" && (
+              <button onClick={()=>openProducts(row.id)} className="text-green-600 flex items-center gap-1 text-xs"><Plus size={12}/>产品</button>
+            )}
+            {row.category_name === "物流" && (
+              <button onClick={()=>openLogistics(row.id)} className="text-orange-600 flex items-center gap-1 text-xs"><TrendingUp size={12}/>物流</button>
+            )}
             <button onClick={()=>viewDetail(row.id)} className="text-blue-500 flex items-center gap-1 text-xs"><Eye size={12}/>详情</button>
           </div>
         )},
