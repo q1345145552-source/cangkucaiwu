@@ -174,6 +174,56 @@ async def list_participants(go_id: int, current_user: User = Depends(get_current
     return {"data": items, "total_quantity": total_qty, "warehouse_count": wh_count}
 
 
+
+@router.get("/history")
+async def history(
+    page: int = 1, page_size: int = 50,
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    query = select(GroupOrder).where(
+        GroupOrder.status.in_([GroupOrderStatus.COMPLETED.value, GroupOrderStatus.CANCELLED.value])
+    ).order_by(GroupOrder.created_at.desc())
+    total = (await db.execute(select(func.count(GroupOrder.id)).where(
+        GroupOrder.status.in_([GroupOrderStatus.COMPLETED.value, GroupOrderStatus.CANCELLED.value])
+    ))).scalar()
+    result = await db.execute(query.offset((page-1)*page_size).limit(page_size))
+    orders = result.scalars().all()
+
+    wh_map = {}
+    wids = {o.warehouse_id for o in orders}
+    if wids:
+        whs = (await db.execute(select(Warehouse).where(Warehouse.id.in_(wids)))).scalars().all()
+        wh_map = {w.id: w.name for w in whs}
+
+    data = []
+    for o in orders:
+        participants, total_qty, wh_count = await _get_participant_details(db, o.id)
+        savings = 0
+        if o.final_price and o.target_price and o.final_price < o.target_price:
+            savings = (o.target_price - o.final_price) * total_qty
+        logistics_per_wh = (o.logistics_fee or 0) / max(wh_count, 1)
+        data.append({
+            "id": o.id, "warehouse_id": o.warehouse_id,
+            "warehouse_name": wh_map.get(o.warehouse_id, ""),
+            "item_name": o.item_name, "specification": o.specification,
+            "target_quantity": o.target_quantity, "target_price": o.target_price,
+            "deadline": o.deadline.isoformat() if o.deadline else None,
+            "reason": o.reason, "status": o.status, "status_cn": STATUS_CN.get(o.status, o.status),
+            "final_price": o.final_price, "final_supplier": o.final_supplier,
+            "logistics_fee": o.logistics_fee,
+            "total_quantity": total_qty,
+            "total_amount": total_qty * (o.final_price or o.target_price or 0),
+            "participant_warehouse_count": wh_count,
+            "participants": participants,
+            "savings": savings,
+            "logistics_per_warehouse": round(logistics_per_wh, 2),
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        })
+    return {"data": data, "total": total, "page": page, "page_size": page_size}
+
+
+
 @router.get("/{go_id}")
 async def get_order_detail(go_id: int, current_user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_db)):
@@ -252,53 +302,6 @@ async def cancel_order(go_id: int, req: CancelRequest,
     o.reason = (o.reason or "") + f" [取消原因: {req.reason}]"
     await db.flush(); return {"message": "拼单已取消"}
 
-
-@router.get("/history")
-async def history(
-    page: int = 1, page_size: int = 50,
-    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(GroupOrder).where(
-        GroupOrder.status.in_([GroupOrderStatus.COMPLETED.value, GroupOrderStatus.CANCELLED.value])
-    ).order_by(GroupOrder.created_at.desc())
-    total = (await db.execute(select(func.count(GroupOrder.id)).where(
-        GroupOrder.status.in_([GroupOrderStatus.COMPLETED.value, GroupOrderStatus.CANCELLED.value])
-    ))).scalar()
-    result = await db.execute(query.offset((page-1)*page_size).limit(page_size))
-    orders = result.scalars().all()
-
-    wh_map = {}
-    wids = {o.warehouse_id for o in orders}
-    if wids:
-        whs = (await db.execute(select(Warehouse).where(Warehouse.id.in_(wids)))).scalars().all()
-        wh_map = {w.id: w.name for w in whs}
-
-    data = []
-    for o in orders:
-        participants, total_qty, wh_count = await _get_participant_details(db, o.id)
-        savings = 0
-        if o.final_price and o.target_price and o.final_price < o.target_price:
-            savings = (o.target_price - o.final_price) * total_qty
-        logistics_per_wh = (o.logistics_fee or 0) / max(wh_count, 1)
-        data.append({
-            "id": o.id, "warehouse_id": o.warehouse_id,
-            "warehouse_name": wh_map.get(o.warehouse_id, ""),
-            "item_name": o.item_name, "specification": o.specification,
-            "target_quantity": o.target_quantity, "target_price": o.target_price,
-            "deadline": o.deadline.isoformat() if o.deadline else None,
-            "reason": o.reason, "status": o.status, "status_cn": STATUS_CN.get(o.status, o.status),
-            "final_price": o.final_price, "final_supplier": o.final_supplier,
-            "logistics_fee": o.logistics_fee,
-            "total_quantity": total_qty,
-            "total_amount": total_qty * (o.final_price or o.target_price or 0),
-            "participant_warehouse_count": wh_count,
-            "participants": participants,
-            "savings": savings,
-            "logistics_per_warehouse": round(logistics_per_wh, 2),
-            "created_at": o.created_at.isoformat() if o.created_at else None,
-        })
-    return {"data": data, "total": total, "page": page, "page_size": page_size}
 
 
 @router.put("/participant/{participant_id}/ban")

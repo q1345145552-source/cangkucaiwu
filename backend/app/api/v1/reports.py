@@ -33,6 +33,13 @@ def get_wh_filter(user: User):
     if user.role == Role.SUPER_ADMIN: return None
     return user.warehouse_id
 
+# Map Chinese sheet names to safe English filenames
+_FILENAME_MAP = {
+    "充值汇总": "recharge_summary", "到账汇总": "incoming_summary",
+    "收支报表": "income_expense", "应付报表": "payable",
+    "备用金报表": "expense_fund", "报销报表": "reimbursement",
+    "账期报表": "credit", "对账差异": "reconciliation_diff",
+}
 def to_excel(headers, rows, sheet_name="Sheet1"):
     wb = Workbook(); ws = wb.active; ws.title = sheet_name
     fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
@@ -42,8 +49,13 @@ def to_excel(headers, rows, sheet_name="Sheet1"):
     for r, row in enumerate(rows, 2):
         for c, val in enumerate(row, 1): ws.cell(row=r, column=c, value=val)
     output = io.BytesIO(); wb.save(output); output.seek(0)
+    safe_name = _FILENAME_MAP.get(sheet_name, sheet_name.replace(" ", "_"))
+    filename = f"{safe_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    # Use RFC 5987 encoding for safe filename delivery
+    from urllib.parse import quote
+    encoded = quote(filename)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            headers={"Content-Disposition": f"attachment; filename={sheet_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"})
+                            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}"})
 
 
 

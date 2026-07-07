@@ -84,8 +84,22 @@ export default function ReportsPage() {
     setLoading(false);
   }
 
-  function exportExcel(key: string) {
-    window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/reports/${key}?format=excel&month=${month}`, "_blank");
+  async function exportExcel(key: string) {
+    const token = getToken();
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    try {
+      const res = await fetch(`${base}/reports/${key}?format=excel&month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("导出失败");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report_${key}_${month}.xlsx`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch (err) { console.error("导出失败:", err); }
   }
 
   function formatPreview(key: string, p: any): string {

@@ -181,6 +181,11 @@ async def export_reimbursements(
         headers={"Content-Disposition": "attachment; filename=reimbursements.xlsx"})
 
 
+@router.get("/categories")
+async def list_reimb_categories():
+    return {"data": [{"id": i+1, "name": n} for i, n in enumerate(_reimb_categories)]}
+
+
 @router.get("/{reimb_id}")
 async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db)):
@@ -298,9 +303,6 @@ async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user
 # === Reimbursement Categories ===
 _reimb_categories = ["交通费", "餐饮费", "办公用品", "通讯费", "差旅费", "水电费", "维修费", "其他"]
 
-@router.get("/categories")
-async def list_reimb_categories():
-    return {"data": [{"id": i+1, "name": n} for i, n in enumerate(_reimb_categories)]}
 
 @router.post("/categories")
 async def create_reimb_category(req: CategoryReq):

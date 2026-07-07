@@ -63,14 +63,26 @@ export default function LedgerPage() {
     setLoading(false);
   }
 
-  function handleExport() {
+  async function handleExport() {
     const params = new URLSearchParams();
     if (month) params.set("month", month);
     if (source) params.set("source", source);
     if (flowType) params.set("flow_type", flowType);
     const token = getToken();
     const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-    window.open(`${base}/income-expense/ledger/export?${params.toString()}`, "_blank");
+    try {
+      const res = await fetch(`${base}/income-expense/ledger/export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("导出失败");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ledger_${month || "all"}.xlsx`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch (err) { console.error("导出失败:", err); }
   }
 
   function handleReset() {
