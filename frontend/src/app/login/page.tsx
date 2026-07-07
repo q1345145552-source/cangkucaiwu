@@ -66,6 +66,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 value={username}
+                autoComplete="off"
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full outline-none"
                 placeholder={t("username")}
@@ -81,6 +82,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 value={password}
+                autoComplete="new-password"
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full outline-none"
                 placeholder={t("password")}
