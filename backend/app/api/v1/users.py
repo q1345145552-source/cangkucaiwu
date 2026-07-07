@@ -190,74 +190,90 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
 ):
     """Super admin only: delete a warehouse_admin and all their data."""
-    if current_user.role != Role.SUPER_ADMIN:
-        raise HTTPException(status_code=403, detail="只有超级管理员可以删除用户")
+    import traceback
+    import logging
+    logger = logging.getLogger("delete_user")
+    
+    try:
+        if current_user.role != Role.SUPER_ADMIN:
+            raise HTTPException(status_code=403, detail="只有超级管理员可以删除用户")
 
-    if current_user.id == user_id:
-        raise HTTPException(status_code=400, detail="不能删除自己")
+        if current_user.id == user_id:
+            raise HTTPException(status_code=400, detail="不能删除自己")
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
-    if user.role != Role.WAREHOUSE_ADMIN:
-        raise HTTPException(status_code=400, detail="只能删除仓库管理员")
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        if user.role != Role.WAREHOUSE_ADMIN:
+            raise HTTPException(status_code=400, detail="只能删除仓库管理员")
 
-    from sqlalchemy import text
+        from sqlalchemy import text
+        username = user.username
 
-    # 1. Find warehouses created by this user
-    wh_result = await db.execute(
-        select(Warehouse).where(Warehouse.created_by == user_id)
-    )
-    owned_whs = wh_result.scalars().all()
-    owned_wh_ids = [w.id for w in owned_whs]
+        # 1. Nullify FK references to this user BEFORE deleting anything
+        await db.execute(text("UPDATE users SET created_by = NULL WHERE created_by = :uid"), {"uid": user_id})
+        await db.execute(text("UPDATE warehouses SET created_by = NULL WHERE created_by = :uid"), {"uid": user_id})
 
-    if owned_wh_ids:
-        # 2. Cascade delete all business data in these warehouses
-        # Order matters: child tables before parent tables
-        await db.execute(text("DELETE FROM credit_shipments WHERE credit_customer_id IN (SELECT id FROM credit_customers WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM credit_repayments WHERE credit_customer_id IN (SELECT id FROM credit_customers WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM credit_customers WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM reimbursement_items WHERE reimbursement_id IN (SELECT id FROM reimbursements WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM reimbursements WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM expense_fund_items WHERE fund_id IN (SELECT id FROM expense_funds WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM expense_funds WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM group_order_participants WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM group_orders WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM payable_bills WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM payable_plans WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM plan_templates WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM monthly_order_volumes WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM income_records WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM expense_records WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM income_expense_categories WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM reconciliation_results WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM recharge_declarations WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM incoming_flows WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM market_items WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM exchange_rates WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM system_settings WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM reimb_categories WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM suppliers WHERE warehouse_id = ANY(:wids) OR warehouse_id IS NULL"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM customers WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
-        await db.execute(text("DELETE FROM payment_accounts WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+        # 2. Find warehouses managed by this user (via UserWarehouse association)
+        uw_result = await db.execute(
+            select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == user_id)
+        )
+        owned_wh_ids = [r for r in uw_result.scalars().all()]
 
-        # 3. Clear warehouse_id from users referencing deleted warehouses
-        await db.execute(text("UPDATE users SET warehouse_id = NULL WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+        if owned_wh_ids:
+            # 3. Cascade delete all business data in these warehouses
+            await db.execute(text("DELETE FROM credit_shipments WHERE credit_customer_id IN (SELECT id FROM credit_customers WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM credit_repayments WHERE credit_customer_id IN (SELECT id FROM credit_customers WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM credit_customers WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM reimbursement_items WHERE reimbursement_id IN (SELECT id FROM reimbursements WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM reimbursements WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM expense_fund_items WHERE fund_id IN (SELECT id FROM expense_funds WHERE warehouse_id = ANY(:wids))"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM expense_funds WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM group_order_participants WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM group_orders WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM payable_bills WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM payable_plans WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM plan_templates WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM monthly_order_volumes WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM income_records WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM expense_records WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM income_expense_categories WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM reconciliation_results WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM recharge_declarations WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM incoming_flows WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM market_items WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM exchange_rates WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM system_settings WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM reimb_categories WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM suppliers WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM customers WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
+            await db.execute(text("DELETE FROM payment_accounts WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
 
-    # 4. Delete UserWarehouse associations for this user
-    await db.execute(text("DELETE FROM user_warehouses WHERE user_id = :uid"), {"uid": user_id})
+            # Clear warehouse_id from users referencing these warehouses
+            await db.execute(text("UPDATE users SET warehouse_id = NULL WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
 
-    # 5. Clear audit logs referencing this user
-    await db.execute(text("DELETE FROM audit_logs WHERE user_id = :uid"), {"uid": user_id})
+        # 4. Delete UserWarehouse associations
+        await db.execute(text("DELETE FROM user_warehouses WHERE user_id = :uid"), {"uid": user_id})
+        if owned_wh_ids:
+            await db.execute(text("DELETE FROM user_warehouses WHERE warehouse_id = ANY(:wids)"), {"wids": owned_wh_ids})
 
-    # 6. Delete owned warehouses
-    if owned_wh_ids:
-        await db.execute(text("DELETE FROM warehouses WHERE id = ANY(:wids)"), {"wids": owned_wh_ids})
+        # 5. Clear audit logs
+        await db.execute(text("DELETE FROM audit_logs WHERE user_id = :uid"), {"uid": user_id})
 
-    # 7. Delete the user
-    await db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user_id})
+        # 6. Delete owned warehouses
+        if owned_wh_ids:
+            await db.execute(text("DELETE FROM warehouses WHERE id = ANY(:wids)"), {"wids": owned_wh_ids})
 
-    await db.commit()
-    return {"message": f"已删除用户 {user.username} 及其所有数据"}
+        # 7. Delete the user
+        await db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user_id})
 
+        await db.commit()
+        return {"message": f"已删除用户 {username} 及其所有数据"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete user {user_id} failed: {e}\n{traceback.format_exc()}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
