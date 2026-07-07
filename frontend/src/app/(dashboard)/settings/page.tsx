@@ -29,13 +29,18 @@ export default function SettingsPage() {
   const [rateForm, setRateForm] = useState({ from_currency: "CNY", to_currency: "THB", rate: "" });
   const [rateLoading, setRateLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "staff" });
+  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "staff", warehouse_id: "" });
+  const [warehouses, setWarehouses] = useState<any[]>([]);
 
   // Edit user state
   const [editUser, setEditUser] = useState<any>(null);
   const [editPerms, setEditPerms] = useState<string[]>([]);
 
-  useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") loadUsers(); if (tab === "rates") loadRates(); }, [tab]);
+  useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); } if (tab === "rates") loadRates(); }, [tab]);
+
+  async function loadWarehouses() {
+    try { const r = await api.get<any>("/warehouses?page=1&page_size=100"); setWarehouses(r.data || []); } catch {}
+  }
 
   async function loadRates() {
     setRateLoading(true);
@@ -68,9 +73,16 @@ export default function SettingsPage() {
 
   async function createUser() {
     try {
-      await api.post("/users", newUser);
+      const payload: any = { ...newUser };
+      // Non-super_admin don't need to pass warehouse_id (backend auto-assigns)
+      if (user?.role !== "super_admin") {
+        delete payload.warehouse_id;
+      } else if (payload.warehouse_id) {
+        payload.warehouse_id = +payload.warehouse_id;
+      }
+      await api.post("/users", payload);
       toast("success", "创建成功");
-      setNewUser({ username: "", display_name: "", password: "", role: "staff" });
+      setNewUser({ username: "", display_name: "", password: "", role: "staff", warehouse_id: "" });
       loadUsers();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
@@ -148,6 +160,13 @@ export default function SettingsPage() {
                 <option value="staff">Staff 仓库财务</option>
                 {user?.role === "super_admin" && <option value="warehouse_admin">WarehouseAdmin 仓库老板</option>}
               </select></div>
+              {user?.role === "super_admin" && newUser.role !== "staff" && (
+                <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
+                <select className="form-input text-sm" value={newUser.warehouse_id} onChange={e=>setNewUser({...newUser,warehouse_id:e.target.value})}>
+                  <option value="">请选择仓库</option>
+                  {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
+                </select></div>
+              )}
               <button onClick={createUser} className="btn-primary">创建用户</button>
             </div>
           </div>
