@@ -74,10 +74,7 @@ export default function SettingsPage() {
   async function createUser() {
     try {
       const payload: any = { ...newUser };
-      // Non-super_admin don't need to pass warehouse_id (backend auto-assigns)
-      if (user?.role !== "super_admin") {
-        delete payload.warehouse_id;
-      } else if (payload.warehouse_id) {
+      if (payload.warehouse_id) {
         payload.warehouse_id = +payload.warehouse_id;
       }
       await api.post("/users", payload);
@@ -160,7 +157,7 @@ export default function SettingsPage() {
                 <option value="staff">Staff 仓库财务</option>
                 {user?.role === "super_admin" && <option value="warehouse_admin">WarehouseAdmin 仓库老板</option>}
               </select></div>
-              {user?.role === "super_admin" && newUser.role !== "staff" && (
+              {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
                 <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
                 <select className="form-input text-sm" value={newUser.warehouse_id} onChange={e=>setNewUser({...newUser,warehouse_id:e.target.value})}>
                   <option value="">请选择仓库</option>

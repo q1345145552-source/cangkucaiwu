@@ -81,9 +81,21 @@ async def create_user(
     if existing:
         raise HTTPException(status_code=400, detail="用户名已存在")
 
-    # Non-superadmin can only create users in their own warehouse
+    # Non-superadmin: validate warehouse_id against managed warehouses
     if current_user.role != Role.SUPER_ADMIN:
-        req.warehouse_id = current_user.warehouse_id
+        if req.warehouse_id is not None:
+            # Verify the requested warehouse is one the user manages
+            uw_check = (await db.execute(
+                select(UserWarehouse).where(
+                    UserWarehouse.user_id == current_user.id,
+                    UserWarehouse.warehouse_id == req.warehouse_id,
+                )
+            )).scalar_one_or_none()
+            if not uw_check:
+                raise HTTPException(status_code=403, detail="无权限将用户分配到该仓库")
+        else:
+            # Default to current user's warehouse
+            req.warehouse_id = current_user.warehouse_id
 
     # warehouse_admin and staff MUST have a warehouse_id
     if req.role in (Role.WAREHOUSE_ADMIN, Role.STAFF) and req.warehouse_id is None:
