@@ -7,17 +7,13 @@ from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpense
 from app.models.customer import Customer, PaymentAccount
 from app.models.supplier import Supplier
 from app.models.user import User
-from app.core.permissions import get_current_user, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, Role, check_staff_permission
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
 
 OPERATING_NAMES = ["仓储费", "操作费", "增值服务费", "工资", "电费", "网费", "房租", "耗材", "物流运费", "快递费", "保险费", "税费"]
 
 router = APIRouter()
 
-def get_wh_id(user: User) -> int:
-    if not user.warehouse_id:
-        raise HTTPException(400, "当前用户未关联仓库")
-    return user.warehouse_id
 
 # ==== Categories ====
 @router.get("/categories")

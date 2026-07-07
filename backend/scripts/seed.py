@@ -5,6 +5,7 @@ from datetime import datetime
 from app.database import async_session_factory, _get_engine, Base
 from app.models.warehouse import Warehouse
 from app.models.user import User
+from app.models.user_warehouse import UserWarehouse
 from app.models.customer import Customer
 from app.models.supplier import Supplier
 from app.models.recharge import RechargeDeclaration, IncomingFlow
@@ -33,13 +34,22 @@ async def seed():
         session.add_all(whs); await session.flush()
 
         # === Users ===
-        session.add(User(username="admin", password_hash=hash_password("admin123"),
-                          display_name="超级管理员", role="super_admin", warehouse_id=None, is_active=True))
+        admin_user = User(username="admin", password_hash=hash_password("admin123"),
+                          display_name="超级管理员", role="super_admin", warehouse_id=None, is_active=True)
+        session.add(admin_user)
+        wh_users = []  # (user, warehouse) tuples for UserWarehouse association
         for wh in whs:
-            session.add(User(username=f"{wh.code.lower()}_admin", password_hash=hash_password("admin123"),
-                              display_name=f"{wh.name}老板", role="warehouse_admin", warehouse_id=wh.id, is_active=True))
-            session.add(User(username=f"{wh.code.lower()}_staff", password_hash=hash_password("admin123"),
-                              display_name=f"{wh.name}财务", role="staff", warehouse_id=wh.id, is_active=True))
+            ua = User(username=f"{wh.code.lower()}_admin", password_hash=hash_password("admin123"),
+                      display_name=f"{wh.name}老板", role="warehouse_admin", warehouse_id=wh.id, is_active=True)
+            us = User(username=f"{wh.code.lower()}_staff", password_hash=hash_password("admin123"),
+                      display_name=f"{wh.name}财务", role="staff", warehouse_id=wh.id, is_active=True)
+            session.add(ua); session.add(us)
+            wh_users.append((ua, wh)); wh_users.append((us, wh))
+        await session.flush()
+
+        # === User-Warehouse Associations ===
+        for user, wh in wh_users:
+            session.add(UserWarehouse(user_id=user.id, warehouse_id=wh.id))
         await session.flush()
 
         # === Expense Fund Accounts ===

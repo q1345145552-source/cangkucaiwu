@@ -5,15 +5,11 @@ from datetime import datetime
 from app.database import get_db
 from app.models.recharge import ExchangeRate
 from app.models.user import User
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, get_wh_id, Role
 from app.schemas.business import ExchangeRateCreate
 
 router = APIRouter()
 
-def get_wh_id(user: User) -> int:
-    if not user.warehouse_id:
-        raise HTTPException(400, "当前用户未关联仓库")
-    return user.warehouse_id
 
 
 @router.get("/rates")
