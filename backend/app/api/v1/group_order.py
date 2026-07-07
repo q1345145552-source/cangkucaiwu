@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models.group_order import GroupOrder, GroupOrderParticipant, GroupOrderStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import get_current_user, Role, require_role
+from app.core.permissions import get_current_user, get_wh_id, Role, require_role
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -29,9 +29,6 @@ class CancelRequest(BaseModel):
     reason: str
 
 STATUS_CN = {"open": "开放中", "closed": "已截止", "completed": "已完成", "cancelled": "已取消"}
-
-def get_wh(user: User) -> int:
-    return user.warehouse_id
 
 async def _get_participant_details(db: AsyncSession, go_id: int):
     """获取拼单的参与仓库明细"""
@@ -121,7 +118,7 @@ async def create_group_order(req: GOCreate, current_user: User = Depends(get_cur
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "仅仓库管理员可发起")
     o = GroupOrder(
-        warehouse_id=get_wh(current_user), item_name=req.item_name,
+        warehouse_id=get_wh_id(current_user), item_name=req.item_name,
         specification=req.specification, target_quantity=req.target_quantity,
         target_price=req.target_price, deadline=datetime.fromisoformat(req.deadline),
         reason=req.reason, initiator_id=current_user.id,
@@ -146,7 +143,7 @@ async def join_group_order(go_id: int, req: JoinRequest, current_user: User = De
     # Check not banned
     banned = (await db.execute(select(GroupOrderParticipant).where(
         GroupOrderParticipant.group_order_id == go_id,
-        GroupOrderParticipant.warehouse_id == get_wh(current_user),
+        GroupOrderParticipant.warehouse_id == get_wh_id(current_user),
         GroupOrderParticipant.is_banned == True,
     ))).scalars().all()
     if banned:
@@ -154,13 +151,13 @@ async def join_group_order(go_id: int, req: JoinRequest, current_user: User = De
     # Check not already joined
     already = (await db.execute(select(GroupOrderParticipant).where(
         GroupOrderParticipant.group_order_id == go_id,
-        GroupOrderParticipant.warehouse_id == get_wh(current_user),
+        GroupOrderParticipant.warehouse_id == get_wh_id(current_user),
         GroupOrderParticipant.is_banned == False,
     ))).scalar_one_or_none()
     if already:
         raise HTTPException(400, "该仓库已参与此拼单")
     p = GroupOrderParticipant(
-        group_order_id=go_id, warehouse_id=get_wh(current_user),
+        group_order_id=go_id, warehouse_id=get_wh_id(current_user),
         quantity=req.quantity, delivery_address=req.delivery_address,
         agreed_rules=True,
     )

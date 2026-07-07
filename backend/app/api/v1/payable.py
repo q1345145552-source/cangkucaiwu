@@ -25,9 +25,6 @@ class PlanCreate(BaseModel):
     plan_name: str; planned_date: str; bill_ids: List[int]; remark: Optional[str] = None
     save_as_template: bool = False; template_name: Optional[str] = None
 
-def get_wh(user: User) -> int:
-    return user.warehouse_id
-
 @router.get("")
 async def list_bills(
     page: int = 1, page_size: int = 20, supplier_id: int = None,
@@ -99,7 +96,7 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
     # 重复检测
     existing = (await db.execute(
         select(PayableBill).where(
-            PayableBill.warehouse_id == get_wh(current_user),
+            PayableBill.warehouse_id == get_wh_id(current_user),
             PayableBill.bill_number == req.bill_number,
             PayableBill.supplier_id == req.supplier_id,
         )
@@ -115,7 +112,7 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
         diff_note = f"供应商确认金额 {req.confirmed_amount} 与仓库记录 {req.amount} 不一致"
     
     b = PayableBill(
-        warehouse_id=get_wh(current_user), supplier_id=req.supplier_id,
+        warehouse_id=get_wh_id(current_user), supplier_id=req.supplier_id,
         bill_number=req.bill_number,
         bill_date=datetime.fromisoformat(req.bill_date),
         due_date=datetime.fromisoformat(req.due_date),
@@ -315,7 +312,7 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_
         bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(req.bill_ids)))).scalars().all()
         total = sum(b.amount - b.paid_amount for b in bills)
     p = PayablePlan(
-        warehouse_id=get_wh(current_user), plan_name=req.plan_name,
+        warehouse_id=get_wh_id(current_user), plan_name=req.plan_name,
         planned_date=datetime.fromisoformat(req.planned_date),
         total_amount=total, bill_ids=req.bill_ids, remark=req.remark,
         created_by=current_user.id,
@@ -324,7 +321,7 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_
     # Save as template if requested
     if req.save_as_template and req.bill_ids:
         tmpl = PlanTemplate(
-            warehouse_id=get_wh(current_user),
+            warehouse_id=get_wh_id(current_user),
             name=req.template_name or req.plan_name,
             bill_ids=req.bill_ids,
             created_by=current_user.id,

@@ -11,7 +11,7 @@ from app.models.reimbursement import Reimbursement
 from app.models.payable import PayableBill
 from app.models.credit import CreditCustomer
 from app.models.user import User
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, get_wh_id, Role
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
@@ -28,10 +28,6 @@ STATUS_LABELS = {
 }
 
 def _(s): return STATUS_LABELS.get(s, s)
-
-def get_wh_filter(user: User):
-    if user.role == Role.SUPER_ADMIN: return None
-    return user.warehouse_id
 
 # Map Chinese sheet names to safe English filenames
 _FILENAME_MAP = {
@@ -68,7 +64,7 @@ async def report_previews(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     today = __import__('datetime').date.today()
     m = month or f"{today.year}-{today.month:02d}"
 
@@ -145,7 +141,7 @@ async def recharge_summary(month: str = None, warehouse_id: int = None, format: 
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(RechargeDeclaration)
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     if wh: query = query.where(RechargeDeclaration.warehouse_id == wh)
     if month: query = query.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month)
     if warehouse_id: query = query.where(RechargeDeclaration.warehouse_id == warehouse_id)
@@ -163,7 +159,7 @@ async def incoming_summary(month: str = None, warehouse_id: int = None, format: 
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomingFlow)
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     if wh: query = query.where(IncomingFlow.warehouse_id == wh)
     if month: query = query.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
     if warehouse_id: query = query.where(IncomingFlow.warehouse_id == warehouse_id)
@@ -180,7 +176,7 @@ async def income_expense_report(month: str = None, warehouse_id: int = None, for
                                  current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     iq = select(IncomeRecord); eq = select(ExpenseRecord)
     rq = select(RechargeDeclaration)  # 充值申报也作为收入来源
     if wh: iq = iq.where(IncomeRecord.warehouse_id == wh); eq = eq.where(ExpenseRecord.warehouse_id == wh)
@@ -229,7 +225,7 @@ async def payable_report(month: str = None, warehouse_id: int = None, format: st
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     if wh: query = query.where(PayableBill.warehouse_id == wh)
     if month: query = query.where(func.to_char(PayableBill.due_date, 'YYYY-MM') == month)
     if warehouse_id: query = query.where(PayableBill.warehouse_id == warehouse_id)
@@ -250,7 +246,7 @@ async def expense_fund_report(warehouse_id: int = None, format: str = "json",
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseFund)
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     if wh: query = query.where(ExpenseFund.warehouse_id == wh)
     if warehouse_id: query = query.where(ExpenseFund.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ExpenseFund.created_at.desc()))
@@ -268,7 +264,7 @@ async def reimbursement_report(month: str = None, warehouse_id: int = None, form
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Reimbursement)
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     if wh: query = query.where(Reimbursement.warehouse_id == wh)
     if month: query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
     if warehouse_id: query = query.where(Reimbursement.warehouse_id == warehouse_id)
@@ -288,7 +284,7 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(CreditCustomer)
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     if wh: query = query.where(CreditCustomer.warehouse_id == wh)
     if warehouse_id: query = query.where(CreditCustomer.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(CreditCustomer.created_at.desc()))
@@ -305,7 +301,7 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
 @router.get("/reconciliation-diff")
 async def reconciliation_diff_report(month: str, warehouse_id: int = None, format: str = "json",
                                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    wh = get_wh_filter(current_user)
+    wh = get_wh_id(current_user)
     query = select(ReconciliationResult).where(ReconciliationResult.reconciliation_month == month)
     if wh: query = query.where(ReconciliationResult.warehouse_id == wh)
     if warehouse_id: query = query.where(ReconciliationResult.warehouse_id == warehouse_id)

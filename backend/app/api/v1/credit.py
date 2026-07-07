@@ -27,9 +27,6 @@ class RepaymentCreate(BaseModel):
 class ShipmentCreate(BaseModel):
     ship_date: str; amount: float; order_no: Optional[str] = None; remark: Optional[str] = None
 
-def get_wh(user: User) -> int:
-    return user.warehouse_id
-
 async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
     """Calculate current_debt and overdue_days from shipments and repayments."""
     ship_total = (await db.execute(
@@ -161,7 +158,7 @@ async def create_credit(req: CreditCreate, current_user: User = Depends(get_curr
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
     c = CreditCustomer(
-        warehouse_id=get_wh(current_user), customer_id=req.customer_id,
+        warehouse_id=get_wh_id(current_user), customer_id=req.customer_id,
         credit_limit=req.credit_limit, repayment_day=req.repayment_day,
         remark=req.remark, created_by=current_user.id,
     )

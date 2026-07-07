@@ -27,9 +27,6 @@ class ReimbReview(BaseModel):
 class CategoryReq(BaseModel):
     name: str; description: Optional[str] = None
 
-def get_wh(user: User) -> int:
-    return user.warehouse_id
-
 @router.get("")
 async def list_reimbursements(
     page: int = 1, page_size: int = 20, month: str = None, status: str = None,
@@ -73,7 +70,7 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
                                 db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
     total = sum(i.amount for i in req.items)
 
     fund_item_id = None

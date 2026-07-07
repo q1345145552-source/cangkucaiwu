@@ -8,14 +8,11 @@ from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, Re
 from app.models.user import User
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, get_wh_id, Role
 from pydantic import BaseModel
 from typing import Optional, List
 
 router = APIRouter()
-
-def get_wh(user: User) -> int:
-    return user.warehouse_id
 
 async def get_setting(db: AsyncSession, warehouse_id: int, key: str, default: str = "5000"):
     r = (await db.execute(select(SystemSetting).where(
@@ -78,7 +75,7 @@ async def create_account(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
     # 验证员工属于本仓库
     emp = (await db.execute(select(User).where(User.id == req.employee_id, User.warehouse_id == wh_id))).scalar_one_or_none()
     if not emp:
@@ -111,7 +108,7 @@ async def list_employees(
     """列出本仓库所有非超管员工"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
     employees = (await db.execute(select(User).where(
         User.warehouse_id == wh_id,
         User.role != Role.SUPER_ADMIN,
@@ -133,7 +130,7 @@ async def list_accounts(
     """列出本仓库所有员工的备用金账户（含余额）"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
     # 列出所有活跃账户（排除超级管理员）
     accounts = (await db.execute(
         select(ExpenseFund).join(User, ExpenseFund.employee_id == User.id).where(
@@ -291,7 +288,7 @@ async def list_pending_reviews(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无审核权限")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
 
     filters = [
         ExpenseFund.warehouse_id == wh_id,
@@ -397,7 +394,7 @@ async def fund_settings(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
     fund_limit = await get_setting(db, wh_id, "fund_limit", "5000")
     alert_threshold = await get_setting(db, wh_id, "fund_alert_threshold", "500")
     return {"fund_limit": float(fund_limit), "fund_alert_threshold": float(alert_threshold)}
@@ -412,7 +409,7 @@ async def update_settings(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
     existing = (await db.execute(select(SystemSetting).where(
         SystemSetting.warehouse_id == wh_id, SystemSetting.key == req.key
     ))).scalar_one_or_none()
@@ -441,7 +438,7 @@ async def alert_list(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = get_wh(current_user)
+    wh_id = get_wh_id(current_user)
     query = select(ExpenseFund).where(
         ExpenseFund.warehouse_id == wh_id,
         ExpenseFund.status == FundStatus.ACTIVE.value,

@@ -23,9 +23,6 @@ class MarketReview(BaseModel):
 class PurchaseRequest(BaseModel):
     contact_info: str
 
-def get_wh(user: User) -> int:
-    return user.warehouse_id
-
 @router.get("")
 async def list_items(
     page: int = 1, page_size: int = 20, search: str = None,
@@ -81,7 +78,7 @@ async def create_item(req: MarketCreate, current_user: User = Depends(get_curren
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "仅仓库管理员可上架")
     i = MarketItem(
-        warehouse_id=get_wh(current_user), name=req.name, quantity=req.quantity,
+        warehouse_id=get_wh_id(current_user), name=req.name, quantity=req.quantity,
         price=req.price, image=req.image, description=req.description,
         uploader_id=current_user.id,
     )
