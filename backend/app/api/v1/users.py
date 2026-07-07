@@ -31,12 +31,14 @@ async def list_users(
         )).scalars().all()
         managed_wh_ids = list(managed_wh_ids) if managed_wh_ids else []
         if managed_wh_ids:
-            # Filter by User.warehouse_id (direct warehouse assignment), not UserWarehouse association
+            # warehouse_admin sees: staff in managed warehouses + self (excludes other warehouse_admins)
             query = query.where(
-                User.warehouse_id.in_(managed_wh_ids) | (User.id == current_user.id)
+                (User.warehouse_id.in_(managed_wh_ids) & (User.role != Role.WAREHOUSE_ADMIN))
+                | (User.id == current_user.id)
             )
             count_query = count_query.where(
-                User.warehouse_id.in_(managed_wh_ids) | (User.id == current_user.id)
+                (User.warehouse_id.in_(managed_wh_ids) & (User.role != Role.WAREHOUSE_ADMIN))
+                | (User.id == current_user.id)
             )
         else:
             # New warehouse_admin with no warehouses yet - show only self
