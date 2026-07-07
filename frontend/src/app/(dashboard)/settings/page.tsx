@@ -111,10 +111,10 @@ export default function SettingsPage() {
         <h1 className="page-title">{t("settings")}</h1>
         <div className="flex gap-3 mt-2">
           <button onClick={()=>setTab("profile")} className={`px-4 py-1.5 rounded text-sm ${tab==="profile"?"bg-primary text-white":"border"}`}>个人设置</button>
-          {(user?.role === "super_admin" || user?.role === "warehouse_admin") && newUser.role !== "warehouse_admin" && (
+          {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
             <button onClick={()=>setTab("users")} className={`px-4 py-1.5 rounded text-sm ${tab==="users"?"bg-primary text-white":"border"}`}>用户管理</button>
           )}
-          {(user?.role === "super_admin" || user?.role === "warehouse_admin") && newUser.role !== "warehouse_admin" && (
+          {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
             <button onClick={()=>setTab("rates")} className={`px-4 py-1.5 rounded text-sm ${tab==="rates"?"bg-primary text-white":"border"}`}>汇率管理</button>
           )}
         </div>
