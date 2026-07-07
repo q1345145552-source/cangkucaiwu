@@ -193,10 +193,14 @@ async def list_results(
         })
 
     total = len(items)
+    # Compute total matched amounts
+    total_matched_decl = sum((it.get("decl_amount") or 0) for it in items)
+    total_matched_flow = sum((it.get("flow_amount") or 0) for it in items)
     # Apply pagination after filtering
     start_idx = (page - 1) * page_size
     paged = items[start_idx:start_idx + page_size]
-    return {"data": paged, "total": total, "page": page, "page_size": page_size}
+    return {"data": paged, "total": total, "page": page, "page_size": page_size,
+            "total_matched_decl": total_matched_decl, "total_matched_flow": total_matched_flow}
 
 @router.get("/export")
 async def export_reconciliation(

@@ -32,6 +32,8 @@ export default function ReconciliationPage() {
   const [resultsEndDate, setResultsEndDate] = useState(`${yyyy}-${mm}-${String(today.getDate()).padStart(2,"0")}`);
   const [resultsSearch, setResultsSearch] = useState("");
   const [resultsSearchCode, setResultsSearchCode] = useState("");
+  const [resultsDeclTotal, setResultsDeclTotal] = useState(0);
+  const [resultsFlowTotal, setResultsFlowTotal] = useState(0);
 
   function setThisMonth() {
     setStartDate(`${yyyy}-${mm}-01`);
@@ -78,6 +80,8 @@ export default function ReconciliationPage() {
       if (resultsSearchCode) url += `&search_code=${encodeURIComponent(resultsSearchCode)}`;
       const res = await api.get<any>(url);
       setResults(res.data); setResultsTotal(res.total);
+      setResultsDeclTotal(res.total_matched_decl || 0);
+      setResultsFlowTotal(res.total_matched_flow || 0);
     } catch {}
     setLoadingResults(false);
   }
@@ -271,10 +275,16 @@ export default function ReconciliationPage() {
       <div className="card">
         <div className="bg-gray-50 px-4 py-3 rounded-t-xl border-b space-y-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle size={18} className="text-green-600" />
-              <span className="font-semibold text-sm">已匹配记录</span>
-              <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">{resultsTotal} 条</span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={18} className="text-green-600" />
+                <span className="font-semibold text-sm">已匹配记录</span>
+                <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">{resultsTotal} 条</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span>匹配申报总额 <span className="font-semibold text-blue-600">฿{resultsDeclTotal.toLocaleString()}</span></span>
+                <span>匹配流水总额 <span className="font-semibold text-green-600">฿{resultsFlowTotal.toLocaleString()}</span></span>
+              </div>
             </div>
             <button onClick={handleExport} className="btn-secondary h-8 text-xs flex items-center gap-1"><Download size={14} />导出</button>
           </div>

@@ -45,7 +45,7 @@ const navItems: NavItem[] = [
       { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff"] },
       { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin"] },
       { key: "reports", label: "reports", icon: <BarChart3 size={18} />, href: "/reports", roles: ["warehouse_admin", "staff"] },
-      { key: "ledger", label: "ledger", icon: <FileText size={18} />, href: "/ledger", roles: ["super_admin", "warehouse_admin"] },
+      { key: "ledger", label: "资金流水", icon: <FileText size={18} />, href: "/ledger", roles: ["super_admin", "warehouse_admin"] },
     ],
   },
   {

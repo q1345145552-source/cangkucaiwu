@@ -18,29 +18,115 @@ from openpyxl.styles import Font, Alignment, PatternFill
 
 router = APIRouter()
 
+STATUS_LABELS = {
+    "pending": "待处理", "matched": "已匹配", "unmatched": "未匹配",
+    "paid": "已付款", "active": "正常", "approved": "已通过",
+    "rejected": "已驳回", "partially_approved": "部分通过",
+    "fund_linked": "转入备用金审核", "partially_paid": "部分付款",
+    "overdue": "逾期", "active": "正常", "paused": "暂停", "cancelled": "已取消",
+    "settled": "已结清",
+}
+
+def _(s): return STATUS_LABELS.get(s, s)
+
 def get_wh_filter(user: User):
-    if user.role == Role.SUPER_ADMIN:
-        return None
+    if user.role == Role.SUPER_ADMIN: return None
     return user.warehouse_id
 
 def to_excel(headers, rows, sheet_name="Sheet1"):
-    wb = Workbook()
-    ws = wb.active; ws.title = sheet_name
-    header_font = Font(bold=True)
-    header_fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
-    header_font_white = Font(bold=True, color="FFFFFF")
+    wb = Workbook(); ws = wb.active; ws.title = sheet_name
+    fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+    fw = Font(bold=True, color="FFFFFF")
     for col, h in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=h)
-        cell.font = header_font_white; cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center")
+        c = ws.cell(row=1, column=col, value=h); c.font = fw; c.fill = fill; c.alignment = Alignment(horizontal="center")
     for r, row in enumerate(rows, 2):
-        for c, val in enumerate(row, 1):
-            ws.cell(row=r, column=c, value=val)
-    output = io.BytesIO()
-    wb.save(output); output.seek(0)
+        for c, val in enumerate(row, 1): ws.cell(row=r, column=c, value=val)
+    output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             headers={"Content-Disposition": f"attachment; filename={sheet_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"})
 
+
+
+# ===== 0. 报表预览（所有卡片一次性返回） =====
+@router.get("/previews")
+async def report_previews(
+    month: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    wh = get_wh_filter(current_user)
+    today = __import__('datetime').date.today()
+    m = month or f"{today.year}-{today.month:02d}"
+
+    previews = {}
+
+    # 1. 充值汇总
+    q = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0), func.count(RechargeDeclaration.id))
+    if wh: q = q.where(RechargeDeclaration.warehouse_id == wh)
+    if m: q = q.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == m)
+    total_amt, count = (await db.execute(q)).first()
+    previews["recharge-summary"] = {"preview": float(total_amt or 0), "count": count or 0}
+
+    # 2. 到账汇总
+    q = select(func.coalesce(func.sum(IncomingFlow.amount), 0), func.count(IncomingFlow.id))
+    if wh: q = q.where(IncomingFlow.warehouse_id == wh)
+    if m: q = q.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == m)
+    total_amt, count = (await db.execute(q)).first()
+    previews["incoming-summary"] = {"preview": float(total_amt or 0), "count": count or 0}
+
+    # 3. 收支报表
+    iq = select(func.coalesce(func.sum(IncomeRecord.amount), 0))
+    eq = select(func.coalesce(func.sum(ExpenseRecord.amount), 0))
+    if wh: iq = iq.where(IncomeRecord.warehouse_id == wh); eq = eq.where(ExpenseRecord.warehouse_id == wh)
+    if m: iq = iq.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == m); eq = eq.where(func.to_char(ExpenseRecord.expense_date, 'YYYY-MM') == m)
+    inc = float((await db.execute(iq)).scalar() or 0)
+    exp = float((await db.execute(eq)).scalar() or 0)
+    # Also add recharge income
+    rq2 = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0))
+    if wh: rq2 = rq2.where(RechargeDeclaration.warehouse_id == wh)
+    if m: rq2 = rq2.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == m)
+    rch = float((await db.execute(rq2)).scalar() or 0)
+    previews["income-expense"] = {"preview": inc + exp + rch, "total_income": inc + rch, "total_expense": exp, "net": inc + rch - exp}
+
+    # 4. 应付报表
+    q = select(func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0), func.count(PayableBill.id))
+    if wh: q = q.where(PayableBill.warehouse_id == wh)
+    if m: q = q.where(func.to_char(PayableBill.due_date, 'YYYY-MM') == m)
+    pending, count = (await db.execute(q)).first()
+    previews["payable"] = {"preview": float(pending or 0), "count": count or 0}
+
+    # 5. 备用金报表
+    q = select(func.coalesce(func.sum(ExpenseFund.remaining_balance), 0), func.count(ExpenseFund.id))
+    if wh: q = q.where(ExpenseFund.warehouse_id == wh)
+    q = q.where(ExpenseFund.status == "active")
+    in_transit, count = (await db.execute(q)).first()
+    previews["expense-fund"] = {"preview": float(in_transit or 0), "count": count or 0}
+
+    # 6. 报销报表
+    q = select(func.coalesce(func.sum(Reimbursement.total_amount), 0), func.count(Reimbursement.id))
+    if wh: q = q.where(Reimbursement.warehouse_id == wh)
+    if m: q = q.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == m)
+    total_amt, count = (await db.execute(q)).first()
+    previews["reimbursement"] = {"preview": float(total_amt or 0), "count": count or 0}
+
+    # 7. 账期报表
+    q = select(func.coalesce(func.sum(CreditCustomer.current_debt), 0), func.count(CreditCustomer.id))
+    if wh: q = q.where(CreditCustomer.warehouse_id == wh)
+    total_debt, count = (await db.execute(q)).first()
+    previews["credit"] = {"preview": float(total_debt or 0), "count": count or 0}
+
+    # 8. 对账差异
+    q = select(func.coalesce(func.sum(func.abs(ReconciliationResult.amount_diff)), 0), func.count(ReconciliationResult.id))
+    if wh: q = q.where(ReconciliationResult.warehouse_id == wh)
+    if m: q = q.where(ReconciliationResult.reconciliation_month == m)
+    total_diff, count = (await db.execute(q)).first()
+    previews["reconciliation-diff"] = {"preview": float(total_diff or 0), "count": count or 0}
+
+    return {"previews": previews, "month": m}
+
+# ===== 1. 充值汇总 =====
 @router.get("/recharge-summary")
 async def recharge_summary(month: str = None, warehouse_id: int = None, format: str = "json",
                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -53,11 +139,12 @@ async def recharge_summary(month: str = None, warehouse_id: int = None, format: 
     if warehouse_id: query = query.where(RechargeDeclaration.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(RechargeDeclaration.declare_date.desc()))
     records = result.scalars().all()
-    data = [{"id": r.id, "date": str(r.declare_date), "amount": r.amount, "currency": r.currency, "status": r.match_status} for r in records]
-    if format == "excel":
-        return to_excel(["ID", "日期", "金额", "币种", "状态"], [[r["id"], r["date"], r["amount"], r["currency"], r["status"]] for r in data], "充值汇总")
-    return {"data": data, "total_amount": sum(r["amount"] for r in data)}
+    data = [{"日期": r.declare_date.strftime("%Y-%m-%d") if r.declare_date else "", "金额": r.amount, "币种": r.currency, "状态": _(r.match_status)} for r in records]
+    headers = ["日期","金额","币种","状态"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "充值汇总")
+    return {"data": data, "total_amount": sum(r.amount for r in records), "total_count": len(records)}
 
+# ===== 2. 到账汇总 =====
 @router.get("/incoming-summary")
 async def incoming_summary(month: str = None, warehouse_id: int = None, format: str = "json",
                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -70,11 +157,12 @@ async def incoming_summary(month: str = None, warehouse_id: int = None, format: 
     if warehouse_id: query = query.where(IncomingFlow.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(IncomingFlow.received_date.desc()))
     records = result.scalars().all()
-    data = [{"id": r.id, "date": str(r.received_date), "amount": r.amount, "currency": r.currency, "payer": r.payer_name} for r in records]
-    if format == "excel":
-        return to_excel(["ID", "日期", "金额", "币种", "付款方"], [[r["id"], r["date"], r["amount"], r["currency"], r["payer"]] for r in data], "到账汇总")
-    return {"data": data, "total_amount": sum(r["amount"] for r in data)}
+    data = [{"日期": r.received_date.strftime("%Y-%m-%d") if r.received_date else "", "金额": r.amount, "币种": r.currency, "付款方": r.payer_name or ""} for r in records]
+    headers = ["日期","金额","币种","付款方"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "到账汇总")
+    return {"data": data, "total_amount": sum(r.amount for r in records), "total_count": len(records)}
 
+# ===== 3. 收支报表 =====
 @router.get("/income-expense")
 async def income_expense_report(month: str = None, warehouse_id: int = None, format: str = "json",
                                  current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -82,38 +170,68 @@ async def income_expense_report(month: str = None, warehouse_id: int = None, for
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh = get_wh_filter(current_user)
     iq = select(IncomeRecord); eq = select(ExpenseRecord)
+    rq = select(RechargeDeclaration)  # 充值申报也作为收入来源
     if wh: iq = iq.where(IncomeRecord.warehouse_id == wh); eq = eq.where(ExpenseRecord.warehouse_id == wh)
+    if wh: rq = rq.where(RechargeDeclaration.warehouse_id == wh)
     if month: iq = iq.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month); eq = eq.where(func.to_char(ExpenseRecord.expense_date, 'YYYY-MM') == month)
+    if month: rq = rq.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month)
     if warehouse_id: iq = iq.where(IncomeRecord.warehouse_id == warehouse_id); eq = eq.where(ExpenseRecord.warehouse_id == warehouse_id)
-    incomes = (await db.execute(iq)).scalars().all()
-    expenses = (await db.execute(eq)).scalars().all()
-    total_in = sum(r.amount for r in incomes)
-    total_out = sum(r.amount for r in expenses)
-    data = [{"type": "income", "date": str(r.income_date), "amount": r.amount, "currency": r.currency, "remark": r.remark} for r in incomes] + \
-           [{"type": "expense", "date": str(r.expense_date), "amount": r.amount, "currency": r.currency, "remark": r.remark} for r in expenses]
-    data.sort(key=lambda x: x["date"], reverse=True)
-    if format == "excel":
-        return to_excel(["类型", "日期", "金额", "币种", "备注"], [[r["type"], r["date"], r["amount"], r["currency"], r["remark"]] for r in data], "收支报表")
-    return {"data": data, "total_income": float(total_in), "total_expense": float(total_out), "net": float(total_in - total_out)}
+    if warehouse_id: rq = rq.where(RechargeDeclaration.warehouse_id == warehouse_id)
 
+    incomes = (await db.execute(iq.order_by(IncomeRecord.income_date.desc()))).scalars().all()
+    expenses = (await db.execute(eq.order_by(ExpenseRecord.expense_date.desc()))).scalars().all()
+    recharges = (await db.execute(rq.order_by(RechargeDeclaration.declare_date.desc()))).scalars().all()
+
+    # 获取充值对应的客户名称
+    recharge_cust_ids = list(set(r.customer_id for r in recharges if r.customer_id))
+    recharge_cust_map = {}
+    if recharge_cust_ids:
+        from app.models.customer import Customer
+        custs = (await db.execute(select(Customer).where(Customer.id.in_(recharge_cust_ids)))).scalars().all()
+        recharge_cust_map = {c.id: c.company_name for c in custs}
+
+    data = []
+    for r in incomes:
+        data.append({"类型": "收入", "日期": r.income_date.strftime("%Y-%m-%d") if r.income_date else "", "金额": r.amount, "币种": r.currency or "THB", "备注": r.remark or ""})
+    for r in recharges:
+        cust_name = recharge_cust_map.get(r.customer_id, "") if r.customer_id else ""
+        label = f"充值-{cust_name}" if cust_name else "充值收入"
+        data.append({"类型": "充值收入", "日期": r.declare_date.strftime("%Y-%m-%d") if r.declare_date else "", "金额": r.amount, "币种": r.currency or "THB", "备注": label})
+    for r in expenses:
+        data.append({"类型": "支出", "日期": r.expense_date.strftime("%Y-%m-%d") if r.expense_date else "", "金额": r.amount, "币种": r.currency or "THB", "备注": r.remark or ""})
+    data.sort(key=lambda x: x["日期"], reverse=True)
+
+    total_income = sum(r.amount for r in incomes) + sum(r.amount for r in recharges)
+    total_expense = sum(r.amount for r in expenses)
+    recharge_income = sum(r.amount for r in recharges)
+    other_income = sum(r.amount for r in incomes)
+    headers = ["类型","日期","金额","币种","备注"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "收支报表")
+    return {"data": data, "total_income": total_income, "total_expense": total_expense, "net": total_income - total_expense,
+            "recharge_income": recharge_income, "other_income": other_income}
+
+# ===== 4. 应付报表 =====
 @router.get("/payable")
 async def payable_report(month: str = None, warehouse_id: int = None, format: str = "json",
-                         current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
     wh = get_wh_filter(current_user)
     if wh: query = query.where(PayableBill.warehouse_id == wh)
-    if month: query = query.where(func.to_char(PayableBill.bill_date, 'YYYY-MM') == month)
+    if month: query = query.where(func.to_char(PayableBill.due_date, 'YYYY-MM') == month)
     if warehouse_id: query = query.where(PayableBill.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(PayableBill.due_date))
     bills = result.scalars().all()
-    data = [{"bill_number": b.bill_number, "due_date": str(b.due_date), "amount": b.amount,
-             "paid": b.paid_amount, "status": b.status} for b in bills]
-    if format == "excel":
-        return to_excel(["账单号", "到期日", "金额", "已付", "状态"], [[r[k] for k in ["bill_number","due_date","amount","paid","status"]] for r in data], "应付报表")
-    return {"data": data, "total_pending": sum(b.amount - b.paid_amount for b in bills)}
+    data = [{"账单号": b.bill_number or "", "到期日": b.due_date.strftime("%Y-%m-%d") if b.due_date else "", "金额": b.amount or 0,
+             "已付": b.paid_amount or 0, "状态": _(b.status)} for b in bills]
+    pending_total = sum(b.amount - (b.paid_amount or 0) for b in bills if b.status in ("pending","partially_paid","overdue"))
+    overdue_count = sum(1 for b in bills if b.status == "overdue")
+    headers = ["账单号","到期日","金额","已付","状态"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "应付报表")
+    return {"data": data, "total_pending": pending_total, "overdue_count": overdue_count, "total_count": len(bills)}
 
+# ===== 5. 备用金报表 =====
 @router.get("/expense-fund")
 async def expense_fund_report(warehouse_id: int = None, format: str = "json",
                                current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -125,11 +243,13 @@ async def expense_fund_report(warehouse_id: int = None, format: str = "json",
     if warehouse_id: query = query.where(ExpenseFund.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ExpenseFund.created_at.desc()))
     funds = result.scalars().all()
-    data = [{"purpose": f.purpose, "amount": f.amount, "remaining": f.remaining_balance, "status": f.status} for f in funds]
-    if format == "excel":
-        return to_excel(["用途", "金额", "余额", "状态"], [[r[k] for k in ["purpose","amount","remaining","status"]] for r in data], "备用金报表")
-    return {"data": data}
+    data = [{"用途": f.purpose or "", "金额": f.amount or 0, "余额": f.remaining_balance or 0, "状态": _(f.status)} for f in funds]
+    in_transit = sum(f.remaining_balance or 0 for f in funds if f.status == "active")
+    headers = ["用途","金额","余额","状态"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "备用金报表")
+    return {"data": data, "in_transit_total": in_transit, "total_count": len(funds)}
 
+# ===== 6. 报销报表 =====
 @router.get("/reimbursement")
 async def reimbursement_report(month: str = None, warehouse_id: int = None, format: str = "json",
                                 current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -142,11 +262,14 @@ async def reimbursement_report(month: str = None, warehouse_id: int = None, form
     if warehouse_id: query = query.where(Reimbursement.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(Reimbursement.submit_date.desc()))
     reimbs = result.scalars().all()
-    data = [{"submit_date": str(r.submit_date), "total_amount": r.total_amount, "currency": r.currency, "status": r.status} for r in reimbs]
-    if format == "excel":
-        return to_excel(["日期", "金额", "币种", "状态"], [[r[k] for k in ["submit_date","total_amount","currency","status"]] for r in data], "报销报表")
-    return {"data": data, "total": sum(r["total_amount"] for r in data)}
+    data = [{"日期": r.submit_date.strftime("%Y-%m-%d") if r.submit_date else "", "金额": r.total_amount or 0,
+             "币种": r.currency or "THB", "状态": _(r.status)} for r in reimbs]
+    total = sum(r.total_amount or 0 for r in reimbs)
+    headers = ["日期","金额","币种","状态"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "报销报表")
+    return {"data": data, "total_amount": total, "total_count": len(reimbs)}
 
+# ===== 7. 账期报表 =====
 @router.get("/credit")
 async def credit_report(warehouse_id: int = None, format: str = "json",
                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -158,12 +281,15 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
     if warehouse_id: query = query.where(CreditCustomer.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(CreditCustomer.created_at.desc()))
     credits = result.scalars().all()
-    data = [{"credit_limit": c.credit_limit, "current_debt": c.current_debt,
-             "overdue_days": c.overdue_days, "status": c.status} for c in credits]
-    if format == "excel":
-        return to_excel(["额度", "欠款", "逾期天数", "状态"], [[r[k] for k in ["credit_limit","current_debt","overdue_days","status"]] for r in data], "账期报表")
-    return {"data": data, "total_debt": sum(c.current_debt or 0 for c in credits)}
+    data = [{"额度": c.credit_limit or 0, "欠款": c.current_debt or 0,
+             "逾期天数": c.overdue_days or 0, "状态": _(c.status)} for c in credits]
+    total_debt = sum(c.current_debt or 0 for c in credits)
+    overdue_count = sum(1 for c in credits if (c.overdue_days or 0) > 0)
+    headers = ["额度","欠款","逾期天数","状态"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "账期报表")
+    return {"data": data, "total_debt": total_debt, "overdue_count": overdue_count}
 
+# ===== 8. 对账差异 =====
 @router.get("/reconciliation-diff")
 async def reconciliation_diff_report(month: str, warehouse_id: int = None, format: str = "json",
                                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -173,8 +299,9 @@ async def reconciliation_diff_report(month: str, warehouse_id: int = None, forma
     if warehouse_id: query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ReconciliationResult.id))
     records = result.scalars().all()
-    data = [{"month": r.reconciliation_month, "match_status": r.match_status,
-             "amount_diff": r.amount_diff, "handling_note": r.handling_note} for r in records]
-    if format == "excel":
-        return to_excel(["月份", "状态", "差额", "处理说明"], [[r["month"], r["match_status"], r["amount_diff"], r["handling_note"]] for r in data], "对账差异")
-    return {"data": data}
+    data = [{"月份": r.reconciliation_month or "", "状态": _(r.match_status), "差额": r.amount_diff or 0, "处理说明": r.handling_note or ""} for r in records]
+    diff_count = sum(1 for r in records if (r.amount_diff or 0) != 0)
+    total_diff = sum(abs(r.amount_diff or 0) for r in records)
+    headers = ["月份","状态","差额","处理说明"]
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "对账差异")
+    return {"data": data, "diff_count": diff_count, "total_diff": total_diff}
