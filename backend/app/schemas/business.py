@@ -28,16 +28,24 @@ class CustomerCreate(BaseModel):
     contact_person: Optional[str] = None; contact_info: Optional[str] = None
     line_id: Optional[str] = None; cargo_type: Optional[str] = None
     logistics_channel: Optional[str] = None
+    total_shipments: Optional[int] = None; total_shipping_cost: Optional[float] = None
+    last_ship_date: Optional[str] = None; registration_date: Optional[str] = None
     default_currency: str = "THB"; default_payment_method: Optional[str] = None
     credit_status: bool = False; credit_limit: float = 0
     debt_amount: float = 0; remark: Optional[str] = None
+    tags: Optional[dict] = None
 
 class CustomerUpdate(BaseModel):
-    company_name: Optional[str] = None; contact_person: Optional[str] = None
-    contact_info: Optional[str] = None; line_id: Optional[str] = None
-    cargo_type: Optional[str] = None; logistics_channel: Optional[str] = None
+    customer_code: Optional[str] = None; company_name: Optional[str] = None
+    contact_person: Optional[str] = None; contact_info: Optional[str] = None
+    line_id: Optional[str] = None; cargo_type: Optional[str] = None
+    logistics_channel: Optional[str] = None
+    total_shipments: Optional[int] = None; total_shipping_cost: Optional[float] = None
+    last_ship_date: Optional[str] = None; registration_date: Optional[str] = None
+    default_currency: Optional[str] = None; default_payment_method: Optional[str] = None
     credit_status: Optional[bool] = None; credit_limit: Optional[float] = None
     debt_amount: Optional[float] = None; remark: Optional[str] = None
+    tags: Optional[dict] = None
 
 class CustomerResponse(BaseModel):
     id: int; warehouse_id: int; customer_code: str; company_name: str
