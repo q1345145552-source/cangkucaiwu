@@ -339,9 +339,14 @@ async def ai_compare(data: dict, current_user: User = Depends(get_current_user))
 2. 性价比评估：综合考虑价格和已知信息
 3. 推荐结论：建议选择哪家供应商及理由"""
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=settings.DEEPSEEK_API_KEY, base_url=settings.DEEPSEEK_BASE_URL)
-        resp = client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content": prompt}])
+        import httpx
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(
+            api_key=settings.DEEPSEEK_API_KEY,
+            base_url=settings.DEEPSEEK_BASE_URL,
+            http_client=httpx.AsyncClient(timeout=60.0),
+        )
+        resp = await client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content": prompt}])
         return {"result": resp.choices[0].message.content}
     except Exception as e:
         return {"result": f"AI分析失败: {str(e)}"}
@@ -574,9 +579,14 @@ async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current
     settings = get_settings()
     if settings.DEEPSEEK_API_KEY:
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=settings.DEEPSEEK_API_KEY, base_url=settings.DEEPSEEK_BASE_URL)
-            resp = client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user",
+            import httpx
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(
+                api_key=settings.DEEPSEEK_API_KEY,
+                base_url=settings.DEEPSEEK_BASE_URL,
+                http_client=httpx.AsyncClient(timeout=60.0),
+            )
+            resp = await client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user",
                 "content":f"评估供应商：{s.name}，联系方式：{s.contact_info or '无'}，地址：{s.address or '无'}。请从信誉、价格竞争力、交付及时性三个维度简要评估。"}])
             evaluation = {"result": resp.choices[0].message.content}
             s.ai_evaluation = evaluation

@@ -38,7 +38,7 @@ services:
       - ./backend:/app
       - uploads:/app/uploads
     command: >
-      sh -c "python scripts/seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      sh -c "python scripts/seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   frontend:
     build: ./frontend
@@ -49,7 +49,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    command: npm run dev
+    command: sh -c "npm run build && npm start"
 
 volumes:
   pgdata:

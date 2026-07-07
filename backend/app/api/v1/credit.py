@@ -91,10 +91,58 @@ async def list_credit_customers(
         custs = (await db.execute(select(Customer).where(Customer.id.in_(cids)))).scalars().all()
         cmap = {c.id: c.company_name for c in custs}
 
-    # Compute debt/overdue for each record
+    # Batch compute debt/overdue for all records (avoid N+1)
+    all_cids = [r.id for r in records]
+    debt_map = {}
+    if all_cids:
+        # Batch shipments sum
+        ship_rows = (await db.execute(
+            select(CreditShipment.credit_customer_id, func.coalesce(func.sum(CreditShipment.amount), 0))
+            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .group_by(CreditShipment.credit_customer_id)
+        )).all()
+        ship_totals = {row[0]: float(row[1]) for row in ship_rows}
+        # Batch repayments sum
+        repay_rows = (await db.execute(
+            select(CreditRepayment.credit_customer_id, func.coalesce(func.sum(CreditRepayment.amount), 0))
+            .where(CreditRepayment.credit_customer_id.in_(all_cids))
+            .group_by(CreditRepayment.credit_customer_id)
+        )).all()
+        repay_totals = {row[0]: float(row[1]) for row in repay_rows}
+        # Batch last repayment date
+        last_repay_sub = (
+            select(CreditRepayment.credit_customer_id, func.max(CreditRepayment.repayment_date).label("max_date"))
+            .where(CreditRepayment.credit_customer_id.in_(all_cids))
+            .group_by(CreditRepayment.credit_customer_id)
+        ).subquery()
+        last_ship_sub = (
+            select(CreditShipment.credit_customer_id, func.max(CreditShipment.ship_date).label("max_date"))
+            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .group_by(CreditShipment.credit_customer_id)
+        ).subquery()
+        last_repay_rows = (await db.execute(select(last_repay_sub))).all()
+        last_ship_rows = (await db.execute(select(last_ship_sub))).all()
+        repay_date_map = {row[0]: row[1] for row in last_repay_rows}
+        ship_date_map = {row[0]: row[1] for row in last_ship_rows}
+        today = date.today()
+        for cid in all_cids:
+            s_total = ship_totals.get(cid, 0)
+            r_total = repay_totals.get(cid, 0)
+            debt = s_total - r_total
+            if debt <= 0:
+                debt_map[cid] = (max(debt, 0), 0)
+            else:
+                ref_date = repay_date_map.get(cid) or ship_date_map.get(cid)
+                overdue = 0
+                if ref_date:
+                    if isinstance(ref_date, datetime):
+                        ref_date = ref_date.date()
+                    overdue = max((today - ref_date).days, 0)
+                debt_map[cid] = (debt, overdue)
+
     data = []
     for r in records:
-        debt, overdue = await _compute_debt_and_overdue(db, r.id)
+        debt, overdue = debt_map.get(r.id, (0, 0))
         data.append({
             "id": r.id, "warehouse_id": r.warehouse_id, "customer_id": r.customer_id,
             "customer_name": cmap.get(r.customer_id, ""),
@@ -254,18 +302,33 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
     # 全局统计
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    # Get all active credit customers for this warehouse and compute debt in realtime
+    # Get all active credit customers for this warehouse and compute debt in realtime (batch)
     cust_query = select(CreditCustomer)
     if current_user.role != Role.SUPER_ADMIN:
         cust_query = cust_query.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
     all_credits = (await db.execute(cust_query)).scalars().all()
-    total_debt = 0.0
-    total_limit = 0.0
-    for c in all_credits:
-        debt, _ = await _compute_debt_and_overdue(db, c.id)
-        total_debt += debt
-        total_limit += c.credit_limit or 0
+    all_cids = [c.id for c in all_credits]
+    total_limit = sum(c.credit_limit or 0 for c in all_credits)
     total_cust = len(all_credits)
+    # Batch compute debt for all
+    total_debt = 0.0
+    if all_cids:
+        ship_rows = (await db.execute(
+            select(CreditShipment.credit_customer_id, func.coalesce(func.sum(CreditShipment.amount), 0))
+            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .group_by(CreditShipment.credit_customer_id)
+        )).all()
+        repay_rows = (await db.execute(
+            select(CreditRepayment.credit_customer_id, func.coalesce(func.sum(CreditRepayment.amount), 0))
+            .where(CreditRepayment.credit_customer_id.in_(all_cids))
+            .group_by(CreditRepayment.credit_customer_id)
+        )).all()
+        ship_map = {row[0]: float(row[1]) for row in ship_rows}
+        repay_map = {row[0]: float(row[1]) for row in repay_rows}
+        for c in all_credits:
+            debt = ship_map.get(c.id, 0) - repay_map.get(c.id, 0)
+            total_debt += max(debt, 0)
+    total_debt = float(total_debt)
     overdue_q = select(func.count(CreditCustomer.id)).where(
         CreditCustomer.status == CreditStatus.ACTIVE.value,
         CreditCustomer.overdue_days > 0,

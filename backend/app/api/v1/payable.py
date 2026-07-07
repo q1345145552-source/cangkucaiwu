@@ -181,7 +181,13 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
-    pay = paid_amount if paid_amount is not None else (b.amount - b.paid_amount)
+    remaining = b.amount - b.paid_amount
+    pay = paid_amount if paid_amount is not None else remaining
+    # Boundary checks
+    if pay <= 0:
+        raise HTTPException(400, "付款金额必须大于0")
+    if pay > remaining:
+        raise HTTPException(400, f"付款金额({pay:,.2f})超过剩余应付({remaining:,.2f})")
     b.paid_amount += pay
     b.paid_at = datetime.now()
     if payment_method:

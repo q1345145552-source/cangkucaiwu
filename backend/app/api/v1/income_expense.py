@@ -259,207 +259,211 @@ async def ledger(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = current_user.warehouse_id
-    results = []
+    today = __import__('datetime').date.today()
+    cur_month = f"{today.year}-{today.month:02d}"
 
-    # Helper: build warehouse+month filter
-    def apply_month(q, col, model):
-        q = q.where(model.warehouse_id == wh_id)
-        if month:
-            q = q.where(func.to_char(col, 'YYYY-MM') == month)
-        return q
+    # Build SQL UNION ALL for pagination at DB level
+    # Each subquery has: date_val, amount, currency, flow_type, source, source_label, remark, ref_no, raw_id
+    from sqlalchemy import text
 
-    from app.models.recharge import RechargeDeclaration, IncomingFlow
-    from app.models.expense_fund import ExpenseFund, ExpenseFundItem
-    from app.models.reimbursement import Reimbursement
-    from app.models.payable import PayableBill
-    from app.models.customer import Customer
+    def wh_cond(alias: str):
+        return f"{alias}.warehouse_id = {wh_id}"
+
+    def month_cond(alias: str, col: str):
+        return f"to_char({alias}.{col}, 'YYYY-MM') = '{month}'" if month else "1=1"
+
+    unions = []
+    params = {}
 
     # 1. 充值申报
     if not source or source == "recharge":
-        q = apply_month(select(RechargeDeclaration), RechargeDeclaration.declare_date, RechargeDeclaration)
-        recharges = (await db.execute(q.order_by(RechargeDeclaration.declare_date.desc()))).scalars().all()
-        cust_ids = list(set(r.customer_id for r in recharges if r.customer_id))
-        cust_map = {}
-        if cust_ids:
-            custs = (await db.execute(select(Customer).where(Customer.id.in_(cust_ids)))).scalars().all()
-            cust_map = {c.id: c.company_name for c in custs}
-        for r in recharges:
-            results.append({
-                "date": r.declare_date.isoformat()[:10] if r.declare_date else "",
-                "amount": r.amount, "currency": r.currency or "THB",
-                "type": "income", "source": "recharge", "source_label": "充值申报",
-                "remark": f"客户: {cust_map.get(r.customer_id, '')}" if r.customer_id else "充值",
-                "ref_no": f"RC-{r.id}",
-                "id": r.id,
-            })
+        unions.append(f"""
+            SELECT d.declare_date AS date_val, d.amount, d.currency, 'income' AS flow_type, 'recharge' AS source,
+                   '充值申报' AS source_label,
+                   COALESCE('客户: ' || cust.company_name, '充值') AS remark,
+                   'RC-' || d.id AS ref_no, d.id AS raw_id, 1 AS sort_ord
+            FROM recharge_declarations d
+            LEFT JOIN customers cust ON d.customer_id = cust.id
+            WHERE {wh_cond('d')} AND {month_cond('d', 'declare_date')}
+        """)
 
     # 2. 到账流水
     if not source or source == "incoming":
-        q = apply_month(select(IncomingFlow), IncomingFlow.received_date, IncomingFlow)
-        flows = (await db.execute(q.order_by(IncomingFlow.received_date.desc()))).scalars().all()
-        for r in flows:
-            results.append({
-                "date": r.received_date.isoformat()[:10] if r.received_date else "",
-                "amount": r.amount, "currency": r.currency or "THB",
-                "type": "income", "source": "incoming", "source_label": "到账流水",
-                "remark": f"付款方: {r.payer_name or ''}" + (f" ({r.payment_method})" if r.payment_method else ""),
-                "ref_no": f"FL-{r.id}",
-                "id": r.id,
-            })
+        unions.append(f"""
+            SELECT f.received_date AS date_val, f.amount, f.currency, 'income' AS flow_type, 'incoming' AS source,
+                   '到账流水' AS source_label,
+                   '付款方: ' || COALESCE(f.payer_name, '') || COALESCE(' (' || f.payment_method || ')', '') AS remark,
+                   'FL-' || f.id AS ref_no, f.id AS raw_id, 2 AS sort_ord
+            FROM incoming_flows f
+            WHERE {wh_cond('f')} AND {month_cond('f', 'received_date')}
+        """)
 
-    # 3. 备用金领用（top-up 记录）
+    # 3. 备用金领用
     if not source or source == "expense_fund":
-        q = apply_month(select(ExpenseFund).where(ExpenseFund.amount > 0), ExpenseFund.receive_date, ExpenseFund)
-        funds = (await db.execute(q.order_by(ExpenseFund.receive_date.desc()))).scalars().all()
-        emp_ids = list(set(f.employee_id for f in funds))
-        emp_map = {}
-        if emp_ids:
-            emps = (await db.execute(select(User).where(User.id.in_(emp_ids)))).scalars().all()
-            emp_map = {e.id: e.display_name for e in emps}
-        for r in funds:
-            results.append({
-                "date": r.receive_date.isoformat()[:10] if r.receive_date else "",
-                "amount": r.amount or 0, "currency": "THB",
-                "type": "expense", "source": "expense_fund", "source_label": "备用金领用",
-                "remark": f"领用人: {emp_map.get(r.employee_id, '')} ({r.purpose or ''})",
-                "ref_no": f"EF-{r.id}",
-                "id": r.id,
-            })
+        unions.append(f"""
+            SELECT ef.receive_date AS date_val, ef.amount, 'THB' AS currency, 'expense' AS flow_type,
+                   'expense_fund' AS source, '备用金领用' AS source_label,
+                   '领用人: ' || COALESCE(u.display_name, '') || ' (' || COALESCE(ef.purpose, '') || ')' AS remark,
+                   'EF-' || ef.id AS ref_no, ef.id AS raw_id, 3 AS sort_ord
+            FROM expense_funds ef
+            LEFT JOIN users u ON ef.employee_id = u.id
+            WHERE {wh_cond('ef')} AND ef.amount > 0 AND {month_cond('ef', 'receive_date')}
+        """)
 
     # 4. 备用金开销
     if not source or source == "fund_item":
-        q = select(ExpenseFundItem).join(ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id)
-        q = q.where(ExpenseFund.warehouse_id == wh_id)
-        if month:
-            q = q.where(func.to_char(ExpenseFundItem.expense_date, 'YYYY-MM') == month)
-        items = (await db.execute(q.order_by(ExpenseFundItem.expense_date.desc()))).scalars().all()
-        fund_ids = list(set(it.fund_id for it in items))
-        fund_map = {}
-        if fund_ids:
-            fds = (await db.execute(select(ExpenseFund).where(ExpenseFund.id.in_(fund_ids)))).scalars().all()
-            emp_ids2 = list(set(f.employee_id for f in fds))
-            emp_map2 = {}
-            if emp_ids2:
-                emps2 = (await db.execute(select(User).where(User.id.in_(emp_ids2)))).scalars().all()
-                emp_map2 = {e.id: e.display_name for e in emps2}
-            fund_map = {f.id: (f, emp_map2.get(f.employee_id, "")) for f in fds}
-        for r in items:
-            f, ename = fund_map.get(r.fund_id, (None, ""))
-            results.append({
-                "date": r.expense_date.isoformat()[:10] if r.expense_date else "",
-                "amount": r.amount, "currency": r.currency or "THB",
-                "type": "expense", "source": "fund_item", "source_label": "备用金开销",
-                "remark": f"{ename}: {r.category} - {r.description or ''}",
-                "ref_no": f"FI-{r.id}",
-                "id": r.id,
-            })
+        unions.append(f"""
+            SELECT efi.expense_date AS date_val, efi.amount, COALESCE(efi.currency, 'THB') AS currency,
+                   'expense' AS flow_type, 'fund_item' AS source, '备用金开销' AS source_label,
+                   COALESCE(u2.display_name, '') || ': ' || efi.category || ' - ' || COALESCE(efi.description, '') AS remark,
+                   'FI-' || efi.id AS ref_no, efi.id AS raw_id, 4 AS sort_ord
+            FROM expense_fund_items efi
+            JOIN expense_funds ef2 ON efi.fund_id = ef2.id
+            LEFT JOIN users u2 ON ef2.employee_id = u2.id
+            WHERE {wh_cond('ef2')} AND {month_cond('efi', 'expense_date')}
+        """)
 
-    # 5. 报销出款（已付款）
+    # 5. 报销出款
     if not source or source == "reimbursement":
-        q = apply_month(select(Reimbursement).where(Reimbursement.status == "paid"), Reimbursement.paid_at, Reimbursement)
-        # paid_at might be None for some records, fallback to submit_date
-        reimbs = (await db.execute(q.order_by(Reimbursement.paid_at.desc().nulls_last()))).scalars().all()
-        emp_ids3 = list(set(r.employee_id for r in reimbs))
-        emp_map3 = {}
-        if emp_ids3:
-            emps3 = (await db.execute(select(User).where(User.id.in_(emp_ids3)))).scalars().all()
-            emp_map3 = {e.id: e.display_name for e in emps3}
-        for r in reimbs:
-            d = r.paid_at or r.submit_date
-            results.append({
-                "date": d.isoformat()[:10] if d else "",
-                "amount": r.total_amount or 0, "currency": r.currency or "THB",
-                "type": "expense", "source": "reimbursement", "source_label": "报销",
-                "remark": f"报销人: {emp_map3.get(r.employee_id, '')}",
-                "ref_no": f"RB-{r.id}",
-                "id": r.id,
-            })
+        unions.append(f"""
+            SELECT COALESCE(rb.paid_at, rb.submit_date) AS date_val, rb.total_amount AS amount,
+                   COALESCE(rb.currency, 'THB') AS currency, 'expense' AS flow_type,
+                   'reimbursement' AS source, '报销' AS source_label,
+                   '报销人: ' || COALESCE(u3.display_name, '') AS remark,
+                   'RB-' || rb.id AS ref_no, rb.id AS raw_id, 5 AS sort_ord
+            FROM reimbursements rb
+            LEFT JOIN users u3 ON rb.employee_id = u3.id
+            WHERE rb.status = 'paid' AND {wh_cond('rb')} AND {month_cond('rb', 'paid_at')}
+        """)
 
     # 6. 应付账款付款
     if not source or source == "payable":
-        q = apply_month(select(PayableBill).where(PayableBill.paid_amount > 0), PayableBill.paid_at, PayableBill)
-        bills = (await db.execute(q.order_by(PayableBill.paid_at.desc().nulls_last()))).scalars().all()
-        for r in bills:
-            d = r.paid_at or r.bill_date
-            results.append({
-                "date": d.isoformat()[:10] if d else "",
-                "amount": r.paid_amount or 0, "currency": r.currency or "THB",
-                "type": "expense", "source": "payable", "source_label": "应付账款",
-                "remark": f"账单: {r.bill_number or ''}" + (f" ({r.remark})" if r.remark else ""),
-                "ref_no": f"PB-{r.id}",
-                "id": r.id,
-            })
+        unions.append(f"""
+            SELECT COALESCE(pb.paid_at, pb.bill_date) AS date_val, pb.paid_amount AS amount,
+                   COALESCE(pb.currency, 'THB') AS currency, 'expense' AS flow_type,
+                   'payable' AS source, '应付账款' AS source_label,
+                   '账单: ' || COALESCE(pb.bill_number, '') || COALESCE(' (' || pb.remark || ')', '') AS remark,
+                   'PB-' || pb.id AS ref_no, pb.id AS raw_id, 6 AS sort_ord
+            FROM payable_bills pb
+            WHERE pb.paid_amount > 0 AND {wh_cond('pb')} AND {month_cond('pb', 'paid_at')}
+        """)
 
     # 7. 手工收支
     if not source or source == "manual":
-        iq = apply_month(select(IncomeRecord), IncomeRecord.income_date, IncomeRecord)
-        eq = apply_month(select(ExpenseRecord), ExpenseRecord.expense_date, ExpenseRecord)
-        incomes = (await db.execute(iq.order_by(IncomeRecord.income_date.desc()))).scalars().all()
-        expenses = (await db.execute(eq.order_by(ExpenseRecord.expense_date.desc()))).scalars().all()
+        unions.append(f"""
+            SELECT ir.income_date AS date_val, ir.amount, COALESCE(ir.currency, 'THB') AS currency,
+                   'income' AS flow_type, 'manual' AS source, '手工收支' AS source_label,
+                   COALESCE(iec.name, '') || COALESCE(' - ' || ir.remark, '') AS remark,
+                   'IN-' || ir.id AS ref_no, ir.id AS raw_id, 7 AS sort_ord
+            FROM income_records ir
+            LEFT JOIN income_expense_categories iec ON ir.category_id = iec.id
+            WHERE {wh_cond('ir')} AND {month_cond('ir', 'income_date')}
+        """)
+        unions.append(f"""
+            SELECT er.expense_date AS date_val, er.amount, COALESCE(er.currency, 'THB') AS currency,
+                   'expense' AS flow_type, 'manual' AS source, '手工收支' AS source_label,
+                   COALESCE(iec2.name, '') || COALESCE(' - ' || er.remark, '') AS remark,
+                   'EX-' || er.id AS ref_no, er.id AS raw_id, 8 AS sort_ord
+            FROM expense_records er
+            LEFT JOIN income_expense_categories iec2 ON er.category_id = iec2.id
+            WHERE {wh_cond('er')} AND {month_cond('er', 'expense_date')}
+        """)
 
-        # resolve category names
-        cat_ids = set()
-        for r in incomes: cat_ids.add(r.category_id)
-        for r in expenses: cat_ids.add(r.category_id)
-        cat_map = {}
-        if cat_ids:
-            cats = (await db.execute(select(IncomeExpenseCategory).where(IncomeExpenseCategory.id.in_(cat_ids)))).scalars().all()
-            cat_map = {c.id: c.name for c in cats}
+    if not unions:
+        return {"data": [], "total": 0, "page": page, "page_size": page_size,
+                "total_income": 0, "total_expense": 0, "net": 0,
+                "card_income": 0, "card_expense": 0, "card_net": 0}
 
-        for r in incomes:
-            results.append({
-                "date": r.income_date.isoformat()[:10] if r.income_date else "",
-                "amount": r.amount, "currency": r.currency or "THB",
-                "type": "income", "source": "manual", "source_label": "手工收支",
-                "remark": f"{cat_map.get(r.category_id, '')}" + (f" - {r.remark}" if r.remark else ""),
-                "ref_no": f"IN-{r.id}",
-                "id": r.id,
-            })
-        for r in expenses:
-            results.append({
-                "date": r.expense_date.isoformat()[:10] if r.expense_date else "",
-                "amount": r.amount, "currency": r.currency or "THB",
-                "type": "expense", "source": "manual", "source_label": "手工收支",
-                "remark": f"{cat_map.get(r.category_id, '')}" + (f" - {r.remark}" if r.remark else ""),
-                "ref_no": f"EX-{r.id}",
-                "id": r.id,
-            })
+    full_union = " UNION ALL ".join(unions)
 
-    # filter by type
+    # Build the wrapped query
+    type_filter = ""
     if flow_type == "income":
-        results = [r for r in results if r["type"] == "income"]
+        type_filter = "WHERE flow_type = 'income'"
     elif flow_type == "expense":
-        results = [r for r in results if r["type"] == "expense"]
+        type_filter = "WHERE flow_type = 'expense'"
 
-    # sort by date descending
-    results.sort(key=lambda x: x["date"] or "", reverse=True)
+    sql = f"""
+        WITH all_flows AS (
+            {full_union}
+        )
+        SELECT date_val, amount, currency, flow_type, source, source_label, remark, ref_no, raw_id
+        FROM all_flows
+        {type_filter}
+        ORDER BY date_val DESC NULLS LAST
+        LIMIT :page_size OFFSET :offset
+    """
 
-    # compute summary for current month
-    today = __import__('datetime').date.today()
-    cur_month = f"{today.year}-{today.month:02d}"
-    total_income = sum(r["amount"] for r in results if r["type"] == "income")
-    total_expense = sum(r["amount"] for r in results if r["type"] == "expense")
-    # If filtered by month, use that; if showing all, compute only current month for cards
-    if month:
-        card_income = total_income
-        card_expense = total_expense
-    else:
-        # For the cards, we always show current month regardless of filter
-        card_income = sum(r["amount"] for r in results if r["type"] == "income" and (r["date"] or "").startswith(cur_month[:7]))
-        card_expense = sum(r["amount"] for r in results if r["type"] == "expense" and (r["date"] or "").startswith(cur_month[:7]))
+    count_sql = f"""
+        WITH all_flows AS (
+            {full_union}
+        )
+        SELECT COUNT(*) AS cnt
+        FROM all_flows
+        {type_filter}
+    """
 
-    total_all = len(results)
-    start_idx = (page - 1) * page_size
-    paged = results[start_idx:start_idx + page_size]
+    offset = (page - 1) * page_size
+    result = await db.execute(text(sql), {"page_size": page_size, "offset": offset})
+    rows = result.fetchall()
+
+    total_row = (await db.execute(text(count_sql))).fetchone()
+    total_all = total_row[0] if total_row else 0
+
+    # Compute summary: income/expense totals for the filtered data
+    summary_sql = f"""
+        WITH all_flows AS (
+            {full_union}
+        )
+        SELECT
+            COALESCE(SUM(CASE WHEN flow_type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN flow_type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
+        FROM all_flows
+        {type_filter}
+    """
+    sum_result = await db.execute(text(summary_sql))
+    sum_row = sum_result.fetchone()
+    total_income = float(sum_row[0]) if sum_row else 0
+    total_expense = float(sum_row[1]) if sum_row else 0
+
+    # Card values: current month only
+    card_sql = f"""
+        WITH all_flows AS (
+            {full_union}
+        )
+        SELECT
+            COALESCE(SUM(CASE WHEN flow_type = 'income' AND to_char(date_val, 'YYYY-MM') = :cur_month THEN amount ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN flow_type = 'expense' AND to_char(date_val, 'YYYY-MM') = :cur_month THEN amount ELSE 0 END), 0)
+        FROM all_flows
+        {type_filter}
+    """
+    card_result = await db.execute(text(card_sql), {"cur_month": cur_month})
+    card_row = card_result.fetchone()
+    card_income = float(card_row[0]) if card_row else 0
+    card_expense = float(card_row[1]) if card_row else 0
+
+    # Build response
+    data = []
+    for row in rows:
+        data.append({
+            "date": str(row[0])[:10] if row[0] else "",
+            "amount": float(row[1]) if row[1] else 0,
+            "currency": row[2] or "THB",
+            "type": row[3],
+            "source": row[4],
+            "source_label": row[5] or "",
+            "remark": row[6] or "",
+            "ref_no": row[7] or "",
+            "id": row[8] or 0,
+        })
 
     return {
-        "data": paged, "total": total_all, "page": page, "page_size": page_size,
+        "data": data, "total": total_all, "page": page, "page_size": page_size,
         "total_income": total_income, "total_expense": total_expense,
         "net": total_income - total_expense,
         "card_income": card_income, "card_expense": card_expense,
         "card_net": card_income - card_expense,
     }
-
 
 # ==== Ledger Export ====
 @router.get("/ledger/export")
