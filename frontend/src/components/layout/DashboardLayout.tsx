@@ -140,14 +140,45 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return item.children.some((c) => hasAccess(c, user));
   });
 
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      const m = window.innerWidth < 1024;
+      setIsMobile(m);
+      if (!m) { setMobileMenuOpen(false); }
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
+
   return (
     <div className="flex min-h-screen">
+      {/* Mobile backdrop */}
+      {isMobile && mobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className={`bg-slate-900 text-white flex flex-col transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"} flex-shrink-0`}>
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+      <aside className={`
+        bg-slate-900 text-white flex flex-col transition-all duration-300 z-50
+        ${isMobile
+          ? `fixed top-0 left-0 h-full ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} w-64`
+          : `${sidebarOpen ? "w-64" : "w-20"} relative flex-shrink-0`
+        }
+      `}>
+        <div className="flex items-center justify-between p-4 border-b border-slate-700 min-h-[56px]">
           {sidebarOpen && <span className="font-semibold text-sm truncate">{t("app_name")}</span>}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-slate-700 rounded">
-            {sidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
+          <button
+            onClick={() => isMobile ? setMobileMenuOpen(false) : setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-slate-700 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
+            {isMobile ? <X size={20} /> : (sidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />)}
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
@@ -157,7 +188,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <>
                   <button
                     onClick={() => setExpandedMenu(expandedMenu === item.key ? null : item.key)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-700 transition-colors ${!sidebarOpen && "justify-center"}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-700 transition-colors min-h-[44px] ${!sidebarOpen && "justify-center"}`}
                   >
                     {item.icon}
                     {sidebarOpen && <span className="flex-1 text-left">{t(item.label)}</span>}
@@ -165,7 +196,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   {expandedMenu === item.key && sidebarOpen && (
                     <div className="bg-slate-800">
                       {item.children.filter((c) => hasAccess(c, user)).map((child) => (
-                        <Link key={child.key} href={child.href || "#"} className="flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-700">
+                        <Link key={child.key} href={child.href || "#"} className="flex items-center gap-3 pl-10 pr-4 py-3 text-sm hover:bg-slate-700 min-h-[44px]">
                           {child.icon}
                           <span>{t(child.label)}</span>
                         </Link>
@@ -176,7 +207,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               ) : (
                 <Link
                   href={item.href || "#"}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-700 transition-colors ${!sidebarOpen && "justify-center"}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-700 transition-colors min-h-[44px] ${!sidebarOpen && "justify-center"}`}
                 >
                   {item.icon}
                   {sidebarOpen && <span className="flex-1 text-left">{t(item.label)}</span>}
@@ -189,20 +220,29 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b h-16 flex items-center justify-between px-6 shadow-sm">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2">
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <div className="flex items-center gap-3 ml-auto">
-            <button onClick={toggleLocale} className="p-2 hover:bg-gray-100 rounded-lg">
+        <header className="bg-white border-b h-14 lg:h-16 flex items-center justify-between px-3 lg:px-6 shadow-sm">
+          <div className="flex items-center gap-2">
+            {isMobile && (
+              <button onClick={() => setMobileMenuOpen(true)} className="p-2 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <Menu size={22} />
+              </button>
+            )}
+            {!isMobile && (
+              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                {sidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <button onClick={toggleLocale} className="p-2 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
               <Globe size={18} />
             </button>
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg"
+                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg min-h-[44px]"
               >
-                <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium">
+                <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium shrink-0">
                   {user?.display_name?.[0] || "U"}
                 </div>
                 <span className="text-sm text-gray-700 hidden sm:block">{user?.display_name}</span>
@@ -213,13 +253,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     {user?.display_name}<br/>
                     {t(`role_${user?.role}`)}
                   </div>
-                  <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50">
+                  <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
                     <Key size={16} /> {t("change_password")}
                   </button>
-                  <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50">
+                  <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
                     <UserCog size={16} /> {t("users_management")}
                   </button>
-                  <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 text-red-500">
+                  <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 text-red-500 min-h-[44px]">
                     <LogOut size={16} /> {t("logout")}
                   </button>
                 </div>
@@ -227,7 +267,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 p-6 bg-gray-50 overflow-auto">
+        <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
           <div key={pathname} className="animate-fade-in">
             {children}
           </div>

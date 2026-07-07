@@ -134,3 +134,50 @@ body {
     @apply text-sm;
   }
 }
+/* ═══ 手机端适配 (plain CSS, outside @layer) ═══ */
+@media (max-width: 639px) {
+  .btn-primary, .btn-danger, .btn-secondary {
+    min-height: 44px;
+  }
+  .form-input, .form-select {
+    font-size: 16px !important;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  .form-label { font-size: 0.75rem; }
+  .modal-overlay > div {
+    width: 90vw !important;
+    max-width: 90vw !important;
+  }
+  .modal-body {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  .modal-header { padding-left: 1rem; padding-right: 1rem; }
+  .modal-footer { padding-left: 1rem; padding-right: 1rem; }
+  .modal-footer button { min-height: 44px; }
+  .table-card table { min-width: 600px; }
+  .table-card thead th { padding-left: 0.5rem; padding-right: 0.5rem; font-size: 11px; }
+  .table-card tbody td { padding-left: 0.5rem; padding-right: 0.5rem; font-size: 0.75rem; }
+  .page-title { font-size: 1.125rem; }
+  .page-header { margin-bottom: 1rem; }
+  input[type="checkbox"] { min-width: 20px; min-height: 20px; }
+  select.form-input, select.form-select { min-height: 44px; }
+  .card { padding: 0.75rem; }
+  .card-title { font-size: 0.875rem; }
+  /* 筛选栏 item 全宽 */
+  .filters-row > * { width: 100%; }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .modal-overlay > div { max-width: 85vw !important; }
+  .table-card table { min-width: 700px; }
+}
+
+/* 触摸滚动 */
+.touch-pan-x {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
