@@ -28,7 +28,7 @@ export default function WarehousesPage() {
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
-    if (user?.role !== "super_admin") { router.push("/dashboard"); return; }
+    if (user?.role !== "super_admin" && user?.role !== "warehouse_admin") { router.push("/dashboard"); return; }
     load();
   }, [user]);
 
