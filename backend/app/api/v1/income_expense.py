@@ -15,7 +15,9 @@ OPERATING_NAMES = ["仓储费", "操作费", "增值服务费", "工资", "电�
 router = APIRouter()
 
 def get_wh_id(user: User) -> int:
-    return user.warehouse_id if user.warehouse_id else 1
+    if not user.warehouse_id:
+        raise HTTPException(400, "当前用户未关联仓库")
+    return user.warehouse_id
 
 # ==== Categories ====
 @router.get("/categories")

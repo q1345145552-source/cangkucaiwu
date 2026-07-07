@@ -44,6 +44,10 @@ async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
 
     current_debt = float(ship_total) - float(repay_total)
 
+    # If fully paid (debt <= 0), overdue_days is always 0
+    if current_debt <= 0:
+        return max(current_debt, 0), 0
+
     # overdue_days: days since last repayment, or since last shipment if no repayment
     last_repay = (await db.execute(
         select(CreditRepayment.repayment_date)
@@ -250,12 +254,18 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
     # 全局统计
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    dq = select(func.coalesce(func.sum(CreditCustomer.current_debt), 0),
-                func.coalesce(func.sum(CreditCustomer.credit_limit), 0),
-                func.count(CreditCustomer.id))
+    # Get all active credit customers for this warehouse and compute debt in realtime
+    cust_query = select(CreditCustomer)
     if current_user.role != Role.SUPER_ADMIN:
-        dq = dq.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
-    total_debt, total_limit, total_cust = (await db.execute(dq)).first()
+        cust_query = cust_query.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
+    all_credits = (await db.execute(cust_query)).scalars().all()
+    total_debt = 0.0
+    total_limit = 0.0
+    for c in all_credits:
+        debt, _ = await _compute_debt_and_overdue(db, c.id)
+        total_debt += debt
+        total_limit += c.credit_limit or 0
+    total_cust = len(all_credits)
     overdue_q = select(func.count(CreditCustomer.id)).where(
         CreditCustomer.status == CreditStatus.ACTIVE.value,
         CreditCustomer.overdue_days > 0,
@@ -271,7 +281,9 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
         for item in assessment_result["data"]:
             r = item.get("rating", "B")
             rating_dist[r] = rating_dist.get(r, 0) + 1
-    except:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"评级计算失败: {e}")
         rating_dist = {"A": 0, "B": 0, "C": 0}
 
     return {

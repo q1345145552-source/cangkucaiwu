@@ -11,7 +11,9 @@ from app.schemas.business import ExchangeRateCreate
 router = APIRouter()
 
 def get_wh_id(user: User) -> int:
-    return user.warehouse_id if user.warehouse_id else 1
+    if not user.warehouse_id:
+        raise HTTPException(400, "当前用户未关联仓库")
+    return user.warehouse_id
 
 
 @router.get("/rates")

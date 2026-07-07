@@ -47,3 +47,12 @@ class ReimbursementItem(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     reimbursement = relationship("Reimbursement", back_populates="items")
+
+class ReimbCategory(Base):
+    __tablename__ = "reimb_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

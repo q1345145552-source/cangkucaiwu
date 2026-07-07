@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime
 from app.database import get_db
-from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbStatus
+from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory, ReimbStatus
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
 from app.models.user import User
 from app.core.permissions import get_current_user, Role, check_staff_permission
