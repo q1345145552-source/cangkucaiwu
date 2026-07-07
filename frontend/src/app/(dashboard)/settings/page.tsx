@@ -37,6 +37,13 @@ export default function SettingsPage() {
   const [editPerms, setEditPerms] = useState<string[]>([]);
 
   useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); } if (tab === "rates") loadRates(); }, [tab]);
+  useEffect(() => {
+    if (user?.role === "warehouse_admin") {
+      setNewUser(prev => ({ ...prev, role: "staff" }));
+    } else if (user?.role === "super_admin") {
+      setNewUser(prev => ({ ...prev, role: "warehouse_admin" }));
+    }
+  }, [user?.role]);
 
   async function loadWarehouses() {
     try { const r = await api.get<any>("/warehouses?page=1&page_size=100"); setWarehouses(r.data || []); } catch {}
@@ -82,7 +89,7 @@ export default function SettingsPage() {
       }
       await api.post("/users", payload);
       toast("success", "创建成功");
-      setNewUser({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "" });
+      setNewUser({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "staff", warehouse_id: "" });
       loadUsers();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
@@ -157,10 +164,10 @@ export default function SettingsPage() {
               <div><label className="form-label">显示名称</label><input className="form-input text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
               <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
-                
-                <option value="warehouse_admin">WarehouseAdmin 仓库老板</option>
+                {user?.role === "super_admin" && <option value="warehouse_admin">仓库老板</option>}
+                {user?.role === "warehouse_admin" && <option value="staff">仓库财务</option>}
               </select></div>
-              {(user?.role === "super_admin" || user?.role === "warehouse_admin") && newUser.role !== "warehouse_admin" && (
+              {(user?.role === "super_admin" && newUser.role !== "warehouse_admin") && (
                 <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
                 <select className="form-input text-sm" value={newUser.warehouse_id} onChange={e=>setNewUser({...newUser,warehouse_id:e.target.value})}>
                   <option value="">请选择仓库</option>
