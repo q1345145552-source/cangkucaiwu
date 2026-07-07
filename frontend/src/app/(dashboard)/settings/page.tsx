@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const [rateForm, setRateForm] = useState({ from_currency: "CNY", to_currency: "THB", rate: "" });
   const [rateLoading, setRateLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "staff", warehouse_id: "" });
+  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "" });
   const [warehouses, setWarehouses] = useState<any[]>([]);
 
   // Edit user state
@@ -82,7 +82,7 @@ export default function SettingsPage() {
       }
       await api.post("/users", payload);
       toast("success", "创建成功");
-      setNewUser({ username: "", display_name: "", password: "", role: "staff", warehouse_id: "" });
+      setNewUser({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "" });
       loadUsers();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
