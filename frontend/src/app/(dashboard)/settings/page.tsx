@@ -58,7 +58,10 @@ export default function SettingsPage() {
   }
 
   async function loadUsers() {
-    try { const r = await api.get<any>("/users?page_size=100"); setUsers(r.data); } catch {}
+    try {
+      const url = user?.role === "super_admin" ? "/users?page_size=100&role=warehouse_admin" : "/users?page_size=100";
+      const r = await api.get<any>(url); setUsers(r.data);
+    } catch {}
   }
 
   async function changePassword() {
@@ -154,8 +157,8 @@ export default function SettingsPage() {
               <div><label className="form-label">显示名称</label><input className="form-input text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
               <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
-                {user?.role === "super_admin" && <option value="staff">Staff 仓库财务</option>}
-                {user?.role === "super_admin" && <option value="warehouse_admin">WarehouseAdmin 仓库老板</option>}
+                
+                <option value="warehouse_admin">WarehouseAdmin 仓库老板</option>
               </select></div>
               {(user?.role === "super_admin" || user?.role === "warehouse_admin") && newUser.role !== "warehouse_admin" && (
                 <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
@@ -183,7 +186,7 @@ export default function SettingsPage() {
                   </td>
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
                   <td>
-                    {u.role === "staff" && (user?.role === "super_admin" || user?.role === "warehouse_admin") && (
+                    {u.role === "staff" && user?.role === "warehouse_admin" && (
                       <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
                         <Pencil size={12} /> 权限
                       </button>
