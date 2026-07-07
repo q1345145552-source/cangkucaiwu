@@ -183,7 +183,7 @@ export default function SettingsPage() {
                   </td>
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
                   <td>
-                    {u.role === "staff" && (user?.role === "super_admin" || user?.role === "warehouse_admin") && newUser.role !== "warehouse_admin" && (
+                    {u.role === "staff" && (user?.role === "super_admin" || user?.role === "warehouse_admin") && (
                       <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
                         <Pencil size={12} /> 权限
                       </button>
