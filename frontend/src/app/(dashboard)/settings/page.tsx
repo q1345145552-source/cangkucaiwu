@@ -86,6 +86,10 @@ export default function SettingsPage() {
 
   async function createUser() {
     try {
+      if (newUser.role === "staff" && !newUser.warehouse_id) {
+        toast("error", "请选择所属仓库");
+        return;
+      }
       const payload: any = { ...newUser };
       if (payload.role === "warehouse_admin") {
         delete payload.warehouse_id;
@@ -184,7 +188,7 @@ export default function SettingsPage() {
                 {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
                 {user?.role === "warehouse_admin" && <option value="staff">仓库财务</option>}
               </select></div>
-              {(user?.role === "super_admin" && newUser.role !== "warehouse_admin") && (
+              {((user?.role === "super_admin" && newUser.role !== "warehouse_admin") || (user?.role === "warehouse_admin" && newUser.role === "staff")) && (
                 <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
                 <select className="form-input text-sm" value={newUser.warehouse_id} onChange={e=>setNewUser({...newUser,warehouse_id:e.target.value})}>
                   <option value="">请选择仓库</option>
