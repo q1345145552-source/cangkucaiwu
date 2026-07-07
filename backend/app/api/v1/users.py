@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.user import User
+from app.models.user_warehouse import UserWarehouse
 from app.models.warehouse import Warehouse
 from app.core.security import hash_password
 from app.core.permissions import get_current_user, require_role, Role, STAFF_PERMISSIONS
@@ -98,6 +99,12 @@ async def create_user(
     )
     db.add(user)
     await db.flush()
+
+    if user.warehouse_id:
+        uw = UserWarehouse(user_id=user.id, warehouse_id=user.warehouse_id)
+        db.add(uw)
+        await db.flush()
+
     return {"id": user.id, "message": "用户创建成功"}
 
 @router.put("/{user_id}")

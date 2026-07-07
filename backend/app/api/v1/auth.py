@@ -4,13 +4,24 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.user import User
+from app.models.user_warehouse import UserWarehouse
+from app.models.warehouse import Warehouse
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.permissions import get_current_user
 from app.schemas.auth import LoginRequest, TokenResponse, ChangePasswordRequest
 
 router = APIRouter()
 
-@router.post("/login", response_model=TokenResponse)
+def _build_warehouses_list(db_result) -> list:
+    warehouses = []
+    seen = set()
+    for uw, wh in db_result:
+        if wh and wh.id not in seen:
+            seen.add(wh.id)
+            warehouses.append({"id": wh.id, "name": wh.name, "code": wh.code})
+    return warehouses
+
+@router.post("/login")
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(User).options(selectinload(User.warehouse)).where(User.username == req.username)
@@ -24,19 +35,35 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     token = create_access_token(data={"sub": str(user.id), "role": str(user.role)})
     warehouse_name = user.warehouse.name if user.warehouse else None
 
-    return TokenResponse(
-        access_token=token,
-        user_id=user.id,
-        username=user.username,
-        display_name=user.display_name,
-        role=str(user.role),
-        warehouse_id=user.warehouse_id,
-        warehouse_name=warehouse_name,
-        extra_permissions=user.extra_permissions or [],
+    uw_result = await db.execute(
+        select(UserWarehouse, Warehouse)
+        .join(Warehouse, UserWarehouse.warehouse_id == Warehouse.id)
+        .where(UserWarehouse.user_id == user.id)
     )
+    warehouses = _build_warehouses_list(uw_result.all())
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "username": user.username,
+        "display_name": user.display_name,
+        "role": str(user.role),
+        "warehouse_id": user.warehouse_id,
+        "warehouse_name": warehouse_name,
+        "warehouses": warehouses,
+        "extra_permissions": user.extra_permissions or [],
+    }
 
 @router.get("/me")
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    uw_result = await db.execute(
+        select(UserWarehouse, Warehouse)
+        .join(Warehouse, UserWarehouse.warehouse_id == Warehouse.id)
+        .where(UserWarehouse.user_id == current_user.id)
+    )
+    warehouses = _build_warehouses_list(uw_result.all())
+
     return {
         "id": current_user.id,
         "username": current_user.username,
@@ -44,6 +71,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "role": str(current_user.role),
         "warehouse_id": current_user.warehouse_id,
         "warehouse_name": current_user.warehouse.name if current_user.warehouse else None,
+        "warehouses": warehouses,
         "is_active": current_user.is_active,
         "extra_permissions": current_user.extra_permissions or [],
     }
