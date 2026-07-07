@@ -87,7 +87,9 @@ export default function SettingsPage() {
   async function createUser() {
     try {
       const payload: any = { ...newUser };
-      if (payload.warehouse_id) {
+      if (payload.role === "warehouse_admin") {
+        delete payload.warehouse_id;
+      } else if (payload.warehouse_id) {
         payload.warehouse_id = +payload.warehouse_id;
       }
       await api.post("/users", payload);
@@ -179,7 +181,7 @@ export default function SettingsPage() {
               <div><label className="form-label">显示名称</label><input className="form-input text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
               <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
-                {user?.role === "super_admin" && <option value="warehouse_admin">仓库老板</option>}
+                {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
                 {user?.role === "warehouse_admin" && <option value="staff">仓库财务</option>}
               </select></div>
               {(user?.role === "super_admin" && newUser.role !== "warehouse_admin") && (
