@@ -6,6 +6,7 @@ from app.database import async_session_factory, _get_engine, Base
 from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
+from app.models.income_expense import IncomeExpenseCategory, IncomeExpenseType
 from app.models.customer import Customer
 from app.models.supplier import Supplier
 from app.models.recharge import RechargeDeclaration, IncomingFlow
@@ -95,6 +96,33 @@ async def seed():
             Supplier(warehouse_id=3, name="泰丰耗材批发", contact_person="杨先生", contact_info="085-555-6666"),
         ]
         session.add_all(suppliers); await session.flush()
+
+        # === Default Categories ===
+        default_categories = [
+            "仓储费", "操作费", "增值服务费", "工资", "电费", "网费",
+            "房租", "耗材", "物流运费", "快递费", "保险费", "税费",
+        ]
+        for wh in whs:
+            for idx, name in enumerate(default_categories):
+                cat_type = IncomeExpenseType.EXPENSE if name != "仓储费" else IncomeExpenseType.INCOME
+                # Most are expense types; 仓储费 can be income
+                session.add(IncomeExpenseCategory(
+                    warehouse_id=wh.id,
+                    type="expense",
+                    name=name,
+                    sort_order=idx + 1,
+                    category_group="operating",
+                ))
+            # Add some "other" categories
+            session.add(IncomeExpenseCategory(
+                warehouse_id=wh.id, type="income", name="仓储费收入",
+                sort_order=1, category_group="other",
+            ))
+            session.add(IncomeExpenseCategory(
+                warehouse_id=wh.id, type="income", name="其他收入",
+                sort_order=2, category_group="other",
+            ))
+        await session.flush()
 
         # === Demo Recharge Declaration ===
         session.add(RechargeDeclaration(
