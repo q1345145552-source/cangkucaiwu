@@ -5,7 +5,8 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Key, UserPlus, MessageCircle, Pencil, DollarSign, Clock, History } from "lucide-react";
+import { Key, UserPlus, MessageCircle, Pencil, Trash2, DollarSign, Clock, History } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const PERM_LABELS: Record<string, string> = {
   "到账流水": "到账流水",
@@ -35,6 +36,8 @@ export default function SettingsPage() {
   // Edit user state
   const [editUser, setEditUser] = useState<any>(null);
   const [editPerms, setEditPerms] = useState<string[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); } if (tab === "rates") loadRates(); }, [tab]);
   useEffect(() => {
@@ -115,6 +118,18 @@ export default function SettingsPage() {
     } catch (err: any) { toast("error", err.message || "更新失败"); }
   }
 
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/users/${deleteTarget.id}`);
+      toast("success", "删除成功");
+      setDeleteTarget(null);
+      loadUsers();
+    } catch (err: any) { toast("error", err.message || "删除失败"); }
+    setDeleting(false);
+  }
+
   return (
     <>
       <div className="mb-4">
@@ -193,11 +208,18 @@ export default function SettingsPage() {
                   </td>
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
                   <td>
-                    {u.role === "staff" && user?.role === "warehouse_admin" && (
-                      <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
-                        <Pencil size={12} /> 权限
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {u.role === "staff" && user?.role === "warehouse_admin" && (
+                        <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
+                          <Pencil size={12} /> 权限
+                        </button>
+                      )}
+                      {user?.role === "super_admin" && u.role === "warehouse_admin" && (
+                        <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
+                          <Trash2 size={12} /> 删除
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}</tbody>
@@ -307,6 +329,15 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="删除用户"
+        message={`确定要删除 ${deleteTarget?.display_name} (${deleteTarget?.username}) 吗？该用户创建的所有仓库和数据将被彻底删除，此操作不可恢复。`}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </>
   );
 }

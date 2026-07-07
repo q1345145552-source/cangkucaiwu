@@ -34,7 +34,7 @@ async def create_warehouse(req: WarehouseCreate,
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限创建仓库")
 
-    w = Warehouse(**req.model_dump())
+    w = Warehouse(**req.model_dump(), created_by=current_user.id)
     db.add(w)
     await db.flush()
 
