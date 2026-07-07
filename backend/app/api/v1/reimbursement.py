@@ -181,9 +181,30 @@ async def export_reimbursements(
         headers={"Content-Disposition": "attachment; filename=reimbursements.xlsx"})
 
 
+DEFAULT_REIMB_CATEGORIES = ["交通费", "餐饮费", "办公用品", "通讯费", "差旅费", "水电费", "维修费", "其他"]
+
 @router.get("/categories")
-async def list_reimb_categories():
-    return {"data": [{"id": i+1, "name": n} for i, n in enumerate(_reimb_categories)]}
+async def list_reimb_categories(current_user: User = Depends(get_current_user),
+                                db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    wh_id = current_user.warehouse_id
+    if not wh_id:
+        raise HTTPException(400, "当前用户未关联仓库")
+    cats = (await db.execute(
+        select(ReimbCategory).where(ReimbCategory.warehouse_id == wh_id)
+        .order_by(ReimbCategory.sort_order, ReimbCategory.id)
+    )).scalars().all()
+    # 首次访问：该仓库无分类则自动播种默认分类
+    if not cats:
+        for i, name in enumerate(DEFAULT_REIMB_CATEGORIES):
+            db.add(ReimbCategory(warehouse_id=wh_id, name=name, sort_order=i))
+        await db.flush()
+        cats = (await db.execute(
+            select(ReimbCategory).where(ReimbCategory.warehouse_id == wh_id)
+            .order_by(ReimbCategory.sort_order, ReimbCategory.id)
+        )).scalars().all()
+    return {"data": [{"id": c.id, "name": c.name} for c in cats]}
 
 
 @router.get("/{reimb_id}")
@@ -298,13 +319,29 @@ async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user
     await db.flush(); return {"message": "已标记付款"}
 
 
-# === Export ===
-
 # === Reimbursement Categories ===
-_reimb_categories = ["交通费", "餐饮费", "办公用品", "通讯费", "差旅费", "水电费", "维修费", "其他"]
-
-
 @router.post("/categories")
-async def create_reimb_category(req: CategoryReq):
-    _reimb_categories.append(req.name)
-    return {"id": len(_reimb_categories), "name": req.name, "message": "类别添加成功"}
+async def create_reimb_category(req: CategoryReq, current_user: User = Depends(get_current_user),
+                                db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    wh_id = current_user.warehouse_id
+    if not wh_id:
+        raise HTTPException(400, "当前用户未关联仓库")
+    name = (req.name or "").strip()
+    if not name:
+        raise HTTPException(400, "分类名称不能为空")
+    # 同仓库去重
+    existing = (await db.execute(
+        select(ReimbCategory).where(ReimbCategory.warehouse_id == wh_id, ReimbCategory.name == name)
+    )).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, "该分类已存在")
+    max_sort = (await db.execute(
+        select(func.coalesce(func.max(ReimbCategory.sort_order), 0)).where(ReimbCategory.warehouse_id == wh_id)
+    )).scalar() or 0
+    c = ReimbCategory(warehouse_id=wh_id, name=name, sort_order=max_sort + 1)
+    db.add(c); await db.flush()
+    return {"id": c.id, "name": c.name, "message": "类别添加成功"}

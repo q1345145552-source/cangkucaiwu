@@ -253,12 +253,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     {user?.display_name}<br/>
                     {t(`role_${user?.role}`)}
                   </div>
-                  <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
+                  <Link href="/settings" className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
                     <Key size={16} /> {t("change_password")}
-                  </button>
-                  <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
+                  </Link>
+                  <Link href="/settings" className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
                     <UserCog size={16} /> {t("users_management")}
-                  </button>
+                  </Link>
                   <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 text-red-500 min-h-[44px]">
                     <LogOut size={16} /> {t("logout")}
                   </button>

@@ -266,11 +266,13 @@ async def ledger(
     # Each subquery has: date_val, amount, currency, flow_type, source, source_label, remark, ref_no, raw_id
     from sqlalchemy import text
 
+    # NOTE: alias/col are internal constants (never user input); wh_id and month
+    # are passed as bind parameters to avoid SQL injection.
     def wh_cond(alias: str):
-        return f"{alias}.warehouse_id = {wh_id}"
+        return f"{alias}.warehouse_id = :wh_id"
 
     def month_cond(alias: str, col: str):
-        return f"to_char({alias}.{col}, 'YYYY-MM') = '{month}'" if month else "1=1"
+        return f"to_char({alias}.{col}, 'YYYY-MM') = :month" if month else "1=1"
 
     unions = []
     params = {}
@@ -403,11 +405,16 @@ async def ledger(
         {type_filter}
     """
 
+    # Bind params shared by every statement (all embed full_union)
+    base_params = {"wh_id": wh_id}
+    if month:
+        base_params["month"] = month
+
     offset = (page - 1) * page_size
-    result = await db.execute(text(sql), {"page_size": page_size, "offset": offset})
+    result = await db.execute(text(sql), {**base_params, "page_size": page_size, "offset": offset})
     rows = result.fetchall()
 
-    total_row = (await db.execute(text(count_sql))).fetchone()
+    total_row = (await db.execute(text(count_sql), base_params)).fetchone()
     total_all = total_row[0] if total_row else 0
 
     # Compute summary: income/expense totals for the filtered data
@@ -421,7 +428,7 @@ async def ledger(
         FROM all_flows
         {type_filter}
     """
-    sum_result = await db.execute(text(summary_sql))
+    sum_result = await db.execute(text(summary_sql), base_params)
     sum_row = sum_result.fetchone()
     total_income = float(sum_row[0]) if sum_row else 0
     total_expense = float(sum_row[1]) if sum_row else 0
@@ -437,7 +444,7 @@ async def ledger(
         FROM all_flows
         {type_filter}
     """
-    card_result = await db.execute(text(card_sql), {"cur_month": cur_month})
+    card_result = await db.execute(text(card_sql), {**base_params, "cur_month": cur_month})
     card_row = card_result.fetchone()
     card_income = float(card_row[0]) if card_row else 0
     card_expense = float(card_row[1]) if card_row else 0
