@@ -84,6 +84,10 @@ async def create_user(
     if current_user.role != Role.SUPER_ADMIN:
         req.warehouse_id = current_user.warehouse_id
 
+    # warehouse_admin and staff MUST have a warehouse_id
+    if req.role in (Role.WAREHOUSE_ADMIN, Role.STAFF) and req.warehouse_id is None:
+        raise HTTPException(status_code=400, detail="创建仓库管理员/员工时必须指定所属仓库")
+
     user = User(
         username=req.username,
         password_hash=hash_password(req.password),

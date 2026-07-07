@@ -40,3 +40,7 @@ ALTER TABLE payable_plans ADD COLUMN IF NOT EXISTS bill_attachment VARCHAR(500);
 -- reimbursements: 新增字段
 ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS is_fund_linked VARCHAR(5) DEFAULT '0';
 ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS fund_item_id INTEGER;
+ALTER TABLE income_expense_categories ADD COLUMN IF NOT EXISTS category_group VARCHAR(20) DEFAULT 'other';
+ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS bank_name VARCHAR(200);
+ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS branch_name VARCHAR(200);
+ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS account_holder VARCHAR(100);

@@ -56,6 +56,8 @@ async def create_customer(req: CustomerCreate, current_user: User = Depends(get_
     wh_id = current_user.warehouse_id
     if current_user.role == Role.SUPER_ADMIN:
         wh_id = req.warehouse_id
+    if wh_id is None:
+        raise HTTPException(400, "无法确定所属仓库，请联系管理员分配仓库")
     c = Customer(warehouse_id=wh_id, **{k:v for k,v in req.model_dump().items() if k != "warehouse_id"})
     db.add(c); await db.flush(); return {"id": c.id, "message": "创建成功"}
 
