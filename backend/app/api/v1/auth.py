@@ -57,6 +57,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.get("/me")
 async def get_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # Fetch warehouse list
     uw_result = await db.execute(
         select(UserWarehouse, Warehouse)
         .join(Warehouse, UserWarehouse.warehouse_id == Warehouse.id)
@@ -64,13 +65,16 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
     )
     warehouses = _build_warehouses_list(uw_result.all())
 
+    # Get warehouse name from the first warehouse in list
+    wh_name = warehouses[0]["name"] if warehouses else None
+
     return {
         "id": current_user.id,
         "username": current_user.username,
         "display_name": current_user.display_name,
         "role": str(current_user.role),
         "warehouse_id": current_user.warehouse_id,
-        "warehouse_name": current_user.warehouse.name if current_user.warehouse else None,
+        "warehouse_name": wh_name,
         "warehouses": warehouses,
         "is_active": current_user.is_active,
         "extra_permissions": current_user.extra_permissions or [],
