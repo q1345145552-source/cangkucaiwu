@@ -22,13 +22,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { key: "dashboard", label: "仪表盘", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ["super_admin", "warehouse_admin", "staff"] },
+  { key: "dashboard", label: "仪表盘", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ["warehouse_admin", "staff"] },
   {
     key: "finance_ops_group", label: "财务(仓库运营)", icon: <CreditCard size={20} />,
-    roles: ["super_admin", "warehouse_admin", "staff"],
+    roles: ["warehouse_admin", "staff"],
     children: [
       { key: "customers", label: "客户档案", icon: <Users size={18} />, href: "/customers", roles: ["warehouse_admin", "staff"] },
-      { key: "warehouses", label: "仓库管理", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["super_admin", "warehouse_admin"] },
+      { key: "warehouses", label: "仓库管理", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["warehouse_admin"] },
       { key: "accounts", label: "收款账户", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin"] },
       { key: "recharge", label: "充值申报", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
       { key: "incoming", label: "到账流水", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin"] },
@@ -37,7 +37,7 @@ const navItems: NavItem[] = [
   },
   {
     key: "finance_daily_group", label: "财务(日常开支)", icon: <PiggyBank size={20} />,
-    roles: ["super_admin", "warehouse_admin", "staff"],
+    roles: ["warehouse_admin", "staff"],
     children: [
       { key: "operating", label: "运营收支", icon: <BarChart3 size={18} />, href: "/operating", roles: ["warehouse_admin", "staff"] },
       { key: "other_income_expense", label: "其他收入", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin"] },
@@ -50,13 +50,14 @@ const navItems: NavItem[] = [
   },
   {
     key: "supplier_group", label: "supplier_group", icon: <Truck size={20} />,
-    roles: ["super_admin", "warehouse_admin", "staff"],
+    roles: ["warehouse_admin", "staff"],
     children: [
       { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin"] },
       { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin"] },
       { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin"] },
     ],
   },
+  { key: "warehouses", label: "仓库管理", icon: <Warehouse size={20} />, href: "/warehouses", roles: ["super_admin"] },
   {
     key: "group_order_group", label: "group_order_group", icon: <PackageOpen size={20} />,
     roles: ["super_admin", "warehouse_admin", "staff"],
