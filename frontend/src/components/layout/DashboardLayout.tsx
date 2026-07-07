@@ -22,13 +22,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  {
-    key: "dashboard_group", label: "dashboard_group", icon: <LayoutDashboard size={20} />,
-    roles: ["super_admin", "warehouse_admin", "staff"],
-    children: [
-      { key: "dashboard", label: "dashboard", icon: <LayoutDashboard size={18} />, href: "/dashboard", roles: ["super_admin", "warehouse_admin", "staff"] },
-    ],
-  },
+  { key: "dashboard", label: "仪表盘", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ["super_admin", "warehouse_admin", "staff"] },
   {
     key: "finance_ops_group", label: "财务(仓库运营)", icon: <CreditCard size={20} />,
     roles: ["super_admin", "warehouse_admin", "staff"],
