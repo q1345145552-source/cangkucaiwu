@@ -44,3 +44,8 @@ ALTER TABLE income_expense_categories ADD COLUMN IF NOT EXISTS category_group VA
 ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS bank_name VARCHAR(200);
 ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS branch_name VARCHAR(200);
 ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS account_holder VARCHAR(100);
+ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'THB';
+ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS status VARCHAR(10) DEFAULT 'active';
+ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS remark VARCHAR(500);
+ALTER TABLE exchange_rates ADD COLUMN IF NOT EXISTS warehouse_id INTEGER;
+ALTER TABLE exchange_rates ADD COLUMN IF NOT EXISTS effective_from TIMESTAMP WITH TIME ZONE DEFAULT NOW();
