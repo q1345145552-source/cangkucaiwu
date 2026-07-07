@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from app.database import get_db
 from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, SupplierLogisticsPrice, SupplierCrossBorderPrice
 from app.models.user import User
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, get_wh_id, Role
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
 import io
 
@@ -74,7 +74,7 @@ async def import_products(file: UploadFile = File(...), current_user: User = Dep
     wb = load_workbook(io.BytesIO(content)); ws = wb.active
     imported, skipped, errors = 0, 0, []
     # Resolve supplier name→id for this warehouse
-    sups = (await db.execute(select(Supplier).where(Supplier.warehouse_id == current_user.warehouse_id))).scalars().all()
+    sups = (await db.execute(select(Supplier).where(Supplier.warehouse_id == get_wh_id(current_user)))).scalars().all()
     sup_map = {s.name.strip(): s.id for s in sups}
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row or not row[0]: continue
@@ -106,7 +106,7 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
     data = await file.read()
     wb = load_workbook(io.BytesIO(data)); ws = wb.active
     imported, skipped, errors = 0, 0, []
-    sups = (await db.execute(select(Supplier).where(Supplier.warehouse_id == current_user.warehouse_id))).scalars().all()
+    sups = (await db.execute(select(Supplier).where(Supplier.warehouse_id == get_wh_id(current_user)))).scalars().all()
     sup_map = {s.name.strip(): s.id for s in sups}
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row or not row[0]: continue
@@ -198,7 +198,7 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
         # Default: consumables (category 1)
         pass
     if current_user.role != Role.SUPER_ADMIN:
-        q = q.where(Supplier.warehouse_id == current_user.warehouse_id)
+        q = q.where(Supplier.warehouse_id == get_wh_id(current_user))
     prods = (await db.execute(q.order_by(SupplierProduct.unit_price.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prods})
     smap = {}
@@ -247,7 +247,7 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
     if category_id:
         q = q.where(Supplier.category_id == category_id)
     if current_user.role != Role.SUPER_ADMIN:
-        q = q.where(Supplier.warehouse_id == current_user.warehouse_id)
+        q = q.where(Supplier.warehouse_id == get_wh_id(current_user))
     prices = (await db.execute(q.order_by(SupplierCrossBorderPrice.price_per_cbm.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prices})
     smap = {}
@@ -361,8 +361,8 @@ async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Supplier); count_q = select(func.count(Supplier.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(Supplier.warehouse_id == current_user.warehouse_id)
-        count_q = count_q.where(Supplier.warehouse_id == current_user.warehouse_id)
+        query = query.where(Supplier.warehouse_id == get_wh_id(current_user))
+        count_q = count_q.where(Supplier.warehouse_id == get_wh_id(current_user))
     if search:
         query = query.where(Supplier.name.ilike(f"%{search}%")); count_q = count_q.where(Supplier.name.ilike(f"%{search}%"))
     if category_id:
@@ -395,7 +395,7 @@ async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
     d = req.model_dump()
-    s = Supplier(warehouse_id=current_user.warehouse_id, **d)
+    s = Supplier(warehouse_id=get_wh_id(current_user), **d)
     db.add(s); await db.flush(); return {"id": s.id, "message": "创建成功"}
 
 @router.put("/{supplier_id}")
@@ -407,7 +407,7 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
-    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != current_user.warehouse_id:
+    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != get_wh_id(current_user):
         raise HTTPException(403, "只能修改自己仓库的供应商")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(s, k, v)
@@ -421,7 +421,7 @@ async def delete_supplier(supplier_id: int, current_user: User = Depends(get_cur
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
-    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != current_user.warehouse_id:
+    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != get_wh_id(current_user):
         raise HTTPException(403, "只能删除自己仓库的供应商")
     await db.delete(s); await db.flush()
     return {"message": "删除成功"}
@@ -436,7 +436,7 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     from datetime import date, timedelta
     from sqlalchemy import extract
 
-    wh_id = current_user.warehouse_id if current_user.role != Role.SUPER_ADMIN else None
+    wh_id = get_wh_id(current_user) if current_user.role != Role.SUPER_ADMIN else None
     today = date.today()
     this_month_start = today.replace(day=1)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
@@ -553,7 +553,7 @@ async def get_supplier(supplier_id: int, current_user: User = Depends(get_curren
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
-    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != current_user.warehouse_id:
+    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id != get_wh_id(current_user):
         raise HTTPException(403, "只能查看自己仓库的供应商")
     cat_name = ""
     if s.category_id:

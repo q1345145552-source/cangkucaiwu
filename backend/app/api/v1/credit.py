@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.credit import CreditCustomer, CreditRepayment, CreditShipment, CreditStatus
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import get_current_user, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, Role, check_staff_permission
 from pydantic import BaseModel
 from typing import Optional
 
@@ -80,8 +80,8 @@ async def list_credit_customers(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(CreditCustomer); count_q = select(func.count(CreditCustomer.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
-        count_q = count_q.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
+        query = query.where(CreditCustomer.warehouse_id == get_wh_id(current_user))
+        count_q = count_q.where(CreditCustomer.warehouse_id == get_wh_id(current_user))
     total = (await db.execute(count_q)).scalar()
     result = await db.execute(query.order_by(CreditCustomer.created_at.desc()).offset((page-1)*page_size).limit(page_size))
     records = result.scalars().all()
@@ -177,7 +177,7 @@ async def update_credit(credit_id: int, req: CreditUpdate,
     if current_user.role == Role.SUPER_ADMIN:
         pass
     elif current_user.role == Role.WAREHOUSE_ADMIN:
-        if c.warehouse_id != current_user.warehouse_id:
+        if c.warehouse_id != get_wh_id(current_user):
             raise HTTPException(403, "只能修改自己仓库的账期客户")
     else:
         raise HTTPException(403, "无权限")
@@ -305,7 +305,7 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
     # Get all active credit customers for this warehouse and compute debt in realtime (batch)
     cust_query = select(CreditCustomer)
     if current_user.role != Role.SUPER_ADMIN:
-        cust_query = cust_query.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
+        cust_query = cust_query.where(CreditCustomer.warehouse_id == get_wh_id(current_user))
     all_credits = (await db.execute(cust_query)).scalars().all()
     all_cids = [c.id for c in all_credits]
     total_limit = sum(c.credit_limit or 0 for c in all_credits)
@@ -334,7 +334,7 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
         CreditCustomer.overdue_days > 0,
     )
     if current_user.role != Role.SUPER_ADMIN:
-        overdue_q = overdue_q.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
+        overdue_q = overdue_q.where(CreditCustomer.warehouse_id == get_wh_id(current_user))
     overdue_count = (await db.execute(overdue_q)).scalar() or 0
 
     # Rating distribution
@@ -362,7 +362,7 @@ async def _compute_assessment(
     current_user: User, db: AsyncSession,
 ) -> dict:
     """核心评级计算逻辑，供端点和看板复用"""
-    wh_id = current_user.warehouse_id
+    wh_id = get_wh_id(current_user)
     query = select(CreditCustomer).where(CreditCustomer.status == CreditStatus.ACTIVE.value)
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(CreditCustomer.warehouse_id == wh_id)
@@ -516,7 +516,7 @@ async def credit_alerts(level: str = None, current_user: User = Depends(get_curr
         CreditCustomer.overdue_days > 0,
     ).order_by(CreditCustomer.overdue_days.desc())
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(CreditCustomer.warehouse_id == current_user.warehouse_id)
+        query = query.where(CreditCustomer.warehouse_id == get_wh_id(current_user))
     records = (await db.execute(query)).scalars().all()
     cids = {r.customer_id for r in records}
     cmap = {}

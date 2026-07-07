@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.warehouse import Warehouse
 from app.models.user import User, Role
-from app.core.permissions import get_current_user, require_role
+from app.core.permissions import get_current_user, get_wh_id, require_role
 from app.schemas.business import WarehouseCreate, WarehouseUpdate, WarehouseResponse
 
 router = APIRouter()
@@ -12,9 +12,9 @@ router = APIRouter()
 @router.get("")
 async def list_warehouses(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role != Role.SUPER_ADMIN:
-        wh = (await db.execute(select(Warehouse).where(Warehouse.id == current_user.warehouse_id))).scalar_one_or_none()
+        wh = (await db.execute(select(Warehouse).where(Warehouse.id == get_wh_id(current_user)))).scalar_one_or_none()
         wh_name = wh.name if wh else ""
-        return {"data": [{"id": current_user.warehouse_id, "name": wh_name, "code": ""}]}
+        return {"data": [{"id": get_wh_id(current_user), "name": wh_name, "code": ""}]}
     result = await db.execute(select(Warehouse).order_by(Warehouse.id))
     whs = result.scalars().all()
     return {"data": [{"id": w.id, "name": w.name, "name_th": w.name_th, "code": w.code, "address": w.address, "is_active": w.is_active} for w in whs]}

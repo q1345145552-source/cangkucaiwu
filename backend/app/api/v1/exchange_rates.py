@@ -24,7 +24,7 @@ async def list_rates(
     """列出当前仓库的汇率变更记录（最新在前）"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = current_user.warehouse_id
+    wh_id = get_wh_id(current_user)
 
     query = select(ExchangeRate).where(ExchangeRate.warehouse_id == wh_id).order_by(desc(ExchangeRate.effective_from)).limit(50)
     result = await db.execute(query)
@@ -64,7 +64,7 @@ async def create_rate(
     effective_from = datetime.fromisoformat(req.effective_from) if req.effective_from else datetime.utcnow()
 
     r = ExchangeRate(
-        warehouse_id=current_user.warehouse_id,
+        warehouse_id=get_wh_id(current_user),
         effective_from=effective_from,
         from_currency=req.from_currency,
         to_currency=req.to_currency,
@@ -87,7 +87,7 @@ async def query_rate(
     """查询某个时间点的有效汇率。不传 at_time 则返回最新汇率。"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = current_user.warehouse_id
+    wh_id = get_wh_id(current_user)
 
     target_time = datetime.fromisoformat(at_time) if at_time else datetime.utcnow()
 

@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import List
-from fastapi import Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -20,7 +20,6 @@ ROLE_HIERARCHY = {
     Role.STAFF: 1,
 }
 
-# Available extra permissions for staff
 STAFF_PERMISSIONS = {
     "到账流水": "到账流水",
     "备用金管理": "备用金管理",
@@ -33,9 +32,6 @@ STAFF_PERMISSIONS = {
 }
 
 def check_staff_permission(perm_key: str):
-    """Returns a FastAPI dependency that checks if the current staff user has the given extra permission.
-    Warehouse admins and super admins pass through automatically.
-    """
     async def dependency(current_user = Depends(get_current_user)):
         if current_user.role == Role.STAFF:
             perms = current_user.extra_permissions or []
@@ -48,10 +44,12 @@ def check_staff_permission(perm_key: str):
     return dependency
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.user import User
+    from app.models.user_warehouse import UserWarehouse
     payload = decode_token(credentials.credentials)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -66,25 +64,43 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+
+    # Load user's accessible warehouse IDs
+    uw_result = await db.execute(
+        select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == uid)
+    )
+    wh_ids = [r for r in uw_result.scalars().all()]
+    if not wh_ids and user.warehouse_id:
+        wh_ids = [user.warehouse_id]
+    user._warehouse_ids = wh_ids
+
+    # Determine active warehouse from X-Warehouse-ID header
+    if user.role != Role.SUPER_ADMIN:
+        wh_header = request.headers.get("X-Warehouse-ID")
+        active_wh = None
+        if wh_header:
+            try:
+                wh_int = int(wh_header)
+                if wh_int in wh_ids:
+                    active_wh = wh_int
+            except ValueError:
+                pass
+        if active_wh is None and wh_ids:
+            active_wh = wh_ids[0]
+        user._active_wh_id = active_wh
+    else:
+        user._active_wh_id = user.warehouse_id
+
     return user
+
+
+def get_wh_id(user) -> int | None:
+    """Returns the active warehouse_id for the user. Uses header-selected warehouse first, falls back to legacy."""
+    return getattr(user, '_active_wh_id', None) or user.warehouse_id
 
 def require_role(*roles: Role):
     async def dependency(current_user = Depends(get_current_user)):
         if current_user.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-        return current_user
-    return dependency
-
-def require_warehouse_access():
-    """SuperAdmin sees all; others only see their own warehouse."""
-    async def dependency(
-        current_user = Depends(get_current_user),
-        db: AsyncSession = Depends(get_db),
-        warehouse_id: int = None,
-    ):
-        if current_user.role == Role.SUPER_ADMIN:
-            return current_user
-        if warehouse_id and current_user.warehouse_id != warehouse_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot access other warehouse data")
         return current_user
     return dependency

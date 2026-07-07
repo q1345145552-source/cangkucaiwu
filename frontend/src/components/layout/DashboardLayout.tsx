@@ -1,16 +1,16 @@
 "use client";
 import { useState, useEffect, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, Key, UserCog, ClipboardCheck,
+  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
+import { api, getToken, setActiveWarehouseId, getActiveWarehouseId } from "@/lib/api";
 
 interface NavItem {
   key: string;
@@ -28,7 +28,7 @@ const navItems: NavItem[] = [
     roles: ["super_admin", "warehouse_admin", "staff"],
     children: [
       { key: "customers", label: "客户档案", icon: <Users size={18} />, href: "/customers", roles: ["warehouse_admin", "staff"] },
-      { key: "warehouses", label: "仓库管理", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["super_admin"] },
+      { key: "warehouses", label: "仓库管理", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["super_admin", "warehouse_admin"] },
       { key: "accounts", label: "收款账户", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin"] },
       { key: "recharge", label: "充值申报", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
       { key: "incoming", label: "到账流水", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin"] },
@@ -75,8 +75,6 @@ const navItems: NavItem[] = [
   },
 ];
 
-
-// Staff 扩展权限 → 菜单映射
 const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
   incoming: "到账流水",
   expense_fund: "备用金管理",
@@ -91,132 +89,146 @@ const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
 };
 
 function hasAccess(item: NavItem, user: any): boolean {
-  if (!user || !user.role) return false;
-  // 非 staff 角色走原有角色匹配
-  if (user.role !== "staff") return item.roles.includes(user.role);
-  // Staff 角色：roles 中包含 staff 的菜单直接可见
-  if (item.roles.includes("staff")) return true;
-  // roles 中不包含 staff 的菜单，需检查扩展权限
-  const perms: string[] = user.extra_permissions || [];
-  if (perms.length === 0) return false;
-  const required = STAFF_EXTRA_MAP[item.key];
-  if (!required) return false;
-  if (Array.isArray(required)) return required.some((p: string) => perms.includes(p));
-  return perms.includes(required);
+  if (!user || !item.roles.includes(user.role)) return false;
+  if (user.role === "staff") {
+    const perms = user.extra_permissions || [];
+    const required = STAFF_EXTRA_MAP[item.key];
+    if (required) {
+      if (Array.isArray(required)) return required.some(p => perms.includes(p));
+      return perms.includes(required);
+    }
+    return true;
+  }
+  return true;
+}
+
+interface WarehouseInfo {
+  id: number;
+  name: string;
+  code: string;
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
   const { t, toggleLocale } = useI18n();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
-
-  // 根据当前路径计算父菜单 key，初始化时直接展开，避免 useEffect 导致的闪烁
-  function getParentKey(path: string | null): string | null {
-    if (!path) return null;
-    for (const item of navItems) {
-      if (!item.children) continue;
-      for (const child of item.children) {
-        if (child.href && path.startsWith(child.href)) {
-          return item.key;
-        }
-      }
-    }
-    return null;
-  }
-
-  const [expandedMenu, setExpandedMenu] = useState<string | null>(getParentKey(pathname));
-
-  // 页面切换时自动匹配父菜单，处理从非子菜单页面跳转到子页面的情况
-  useEffect(() => {
-    if (!pathname) return;
-    const parent = getParentKey(pathname);
-    if (parent) setExpandedMenu(parent);
-  }, [pathname]);
-
-  const filteredNav = navItems.filter((item) => {
-    if (!item.children) return hasAccess(item, user);
-    return item.children.some((c) => hasAccess(c, user));
-  });
-
-  const [isMobile, setIsMobile] = useState(false);
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showWhSwitcher, setShowWhSwitcher] = useState(false);
+  const [whList, setWhList] = useState<WarehouseInfo[]>([]);
+  const [selectedWhId, setSelectedWhId] = useState<number | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const check = () => {
-      const m = window.innerWidth < 1024;
-      setIsMobile(m);
-      if (!m) { setMobileMenuOpen(false); }
-    };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Close mobile menu on route change
-  useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
+  // Load user + warehouses
+  useEffect(() => {
+    const token = getToken();
+    if (!token) { router.push("/login"); return; }
+    
+    // Try stored user first
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      try { setUser(JSON.parse(stored)); } catch {}
+    }
+
+    // Fetch /me for warehouse list
+    api.get<any>("/auth/me").then(me => {
+      setUser(me);
+      localStorage.setItem("user", JSON.stringify(me));
+      if (me.warehouses && me.warehouses.length > 0) {
+        setWhList(me.warehouses);
+        const activeId = getActiveWarehouseId();
+        if (activeId && me.warehouses.find((w: any) => w.id === +activeId)) {
+          setSelectedWhId(+activeId);
+        } else if (me.warehouses.length > 0) {
+          setSelectedWhId(me.warehouses[0].id);
+          setActiveWarehouseId(me.warehouses[0].id);
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
+  const switchWarehouse = (wh: WarehouseInfo) => {
+    setSelectedWhId(wh.id);
+    setActiveWarehouseId(wh.id);
+    setShowWhSwitcher(false);
+    // Trigger page refresh
+    window.dispatchEvent(new CustomEvent("warehouse-changed", { detail: { warehouseId: wh.id } }));
+  };
+
+  const logout = () => {
+    localStorage.clear();
+    router.push("/login");
+  };
+
+  const filteredNav = navItems.filter(item => hasAccess(item, user));
+  
+  // Sidebar content
+  const sidebarContent = (
+    <aside className={`bg-slate-900 text-white flex flex-col transition-all duration-300 z-50 ${
+      isMobile ? "fixed inset-y-0 left-0 w-64" : sidebarOpen ? "w-64" : "w-16"
+    }`}>
+      <div className="flex items-center justify-between p-4 border-b border-slate-700 min-h-[56px]">
+        <span className={`font-semibold text-sm truncate ${!sidebarOpen && !isMobile && "hidden"}`}>
+          海外仓财务管理系统
+        </span>
+        <button
+          onClick={() => isMobile ? setMobileMenuOpen(false) : setSidebarOpen(!sidebarOpen)}
+          className="p-2 hover:bg-slate-700 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
+        >
+          {isMobile ? <X size={20} /> : (sidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />)}
+        </button>
+      </div>
+      <nav className="flex-1 overflow-y-auto py-2">
+        {filteredNav.map((item) => (
+          <div key={item.key}>
+            {item.children ? (
+              <>
+                <button onClick={() => setExpandedMenu(expandedMenu === item.key ? null : item.key)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-700 transition-colors min-h-[44px] ${!sidebarOpen && !isMobile && "justify-center"}`}>
+                  {item.icon}
+                  {(sidebarOpen || isMobile) && <span className="flex-1 text-left">{t(item.label)}</span>}
+                </button>
+                {expandedMenu === item.key && (sidebarOpen || isMobile) && (
+                  <div className="bg-slate-800">
+                    {item.children.filter(c => hasAccess(c, user)).map(child => (
+                      <Link key={child.key} href={child.href || "#"} className="flex items-center gap-3 pl-10 pr-4 py-3 text-sm hover:bg-slate-700 min-h-[44px]">
+                        {child.icon}<span>{t(child.label)}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <Link href={item.href || "#"} className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-700 transition-colors min-h-[44px] ${!sidebarOpen && !isMobile && "justify-center"}`}>
+                {item.icon}
+                {(sidebarOpen || isMobile) && <span className="flex-1 text-left">{t(item.label)}</span>}
+              </Link>
+            )}
+          </div>
+        ))}
+      </nav>
+    </aside>
+  );
 
   return (
     <div className="flex min-h-screen">
-      {/* Mobile backdrop */}
+      {/* Mobile overlay */}
       {isMobile && mobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setMobileMenuOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`
-        bg-slate-900 text-white flex flex-col transition-all duration-300 z-50
-        ${isMobile
-          ? `fixed top-0 left-0 h-full ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"} w-64`
-          : `${sidebarOpen ? "w-64" : "w-20"} relative flex-shrink-0`
-        }
-      `}>
-        <div className="flex items-center justify-between p-4 border-b border-slate-700 min-h-[56px]">
-          {sidebarOpen && <span className="font-semibold text-sm truncate">{t("app_name")}</span>}
-          <button
-            onClick={() => isMobile ? setMobileMenuOpen(false) : setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-700 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
-          >
-            {isMobile ? <X size={20} /> : (sidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />)}
-          </button>
-        </div>
-        <nav className="flex-1 overflow-y-auto py-2">
-          {filteredNav.map((item) => (
-            <div key={item.key}>
-              {item.children ? (
-                <>
-                  <button
-                    onClick={() => setExpandedMenu(expandedMenu === item.key ? null : item.key)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-700 transition-colors min-h-[44px] ${!sidebarOpen && "justify-center"}`}
-                  >
-                    {item.icon}
-                    {sidebarOpen && <span className="flex-1 text-left">{t(item.label)}</span>}
-                  </button>
-                  {expandedMenu === item.key && sidebarOpen && (
-                    <div className="bg-slate-800">
-                      {item.children.filter((c) => hasAccess(c, user)).map((child) => (
-                        <Link key={child.key} href={child.href || "#"} className="flex items-center gap-3 pl-10 pr-4 py-3 text-sm hover:bg-slate-700 min-h-[44px]">
-                          {child.icon}
-                          <span>{t(child.label)}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <Link
-                  href={item.href || "#"}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-700 transition-colors min-h-[44px] ${!sidebarOpen && "justify-center"}`}
-                >
-                  {item.icon}
-                  {sidebarOpen && <span className="flex-1 text-left">{t(item.label)}</span>}
-                </Link>
-              )}
-            </div>
-          ))}
-        </nav>
-      </aside>
+      {(!isMobile || mobileMenuOpen) && sidebarContent}
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -232,16 +244,57 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 {sidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
               </button>
             )}
+            
+            {/* Warehouse Switcher */}
+            {whList.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowWhSwitcher(!showWhSwitcher)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium min-h-[36px]"
+                >
+                  <Building2 size={16} />
+                  <span className="max-w-[120px] truncate">
+                    {whList.find(w => w.id === selectedWhId)?.name || "选择仓库"}
+                  </span>
+                  <svg className="w-3 h-3" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
+                </button>
+                {showWhSwitcher && (
+                  <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-56 py-1 z-50">
+                    {whList.map(wh => (
+                      <button
+                        key={wh.id}
+                        onClick={() => switchWarehouse(wh)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] ${
+                          wh.id === selectedWhId ? "text-blue-600 font-medium bg-blue-50" : ""
+                        }`}
+                      >
+                        <Building2 size={14} />
+                        <span>{wh.name}</span>
+                        <span className="text-xs text-gray-400 ml-auto">{wh.code}</span>
+                      </button>
+                    ))}
+                    {user?.role === "warehouse_admin" && (
+                      <Link
+                        href="/warehouses"
+                        onClick={() => setShowWhSwitcher(false)}
+                        className="w-full text-left px-3 py-2 text-sm text-blue-500 hover:bg-blue-50 flex items-center gap-2 min-h-[40px] border-t"
+                      >
+                        + 新建仓库
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+          
           <div className="flex items-center gap-2 ml-auto">
             <button onClick={toggleLocale} className="p-2 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
               <Globe size={18} />
             </button>
             <div className="relative">
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg min-h-[44px]"
-              >
+              <button onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg min-h-[44px]">
                 <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium shrink-0">
                   {user?.display_name?.[0] || "U"}
                 </div>
@@ -268,7 +321,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
-          <div key={pathname} className="animate-fade-in">
+          <div key={pathname + '-' + selectedWhId} className="animate-fade-in">
             {children}
           </div>
           <BackToTop />

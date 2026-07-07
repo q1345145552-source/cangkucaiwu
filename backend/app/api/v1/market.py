@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models.market import MarketItem, MarketStatus
 from app.models.user import User
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, Role, require_role
+from app.core.permissions import get_current_user, get_wh_id, Role, require_role
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -129,7 +129,7 @@ async def confirm_trade(item_id: int, current_user: User = Depends(get_current_u
     result = await db.execute(select(MarketItem).where(MarketItem.id == item_id))
     i = result.scalar_one_or_none()
     if not i: raise HTTPException(404, "商品不存在")
-    if current_user.role == Role.SUPER_ADMIN or current_user.warehouse_id == i.warehouse_id:
+    if current_user.role == Role.SUPER_ADMIN or get_wh_id(current_user) == i.warehouse_id:
         i.status = MarketStatus.SOLD.value
         await db.flush(); return {"message": "交易确认完成"}
     raise HTTPException(403, "无权限确认")

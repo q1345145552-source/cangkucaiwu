@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory, ReimbStatus
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, Role, check_staff_permission
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -40,8 +40,8 @@ async def list_reimbursements(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Reimbursement); count_q = select(func.count(Reimbursement.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(Reimbursement.warehouse_id == current_user.warehouse_id)
-        count_q = count_q.where(Reimbursement.warehouse_id == current_user.warehouse_id)
+        query = query.where(Reimbursement.warehouse_id == get_wh_id(current_user))
+        count_q = count_q.where(Reimbursement.warehouse_id == get_wh_id(current_user))
     if month:
         query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
@@ -136,7 +136,7 @@ async def export_reimbursements(
 
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = current_user.warehouse_id
+    wh_id = get_wh_id(current_user)
 
     query = select(Reimbursement).where(Reimbursement.warehouse_id == wh_id)
     if month:
@@ -188,7 +188,7 @@ async def list_reimb_categories(current_user: User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = current_user.warehouse_id
+    wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "当前用户未关联仓库")
     cats = (await db.execute(
@@ -327,7 +327,7 @@ async def create_reimb_category(req: CategoryReq, current_user: User = Depends(g
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
-    wh_id = current_user.warehouse_id
+    wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "当前用户未关联仓库")
     name = (req.name or "").strip()

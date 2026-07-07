@@ -1,4 +1,10 @@
 from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class WarehouseInfo(BaseModel):
+    id: int
+    name: str
+    code: str
 
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=50)
@@ -13,6 +19,7 @@ class TokenResponse(BaseModel):
     role: str
     warehouse_id: int | None = None
     warehouse_name: str | None = None
+    warehouses: Optional[List[WarehouseInfo]] = None
     extra_permissions: list | None = None
 
 class ChangePasswordRequest(BaseModel):

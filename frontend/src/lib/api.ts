@@ -21,6 +21,25 @@ export function clearToken() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("activeWarehouseId");
+  }
+}
+
+// Active warehouse management
+export function getActiveWarehouseId(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("activeWarehouseId");
+  }
+  return null;
+}
+
+export function setActiveWarehouseId(id: string | number | null) {
+  if (typeof window !== "undefined") {
+    if (id !== null && id !== undefined) {
+      localStorage.setItem("activeWarehouseId", String(id));
+    } else {
+      localStorage.removeItem("activeWarehouseId");
+    }
   }
 }
 
@@ -42,7 +61,11 @@ async function request<T>(
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  // API_URL 支持相对路径 (/api/v1) 和绝对路径 (http://localhost:8000/api/v1)
+  // Add X-Warehouse-ID header
+  const whId = getActiveWarehouseId();
+  if (whId) {
+    headers["X-Warehouse-ID"] = whId;
+  }
   const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
   if (res.status === 401) {
     clearToken();
@@ -53,7 +76,6 @@ async function request<T>(
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
     let msg = err.detail || `HTTP ${res.status}`;
-    // Handle 422 validation errors: detail is an array of {loc, msg, ...}
     if (Array.isArray(err.detail)) {
       msg = err.detail.map((e: any) => {
         const field = e.loc ? e.loc[e.loc.length - 1] : "";

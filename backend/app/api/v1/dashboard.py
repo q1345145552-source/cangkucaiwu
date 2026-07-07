@@ -10,13 +10,13 @@ from app.models.expense_fund import ExpenseFundItem, ExpenseFund, ReviewStatus
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, get_wh_id, Role
 
 router = APIRouter()
 
 def _wh_filter(query, model, current_user):
     if current_user.role != Role.SUPER_ADMIN:
-        return query.where(model.warehouse_id == current_user.warehouse_id)
+        return query.where(model.warehouse_id == get_wh_id(current_user))
     return query
 
 @router.get("/stats")
@@ -54,7 +54,7 @@ async def dashboard_stats(current_user: User = Depends(get_current_user), db: As
         ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id
     ).where(ExpenseFundItem.review_status == ReviewStatus.PENDING.value)
     if current_user.role != Role.SUPER_ADMIN:
-        efq = efq.where(ExpenseFund.warehouse_id == current_user.warehouse_id)
+        efq = efq.where(ExpenseFund.warehouse_id == get_wh_id(current_user))
     pending_expense_fund = (await db.execute(efq)).scalar() or 0
 
     # Pending reimbursement approvals
@@ -83,7 +83,7 @@ async def pending_tasks(current_user: User = Depends(get_current_user), db: Asyn
         User, ExpenseFund.employee_id == User.id
     ).where(ExpenseFundItem.review_status == ReviewStatus.PENDING.value)
     if current_user.role != Role.SUPER_ADMIN:
-        efq = efq.where(ExpenseFund.warehouse_id == current_user.warehouse_id)
+        efq = efq.where(ExpenseFund.warehouse_id == get_wh_id(current_user))
     efq = efq.order_by(ExpenseFundItem.created_at.desc()).limit(20)
     ef_result = (await db.execute(efq)).all()
     for item, fund, emp in ef_result:

@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api, setToken, clearToken, getToken } from "@/lib/api";
+import { api, setToken, clearToken, getToken, setActiveWarehouseId } from "@/lib/api";
 
 const AuthContext = createContext(null);
 
@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const saved = localStorage.getItem("user");
     if (saved && getToken()) {
-      setUser(JSON.parse(saved));
+      try { setUser(JSON.parse(saved)); } catch {}
     }
     setLoading(false);
   }, []);
@@ -21,6 +21,14 @@ export function AuthProvider({ children }) {
   async function doLogin(username, password) {
     const res = await api.post("/auth/login", { username, password });
     setToken(res.access_token);
+    
+    // Save warehouse list
+    if (res.warehouses && res.warehouses.length > 0) {
+      localStorage.setItem("warehouses", JSON.stringify(res.warehouses));
+      // Auto-select first warehouse
+      setActiveWarehouseId(res.warehouses[0].id);
+    }
+    
     const u = {
       id: res.user_id,
       username: res.username,
@@ -28,6 +36,7 @@ export function AuthProvider({ children }) {
       role: res.role,
       warehouse_id: res.warehouse_id,
       warehouse_name: res.warehouse_name,
+      warehouses: res.warehouses || [],
       extra_permissions: res.extra_permissions || [],
       is_active: true,
     };

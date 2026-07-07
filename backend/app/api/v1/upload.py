@@ -5,7 +5,7 @@ from sqlalchemy import select
 import os, uuid
 from datetime import datetime
 from app.database import get_db
-from app.core.permissions import get_current_user
+from app.core.permissions import get_current_user, get_wh_id
 
 router = APIRouter()
 
@@ -31,7 +31,7 @@ async def upload_file(
 
     # Build path: uploads/warehouse_id/date/uuid.ext
     today = datetime.now().strftime("%Y-%m-%d")
-    wh_id = str(current_user.warehouse_id or 0)
+    wh_id = str(get_wh_id(current_user) or 0)
     subdir = os.path.join(UPLOAD_DIR, wh_id, today)
     os.makedirs(subdir, exist_ok=True)
     fname = f"{uuid.uuid4().hex}.{ext}"
