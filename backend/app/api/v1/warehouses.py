@@ -42,27 +42,6 @@ async def create_warehouse(req: WarehouseCreate,
     db.add(uw)
     await db.flush()
 
-    # Create default categories for the new warehouse
-    from app.models.income_expense import IncomeExpenseCategory
-    default_categories = [
-        "仓储费", "操作费", "增值服务费", "工资", "电费", "网费",
-        "房租", "耗材", "物流运费", "快递费", "保险费", "税费",
-    ]
-    for idx, name in enumerate(default_categories):
-        db.add(IncomeExpenseCategory(
-            warehouse_id=w.id, type="expense", name=name,
-            sort_order=idx + 1, category_group="operating",
-        ))
-    db.add(IncomeExpenseCategory(
-        warehouse_id=w.id, type="income", name="仓储费收入",
-        sort_order=1, category_group="other",
-    ))
-    db.add(IncomeExpenseCategory(
-        warehouse_id=w.id, type="income", name="其他收入",
-        sort_order=2, category_group="other",
-    ))
-    await db.flush()
-
     return {"id": w.id, "message": "创建成功"}
 
 @router.put("/{warehouse_id}")
