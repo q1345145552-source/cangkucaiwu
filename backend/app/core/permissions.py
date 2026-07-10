@@ -79,13 +79,17 @@ async def get_current_user(
         wh_header = request.headers.get("X-Warehouse-ID")
         active_wh = None
         if wh_header:
-            try:
-                wh_int = int(wh_header)
-                if wh_int in wh_ids:
-                    active_wh = wh_int
-            except ValueError:
-                pass
-        if active_wh is None and wh_ids:
+            if wh_header == "all" and user.role == Role.WAREHOUSE_ADMIN:
+                user._all_warehouses = True
+                active_wh = None
+            else:
+                try:
+                    wh_int = int(wh_header)
+                    if wh_int in wh_ids:
+                        active_wh = wh_int
+                except ValueError:
+                    pass
+        if active_wh is None and wh_ids and not getattr(user, '_all_warehouses', False):
             active_wh = wh_ids[0]
         user._active_wh_id = active_wh
     else:
@@ -95,7 +99,10 @@ async def get_current_user(
 
 
 def get_wh_id(user) -> int | None:
-    """Returns the active warehouse_id for the user. Uses header-selected warehouse first, falls back to legacy."""
+    """Returns the active warehouse_id for the user. Uses header-selected warehouse first, falls back to legacy.
+    Returns None in 'all warehouses' mode to enable cross-warehouse aggregation."""
+    if getattr(user, '_all_warehouses', False):
+        return None
     return getattr(user, '_active_wh_id', None) or user.warehouse_id
 
 def require_role(*roles: Role):

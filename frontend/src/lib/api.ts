@@ -61,9 +61,9 @@ async function request<T>(
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  // Add X-Warehouse-ID header
+  // Add X-Warehouse-ID header (including "all" for total warehouse mode)
   const whId = getActiveWarehouseId();
-  if (whId) {
+  if (whId !== null) {
     headers["X-Warehouse-ID"] = whId;
   }
   const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });

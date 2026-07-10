@@ -120,6 +120,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showWhSwitcher, setShowWhSwitcher] = useState(false);
   const [whList, setWhList] = useState<WarehouseInfo[]>([]);
   const [selectedWhId, setSelectedWhId] = useState<number | null>(null);
+  const [isAllWarehouses, setIsAllWarehouses] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -148,7 +149,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       if (me.warehouses && me.warehouses.length > 0) {
         setWhList(me.warehouses);
         const activeId = getActiveWarehouseId();
-        if (activeId && me.warehouses.find((w: any) => w.id === +activeId)) {
+        if (activeId === "all") {
+          setIsAllWarehouses(true);
+          if (me.warehouses.length > 0) setSelectedWhId(me.warehouses[0].id);
+        } else if (activeId && me.warehouses.find((w: any) => w.id === +activeId)) {
           setSelectedWhId(+activeId);
         } else if (me.warehouses.length > 0) {
           setSelectedWhId(me.warehouses[0].id);
@@ -159,11 +163,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, []);
 
   const switchWarehouse = (wh: WarehouseInfo) => {
+    setIsAllWarehouses(false);
     setSelectedWhId(wh.id);
     setActiveWarehouseId(wh.id);
     setShowWhSwitcher(false);
-    // Trigger page refresh
     window.dispatchEvent(new CustomEvent("warehouse-changed", { detail: { warehouseId: wh.id } }));
+  };
+
+  const switchAllWarehouses = () => {
+    setIsAllWarehouses(true);
+    setActiveWarehouseId("all");
+    setShowWhSwitcher(false);
+    window.dispatchEvent(new CustomEvent("warehouse-changed", { detail: { warehouseId: "all" } }));
   };
 
   const logout = () => {
@@ -255,12 +266,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 >
                   <Building2 size={16} />
                   <span className="max-w-[120px] truncate">
-                    {whList.find(w => w.id === selectedWhId)?.name || "选择仓库"}
+                    {isAllWarehouses ? "总仓汇总" : (whList.find(w => w.id === selectedWhId)?.name || "选择仓库")}
                   </span>
                   <svg className="w-3 h-3" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
                 </button>
                 {showWhSwitcher && (
                   <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-56 py-1 z-50">
+                    {user?.role === "warehouse_admin" && (
+                      <button
+                        onClick={switchAllWarehouses}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] ${
+                          isAllWarehouses ? "text-blue-600 font-medium bg-blue-50" : ""
+                        }`}
+                      >
+                        <Building2 size={14} className="text-amber-500" />
+                        <span>总仓汇总</span>
+                        <span className="text-xs text-amber-400 ml-auto">全部</span>
+                      </button>
+                    )}
+                    {user?.role === "warehouse_admin" && <div className="border-t border-gray-100" />}
                     {whList.map(wh => (
                       <button
                         key={wh.id}
