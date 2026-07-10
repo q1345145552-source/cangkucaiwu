@@ -296,7 +296,7 @@ export default function SuppliersPage() {
             {/* Header */}
             <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <Package size={18} />
-              <h2 className="font-semibold">产品定价 - {data.find((s:any)=>s.id===productSupplierId)?.name || ""}</h2>
+              <h2 className="font-semibold">产品定价 - {data.find((s:any)=>s.id===productSupplierId)?.name || ""}{(()=>{const s=data.find((x:any)=>x.id===productSupplierId); return s?.settlement_cycle ? ` （账期: ${s.settlement_cycle}）` : "";})()}</h2>
               <button onClick={()=>setShowProducts(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button>
             </div>
             {/* Form */}
@@ -403,7 +403,7 @@ export default function SuppliersPage() {
           <div className="bg-white rounded-2xl w-[800px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="bg-green-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <ShoppingCart size={18} />
-              <h2 className="font-semibold">下单 - {data.find((s:any)=>s.id===orderSupplierId)?.name || ""}</h2>
+              <h2 className="font-semibold">下单 - {data.find((s:any)=>s.id===orderSupplierId)?.name || ""}{(()=>{const s=data.find((x:any)=>x.id===orderSupplierId); return s?.settlement_cycle ? ` （账期: ${s.settlement_cycle}）` : "";})()}</h2>
               <button onClick={()=>setShowOrder(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none">&times;</button>
             </div>
             <div className="p-5">
