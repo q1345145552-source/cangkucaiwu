@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,8 +66,14 @@ export default function SuppliersPage() {
     try {
       const payload: any = { ...form };
       if (!payload.category_id) delete payload.category_id;
-      await api.post("/suppliers", payload);
+      const r: any = await api.post("/suppliers", payload);
       toast("success", "创建成功"); setShowForm(false); load();
+      // Auto-open price dialog based on selected category
+      const newId = r.id;
+      setTimeout(() => {
+        if (filterCat === 1) openProducts(newId);
+        else if (filterCat === 2) openLogistics(newId);
+      }, 500);
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
@@ -80,9 +86,12 @@ export default function SuppliersPage() {
     const file = fileInputRef.current?.files?.[0];
     if (!file) { toast("error", "请选择文件"); return; }
     const token = getToken();
+    const whId = getActiveWarehouseId();
     const fd = new FormData(); fd.append("file", file);
     try {
-      const res = await fetch(`/api/v1/suppliers/import/${importMode}`, { method: "POST", headers: { "Authorization": `Bearer ${token}` }, body: fd });
+      const headers: Record<string, string> = { "Authorization": `Bearer ${token}` };
+      if (whId) headers["X-Warehouse-ID"] = whId;
+      const res = await fetch(`/api/v1/suppliers/import/${importMode}`, { method: "POST", headers, body: fd });
       const r = await res.json();
       if (res.ok) toast("success", r.message || "导入成功"); else toast("error", r.detail || "导入失败");
       load();
