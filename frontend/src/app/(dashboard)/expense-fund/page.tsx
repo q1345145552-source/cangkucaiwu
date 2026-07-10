@@ -8,7 +8,7 @@ import {
   PiggyBank, Wallet, Plus, ArrowUp, FileText, Camera, Image,
   RefreshCw, AlertTriangle, ChevronDown, ChevronRight,
   Users, DollarSign, TrendingUp, Activity, X, CheckCircle as CheckC,
-  XCircle, Search, Eye, ClipboardCheck,
+  XCircle, Search, Eye, ClipboardCheck, CreditCard,
 } from "lucide-react";
 
 export default function ExpenseFundPage() {
@@ -51,6 +51,12 @@ export default function ExpenseFundPage() {
   const [rejectRemark, setRejectRemark] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const [reviewTab, setReviewTab] = useState<"expense" | "recharge">("expense");
+  const [rechargeData, setRechargeData] = useState<any[]>([]);
+  const [rechargeLoading, setRechargeLoading] = useState(false);
+  const [rechargeHistory, setRechargeHistory] = useState<Record<number, any[]>>({});
+  const [rechargeHistoryLoading, setRechargeHistoryLoading] = useState<Record<number, boolean>>({});
+
   useEffect(() => { if (!getToken()) router.push("/login"); loadAll(); }, []);
 
   async function loadAll() {
@@ -89,6 +95,7 @@ export default function ExpenseFundPage() {
       } catch {}
       setItemsLoading(prev => ({ ...prev, [acc.id]: false }));
     }
+    loadRechargeHistory(acc);
   }
 
   async function doCreate() {
@@ -143,7 +150,12 @@ export default function ExpenseFundPage() {
   }
 
   // ====== Review logic ======
-  useEffect(() => { if (tab === "review") loadReviews(); }, [tab]);
+  useEffect(() => {
+    if (tab === "review") {
+      if (reviewTab === "recharge") loadRechargeRequests();
+      else loadReviews();
+    }
+  }, [tab, reviewTab]);
 
   async function loadReviews() {
     setReviewLoading(true);
@@ -191,6 +203,43 @@ export default function ExpenseFundPage() {
         toast("success", "已驳回"); loadReviews();
       } catch (err: any) { toast("error", err.message || "审核失败"); }
     })();
+  }
+
+  // Recharge Request functions
+  async function loadRechargeRequests() {
+    setRechargeLoading(true);
+    try {
+      const r = await api.get<any>("/expense-fund/recharge/requests?status=pending&page_size=100");
+      setRechargeData(r.data || []);
+    } catch (err) { console.error(err); }
+    setRechargeLoading(false);
+  }
+  async function approveRecharge(reqId: number) {
+    try {
+      await api.post("/expense-fund/recharge/review", { request_id: reqId, action: "approve" });
+      toast("success", "充值申请已通过");
+      loadRechargeRequests();
+    } catch (err: any) { toast("error", err.message || "审核失败"); }
+  }
+  function rejectRecharge(reqId: number) {
+    const reason = prompt("请输入驳回原因");
+    if (reason === null) return;
+    (async () => {
+      try {
+        await api.post("/expense-fund/recharge/review", { request_id: reqId, action: "reject", remark: reason });
+        toast("success", "充值申请已驳回");
+        loadRechargeRequests();
+      } catch (err: any) { toast("error", err.message || "审核失败"); }
+    })();
+  }
+  async function loadRechargeHistory(acc: any) {
+    if (rechargeHistory[acc.id]) return;
+    setRechargeHistoryLoading(prev => ({ ...prev, [acc.id]: true }));
+    try {
+      const r = await api.get<any>(`/expense-fund/recharge/requests?page_size=10&applicant_id=${acc.employee_id}`);
+      setRechargeHistory(prev => ({ ...prev, [acc.id]: r.data || [] }));
+    } catch {}
+    setRechargeHistoryLoading(prev => ({ ...prev, [acc.id]: false }));
   }
 
   // ====== Stats ======
@@ -357,6 +406,36 @@ export default function ExpenseFundPage() {
                                   </tbody>
                                 </table>
                               )}
+                              {/* Recharge history */}
+                              <div className="border-t border-gray-200 mt-3 pt-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <CreditCard size={14} className="text-gray-400" />
+                                  <span className="text-xs font-medium text-gray-500">充值申请记录</span>
+                                </div>
+                                {rechargeHistoryLoading[acc.id] ? (
+                                  <div className="text-xs text-gray-400 py-2">加载中...</div>
+                                ) : (rechargeHistory[acc.id] || []).length === 0 ? (
+                                  <div className="text-xs text-gray-400 py-2">暂无充值申请</div>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    {(rechargeHistory[acc.id] || []).slice(0, 5).map((r: any) => (
+                                      <div key={r.id} className="flex items-center justify-between text-xs bg-white rounded-md px-3 py-1.5 border border-gray-100">
+                                        <div className="flex items-center gap-2">
+                                          <span className={r.status === "approved" ? "text-green-600" : r.status === "rejected" ? "text-red-500" : "text-yellow-600"}>
+                                            {r.status === "approved" ? "已通过" : r.status === "rejected" ? "已驳回" : "待审核"}
+                                          </span>
+                                          <span className="text-gray-400">{r.created_at ? new Date(r.created_at).toLocaleString("zh-CN") : "-"}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-gray-500 max-w-[120px] truncate">{r.reason || "-"}</span>
+                                          <span className="font-medium text-green-700">+฿{r.amount?.toLocaleString()}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {(rechargeHistory[acc.id] || []).length > 5 && <div className="text-xs text-gray-400 text-center">仅显示最近5条</div>}
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2 mt-3">
                                 <button onClick={() => openTopUp(acc)} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100 transition-colors flex items-center gap-1"><RefreshCw size={11} />充值</button>
                                 <button onClick={() => openExpense(acc)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-1"><Plus size={11} />添加开销</button>
@@ -461,6 +540,23 @@ export default function ExpenseFundPage() {
       {/* ========== REVIEW TAB ========== */}
       {tab === "review" && (
         <>
+          {/* Sub-tabs */}
+          <div className="flex items-center gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-gray-100 w-fit">
+            <button onClick={() => setReviewTab("expense")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${reviewTab === "expense" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              <ClipboardCheck size={15} />开销审核
+              {reviewData.length > 0 && <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${reviewTab === "expense" ? "bg-blue-500 text-white" : "bg-red-500 text-white"}`}>{reviewData.length}</span>}
+            </button>
+            <button onClick={() => setReviewTab("recharge")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${reviewTab === "recharge" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              <CreditCard size={15} />充值申请
+              {rechargeData.length > 0 && <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${reviewTab === "recharge" ? "bg-blue-500 text-white" : "bg-red-500 text-white"}`}>{rechargeData.length}</span>}
+            </button>
+          </div>
+
+          {/* Expenses Review */}
+          {reviewTab === "expense" && (
+          <div>
           <div className="mb-4 text-sm text-gray-400">{reviewData.length} 条待审核</div>
 
           {/* 筛选栏 */}
@@ -554,6 +650,66 @@ export default function ExpenseFundPage() {
               </div>
             )}
           </div>
+          </div>
+          )}
+
+          {/* Recharge Requests Review */}
+          {reviewTab === "recharge" && (
+            <div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-3 mb-4">
+                <div className="text-sm text-gray-500">{rechargeData.length} 条待审核充值申请</div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                {rechargeLoading ? (
+                  <div className="flex items-center justify-center h-24 text-gray-400">
+                    <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-2" />加载中...
+                  </div>
+                ) : rechargeData.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400 text-sm">暂无待审核的充值申请</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left px-3 py-3 font-medium text-gray-500">申请人</th>
+                          <th className="text-right px-3 py-3 font-medium text-gray-500">申请金额</th>
+                          <th className="text-right px-3 py-3 font-medium text-gray-500">当前余额</th>
+                          <th className="text-left px-3 py-3 font-medium text-gray-500">事由</th>
+                          <th className="text-left px-3 py-3 font-medium text-gray-500">申请时间</th>
+                          <th className="text-center px-3 py-3 font-medium text-gray-500">状态</th>
+                          <th className="text-center px-3 py-3 font-medium text-gray-500 w-24">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rechargeData.map((r: any) => (
+                          <tr key={r.id} className="border-b hover:bg-gray-50/50">
+                            <td className="px-3 py-3 font-medium text-gray-800">{r.applicant_name}</td>
+                            <td className="px-3 py-3 text-right font-medium text-green-700">+฿{r.amount?.toLocaleString()}</td>
+                            <td className="px-3 py-3 text-right text-gray-500">฿{(r.current_balance || 0).toLocaleString()}</td>
+                            <td className="px-3 py-3 text-gray-600 max-w-[200px] truncate">{r.reason || "-"}</td>
+                            <td className="px-3 py-3 text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleString("zh-CN") : "-"}</td>
+                            <td className="px-3 py-3 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.status === "pending" ? "bg-yellow-50 text-yellow-700" : r.status === "approved" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                                {r.status === "pending" ? "待审核" : r.status === "approved" ? "已通过" : "已驳回"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              {r.status === "pending" && (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button onClick={() => approveRecharge(r.id)} className="p-1 rounded hover:bg-green-50 text-green-600" title="通过"><CheckC size={16} /></button>
+                                  <button onClick={() => rejectRecharge(r.id)} className="p-1 rounded hover:bg-red-50 text-red-500" title="驳回"><XCircle size={16} /></button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Receipt preview modal */}
           {previewUrl && (

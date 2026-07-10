@@ -431,6 +431,7 @@ async def submit_recharge_request(
 async def list_recharge_requests(
     page: int = 1, page_size: int = 50,
     status: str = None,
+    applicant_id: int = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -451,12 +452,16 @@ async def list_recharge_requests(
 
     if status:
         query = query.where(FundRechargeRequest.status == status)
+    if applicant_id:
+        query = query.where(FundRechargeRequest.applicant_id == applicant_id)
 
     count_q = select(func.count(FundRechargeRequest.id)).where(FundRechargeRequest.warehouse_id == wh_id)
     if current_user.role == Role.STAFF:
         count_q = count_q.where(FundRechargeRequest.applicant_id == current_user.id)
     if status:
         count_q = count_q.where(FundRechargeRequest.status == status)
+    if applicant_id:
+        count_q = count_q.where(FundRechargeRequest.applicant_id == applicant_id)
 
     total = (await db.execute(count_q)).scalar()
     rows = (await db.execute(query.order_by(FundRechargeRequest.created_at.desc()).offset((page-1)*page_size).limit(page_size))).all()
