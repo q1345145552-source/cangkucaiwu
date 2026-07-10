@@ -46,7 +46,7 @@ export default function SuppliersPage() {
   // Import
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
-  const [showImportMenu, setShowImportMenu] = useState(false);
+  const [importSupplierId, setImportSupplierId] = useState<number | null>(null);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
 
@@ -76,21 +76,23 @@ export default function SuppliersPage() {
     window.open(`/api/v1/suppliers/import-template/${mode}`, "_blank");
   }
 
-  async function handleImport() {
+  async function handleSupplierImport() {
     const file = fileInputRef.current?.files?.[0];
-    if (!file) { toast("error", "请选择文件"); return; }
+    const sid = importSupplierId;
+    if (!file || !sid) { toast("error", "请选择文件"); return; }
     const token = getToken();
     const whId = getActiveWarehouseId();
     const fd = new FormData(); fd.append("file", file);
     try {
       const headers: Record<string, string> = { "Authorization": `Bearer ${token}` };
       if (whId) headers["X-Warehouse-ID"] = whId;
-      const res = await fetch(`/api/v1/suppliers/import/${importMode}`, { method: "POST", headers, body: fd });
+      const res = await fetch(`/api/v1/suppliers/${sid}/import/${importMode}`, { method: "POST", headers, body: fd });
       const r = await res.json();
       if (res.ok) toast("success", r.message || "导入成功"); else toast("error", r.detail || "导入失败");
       load();
     } catch { toast("error", "导入失败"); }
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setImportSupplierId(null);
   }
 
   // ─── Products ───
@@ -191,20 +193,10 @@ export default function SuppliersPage() {
         <div className="flex gap-2 flex-wrap">
           {isAdmin && (
             <>
-              {/* Import dropdown */}
-              <div className="relative">
-                <button onClick={() => setShowImportMenu(!showImportMenu)} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Upload size={16}/>批量导入</button>
-                {showImportMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-40 w-48 py-1">
-                    <button onClick={() => { setImportMode("products"); fileInputRef.current?.click(); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导入耗材产品</button>
-                    <button onClick={() => { setImportMode("logistics"); fileInputRef.current?.click(); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导入物流价格</button>
-                    <div className="border-t my-1" />
-                    <button onClick={() => { downloadTemplate("products"); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1"><Download size={14}/>耗材模板</button>
-                    <button onClick={() => { downloadTemplate("logistics"); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1"><Download size={14}/>物流模板</button>
-                  </div>
-                )}
-              </div>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
+              {/* Template download */}
+              <button onClick={() => downloadTemplate("products")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>耗材模板</button>
+              <button onClick={() => downloadTemplate("logistics")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>物流模板</button>
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleSupplierImport} className="hidden" />
               <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
               <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
@@ -221,12 +213,18 @@ export default function SuppliersPage() {
         { key: "contact_info", label: "联系方式" },
         { key: "settlement_cycle", label: "结算周期", render: (v:any)=>v||"-" },
         { key: "id", label: "操作", render: (_:any, row:any) => (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-1 flex-wrap items-center">
             {row.category_id === 1 && (
-              <button onClick={()=>openProducts(row.id)} className="text-green-600 flex items-center gap-1 text-xs"><Plus size={12}/>产品</button>
+              <>
+                <button onClick={()=>{setImportSupplierId(row.id);setImportMode("products");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入产品"><Upload size={12}/></button>
+                <button onClick={()=>openProducts(row.id)} className="text-green-600 hover:bg-green-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><Plus size={12}/>产品</button>
+              </>
             )}
             {row.category_id === 2 && (
-              <button onClick={()=>openLogistics(row.id)} className="text-orange-600 flex items-center gap-1 text-xs"><TrendingUp size={12}/>物流</button>
+              <>
+                <button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button>
+                <button onClick={()=>openLogistics(row.id)} className="text-orange-600 hover:bg-orange-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><TrendingUp size={12}/>物流</button>
+              </>
             )}
             <button onClick={()=>viewDetail(row.id)} className="text-blue-500 flex items-center gap-1 text-xs"><Eye size={12}/>详情</button>
             {isAdmin && (

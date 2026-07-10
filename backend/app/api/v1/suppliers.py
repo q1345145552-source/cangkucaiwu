@@ -130,6 +130,65 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
     await db.flush()
     return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条跨境物流价格"}
 
+# ═══ Per-Supplier Import ══════════════════════════
+@router.post("/{supplier_id}/import/products")
+async def import_products_for_supplier(supplier_id: int, file: UploadFile = File(...),
+                                        current_user: User = Depends(get_current_user),
+                                        db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+        raise HTTPException(403, "无权限")
+    from openpyxl import load_workbook
+    content = await file.read()
+    wb = load_workbook(io.BytesIO(content)); ws = wb.active
+    imported, skipped, errors = 0, 0, []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row or (not row[0] and not row[1]): continue
+        pname = str(row[0] or row[1] or "").strip()
+        if not pname or pname.startswith("示例"): continue
+        try:
+            p = SupplierProduct(
+                supplier_id=supplier_id,
+                product_name=pname,
+                spec=str(row[1] or "").strip() if row[1] and len(row)>1 else None,
+                spec_price=float(row[2] or 0) if len(row)>2 and row[2] else None,
+                unit_price=float(row[3] or 0) if len(row)>3 and row[3] else 0,
+            )
+            db.add(p); imported += 1
+        except Exception as e:
+            errors.append(f"行解析失败: {e}"); skipped += 1
+    await db.flush()
+    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条产品"}
+
+@router.post("/{supplier_id}/import/logistics")
+async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = File(...),
+                                         current_user: User = Depends(get_current_user),
+                                         db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+        raise HTTPException(403, "无权限")
+    from openpyxl import load_workbook
+    data = await file.read()
+    wb = load_workbook(io.BytesIO(data)); ws = wb.active
+    imported, skipped, errors = 0, 0, []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row or not row[0]: continue
+        tm = str(row[0] or "").strip()
+        if tm.startswith("示例"): continue
+        try:
+            p = SupplierCrossBorderPrice(
+                supplier_id=supplier_id,
+                transport_method=str(row[0] or "").strip(),
+                cargo_type=str(row[1] or "").strip() if len(row)>1 else "",
+                origin_warehouse=str(row[2] or "").strip() if len(row)>2 else "",
+                price_per_cbm=float(row[3] or 0) if len(row)>3 and row[3] else 0,
+                estimated_days=str(row[4] or "").strip() if len(row)>4 and row[4] else None,
+                currency=str(row[5] or "人民币").strip() if len(row)>5 else "人民币",
+            )
+            db.add(p); imported += 1
+        except Exception as e:
+            errors.append(f"行解析失败: {e}"); skipped += 1
+    await db.flush()
+    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条跨境物流价格"}
+
 # ═══ Product CRUD ════════════════════════════════
 @router.get("/{supplier_id}/products")
 async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
