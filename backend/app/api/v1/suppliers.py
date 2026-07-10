@@ -263,6 +263,68 @@ async def delete_product(supplier_id: int, product_id: int, current_user: User =
     if not p: raise HTTPException(404, "产品不存在")
     await db.delete(p); await db.flush()
     return {"message": "删除成功"}
+# ═══ Purchase Order ═════════════════════════════
+@router.post("/{supplier_id}/purchase-order")
+async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
+                                 current_user: User = Depends(get_current_user),
+                                 db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    supplier = (await db.execute(select(Supplier).where(Supplier.id == supplier_id))).scalar_one_or_none()
+    if not supplier:
+        raise HTTPException(404, "供应商不存在")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    pid_set = {it.product_id for it in req.items}
+    products = (await db.execute(
+        select(SupplierProduct).where(SupplierProduct.id.in_(pid_set), SupplierProduct.supplier_id == supplier_id)
+    )).scalars().all()
+    prod_map = {p.id: p for p in products}
+    items_detail = []
+    total = 0.0
+    for it in req.items:
+        p = prod_map.get(it.product_id)
+        if not p:
+            raise HTTPException(400, f"产品 ID={it.product_id} 不属于该供应商")
+        qty = max(it.quantity, 1)
+        subtotal = p.unit_price * qty
+        items_detail.append({
+            "product_name": p.product_name, "spec": p.spec,
+            "unit_price": p.unit_price, "quantity": qty,
+            "subtotal": round(subtotal, 2),
+        })
+        total += subtotal
+    total = round(total, 2)
+    now = datetime.now()
+    order_number = f"PO{now.strftime('%Y%m%d%H%M%S')}{supplier_id}"
+    po = PurchaseOrder(
+        warehouse_id=wh_id, supplier_id=supplier_id,
+        order_number=order_number, total_amount=total,
+        currency="THB", items=items_detail, status="confirmed",
+        remark=req.remark, created_by=current_user.id,
+    )
+    db.add(po)
+    await db.flush()
+    bill_number = f"PO-{order_number}"
+    detail_lines = [f"- {d['product_name']} {d.get('spec') or ''} x{d['quantity']} @ {d['unit_price']} = {d['subtotal']}" for d in items_detail]
+    bill = PayableBill(
+        warehouse_id=wh_id, supplier_id=supplier_id,
+        bill_number=bill_number, bill_date=now, due_date=now,
+        amount=total, currency="THB", status="pending",
+        detail="\n".join(detail_lines),
+        created_by=current_user.id,
+    )
+    db.add(bill)
+    await db.flush()
+    po.payable_bill_id = bill.id
+    await db.flush()
+    return {
+        "message": "采购单已创建，应付账单已自动生成",
+        "order": {"id": po.id, "order_number": order_number, "total_amount": total, "items": items_detail},
+        "payable_bill_id": bill.id,
+        "payable_bill_number": bill_number,
+    }
 
 # ═══ Logistics Price CRUD ════════════════════════
 @router.get("/{supplier_id}/logistics-prices")
