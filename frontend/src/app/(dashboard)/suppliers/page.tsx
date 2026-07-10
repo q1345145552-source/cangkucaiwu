@@ -222,10 +222,10 @@ export default function SuppliersPage() {
         { key: "settlement_cycle", label: "结算周期", render: (v:any)=>v||"-" },
         { key: "id", label: "操作", render: (_:any, row:any) => (
           <div className="flex gap-2 flex-wrap">
-            {row.category_name === "耗材商" && (
+            {row.category_id === 1 && (
               <button onClick={()=>openProducts(row.id)} className="text-green-600 flex items-center gap-1 text-xs"><Plus size={12}/>产品</button>
             )}
-            {row.category_name === "物流" && (
+            {row.category_id === 2 && (
               <button onClick={()=>openLogistics(row.id)} className="text-orange-600 flex items-center gap-1 text-xs"><TrendingUp size={12}/>物流</button>
             )}
             <button onClick={()=>viewDetail(row.id)} className="text-blue-500 flex items-center gap-1 text-xs"><Eye size={12}/>详情</button>
@@ -407,7 +407,7 @@ export default function SuppliersPage() {
               </div>
 
               {/* 第三块：产品（仅耗材商） */}
-              {detail.category_name === "耗材商" && (
+              {detail.category_id === 1 && (
                 <div className="bg-gray-50 rounded-xl p-5">
                   <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                     <Package size={15} className="text-blue-500"/>产品与价格
@@ -426,7 +426,7 @@ export default function SuppliersPage() {
               )}
 
               {/* 第四块：物流报价（仅物流商） */}
-              {detail.category_name === "物流" && (
+              {detail.category_id === 2 && (
                 <div className="bg-gray-50 rounded-xl p-5">
                   <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                     <Truck size={15} className="text-orange-500"/>物流报价
