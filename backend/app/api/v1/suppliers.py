@@ -23,6 +23,17 @@ class PurchaseOrderRequest(BaseModel):
     items: List[PurchaseOrderItem]
     remark: Optional[str] = None
 
+
+# Parse settlement_cycle string to get number of days
+def _parse_settlement_days(settlement_cycle: str | None) -> int:
+    if not settlement_cycle:
+        return 30
+    import re
+    nums = re.findall(r'\d+', str(settlement_cycle))
+    if nums:
+        return int(nums[0])
+    return 30
+
 # ═══ Category CRUD ═══════════════════════════════
 @router.get("/categories")
 async def list_categories(current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -310,7 +321,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     detail_lines = [f"- {d['product_name']} {d.get('spec') or ''} x{d['quantity']} @ {d['unit_price']} = {d['subtotal']}" for d in items_detail]
     bill = PayableBill(
         warehouse_id=wh_id, supplier_id=supplier_id,
-        bill_number=bill_number, bill_date=now, due_date=now + timedelta(days=30),
+        bill_number=bill_number, bill_date=now, due_date=now + timedelta(days=_parse_settlement_days(supplier.settlement_cycle)),
         amount=total, currency="THB", status="pending",
         detail="\n".join(detail_lines),
         created_by=current_user.id,
