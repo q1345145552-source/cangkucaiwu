@@ -9,7 +9,7 @@ from app.models.payable import PayableBill
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
 import io
 
@@ -310,7 +310,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     detail_lines = [f"- {d['product_name']} {d.get('spec') or ''} x{d['quantity']} @ {d['unit_price']} = {d['subtotal']}" for d in items_detail]
     bill = PayableBill(
         warehouse_id=wh_id, supplier_id=supplier_id,
-        bill_number=bill_number, bill_date=now, due_date=now,
+        bill_number=bill_number, bill_date=now, due_date=now + timedelta(days=30),
         amount=total, currency="THB", status="pending",
         detail="\n".join(detail_lines),
         created_by=current_user.id,
