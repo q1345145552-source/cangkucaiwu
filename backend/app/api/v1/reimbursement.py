@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory, ReimbStatus
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -37,8 +37,8 @@ async def list_reimbursements(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Reimbursement); count_q = select(func.count(Reimbursement.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(Reimbursement.warehouse_id == get_wh_id(current_user))
-        count_q = count_q.where(Reimbursement.warehouse_id == get_wh_id(current_user))
+        query = query.where(Reimbursement.warehouse_id.in_(get_wh_ids(current_user)))
+        count_q = count_q.where(Reimbursement.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
@@ -77,7 +77,7 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
     if req.is_fund_linked == "1":
         # 查找员工备用金账户
         fund = (await db.execute(select(ExpenseFund).where(
-            ExpenseFund.warehouse_id == wh_id,
+            ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
             ExpenseFund.employee_id == current_user.id,
             ExpenseFund.status == FundStatus.ACTIVE.value,
         ))).scalar_one_or_none()
@@ -135,7 +135,7 @@ async def export_reimbursements(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
 
-    query = select(Reimbursement).where(Reimbursement.warehouse_id == wh_id)
+    query = select(Reimbursement).where(Reimbursement.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
     if status:
@@ -189,7 +189,7 @@ async def list_reimb_categories(current_user: User = Depends(get_current_user),
     if not wh_id:
         raise HTTPException(400, "当前用户未关联仓库")
     cats = (await db.execute(
-        select(ReimbCategory).where(ReimbCategory.warehouse_id == wh_id)
+        select(ReimbCategory).where(ReimbCategory.warehouse_id.in_(get_wh_ids(current_user)))
         .order_by(ReimbCategory.sort_order, ReimbCategory.id)
     )).scalars().all()
     # 首次访问：该仓库无分类则自动播种默认分类
@@ -198,7 +198,7 @@ async def list_reimb_categories(current_user: User = Depends(get_current_user),
             db.add(ReimbCategory(warehouse_id=wh_id, name=name, sort_order=i))
         await db.flush()
         cats = (await db.execute(
-            select(ReimbCategory).where(ReimbCategory.warehouse_id == wh_id)
+            select(ReimbCategory).where(ReimbCategory.warehouse_id.in_(get_wh_ids(current_user)))
             .order_by(ReimbCategory.sort_order, ReimbCategory.id)
         )).scalars().all()
     return {"data": [{"id": c.id, "name": c.name} for c in cats]}
@@ -332,12 +332,12 @@ async def create_reimb_category(req: CategoryReq, current_user: User = Depends(g
         raise HTTPException(400, "分类名称不能为空")
     # 同仓库去重
     existing = (await db.execute(
-        select(ReimbCategory).where(ReimbCategory.warehouse_id == wh_id, ReimbCategory.name == name)
+        select(ReimbCategory).where(ReimbCategory.warehouse_id.in_(get_wh_ids(current_user)), ReimbCategory.name == name)
     )).scalar_one_or_none()
     if existing:
         raise HTTPException(400, "该分类已存在")
     max_sort = (await db.execute(
-        select(func.coalesce(func.max(ReimbCategory.sort_order), 0)).where(ReimbCategory.warehouse_id == wh_id)
+        select(func.coalesce(func.max(ReimbCategory.sort_order), 0)).where(ReimbCategory.warehouse_id.in_(get_wh_ids(current_user)))
     )).scalar() or 0
     c = ReimbCategory(warehouse_id=wh_id, name=name, sort_order=max_sort + 1)
     db.add(c); await db.flush()

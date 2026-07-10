@@ -81,6 +81,7 @@ async def get_current_user(
         if wh_header:
             if wh_header == "all" and user.role == Role.WAREHOUSE_ADMIN:
                 user._all_warehouses = True
+                user._all_warehouse_ids = wh_ids
                 active_wh = None
             else:
                 try:
@@ -99,11 +100,23 @@ async def get_current_user(
 
 
 def get_wh_id(user) -> int | None:
-    """Returns the active warehouse_id for the user. Uses header-selected warehouse first, falls back to legacy.
-    Returns None in 'all warehouses' mode to enable cross-warehouse aggregation."""
-    if getattr(user, '_all_warehouses', False):
-        return None
-    return getattr(user, '_active_wh_id', None) or user.warehouse_id
+    """Returns a single warehouse_id for CREATE operations. Uses header-selected warehouse first."""
+    wh = getattr(user, '_active_wh_id', None) or user.warehouse_id
+    if wh is None:
+        ids = get_wh_ids(user)
+        if ids:
+            return ids[0]
+    return wh
+
+
+def get_wh_ids(user) -> list:
+    """Returns list of accessible warehouse IDs. In 'all' mode returns all user's warehouse IDs.
+    Always returns a list, never None. Safe for .in_() queries."""
+    _all = getattr(user, '_all_warehouse_ids', None)
+    if _all:
+        return _all
+    wh = get_wh_id(user)
+    return [wh] if wh else []
 
 def require_role(*roles: Role):
     async def dependency(current_user = Depends(get_current_user)):

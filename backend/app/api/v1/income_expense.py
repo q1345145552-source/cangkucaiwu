@@ -7,7 +7,7 @@ from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpense
 from app.models.customer import Customer, PaymentAccount
 from app.models.supplier import Supplier
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
 
 OPERATING_NAMES = ["仓储费", "操作费", "增值服务费", "工资", "电费", "网费", "房租", "耗材", "物流运费", "快递费", "保险费", "税费"]
@@ -23,7 +23,7 @@ async def list_categories(type: str = None, category_group: str = None, current_
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomeExpenseCategory)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(IncomeExpenseCategory.warehouse_id == get_wh_id(current_user))
+        query = query.where(IncomeExpenseCategory.warehouse_id.in_(get_wh_ids(current_user)))
     if type:
         query = query.where(IncomeExpenseCategory.type == type)
     if category_group:
@@ -66,8 +66,8 @@ async def list_income(
         count_q = count_q.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id)
         count_q = count_q.where(IncomeExpenseCategory.category_group == category_group)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(IncomeRecord.warehouse_id == get_wh_id(current_user))
-        count_q = count_q.where(IncomeRecord.warehouse_id == get_wh_id(current_user))
+        query = query.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
+        count_q = count_q.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
@@ -130,7 +130,7 @@ async def update_income(income_id: int, req: IncomeRecordCreate, current_user: U
     r = (await db.execute(select(IncomeRecord).where(IncomeRecord.id == income_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "记录不存在")
-    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
     r.category_id = req.category_id
     r.account_id = req.account_id
@@ -149,7 +149,7 @@ async def delete_income(income_id: int, current_user: User = Depends(get_current
     r = (await db.execute(select(IncomeRecord).where(IncomeRecord.id == income_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "记录不存在")
-    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
     await db.delete(r)
     await db.flush()
@@ -170,8 +170,8 @@ async def list_expense(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseRecord); count_q = select(func.count(ExpenseRecord.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(ExpenseRecord.warehouse_id == get_wh_id(current_user))
-        count_q = count_q.where(ExpenseRecord.warehouse_id == get_wh_id(current_user))
+        query = query.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
+        count_q = count_q.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(ExpenseRecord.expense_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(ExpenseRecord.expense_date, 'YYYY-MM') == month)
@@ -521,7 +521,7 @@ async def export_income(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomeRecord)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(IncomeRecord.warehouse_id == get_wh_id(current_user))
+        query = query.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
     if category_group:
@@ -585,8 +585,8 @@ async def monthly_summary(month: str, category_group: str = None, current_user: 
         iq = iq.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id).where(IncomeExpenseCategory.category_group == category_group)
         eq = eq.join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id).where(IncomeExpenseCategory.category_group == category_group)
     if current_user.role != Role.SUPER_ADMIN:
-        iq = iq.where(IncomeRecord.warehouse_id == get_wh_id(current_user))
-        eq = eq.where(ExpenseRecord.warehouse_id == get_wh_id(current_user))
+        iq = iq.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
+        eq = eq.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
     ti = (await db.execute(iq)).scalar() or 0
     te = (await db.execute(eq)).scalar() or 0
     return {"month": month, "total_income": float(ti), "total_expense": float(te), "net": float(ti - te)}
@@ -616,7 +616,7 @@ async def operating_dashboard(
         last_day = calendar.monthrange(int(month[:4]), int(month[5:]))[1]
         m_end = f"{month}-{last_day:02d}"
         q = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0)).where(
-            RechargeDeclaration.warehouse_id == get_wh_id(current_user),
+            RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)),
             func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month,
         )
         total = float((await db.execute(q)).scalar() or 0)
@@ -629,7 +629,7 @@ async def operating_dashboard(
         last_day = calendar.monthrange(int(month[:4]), int(month[5:]))[1]
         m_end = f"{month}-{last_day:02d}"
         q = select(func.coalesce(func.sum(ExpenseRecord.amount), 0)).where(
-            ExpenseRecord.warehouse_id == get_wh_id(current_user),
+            ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)),
             func.to_char(ExpenseRecord.expense_date, 'YYYY-MM') == month,
         )
         # Join to filter only operating categories

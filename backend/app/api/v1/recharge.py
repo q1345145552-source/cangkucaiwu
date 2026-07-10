@@ -7,7 +7,7 @@ from app.models.recharge import RechargeDeclaration, CurrencyEnum, MatchStatus
 from app.models.customer import Customer
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.schemas.business import RechargeCreate
 
 router = APIRouter()
@@ -23,8 +23,8 @@ async def list_recharges(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(RechargeDeclaration); count_q = select(func.count(RechargeDeclaration.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(RechargeDeclaration.warehouse_id == get_wh_id(current_user))
-        count_q = count_q.where(RechargeDeclaration.warehouse_id == get_wh_id(current_user))
+        query = query.where(RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)))
+        count_q = count_q.where(RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month)

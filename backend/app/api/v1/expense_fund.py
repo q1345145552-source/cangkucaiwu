@@ -86,12 +86,12 @@ async def create_account(
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     # 验证员工属于本仓库
-    emp = (await db.execute(select(User).where(User.id == req.employee_id, User.warehouse_id == wh_id))).scalar_one_or_none()
+    emp = (await db.execute(select(User).where(User.id == req.employee_id, User.warehouse_id.in_(get_wh_ids(current_user))))).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "无此员工")
     # 检查是否已有活跃账户
     existing = (await db.execute(select(ExpenseFund).where(
-        ExpenseFund.warehouse_id == wh_id,
+        ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
         ExpenseFund.employee_id == req.employee_id,
         ExpenseFund.status == FundStatus.ACTIVE.value,
     ))).scalar_one_or_none()
@@ -119,12 +119,12 @@ async def list_employees(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
     employees = (await db.execute(select(User).where(
-        User.warehouse_id == wh_id,
+        User.warehouse_id.in_(get_wh_ids(current_user)),
         User.role != Role.SUPER_ADMIN,
     ))).scalars().all()
     # 获取已有账户的员工
     accounts = (await db.execute(select(ExpenseFund).where(
-        ExpenseFund.warehouse_id == wh_id,
+        ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
         ExpenseFund.status == FundStatus.ACTIVE.value,
     ))).scalars().all()
     acct_emp_ids = {a.employee_id for a in accounts}
@@ -143,7 +143,7 @@ async def list_accounts(
     # 列出所有活跃账户（排除超级管理员）
     accounts = (await db.execute(
         select(ExpenseFund).join(User, ExpenseFund.employee_id == User.id).where(
-            ExpenseFund.warehouse_id == wh_id,
+            ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
             ExpenseFund.status == FundStatus.ACTIVE.value,
             User.role != Role.SUPER_ADMIN,
         )
@@ -300,7 +300,7 @@ async def list_pending_reviews(
     wh_id = get_wh_id(current_user)
 
     filters = [
-        ExpenseFund.warehouse_id == wh_id,
+        ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
         ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
     ]
     if employee_id:
@@ -445,7 +445,7 @@ async def list_recharge_requests(
         ExpenseFund, FundRechargeRequest.fund_id == ExpenseFund.id
     ).join(User, FundRechargeRequest.applicant_id == User.id).join(
         Warehouse, FundRechargeRequest.warehouse_id == Warehouse.id
-    ).where(FundRechargeRequest.warehouse_id == wh_id)
+    ).where(FundRechargeRequest.warehouse_id.in_(get_wh_ids(current_user)))
 
     if current_user.role == Role.STAFF:
         query = query.where(FundRechargeRequest.applicant_id == current_user.id)
@@ -455,7 +455,7 @@ async def list_recharge_requests(
     if applicant_id:
         query = query.where(FundRechargeRequest.applicant_id == applicant_id)
 
-    count_q = select(func.count(FundRechargeRequest.id)).where(FundRechargeRequest.warehouse_id == wh_id)
+    count_q = select(func.count(FundRechargeRequest.id)).where(FundRechargeRequest.warehouse_id.in_(get_wh_ids(current_user)))
     if current_user.role == Role.STAFF:
         count_q = count_q.where(FundRechargeRequest.applicant_id == current_user.id)
     if status:
@@ -502,7 +502,7 @@ async def review_recharge_request(
         raise HTTPException(400, "该申请已处理")
 
     wh_id = get_wh_id(current_user)
-    if rr.warehouse_id != wh_id:
+    if rr.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权审核其他仓库的申请")
 
     if req.action == "approve":
@@ -557,7 +557,7 @@ async def update_settings(
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     existing = (await db.execute(select(SystemSetting).where(
-        SystemSetting.warehouse_id == wh_id, SystemSetting.key == req.key
+        SystemSetting.warehouse_id.in_(get_wh_ids(current_user)), SystemSetting.key == req.key
     ))).scalar_one_or_none()
     if existing:
         existing.value = req.value
@@ -586,7 +586,7 @@ async def alert_list(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
     query = select(ExpenseFund).where(
-        ExpenseFund.warehouse_id == wh_id,
+        ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
         ExpenseFund.status == FundStatus.ACTIVE.value,
         ExpenseFund.remaining_balance <= ExpenseFund.alert_threshold,
     )

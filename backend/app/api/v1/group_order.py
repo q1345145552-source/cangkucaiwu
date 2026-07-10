@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models.group_order import GroupOrder, GroupOrderParticipant, GroupOrderStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role, require_role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_role
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -143,7 +143,7 @@ async def join_group_order(go_id: int, req: JoinRequest, current_user: User = De
     # Check not banned
     banned = (await db.execute(select(GroupOrderParticipant).where(
         GroupOrderParticipant.group_order_id == go_id,
-        GroupOrderParticipant.warehouse_id == get_wh_id(current_user),
+        GroupOrderParticipant.warehouse_id.in_(get_wh_ids(current_user)),
         GroupOrderParticipant.is_banned == True,
     ))).scalars().all()
     if banned:
@@ -151,7 +151,7 @@ async def join_group_order(go_id: int, req: JoinRequest, current_user: User = De
     # Check not already joined
     already = (await db.execute(select(GroupOrderParticipant).where(
         GroupOrderParticipant.group_order_id == go_id,
-        GroupOrderParticipant.warehouse_id == get_wh_id(current_user),
+        GroupOrderParticipant.warehouse_id.in_(get_wh_ids(current_user)),
         GroupOrderParticipant.is_banned == False,
     ))).scalar_one_or_none()
     if already:

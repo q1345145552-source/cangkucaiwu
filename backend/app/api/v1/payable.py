@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.payable import PayableBill, PayablePlan, PlanTemplate, PayableStatus, PlanStatus, MonthlyOrderVolume
 from app.models.supplier import Supplier, SupplierCategory
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -35,8 +35,8 @@ async def list_bills(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill); count_q = select(func.count(PayableBill.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PayableBill.warehouse_id == get_wh_id(current_user))
-        count_q = count_q.where(PayableBill.warehouse_id == get_wh_id(current_user))
+        query = query.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
+        count_q = count_q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     if supplier_id:
         query = query.where(PayableBill.supplier_id == supplier_id)
         count_q = count_q.where(PayableBill.supplier_id == supplier_id)
@@ -96,7 +96,7 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
     # 重复检测
     existing = (await db.execute(
         select(PayableBill).where(
-            PayableBill.warehouse_id == get_wh_id(current_user),
+            PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
             PayableBill.bill_number == req.bill_number,
             PayableBill.supplier_id == req.supplier_id,
         )
@@ -215,7 +215,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
-    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能编辑自己仓库的账单")
     if req.confirmed_amount is not None:
         b.confirmed_amount = req.confirmed_amount
@@ -240,7 +240,7 @@ async def payable_stats(current_user: User = Depends(get_current_user),
     today = date.today()
 
     def wh(q):
-        return q.where(PayableBill.warehouse_id == wh_id)
+        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
 
     # Month totals
     month_cond = [extract("year", PayableBill.bill_date) == today.year, extract("month", PayableBill.bill_date) == today.month]
@@ -283,7 +283,7 @@ async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSe
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayablePlan)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PayablePlan.warehouse_id == get_wh_id(current_user))
+        query = query.where(PayablePlan.warehouse_id.in_(get_wh_ids(current_user)))
     result = await db.execute(query.order_by(PayablePlan.planned_date.desc()))
     plans = result.scalars().all()
     # 自动标记逾期（due_date < now 且未付）
@@ -338,7 +338,7 @@ async def cashflow_prediction(current_user: User = Depends(get_current_user),
     query = select(func.coalesce(func.sum(PayableBill.amount - PayableBill.paid_amount), 0))
     query = query.where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PayableBill.warehouse_id == get_wh_id(current_user))
+        query = query.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     total_pending = (await db.execute(query)).scalar() or 0
     return {"total_pending_payable": float(total_pending), "predicted_outflow": float(total_pending)}
 
@@ -351,7 +351,7 @@ async def batch_export(supplier_id: int = None, start_date: str = None, end_date
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PayableBill.warehouse_id == get_wh_id(current_user))
+        query = query.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     # If specific bill IDs are provided, filter by them
     if bill_ids:
         ids = [int(x.strip()) for x in bill_ids.split(",") if x.strip().isdigit()]
@@ -400,7 +400,7 @@ async def supplier_statement(supplier_id: int = None, current_user: User = Depen
     query = select(PayableBill)
     if supplier_id: query = query.where(PayableBill.supplier_id == supplier_id)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PayableBill.warehouse_id == get_wh_id(current_user))
+        query = query.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     result = await db.execute(query.order_by(PayableBill.due_date))
     bills = result.scalars().all()
     sids={b.supplier_id for b in bills}
@@ -429,7 +429,7 @@ async def list_templates(current_user: User = Depends(get_current_user), db: Asy
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PlanTemplate)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PlanTemplate.warehouse_id == get_wh_id(current_user))
+        query = query.where(PlanTemplate.warehouse_id.in_(get_wh_ids(current_user)))
     result = await db.execute(query.order_by(PlanTemplate.created_at.desc()))
     return {"data": [{"id": t.id, "name": t.name, "bill_ids": t.bill_ids} for t in result.scalars().all()]}
 
@@ -438,7 +438,7 @@ async def delete_template(template_id: int, current_user: User = Depends(get_cur
     result = await db.execute(select(PlanTemplate).where(PlanTemplate.id == template_id))
     t = result.scalar_one_or_none()
     if not t: raise HTTPException(404, "模板不存在")
-    if current_user.role != Role.SUPER_ADMIN and t.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and t.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
     await db.delete(t); await db.flush()
     return {"message": "模板已删除"}
@@ -461,7 +461,7 @@ async def payable_timeline(current_user: User = Depends(get_current_user), db: A
             PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value])
         )
         if current_user.role != Role.SUPER_ADMIN:
-            q = q.where(PayableBill.warehouse_id == get_wh_id(current_user))
+            q = q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
         total = float((await db.execute(q)).scalar() or 0)
         weeks.append({"label": label, "start": start.isoformat(), "end": end.isoformat(), "total": total})
     return {"data": weeks}
@@ -474,7 +474,7 @@ async def execute_plan(plan_id: int, current_user: User = Depends(get_current_us
     result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id))
     p = result.scalar_one_or_none()
     if not p: raise HTTPException(404, "计划不存在")
-    if current_user.role != Role.SUPER_ADMIN and p.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and p.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
     if p.status != PlanStatus.PENDING.value:
         raise HTTPException(400, "该计划已执行或已取消")
@@ -525,7 +525,7 @@ async def export_plans(plan_id: int = None, current_user: User = Depends(get_cur
     from openpyxl.styles import Font, PatternFill
     query = select(PayablePlan)
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PayablePlan.warehouse_id == get_wh_id(current_user))
+        query = query.where(PayablePlan.warehouse_id.in_(get_wh_ids(current_user)))
     if plan_id:
         query = query.where(PayablePlan.id == plan_id)
     plans = (await db.execute(query)).scalars().all()
@@ -555,7 +555,7 @@ async def get_monthly_order(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(MonthlyOrderVolume).where(MonthlyOrderVolume.warehouse_id == get_wh_id(current_user))
+    query = select(MonthlyOrderVolume).where(MonthlyOrderVolume.warehouse_id.in_(get_wh_ids(current_user)))
     if start_month:
         query = query.where(MonthlyOrderVolume.month >= start_month)
     if end_month:
@@ -575,7 +575,7 @@ async def save_monthly_order(
     # Upsert
     existing = (await db.execute(
         select(MonthlyOrderVolume).where(
-            MonthlyOrderVolume.warehouse_id == get_wh_id(current_user),
+            MonthlyOrderVolume.warehouse_id.in_(get_wh_ids(current_user)),
             MonthlyOrderVolume.month == req.month,
         )
     )).scalar_one_or_none()
@@ -620,7 +620,7 @@ async def payable_trend(
 
     # Monthly order volumes
     order_q = select(MonthlyOrderVolume).where(
-        MonthlyOrderVolume.warehouse_id == get_wh_id(current_user),
+        MonthlyOrderVolume.warehouse_id.in_(get_wh_ids(current_user)),
         MonthlyOrderVolume.month.in_(months_list),
     )
     order_rows = (await db.execute(order_q)).scalars().all()
@@ -633,7 +633,7 @@ async def payable_trend(
         last_day = calendar.monthrange(int(month[:4]), int(month[5:]))[1]
         m_end = datetime.fromisoformat(f"{month}-{last_day:02d}") + timedelta(days=1) - timedelta(microseconds=1)
         q = select(func.coalesce(func.sum(PayableBill.amount), 0)).where(
-            PayableBill.warehouse_id == get_wh_id(current_user),
+            PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
             PayableBill.bill_date >= m_start,
             PayableBill.bill_date <= m_end,
         )

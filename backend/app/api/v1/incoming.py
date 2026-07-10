@@ -5,7 +5,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models.recharge import IncomingFlow, CurrencyEnum, MatchStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from app.schemas.business import IncomingCreate, IncomingBatchImport
 
 router = APIRouter()
@@ -20,8 +20,8 @@ async def list_incoming(
     if current_user.role == Role.STAFF and "到账流水" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无录入到账流水权限")
     query = select(IncomingFlow); count_q = select(func.count(IncomingFlow.id))
-    query = query.where(IncomingFlow.warehouse_id == get_wh_id(current_user))
-    count_q = count_q.where(IncomingFlow.warehouse_id == get_wh_id(current_user))
+    query = query.where(IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)))
+    count_q = count_q.where(IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)

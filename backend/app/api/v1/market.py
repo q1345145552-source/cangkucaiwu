@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models.market import MarketItem, MarketStatus
 from app.models.user import User
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, get_wh_id, Role, require_role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_role
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime

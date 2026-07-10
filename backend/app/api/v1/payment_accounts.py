@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.customer import PaymentAccount
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.schemas.business import PaymentAccountCreate
 
 router = APIRouter()
@@ -14,7 +14,7 @@ async def list_accounts(current_user: User = Depends(get_current_user), db: Asyn
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PaymentAccount)
-    query = query.where(PaymentAccount.warehouse_id == get_wh_id(current_user))
+    query = query.where(PaymentAccount.warehouse_id.in_(get_wh_ids(current_user)))
     result = await db.execute(query.order_by(PaymentAccount.id))
     accs = result.scalars().all()
     return {"data": [{"id": a.id, "warehouse_id": a.warehouse_id, "account_name": a.account_name,
@@ -46,7 +46,7 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
     result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id))
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
-    if current_user.role != Role.SUPER_ADMIN and a.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能修改自己仓库的账户")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(a, k, v)
@@ -73,6 +73,6 @@ async def delete_account(account_id: int, current_user: User = Depends(get_curre
     result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id))
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
-    if current_user.role != Role.SUPER_ADMIN and a.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能删除自己仓库的账户")
     await db.delete(a); await db.flush(); return {"message": "删除成功"}

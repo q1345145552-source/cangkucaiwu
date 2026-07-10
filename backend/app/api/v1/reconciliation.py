@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.recharge import RechargeDeclaration, IncomingFlow, ReconciliationResult, ReconMatchStatus, MatchStatus
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 
 router = APIRouter()
 
@@ -30,7 +30,7 @@ async def get_unmatched(
     ed = datetime.fromisoformat(end_date) if end_date else datetime(today.year, today.month, today.day) + timedelta(days=1) - timedelta(microseconds=1)
 
     decl_q = select(RechargeDeclaration).where(and_(
-        RechargeDeclaration.warehouse_id == wh_id,
+        RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)),
         RechargeDeclaration.declare_date >= sd,
         RechargeDeclaration.declare_date <= ed,
         RechargeDeclaration.match_status == MatchStatus.UNMATCHED,
@@ -53,7 +53,7 @@ async def get_unmatched(
     } for d in decls]
 
     flow_q = select(IncomingFlow).where(and_(
-        IncomingFlow.warehouse_id == wh_id,
+        IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)),
         IncomingFlow.received_date >= sd,
         IncomingFlow.received_date <= ed,
         IncomingFlow.match_status == MatchStatus.UNMATCHED,
@@ -84,7 +84,7 @@ async def manual_match(
     if decl.match_status != MatchStatus.UNMATCHED or flow.match_status != MatchStatus.UNMATCHED:
         raise HTTPException(400, "所选记录已被匹配")
     if current_user.role != Role.SUPER_ADMIN:
-        if decl.warehouse_id != get_wh_id(current_user) or flow.warehouse_id != get_wh_id(current_user):
+        if decl.warehouse_id not in get_wh_ids(current_user) or flow.warehouse_id not in get_wh_ids(current_user):
             raise HTTPException(403, "只能匹配自己仓库的记录")
     rr = ReconciliationResult(
         warehouse_id=decl.warehouse_id,
@@ -107,7 +107,7 @@ async def unmatch_record(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     rr = (await db.execute(select(ReconciliationResult).where(ReconciliationResult.id == record_id))).scalar_one_or_none()
     if not rr: raise HTTPException(404, "记录不存在")
-    if current_user.role != Role.SUPER_ADMIN and rr.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and rr.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
     if rr.declaration_id:
         d = (await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == rr.declaration_id))).scalar_one_or_none()
@@ -132,8 +132,8 @@ async def list_results(
     if current_user.role != Role.SUPER_ADMIN:
         if warehouse_id and warehouse_id != get_wh_id(current_user):
             raise HTTPException(403, "无权查看其他仓库")
-        query = query.where(ReconciliationResult.warehouse_id == get_wh_id(current_user))
-        count_q = count_q.where(ReconciliationResult.warehouse_id == get_wh_id(current_user))
+        query = query.where(ReconciliationResult.warehouse_id.in_(get_wh_ids(current_user)))
+        count_q = count_q.where(ReconciliationResult.warehouse_id.in_(get_wh_ids(current_user)))
     elif warehouse_id:
         query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
         count_q = count_q.where(ReconciliationResult.warehouse_id == warehouse_id)
@@ -216,7 +216,7 @@ async def export_reconciliation(
     if current_user.role != Role.SUPER_ADMIN:
         if warehouse_id and warehouse_id != get_wh_id(current_user):
             raise HTTPException(403, "无权导出其他仓库")
-        query = query.where(ReconciliationResult.warehouse_id == get_wh_id(current_user))
+        query = query.where(ReconciliationResult.warehouse_id.in_(get_wh_ids(current_user)))
     elif warehouse_id:
         query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
     if start_date:

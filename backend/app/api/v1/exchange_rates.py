@@ -5,7 +5,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models.recharge import ExchangeRate
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.schemas.business import ExchangeRateCreate
 
 router = APIRouter()
@@ -22,7 +22,7 @@ async def list_rates(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
 
-    query = select(ExchangeRate).where(ExchangeRate.warehouse_id == wh_id).order_by(desc(ExchangeRate.effective_from)).limit(50)
+    query = select(ExchangeRate).where(ExchangeRate.warehouse_id.in_(get_wh_ids(current_user))).order_by(desc(ExchangeRate.effective_from)).limit(50)
     result = await db.execute(query)
     records = result.scalars().all()
 
@@ -91,7 +91,7 @@ async def query_rate(
     query = (
         select(ExchangeRate)
         .where(
-            ExchangeRate.warehouse_id == wh_id,
+            ExchangeRate.warehouse_id.in_(get_wh_ids(current_user)),
             ExchangeRate.from_currency == from_currency,
             ExchangeRate.to_currency == to_currency,
             ExchangeRate.effective_from <= target_time,
@@ -107,7 +107,7 @@ async def query_rate(
         fallback = await db.execute(
             select(ExchangeRate)
             .where(
-                ExchangeRate.warehouse_id == wh_id,
+                ExchangeRate.warehouse_id.in_(get_wh_ids(current_user)),
                 ExchangeRate.from_currency == from_currency,
                 ExchangeRate.to_currency == to_currency,
             )

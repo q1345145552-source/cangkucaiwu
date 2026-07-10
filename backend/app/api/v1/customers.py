@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 from app.database import get_db
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.schemas.business import CustomerCreate, CustomerUpdate
 
 router = APIRouter()
@@ -20,8 +20,8 @@ async def list_customers(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Customer); count_q = select(func.count(Customer.id))
     if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(Customer.warehouse_id == get_wh_id(current_user))
-        count_q = count_q.where(Customer.warehouse_id == get_wh_id(current_user))
+        query = query.where(Customer.warehouse_id.in_(get_wh_ids(current_user)))
+        count_q = count_q.where(Customer.warehouse_id.in_(get_wh_ids(current_user)))
     if search:
         filt = or_(Customer.company_name.ilike(f"%{search}%"), Customer.customer_code.ilike(f"%{search}%"))
         query = query.where(filt); count_q = count_q.where(filt)
@@ -80,7 +80,7 @@ async def update_customer(customer_id: int, req: CustomerUpdate,
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "客户不存在")
-    if current_user.role != Role.SUPER_ADMIN and c.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and c.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(c, k, v)
@@ -96,6 +96,6 @@ async def delete_customer(customer_id: int, current_user: User = Depends(get_cur
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "客户不存在")
-    if current_user.role != Role.SUPER_ADMIN and c.warehouse_id != get_wh_id(current_user):
+    if current_user.role != Role.SUPER_ADMIN and c.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能删除自己仓库的客户")
     await db.delete(c); await db.flush(); return {"message": "删除成功"}
