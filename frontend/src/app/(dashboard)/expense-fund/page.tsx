@@ -341,8 +341,9 @@ export default function ExpenseFundPage() {
                   {accounts.map((acc: any) => {
                     const isExpanded = expandedId === acc.id;
                     const accItems = items[acc.id] || [];
-                    const accSpent = accItems.reduce((s: number, i: any) => s + (i.amount || 0), 0);
-                    const accAvailable = Math.max(0, (acc.current_balance || 0) - accSpent);
+                    const accSpentTotal = accItems.filter((i: any) => i.review_status !== "rejected").reduce((s: number, i: any) => s + (i.amount || 0), 0);
+                    const accPendingSpent = accItems.filter((i: any) => i.review_status === "pending").reduce((s: number, i: any) => s + (i.amount || 0), 0);
+                    const accAvailable = Math.max(0, (acc.current_balance || 0) - accPendingSpent);
                     return (
                       <>
                         <tr key={acc.id} className={`border-b hover:bg-gray-50/50 cursor-pointer transition-colors ${acc.is_low ? "bg-red-50/30" : ""}`} onClick={() => toggleExpand(acc)}>
@@ -356,7 +357,7 @@ export default function ExpenseFundPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right font-mono text-sm">฿{(acc.total_topped_up || 0).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right font-mono text-sm text-yellow-700">฿{accSpent.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right font-mono text-sm text-yellow-700">฿{accSpentTotal.toLocaleString()}</td>
                           <td className={`px-4 py-3 text-right font-mono text-sm font-semibold ${accAvailable <= 0 ? "text-red-600" : "text-green-700"}`}>฿{accAvailable.toLocaleString()}</td>
                           <td className="px-4 py-3 text-right font-mono text-sm text-gray-500">฿{(acc.fund_limit || 5000).toLocaleString()}</td>
                           <td className="px-4 py-3 text-center">
@@ -511,7 +512,7 @@ export default function ExpenseFundPage() {
                 <div className="p-5 space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">账户余额</div><div className="text-sm font-bold text-blue-700">฿{(expenseAccount?.current_balance || 0).toLocaleString()}</div></div>
-                    <div className="bg-gray-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-gray-400">可用余额</div><div className="text-sm font-bold text-gray-700">฿{Math.max(0, (expenseAccount?.current_balance || 0) - (expenseAccount?.total_spent || 0)).toLocaleString()}</div></div>
+                    <div className="bg-gray-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-gray-400">可用余额</div><div className="text-sm font-bold text-gray-700">฿{Math.max(0, (expenseAccount?.available ?? expenseAccount?.current_balance ?? 0)).toLocaleString()}</div></div>
                   </div>
                   <div><label className="form-label">日期</label><input type="date" className="form-input" value={itemForm.expense_date} onChange={e => setItemForm({ ...itemForm, expense_date: e.target.value })} /></div>
                   <div><label className="form-label">类别</label><select className="form-input" value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })}><option>耗材</option><option>交通费</option><option>餐饮</option><option>办公用品</option><option>维修</option><option>其他</option></select></div>

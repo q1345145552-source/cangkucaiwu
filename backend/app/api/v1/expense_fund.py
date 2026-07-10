@@ -159,7 +159,7 @@ async def list_accounts(
         # Count spent amount
         spent_q = select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
             ExpenseFundItem.fund_id == a.id,
-            ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+            ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
         )
         spent = float((await db.execute(spent_q)).scalar() or 0)
         result.append({
