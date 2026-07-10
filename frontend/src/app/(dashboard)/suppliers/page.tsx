@@ -15,9 +15,8 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [filterCat, setFilterCat] = useState(1);
-  const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "", category_id: 0 });
+
+  const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "" });
   const [aiResult, setAiResult] = useState("");
   const [procurement, setProcurement] = useState<any>(null);
   const [showProcurement, setShowProcurement] = useState(false);
@@ -46,26 +45,21 @@ export default function SuppliersPage() {
   // Import
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
-  // New category
-
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [page]);
 
   async function load() {
     setLoading(true);
     try {
-      let url = `/suppliers?page=${page}&page_size=20`;
-      if (filterCat) url += `&category_id=${filterCat}`;
+      const url = `/suppliers?page=${page}&page_size=20`;
       const r = await api.get<any>(url); setData(r.data); setTotal(r.total);
     } catch (err) { console.error("加载失败:", err); }
     setLoading(false);
   }
 
-  async function loadCategories() { try { const r = await api.get<any>("/suppliers/categories"); setCategories(r.data); } catch {} }
 
   async function handleCreate() {
     try {
       const payload: any = { ...form };
-      if (!payload.category_id) delete payload.category_id;
       await api.post("/suppliers", payload);
       toast("success", "创建成功"); setShowForm(false); load();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
@@ -176,14 +170,7 @@ export default function SuppliersPage() {
       <div className="flex justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <h1 className="page-title">{t("suppliers")}</h1>
-          <button onClick={() => { setFilterCat(1); setPage(1); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 1 ? "bg-blue-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-            耗材商
-          </button>
-          <button onClick={() => { setFilterCat(2); setPage(1); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 2 ? "bg-green-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-            物流
-          </button>
+
         </div>
         <div className="flex gap-2 flex-wrap">
           {isAdmin && (
@@ -204,25 +191,20 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
               <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
-              <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button>
+              <button onClick={() => { setShowForm(true); }} className="btn-primary">新建供应商</button>
             </>
           )}
         </div>
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "name", label: "名称" },
-        { key: "category_name", label: "类别", render: (v:any) => v ? <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${v==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>{v}</span> : "-" },
         { key: "contact_person", label: "联系人" },
         { key: "contact_info", label: "联系方式" },
         { key: "settlement_cycle", label: "结算周期", render: (v:any)=>v||"-" },
         { key: "id", label: "操作", render: (_:any, row:any) => (
           <div className="flex gap-2 flex-wrap">
-            {row.category_name === "耗材商" && (
-              <button onClick={()=>openProducts(row.id)} className="text-green-600 flex items-center gap-1 text-xs"><Plus size={12}/>产品</button>
-            )}
-            {row.category_name === "物流" && (
-              <button onClick={()=>openLogistics(row.id)} className="text-orange-600 flex items-center gap-1 text-xs"><TrendingUp size={12}/>物流</button>
-            )}
+            <button onClick={()=>openProducts(row.id)} className="text-green-600 flex items-center gap-1 text-xs"><Plus size={12}/>产品</button>
+            <button onClick={()=>openLogistics(row.id)} className="text-orange-600 flex items-center gap-1 text-xs"><TrendingUp size={12}/>物流</button>
             <button onClick={()=>viewDetail(row.id)} className="text-blue-500 flex items-center gap-1 text-xs"><Eye size={12}/>详情</button>
             {isAdmin && (
               <button onClick={()=>deleteSupplier(row.id)} className="text-red-500 flex items-center gap-1 text-xs"><Trash2 size={12}/>删除</button>
@@ -326,7 +308,7 @@ export default function SuppliersPage() {
                 {compareMode === "product" ? (
                   <table className="w-full text-sm mb-4"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>类别</th><th>产品</th><th>规格</th><th>规格报价</th><th>单价</th></tr></thead>
                     <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
-                      <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.category_name||"-"}</td><td>{r.product_name}</td><td>{r.spec||"-"}</td>
+                      <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.product_name}</td><td>{r.spec||"-"}</td>
                       <td className="text-sm">{r.spec_price != null ? r.spec_price + (r.unit||"") : "-"}</td>
                       <td className="font-semibold text-green-700">{r.unit_price}{r.unit}</td></tr>)}</tbody></table>
                 ) : (
@@ -353,11 +335,7 @@ export default function SuppliersPage() {
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold">{detail.name}</h2>
-                {detail.category_name && (
-                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${detail.category_name==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>
-                    {detail.category_name}
-                  </span>
-                )}
+
               </div>
               <button onClick={()=>setDetail(null)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">关闭</button>
             </div>
@@ -402,7 +380,7 @@ export default function SuppliersPage() {
               </div>
 
               {/* 第三块：产品（仅耗材商） */}
-              {detail.category_name === "耗材商" && (
+              {(
                 <div className="bg-gray-50 rounded-xl p-5">
                   <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                     <Package size={15} className="text-blue-500"/>产品与价格
@@ -421,7 +399,7 @@ export default function SuppliersPage() {
               )}
 
               {/* 第四块：物流报价（仅物流商） */}
-              {detail.category_name === "物流" && (
+              {(
                 <div className="bg-gray-50 rounded-xl p-5">
                   <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                     <Truck size={15} className="text-orange-500"/>物流报价
@@ -489,7 +467,7 @@ export default function SuppliersPage() {
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${i===0 ? "bg-yellow-500" : i===1 ? "bg-gray-400" : i===2 ? "bg-amber-700" : "bg-gray-300 text-gray-600"}`}>{i+1}</div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">{r.supplier_name}</div>
-                          <div className="text-xs text-gray-400">{r.category_name} · 最近采购 {r.last_bill_date || "-"}</div>
+                          <div className="text-xs text-gray-400">最近采购 {r.last_bill_date || "-"}</div>
                         </div>
                         <div className="text-right">
                           <div className="font-semibold text-sm">¥{(r.month_amount || 0).toLocaleString()}</div>
@@ -552,12 +530,7 @@ export default function SuppliersPage() {
             <h2 className="font-semibold mb-4">新建供应商</h2>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="form-label">名称</label><input className="form-input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
-              <div><label className="form-label">类别</label>
-                <select className="form-input" value={form.category_id} onChange={e=>setForm({...form,category_id:+e.target.value})}>
-                  <option value={0}>选择类别</option>
-                  {categories.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
+
               <div><label className="form-label">联系人</label><input className="form-input" value={form.contact_person} onChange={e=>setForm({...form,contact_person:e.target.value})} /></div>
               <div><label className="form-label">联系方式</label><input className="form-input" value={form.contact_info} onChange={e=>setForm({...form,contact_info:e.target.value})} /></div>
               <div><label className="form-label">地址</label><input className="form-input" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
