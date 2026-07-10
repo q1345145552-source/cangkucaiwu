@@ -119,6 +119,55 @@ export default function SuppliersPage() {
     } catch { toast("error", "删除失败"); }
   }
 
+  // ─── Place Order ───
+  function openOrder(sid: number) {
+    setOrderSupplierId(sid);
+    setOrderItems({});
+    setOrderTotal(0);
+    try {
+      api.get<any>(`/suppliers/${sid}/products`).then((r: any) => {
+        setProducts(r.data);
+        setShowOrder(true);
+      });
+    } catch { toast("error", "加载产品失败"); }
+  }
+  function toggleOrderItem(pid: number) {
+    setOrderItems(prev => {
+      const next = { ...prev };
+      if (next[pid]) { delete next[pid]; } else { next[pid] = 1; }
+      return next;
+    });
+  }
+  function updateQuantity(pid: number, qty: number) {
+    if (qty < 1) return;
+    setOrderItems(prev => ({ ...prev, [pid]: qty }));
+  }
+  // Compute order total
+  useEffect(() => {
+    let total = 0;
+    products.forEach((p: any) => {
+      if (orderItems[p.id]) total += (p.unit_price || 0) * (orderItems[p.id] || 0);
+    });
+    setOrderTotal(Math.round(total * 100) / 100);
+  }, [orderItems, products]);
+  async function submitOrder() {
+    const selectedIds = Object.keys(orderItems).map(Number).filter(id => orderItems[id] > 0);
+    if (selectedIds.length === 0) { toast("error", "请至少选择一个产品"); return; }
+    setOrderSubmitting(true);
+    try {
+      const r = await api.post<any>(
+        `/suppliers/${orderSupplierId}/purchase-order`,
+        { items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id] })) }
+      );
+      toast("success", r.message || "下单成功");
+      setShowOrder(false);
+      setShowProducts(false);
+      if (confirm(`采购单已创建，应付账单编号: ${r.payable_bill_number}\n是否跳转到应付账款页面？`)) {
+        router.push("/payable");
+      }
+    } catch (err: any) { toast("error", err.message || "下单失败"); }
+    setOrderSubmitting(false);
+  }
   // ─── Logistics Prices ───
   async function openLogistics(sid: number) {
     setLogisticsSupplierId(sid);
@@ -541,17 +590,18 @@ export default function SuppliersPage() {
       {detail && (
         <div className="modal-overlay" onClick={()=>setDetail(null)}>
           <div className="bg-white rounded-xl w-[700px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-            {/* 头部 */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+            {/* Header - Blue Bar */}
+            <div className="sticky top-0 bg-blue-600 text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold">{detail.name}</h2>
+                <User size={18} />
+                <h2 className="text-lg font-semibold">{detail.name}</h2>
                 {detail.category_name && (
-                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${detail.category_name==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${detail.category_name==="耗材商"?"bg-blue-200 text-blue-800":"bg-green-200 text-green-800"}`}>
                     {detail.category_name}
                   </span>
                 )}
               </div>
-              <button onClick={()=>setDetail(null)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">关闭</button>
+              <button onClick={()=>setDetail(null)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
             </div>
 
             <div className="p-6 space-y-5">
