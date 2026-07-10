@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import datetime
 import os, uuid
 from app.database import get_db
-from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus, SystemSetting
+from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus, SystemSetting, FundRechargeRequest
 from app.models.user import User
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
@@ -57,6 +57,15 @@ class BatchReviewReq(BaseModel):
 
 class SettingsUpdate(BaseModel):
     key: str; value: str
+
+class RechargeRequestCreate(BaseModel):
+    amount: float
+    reason: str = ""
+
+class RechargeRequestReview(BaseModel):
+    request_id: int
+    action: str  # approve / reject
+    remark: str = ""
 
 class CreateAccountReq(BaseModel):
     employee_id: int
@@ -385,6 +394,138 @@ async def batch_review(
     labels = {"approve": "通过", "reject": "驳回"}
     return {"message": f"已{labels.get(req.action, req.action)}{len(req.item_ids)}条记录"}
 
+
+# ==== Recharge Requests (申请-审核模式) ====
+@router.post("/recharge/request")
+async def submit_recharge_request(
+    req: RechargeRequestCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """财务提交充值申请"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    if req.amount <= 0:
+        raise HTTPException(400, "充值金额必须大于0")
+
+    wh_id = get_wh_id(current_user)
+
+    # Find or create the fund account for this user
+    fund = await ensure_account(db, wh_id, current_user.id, current_user.id)
+
+    rr = FundRechargeRequest(
+        fund_id=fund.id,
+        warehouse_id=wh_id,
+        applicant_id=current_user.id,
+        amount=req.amount,
+        reason=req.reason,
+        status="pending",
+    )
+    db.add(rr)
+    await db.flush()
+    return {"id": rr.id, "message": "充值申请已提交，等待管理员审核"}
+
+@router.get("/recharge/requests")
+async def list_recharge_requests(
+    page: int = 1, page_size: int = 50,
+    status: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """列出充值申请列表 - 管理员看本仓库所有，财务看自己的"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+
+    wh_id = get_wh_id(current_user)
+
+    query = select(FundRechargeRequest, ExpenseFund, User, Warehouse).join(
+        ExpenseFund, FundRechargeRequest.fund_id == ExpenseFund.id
+    ).join(User, FundRechargeRequest.applicant_id == User.id).join(
+        Warehouse, FundRechargeRequest.warehouse_id == Warehouse.id
+    ).where(FundRechargeRequest.warehouse_id == wh_id)
+
+    if current_user.role == Role.STAFF:
+        query = query.where(FundRechargeRequest.applicant_id == current_user.id)
+
+    if status:
+        query = query.where(FundRechargeRequest.status == status)
+
+    count_q = select(func.count(FundRechargeRequest.id)).where(FundRechargeRequest.warehouse_id == wh_id)
+    if current_user.role == Role.STAFF:
+        count_q = count_q.where(FundRechargeRequest.applicant_id == current_user.id)
+    if status:
+        count_q = count_q.where(FundRechargeRequest.status == status)
+
+    total = (await db.execute(count_q)).scalar()
+    rows = (await db.execute(query.order_by(FundRechargeRequest.created_at.desc()).offset((page-1)*page_size).limit(page_size))).all()
+
+    result = []
+    for rr, fund, applicant, wh in rows:
+        result.append({
+            "id": rr.id, "fund_id": rr.fund_id, "warehouse_id": rr.warehouse_id,
+            "warehouse_name": wh.name,
+            "applicant_id": rr.applicant_id, "applicant_name": applicant.display_name,
+            "amount": rr.amount, "reason": rr.reason or "", "status": rr.status,
+            "current_balance": fund.remaining_balance,
+            "fund_limit": fund.fund_limit,
+            "review_remark": rr.review_remark or "",
+            "reviewer_id": rr.reviewer_id,
+            "reviewed_at": rr.reviewed_at.isoformat() if rr.reviewed_at else None,
+            "created_at": rr.created_at.isoformat() if rr.created_at else None,
+        })
+
+    return {"data": result, "total": total, "page": page, "page_size": page_size}
+
+@router.post("/recharge/review")
+async def review_recharge_request(
+    req: RechargeRequestReview,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """管理员审核充值申请"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以审核充值申请")
+
+    rr = (await db.execute(select(FundRechargeRequest).where(FundRechargeRequest.id == req.request_id))).scalar_one_or_none()
+    if not rr:
+        raise HTTPException(404, "申请不存在")
+    if rr.status != "pending":
+        raise HTTPException(400, "该申请已处理")
+
+    wh_id = get_wh_id(current_user)
+    if rr.warehouse_id != wh_id:
+        raise HTTPException(403, "无权审核其他仓库的申请")
+
+    if req.action == "approve":
+        rr.status = "approved"
+        rr.reviewer_id = current_user.id
+        rr.review_remark = ""
+        rr.reviewed_at = datetime.utcnow()
+
+        # Increase the fund balance
+        fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == rr.fund_id))).scalar_one_or_none()
+        if fund:
+            fund.remaining_balance = (fund.remaining_balance or 0) + rr.amount
+            fund.amount = (fund.amount or 0) + rr.amount
+
+        await db.flush()
+        return {"message": "充值申请已通过，余额已更新"}
+
+    elif req.action == "reject":
+        rr.status = "rejected"
+        rr.reviewer_id = current_user.id
+        rr.review_remark = req.remark or "已驳回"
+        rr.reviewed_at = datetime.utcnow()
+
+        await db.flush()
+        return {"message": "充值申请已驳回"}
+
+    else:
+        raise HTTPException(400, "无效操作，请选择通过或驳回")
 
 # ==== System Settings ====
 @router.get("/settings")

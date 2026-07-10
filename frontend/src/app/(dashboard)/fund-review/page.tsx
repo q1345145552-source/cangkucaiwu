@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
-import { CheckCircle, XCircle, FileText, Search, X, Image as ImageIcon, Eye } from "lucide-react";
+import { CheckCircle, XCircle, FileText, Search, X, Image as ImageIcon, Eye, CreditCard } from "lucide-react";
 
 export default function FundReviewPage() {
   const { toast } = useToast(); const router = useRouter();
@@ -24,7 +24,15 @@ export default function FundReviewPage() {
   // Receipt preview
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Tab switch
+  const [reviewTab, setReviewTab] = useState<"expense" | "recharge">("expense");
+
+  // Recharge request state
+  const [rechargeData, setRechargeData] = useState<any[]>([]);
+  const [rechargeLoading, setRechargeLoading] = useState(false);
+
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadEmployees(); }, []);
+  useEffect(() => { if (reviewTab === "recharge") loadRechargeRequests(); else load(); }, [reviewTab]);
 
   async function load() {
     setLoading(true);
@@ -89,13 +97,45 @@ export default function FundReviewPage() {
     })();
   }
 
+  // ====== Recharge Request functions ======
+  async function loadRechargeRequests() {
+    setRechargeLoading(true);
+    try {
+      const r = await api.get<any>("/expense-fund/recharge/requests?status=pending");
+      setRechargeData(r.data || []);
+    } catch (err) { console.error(err); }
+    setRechargeLoading(false);
+  }
+
+  async function approveRecharge(reqId: number) {
+    try {
+      await api.post("/expense-fund/recharge/review", { request_id: reqId, action: "approve" });
+      toast("success", "充值申请已通过");
+      loadRechargeRequests();
+    } catch (err: any) { toast("error", err.message || "审核失败"); }
+  }
+
+  async function rejectRecharge(reqId: number) {
+    const reason = prompt("请输入驳回原因");
+    if (reason === null) return;
+    try {
+      await api.post("/expense-fund/recharge/review", { request_id: reqId, action: "reject", remark: reason });
+      toast("success", "充值申请已驳回");
+      loadRechargeRequests();
+    } catch (err: any) { toast("error", err.message || "审核失败"); }
+  }
+
   return (
     <>
       <div className="mb-5">
         <h1 className="page-title">备用金审核</h1>
-        <div className="text-sm text-gray-400 mt-1">{data.length} 条待审核</div>
+        <div className="flex gap-3 mt-2">
+          <button onClick={() => setReviewTab("expense")} className={`px-4 py-1.5 rounded text-sm ${reviewTab === "expense" ? "bg-primary text-white" : "border"}`}>开销审核</button>
+          <button onClick={() => setReviewTab("recharge")} className={`px-4 py-1.5 rounded text-sm ${reviewTab === "recharge" ? "bg-primary text-white" : "border"}`}>充值申请</button>
+        </div>
       </div>
 
+      {reviewTab === "expense" ? (<>
       {/* 筛选栏 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-3 mb-4">
         <div className="flex items-center gap-3 flex-wrap">
@@ -222,6 +262,76 @@ export default function FundReviewPage() {
           </div>
         )}
       </div>
+
+      </>) : null}
+
+      {/* Recharge Request Review Tab */}
+      {reviewTab === "recharge" && (
+        <div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-500">{rechargeData.length} 条待审核充值申请</div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {rechargeLoading ? (
+              <div className="flex items-center justify-center h-24 text-gray-400">
+                <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-2" />
+                加载中...
+              </div>
+            ) : rechargeData.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">暂无待审核的充值申请</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left px-3 py-3 font-medium text-gray-500">申请人</th>
+                      <th className="text-right px-3 py-3 font-medium text-gray-500">申请金额</th>
+                      <th className="text-right px-3 py-3 font-medium text-gray-500">当前余额</th>
+                      <th className="text-left px-3 py-3 font-medium text-gray-500">事由</th>
+                      <th className="text-left px-3 py-3 font-medium text-gray-500">申请时间</th>
+                      <th className="text-center px-3 py-3 font-medium text-gray-500">状态</th>
+                      <th className="text-center px-3 py-3 font-medium text-gray-500 w-24">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rechargeData.map((r: any) => (
+                      <tr key={r.id} className="border-b hover:bg-gray-50/50">
+                        <td className="px-3 py-3 font-medium text-gray-800">{r.applicant_name}</td>
+                        <td className="px-3 py-3 text-right font-medium text-green-700">+฿{r.amount?.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-right text-gray-500">฿{(r.current_balance || 0).toLocaleString()}</td>
+                        <td className="px-3 py-3 text-gray-600 max-w-[200px] truncate">{r.reason || "-"}</td>
+                        <td className="px-3 py-3 text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleString("zh-CN") : "-"}</td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            r.status === "pending" ? "bg-yellow-50 text-yellow-700" :
+                            r.status === "approved" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+                          }`}>{
+                            r.status === "pending" ? "待审核" : r.status === "approved" ? "已通过" : "已驳回"
+                          }</span>
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {r.status === "pending" && (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button onClick={() => approveRecharge(r.id)} className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过">
+                                <CheckCircle size={16} />
+                              </button>
+                              <button onClick={() => rejectRecharge(r.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回">
+                                <XCircle size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 凭证大图弹窗 */}
       {previewUrl && (

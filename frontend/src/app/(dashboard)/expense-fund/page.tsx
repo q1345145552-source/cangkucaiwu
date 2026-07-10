@@ -33,6 +33,7 @@ export default function ExpenseFundPage() {
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAccount, setTopUpAccount] = useState<any>(null);
   const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpReason, setTopUpReason] = useState("");
   const [showExpense, setShowExpense] = useState(false);
   const [expenseAccount, setExpenseAccount] = useState<any>(null);
   const [itemForm, setItemForm] = useState({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: "THB", description: "" });
@@ -100,13 +101,20 @@ export default function ExpenseFundPage() {
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
-  function openTopUp(acc: any) { setTopUpAccount(acc); setTopUpAmount(""); setShowTopUp(true); }
+  function openTopUp(acc: any) { setTopUpAccount(acc); setTopUpAmount(""); setTopUpReason(""); setShowTopUp(true); }
   async function doTopUp() {
     if (!topUpAccount || !topUpAmount) return;
     try {
-      const r = await api.post(`/expense-fund/accounts/${topUpAccount.id}/topup`, { amount: +topUpAmount });
-      toast("success", r.message || "充值成功");
-      setShowTopUp(false); setTopUpAmount("");
+      if (isAdmin) {
+        // 管理员直接充值
+        const r = await api.post(`/expense-fund/accounts/${topUpAccount.id}/topup`, { amount: +topUpAmount });
+        toast("success", r.message || "充值成功");
+      } else {
+        // 财务提交充值申请
+        const r = await api.post("/expense-fund/recharge/request", { amount: +topUpAmount, reason: topUpReason });
+        toast("success", r.message || "充值申请已提交");
+      }
+      setShowTopUp(false); setTopUpAmount(""); setTopUpReason(""); setTopUpReason("");
       loadAccounts();
       if (expandedId === topUpAccount.id) toggleExpand(topUpAccount);
     } catch (err: any) { toast("error", err.message || "充值失败"); }
@@ -404,7 +412,7 @@ export default function ExpenseFundPage() {
                   <div className="bg-green-50 rounded-lg p-3">
                     <div className="text-xs text-green-600 mb-1">{topUpAccount?.employee_name}</div>
                     <div className="flex items-center justify-between text-sm"><span className="text-gray-500">当前余额</span><span className="font-bold text-green-700">฿{(topUpAccount?.current_balance || 0).toLocaleString()}</span></div>
-                    <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">฿{(topUpAccount?.fund_limit || 5000).toLocaleString()}</span></div>
+                    <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">฿{(topUpAccount?.fund_limit || 5000).toLocaleString()}</span></div>{!isAdmin && (<div className="mt-3"><label className="form-label text-xs">充值事由</label><input className="form-input text-sm" value={topUpReason} onChange={e => setTopUpReason(e.target.value)} placeholder="请输入充值原因" /></div>)}
                   </div>
                   <div><label className="form-label">充值金额</label><input type="number" className="form-input text-lg font-bold" value={topUpAmount} onChange={e => setTopUpAmount(e.target.value)} placeholder="输入金额" autoFocus /></div>
                 </div>

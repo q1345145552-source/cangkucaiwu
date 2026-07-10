@@ -67,3 +67,24 @@ class SystemSetting(Base):
     value = Column(String(500), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class FundRechargeRequest(Base):
+    """备用金充值申请 - 财务提交 → 管理员审核"""
+    __tablename__ = "fund_recharge_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fund_id = Column(Integer, ForeignKey("expense_funds.id"), nullable=False, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    applicant_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    amount = Column(Float, nullable=False)
+    reason = Column(String(500), nullable=True)
+    status = Column(String(20), default="pending")  # pending / approved / rejected
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    review_remark = Column(String(500), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    fund = relationship("ExpenseFund", foreign_keys=[fund_id])
+    applicant = relationship("User", foreign_keys=[applicant_id])
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
