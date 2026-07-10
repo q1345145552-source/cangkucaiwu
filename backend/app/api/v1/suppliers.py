@@ -3,13 +3,25 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
-from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, SupplierLogisticsPrice, SupplierCrossBorderPrice
+from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, SupplierLogisticsPrice, SupplierCrossBorderPrice, PurchaseOrder
 from app.models.user import User
+from app.models.payable import PayableBill
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
 import io
 
 router = APIRouter()
+
+class PurchaseOrderItem(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+class PurchaseOrderRequest(BaseModel):
+    items: List[PurchaseOrderItem]
+    remark: Optional[str] = None
 
 # ═══ Category CRUD ═══════════════════════════════
 @router.get("/categories")
@@ -193,8 +205,48 @@ async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = Fil
 @router.get("/{supplier_id}/products")
 async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     prods = (await db.execute(select(SupplierProduct).where(SupplierProduct.supplier_id == supplier_id).order_by(SupplierProduct.created_at.desc()))).scalars().all()
-    return {"data": [{"id": p.id, "product_name": p.product_name, "spec": p.spec, "spec_price": p.spec_price, "unit_price": p.unit_price, "unit": p.unit, "remark": p.remark} for p in prods]}
-
+    # Price comparison: find lowest price for each product across all suppliers
+    price_map = {}
+    if prods:
+        from collections import defaultdict
+        pnames = list(set(p.product_name for p in prods))
+        all_prods = (await db.execute(
+            select(SupplierProduct).where(SupplierProduct.product_name.in_(pnames))
+        )).scalars().all()
+        grouped = defaultdict(list)
+        for ap in all_prods:
+            key = (ap.product_name, ap.spec or '')
+            grouped[key].append(ap)
+        sids = set()
+        for key, aps in grouped.items():
+            min_p = min(aps, key=lambda x: x.unit_price)
+            price_map[key] = {'min_price': min_p.unit_price, 'min_supplier_id': min_p.supplier_id}
+            sids.add(min_p.supplier_id)
+        if sids:
+            sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
+            smap = {s.id: s.name for s in sups}
+            for k, v in price_map.items():
+                v['min_supplier_name'] = smap.get(v['min_supplier_id'], '')
+    result = []
+    for p in prods:
+        key = (p.product_name, p.spec or '')
+        cmp = price_map.get(key)
+        item = {
+            'id': p.id, 'product_name': p.product_name, 'spec': p.spec,
+            'spec_price': p.spec_price, 'unit_price': p.unit_price,
+            'unit': p.unit, 'remark': p.remark,
+            'is_lowest': False, 'min_price': None,
+            'min_supplier_name': None, 'price_diff': None,
+        }
+        if cmp:
+            item['min_price'] = cmp['min_price']
+            item['min_supplier_name'] = cmp.get('min_supplier_name', '')
+            if abs(p.unit_price - cmp['min_price']) < 0.001 and p.supplier_id == cmp.get('min_supplier_id'):
+                item['is_lowest'] = True
+            elif p.unit_price > cmp['min_price']:
+                item['price_diff'] = round(p.unit_price - cmp['min_price'], 2)
+        result.append(item)
+    return {'data': result}
 @router.post("/{supplier_id}/products")
 async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):

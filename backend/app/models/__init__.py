@@ -6,7 +6,7 @@ from app.models.recharge import RechargeDeclaration, IncomingFlow, Reconciliatio
 from app.models.income_expense import IncomeExpenseCategory, IncomeRecord, ExpenseRecord
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting, FundRechargeRequest
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory
-from app.models.supplier import Supplier
+from app.models.supplier import Supplier, PurchaseOrder
 from app.models.payable import PayableBill, PayablePlan
 from app.models.credit import CreditCustomer, CreditRepayment
 from app.models.market import MarketItem
@@ -20,7 +20,7 @@ __all__ = [
     "IncomeExpenseCategory", "IncomeRecord", "ExpenseRecord",
     "ExpenseFund", "ExpenseFundItem",
     "Reimbursement", "ReimbursementItem", "ReimbCategory",
-    "Supplier", "PayableBill", "PayablePlan",
+    "Supplier", "PurchaseOrder", "PayableBill", "PayablePlan",
     "CreditCustomer", "CreditRepayment",
     "MarketItem", "GroupOrder", "GroupOrderParticipant",
     "AuditLog",

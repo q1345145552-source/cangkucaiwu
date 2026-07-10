@@ -80,3 +80,20 @@ class SupplierCrossBorderPrice(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     supplier = relationship("Supplier", backref="cross_border_prices")
+
+
+
+class PurchaseOrder(Base):
+    __tablename__ = 'purchase_orders'
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey('warehouses.id'), nullable=False, index=True)
+    supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
+    order_number = Column(String(50), nullable=False)
+    total_amount = Column(Float, nullable=False)
+    currency = Column(String(10), nullable=False, default='THB')
+    items = Column(JSON, nullable=False)
+    payable_bill_id = Column(Integer, ForeignKey('payable_bills.id'), nullable=True)
+    status = Column(String(20), default='confirmed')
+    remark = Column(String(500), nullable=True)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

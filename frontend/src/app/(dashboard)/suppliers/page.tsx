@@ -6,7 +6,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck } from "lucide-react";
+import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag } from "lucide-react";
 
 export default function SuppliersPage() {
   const { t } = useI18n();
@@ -47,6 +47,12 @@ export default function SuppliersPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
   const [importSupplierId, setImportSupplierId] = useState<number | null>(null);
+  // Order
+  const [showOrder, setShowOrder] = useState(false);
+  const [orderItems, setOrderItems] = useState<Record<number, number>>({});
+  const [orderSupplierId, setOrderSupplierId] = useState(0);
+  const [orderTotal, setOrderTotal] = useState(0);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
 
@@ -287,10 +293,11 @@ export default function SuppliersPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-gray-50">
-                          <th className="text-left px-3 py-3 font-medium text-gray-500 w-[28%]">产品名称</th>
-                          <th className="text-left px-3 py-3 font-medium text-gray-500 w-[22%]">产品规格</th>
-                          <th className="text-right px-3 py-3 font-medium text-gray-500 w-[16%]">规格报价</th>
-                          <th className="text-right px-3 py-3 font-medium text-gray-500 w-[16%]">单价</th>
+                          <th className="text-left px-3 py-3 font-medium text-gray-500 w-[23%]">产品名称</th>
+                          <th className="text-left px-3 py-3 font-medium text-gray-500 w-[17%]">产品规格</th>
+                          <th className="text-right px-3 py-3 font-medium text-gray-500 w-[12%]">规格报价</th>
+                          <th className="text-right px-3 py-3 font-medium text-gray-500 w-[15%]">单价</th>
+                          <th className="text-center px-3 py-3 font-medium text-gray-500 w-[15%]">价格对比</th>
                           <th className="text-center px-3 py-3 font-medium text-gray-500 w-[18%]">操作</th>
                         </tr>
                       </thead>
@@ -301,6 +308,19 @@ export default function SuppliersPage() {
                             <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
                             <td className="px-3 py-3 text-right text-gray-700">{p.spec_price != null ? `¥${p.spec_price.toLocaleString()}` : "-"}</td>
                             <td className="px-3 py-3 text-right font-semibold text-green-700">¥{p.unit_price?.toLocaleString()}</td>
+                            <td className="px-3 py-3 text-center">
+                              {p.is_lowest ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                                  <Tag size={10} />最低价
+                                </span>
+                              ) : p.price_diff != null ? (
+                                <span className="text-xs text-orange-500">高于最低价 ¥{p.price_diff}</span>
+                              ) : p.min_price != null ? (
+                                <span className="text-xs text-gray-400">与最低价持平</span>
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
                             <td className="px-3 py-3 text-center">
                               <button onClick={()=>deleteProduct(p.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="删除">
                                 <Trash2 size={16} />
@@ -315,8 +335,110 @@ export default function SuppliersPage() {
               </div>
             </div>
             {/* Footer */}
-            <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end">
-              <button onClick={()=>setShowProducts(false)} className="btn-secondary text-sm px-6 py-2">关闭</button>
+            <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-between items-center">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Tag size={12} /><span>绿色标签 = 同类产品最低价</span>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={()=>openOrder(productSupplierId)} className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"><ShoppingCart size={16}/>下单</button>
+                <button onClick={()=>setShowProducts(false)} className="btn-secondary text-sm px-6 py-2">关闭</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Modal */}
+      {showOrder && (
+        <div className="modal-overlay z-50" onClick={()=>setShowOrder(false)}>
+          <div className="bg-white rounded-2xl w-[800px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <div className="bg-green-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
+              <ShoppingCart size={18} />
+              <h2 className="font-semibold">下单 - {data.find((s:any)=>s.id===orderSupplierId)?.name || ""}</h2>
+              <button onClick={()=>setShowOrder(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none">&times;</button>
+            </div>
+            <div className="p-5">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left px-3 py-3 font-medium text-gray-500 w-[5%]">选</th>
+                    <th className="text-left px-3 py-3 font-medium text-gray-500 w-[25%]">产品名称</th>
+                    <th className="text-left px-3 py-3 font-medium text-gray-500 w-[15%]">规格</th>
+                    <th className="text-right px-3 py-3 font-medium text-gray-500 w-[12%]">单价</th>
+                    <th className="text-center px-3 py-3 font-medium text-gray-500 w-[13%]">最低价对比</th>
+                    <th className="text-center px-3 py-3 font-medium text-gray-500 w-[12%]">数量</th>
+                    <th className="text-right px-3 py-3 font-medium text-gray-500 w-[18%]">小计</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((p:any) => {
+                    const qty = orderItems[p.id] || 0;
+                    const selected = qty > 0;
+                    const subtotal = (p.unit_price || 0) * qty;
+                    return (
+                      <tr key={p.id} className={`border-b hover:bg-gray-50/50 transition-colors ${selected ? "bg-green-50/50" : ""}`}>
+                        <td className="px-3 py-3 text-center">
+                          <button onClick={()=>toggleOrderItem(p.id)}
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                              selected ? "bg-green-600 border-green-600 text-white" : "border-gray-300 hover:border-green-400"
+                            }`}>
+                            {selected && <CheckCircle size={12} />}
+                          </button>
+                        </td>
+                        <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}</td>
+                        <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
+                        <td className="px-3 py-3 text-right font-semibold text-gray-700">¥{p.unit_price?.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-center">
+                          {p.is_lowest ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                              <Tag size={10} />最低价
+                            </span>
+                          ) : p.price_diff != null ? (
+                            <span className="text-xs text-orange-500">+¥{p.price_diff}</span>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {selected ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={()=>updateQuantity(p.id, qty-1)}
+                                className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-sm">-</button>
+                              <input type="number" value={qty} onChange={e=>updateQuantity(p.id, parseInt(e.target.value)||1)}
+                                className="w-14 text-center border rounded py-1 text-sm" min="1" />
+                              <button onClick={()=>updateQuantity(p.id, qty+1)}
+                                className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-sm">+</button>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right font-semibold text-green-700">
+                          {selected ? `¥${subtotal.toLocaleString()}` : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {Object.keys(orderItems).filter(k => orderItems[+k] > 0).length === 0 && (
+                <div className="text-center py-8 text-gray-400 text-sm">请勾选需要采购的产品，并填写数量</div>
+              )}
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-between items-center">
+              <div className="text-sm">
+                已选 <span className="font-semibold text-green-600">{Object.keys(orderItems).filter(k => orderItems[+k] > 0).length}</span> 个产品，
+                总价 <span className="font-semibold text-green-600 text-lg">¥{orderTotal.toLocaleString()}</span>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={()=>setShowOrder(false)} className="btn-secondary text-sm px-5 py-2">取消</button>
+                <button onClick={submitOrder} disabled={orderSubmitting || orderTotal === 0}
+                  className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    orderTotal === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
+                  }`}>
+                  <ShoppingCart size={16}/>{orderSubmitting ? "提交中..." : "确认下单"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
