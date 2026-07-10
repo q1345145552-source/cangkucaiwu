@@ -552,12 +552,7 @@ export default function SuppliersPage() {
             <h2 className="font-semibold mb-4">新建供应商</h2>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="form-label">名称</label><input className="form-input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
-              <div><label className="form-label">类别</label>
-                <select className="form-input" value={form.category_id} onChange={e=>setForm({...form,category_id:+e.target.value})}>
-                  <option value={0}>选择类别</option>
-                  {categories.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
+
               <div><label className="form-label">联系人</label><input className="form-input" value={form.contact_person} onChange={e=>setForm({...form,contact_person:e.target.value})} /></div>
               <div><label className="form-label">联系方式</label><input className="form-input" value={form.contact_info} onChange={e=>setForm({...form,contact_info:e.target.value})} /></div>
               <div><label className="form-label">地址</label><input className="form-input" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
