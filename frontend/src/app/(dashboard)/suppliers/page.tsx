@@ -238,23 +238,90 @@ export default function SuppliersPage() {
       
       {/* Products Modal */}
       {showProducts && (
-        <div className="modal-overlay" onClick={()=>setShowProducts(false)}>
-          <div className="bg-white rounded-xl p-6 w-[600px] max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-            <h2 className="font-semibold mb-4">产品管理</h2>
-            <div className="grid grid-cols-5 gap-2 mb-4 p-3 bg-gray-50 rounded">
-              <input className="border rounded px-2 py-1.5 text-sm" placeholder="产品名" value={productForm.product_name} onChange={e=>setProductForm({...productForm,product_name:e.target.value})} />
-              <input className="border rounded px-2 py-1.5 text-sm" placeholder="产品规格" value={productForm.spec} onChange={e=>setProductForm({...productForm,spec:e.target.value})} />
-              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="规格报价" value={productForm.spec_price||""} onChange={e=>setProductForm({...productForm,spec_price:e.target.value===""?"":+e.target.value})} />
-              <input type="number" className="border rounded px-2 py-1.5 text-sm" placeholder="单价" value={productForm.unit_price||""} onChange={e=>setProductForm({...productForm,unit_price:e.target.value===""?"":+e.target.value})} />
-              <button onClick={addProduct} disabled={!productForm.product_name.trim() || !productForm.unit_price} className={`rounded px-2 py-1.5 text-sm ${!productForm.product_name.trim() || !productForm.unit_price ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button>
+        <div className="modal-overlay z-50" onClick={()=>setShowProducts(false)}>
+          <div className="bg-white rounded-2xl w-[900px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
+              <Package size={18} />
+              <h2 className="font-semibold">产品定价 - {data.find((s:any)=>s.id===productSupplierId)?.name || ""}</h2>
+              <button onClick={()=>setShowProducts(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button>
             </div>
-            {products.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无产品</div> : (
-              <table className="w-full text-sm"><thead><tr className="bg-gray-100"><th className="p-2 text-left">产品名</th><th>产品规格</th><th>规格报价</th><th>单价</th><th></th></tr></thead>
-                <tbody>{products.map((p:any)=><tr key={p.id} className="border-t"><td className="p-2">{p.product_name}</td><td>{p.spec||"-"}</td><td>{p.spec_price != null ? p.spec_price : "-"}</td><td>{p.unit_price}</td>
-                  <td><button onClick={()=>deleteProduct(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></td></tr>)}</tbody></table>
-            )}
-            <button onClick={()=>setShowProducts(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
-          </div></div>
+            {/* Form */}
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">产品名称 <span className="text-red-400">*</span></label>
+                  <input className="form-input text-base py-2.5" placeholder="输入产品名称" value={productForm.product_name} onChange={e=>setProductForm({...productForm,product_name:e.target.value})} autoFocus />
+                </div>
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">产品规格</label>
+                  <input className="form-input text-base py-2.5" placeholder="如: 38*45cm / 一打80个" value={productForm.spec} onChange={e=>setProductForm({...productForm,spec:e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">规格报价</label>
+                  <input type="number" className="form-input text-base py-2.5" placeholder="规格对应报价" value={productForm.spec_price||""} onChange={e=>setProductForm({...productForm,spec_price:e.target.value===""?"":+e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">单价 <span className="text-red-400">*</span></label>
+                  <input type="number" className="form-input text-base py-2.5" placeholder="标准单价" value={productForm.unit_price||""} onChange={e=>setProductForm({...productForm,unit_price:e.target.value===""?"":+e.target.value})} />
+                </div>
+                <div className="flex items-end">
+                  <button onClick={addProduct} disabled={!productForm.product_name.trim() || !productForm.unit_price}
+                    className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${!productForm.product_name.trim() || !productForm.unit_price ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"}`}>
+                    + 添加产品
+                  </button>
+                </div>
+              </div>
+
+              {/* Product Table */}
+              <div className="pt-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-px flex-1 bg-gray-200" />
+                  <span className="text-xs text-gray-400 font-medium">共 {products.length} 个产品</span>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
+                {products.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400 text-sm">暂无产品，请在上方添加</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left px-3 py-3 font-medium text-gray-500 w-[28%]">产品名称</th>
+                          <th className="text-left px-3 py-3 font-medium text-gray-500 w-[22%]">产品规格</th>
+                          <th className="text-right px-3 py-3 font-medium text-gray-500 w-[16%]">规格报价</th>
+                          <th className="text-right px-3 py-3 font-medium text-gray-500 w-[16%]">单价</th>
+                          <th className="text-center px-3 py-3 font-medium text-gray-500 w-[18%]">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {products.map((p:any)=>(
+                          <tr key={p.id} className="border-b hover:bg-gray-50/50 transition-colors">
+                            <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}</td>
+                            <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
+                            <td className="px-3 py-3 text-right text-gray-700">{p.spec_price != null ? `¥${p.spec_price.toLocaleString()}` : "-"}</td>
+                            <td className="px-3 py-3 text-right font-semibold text-green-700">¥{p.unit_price?.toLocaleString()}</td>
+                            <td className="px-3 py-3 text-center">
+                              <button onClick={()=>deleteProduct(p.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="删除">
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end">
+              <button onClick={()=>setShowProducts(false)} className="btn-secondary text-sm px-6 py-2">关闭</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Logistics Prices Modal */}
