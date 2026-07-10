@@ -177,6 +177,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent("warehouse-changed", { detail: { warehouseId: "all" } }));
   };
 
+  // Reset all-warehouses mode when leaving /reports page
+  useEffect(() => {
+    if (pathname !== "/reports" && isAllWarehouses) {
+      setIsAllWarehouses(false);
+      if (whList.length > 0) {
+        setSelectedWhId(whList[0].id);
+        setActiveWarehouseId(whList[0].id);
+      }
+    }
+  }, [pathname]);
+
   const logout = () => {
     localStorage.clear();
     router.push("/login");
@@ -272,7 +283,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </button>
                 {showWhSwitcher && (
                   <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-56 py-1 z-50">
-                    {user?.role === "warehouse_admin" && (
+                    {user?.role === "warehouse_admin" && pathname === "/reports" && (
                       <button
                         onClick={switchAllWarehouses}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] ${
@@ -284,7 +295,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         <span className="text-xs text-amber-400 ml-auto">全部</span>
                       </button>
                     )}
-                    {user?.role === "warehouse_admin" && <div className="border-t border-gray-100" />}
+                    {user?.role === "warehouse_admin" && pathname === "/reports" && <div className="border-t border-gray-100" />}
                     {whList.map(wh => (
                       <button
                         key={wh.id}
