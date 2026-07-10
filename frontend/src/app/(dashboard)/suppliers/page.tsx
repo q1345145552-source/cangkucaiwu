@@ -46,7 +46,7 @@ export default function SuppliersPage() {
   // Import
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
-  // New category
+  const [showImportMenu, setShowImportMenu] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
 
@@ -66,14 +66,8 @@ export default function SuppliersPage() {
     try {
       const payload: any = { ...form };
       if (!payload.category_id) delete payload.category_id;
-      const r: any = await api.post("/suppliers", payload);
+      await api.post("/suppliers", payload);
       toast("success", "创建成功"); setShowForm(false); load();
-      // Auto-open price dialog based on selected category
-      const newId = r.id;
-      setTimeout(() => {
-        if (filterCat === 1) openProducts(newId);
-        else if (filterCat === 2) openLogistics(newId);
-      }, 500);
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
@@ -198,15 +192,17 @@ export default function SuppliersPage() {
           {isAdmin && (
             <>
               {/* Import dropdown */}
-              <div className="relative group">
-                <button className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Upload size={16}/>批量导入</button>
-                <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-40 w-48 hidden group-hover:block py-1">
-                  <button onClick={() => { setImportMode("products"); fileInputRef.current?.click(); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导入耗材产品</button>
-                  <button onClick={() => { setImportMode("logistics"); fileInputRef.current?.click(); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导入物流价格</button>
-                  <div className="border-t my-1" />
-                  <button onClick={() => downloadTemplate("products")} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1"><Download size={14}/>耗材模板</button>
-                  <button onClick={() => downloadTemplate("logistics")} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1"><Download size={14}/>物流模板</button>
-                </div>
+              <div className="relative">
+                <button onClick={() => setShowImportMenu(!showImportMenu)} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Upload size={16}/>批量导入</button>
+                {showImportMenu && (
+                  <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-40 w-48 py-1">
+                    <button onClick={() => { setImportMode("products"); fileInputRef.current?.click(); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导入耗材产品</button>
+                    <button onClick={() => { setImportMode("logistics"); fileInputRef.current?.click(); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">导入物流价格</button>
+                    <div className="border-t my-1" />
+                    <button onClick={() => { downloadTemplate("products"); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1"><Download size={14}/>耗材模板</button>
+                    <button onClick={() => { downloadTemplate("logistics"); setShowImportMenu(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-1"><Download size={14}/>物流模板</button>
+                  </div>
+                )}
               </div>
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
               <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
