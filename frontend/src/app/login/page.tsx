@@ -115,9 +115,6 @@ export default function LoginPage() {
           {t("switch_lang")}
         </button>
 
-        <div className="mt-2 text-center text-xs text-gray-300">
-          默认账号: admin / admin123
-        </div>
       </div>
     </div>
   );
