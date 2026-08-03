@@ -10,7 +10,8 @@ from app.models.income_expense import IncomeExpenseCategory, IncomeExpenseType
 from app.models.customer import Customer
 from app.models.supplier import Supplier, PurchaseOrder
 from app.models.employee import Employee
-from app.api.v1.clock_in import ClockInRecord
+from app.models.attendance import LeaveRequest, RestDay, Absence
+from app.models.clock_in_records import ClockInRecord
 from app.models.recharge import RechargeDeclaration, IncomingFlow
 from app.models.market import MarketItem
 from app.models.credit import CreditCustomer, CreditShipment, CreditRepayment

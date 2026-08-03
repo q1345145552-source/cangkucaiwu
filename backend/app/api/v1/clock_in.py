@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
 from app.models.user import User
+from app.models.clock_in_records import ClockInRecord
 from app.core.permissions import get_current_user, get_wh_id, Role
 from datetime import datetime, date, time
 import os, uuid, base64
@@ -19,27 +20,7 @@ SESSIONS = {
     4: {"label": "下午下班", "time": time(18, 0)},
 }
 
-def _get_clock_in_table():
-    from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Float
-    from app.database import Base
-    from sqlalchemy.sql import func as sqla_func
 
-    class ClockInRecord(Base):
-        __tablename__ = "clock_in_records"
-        id = Column(Integer, primary_key=True, index=True)
-        user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-        warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=True)
-        clock_date = Column(Date, nullable=False, index=True)
-        session = Column(Integer, nullable=False, comment="1-4 四个时段")
-        clocked_in_at = Column(DateTime(timezone=True), server_default=sqla_func.now())
-        photo_path = Column(String(500), nullable=True, comment="打卡照片路径")
-        status = Column(String(20), default="normal", comment="normal/late_half/late_one/missed")
-        penalty_amount = Column(Float, default=0, comment="迟到扣款金额(泰铢)")
-        remark = Column(String(200), nullable=True)
-
-    return ClockInRecord
-
-ClockInRecord = _get_clock_in_table()
 
 
 def _get_penalty(session: int, clocked_at: datetime) -> dict:

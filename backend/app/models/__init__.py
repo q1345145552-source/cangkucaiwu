@@ -14,6 +14,8 @@ from app.models.group_order import GroupOrder, GroupOrderParticipant
 from app.models.audit_log import AuditLog
 from app.models.user_warehouse import UserWarehouse
 from app.models.employee import Employee
+from app.models.attendance import LeaveRequest, RestDay, Absence
+from app.models.clock_in_records import ClockInRecord
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -27,5 +29,6 @@ __all__ = [
     "AuditLog",
     "UserWarehouse",
     "Employee",
+    "LeaveRequest", "RestDay", "Absence", "ClockInRecord",
     "FundRechargeRequest",
 ]

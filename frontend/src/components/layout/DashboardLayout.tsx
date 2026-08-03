@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck,
+  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck, CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -73,6 +73,7 @@ const navItems: NavItem[] = [
     children: [
       { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff"] },
       { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin"] },
+      { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin", "warehouse_labor"] },
       { key: "clock_in", label: "打卡签到", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },    ],
   },
 ];

@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from app.api.v1 import auth, users, dashboard, customers, warehouses, payment_accounts, suppliers
 from app.api.v1 import recharge, incoming, reconciliation, income_expense
 from app.api.v1 import expense_fund, reimbursement, payable, credit, market, group_order, reports
-from app.api.v1 import upload, settings_api, exchange_rates, employees, clock_in
+from app.api.v1 import upload, settings_api, exchange_rates, employees, clock_in, attendance
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["认证"])
@@ -28,3 +28,4 @@ api_router.include_router(settings_api.router, prefix="/settings", tags=["系统
 api_router.include_router(exchange_rates.router, tags=["汇率管理"])
 api_router.include_router(employees.router, prefix="/employees", tags=["员工档案"])
 api_router.include_router(clock_in.router, prefix="/clock-in", tags=["打卡签到"])
+api_router.include_router(attendance.router, prefix="/attendance", tags=["考勤管理"])
