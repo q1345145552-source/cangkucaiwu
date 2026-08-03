@@ -14,6 +14,7 @@ class Warehouse(Base):
     contact_person = Column(String(100), nullable=True)
     contact_phone = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
+    max_employees = Column(Integer, nullable=True, default=50)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

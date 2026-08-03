@@ -34,6 +34,7 @@
   "role_super_admin": "ผู้ดูแลระบบ",
   "role_warehouse_admin": "เจ้าของคลังสินค้า",
   "role_staff": "การเงินคลังสินค้า",
+  "role_warehouse_labor": "แรงงานคลังสินค้า",
   "switch_lang": "Switch to 中文",
   "change_password": "เปลี่ยนรหัสผ่าน",
   "old_password": "รหัสผ่านเดิม",

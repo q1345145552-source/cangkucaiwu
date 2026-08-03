@@ -86,7 +86,7 @@ export default function SettingsPage() {
 
   async function createUser() {
     try {
-      if (newUser.role === "staff" && !newUser.warehouse_id) {
+      if ((newUser.role === "staff" || newUser.role === "warehouse_labor") && !newUser.warehouse_id) {
         toast("error", "请选择所属仓库");
         return;
       }
@@ -186,9 +186,9 @@ export default function SettingsPage() {
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
               <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
                 {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
-                {user?.role === "warehouse_admin" && <option value="staff">仓库财务</option>}
+                {user?.role === "warehouse_admin" && <><option value="staff">仓库财务</option><option value="warehouse_labor">仓库劳工</option></>}
               </select></div>
-              {((user?.role === "super_admin" && newUser.role !== "warehouse_admin") || (user?.role === "warehouse_admin" && newUser.role === "staff")) && (
+              {((user?.role === "super_admin" && newUser.role !== "warehouse_admin") || (user?.role === "warehouse_admin" && (newUser.role === "staff" || newUser.role === "warehouse_labor"))) && (
                 <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
                 <select className="form-input text-sm" value={newUser.warehouse_id} onChange={e=>setNewUser({...newUser,warehouse_id:e.target.value})}>
                   <option value="">请选择仓库</option>

@@ -13,6 +13,7 @@ from app.models.market import MarketItem
 from app.models.group_order import GroupOrder, GroupOrderParticipant
 from app.models.audit_log import AuditLog
 from app.models.user_warehouse import UserWarehouse
+from app.models.employee import Employee
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -25,5 +26,6 @@ __all__ = [
     "MarketItem", "GroupOrder", "GroupOrderParticipant",
     "AuditLog",
     "UserWarehouse",
+    "Employee",
     "FundRechargeRequest",
 ]

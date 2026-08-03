@@ -34,6 +34,7 @@
   "role_super_admin": "系统总管理员",
   "role_warehouse_admin": "仓库管理员",
   "role_staff": "仓库财务",
+  "role_warehouse_labor": "仓库劳工",
   "switch_lang": "สลับเป็นภาษาไทย",
   "change_password": "修改密码",
   "old_password": "原密码",

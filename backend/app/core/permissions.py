@@ -13,11 +13,13 @@ class Role(str, Enum):
     SUPER_ADMIN = "super_admin"
     WAREHOUSE_ADMIN = "warehouse_admin"
     STAFF = "staff"
+    WAREHOUSE_LABOR = "warehouse_labor"
 
 ROLE_HIERARCHY = {
     Role.SUPER_ADMIN: 3,
     Role.WAREHOUSE_ADMIN: 2,
     Role.STAFF: 1,
+    Role.WAREHOUSE_LABOR: 0,
 }
 
 STAFF_PERMISSIONS = {
