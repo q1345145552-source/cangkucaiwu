@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -19,6 +19,14 @@ class Employee(Base):
     daily_wage = Column(Float, nullable=True, default=400, comment="日薪")
     base_salary = Column(Float, nullable=True, default=12000, comment="底薪")
     remark = Column(String(500), nullable=True)
+
+    # Resignation tracking
+    resignation_date = Column(Date, nullable=True, comment="离职日期")
+    resignation_reason = Column(String(50), nullable=True, comment="离职原因: voluntary/absconded/fired/contract_end/other")
+    resignation_note = Column(String(500), nullable=True, comment="离职备注")
+    blacklisted = Column(Boolean, default=False, comment="是否黑名单")
+    blacklist_reason = Column(String(500), nullable=True, comment="黑名单原因")
+
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

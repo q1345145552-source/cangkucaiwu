@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck, CalendarDays,
+  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -74,7 +74,10 @@ const navItems: NavItem[] = [
       { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff"] },
       { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin"] },
       { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin", "warehouse_labor"] },
-      { key: "clock_in", label: "打卡签到", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },    ],
+      { key: "overtime", label: "加班管理", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin", "warehouse_labor"] },
+      { key: "payroll", label: "工资管理", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin"] },
+      { key: "clock_in", label: "打卡签到", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },
+      { key: "my_payslip", label: "我的工资单", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["warehouse_labor"] },    ],
   },
 ];
 

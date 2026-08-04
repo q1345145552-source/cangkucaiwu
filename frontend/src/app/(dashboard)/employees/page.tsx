@@ -4,7 +4,7 @@ import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp, Ban } from "lucide-react";
 
 export default function EmployeesPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
@@ -15,6 +15,11 @@ export default function EmployeesPage() {
   const [maxLimit, setMaxLimit] = useState(50);
   const [currentCount, setCurrentCount] = useState(0);
   const [showLimitSetting, setShowLimitSetting] = useState(false);
+  const [resigningId, setResigningId] = useState<number | null>(null);
+  const [resignForm, setResignForm] = useState({
+    reason: "voluntary", resignation_date: new Date().toISOString().slice(0,10),
+    blacklisted: false, blacklist_reason: "", note: ""
+  });
   const [limitInput, setLimitInput] = useState("50");
   
   const defaultForm = {
@@ -78,14 +83,23 @@ export default function EmployeesPage() {
     setShowForm(true);
   }
 
-  async function resignEmployee(id: number) {
-    if (!confirm("确定将该员工标记为离职吗？")) return;
+  async function resignEmployee() {
+    if (!resigningId) return;
     try {
-      await api.post(`/employees/${id}/resign`);
-      toast("success", "已标记为离职");
+      const r = await api.post(`/employees/${resigningId}/resign`, resignForm);
+      toast("success", r.message || "已标记为离职");
+      setResigningId(null);
       load();
       loadLimit();
     } catch (err: any) { toast("error", err.message || "操作失败"); }
+  }
+
+  function openResignModal(id: number) {
+    setResigningId(id);
+    setResignForm({
+      reason: "voluntary", resignation_date: new Date().toISOString().slice(0,10),
+      blacklisted: false, blacklist_reason: "", note: ""
+    });
   }
 
   async function saveMaxLimit() {
@@ -151,7 +165,16 @@ export default function EmployeesPage() {
             <tbody>
               {activeEmployees.map((e: any) => (
                 <tr key={e.id} className="border-b hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-medium">{e.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <div className="flex items-center gap-2">
+                      {e.name}
+                      {e.blacklisted && (
+                        <span className="bg-black text-white px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                          <Ban size={10}/> 黑名单
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-gray-500">{e.position || "-"}</td>
                   <td className="px-4 py-3 text-gray-500">{e.phone || "-"}</td>
                   <td className="px-4 py-3 text-gray-500">{e.hire_date || "-"}</td>
@@ -174,7 +197,7 @@ export default function EmployeesPage() {
                               catch (err: any) { toast("error", err.message); }
                             }} className="text-green-500 hover:bg-green-50 p-1.5 rounded text-xs" title="转正">转正</button>
                           )}
-                          <button onClick={() => resignEmployee(e.id)}
+                          <button onClick={() => openResignModal(e.id)}
                             className="text-red-400 hover:bg-red-50 p-1.5 rounded text-xs"><UserX size={14}/></button>
                         </>
                       )}
@@ -310,6 +333,65 @@ export default function EmployeesPage() {
             </table>
           </div>
         </details>
+      )}
+
+      {/* Resign Modal */}
+      {resigningId && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setResigningId(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <UserX size={20} />
+              <span className="font-semibold">标记离职</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">离职原因</label>
+                <select className="form-input text-base py-2.5 w-full" value={resignForm.reason}
+                  onChange={e => setResignForm({ ...resignForm, reason: e.target.value })}>
+                  <option value="voluntary">正常离职</option>
+                  <option value="absconded">自离</option>
+                  <option value="fired">被辞退</option>
+                  <option value="contract_end">合同到期</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">离职日期</label>
+                <input type="date" className="form-input text-base py-2.5 w-full" value={resignForm.resignation_date}
+                  onChange={e => setResignForm({ ...resignForm, resignation_date: e.target.value })} />
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">备注</label>
+                <textarea className="form-input text-base py-2.5 w-full" rows={2} value={resignForm.note}
+                  onChange={e => setResignForm({ ...resignForm, note: e.target.value })} placeholder="选填" />
+              </div>
+              {resignForm.reason === "fired" && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={resignForm.blacklisted}
+                      onChange={e => setResignForm({ ...resignForm, blacklisted: e.target.checked })}
+                      className="w-4 h-4 text-red-500 rounded" />
+                    <span className="text-sm font-medium text-red-700">加入黑名单</span>
+                  </label>
+                  {resignForm.blacklisted && (
+                    <textarea className="form-input mt-2 w-full text-sm py-2" rows={2} value={resignForm.blacklist_reason}
+                      onChange={e => setResignForm({ ...resignForm, blacklist_reason: e.target.value })}
+                      placeholder="黑名单原因" />
+                  )}
+                </div>
+              )}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+                离职后将自动结算当月工资，并禁止该员工登录系统。
+              </div>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setResigningId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={resignEmployee} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-red-600">
+                确认离职
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

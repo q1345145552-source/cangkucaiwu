@@ -12,6 +12,8 @@ from app.models.supplier import Supplier, PurchaseOrder
 from app.models.employee import Employee
 from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.clock_in_records import ClockInRecord
+from app.models.overtime import OvertimeTask, OvertimeAssignment
+from app.models.payroll import PayrollRecord
 from app.models.recharge import RechargeDeclaration, IncomingFlow
 from app.models.market import MarketItem
 from app.models.credit import CreditCustomer, CreditShipment, CreditRepayment
