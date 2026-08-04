@@ -54,7 +54,7 @@ async def calculate_payroll(
     if existing:
         raise HTTPException(400, f"{req.period} 的工资已计算过，请先删除旧记录再重新计算")
 
-    # Get all active employees
+    # Get all active employees with user_id links
     employees = (await db.execute(
         select(Employee).where(
             Employee.warehouse_id == wh_id,
@@ -70,35 +70,43 @@ async def calculate_payroll(
     _, total_days = calendar.monthrange(year, month)
     month_end = date(year, month, total_days)
 
-    # Build employee_id -> user_id mapping (for clock-in matching)
+    # Build employee_id -> user_id mapping (via the formal link)
+    emp_user_map = {}  # employee_id -> user_id
+    user_emp_map = {}  # user_id -> employee_id
     emp_id_set = {e.id for e in employees}
-    emp_names = {e.name: e.id for e in employees}
 
-    # Get all labor users in this warehouse
-    labor_users = (await db.execute(
-        select(User).where(
-            User.role == "warehouse_labor",
-            User.is_active == True,
-        )
-    )).scalars().all()
+    for e in employees:
+        if e.user_id:
+            emp_user_map[e.id] = e.user_id
+            user_emp_map[e.user_id] = e.id
 
-    # Build user_id -> employee_id mapping (by name matching)
-    user_emp_map = {}
-    emp_user_map = {}
-    for u in labor_users:
-        if u.display_name in emp_names:
-            eid = emp_names[u.display_name]
-            user_emp_map[u.id] = eid
-            emp_user_map[eid] = u.id
+    # Fallback: name matching for employees without user_id link
+    emp_names = {e.name: e.id for e in employees if e.id not in emp_user_map}
+    if emp_names:
+        labor_users = (await db.execute(
+            select(User).where(
+                User.role == "warehouse_labor",
+                User.is_active == True,
+            )
+        )).scalars().all()
+        for u in labor_users:
+            if u.display_name in emp_names:
+                eid = emp_names[u.display_name]
+                emp_user_map[eid] = u.id
+                user_emp_map[u.id] = eid
+
+    all_user_ids = list(user_emp_map.keys())
 
     # Batch fetch all clock-in records for this month
-    clock_records = (await db.execute(
-        select(ClockInRecord).where(
-            ClockInRecord.clock_date >= month_start,
-            ClockInRecord.clock_date <= month_end,
-            ClockInRecord.user_id.in_(list(user_emp_map.keys())),
-        ).order_by(ClockInRecord.clock_date, ClockInRecord.session)
-    )).scalars().all()
+    clock_records = []
+    if all_user_ids:
+        clock_records = (await db.execute(
+            select(ClockInRecord).where(
+                ClockInRecord.clock_date >= month_start,
+                ClockInRecord.clock_date <= month_end,
+                ClockInRecord.user_id.in_(all_user_ids),
+            ).order_by(ClockInRecord.clock_date, ClockInRecord.session)
+        )).scalars().all()
 
     # Group clock-ins by (employee_id, date)
     clock_by_emp_date = {}
@@ -111,7 +119,7 @@ async def calculate_payroll(
             clock_by_emp_date[key] = []
         clock_by_emp_date[key].append(cr)
 
-    # Batch fetch leave requests
+    # Batch fetch leave/rest/absence
     leaves = (await db.execute(
         select(LeaveRequest).where(
             LeaveRequest.employee_id.in_(emp_id_set),
@@ -126,7 +134,6 @@ async def calculate_payroll(
             leave_by_emp[lv.employee_id] = set()
         leave_by_emp[lv.employee_id].add(lv.leave_date)
 
-    # Batch fetch rest days
     rests = (await db.execute(
         select(RestDay).where(
             RestDay.employee_id.in_(emp_id_set),
@@ -140,7 +147,6 @@ async def calculate_payroll(
             rest_by_emp[r.employee_id] = set()
         rest_by_emp[r.employee_id].add(r.rest_date)
 
-    # Batch fetch absences
     absences = (await db.execute(
         select(Absence).where(
             Absence.employee_id.in_(emp_id_set),
@@ -176,17 +182,16 @@ async def calculate_payroll(
     # Now calculate for each employee
     records = []
     for emp in employees:
-        # Attendance calculation
         attendance_days = 0
-        late_penalty_total = 0
+        absence_days_count = 0
+        late_half_count = 0  # 迟到半小时次数
+        late_one_count = 0   # 迟到1小时次数
         leave_days_count = 0
         rest_days_count = 0
-        absence_days_count = 0
 
         # Iterate each day in the month
         current = month_start
         while current <= month_end:
-            key = (emp.id, current)
             leave_set = leave_by_emp.get(emp.id, set())
             rest_set = rest_by_emp.get(emp.id, set())
             absence_set = absence_by_emp.get(emp.id, set())
@@ -198,59 +203,75 @@ async def calculate_payroll(
             elif current in absence_set:
                 absence_days_count += 1
             else:
-                # Check clock-in records for this day
+                # Check clock-in records
+                key = (emp.id, current)
                 sessions = clock_by_emp_date.get(key, [])
-                # Need all 4 sessions for full attendance
-                unique_sessions = {c.session for c in sessions}
-                if len(unique_sessions) == 4:
+                session_count = len({c.session for c in sessions})
+
+                if session_count >= 3:
+                    # 3 or 4 sessions = full attendance
                     attendance_days += 1
-                    # Sum late penalties
-                    for c in sessions:
-                        late_penalty_total += c.penalty_amount or 0
-                elif len(unique_sessions) > 0:
-                    # Partial attendance counts as attendance but with missing sessions
-                    attendance_days += 1
-                    for c in sessions:
-                        late_penalty_total += c.penalty_amount or 0
+                    # Count late penalties (session 1 only)
+                    for cr in sessions:
+                        if cr.session == 1:
+                            if cr.status == "late_half":
+                                late_half_count += 1
+                            elif cr.status == "late_one":
+                                late_one_count += 1
+                elif session_count >= 1:
+                    # 1 or 2 sessions = absence (不算出勤，算缺勤)
+                    absence_days_count += 1
+                # 0 sessions = neither attendance nor absence (just missing, no record)
 
             current += timedelta(days=1)
 
-        # Calculate base pay
+        # Calculate daily wage and hourly rate
         emp_status = emp.status or "trial"
         daily_wage = emp.daily_wage or 400
         base_salary = emp.base_salary or 12000
 
         if emp_status == "trial":
+            hourly_rate = daily_wage / 8  # 日薪÷8
+            effective_daily = daily_wage
             base_pay = daily_wage * attendance_days
-            # Leave deduction for trial = daily wage per leave day
-            leave_deduction = daily_wage * leave_days_count
-            absence_deduction = daily_wage * absence_days_count
         else:  # regular
-            # Formula: 12000 / (total_days - 2) × attendance_days
             adjusted_days = total_days - 2
             if adjusted_days <= 0:
                 adjusted_days = total_days
-            daily_rate = base_salary / adjusted_days
-            base_pay = round(daily_rate * attendance_days, 2)
-            leave_deduction = round(daily_rate * leave_days_count, 2)
-            absence_deduction = round(daily_rate * absence_days_count, 2)
+            effective_daily = base_salary / adjusted_days  # 日薪
+            hourly_rate = effective_daily / 8  # 时薪
+            base_pay = round(effective_daily * attendance_days, 2)
 
-        # Overtime pay
+        # Late penalty: half hour = hourly_rate * 0.5, one hour = hourly_rate
+        late_penalty_total = round(
+            late_half_count * hourly_rate * 0.5 +
+            late_one_count * hourly_rate,
+            2
+        )
+
+        # Leave/Absence deductions
+        leave_deduction = round(effective_daily * leave_days_count, 2)
+        absence_deduction = round(effective_daily * absence_days_count, 2)
+
+        # Overtime
         ot = overtime_map.get(emp.id, {})
         overtime_pay = ot.get("amount", 0)
         overtime_hours = ot.get("hours", 0)
 
-        # Gross and net
+        # Gross & net
         total_deductions = late_penalty_total + leave_deduction + absence_deduction
         gross_pay = base_pay + overtime_pay
         net_pay = round(gross_pay - total_deductions, 2)
 
-        # Detail JSON
         detail_data = {
             "attendance_days": attendance_days,
             "leave_days": leave_days_count,
             "rest_days": rest_days_count,
             "absence_days": absence_days_count,
+            "late_half_count": late_half_count,
+            "late_one_count": late_one_count,
+            "hourly_rate": round(hourly_rate, 2),
+            "effective_daily": round(effective_daily, 2),
             "late_penalty": late_penalty_total,
             "leave_deduction": leave_deduction,
             "absence_deduction": absence_deduction,
@@ -286,13 +307,11 @@ async def calculate_payroll(
         records.append(record)
 
     await db.flush()
-
     return {
         "message": f"已为 {len(records)} 名员工计算 {req.period} 工资",
         "period": req.period,
         "record_count": len(records),
     }
-
 
 @router.get("")
 async def list_payroll(

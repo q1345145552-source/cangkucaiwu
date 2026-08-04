@@ -15,6 +15,7 @@ router = APIRouter()
 class EmployeeCreate(BaseModel):
     name: str
     position: str = "仓库劳工"
+    user_id: Optional[int] = None  # 关联登录账号
     myanmar_id: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
@@ -37,6 +38,7 @@ class EmployeeUpdate(BaseModel):
     daily_wage: Optional[float] = None
     base_salary: Optional[float] = None
     remark: Optional[str] = None
+    user_id: Optional[int] = None
 
 class ResignRequest(BaseModel):
     reason: str  # voluntary / absconded / fired / contract_end / other
@@ -91,7 +93,8 @@ async def list_employees(
     return {
         "data": [{
             "id": e.id, "warehouse_id": e.warehouse_id, "warehouse_name": wh_map.get(e.warehouse_id, ""),
-            "name": e.name, "position": e.position, "myanmar_id": e.myanmar_id,
+            "name": e.name, "position": e.position,
+            "user_id": e.user_id, "myanmar_id": e.myanmar_id,
             "address": e.address, "phone": e.phone, "emergency_contact": e.emergency_contact,
             "hire_date": e.hire_date.isoformat()[:10] if e.hire_date else None,
             "status": e.status, "daily_wage": e.daily_wage, "base_salary": e.base_salary,
@@ -324,10 +327,13 @@ async def resign_employee(
                     for cr in clock_records
                 )
 
-            # Overtime
+            # Overtime (use user_id from employee link, fallback to name matching uid)
             ot_amount = 0
             ot_hours = 0
-            if uid:
+            ot_uid = uid
+            if not ot_uid and emp.user_id:
+                ot_uid = emp.user_id
+            if ot_uid:
                 from sqlalchemy import func as safunc
                 ot_row = (await db.execute(
                     select(
@@ -336,7 +342,7 @@ async def resign_employee(
                     )
                     .join(OvertimeTask, OvertimeTask.id == OvertimeAssignment.overtime_id)
                     .where(
-                        OvertimeAssignment.user_id == uid,
+                        OvertimeAssignment.user_id == ot_uid,
                         OvertimeAssignment.confirmed == True,
                         OvertimeTask.date >= month_start,
                         OvertimeTask.date <= resign_dt,
@@ -421,7 +427,14 @@ async def resign_employee(
 
 
 async def _find_linked_user(db: AsyncSession, emp: Employee):
-    """Find linked user account for an employee"""
+    """Find linked user account for an employee (by user_id, then by name)"""
+    if emp.user_id:
+        user = (await db.execute(
+            select(User).where(User.id == emp.user_id, User.is_active == True)
+        )).scalar_one_or_none()
+        if user:
+            return user
+    # Fallback to name matching for legacy data
     user = (await db.execute(
         select(User).where(
             User.display_name == emp.name,
@@ -429,13 +442,6 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
             User.is_active == True,
         )
     )).scalar_one_or_none()
-    if not user and emp.phone:
-        user = (await db.execute(
-            select(User).where(
-                User.username == emp.phone,
-                User.role == "warehouse_labor",
-            )
-        )).scalar_one_or_none()
     return user
 
 

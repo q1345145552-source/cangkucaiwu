@@ -9,32 +9,26 @@ from datetime import datetime, date, time
 import os, uuid, base64
 
 router = APIRouter()
-
 UPLOAD_DIR = "/app/uploads"
 
-# Session constants
 SESSIONS = {
-    1: {"label": "早上上班", "time": time(9, 0)},
-    2: {"label": "中午休息结束", "time": time(12, 0)},
-    3: {"label": "下午上班", "time": time(13, 0)},
-    4: {"label": "下午下班", "time": time(18, 0)},
+    1: {"label": "早上上班", "time": time(9, 0),   "window_start": time(6, 0),  "window_end": time(10, 0)},
+    2: {"label": "中午休息结束", "time": time(12, 0), "window_start": time(11, 0), "window_end": time(13, 30)},
+    3: {"label": "下午上班", "time": time(13, 0),  "window_start": time(12, 30),"window_end": time(14, 30)},
+    4: {"label": "下午下班", "time": time(18, 0),  "window_start": time(17, 0), "window_end": time(23, 0)},
 }
 
-
-
-
 def _get_penalty(session: int, clocked_at: datetime) -> dict:
-    """Calculate late penalty for session 1 (morning check-in)"""
+    """Only session 1 tracks late status. Penalty amount computed at payroll time."""
     if session != 1:
         return {"status": "normal", "penalty_amount": 0}
     t = clocked_at.time()
     if t <= time(9, 5):
         return {"status": "normal", "penalty_amount": 0}
     elif t <= time(9, 30):
-        return {"status": "late_half", "penalty_amount": 200}  # 扣半小时工钱 ≈ 200泰铢
+        return {"status": "late_half", "penalty_amount": 0}  # amount computed at payroll
     else:
-        return {"status": "late_one", "penalty_amount": 400}  # 扣1小时工钱 ≈ 400泰铢
-
+        return {"status": "late_one", "penalty_amount": 0}
 
 @router.post("")
 async def clock_in(
@@ -50,6 +44,17 @@ async def clock_in(
 
     today = date.today()
     now = datetime.now()
+    now_t = now.time()
+
+    # Time window check
+    si = SESSIONS[session]
+    ws = si["window_start"]
+    we = si["window_end"]
+    if now_t < ws or now_t > we:
+        return {
+            "message": f"不在{si['label']}打卡时间内（{ws.strftime('%H:%M')}-{we.strftime('%H:%M')}）",
+            "outside_window": True,
+        }
 
     # Check duplicate
     existing = (await db.execute(
@@ -60,7 +65,7 @@ async def clock_in(
         )
     )).scalar_one_or_none()
     if existing:
-        return {"message": f"今日{SESSIONS[session]['label']}已打卡", "clocked_in_at": existing.clocked_in_at.isoformat(), "duplicate": True}
+        return {"message": f"今日{si['label']}已打卡", "clocked_in_at": existing.clocked_in_at.isoformat(), "duplicate": True}
 
     # Save photo
     photo_path = None
@@ -78,7 +83,7 @@ async def clock_in(
                 f.write(img_bytes)
             photo_path = f"uploads/{wh_id}/{today_str}/clockin/{fname}"
         except Exception:
-            pass  # photo save failure shouldn't block clock-in
+            pass
 
     wh_id = get_wh_id(current_user)
     penalty = _get_penalty(session, now)
@@ -90,24 +95,23 @@ async def clock_in(
         clocked_in_at=now,
         photo_path=photo_path,
         status=penalty["status"],
-        penalty_amount=penalty["penalty_amount"],
+        penalty_amount=0,  # computed at payroll time
     )
     db.add(record)
     await db.flush()
 
-    msg = f"{SESSIONS[session]['label']}打卡成功"
+    msg = f"{si['label']}打卡成功"
     if penalty["status"] != "normal":
-        msg += f"，迟到扣{penalty['penalty_amount']}泰铢"
+        msg += "（迟到，月底结算时扣款）"
 
     return {
         "message": msg,
         "session": session,
         "clocked_in_at": record.clocked_in_at.isoformat(),
         "status": penalty["status"],
-        "penalty_amount": penalty["penalty_amount"],
+        "penalty_amount": 0,
         "photo_path": photo_path,
     }
-
 
 @router.get("/today")
 async def get_today(
@@ -116,7 +120,6 @@ async def get_today(
 ):
     if current_user.role not in (Role.WAREHOUSE_LABOR,):
         raise HTTPException(403, "无权限")
-
     today = date.today()
     records = (await db.execute(
         select(ClockInRecord).where(
@@ -124,19 +127,18 @@ async def get_today(
             ClockInRecord.clock_date == today,
         ).order_by(ClockInRecord.session)
     )).scalars().all()
-
     completed = {r.session: {
         "session": r.session, "label": SESSIONS.get(r.session, {}).get("label", ""),
         "clocked_in_at": r.clocked_in_at.isoformat(), "status": r.status,
         "penalty_amount": r.penalty_amount, "photo_path": r.photo_path,
     } for r in records}
-
     return {
         "today": today.isoformat(),
-        "sessions": [{"session": s, "label": v["label"], "time": str(v["time"])} for s, v in SESSIONS.items()],
+        "sessions": [{"session": s, "label": v["label"], "time": str(v["time"]),
+                       "window_start": str(v["window_start"]), "window_end": str(v["window_end"])}
+                      for s, v in SESSIONS.items()],
         "completed": completed,
     }
-
 
 @router.get("/records")
 async def list_records(
@@ -144,32 +146,24 @@ async def list_records(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Query by month (YYYY-MM) for the warehouse admin to review"""
     from app.models.employee import Employee
-    from app.models.warehouse import Warehouse
-
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR):
         raise HTTPException(403, "无权限")
-
     query = select(ClockInRecord)
     if current_user.role == Role.WAREHOUSE_LABOR:
         query = query.where(ClockInRecord.user_id == current_user.id)
     else:
         from app.core.permissions import get_wh_ids
         query = query.where(ClockInRecord.warehouse_id.in_(get_wh_ids(current_user)))
-
     if month:
         query = query.where(func.to_char(ClockInRecord.clock_date, "YYYY-MM") == month)
-
     result = await db.execute(query.order_by(ClockInRecord.clock_date.desc(), ClockInRecord.session))
     records = result.scalars().all()
-
     uid_set = {r.user_id for r in records}
     users_map = {}
     if uid_set:
         us = (await db.execute(select(User).where(User.id.in_(uid_set)))).scalars().all()
         users_map = {u.id: u.display_name for u in us}
-
     return {"data": [{
         "id": r.id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
         "clock_date": r.clock_date.isoformat(), "session": r.session,
@@ -178,6 +172,3 @@ async def list_records(
         "status": r.status, "penalty_amount": r.penalty_amount,
         "photo_path": r.photo_path,
     } for r in records]}
-
-
-# Need to update router registration: keep the existing import in router.py unchanged
