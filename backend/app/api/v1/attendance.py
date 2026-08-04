@@ -319,7 +319,7 @@ async def get_calendar(
         raise HTTPException(403, "无权限")
 
     try:
-        ym = datetime.strptime(month, "%Y-%m")
+        ym = datetime.strptime(month, "%Y-%m").date()
     except:
         raise HTTPException(400, "月份格式错误 YYYY-MM")
 
@@ -349,18 +349,36 @@ async def get_calendar(
 
     emp_ids = [e.id for e in emps]
 
-    # Get all clock-in records for this month
-    clock_records = (await db.execute(
-        select(ClockInRecord).where(
-            ClockInRecord.user_id.in_([e.id for e in emps]),
-            ClockInRecord.clock_date >= month_start,
-            ClockInRecord.clock_date <= month_end,
-        )
+    # Build employee_id -> user_id mapping (match by employee name to user display_name)
+    emp_names = {e.name: e.id for e in emps}
+    labor_users = (await db.execute(
+        select(User).where(User.role == "warehouse_labor", User.is_active == True)
     )).scalars().all()
+    emp_to_user = {}  # employee_id -> user_id
+    user_to_emp = {}  # user_id -> employee_id
+    for u in labor_users:
+        if u.display_name in emp_names:
+            eid = emp_names[u.display_name]
+            emp_to_user[eid] = u.id
+            user_to_emp[u.id] = eid
+
+    # Get all clock-in records for this month, using actual user IDs
+    user_ids = list(emp_to_user.values())
+    if user_ids:
+        clock_records = (await db.execute(
+            select(ClockInRecord).where(
+                ClockInRecord.user_id.in_(user_ids),
+                ClockInRecord.clock_date >= month_start,
+                ClockInRecord.clock_date <= month_end,
+            )
+        )).scalars().all()
+    else:
+        clock_records = []
     clock_map = {}
     for cr in clock_records:
-        k = (cr.user_id if hasattr(cr, 'user_id') else getattr(cr, 'employee_id', None), cr.clock_date)
-        if k[0]:
+        eid = user_to_emp.get(cr.user_id)
+        if eid:
+            k = (eid, cr.clock_date)
             if k not in clock_map:
                 clock_map[k] = []
             clock_map[k].append(cr)
@@ -418,22 +436,21 @@ async def get_calendar(
             dt = month_start + timedelta(days=d)
             statuses = []
 
-            # Check clock-in
-            key = (e.id, dt)
-            if key in clock_map:
-                sessions = clock_map[key]
+            # Check leave/rest/absence FIRST (applies to all dates)
+            if (e.id, dt) in leave_set:
+                statuses.append("leave")
+            elif (e.id, dt) in rest_set:
+                statuses.append("rest")
+            elif (e.id, dt) in absence_map:
+                statuses.append("absent")
+            # Then check clock-in
+            elif (e.id, dt) in clock_map:
+                sessions = clock_map[(e.id, dt)]
                 has_late = any(cr.status in ("late_half", "late_one") for cr in sessions)
                 statuses.append("late" if has_late else "present")
             elif dt <= date.today():
-                # Past date without clock-in: check leave/rest/absence
-                if (e.id, dt) in leave_set:
-                    statuses.append("leave")
-                elif (e.id, dt) in rest_set:
-                    statuses.append("rest")
-                elif (e.id, dt) in absence_map:
-                    statuses.append("absent")
-                else:
-                    statuses.append("missing")
+                # Past date without clock-in
+                statuses.append("missing")
             else:
                 statuses.append("future")
 

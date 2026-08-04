@@ -69,7 +69,7 @@ const navItems: NavItem[] = [
   },
   {
     key: "settings_group", label: "settings_group", icon: <Settings size={20} />,
-    roles: ["super_admin", "warehouse_admin", "staff"],
+    roles: ["super_admin", "warehouse_admin", "staff", "warehouse_labor"],
     children: [
       { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff"] },
       { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin"] },
