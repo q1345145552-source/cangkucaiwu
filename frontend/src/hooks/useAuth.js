@@ -22,10 +22,8 @@ export function AuthProvider({ children }) {
     const res = await api.post("/auth/login", { username, password });
     setToken(res.access_token);
     
-    // Save warehouse list
     if (res.warehouses && res.warehouses.length > 0) {
       localStorage.setItem("warehouses", JSON.stringify(res.warehouses));
-      // Auto-select first warehouse
       setActiveWarehouseId(res.warehouses[0].id);
     }
     
@@ -42,7 +40,13 @@ export function AuthProvider({ children }) {
     };
     setUser(u);
     localStorage.setItem("user", JSON.stringify(u));
-    router.push("/dashboard");
+    
+    // 仓库劳工默认进打卡页，其他人进仪表盘
+    if (res.role === "warehouse_labor") {
+      router.push("/clock-in");
+    } else {
+      router.push("/dashboard");
+    }
   }
 
   function doLogout() {
