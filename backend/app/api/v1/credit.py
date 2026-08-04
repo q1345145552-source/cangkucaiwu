@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date
 from app.database import get_db
 from app.models.credit import CreditCustomer, CreditRepayment, CreditShipment, CreditStatus
@@ -58,7 +59,7 @@ async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
     )).scalar()
 
     ref_date = last_repay or last_ship
-    today = date.today()
+    today = thai_today()
     if ref_date:
         if isinstance(ref_date, datetime):
             ref_date = ref_date.date()
@@ -121,7 +122,7 @@ async def list_credit_customers(
         last_ship_rows = (await db.execute(select(last_ship_sub))).all()
         repay_date_map = {row[0]: row[1] for row in last_repay_rows}
         ship_date_map = {row[0]: row[1] for row in last_ship_rows}
-        today = date.today()
+        today = thai_today()
         for cid in all_cids:
             s_total = ship_totals.get(cid, 0)
             r_total = repay_totals.get(cid, 0)
@@ -371,7 +372,7 @@ async def _compute_assessment(
         custs = (await db.execute(select(Customer).where(Customer.id.in_(cids)))).scalars().all()
         cmap = {c.id: {"name": c.company_name, "created_at": c.created_at} for c in custs}
 
-    today = date.today()
+    today = thai_today()
     data = []
     for r in records:
         cust_info = cmap.get(r.customer_id, {"name": "", "created_at": None})

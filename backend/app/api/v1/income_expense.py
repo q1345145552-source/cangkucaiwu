@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
 from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpenseCategory, IncomeExpenseType, CategoryStatus
@@ -255,7 +256,7 @@ async def ledger(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
-    today = __import__('datetime').date.today()
+    today = __import__('datetime').thai_today()
     cur_month = f"{today.year}-{today.month:02d}"
 
     # Build SQL UNION ALL for pagination at DB level
@@ -601,7 +602,7 @@ async def operating_dashboard(
     from datetime import date, timedelta
     import calendar
 
-    today = date.today()
+    today = thai_today()
     months_list = []
     for i in range(11, -1, -1):
         m = today.month - i; y = today.year

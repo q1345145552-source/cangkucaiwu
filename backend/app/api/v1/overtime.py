@@ -7,6 +7,7 @@ from app.models.employee import Employee
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel, field_validator
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date
 from typing import Optional, List
 
@@ -167,7 +168,7 @@ async def confirm_overtime(
         raise HTTPException(400, "您已确认过该加班任务")
 
     assignment.confirmed = True
-    assignment.confirmed_at = datetime.now()
+    assignment.confirmed_at = thai_now()
     await db.flush()
 
     # Check if all confirmed → mark task completed
@@ -344,7 +345,7 @@ async def monthly_hours(
     db: AsyncSession = Depends(get_db),
 ):
     if month is None:
-        month = date.today().strftime("%Y-%m")
+        month = thai_today().strftime("%Y-%m")
 
     if current_user.role == Role.WAREHOUSE_LABOR:
         hours = await _get_monthly_overtime_hours(db, current_user.id, month + "-01")
@@ -430,7 +431,7 @@ async def set_overtime_limit(
     if setting:
         setting.value = str(req.max_hours)
         setting.updated_by = current_user.id
-        setting.updated_at = datetime.now()
+        setting.updated_at = thai_now()
     else:
         setting = SystemSetting(
             warehouse_id=wh_id,

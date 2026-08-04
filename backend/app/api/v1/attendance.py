@@ -10,6 +10,7 @@ from app.models.warehouse import Warehouse
 
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date, timedelta
 from typing import Optional, List
 import os, uuid
@@ -85,7 +86,7 @@ async def create_leave(
         try:
             ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
             content = await file.read()
-            today_str = date.today().isoformat()
+            today_str = thai_today().isoformat()
             subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "leaves")
             os.makedirs(subdir, exist_ok=True)
             fname = f"{uuid.uuid4().hex}.{ext}"
@@ -150,7 +151,7 @@ async def approve_leave(leave_id: int, current_user: User = Depends(get_current_
     if lr.warehouse_id not in wh_ids: raise HTTPException(403, "无权审批其他仓库的申请")
     lr.status = "approved"
     lr.reviewed_by = current_user.id
-    lr.reviewed_at = datetime.now()
+    lr.reviewed_at = thai_now()
     await db.flush()
     return {"message": "已批准"}
 
@@ -165,7 +166,7 @@ async def reject_leave(leave_id: int, reason: str = Form(None), current_user: Us
     lr.status = "rejected"
     lr.reason = reason or lr.reason
     lr.reviewed_by = current_user.id
-    lr.reviewed_at = datetime.now()
+    lr.reviewed_at = thai_now()
     await db.flush()
     return {"message": "已驳回"}
 
@@ -448,7 +449,7 @@ async def get_calendar(
                 sessions = clock_map[(e.id, dt)]
                 has_late = any(cr.status in ("late_half", "late_one") for cr in sessions)
                 statuses.append("late" if has_late else "present")
-            elif dt <= date.today():
+            elif dt <= thai_today():
                 # Past date without clock-in
                 statuses.append("missing")
             else:

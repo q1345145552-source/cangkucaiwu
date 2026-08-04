@@ -10,6 +10,7 @@ from app.models.overtime import OvertimeAssignment, OvertimeTask
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date, timedelta
 from typing import Optional, List
 import calendar
@@ -432,7 +433,7 @@ async def confirm_payroll(
 
     r.status = "confirmed"
     r.confirmed_by = current_user.id
-    r.confirmed_at = datetime.now()
+    r.confirmed_at = thai_now()
     await db.flush()
     return {"message": "工资单已确认", "id": r.id, "net_pay": r.net_pay}
 
@@ -458,7 +459,7 @@ async def confirm_all_payroll(
     if not records:
         raise HTTPException(404, f"{period} 没有待确认的工资单")
 
-    now = datetime.now()
+    now = thai_now()
     total_net = 0
     for r in records:
         r.status = "confirmed"
@@ -571,7 +572,7 @@ async def disburse_payroll(
             pass
 
     r.disbursed = True
-    r.disbursed_at = datetime.now()
+    r.disbursed_at = thai_now()
     r.disbursed_by = current_user.id
     r.signature_path = sig_path
     await db.flush()

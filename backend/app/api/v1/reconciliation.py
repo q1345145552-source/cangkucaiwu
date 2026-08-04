@@ -2,6 +2,7 @@ from fastapi.responses import StreamingResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date, timedelta
 from app.database import get_db
 from app.models.recharge import RechargeDeclaration, IncomingFlow, ReconciliationResult, ReconMatchStatus, MatchStatus
@@ -25,7 +26,7 @@ async def get_unmatched(
         if warehouse_id and warehouse_id != get_wh_id(current_user):
             raise HTTPException(403, "无权查看其他仓库")
         wh_id = get_wh_id(current_user)
-    today = date.today()
+    today = thai_today()
     sd = datetime.fromisoformat(start_date) if start_date else datetime(today.year, today.month, 1)
     ed = datetime.fromisoformat(end_date) if end_date else datetime(today.year, today.month, today.day) + timedelta(days=1) - timedelta(microseconds=1)
 
@@ -88,7 +89,7 @@ async def manual_match(
             raise HTTPException(403, "只能匹配自己仓库的记录")
     rr = ReconciliationResult(
         warehouse_id=decl.warehouse_id,
-        reconciliation_month=decl.declare_date.strftime("%Y-%m") if decl.declare_date else datetime.now().strftime("%Y-%m"),
+        reconciliation_month=decl.declare_date.strftime("%Y-%m") if decl.declare_date else thai_now().strftime("%Y-%m"),
         declaration_id=decl.id, flow_id=flow.id,
         match_status=ReconMatchStatus.MANUAL_MATCHED,
         amount_diff=abs(decl.amount - flow.amount),

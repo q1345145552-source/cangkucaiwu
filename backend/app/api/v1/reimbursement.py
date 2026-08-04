@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory, ReimbStatus
@@ -312,7 +313,7 @@ async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user
     if not r: raise HTTPException(404, "报销单不存在")
     if r.status not in (ReimbStatus.APPROVED.value, ReimbStatus.PARTIALLY_APPROVED.value):
         raise HTTPException(400, "仅已审批状态可付款")
-    r.status = ReimbStatus.PAID.value; r.paid_at = datetime.now()
+    r.status = ReimbStatus.PAID.value; r.paid_at = thai_now()
     await db.flush(); return {"message": "已标记付款"}
 
 

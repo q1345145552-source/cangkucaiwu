@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text as sa_text
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
 from app.models.audit_log import AuditLog
@@ -85,4 +86,4 @@ async def backup_all_data(current_user: User = Depends(get_current_user),
         del wb["Sheet"]
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            headers={"Content-Disposition": f"attachment; filename=backup_{datetime.now().strftime('%Y%m%d')}.xlsx"})
+                            headers={"Content-Disposition": f"attachment; filename=backup_{thai_now().strftime('%Y%m%d')}.xlsx"})

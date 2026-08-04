@@ -9,6 +9,7 @@ from app.models.payable import PayableBill
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
 from typing import Optional, List
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime, timedelta
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
 import io
@@ -307,7 +308,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         })
         total += subtotal
     total = round(total, 2)
-    now = datetime.now()
+    now = thai_now()
     order_number = f"PO{now.strftime('%Y%m%d%H%M%S')}{supplier_id}"
     po = PurchaseOrder(
         warehouse_id=wh_id, supplier_id=supplier_id,
@@ -621,7 +622,7 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     from sqlalchemy import extract
 
     wh_id = get_wh_id(current_user) if current_user.role != Role.SUPER_ADMIN else None
-    today = date.today()
+    today = thai_today()
     this_month_start = today.replace(day=1)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
     last_month_end = this_month_start - timedelta(days=1)

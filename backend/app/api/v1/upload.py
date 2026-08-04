@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import os, uuid
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
 from app.core.permissions import get_current_user, get_wh_id
@@ -12,7 +13,7 @@ router = APIRouter()
 UPLOAD_DIR = "/app/uploads"
 
 def get_upload_path(user, subdir: str = "") -> str:
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = thai_now().strftime("%Y-%m-%d")
     wh = user.warehouse_id or 0
     return os.path.join(subdir, str(wh), today)
 
@@ -30,7 +31,7 @@ async def upload_file(
         raise HTTPException(400, "文件大小不能超过10MB")
 
     # Build path: uploads/warehouse_id/date/uuid.ext
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = thai_now().strftime("%Y-%m-%d")
     wh_id = str(get_wh_id(current_user) or 0)
     subdir = os.path.join(UPLOAD_DIR, wh_id, today)
     os.makedirs(subdir, exist_ok=True)
@@ -61,7 +62,7 @@ async def upload_recharge_screenshot(
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(400, "文件不能超过10MB")
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = thai_now().strftime("%Y-%m-%d")
     wh_id = str(rec.warehouse_id)
     subdir = os.path.join(UPLOAD_DIR, wh_id, today, "recharge")
     os.makedirs(subdir, exist_ok=True)

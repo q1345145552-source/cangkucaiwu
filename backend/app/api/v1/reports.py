@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
 from app.models.recharge import RechargeDeclaration, IncomingFlow, ReconciliationResult
@@ -46,7 +47,7 @@ def to_excel(headers, rows, sheet_name="Sheet1"):
         for c, val in enumerate(row, 1): ws.cell(row=r, column=c, value=val)
     output = io.BytesIO(); wb.save(output); output.seek(0)
     safe_name = _FILENAME_MAP.get(sheet_name, sheet_name.replace(" ", "_"))
-    filename = f"{safe_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    filename = f"{safe_name}_{thai_now().strftime('%Y%m%d')}.xlsx"
     # Use RFC 5987 encoding for safe filename delivery
     from urllib.parse import quote
     encoded = quote(filename)
@@ -65,7 +66,7 @@ async def report_previews(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_ids = get_wh_ids(current_user)
-    today = __import__('datetime').date.today()
+    today = __import__('datetime').thai_today()
     m = month or f"{today.year}-{today.month:02d}"
 
     previews = {}

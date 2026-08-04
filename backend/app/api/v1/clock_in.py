@@ -5,6 +5,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
 from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date, time
 import os, uuid, base64
 
@@ -42,8 +43,8 @@ async def clock_in(
     if session not in SESSIONS:
         raise HTTPException(400, "无效的打卡时段")
 
-    today = date.today()
-    now = datetime.now()
+    today = thai_today()
+    now = thai_now()
     now_t = now.time()
 
     # Time window check
@@ -120,7 +121,7 @@ async def get_today(
 ):
     if current_user.role not in (Role.WAREHOUSE_LABOR,):
         raise HTTPException(403, "无权限")
-    today = date.today()
+    today = thai_today()
     records = (await db.execute(
         select(ClockInRecord).where(
             ClockInRecord.user_id == current_user.id,

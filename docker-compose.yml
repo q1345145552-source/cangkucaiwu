@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:16-alpine
     environment:
+      TZ: Asia/Bangkok
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: warehouse_finance
@@ -34,6 +35,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      TZ: Asia/Bangkok
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/warehouse_finance
       SECRET_KEY: warehouse-finance-secret-key-2026
     volumes:
@@ -47,6 +49,7 @@ services:
     depends_on:
       - backend
     environment:
+      TZ: Asia/Bangkok
       NEXT_PUBLIC_API_URL: /api/v1
     volumes:
       - ./frontend:/app

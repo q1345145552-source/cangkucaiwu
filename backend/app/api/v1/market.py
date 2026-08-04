@@ -8,6 +8,7 @@ from app.models.warehouse import Warehouse
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_role
 from pydantic import BaseModel
 from typing import Optional
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 
 router = APIRouter()
@@ -105,7 +106,7 @@ async def review_item(item_id: int, req: MarketReview, current_user: User = Depe
     i = result.scalar_one_or_none()
     if not i: raise HTTPException(404, "商品不存在")
     i.status = req.status; i.review_remark = req.review_remark
-    i.reviewer_id = current_user.id; i.reviewed_at = datetime.now()
+    i.reviewer_id = current_user.id; i.reviewed_at = thai_now()
     await db.flush(); return {"message": f"审核{'通过' if req.status == 'approved' else '驳回'}"}
 
 @router.post("/{item_id}/purchase")

@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Clock, Camera, CheckCircle2, AlertTriangle, Image, X } from "lucide-react";
+import { formatThaiTime, formatThaiDate } from "@/lib/thai-time";
 
 const SESSION_LABELS: Record<number, { label: string; time: string }> = {
   1: { label: "早上上班", time: "09:00" },
@@ -12,6 +13,25 @@ const SESSION_LABELS: Record<number, { label: string; time: string }> = {
   3: { label: "下午上班", time: "13:00" },
   4: { label: "下午下班", time: "18:00" },
 };
+
+function useThaiClock() {
+  const [time, setTime] = useState<Date>(() => {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    return new Date(utc + 7 * 60 * 60000);
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+      setTime(new Date(utc + 7 * 60 * 60000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return time;
+}
 
 export default function ClockInPage() {
   const { toast } = useToast();
@@ -22,6 +42,7 @@ export default function ClockInPage() {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [currentSession, setCurrentSession] = useState<number | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const thaiTime = useThaiClock();
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
@@ -44,7 +65,6 @@ export default function ClockInPage() {
   function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = () => {
       setPreviewPhoto(reader.result as string);
@@ -55,12 +75,10 @@ export default function ClockInPage() {
   async function confirmClockIn() {
     if (!previewPhoto || !currentSession) return;
     setLoading(prev => ({ ...prev, [currentSession!]: true }));
-
     try {
       const formData = new FormData();
       formData.append("session", String(currentSession));
       formData.append("photo_base64", previewPhoto);
-
       const token = getToken();
       const res = await fetch("/api/v1/clock-in", {
         method: "POST",
@@ -89,21 +107,22 @@ export default function ClockInPage() {
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
+      {/* Header with live clock */}
+      <div className="text-center space-y-3">
         <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
           <ClipboardCheck size={32} className="text-blue-600" />
         </div>
         <h1 className="text-2xl font-bold text-gray-800">打卡签到</h1>
-        <p className="text-gray-500">
-          {user?.display_name}，今天 {now.toLocaleDateString("zh-CN")}
-        </p>
+        <p className="text-gray-500">{user?.display_name}，{formatThaiDate(thaiTime)}</p>
+
+        {/* Live Thailand clock */}
+        <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2">
+          <Clock size={18} className="text-blue-500" />
+          <span className="text-xl font-mono font-bold text-blue-700">{formatThaiTime(thaiTime)}</span>
+          <span className="text-xs text-blue-400">泰国时间</span>
+        </div>
       </div>
 
       {/* Photo Preview Modal */}
@@ -118,7 +137,7 @@ export default function ClockInPage() {
             <div className="p-4">
               <img src={previewPhoto} alt="打卡照片" className="w-full rounded-lg max-h-64 object-cover" />
               <p className="text-sm text-gray-500 mt-2 text-center">
-                {SESSION_LABELS[currentSession!]?.label} 打卡
+                {SESSION_LABELS[currentSession!]?.label} 打卡 · 泰国时间 {formatThaiTime()}
               </p>
               <div className="flex gap-3 mt-4">
                 <button onClick={cancelPhoto} className="flex-1 py-2 border rounded-lg text-sm">重新拍照</button>
@@ -133,7 +152,6 @@ export default function ClockInPage() {
         </div>
       )}
 
-      {/* Hidden camera input */}
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment"
         onChange={handlePhotoSelected} className="hidden" />
 
@@ -157,16 +175,16 @@ export default function ClockInPage() {
                     <span className="text-sm font-medium">已打卡</span>
                   </div>
                   <div className="text-xs text-gray-400">
-                    {new Date(done.clocked_in_at).toLocaleTimeString("zh-CN")}
+                    {new Date(done.clocked_in_at).toLocaleTimeString("zh-CN", { timeZone: "Asia/Bangkok" })}
                   </div>
                   {done.status === "late_half" && (
                     <div className="text-xs text-orange-500 flex items-center justify-center gap-1 mt-1">
-                      <AlertTriangle size={12} />迟到扣200泰铢
+                      <AlertTriangle size={12} />迟到（月底结算扣款）
                     </div>
                   )}
                   {done.status === "late_one" && (
                     <div className="text-xs text-red-500 flex items-center justify-center gap-1 mt-1">
-                      <AlertTriangle size={12} />迟到扣400泰铢
+                      <AlertTriangle size={12} />严重迟到（月底结算扣款）
                     </div>
                   )}
                   {done.photo_path && (
@@ -190,8 +208,8 @@ export default function ClockInPage() {
 
       {/* Legend */}
       <div className="text-center text-xs text-gray-400 space-y-1">
-        <p>早上9:05前打卡正常，9:05-9:30迟到扣半小时工钱，9:31后扣1小时工钱</p>
-        <p>其他时段仅记录时间，无迟到惩罚</p>
+        <p>早上9:05前打卡正常，9:05-9:30迟到扣半小时，9:31后扣一小时（按日薪折算）</p>
+        <p>各时段仅限窗口时间内打卡，其他时段记录时间无惩罚</p>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ from fastapi.responses import StreamingResponse
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
 from app.models.payable import PayableBill, PayablePlan, PlanTemplate, PayableStatus, PlanStatus, MonthlyOrderVolume
@@ -59,7 +60,7 @@ async def list_bills(
     import sqlalchemy
     expire_sql = (
         sql_update(PayableBill)
-        .where(PayableBill.due_date < datetime.now())
+        .where(PayableBill.due_date < thai_now())
         .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
         .values(status=PayableStatus.OVERDUE.value)
     )
@@ -186,7 +187,7 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     if pay > remaining:
         raise HTTPException(400, f"付款金额({pay:,.2f})超过剩余应付({remaining:,.2f})")
     b.paid_amount += pay
-    b.paid_at = datetime.now()
+    b.paid_at = thai_now()
     if payment_method:
         b.payment_method = payment_method
     if b.paid_amount >= b.amount:
@@ -237,7 +238,7 @@ async def payable_stats(current_user: User = Depends(get_current_user),
     from datetime import date
     from sqlalchemy import extract
     wh_id = get_wh_id(current_user)
-    today = date.today()
+    today = thai_today()
 
     def wh(q):
         return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
@@ -291,7 +292,7 @@ async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSe
     import sqlalchemy
     expire_sql = (
         sql_update(PayableBill)
-        .where(PayableBill.due_date < datetime.now())
+        .where(PayableBill.due_date < thai_now())
         .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
         .values(status=PayableStatus.OVERDUE.value)
     )
@@ -380,7 +381,7 @@ async def batch_export(supplier_id: int = None, start_date: str = None, end_date
     import sqlalchemy
     expire_sql = (
         sql_update(PayableBill)
-        .where(PayableBill.due_date < datetime.now())
+        .where(PayableBill.due_date < thai_now())
         .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
         .values(status=PayableStatus.OVERDUE.value)
     )
@@ -449,7 +450,7 @@ async def payable_timeline(current_user: User = Depends(get_current_user), db: A
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from datetime import date, timedelta
-    today = date.today()
+    today = thai_today()
     monday = today - timedelta(days=today.weekday())
     weeks = []
     for w in range(4):
@@ -483,7 +484,7 @@ async def execute_plan(plan_id: int, current_user: User = Depends(get_current_us
         for b in bills:
             if b.status not in (PayableStatus.PAID.value,):
                 b.paid_amount = b.amount
-                b.paid_at = datetime.now()
+                b.paid_at = thai_now()
                 b.payment_method = "银行转账"
                 b.status = PayableStatus.PAID.value
     p.status = PlanStatus.EXECUTED.value
@@ -611,7 +612,7 @@ async def payable_trend(
         sup_result = await db.execute(select(Supplier.id).where(Supplier.category_id == cat.id))
         con_supplier_ids = [r[0] for r in sup_result.all()]
 
-    today = date.today()
+    today = thai_today()
     months_list = []
     for i in range(months - 1, -1, -1):
         m = today.month - i; y = today.year
