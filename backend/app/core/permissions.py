@@ -103,12 +103,16 @@ async def get_current_user(
 
 def get_wh_id(user) -> int | None:
     """Returns a single warehouse_id for CREATE operations. Uses header-selected warehouse first."""
-    wh = getattr(user, '_active_wh_id', None) or user.warehouse_id
-    if wh is None:
-        ids = get_wh_ids(user)
-        if ids:
-            return ids[0]
-    return wh
+    wh = getattr(user, '_active_wh_id', None)
+    if wh is not None:
+        return wh
+    wh = user.warehouse_id
+    if wh is not None:
+        return wh
+    _ids = getattr(user, '_warehouse_ids', None)
+    if _ids:
+        return _ids[0]
+    return None
 
 
 def get_wh_ids(user) -> list:
@@ -117,7 +121,10 @@ def get_wh_ids(user) -> list:
     _all = getattr(user, '_all_warehouse_ids', None)
     if _all:
         return _all
-    wh = get_wh_id(user)
+    _ids = getattr(user, '_warehouse_ids', None)
+    if _ids:
+        return _ids
+    wh = user.warehouse_id
     return [wh] if wh else []
 
 def require_role(*roles: Role):
