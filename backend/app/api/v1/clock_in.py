@@ -150,20 +150,34 @@ async def list_records(
     from app.models.employee import Employee
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
+
+    # Determine warehouse scope
+    active_wh = get_wh_id(current_user) if current_user.role != Role.SUPER_ADMIN else None
+
+    # Get active employees in scope
+    emp_q = select(Employee).where(Employee.status != "resigned")
+    if current_user.role == Role.SUPER_ADMIN:
+        pass
+    elif current_user.role == Role.WAREHOUSE_LABOR:
+        emp_q = emp_q.where(Employee.user_id == current_user.id)
+    elif active_wh:
+        emp_q = emp_q.where(Employee.warehouse_id == active_wh)
+    emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
+
+    # Get clock-in records
     query = select(ClockInRecord)
     if current_user.role == Role.WAREHOUSE_LABOR:
         query = query.where(ClockInRecord.user_id == current_user.id)
     elif current_user.role == Role.SUPER_ADMIN:
-        pass  # super_admin sees all records
-    else:
-        # Filter by active (header-selected) warehouse, not all warehouses
-        active_wh = get_wh_id(current_user)
-        if active_wh:
-            query = query.where(ClockInRecord.warehouse_id == active_wh)
+        pass
+    elif active_wh:
+        query = query.where(ClockInRecord.warehouse_id == active_wh)
     if month:
         query = query.where(func.to_char(ClockInRecord.clock_date, "YYYY-MM") == month)
-    result = await db.execute(query.order_by(ClockInRecord.clock_date.desc(), ClockInRecord.session))
+    result = await db.execute(query.order_by(ClockInRecord.clock_date.asc(), ClockInRecord.session))
     records = result.scalars().all()
+
+    # Maps
     uid_set = {r.user_id for r in records}
     users_map = {}
     if uid_set:
@@ -171,17 +185,24 @@ async def list_records(
         users_map = {u.id: u.display_name for u in us}
     emp_map = {}
     if uid_set:
-        emps = (await db.execute(select(Employee).where(Employee.user_id.in_(uid_set)))).scalars().all()
-        emp_map = {e.user_id: e.id for e in emps}
-    return {"data": [{
-        "id": r.id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
-        "employee_id": emp_map.get(r.user_id),
-        "clock_date": r.clock_date.isoformat(), "session": r.session,
-        "label": SESSIONS.get(r.session, {}).get("label", ""),
-        "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
-        "status": r.status, "penalty_amount": r.penalty_amount,
-        "photo_path": r.photo_path,
-    } for r in records]}
+        e2s = (await db.execute(select(Employee).where(Employee.user_id.in_(uid_set)))).scalars().all()
+        emp_map = {e.user_id: e.id for e in e2s}
+
+    return {
+        "employees": [{
+            "id": e.id, "name": e.name, "position": e.position,
+            "user_id": e.user_id, "status": e.status, "photo_path": e.photo_path,
+        } for e in emps],
+        "records": [{
+            "id": r.id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
+            "employee_id": emp_map.get(r.user_id),
+            "clock_date": r.clock_date.isoformat(), "session": r.session,
+            "label": SESSIONS.get(r.session, {}).get("label", ""),
+            "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
+            "status": r.status, "penalty_amount": r.penalty_amount,
+            "photo_path": r.photo_path,
+        } for r in records],
+    }
 
 @router.get("/photos")
 @router.get("/photos")
