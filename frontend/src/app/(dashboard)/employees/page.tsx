@@ -28,6 +28,7 @@ export default function EmployeesPage() {
   const [newTag, setNewTag] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const defaultForm: any = {
@@ -274,7 +275,7 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {e.photo_path ? (
-                        <img src={`/${e.photo_path}`} className="w-10 h-10 rounded-full object-cover border" />
+                        <img src={`/${e.photo_path}`} className="w-10 h-10 rounded-full object-cover border cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={e => { e.stopPropagation(); setZoomedPhoto(`/${e.photo_path}`); }} />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-bold">
                           {e.name?.[0] || "?"}
@@ -512,7 +513,7 @@ export default function EmployeesPage() {
               <div className="absolute -bottom-8 left-5 flex items-end gap-4">
                 <div className="relative group">
                   {detailEmp.photo_path ? (
-                    <img src={`/${detailEmp.photo_path}`} className="w-20 h-20 rounded-full border-4 border-white object-cover shadow" />
+                    <img src={`/${detailEmp.photo_path}`} className="w-20 h-20 rounded-full border-4 border-white object-cover shadow cursor-pointer hover:scale-105 transition-transform" onClick={() => setZoomedPhoto(`/${detailEmp.photo_path}`)} />
                   ) : (
                     <div className="w-20 h-20 rounded-full border-4 border-white bg-gray-200 flex items-center justify-center text-gray-400 text-2xl font-bold shadow">
                       {detailEmp.name?.[0] || "?"}
@@ -687,6 +688,16 @@ export default function EmployeesPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Photo Zoom Overlay */}
+      {zoomedPhoto && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4" onClick={() => setZoomedPhoto(null)}>
+          <button onClick={() => setZoomedPhoto(null)}
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-4xl z-10 w-12 h-12 flex items-center justify-center">&times;</button>
+          <img src={zoomedPhoto} alt="员工照片" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain"
+            onClick={e => e.stopPropagation()} />
         </div>
       )}
 
