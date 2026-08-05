@@ -50,8 +50,18 @@ export default function AttendancePage() {
   const [absenceEmpId, setAbsenceEmpId] = useState<number>(0);
   const [absenceDate, setAbsenceDate] = useState("");
   const [absenceReason, setAbsenceReason] = useState("");
+  const [photoPopup, setPhotoPopup] = useState<any>(null);
+  const [photoSessions, setPhotoSessions] = useState<any[]>([]);
 
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+
+  async function openPhotoPopup(empId: number, empName: string, dateStr: string) {
+    try {
+      const r = await api.get<any>(`/clock-in/photos?employee_id=${empId}&date=${dateStr}`);
+      setPhotoPopup({ employee_name: empName, date: dateStr });
+      setPhotoSessions(r.sessions || []);
+    } catch {}
+  }
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadCalendar(); loadLeaves(); loadRestDays(); }, [monthStr]);
 
@@ -197,13 +207,9 @@ export default function AttendancePage() {
                     return (
                       <td key={i} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
-                          className={`rounded text-xs py-1 cursor-default ${STATUS_COLORS[status] || "bg-white text-gray-300"} ${isAdmin && (status === "future" || status === "missing") && dt <= today ? "cursor-pointer hover:opacity-80" : ""}`}
-                          title={label}
-                          onClick={() => {
-                            if (isAdmin && dt <= today && (status === "future" || status === "missing")) {
-                              setAbsenceEmpId(emp.id); setAbsenceDate(dt); setShowAbsenceForm(true);
-                            }
-                          }}
+                          className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"}`}
+                          title={label + " - 点击查看打卡照片"}
+                          onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
                           {label.slice(0, 2)}
                         </div>
@@ -374,6 +380,53 @@ export default function AttendancePage() {
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowAbsenceForm(false)} className="btn-secondary px-4 py-2 text-sm">取消</button>
               <button onClick={submitAbsence} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">确认标记</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Popup */}
+      {photoPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPhotoPopup(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
+              <Camera size={20} />
+              <span className="font-semibold">{photoPopup.employee_name} · {photoPopup.date} 打卡照片</span>
+              <button onClick={() => setPhotoPopup(null)} className="ml-auto text-2xl text-blue-200">&times;</button>
+            </div>
+            <div className="p-4 space-y-4">
+              {photoSessions.map((s: any) => (
+                <div key={s.session} className="bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm text-gray-700">
+                      {s.session}. {s.label}
+                    </span>
+                    {s.clocked_in_at ? (
+                      <span className="text-xs text-gray-400">
+                        {new Date(s.clocked_in_at).toLocaleTimeString("zh-CN", { timeZone: "Asia/Bangkok" })}
+                        {s.status !== "normal" && (
+                          <span className={s.status === "late_half" ? "text-orange-500 ml-1" : "text-red-500 ml-1"}>
+                            · 迟到
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">未打卡</span>
+                    )}
+                  </div>
+                  {s.photo_path ? (
+                    <img src={`/${s.photo_path}`} alt={`${s.label}打卡照`}
+                      className="w-full rounded-lg max-h-64 object-cover border" />
+                  ) : (
+                    <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                      📷 未拍照
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
+              <button onClick={() => setPhotoPopup(null)} className="text-sm text-gray-400">关闭</button>
             </div>
           </div>
         </div>

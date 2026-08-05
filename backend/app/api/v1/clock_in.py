@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
@@ -38,7 +38,7 @@ async def clock_in(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_LABOR,):
+    if current_user.role not in (Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "只有仓库劳工可以使用打卡功能")
     if session not in SESSIONS:
         raise HTTPException(400, "无效的打卡时段")
@@ -119,7 +119,7 @@ async def get_today(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_LABOR,):
+    if current_user.role not in (Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
     today = thai_today()
     records = (await db.execute(
@@ -148,14 +148,18 @@ async def list_records(
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.employee import Employee
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
     query = select(ClockInRecord)
     if current_user.role == Role.WAREHOUSE_LABOR:
         query = query.where(ClockInRecord.user_id == current_user.id)
+    elif current_user.role == Role.SUPER_ADMIN:
+        pass  # super_admin sees all records
     else:
-        from app.core.permissions import get_wh_ids
-        query = query.where(ClockInRecord.warehouse_id.in_(get_wh_ids(current_user)))
+        # Filter by active (header-selected) warehouse, not all warehouses
+        active_wh = get_wh_id(current_user)
+        if active_wh:
+            query = query.where(ClockInRecord.warehouse_id == active_wh)
     if month:
         query = query.where(func.to_char(ClockInRecord.clock_date, "YYYY-MM") == month)
     result = await db.execute(query.order_by(ClockInRecord.clock_date.desc(), ClockInRecord.session))
@@ -165,11 +169,110 @@ async def list_records(
     if uid_set:
         us = (await db.execute(select(User).where(User.id.in_(uid_set)))).scalars().all()
         users_map = {u.id: u.display_name for u in us}
+    emp_map = {}
+    if uid_set:
+        emps = (await db.execute(select(Employee).where(Employee.user_id.in_(uid_set)))).scalars().all()
+        emp_map = {e.user_id: e.id for e in emps}
     return {"data": [{
         "id": r.id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
+        "employee_id": emp_map.get(r.user_id),
         "clock_date": r.clock_date.isoformat(), "session": r.session,
         "label": SESSIONS.get(r.session, {}).get("label", ""),
         "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
         "status": r.status, "penalty_amount": r.penalty_amount,
         "photo_path": r.photo_path,
     } for r in records]}
+
+@router.get("/photos")
+async def get_photos(
+    employee_id: int = Query(...),
+    date: str = Query(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin: get all clock-in photos for a specific employee on a specific date"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+        raise HTTPException(403, "只有管理员可以查看打卡照片")
+
+    from app.models.employee import Employee
+
+    # Try employee_id first, then fallback to user_id lookup
+    emp = (await db.execute(
+        select(Employee).where(Employee.id == employee_id)
+    )).scalar_one_or_none()
+    if not emp:
+        # Fallback: perhaps employee_id is actually user_id
+        emp = (await db.execute(
+            select(Employee).where(Employee.user_id == employee_id)
+        )).scalar_one_or_none()
+    if not emp:
+        # Last resort: try matching by user's display_name
+        u = (await db.execute(
+            select(User).where(User.id == employee_id)
+        )).scalar_one_or_none()
+        if u:
+            emp = (await db.execute(
+                select(Employee).where(Employee.name == u.display_name)
+            )).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(404, "员工不存在")
+
+    if current_user.role != Role.SUPER_ADMIN:
+        wh_ids = get_wh_ids(current_user)
+        if emp.warehouse_id not in wh_ids:
+            raise HTTPException(403, "无权查看该员工")
+
+    # Get user_id from employee link
+    uid = emp.user_id
+    if not uid:
+        # Fallback name matching
+        u = (await db.execute(
+            select(User).where(User.display_name == emp.name, User.role == "warehouse_labor")
+        )).scalar_one_or_none()
+        uid = u.id if u else None
+
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except:
+        raise HTTPException(400, "日期格式错误 YYYY-MM-DD")
+
+    records = []
+    if uid:
+        records = (await db.execute(
+            select(ClockInRecord).where(
+                ClockInRecord.user_id == uid,
+                ClockInRecord.clock_date == target_date,
+            ).order_by(ClockInRecord.session)
+        )).scalars().all()
+
+    sessions_data = {}
+    for r in records:
+        sessions_data[r.session] = {
+            "session": r.session,
+            "label": SESSIONS.get(r.session, {}).get("label", ""),
+            "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
+            "status": r.status,
+            "penalty_amount": r.penalty_amount,
+            "photo_path": r.photo_path,
+        }
+
+    all_sessions = []
+    for s in [1, 2, 3, 4]:
+        if s in sessions_data:
+            all_sessions.append(sessions_data[s])
+        else:
+            all_sessions.append({
+                "session": s,
+                "label": SESSIONS.get(s, {}).get("label", ""),
+                "clocked_in_at": None,
+                "status": "missing",
+                "penalty_amount": 0,
+                "photo_path": None,
+            })
+
+    return {
+        "employee_id": employee_id,
+        "employee_name": emp.name,
+        "date": date,
+        "sessions": all_sessions,
+    }

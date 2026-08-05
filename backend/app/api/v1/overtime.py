@@ -481,7 +481,19 @@ async def delete_overtime(
 # ═══ Helpers ═══════════
 
 async def _find_linked_user(db: AsyncSession, emp: Employee):
-    """Try to find a User record linked to this employee by name or phone"""
+    """Find the User linked to this employee via Employee.user_id, fallback to name/phone"""
+    # Primary: use formal Employee.user_id link
+    if emp.user_id:
+        user = (await db.execute(
+            select(User).where(
+                User.id == emp.user_id,
+                User.role == "warehouse_labor",
+                User.is_active == True,
+            )
+        )).scalar_one_or_none()
+        if user:
+            return user
+    # Fallback 1: name matching within same warehouse
     user = (await db.execute(
         select(User).where(
             User.warehouse_id == emp.warehouse_id,

@@ -114,18 +114,30 @@ async def list_leaves(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(LeaveRequest, Employee.name).join(Employee, LeaveRequest.employee_id == Employee.id)
-    if current_user.role in (Role.WAREHOUSE_LABOR, Role.STAFF):
+    if current_user.role == Role.SUPER_ADMIN:
+        pass  # super_admin sees all
+    elif current_user.role in (Role.WAREHOUSE_LABOR, Role.STAFF):
         wh_id = get_wh_id(current_user)
+        # Use user_id link first, fallback to name matching
         emp = (await db.execute(
-            select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name)
+            select(Employee).where(
+                Employee.warehouse_id == wh_id,
+                Employee.user_id == current_user.id,
+            )
         )).scalar_one_or_none()
+        if not emp:
+            emp = (await db.execute(
+                select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name)
+            )).scalar_one_or_none()
         if emp:
             query = query.where(LeaveRequest.employee_id == emp.id)
         else:
             return {"data": []}
     else:
-        wh_ids = get_wh_ids(current_user)
-        query = query.where(LeaveRequest.warehouse_id.in_(wh_ids))
+        # Use active (header-selected) warehouse for warehouse_admin
+        active_wh = get_wh_id(current_user)
+        if active_wh:
+            query = query.where(LeaveRequest.warehouse_id == active_wh)
 
     if month:
         query = query.where(func.to_char(LeaveRequest.leave_date, "YYYY-MM") == month)
@@ -224,12 +236,14 @@ async def list_rest_days(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.WAREHOUSE_LABOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
 
     query = select(RestDay, Employee.name).join(Employee, RestDay.employee_id == Employee.id)
     if current_user.role == Role.WAREHOUSE_ADMIN:
-        query = query.where(RestDay.warehouse_id.in_(get_wh_ids(current_user)))
+        active_wh = get_wh_id(current_user)
+        if active_wh:
+            query = query.where(RestDay.warehouse_id == active_wh)
     else:
         wh_id = get_wh_id(current_user)
         emp = (await db.execute(
@@ -316,7 +330,7 @@ async def get_calendar(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.WAREHOUSE_LABOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
 
     try:
@@ -324,13 +338,20 @@ async def get_calendar(
     except:
         raise HTTPException(400, "月份格式错误 YYYY-MM")
 
-    wh_id = get_wh_id(current_user) if current_user.role != Role.WAREHOUSE_ADMIN else None
+    wh_id = get_wh_id(current_user)
     wh_ids = get_wh_ids(current_user)
 
-    # Get employees
+    # Get employees scoped to the active warehouse
     emp_query = select(Employee).where(Employee.status != "resigned")
-    if current_user.role == Role.WAREHOUSE_ADMIN:
-        emp_query = emp_query.where(Employee.warehouse_id.in_(wh_ids))
+    if current_user.role == Role.SUPER_ADMIN:
+        pass  # super_admin sees all employees
+    elif current_user.role == Role.WAREHOUSE_ADMIN:
+        # Use active (header-selected) warehouse, not all warehouses
+        active_wh_id = get_wh_id(current_user)
+        if active_wh_id:
+            emp_query = emp_query.where(Employee.warehouse_id == active_wh_id)
+        else:
+            emp_query = emp_query.where(Employee.warehouse_id.in_(wh_ids))
     elif current_user.role in (Role.STAFF, Role.WAREHOUSE_LABOR):
         emp = (await db.execute(
             select(Employee.id).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name)
@@ -351,23 +372,20 @@ async def get_calendar(
     emp_ids = [e.id for e in emps]
 
     # Build employee_id -> user_id mapping (match by employee name to user display_name)
-    emp_names = {e.name: e.id for e in emps}
-    labor_users = (await db.execute(
-        select(User).where(User.role == "warehouse_labor", User.is_active == True)
-    )).scalars().all()
+    # Build employee_id <-> user_id mapping via the formal Employee.user_id link (NOT name matching)
     emp_to_user = {}  # employee_id -> user_id
     user_to_emp = {}  # user_id -> employee_id
-    for u in labor_users:
-        if u.display_name in emp_names:
-            eid = emp_names[u.display_name]
-            emp_to_user[eid] = u.id
-            user_to_emp[u.id] = eid
+    for e in emps:
+        if e.user_id:
+            emp_to_user[e.id] = e.user_id
+            user_to_emp[e.user_id] = e.id
 
-    # Get all clock-in records for this month, using actual user IDs
+    # Get all clock-in records for this month, filtered by warehouse_id AND user_ids
     user_ids = list(emp_to_user.values())
     if user_ids:
         clock_records = (await db.execute(
             select(ClockInRecord).where(
+                ClockInRecord.warehouse_id.in_(wh_ids),
                 ClockInRecord.user_id.in_(user_ids),
                 ClockInRecord.clock_date >= month_start,
                 ClockInRecord.clock_date <= month_end,
@@ -384,9 +402,10 @@ async def get_calendar(
                 clock_map[k] = []
             clock_map[k].append(cr)
 
-    # Get leave requests
+    # Get leave requests (filtered by warehouse)
     leaves = (await db.execute(
         select(LeaveRequest).where(
+            LeaveRequest.warehouse_id.in_(wh_ids),
             LeaveRequest.employee_id.in_(emp_ids),
             LeaveRequest.leave_date >= month_start,
             LeaveRequest.leave_date <= month_end,
@@ -395,9 +414,10 @@ async def get_calendar(
     )).scalars().all()
     leave_set = {(l.employee_id, l.leave_date) for l in leaves}
 
-    # Get rest days
+    # Get rest days (filtered by warehouse)
     rests = (await db.execute(
         select(RestDay).where(
+            RestDay.warehouse_id.in_(wh_ids),
             RestDay.employee_id.in_(emp_ids),
             RestDay.rest_date >= month_start,
             RestDay.rest_date <= month_end,
@@ -405,9 +425,10 @@ async def get_calendar(
     )).scalars().all()
     rest_set = {(r.employee_id, r.rest_date) for r in rests}
 
-    # Get absences
+    # Get absences (filtered by warehouse)
     absences = (await db.execute(
         select(Absence).where(
+            Absence.warehouse_id.in_(wh_ids),
             Absence.employee_id.in_(emp_ids),
             Absence.absence_date >= month_start,
             Absence.absence_date <= month_end,

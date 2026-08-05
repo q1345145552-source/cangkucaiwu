@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 from app.api.v1.router import api_router
 
 app = FastAPI(
@@ -16,6 +18,11 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+# Serve uploaded files (photos, etc.) - works both in dev and behind nginx
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
+if os.path.isdir(UPLOAD_DIR):
+    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 @app.get("/")
 async def root():

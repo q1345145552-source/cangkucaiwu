@@ -81,13 +81,14 @@ async def calculate_payroll(
             emp_user_map[e.id] = e.user_id
             user_emp_map[e.user_id] = e.id
 
-    # Fallback: name matching for employees without user_id link
+    # Fallback: name matching for employees without user_id link (warehouse-scoped)
     emp_names = {e.name: e.id for e in employees if e.id not in emp_user_map}
     if emp_names:
         labor_users = (await db.execute(
             select(User).where(
                 User.role == "warehouse_labor",
                 User.is_active == True,
+                User.warehouse_id == wh_id,
             )
         )).scalars().all()
         for u in labor_users:
