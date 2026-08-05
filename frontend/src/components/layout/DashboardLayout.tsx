@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera,
+  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -29,7 +29,6 @@ const navItems: NavItem[] = [
     children: [
       { key: "customers", label: "客户档案", icon: <Users size={18} />, href: "/customers", roles: ["warehouse_admin", "staff"] },
       { key: "warehouses", label: "仓库管理", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["warehouse_admin", "super_admin"] },
-      { key: "employees", label: "员工档案", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "super_admin"] },
       { key: "accounts", label: "收款账户", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin", "super_admin"] },
       { key: "recharge", label: "充值申报", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
       { key: "incoming", label: "到账流水", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin", "super_admin"] },
@@ -68,15 +67,24 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    key: "hr_group", label: "员工管理", icon: <ClipboardList size={20} />,
+    roles: ["warehouse_admin", "super_admin"],
+    children: [
+      { key: "employees", label: "员工档案", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "super_admin"] },
+      { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin"] },
+      { key: "clock_records", label: "打卡记录", icon: <Camera size={18} />, href: "/clock-records", roles: ["warehouse_admin", "super_admin"] },
+      { key: "overtime", label: "加班管理", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin"] },
+      { key: "payroll", label: "工资管理", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "super_admin"] },
+    ],
+  },
+  {
     key: "settings_group", label: "settings_group", icon: <Settings size={20} />,
     roles: ["super_admin", "warehouse_admin", "staff", "warehouse_labor"],
     children: [
       { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff"] },
       { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin"] },
-      { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin", "warehouse_labor"] },
-      { key: "clock_records", label: "打卡记录", icon: <Camera size={18} />, href: "/clock-records", roles: ["warehouse_admin", "super_admin"] },
-      { key: "overtime", label: "加班管理", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin", "warehouse_labor"] },
-      { key: "payroll", label: "工资管理", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "super_admin"] },
+      { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_labor"] },
+      { key: "overtime", label: "加班管理", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_labor"] },
       { key: "clock_in", label: "打卡签到", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },
       { key: "my_payslip", label: "我的工资单", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["warehouse_labor"] },    ],
   },
