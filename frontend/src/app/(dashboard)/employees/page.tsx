@@ -31,6 +31,12 @@ export default function EmployeesPage() {
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  const photoUrl = (path: string) => {
+    if (!path) return "";
+    return `/${path}?v=${Date.now()}`;
+  };
+
+
   const defaultForm: any = {
     name: "", position: "仓库劳工", myanmar_id: "", address: "",
     phone: "", emergency_contact: "", hire_date: "",
@@ -275,7 +281,7 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {e.photo_path ? (
-                        <img src={`/${e.photo_path}`} className="w-10 h-10 rounded-full object-cover border cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={e => { e.stopPropagation(); setZoomedPhoto(`/${e.photo_path}`); }} />
+                        <img src={photoUrl(e.photo_path)} className="w-10 h-10 rounded-full object-cover border cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={e => { e.stopPropagation(); setZoomedPhoto(`/${e.photo_path}`); }} />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-bold">
                           {e.name?.[0] || "?"}
@@ -375,7 +381,7 @@ export default function EmployeesPage() {
                   {photoFile ? (
                     <img src={URL.createObjectURL(photoFile)} className="w-16 h-16 rounded-full object-cover border" />
                   ) : editingId && data.find(e => e.id === editingId)?.photo_path ? (
-                    <img src={`/${data.find(e => e.id === editingId)?.photo_path}`} className="w-16 h-16 rounded-full object-cover border" />
+                    <img src={photoUrl(data.find(e => e.id === editingId)?.photo_path)} className="w-16 h-16 rounded-full object-cover border" />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
                       <Camera size={24} />
@@ -513,7 +519,7 @@ export default function EmployeesPage() {
               <div className="absolute -bottom-8 left-5 flex items-end gap-4">
                 <div className="relative group">
                   {detailEmp.photo_path ? (
-                    <img src={`/${detailEmp.photo_path}`} className="w-20 h-20 rounded-full border-4 border-white object-cover shadow cursor-pointer hover:scale-105 transition-transform" onClick={() => setZoomedPhoto(`/${detailEmp.photo_path}`)} />
+                    <img src={photoUrl(detailEmp.photo_path)} className="w-20 h-20 rounded-full border-4 border-white object-cover shadow cursor-pointer hover:scale-105 transition-transform" onClick={() => setZoomedPhoto(`/${detailEmp.photo_path}`)} />
                   ) : (
                     <div className="w-20 h-20 rounded-full border-4 border-white bg-gray-200 flex items-center justify-center text-gray-400 text-2xl font-bold shadow">
                       {detailEmp.name?.[0] || "?"}
