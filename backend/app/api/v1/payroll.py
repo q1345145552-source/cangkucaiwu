@@ -227,15 +227,71 @@ async def calculate_payroll(
 
             current += timedelta(days=1)
 
-        # Calculate daily wage and hourly rate
+        # Calculate daily wage and hourly rate (with promotion_date support)
         emp_status = emp.status or "trial"
         daily_wage = emp.daily_wage or 400
         base_salary = emp.base_salary or 12000
+        promotion_date = getattr(emp, 'promotion_date', None)
 
-        if emp_status == "trial":
+        # Determine if this month has a promotion split
+        has_promotion_this_month = False
+        promotion_day = 0
+        if promotion_date and promotion_date.year == year and promotion_date.month == month:
+            has_promotion_this_month = True
+            promotion_day = promotion_date.day
+
+        if has_promotion_this_month:
+            # Split month: trial before promotion date, regular after
+            trial_days = 0
+            regular_days = 0
+            current_check = month_start
+            while current_check <= month_end:
+                if current_check <= thai_today():
+                    is_workday = current_check.weekday() != 6  # Sunday is rest
+                    if is_workday:
+                        was_present = False
+                        for key, sessions in clock_by_emp_date.items():
+                            eid2, dt2 = key
+                            if eid2 == emp.id and dt2 == current_check:
+                                sc = len({c.session for c in sessions})
+                                if sc >= 3:
+                                    was_present = True
+                                break
+                        if was_present:
+                            if current_check.day < promotion_day:
+                                trial_days += 1
+                            else:
+                                regular_days += 1
+                current_check += timedelta(days=1)
+
+            # Trial portion
+            trial_hourly = daily_wage / 8
+            trial_pay = daily_wage * trial_days
+
+            # Regular portion
+            adjusted_days = total_days - 2
+            if adjusted_days <= 0:
+                adjusted_days = total_days
+            regular_daily = base_salary / adjusted_days
+            regular_hourly = regular_daily / 8
+            regular_pay = round(regular_daily * regular_days, 2)
+
+            # Weighted average hourly rate for penalty calculation
+            total_present = trial_days + regular_days
+            if total_present > 0:
+                hourly_rate = (trial_hourly * trial_days + regular_hourly * regular_days) / total_present
+                effective_daily = hourly_rate * 8
+            else:
+                hourly_rate = trial_hourly
+                effective_daily = daily_wage
+
+            base_pay = round(trial_pay + regular_pay, 2)
+            emp_status_label = f"试用期→正式(转正{int(promotion_day)}日)"
+        elif emp_status == "trial":
             hourly_rate = daily_wage / 8  # 日薪÷8
             effective_daily = daily_wage
             base_pay = daily_wage * attendance_days
+            emp_status_label = "试用期"
         else:  # regular
             adjusted_days = total_days - 2
             if adjusted_days <= 0:
@@ -243,6 +299,7 @@ async def calculate_payroll(
             effective_daily = base_salary / adjusted_days  # 日薪
             hourly_rate = effective_daily / 8  # 时薪
             base_pay = round(effective_daily * attendance_days, 2)
+            emp_status_label = "正式员工" 
 
         # Late penalty: half hour = hourly_rate * 0.5, one hour = hourly_rate
         late_penalty_total = round(

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
@@ -25,6 +25,12 @@ class EmployeeCreate(BaseModel):
     daily_wage: float = 400
     base_salary: float = 12000
     remark: Optional[str] = None
+    passport_number: Optional[str] = None
+    work_permit_number: Optional[str] = None
+    passport_expiry: Optional[str] = None
+    work_permit_expiry: Optional[str] = None
+    promotion_date: Optional[str] = None
+    tags: Optional[str] = None
 
 class EmployeeUpdate(BaseModel):
     name: Optional[str] = None
@@ -39,6 +45,12 @@ class EmployeeUpdate(BaseModel):
     base_salary: Optional[float] = None
     remark: Optional[str] = None
     user_id: Optional[int] = None
+    passport_number: Optional[str] = None
+    work_permit_number: Optional[str] = None
+    passport_expiry: Optional[str] = None
+    work_permit_expiry: Optional[str] = None
+    promotion_date: Optional[str] = None
+    tags: Optional[str] = None
 
 class ResignRequest(BaseModel):
     reason: str  # voluntary / absconded / fired / contract_end / other
@@ -99,6 +111,13 @@ async def list_employees(
             "hire_date": e.hire_date.isoformat()[:10] if e.hire_date else None,
             "status": e.status, "daily_wage": e.daily_wage, "base_salary": e.base_salary,
             "remark": e.remark,
+            "photo_path": e.photo_path,
+            "passport_number": e.passport_number,
+            "work_permit_number": e.work_permit_number,
+            "passport_expiry": e.passport_expiry.isoformat() if e.passport_expiry else None,
+            "work_permit_expiry": e.work_permit_expiry.isoformat() if e.work_permit_expiry else None,
+            "promotion_date": e.promotion_date.isoformat() if e.promotion_date else None,
+            "tags": e.tags.split(",") if e.tags else [],
             "resignation_date": e.resignation_date.isoformat() if e.resignation_date else None,
             "resignation_reason": e.resignation_reason,
             "resignation_note": e.resignation_note,
@@ -177,6 +196,17 @@ async def update_employee(
             updates["hire_date"] = datetime.fromisoformat(updates["hire_date"])
         except:
             del updates["hire_date"]
+    
+    # Handle date fields
+    date_fields = ["passport_expiry", "work_permit_expiry", "promotion_date"]
+    for df in date_fields:
+        if df in updates and updates[df] is not None:
+            try:
+                updates[df] = datetime.strptime(updates[df], "%Y-%m-%d").date()
+            except:
+                del updates[df]
+        elif df in updates and updates[df] in ("", None):
+            updates[df] = None
     
     for k, v in updates.items():
         setattr(e, k, v)
@@ -444,6 +474,155 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
     )).scalar_one_or_none()
     return user
 
+
+
+# ═══ Photo Upload ════════════════════════════
+
+@router.post("/{employee_id}/photo")
+async def upload_employee_photo(
+    employee_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+        raise HTTPException(403, "只有仓库管理员可以上传照片")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    emp = (await db.execute(
+        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id)
+    )).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(404, "员工不存在")
+
+    # Save photo
+    import os, uuid
+    UPLOAD_DIR = "/app/uploads"
+    ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
+    content_bytes = await file.read()
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "employee_photos")
+    os.makedirs(subdir, exist_ok=True)
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    fpath = os.path.join(subdir, fname)
+    with open(fpath, "wb") as f:
+        f.write(content_bytes)
+    photo_path = f"uploads/{wh_id}/{today_str}/employee_photos/{fname}"
+
+    emp.photo_path = photo_path
+    await db.flush()
+    return {"message": "照片上传成功", "photo_path": photo_path}
+
+
+# ═══ Monthly Summary ════════════════════════════
+
+@router.get("/{employee_id}/summary")
+async def employee_summary(
+    employee_id: int,
+    month: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return attendance & salary summary for an employee"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+        raise HTTPException(403, "无权限")
+
+    wh_ids = get_wh_ids(current_user)
+    emp = (await db.execute(
+        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id.in_(wh_ids))
+    )).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(404, "员工不存在")
+
+    today = datetime.now()
+    if not month:
+        month = today.strftime("%Y-%m")
+
+    from app.models.clock_in_records import ClockInRecord
+    from app.models.overtime import OvertimeAssignment, OvertimeTask
+    from app.models.payroll import PayrollRecord
+
+    # Find linked user
+    uid = emp.user_id
+    if not uid:
+        u = await _find_linked_user(db, emp)
+        uid = u.id if u else None
+
+    # Attendance summary
+    late_count = 0
+    attendance_days = 0
+    if uid:
+        ym_start = datetime.strptime(f"{month}-01", "%Y-%m-%d").date()
+        if ym_start.month == 12:
+            ym_end = ym_start.replace(year=ym_start.year+1, month=1, day=1)
+        else:
+            ym_end = ym_start.replace(month=ym_start.month+1, day=1)
+        records = (await db.execute(
+            select(ClockInRecord).where(
+                ClockInRecord.user_id == uid,
+                ClockInRecord.clock_date >= ym_start,
+                ClockInRecord.clock_date < ym_end,
+            )
+        )).scalars().all()
+        dates_with_records = set()
+        for r in records:
+            dates_with_records.add(r.clock_date)
+            if r.status in ("late_half", "late_one"):
+                late_count += 1
+        attendance_days = len(dates_with_records)
+
+    # Overtime hours this month
+    ot_hours = 0.0
+    if uid:
+        ym_start = datetime.strptime(f"{month}-01", "%Y-%m-%d").date()
+        if ym_start.month == 12:
+            ym_end = ym_start.replace(year=ym_start.year+1, month=1, day=1)
+        else:
+            ym_end = ym_start.replace(month=ym_start.month+1, day=1)
+        ot_result = (await db.execute(
+            select(func.sum(OvertimeTask.hours))
+            .join(OvertimeAssignment, OvertimeAssignment.overtime_id == OvertimeTask.id)
+            .where(
+                OvertimeAssignment.user_id == uid,
+                OvertimeAssignment.confirmed == True,
+                OvertimeTask.date >= ym_start,
+                OvertimeTask.date < ym_end,
+            )
+        )).scalar()
+        ot_hours = round(ot_result or 0, 1)
+
+    # Payroll record
+    payroll = (await db.execute(
+        select(PayrollRecord).where(
+            PayrollRecord.employee_id == employee_id,
+            PayrollRecord.period == month,
+        )
+    )).scalar_one_or_none()
+
+    payroll_data = None
+    if payroll:
+        payroll_data = {
+            "id": payroll.id,
+            "status": payroll.status,
+            "disbursed": payroll.disbursed,
+            "net_pay": payroll.net_pay,
+            "base_pay": payroll.base_pay,
+            "overtime_pay": payroll.overtime_pay,
+            "late_penalty": payroll.late_penalty,
+        }
+
+    return {
+        "employee_id": employee_id,
+        "employee_name": emp.name,
+        "month": month,
+        "attendance_days": attendance_days,
+        "late_count": late_count,
+        "overtime_hours": ot_hours,
+        "payroll": payroll_data,
+    }
 
 @router.get("/max-limit")
 async def get_max_limit(
