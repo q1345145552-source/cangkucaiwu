@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date, time
 import os, uuid, base64
@@ -184,6 +184,7 @@ async def list_records(
     } for r in records]}
 
 @router.get("/photos")
+@router.get("/photos")
 async def get_photos(
     employee_id: int = Query(...),
     date: str = Query(...),
@@ -191,88 +192,95 @@ async def get_photos(
     db: AsyncSession = Depends(get_db),
 ):
     """Admin: get all clock-in photos for a specific employee on a specific date"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
-        raise HTTPException(403, "只有管理员可以查看打卡照片")
-
-    from app.models.employee import Employee
-
-    # Try employee_id first, then fallback to user_id lookup
-    emp = (await db.execute(
-        select(Employee).where(Employee.id == employee_id)
-    )).scalar_one_or_none()
-    if not emp:
-        # Fallback: perhaps employee_id is actually user_id
-        emp = (await db.execute(
-            select(Employee).where(Employee.user_id == employee_id)
-        )).scalar_one_or_none()
-    if not emp:
-        # Last resort: try matching by user's display_name
-        u = (await db.execute(
-            select(User).where(User.id == employee_id)
-        )).scalar_one_or_none()
-        if u:
-            emp = (await db.execute(
-                select(Employee).where(Employee.name == u.display_name)
-            )).scalar_one_or_none()
-    if not emp:
-        raise HTTPException(404, "员工不存在")
-
-    if current_user.role != Role.SUPER_ADMIN:
-        wh_ids = get_wh_ids(current_user)
-        if emp.warehouse_id not in wh_ids:
-            raise HTTPException(403, "无权查看该员工")
-
-    # Get user_id from employee link
-    uid = emp.user_id
-    if not uid:
-        # Fallback name matching
-        u = (await db.execute(
-            select(User).where(User.display_name == emp.name, User.role == "warehouse_labor")
-        )).scalar_one_or_none()
-        uid = u.id if u else None
-
     try:
-        target_date = datetime.strptime(date, "%Y-%m-%d").date()
-    except:
-        raise HTTPException(400, "日期格式错误 YYYY-MM-DD")
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+            raise HTTPException(403, "只有管理员可以查看打卡照片")
 
-    records = []
-    if uid:
-        records = (await db.execute(
-            select(ClockInRecord).where(
-                ClockInRecord.user_id == uid,
-                ClockInRecord.clock_date == target_date,
-            ).order_by(ClockInRecord.session)
-        )).scalars().all()
+        from app.models.employee import Employee
 
-    sessions_data = {}
-    for r in records:
-        sessions_data[r.session] = {
-            "session": r.session,
-            "label": SESSIONS.get(r.session, {}).get("label", ""),
-            "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
-            "status": r.status,
-            "penalty_amount": r.penalty_amount,
-            "photo_path": r.photo_path,
+        # Try employee_id first, then fallback to user_id lookup
+        emp = (await db.execute(
+            select(Employee).where(Employee.id == employee_id)
+        )).scalar_one_or_none()
+        if not emp:
+            # Fallback: perhaps employee_id is actually user_id
+            emp = (await db.execute(
+                select(Employee).where(Employee.user_id == employee_id)
+            )).scalar_one_or_none()
+        if not emp:
+            # Last resort: try matching by user's display_name
+            u = (await db.execute(
+                select(User).where(User.id == employee_id)
+            )).scalar_one_or_none()
+            if u:
+                emp = (await db.execute(
+                    select(Employee).where(Employee.name == u.display_name)
+                )).scalar_one_or_none()
+        if not emp:
+            raise HTTPException(404, "员工不存在")
+
+        if current_user.role != Role.SUPER_ADMIN:
+            wh_ids = get_wh_ids(current_user)
+            if emp.warehouse_id not in wh_ids:
+                raise HTTPException(403, "无权查看该员工")
+
+        # Get user_id from employee link
+        uid = emp.user_id
+        if not uid:
+            # Fallback name matching
+            u = (await db.execute(
+                select(User).where(User.display_name == emp.name, User.role == "warehouse_labor")
+            )).scalar_one_or_none()
+            uid = u.id if u else None
+
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except:
+            raise HTTPException(400, "日期格式错误 YYYY-MM-DD")
+
+        records = []
+        if uid:
+            records = (await db.execute(
+                select(ClockInRecord).where(
+                    ClockInRecord.user_id == uid,
+                    ClockInRecord.clock_date == target_date,
+                ).order_by(ClockInRecord.session)
+            )).scalars().all()
+
+        sessions_data = {}
+        for r in records:
+            sessions_data[r.session] = {
+                "session": r.session,
+                "label": SESSIONS.get(r.session, {}).get("label", ""),
+                "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
+                "status": r.status,
+                "penalty_amount": r.penalty_amount,
+                "photo_path": r.photo_path,
+            }
+
+        all_sessions = []
+        for s in [1, 2, 3, 4]:
+            if s in sessions_data:
+                all_sessions.append(sessions_data[s])
+            else:
+                all_sessions.append({
+                    "session": s,
+                    "label": SESSIONS.get(s, {}).get("label", ""),
+                    "clocked_in_at": None,
+                    "status": "missing",
+                    "penalty_amount": 0,
+                    "photo_path": None,
+                })
+
+        return {
+            "employee_id": employee_id,
+            "employee_name": emp.name,
+            "date": date,
+            "sessions": all_sessions,
         }
-
-    all_sessions = []
-    for s in [1, 2, 3, 4]:
-        if s in sessions_data:
-            all_sessions.append(sessions_data[s])
-        else:
-            all_sessions.append({
-                "session": s,
-                "label": SESSIONS.get(s, {}).get("label", ""),
-                "clocked_in_at": None,
-                "status": "missing",
-                "penalty_amount": 0,
-                "photo_path": None,
-            })
-
-    return {
-        "employee_id": employee_id,
-        "employee_name": emp.name,
-        "date": date,
-        "sessions": all_sessions,
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"打卡照片查询失败: {str(e)}")
