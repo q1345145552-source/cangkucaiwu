@@ -21,6 +21,7 @@ export default function ClockRecordsPage() {
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
+  const [detailPopup, setDetailPopup] = useState<{ empName: string; date: string; sessions: Record<number, any> } | null>(null);
 
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
   const totalDays = daysInMonth(year, month);
@@ -180,7 +181,8 @@ export default function ClockRecordsPage() {
                         const isSunday = new Date(dt).getDay() === 0;
                         const hasLate = cell && Object.values(cell).some((cr: any) => cr.status === "late_half" || cr.status === "late_one");
                         return (
-                          <td key={i} className={`px-0.5 py-0.5 text-center ${isSunday ? "bg-red-50/30" : ""}`}>
+                          <td key={i} className={`px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50 ${isSunday ? "bg-red-50/30" : ""}`}
+                            onClick={() => setDetailPopup({ empName: emp.name, date: dt, sessions: cell || {} })}>
                             {isFuture ? (
                               <span className="text-gray-200">-</span>
                             ) : cell ? (
@@ -215,6 +217,55 @@ export default function ClockRecordsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Detail popup */}
+      {detailPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDetailPopup(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
+              <Camera size={20} />
+              <span className="font-semibold">{detailPopup.empName} · {detailPopup.date} 打卡详情</span>
+              <button onClick={() => setDetailPopup(null)} className="ml-auto text-2xl text-blue-200 hover:text-white">&times;</button>
+            </div>
+            <div className="p-4 space-y-4">
+              {[1, 2, 3, 4].map(s => {
+                const cr = detailPopup.sessions[s];
+                return (
+                  <div key={s} className="bg-gray-50 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm text-gray-700">{s}. {SESSION_LABELS[s]}</span>
+                      {cr ? (
+                        <div className="flex items-center gap-2">
+                          {cr.status !== "normal" && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${cr.status === "late_half" ? "bg-orange-50 text-orange-600" : "bg-red-50 text-red-600"}`}>
+                              {cr.status === "late_half" ? "迟到半小时" : "严重迟到"}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-500">{formatTime(cr.clocked_in_at)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">未打卡</span>
+                      )}
+                    </div>
+                    {cr?.photo_path ? (
+                      <img src={`/${cr.photo_path}`} alt={`${SESSION_LABELS[s]}打卡照`}
+                        className="w-full rounded-lg max-h-64 object-cover border cursor-pointer hover:opacity-90"
+                        onClick={() => setZoomedPhoto(`/${cr.photo_path}`)} />
+                    ) : (
+                      <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                        📷 未拍照
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
+              <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400">关闭</button>
+            </div>
           </div>
         </div>
       )}
