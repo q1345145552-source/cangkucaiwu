@@ -308,8 +308,9 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
     all_cids = [c.id for c in all_credits]
     total_limit = sum(c.credit_limit or 0 for c in all_credits)
     total_cust = len(all_credits)
-    # Batch compute debt for all
+    # Batch compute debt AND overdue in realtime (口径与列表页/_compute_debt_and_overdue 完全一致)
     total_debt = 0.0
+    overdue_count = 0
     if all_cids:
         ship_rows = (await db.execute(
             select(CreditShipment.credit_customer_id, func.coalesce(func.sum(CreditShipment.amount), 0))
@@ -321,19 +322,35 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
             .where(CreditRepayment.credit_customer_id.in_(all_cids))
             .group_by(CreditRepayment.credit_customer_id)
         )).all()
+        # 批量取最后发货/还款日期，用于逾期天数计算
+        last_ship_rows = (await db.execute(
+            select(CreditShipment.credit_customer_id, func.max(CreditShipment.ship_date))
+            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .group_by(CreditShipment.credit_customer_id)
+        )).all()
+        last_repay_rows = (await db.execute(
+            select(CreditRepayment.credit_customer_id, func.max(CreditRepayment.repayment_date))
+            .where(CreditRepayment.credit_customer_id.in_(all_cids))
+            .group_by(CreditRepayment.credit_customer_id)
+        )).all()
         ship_map = {row[0]: float(row[1]) for row in ship_rows}
         repay_map = {row[0]: float(row[1]) for row in repay_rows}
+        last_ship_map = {row[0]: row[1] for row in last_ship_rows}
+        last_repay_map = {row[0]: row[1] for row in last_repay_rows}
+        today = date.today()
         for c in all_credits:
             debt = ship_map.get(c.id, 0) - repay_map.get(c.id, 0)
-            total_debt += max(debt, 0)
+            if debt <= 0:
+                continue  # 已结清：不计欠款、不计逾期
+            total_debt += debt
+            # 逾期天数：距最后一次还款/发货的天数
+            ref_date = last_repay_map.get(c.id) or last_ship_map.get(c.id)
+            if ref_date:
+                if isinstance(ref_date, datetime):
+                    ref_date = ref_date.date()
+                if (today - ref_date).days > 0 and c.status == CreditStatus.ACTIVE.value:
+                    overdue_count += 1
     total_debt = float(total_debt)
-    overdue_q = select(func.count(CreditCustomer.id)).where(
-        CreditCustomer.status == CreditStatus.ACTIVE.value,
-        CreditCustomer.overdue_days > 0,
-    )
-    if current_user.role != Role.SUPER_ADMIN:
-        overdue_q = overdue_q.where(CreditCustomer.warehouse_id.in_(get_wh_ids(current_user)))
-    overdue_count = (await db.execute(overdue_q)).scalar() or 0
 
     # Rating distribution
     try:
@@ -509,26 +526,60 @@ async def credit_alerts(level: str = None, current_user: User = Depends(get_curr
                         db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(CreditCustomer).where(
-        CreditCustomer.status == CreditStatus.ACTIVE.value,
-        CreditCustomer.overdue_days > 0,
-    ).order_by(CreditCustomer.overdue_days.desc())
+    # 拉取本仓库所有活跃账期客户，批量实时计算欠款/逾期（避免 N+1，且口径与列表页一致）
+    query = select(CreditCustomer).where(CreditCustomer.status == CreditStatus.ACTIVE.value)
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(CreditCustomer.warehouse_id.in_(get_wh_ids(current_user)))
     records = (await db.execute(query)).scalars().all()
+    all_cids = [r.id for r in records]
+
+    ship_map, repay_map, last_ship_map, last_repay_map = {}, {}, {}, {}
+    if all_cids:
+        for cid, total in (await db.execute(
+            select(CreditShipment.credit_customer_id, func.coalesce(func.sum(CreditShipment.amount), 0))
+            .where(CreditShipment.credit_customer_id.in_(all_cids)).group_by(CreditShipment.credit_customer_id)
+        )).all():
+            ship_map[cid] = float(total)
+        for cid, total in (await db.execute(
+            select(CreditRepayment.credit_customer_id, func.coalesce(func.sum(CreditRepayment.amount), 0))
+            .where(CreditRepayment.credit_customer_id.in_(all_cids)).group_by(CreditRepayment.credit_customer_id)
+        )).all():
+            repay_map[cid] = float(total)
+        for cid, d in (await db.execute(
+            select(CreditShipment.credit_customer_id, func.max(CreditShipment.ship_date))
+            .where(CreditShipment.credit_customer_id.in_(all_cids)).group_by(CreditShipment.credit_customer_id)
+        )).all():
+            last_ship_map[cid] = d
+        for cid, d in (await db.execute(
+            select(CreditRepayment.credit_customer_id, func.max(CreditRepayment.repayment_date))
+            .where(CreditRepayment.credit_customer_id.in_(all_cids)).group_by(CreditRepayment.credit_customer_id)
+        )).all():
+            last_repay_map[cid] = d
+
     cids = {r.customer_id for r in records}
     cmap = {}
     if cids:
         custs = (await db.execute(select(Customer).where(Customer.id.in_(cids)))).scalars().all()
         cmap = {c.id: c.company_name for c in custs}
 
+    today = date.today()
     data = []
     for r in records:
-        debt, overdue = await _compute_debt_and_overdue(db, r.id)
+        debt = ship_map.get(r.id, 0) - repay_map.get(r.id, 0)
+        if debt <= 0:
+            continue
+        ref_date = last_repay_map.get(r.id) or last_ship_map.get(r.id)
+        overdue = 0
+        if ref_date:
+            if isinstance(ref_date, datetime):
+                ref_date = ref_date.date()
+            overdue = max((today - ref_date).days, 0)
+        if overdue <= 0:
+            continue
         data.append({
             "id": r.id, "customer_name": cmap.get(r.customer_id, ""),
             "current_debt": debt, "overdue_days": overdue,
             "credit_limit": r.credit_limit, "status": r.status,
         })
-
+    data.sort(key=lambda x: x["overdue_days"], reverse=True)
     return {"data": data}

@@ -71,9 +71,15 @@ async def clock_in(
     # Save photo
     photo_path = None
     if photo_base64:
+        # 先解码并做大小校验（在 try 之外，确保超限能正确报错而不是被吞掉）
         try:
-            header, data = photo_base64.split(",", 1) if "," in photo_base64 else ("", photo_base64)
+            _, data = photo_base64.split(",", 1) if "," in photo_base64 else ("", photo_base64)
             img_bytes = base64.b64decode(data)
+        except Exception:
+            raise HTTPException(400, "打卡照片格式无效")
+        if len(img_bytes) > 5 * 1024 * 1024:
+            raise HTTPException(400, "打卡照片不能超过5MB")
+        try:
             wh_id = str(get_wh_id(current_user) or 0)
             today_str = today.isoformat()
             subdir = os.path.join(UPLOAD_DIR, wh_id, today_str, "clockin")

@@ -75,19 +75,19 @@ async def list_group_orders(
     part_summary: dict = {}
     part_wh_count: dict = {}
     if go_ids:
-        for gid in go_ids:
-            cnt = (await db.execute(
-                select(func.sum(GroupOrderParticipant.quantity)).where(
-                    GroupOrderParticipant.group_order_id == gid
-                )
-            )).scalar() or 0
-            wh_cnt = (await db.execute(
-                select(func.count(func.distinct(GroupOrderParticipant.warehouse_id))).where(
-                    GroupOrderParticipant.group_order_id == gid
-                )
-            )).scalar() or 0
-            part_summary[gid] = cnt
-            part_wh_count[gid] = wh_cnt
+        # 一次性聚合所有拼单的参与数量与参与仓库数（避免逐单 N+1 查询）
+        rows = (await db.execute(
+            select(
+                GroupOrderParticipant.group_order_id,
+                func.coalesce(func.sum(GroupOrderParticipant.quantity), 0),
+                func.count(func.distinct(GroupOrderParticipant.warehouse_id)),
+            )
+            .where(GroupOrderParticipant.group_order_id.in_(go_ids))
+            .group_by(GroupOrderParticipant.group_order_id)
+        )).all()
+        for gid, qty, wh_cnt in rows:
+            part_summary[gid] = qty or 0
+            part_wh_count[gid] = wh_cnt or 0
 
     wh_map = {}
     wids = {o.warehouse_id for o in orders}

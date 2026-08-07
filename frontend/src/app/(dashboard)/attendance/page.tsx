@@ -4,7 +4,8 @@ import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3 } from "lucide-react";
+import ClockRecordsGrid from "@/components/ClockRecordsGrid";
 
 const STATUS_COLORS: Record<string, string> = {
   "present": "bg-green-100 text-green-700 border-green-300",
@@ -18,7 +19,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AttendancePage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
-  const isAdmin = user?.role === "warehouse_admin";
+  const isAdmin = user?.role === "warehouse_admin" || user?.role === "super_admin";
+  const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
 
   // Month navigation
   const now = new Date();
@@ -153,28 +155,48 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-2">
-        <h1 className="page-title flex items-center gap-2"><Calendar size={24}/>工作考勤</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronLeft size={20}/></button>
-          <span className="font-semibold text-lg min-w-[120px] text-center">{year}年{month}月</span>
-          <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronRight size={20}/></button>
-        </div>
-        <div className="flex gap-2">
-          {!isAdmin && (
-            <button onClick={() => setShowLeaveForm(true)} className="btn-primary flex items-center gap-1"><Bed size={16}/>请假</button>
-          )}
+      {/* Header: Month Navigation + Tab Bar + Action Buttons */}
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button onClick={prevMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
+            <ChevronLeft size={20} />
+          </button>
+          <h1 className="text-lg font-bold min-w-[120px] text-center">{year}年{month}月</h1>
+          <button onClick={nextMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
+            <ChevronRight size={20} />
+          </button>
           {isAdmin && (
-            <>
-              <button onClick={() => setShowRestForm(true)} className="border border-blue-200 text-blue-600 px-3 py-2 rounded-lg text-sm flex items-center gap-1"><Settings size={16}/>设置休息日</button>
-              <button onClick={() => setShowAbsenceForm(true)} className="border border-red-200 text-red-500 px-3 py-2 rounded-lg text-sm flex items-center gap-1"><UserX size={16}/>标记未到</button>
-            </>
+            <div className="flex items-center gap-1.5 ml-2">
+              <button onClick={() => setShowLeaveForm(true)} className="px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 flex items-center gap-1">
+                <Bed size={14}/>请假
+              </button>
+              <button onClick={() => setShowRestForm(true)} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1">
+                <Settings size={14}/>休息日
+              </button>
+              <button onClick={() => setShowAbsenceForm(true)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1">
+                <UserX size={14}/>未到
+              </button>
+            </div>
           )}
         </div>
+        {isAdmin && (
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            <button onClick={() => setActiveTab("calendar")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              <Calendar size={15} className="inline mr-1.5"/>日历视图
+            </button>
+            <button onClick={() => setActiveTab("records")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "records" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              <Grid3X3 size={15} className="inline mr-1.5"/>打卡记录
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Calendar Grid */}
+      {activeTab === "records" ? (
+        <ClockRecordsGrid year={year} month={month} />
+      ) : (
+        <>
+
+          {/* Calendar Grid */}
       <div className="bg-white rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[800px]">
@@ -277,6 +299,9 @@ export default function AttendancePage() {
             ))}
           </div>
         </div>
+      )}
+
+        </>
       )}
 
       {/* Leave Form Modal */}

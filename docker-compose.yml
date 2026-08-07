@@ -4,10 +4,11 @@ services:
     environment:
       TZ: Asia/Bangkok
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 设置 POSTGRES_PASSWORD}
       POSTGRES_DB: warehouse_finance
+    # 仅绑定到本机回环，不对公网暴露数据库端口
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -36,10 +37,11 @@ services:
         condition: service_healthy
     environment:
       TZ: Asia/Bangkok
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/warehouse_finance
-      SECRET_KEY: warehouse-finance-secret-key-2026
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:?请在 .env 设置 POSTGRES_PASSWORD}@db:5432/warehouse_finance
+      SECRET_KEY: ${SECRET_KEY:?请在 .env 设置 SECRET_KEY}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+    # 生产环境使用镜像内代码，不挂载宿主源码（仅持久化上传目录）
     volumes:
-      - ./backend:/app
       - uploads:/app/uploads
     command: >
       sh -c "python scripts/seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -51,10 +53,8 @@ services:
     environment:
       TZ: Asia/Bangkok
       NEXT_PUBLIC_API_URL: /api/v1
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: sh -c "npm run build && npm start"
+    # 生产环境使用镜像内构建产物，不挂载宿主源码
+    command: sh -c "npm start"
 
 volumes:
   pgdata:

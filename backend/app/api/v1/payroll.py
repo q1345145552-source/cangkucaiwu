@@ -11,6 +11,7 @@ from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
+from app.services.payroll_calc import compute_pay
 from datetime import datetime, date, timedelta
 from typing import Optional, List
 import calendar
@@ -191,6 +192,18 @@ async def calculate_payroll(
         leave_days_count = 0
         rest_days_count = 0
 
+        # 转正拆分：先在同一套出勤判定里分桶，保证与 attendance_days 口径一致
+        emp_status = emp.status or "trial"
+        daily_wage = emp.daily_wage or 400
+        base_salary = emp.base_salary or 12000
+        promotion_date = getattr(emp, 'promotion_date', None)
+        has_promotion_this_month = bool(
+            promotion_date and promotion_date.year == year and promotion_date.month == month
+        )
+        promotion_day = promotion_date.day if has_promotion_this_month else 0
+        trial_days = 0     # 转正前的出勤天数（口径同 attendance_days）
+        regular_days = 0   # 转正后的出勤天数
+
         # Iterate each day in the month
         current = month_start
         while current <= month_end:
@@ -213,6 +226,12 @@ async def calculate_payroll(
                 if session_count >= 3:
                     # 3 or 4 sessions = full attendance
                     attendance_days += 1
+                    # 同一判定下按转正日分桶（转正当日及之后算正式）
+                    if has_promotion_this_month:
+                        if current.day < promotion_day:
+                            trial_days += 1
+                        else:
+                            regular_days += 1
                     # Count late penalties (session 1 only)
                     for cr in sessions:
                         if cr.session == 1:
@@ -227,43 +246,7 @@ async def calculate_payroll(
 
             current += timedelta(days=1)
 
-        # Calculate daily wage and hourly rate (with promotion_date support)
-        emp_status = emp.status or "trial"
-        daily_wage = emp.daily_wage or 400
-        base_salary = emp.base_salary or 12000
-        promotion_date = getattr(emp, 'promotion_date', None)
-
-        # Determine if this month has a promotion split
-        has_promotion_this_month = False
-        promotion_day = 0
-        if promotion_date and promotion_date.year == year and promotion_date.month == month:
-            has_promotion_this_month = True
-            promotion_day = promotion_date.day
-
         if has_promotion_this_month:
-            # Split month: trial before promotion date, regular after
-            trial_days = 0
-            regular_days = 0
-            current_check = month_start
-            while current_check <= month_end:
-                if current_check <= thai_today():
-                    is_workday = current_check.weekday() != 6  # Sunday is rest
-                    if is_workday:
-                        was_present = False
-                        for key, sessions in clock_by_emp_date.items():
-                            eid2, dt2 = key
-                            if eid2 == emp.id and dt2 == current_check:
-                                sc = len({c.session for c in sessions})
-                                if sc >= 3:
-                                    was_present = True
-                                break
-                        if was_present:
-                            if current_check.day < promotion_day:
-                                trial_days += 1
-                            else:
-                                regular_days += 1
-                current_check += timedelta(days=1)
-
             # Trial portion
             trial_hourly = daily_wage / 8
             trial_pay = daily_wage * trial_days
@@ -301,26 +284,24 @@ async def calculate_payroll(
             base_pay = round(effective_daily * attendance_days, 2)
             emp_status_label = "正式员工" 
 
-        # Late penalty: half hour = hourly_rate * 0.5, one hour = hourly_rate
-        late_penalty_total = round(
-            late_half_count * hourly_rate * 0.5 +
-            late_one_count * hourly_rate,
-            2
-        )
-
-        # Leave/Absence deductions
-        leave_deduction = round(effective_daily * leave_days_count, 2)
-        absence_deduction = round(effective_daily * absence_days_count, 2)
-
         # Overtime
         ot = overtime_map.get(emp.id, {})
         overtime_pay = ot.get("amount", 0)
         overtime_hours = ot.get("hours", 0)
 
-        # Gross & net
-        total_deductions = late_penalty_total + leave_deduction + absence_deduction
-        gross_pay = base_pay + overtime_pay
-        net_pay = round(gross_pay - total_deductions, 2)
+        # 用纯函数统一计算扣款与净工资（含负数下限保护），逻辑见 app/services/payroll_calc.py
+        _pay = compute_pay(
+            base_pay=base_pay, overtime_pay=overtime_pay,
+            effective_daily=effective_daily, hourly_rate=hourly_rate,
+            late_half_count=late_half_count, late_one_count=late_one_count,
+            leave_days=leave_days_count, absence_days=absence_days_count,
+        )
+        late_penalty_total = _pay.late_penalty
+        leave_deduction = _pay.leave_deduction
+        absence_deduction = _pay.absence_deduction
+        total_deductions = _pay.total_deductions
+        gross_pay = _pay.gross_pay
+        net_pay = _pay.net_pay
 
         detail_data = {
             "attendance_days": attendance_days,
@@ -379,9 +360,11 @@ async def list_payroll(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    wh_ids = get_wh_ids(current_user)
-    query = select(PayrollRecord).where(PayrollRecord.warehouse_id.in_(wh_ids))
-    count_q = select(func.count(PayrollRecord.id)).where(PayrollRecord.warehouse_id.in_(wh_ids))
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        return {"data": [], "periods": []}
+    query = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
+    count_q = select(func.count(PayrollRecord.id)).where(PayrollRecord.warehouse_id == wh_id)
 
     if period:
         query = query.where(PayrollRecord.period == period)
@@ -432,7 +415,7 @@ async def list_payroll(
             "confirmed_at": r.confirmed_at.isoformat() if r.confirmed_at else None,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         } for r in records],
-        "periods": await _get_available_periods(db, wh_ids),
+        "periods": await _get_available_periods(db, [wh_id]),
     }
 
 
@@ -442,10 +425,12 @@ async def payroll_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    wh_ids = get_wh_ids(current_user)
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        return {"period": period, "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
     records = (await db.execute(
         select(PayrollRecord).where(
-            PayrollRecord.warehouse_id.in_(wh_ids),
+            PayrollRecord.warehouse_id == wh_id,
             PayrollRecord.period == period,
         )
     )).scalars().all()
@@ -477,11 +462,13 @@ async def confirm_payroll(
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "只有仓库管理员可以确认工资")
 
-    wh_ids = get_wh_ids(current_user)
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        raise HTTPException(400, "请先选择仓库")
     r = (await db.execute(
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
-            PayrollRecord.warehouse_id.in_(wh_ids),
+            PayrollRecord.warehouse_id == wh_id,
         )
     )).scalar_one_or_none()
     if not r:
@@ -505,10 +492,12 @@ async def confirm_all_payroll(
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "只有仓库管理员可以确认工资")
 
-    wh_ids = get_wh_ids(current_user)
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        raise HTTPException(400, "请先选择仓库")
     records = (await db.execute(
         select(PayrollRecord).where(
-            PayrollRecord.warehouse_id.in_(wh_ids),
+            PayrollRecord.warehouse_id == wh_id,
             PayrollRecord.period == period,
             PayrollRecord.status == "pending",
         )
@@ -542,11 +531,13 @@ async def delete_payroll(
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "只有仓库管理员可以删除工资记录")
 
-    wh_ids = get_wh_ids(current_user)
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        raise HTTPException(400, "请先选择仓库")
     r = (await db.execute(
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
-            PayrollRecord.warehouse_id.in_(wh_ids),
+            PayrollRecord.warehouse_id == wh_id,
         )
     )).scalar_one_or_none()
     if not r:
@@ -567,10 +558,12 @@ async def delete_period_payroll(
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "只有仓库管理员可以操作")
 
-    wh_ids = get_wh_ids(current_user)
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        return {"period": period, "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
     records = (await db.execute(
         select(PayrollRecord).where(
-            PayrollRecord.warehouse_id.in_(wh_ids),
+            PayrollRecord.warehouse_id == wh_id,
             PayrollRecord.period == period,
         )
     )).scalars().all()
@@ -598,11 +591,13 @@ async def disburse_payroll(
     if current_user.role not in (Role.WAREHOUSE_ADMIN,):
         raise HTTPException(403, "只有仓库管理员可以发放工资")
 
-    wh_ids = get_wh_ids(current_user)
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        raise HTTPException(400, "请先选择仓库")
     r = (await db.execute(
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
-            PayrollRecord.warehouse_id.in_(wh_ids),
+            PayrollRecord.warehouse_id == wh_id,
         )
     )).scalar_one_or_none()
     if not r:

@@ -17,6 +17,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 审计日志：自动记录所有成功的写操作到 audit_logs 表
+from app.core.audit import AuditMiddleware
+app.add_middleware(AuditMiddleware)
+
 app.include_router(api_router, prefix="/api/v1")
 
 # Serve uploaded files (photos, etc.) - works both in dev and behind nginx

@@ -40,14 +40,23 @@ async def seed():
         session.add_all(whs); await session.flush()
 
         # === Users ===
-        admin_user = User(username="admin", password_hash=hash_password("admin123"),
+        # 初始密码从环境变量读取；未设置则随机生成并打印到日志（不再用弱默认 admin123）
+        import os, secrets
+        init_pw = os.environ.get("SEED_ADMIN_PASSWORD") or secrets.token_urlsafe(9)
+        print("=" * 60)
+        print(f"  初始登录密码（所有 seed 账号通用）: {init_pw}")
+        print("  请首次登录后立即修改密码！")
+        print("=" * 60)
+        pw_hash = hash_password(init_pw)
+
+        admin_user = User(username="admin", password_hash=pw_hash,
                           display_name="超级管理员", role="super_admin", warehouse_id=None, is_active=True)
         session.add(admin_user)
         wh_users = []  # (user, warehouse) tuples for UserWarehouse association
         for wh in whs:
-            ua = User(username=f"{wh.code.lower()}_admin", password_hash=hash_password("admin123"),
+            ua = User(username=f"{wh.code.lower()}_admin", password_hash=pw_hash,
                       display_name=f"{wh.name}老板", role="warehouse_admin", warehouse_id=wh.id, is_active=True)
-            us = User(username=f"{wh.code.lower()}_staff", password_hash=hash_password("admin123"),
+            us = User(username=f"{wh.code.lower()}_staff", password_hash=pw_hash,
                       display_name=f"{wh.name}财务", role="staff", warehouse_id=wh.id, is_active=True)
             session.add(ua); session.add(us)
             wh_users.append((ua, wh)); wh_users.append((us, wh))

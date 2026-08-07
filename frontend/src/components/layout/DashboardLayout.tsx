@@ -72,7 +72,6 @@ const navItems: NavItem[] = [
     children: [
       { key: "employees", label: "员工档案", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "super_admin"] },
       { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin"] },
-      { key: "clock_records", label: "打卡记录", icon: <Camera size={18} />, href: "/clock-records", roles: ["warehouse_admin", "super_admin"] },
       { key: "overtime", label: "加班管理", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin"] },
       { key: "payroll", label: "工资管理", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "super_admin"] },
     ],
