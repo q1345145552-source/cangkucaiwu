@@ -308,9 +308,16 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    wh_ids = get_wh_ids(current_user)
     total = 0
     if req.bill_ids:
         bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(req.bill_ids)))).scalars().all()
+        # 校验所有账单都属于当前用户仓库，杜绝把他仓账单纳入计划
+        if len(bills) != len(set(req.bill_ids)):
+            raise HTTPException(400, "部分账单不存在")
+        for b in bills:
+            if b.warehouse_id not in wh_ids:
+                raise HTTPException(403, "计划中包含非本仓库的账单")
         total = sum(b.amount - b.paid_amount for b in bills)
     p = PayablePlan(
         warehouse_id=get_wh_id(current_user), plan_name=req.plan_name,
@@ -479,17 +486,23 @@ async def execute_plan(plan_id: int, current_user: User = Depends(get_current_us
         raise HTTPException(403, "无权限")
     if p.status != PlanStatus.PENDING.value:
         raise HTTPException(400, "该计划已执行或已取消")
+    wh_ids = get_wh_ids(current_user)
+    paid_count = 0
     if p.bill_ids:
+        from app.services.flow_rules import should_settle_bill
         bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(p.bill_ids)))).scalars().all()
         for b in bills:
-            if b.status not in (PayableStatus.PAID.value,):
-                b.paid_amount = b.amount
-                b.paid_at = thai_now()
-                b.payment_method = "银行转账"
-                b.status = PayableStatus.PAID.value
+            # 仅结算本仓库、且尚未付清的账单（幂等：已付清的跳过，不重复计入现金流出）
+            if not should_settle_bill(b.warehouse_id, b.status, b.paid_amount, b.amount, wh_ids, PayableStatus.PAID.value):
+                continue
+            b.paid_amount = b.amount  # 付清剩余部分
+            b.paid_at = thai_now()
+            b.payment_method = b.payment_method or "银行转账"
+            b.status = PayableStatus.PAID.value
+            paid_count += 1
     p.status = PlanStatus.EXECUTED.value
     await db.flush()
-    return {"message": "计划执行成功，关联账单已自动付款"}
+    return {"message": f"计划执行成功，已结算 {paid_count} 笔账单"}
 
 # === Plan Detail ===
 @router.get("/plans/{plan_id}/detail")

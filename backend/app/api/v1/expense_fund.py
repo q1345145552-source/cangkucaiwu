@@ -8,7 +8,7 @@ from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, Re
 from app.models.user import User
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -192,6 +192,10 @@ async def topup_account(
     account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
     if not account:
         raise HTTPException(404, "账户不存在")
+    if account.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库的备用金账户")
+    if req.amount is None or req.amount <= 0:
+        raise HTTPException(400, "充值金额必须大于0")
 
     new_balance = (account.remaining_balance or 0) + req.amount
     limit = account.fund_limit or 5000
@@ -247,6 +251,25 @@ async def add_item(
     account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
     if not account:
         raise HTTPException(404, "账户不存在")
+    if account.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库的备用金账户")
+    if req.amount is None or req.amount <= 0:
+        raise HTTPException(400, "开销金额必须大于0")
+
+    # 超支守卫：常规开销（非报销）不得超过备用金里的现金余额
+    # （报销类开销走报销流程，创建时已扣减 remaining_balance，这里不重复限制）
+    if req.category != "报销":
+        spent_regular = float((await db.execute(
+            select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
+                ExpenseFundItem.fund_id == account_id,
+                ExpenseFundItem.category != "报销",
+                ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+            )
+        )).scalar() or 0)
+        from app.services.flow_rules import fund_available
+        available = fund_available(account.remaining_balance, spent_regular)
+        if req.amount > available:
+            raise HTTPException(400, f"超出备用金可用余额（可用 {available:,.2f}），请先充值或核减")
 
     i = ExpenseFundItem(
         fund_id=account_id, expense_date=datetime.fromisoformat(req.expense_date),
@@ -368,10 +391,14 @@ async def batch_review(
     for item_id in req.item_ids:
         item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == item_id))).scalar_one_or_none()
         if not item: continue
+        old_status = item.review_status
+        # 幂等守卫：状态未变化则跳过，避免重复驳回导致余额被多次退回
+        if old_status == new_status:
+            continue
         item.review_status = new_status
         item.review_remark = req.remark
 
-        # Sync with linked reimbursement
+        # Sync with linked reimbursement（仅在状态真正发生变化时执行一次）
         if item.category == "报销":
             reimb = (await db.execute(select(Reimbursement).where(
                 Reimbursement.fund_item_id == item_id,
@@ -382,10 +409,12 @@ async def batch_review(
                     reimb.status = ReimbStatus.PAID.value
                     reimb.paid_at = datetime.utcnow()
                 elif req.action == "reject":
-                    # Restore balance and unlock reimbursement
-                    fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == item.fund_id))).scalar_one_or_none()
-                    if fund:
-                        fund.remaining_balance = (fund.remaining_balance or 0) + item.amount
+                    # Restore balance and unlock reimbursement（仅当之前不是已驳回）
+                    from app.services.flow_rules import can_refund_fund_item
+                    if can_refund_fund_item(old_status):
+                        fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == item.fund_id))).scalar_one_or_none()
+                        if fund:
+                            fund.remaining_balance = (fund.remaining_balance or 0) + item.amount
                     reimb.status = ReimbStatus.PENDING.value
                     reimb.is_fund_linked = "0"
 

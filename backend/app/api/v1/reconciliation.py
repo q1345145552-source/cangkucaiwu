@@ -87,6 +87,10 @@ async def manual_match(
     if current_user.role != Role.SUPER_ADMIN:
         if decl.warehouse_id not in get_wh_ids(current_user) or flow.warehouse_id not in get_wh_ids(current_user):
             raise HTTPException(403, "只能匹配自己仓库的记录")
+    # 币种一致性校验：不同币种的申报与流水不能直接匹配（金额差无意义）
+    from app.services.flow_rules import currencies_match
+    if not currencies_match(decl.currency, flow.currency):
+        raise HTTPException(400, f"币种不一致（申报 {decl.currency or 'THB'} / 流水 {flow.currency or 'THB'}），不能匹配")
     rr = ReconciliationResult(
         warehouse_id=decl.warehouse_id,
         reconciliation_month=decl.declare_date.strftime("%Y-%m") if decl.declare_date else thai_now().strftime("%Y-%m"),

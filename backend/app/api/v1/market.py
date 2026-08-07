@@ -117,6 +117,9 @@ async def purchase(item_id: int, req: PurchaseRequest, current_user: User = Depe
     if not i: raise HTTPException(404, "商品不存在")
     if i.status != MarketStatus.APPROVED.value:
         raise HTTPException(400, "商品未审核通过")
+    # 防覆盖：已有买家申请时不允许被后来者冲掉
+    if i.contact_info:
+        raise HTTPException(400, "该商品已有买家申请，请等待卖家确认或联系卖家")
     i.contact_info = req.contact_info  # Store buyer contact
     await db.flush()
     return {"message": "购买申请已提交", "seller_warehouse": i.warehouse_id}

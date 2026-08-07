@@ -8,6 +8,7 @@ from app.models.credit import CreditCustomer, CreditRepayment, CreditShipment, C
 from app.models.customer import Customer
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.services.flow_rules import exceeds_credit_limit
 from pydantic import BaseModel
 from typing import Optional
 
@@ -158,8 +159,24 @@ async def create_credit(req: CreditCreate, current_user: User = Depends(get_curr
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
+    if req.credit_limit is not None and req.credit_limit < 0:
+        raise HTTPException(400, "信用额度不能为负")
+    wh_id = get_wh_id(current_user)
+    # 校验客户属于本仓库
+    cust = (await db.execute(select(Customer).where(Customer.id == req.customer_id))).scalar_one_or_none()
+    if not cust:
+        raise HTTPException(404, "客户不存在")
+    if cust.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能为本仓库客户开通账期")
+    # 去重：同仓库同客户不允许重复建卡（避免欠款/额度被重复统计）
+    dup = (await db.execute(select(CreditCustomer).where(
+        CreditCustomer.warehouse_id == wh_id,
+        CreditCustomer.customer_id == req.customer_id,
+    ))).scalar_one_or_none()
+    if dup:
+        raise HTTPException(400, "该客户已有账期账户，请勿重复创建")
     c = CreditCustomer(
-        warehouse_id=get_wh_id(current_user), customer_id=req.customer_id,
+        warehouse_id=wh_id, customer_id=req.customer_id,
         credit_limit=req.credit_limit, repayment_day=req.repayment_day,
         remark=req.remark, created_by=current_user.id,
     )
@@ -249,6 +266,14 @@ async def create_shipment(credit_id: int, req: ShipmentCreate,
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "账期客户不存在")
+    if c.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库的账期客户")
+    if req.amount is None or req.amount <= 0:
+        raise HTTPException(400, "发货金额必须大于0")
+    # 授信额度校验：当前欠款 + 本次发货不得超过额度
+    cur_debt, _ = await _compute_debt_and_overdue(db, credit_id)
+    if exceeds_credit_limit(cur_debt, req.amount, c.credit_limit):
+        raise HTTPException(400, f"超出授信额度：当前欠款 {cur_debt:,.2f} + 本次 {req.amount:,.2f} 超过额度 {c.credit_limit:,.2f}")
 
     s = CreditShipment(
         credit_customer_id=credit_id,
@@ -280,6 +305,10 @@ async def record_repayment(credit_id: int, req: RepaymentCreate,
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "记录不存在")
+    if c.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库的账期客户")
+    if req.amount is None or req.amount <= 0:
+        raise HTTPException(400, "还款金额必须大于0")
     r = CreditRepayment(
         credit_customer_id=credit_id, repayment_date=datetime.fromisoformat(req.repayment_date),
         amount=req.amount, remark=req.remark, recorded_by=current_user.id,

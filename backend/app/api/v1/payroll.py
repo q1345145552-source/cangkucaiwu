@@ -239,10 +239,9 @@ async def calculate_payroll(
                                 late_half_count += 1
                             elif cr.status == "late_one":
                                 late_one_count += 1
-                elif session_count >= 1:
-                    # 1 or 2 sessions = absence (不算出勤，算缺勤)
-                    absence_days_count += 1
-                # 0 sessions = neither attendance nor absence (just missing, no record)
+                # 不足3场（含0场与1~2场）：一律不计出勤、也不自动计缺勤，
+                # 统一口径消除"漏打卡(1~2场)反而比完全没打卡(0场)更吃亏"的悖论。
+                # 真正的缺勤请通过「缺勤登记」录入，由 absence_set 统一扣款，避免误扣。
 
             current += timedelta(days=1)
 

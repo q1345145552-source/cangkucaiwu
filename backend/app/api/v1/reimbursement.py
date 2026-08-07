@@ -267,6 +267,12 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
+    if r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能审批本仓库的报销单")
+    # 状态前置：仅待审批/转入备用金审核/部分通过 可再审批，已付款或已驳回不可重复审批（防重复退款）
+    from app.services.flow_rules import is_reviewable_reimb, can_refund_fund_item
+    if not is_reviewable_reimb(r.status):
+        raise HTTPException(400, f"当前状态（{r.status}）不可审批")
     r.reviewer_id = current_user.id; r.review_remark = req.overall_remark
 
     approved_count = 0; rejected_count = 0; approved_amount = 0
@@ -293,7 +299,8 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
         r.status = ReimbStatus.REJECTED.value
         if r.is_fund_linked == "1" and r.fund_item_id:
             fund_item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id))).scalar_one_or_none()
-            if fund_item:
+            # 幂等守卫：仅当该备用金开销尚未驳回时才退回余额，避免重复退款
+            if fund_item and can_refund_fund_item(fund_item.review_status):
                 fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == fund_item.fund_id))).scalar_one_or_none()
                 if fund:
                     fund.remaining_balance = (fund.remaining_balance or 0) + fund_item.amount

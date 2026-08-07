@@ -86,9 +86,9 @@ async def notify_overdue_alert(user, customer_name: str, overdue_days: int, debt
 
 async def notify_group_order_deadline(user, item_name: str):
     """拼单截止提醒"""
-    await notify_user(user, f"📦 拼单"{item_name}"即将截止，请尽快确认参与。")
+    await notify_user(user, f"📦 拼单“{item_name}”即将截止，请尽快确认参与。")
 
 
 async def notify_market_review(user, item_name: str):
     """商品审核通知"""
-    await notify_user(user, f"🛒 商品"{item_name}"等待审核，请及时处理。")
+    await notify_user(user, f"🛒 商品“{item_name}”等待审核，请及时处理。")

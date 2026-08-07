@@ -106,7 +106,7 @@ class SupplierResponse(BaseModel):
 
 # ---- Recharge Declaration ----
 class RechargeCreate(BaseModel):
-    customer_id: int; declare_date: str; amount: float
+    customer_id: int; declare_date: str; amount: float = Field(gt=0)
     currency: str = "THB"; payment_method: Optional[str] = None
     payment_time: Optional[str] = None; transaction_no: Optional[str] = None
     account_tail: Optional[str] = None; screenshot: Optional[str] = None
@@ -125,7 +125,7 @@ class RechargeResponse(BaseModel):
 
 # ---- Incoming Flow ----
 class IncomingCreate(BaseModel):
-    received_date: str; amount: float; currency: str = "THB"
+    received_date: str; amount: float = Field(gt=0); currency: str = "THB"
     payer_name: Optional[str] = None; payment_method: Optional[str] = None
     remark: Optional[str] = None
 
@@ -177,7 +177,7 @@ class ExchangeRateResponse(BaseModel):
 # ---- Income Records ----
 class IncomeRecordCreate(BaseModel):
     category_id: int; account_id: int; customer_id: Optional[int] = None
-    amount: float; currency: str = "THB"; income_date: str
+    amount: float = Field(gt=0); currency: str = "THB"; income_date: str
     voucher: Optional[str] = None; remark: Optional[str] = None
 
 class IncomeRecordResponse(BaseModel):
@@ -192,7 +192,7 @@ class IncomeRecordResponse(BaseModel):
 # ---- Expense Records ----
 class ExpenseRecordCreate(BaseModel):
     category_id: int; account_id: int; supplier_id: Optional[int] = None
-    amount: float; currency: str = "THB"; expense_date: str
+    amount: float = Field(gt=0); currency: str = "THB"; expense_date: str
     voucher: Optional[str] = None; remark: Optional[str] = None
 
 class ExpenseRecordResponse(BaseModel):

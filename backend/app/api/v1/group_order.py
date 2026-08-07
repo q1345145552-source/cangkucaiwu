@@ -246,11 +246,15 @@ async def get_order_detail(go_id: int, current_user: User = Depends(get_current_
 
 
 @router.put("/{go_id}/close")
-async def close_order(go_id: int, current_user: User = Depends(require_role(Role.SUPER_ADMIN)),
+async def close_order(go_id: int, current_user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    if current_user.role != Role.SUPER_ADMIN and o.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库发起的拼单")
     if o.status != GroupOrderStatus.OPEN.value:
         raise HTTPException(400, "只能截止开放中的拼单")
     o.status = GroupOrderStatus.CLOSED.value
@@ -273,11 +277,15 @@ async def close_order(go_id: int, current_user: User = Depends(require_role(Role
 
 @router.put("/{go_id}/complete")
 async def complete_order(go_id: int, req: CompleteRequest,
-                         current_user: User = Depends(require_role(Role.SUPER_ADMIN)),
+                         current_user: User = Depends(get_current_user),
                          db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    if current_user.role != Role.SUPER_ADMIN and o.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库发起的拼单")
     if o.status != GroupOrderStatus.CLOSED.value:
         raise HTTPException(400, "只能完成已截止的拼单")
     o.status = GroupOrderStatus.COMPLETED.value
@@ -288,11 +296,15 @@ async def complete_order(go_id: int, req: CompleteRequest,
 
 @router.put("/{go_id}/cancel")
 async def cancel_order(go_id: int, req: CancelRequest,
-                        current_user: User = Depends(require_role(Role.SUPER_ADMIN)),
+                        current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    if current_user.role != Role.SUPER_ADMIN and o.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库发起的拼单")
     if o.status not in (GroupOrderStatus.OPEN.value, GroupOrderStatus.CLOSED.value):
         raise HTTPException(400, "只能取消开放中或已截止的拼单")
     o.status = GroupOrderStatus.CANCELLED.value
