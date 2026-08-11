@@ -23,6 +23,17 @@ async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migration: add half column to payroll_records if not exists
+        from sqlalchemy import text
+        try:
+            await conn.execute(text(
+                "ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS half VARCHAR(10) DEFAULT 'first_half'"
+            ))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_payroll_records_half ON payroll_records (half)"
+            ))
+        except Exception:
+            pass
     factory = async_session_factory()
     async with factory() as session:
         from sqlalchemy import select

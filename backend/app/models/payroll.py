@@ -12,6 +12,7 @@ class PayrollRecord(Base):
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
     period = Column(String(7), nullable=False, index=True)  # YYYY-MM
+    half = Column(String(10), nullable=False, default="first_half", index=True)  # first_half / second_half
     status = Column(String(20), nullable=False, default="pending")  # pending / confirmed
     disbursed = Column(Boolean, default=False)  # 已发放
 

@@ -22,6 +22,7 @@ router = APIRouter()
 
 class CalculateRequest(BaseModel):
     period: str  # YYYY-MM
+    half: str = "first_half"  # first_half / second_half
 
 
 @router.post("/calculate")
@@ -46,15 +47,17 @@ async def calculate_payroll(
     if month < 1 or month > 12:
         raise HTTPException(400, "月份无效")
 
-    # Check if payroll already calculated
+    # Check if payroll already calculated for this period+half
     existing = (await db.execute(
         select(PayrollRecord).where(
             PayrollRecord.warehouse_id == wh_id,
             PayrollRecord.period == req.period,
+            PayrollRecord.half == req.half,
         )
     )).scalars().all()
     if existing:
-        raise HTTPException(400, f"{req.period} 的工资已计算过，请先删除旧记录再重新计算")
+        half_label = "上半月" if req.half == "first_half" else "下半月"
+        raise HTTPException(400, f"{req.period} {half_label} 的工资已计算过，请先删除旧记录再重新计算")
 
     # Get all active employees with user_id links
     employees = (await db.execute(
@@ -67,7 +70,16 @@ async def calculate_payroll(
     if not employees:
         return {"message": "该仓库没有在职员工", "records": []}
 
-    # Month boundaries
+    # Half-month boundaries
+    if req.half == "first_half":
+        period_start = date(year, month, 1)
+        period_end = date(year, month, 15)
+        period_label = "上半月"
+    else:
+        period_start = date(year, month, 16)
+        _, total_days = calendar.monthrange(year, month)
+        period_end = date(year, month, total_days)
+        period_label = "下半月"
     month_start = date(year, month, 1)
     _, total_days = calendar.monthrange(year, month)
     month_end = date(year, month, total_days)
@@ -100,13 +112,13 @@ async def calculate_payroll(
 
     all_user_ids = list(user_emp_map.keys())
 
-    # Batch fetch all clock-in records for this month
+    # Batch fetch all clock-in records for this half-month period
     clock_records = []
     if all_user_ids:
         clock_records = (await db.execute(
             select(ClockInRecord).where(
-                ClockInRecord.clock_date >= month_start,
-                ClockInRecord.clock_date <= month_end,
+                ClockInRecord.clock_date >= period_start,
+                ClockInRecord.clock_date <= period_end,
                 ClockInRecord.user_id.in_(all_user_ids),
             ).order_by(ClockInRecord.clock_date, ClockInRecord.session)
         )).scalars().all()
@@ -122,12 +134,12 @@ async def calculate_payroll(
             clock_by_emp_date[key] = []
         clock_by_emp_date[key].append(cr)
 
-    # Batch fetch leave/rest/absence
+    # Batch fetch leave/rest/absence for this half-month
     leaves = (await db.execute(
         select(LeaveRequest).where(
             LeaveRequest.employee_id.in_(emp_id_set),
-            LeaveRequest.leave_date >= month_start,
-            LeaveRequest.leave_date <= month_end,
+            LeaveRequest.leave_date >= period_start,
+            LeaveRequest.leave_date <= period_end,
             LeaveRequest.status == "approved",
         )
     )).scalars().all()
@@ -140,8 +152,8 @@ async def calculate_payroll(
     rests = (await db.execute(
         select(RestDay).where(
             RestDay.employee_id.in_(emp_id_set),
-            RestDay.rest_date >= month_start,
-            RestDay.rest_date <= month_end,
+            RestDay.rest_date >= period_start,
+            RestDay.rest_date <= period_end,
         )
     )).scalars().all()
     rest_by_emp = {}
@@ -153,8 +165,8 @@ async def calculate_payroll(
     absences = (await db.execute(
         select(Absence).where(
             Absence.employee_id.in_(emp_id_set),
-            Absence.absence_date >= month_start,
-            Absence.absence_date <= month_end,
+            Absence.absence_date >= period_start,
+            Absence.absence_date <= period_end,
         )
     )).scalars().all()
     absence_by_emp = {}
@@ -174,8 +186,8 @@ async def calculate_payroll(
         .where(
             OvertimeAssignment.employee_id.in_(emp_id_set),
             OvertimeAssignment.confirmed == True,
-            OvertimeTask.date >= month_start,
-            OvertimeTask.date <= month_end,
+            OvertimeTask.date >= period_start,
+            OvertimeTask.date <= period_end,
         )
         .group_by(OvertimeAssignment.employee_id)
     )
@@ -205,8 +217,8 @@ async def calculate_payroll(
         regular_days = 0   # 转正后的出勤天数
 
         # Iterate each day in the month
-        current = month_start
-        while current <= month_end:
+        current = period_start
+        while current <= period_end:
             leave_set = leave_by_emp.get(emp.id, set())
             rest_set = rest_by_emp.get(emp.id, set())
             absence_set = absence_by_emp.get(emp.id, set())
@@ -320,6 +332,7 @@ async def calculate_payroll(
 
         record = PayrollRecord(
             warehouse_id=wh_id,
+            half=req.half,
             employee_id=emp.id,
             period=req.period,
             status="pending",
@@ -355,6 +368,7 @@ async def calculate_payroll(
 @router.get("")
 async def list_payroll(
     period: str = None,
+    half: str = None,
     status: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -368,6 +382,9 @@ async def list_payroll(
     if period:
         query = query.where(PayrollRecord.period == period)
         count_q = count_q.where(PayrollRecord.period == period)
+    if half:
+        query = query.where(PayrollRecord.half == half)
+        count_q = count_q.where(PayrollRecord.half == half)
     if status:
         query = query.where(PayrollRecord.status == status)
         count_q = count_q.where(PayrollRecord.status == status)
@@ -393,6 +410,7 @@ async def list_payroll(
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
             "employee_status": r.employee_status,
             "period": r.period,
+            "half": r.half,
             "status": r.status,
             "total_days_in_month": r.total_days_in_month,
             "attendance_days": r.attendance_days,
@@ -421,18 +439,20 @@ async def list_payroll(
 @router.get("/summary")
 async def payroll_summary(
     period: str = Query(...),
+    half: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         return {"period": period, "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
-    records = (await db.execute(
-        select(PayrollRecord).where(
-            PayrollRecord.warehouse_id == wh_id,
-            PayrollRecord.period == period,
-        )
-    )).scalars().all()
+    summary_q = select(PayrollRecord).where(
+        PayrollRecord.warehouse_id == wh_id,
+        PayrollRecord.period == period,
+    )
+    if half:
+        summary_q = summary_q.where(PayrollRecord.half == half)
+    records = (await db.execute(summary_q)).scalars().all()
 
     confirmed = sum(1 for r in records if r.status == "confirmed")
     total_net = sum(r.net_pay for r in records)
@@ -485,6 +505,7 @@ async def confirm_payroll(
 @router.post("/confirm-all")
 async def confirm_all_payroll(
     period: str = Query(...),
+    half: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -494,13 +515,14 @@ async def confirm_all_payroll(
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         raise HTTPException(400, "请先选择仓库")
-    records = (await db.execute(
-        select(PayrollRecord).where(
-            PayrollRecord.warehouse_id == wh_id,
-            PayrollRecord.period == period,
-            PayrollRecord.status == "pending",
-        )
-    )).scalars().all()
+    conf_q = select(PayrollRecord).where(
+        PayrollRecord.warehouse_id == wh_id,
+        PayrollRecord.period == period,
+        PayrollRecord.status == "pending",
+    )
+    if half:
+        conf_q = conf_q.where(PayrollRecord.half == half)
+    records = (await db.execute(conf_q)).scalars().all()
 
     if not records:
         raise HTTPException(404, f"{period} 没有待确认的工资单")
@@ -550,6 +572,7 @@ async def delete_payroll(
 @router.delete("/period/{period}")
 async def delete_period_payroll(
     period: str,
+    half: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -560,12 +583,13 @@ async def delete_period_payroll(
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         return {"period": period, "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
-    records = (await db.execute(
-        select(PayrollRecord).where(
-            PayrollRecord.warehouse_id == wh_id,
-            PayrollRecord.period == period,
-        )
-    )).scalars().all()
+    summary_q = select(PayrollRecord).where(
+        PayrollRecord.warehouse_id == wh_id,
+        PayrollRecord.period == period,
+    )
+    if half:
+        summary_q = summary_q.where(PayrollRecord.half == half)
+    records = (await db.execute(summary_q)).scalars().all()
 
     for r in records:
         await db.delete(r)
@@ -683,6 +707,7 @@ async def my_payslip(
         "data": [{
             "id": r.id,
             "period": r.period,
+            "half": r.half,
             "status": r.status,
             "disbursed": r.disbursed,
             "disbursed_at": r.disbursed_at.isoformat() if r.disbursed_at else None,
@@ -712,9 +737,9 @@ async def my_payslip(
 
 async def _get_available_periods(db: AsyncSession, wh_ids: list) -> list:
     result = await db.execute(
-        select(PayrollRecord.period)
+        select(PayrollRecord.period, PayrollRecord.half)
         .where(PayrollRecord.warehouse_id.in_(wh_ids))
         .distinct()
-        .order_by(PayrollRecord.period.desc())
+        .order_by(PayrollRecord.period.desc(), PayrollRecord.half.desc())
     )
-    return [r[0] for r in result.all()]
+    return [{"period": r[0], "half": r[1], "label": f"{r[0]} {'上半月' if r[1] == 'first_half' else '下半月'}"} for r in result.all()]
