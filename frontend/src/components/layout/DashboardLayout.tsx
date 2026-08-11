@@ -22,30 +22,30 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { key: "dashboard", label: "仪表盘", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ["warehouse_admin", "staff"] },
+  { key: "dashboard", label: "dashboard", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ["warehouse_admin", "staff"] },
   {
-    key: "finance_ops_group", label: "财务(仓库运营)", icon: <CreditCard size={20} />,
+    key: "finance_ops_group", label: "finance_ops_group_label", icon: <CreditCard size={20} />,
     roles: ["warehouse_admin", "staff"],
     children: [
-      { key: "customers", label: "客户档案", icon: <Users size={18} />, href: "/customers", roles: ["warehouse_admin", "staff"] },
-      { key: "warehouses", label: "仓库管理", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["warehouse_admin", "super_admin"] },
-      { key: "accounts", label: "收款账户", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin", "super_admin"] },
-      { key: "recharge", label: "充值申报", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
-      { key: "incoming", label: "到账流水", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin", "super_admin"] },
-      { key: "reconciliation", label: "对账中心", icon: <CheckCircle size={18} />, href: "/reconciliation", roles: ["warehouse_admin", "super_admin"] },
+      { key: "customers", label: "customers", icon: <Users size={18} />, href: "/customers", roles: ["warehouse_admin", "staff"] },
+      { key: "warehouses", label: "warehouses", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["warehouse_admin", "super_admin"] },
+      { key: "accounts", label: "accounts", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin", "super_admin"] },
+      { key: "recharge", label: "recharge", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff"] },
+      { key: "incoming", label: "incoming", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin", "super_admin"] },
+      { key: "reconciliation", label: "reconciliation", icon: <CheckCircle size={18} />, href: "/reconciliation", roles: ["warehouse_admin", "super_admin"] },
     ],
   },
   {
-    key: "finance_daily_group", label: "财务(日常开支)", icon: <PiggyBank size={20} />,
+    key: "finance_daily_group", label: "finance_daily_group_label", icon: <PiggyBank size={20} />,
     roles: ["warehouse_admin", "staff"],
     children: [
-      { key: "operating", label: "运营收支", icon: <BarChart3 size={18} />, href: "/operating", roles: ["warehouse_admin", "staff"] },
-      { key: "other_income_expense", label: "其他收入", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin", "super_admin"] },
-      { key: "expense_fund", label: "备用金管理", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff"] },
-      { key: "reimbursement", label: "报销管理", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff"] },
-      { key: "credit", label: "账期管理", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin", "super_admin"] },
-      { key: "reports", label: "报表中心", icon: <BarChart3 size={18} />, href: "/reports", roles: ["warehouse_admin", "staff"] },
-      { key: "ledger", label: "资金流水总览", icon: <FileText size={18} />, href: "/ledger", roles: ["warehouse_admin", "super_admin"] },
+      { key: "operating", label: "operating", icon: <BarChart3 size={18} />, href: "/operating", roles: ["warehouse_admin", "staff"] },
+      { key: "other_income_expense", label: "other_income_expense", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin", "super_admin"] },
+      { key: "expense_fund", label: "expense_fund", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff"] },
+      { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff"] },
+      { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin", "super_admin"] },
+      { key: "reports", label: "reports", icon: <BarChart3 size={18} />, href: "/reports", roles: ["warehouse_admin", "staff"] },
+      { key: "ledger", label: "ledger", icon: <FileText size={18} />, href: "/ledger", roles: ["warehouse_admin", "super_admin"] },
     ],
   },
   {
@@ -57,7 +57,7 @@ const navItems: NavItem[] = [
       { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin", "super_admin"] },
     ],
   },
-  { key: "warehouses", label: "仓库管理", icon: <Warehouse size={20} />, href: "/warehouses", roles: ["super_admin"] },
+  { key: "warehouses", label: "warehouses", icon: <Warehouse size={20} />, href: "/warehouses", roles: ["super_admin"] },
   {
     key: "group_order_group", label: "group_order_group", icon: <PackageOpen size={20} />,
     roles: ["super_admin", "warehouse_admin", "staff"],
@@ -67,13 +67,13 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    key: "hr_group", label: "员工管理", icon: <ClipboardList size={20} />,
+    key: "hr_group", label: "employee_group", icon: <ClipboardList size={20} />,
     roles: ["warehouse_admin", "super_admin"],
     children: [
       { key: "employees", label: "员工档案", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "super_admin"] },
-      { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin"] },
-      { key: "overtime", label: "加班管理", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin"] },
-      { key: "payroll", label: "工资管理", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "super_admin"] },
+      { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin"] },
+      { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin"] },
+      { key: "payroll", label: "payroll", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "super_admin"] },
     ],
   },
   {
@@ -82,24 +82,24 @@ const navItems: NavItem[] = [
     children: [
       { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff"] },
       { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin"] },
-      { key: "attendance", label: "工作考勤", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_labor"] },
-      { key: "overtime", label: "加班管理", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_labor"] },
-      { key: "clock_in", label: "打卡签到", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },
-      { key: "my_payslip", label: "我的工资单", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["warehouse_labor"] },    ],
+      { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_labor"] },
+      { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_labor"] },
+      { key: "clock_in", label: "clock_in", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },
+      { key: "my_payslip", label: "my_payslip", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["warehouse_labor"] },    ],
   },
 ];
 
 const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
-  incoming: "到账流水",
-  expense_fund: "备用金管理",
-  reimbursement: "报销管理",
-  income_expense: "收付款管理",
-  credit: "账期管理",
-  suppliers: "供应商管理",
-  payable: "供应商管理",
-  payment_plans: "供应商管理",
-  audit_logs: "操作日志",
-  other_income_expense: "其他收支",
+  incoming: "incoming",
+  expense_fund: "expense_fund",
+  reimbursement: "reimbursement",
+  income_expense: "income_expense",
+  credit: "credit",
+  suppliers: "suppliers",
+  payable: "suppliers",
+  payment_plans: "suppliers",
+  audit_logs: "audit_logs",
+  other_income_expense: "other_income_expense",
 };
 
 function hasAccess(item: NavItem, user: any): boolean {
@@ -215,7 +215,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }`}>
       <div className="flex items-center justify-between p-4 border-b border-slate-700 min-h-[56px]">
         <span className={`font-semibold text-sm truncate ${!sidebarOpen && !isMobile && "hidden"}`}>
-          海外仓财务管理系统
+          {t("app_name")}
         </span>
         <button
           onClick={() => isMobile ? setMobileMenuOpen(false) : setSidebarOpen(!sidebarOpen)}
@@ -290,7 +290,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 >
                   <Building2 size={16} />
                   <span className="max-w-[120px] truncate">
-                    {isAllWarehouses ? "总仓汇总" : (whList.find(w => w.id === selectedWhId)?.name || "选择仓库")}
+                    {isAllWarehouses ? t("all_warehouses") : (whList.find(w => w.id === selectedWhId)?.name || t("select_warehouse"))}
                   </span>
                   <svg className="w-3 h-3" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
                 </button>
@@ -328,7 +328,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         onClick={() => setShowWhSwitcher(false)}
                         className="w-full text-left px-3 py-2 text-sm text-blue-500 hover:bg-blue-50 flex items-center gap-2 min-h-[40px] border-t"
                       >
-                        + 新建仓库
+                        + {t("new_warehouse")}
                       </Link>
                     )}
                   </div>
