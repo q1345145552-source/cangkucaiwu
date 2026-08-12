@@ -60,9 +60,8 @@ export function useI18n() {
   );
 
   const toggleLocale = useCallback(() => {
-    if (locale === "my") setLocale("th");
+    if (locale === "zh") setLocale("th");
     else if (locale === "th") setLocale("my");
-    else if (locale === "zh") setLocale("th");
     else setLocale("zh");
   }, [locale, setLocale]);
 

@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList,
+  Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -123,13 +123,14 @@ interface WarehouseInfo {
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { t, toggleLocale } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showLangSwitcher, setShowLangSwitcher] = useState(false);
   const [showWhSwitcher, setShowWhSwitcher] = useState(false);
   const [whList, setWhList] = useState<WarehouseInfo[]>([]);
   const [selectedWhId, setSelectedWhId] = useState<number | null>(null);
@@ -338,9 +339,36 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
           
           <div className="flex items-center gap-2 ml-auto">
-            <button onClick={toggleLocale} className="p-2 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
-              <Globe size={18} />
-            </button>
+            {/* Language Switcher Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowLangSwitcher(!showLangSwitcher)}
+                className="p-2 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center gap-1"
+              >
+                <Globe size={18} />
+                <span className="text-xs font-medium text-gray-500 hidden sm:inline">{locale === "zh" ? "中文" : locale === "th" ? "ไทย" : "မြန်မာ"}</span>
+                <ChevronDown size={12} className="text-gray-400" />
+              </button>
+              {showLangSwitcher && (
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-36 py-1 z-50">
+                  {([
+                    { code: "zh", label: "中文" },
+                    { code: "th", label: "ไทย" },
+                    { code: "my", label: "မြန်မာ" },
+                  ] as const).map(lang => (
+                    <button
+                      key={lang.code}
+                      onClick={() => { setLocale(lang.code); setShowLangSwitcher(false); }}
+                      className={"w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] " + (locale === lang.code ? "text-blue-600 font-medium bg-blue-50" : "")}
+                    >
+                      <span>{lang.label}</span>
+                      {locale === lang.code && <span className="ml-auto text-blue-500">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="relative">
               <button onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg min-h-[44px]">
