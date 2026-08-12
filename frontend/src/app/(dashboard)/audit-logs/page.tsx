@@ -20,7 +20,7 @@ export default function AuditLogsPage() {
 
   async function backup() {
     const token = getToken();
-    window.open(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/settings/backup`, "_blank");
+    window.open(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/settings/backup`, "_blank");
   }
 
   return (

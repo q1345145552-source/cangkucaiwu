@@ -86,7 +86,7 @@ export default function ReportsPage() {
 
   async function exportExcel(key: string) {
     const token = getToken();
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
     try {
       const res = await fetch(`${base}/reports/${key}?format=excel&month=${month}`, {
         headers: { Authorization: `Bearer ${token}` },

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import { Upload, Plus } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function RechargePage() {
   const { t } = useI18n();
@@ -96,7 +96,7 @@ export default function RechargePage() {
     { key: "screenshot", label: "截图", render: (v: string, row: any) => v ? (
       <div className="flex items-center gap-1.5">
         <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-xs">已上传</span>
-        <a href={"http://localhost:8000/"+v} target="_blank" className="text-blue-600 text-xs hover:underline">查看</a>
+        <a href={"/"+v} target="_blank" className="text-blue-600 text-xs hover:underline">查看</a>
       </div>
     ) : (
       <div className="flex items-center gap-1.5">

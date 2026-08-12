@@ -139,7 +139,7 @@ export default function ExpenseFundPage() {
       const res = await api.post<any>(`/expense-fund/accounts/${expenseAccount.id}/items`, { ...itemForm, amount: itemForm.amount || 0, currency: itemForm.currency });
       if (receiptFile && res.id) {
         const fd = new FormData(); fd.append("file", receiptFile);
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/expense-fund/accounts/${expenseAccount.id}/items/${res.id}/upload-receipt`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/expense-fund/accounts/${expenseAccount.id}/items/${res.id}/upload-receipt`, {
           method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
         });
       }

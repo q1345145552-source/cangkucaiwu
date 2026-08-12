@@ -67,8 +67,8 @@ export default function PaymentPlansPage() {
   async function handleExport(planId?: number) {
     try {
       const url = planId
-        ? `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/payable/plans/export?plan_id=${planId}`
-        : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/payable/plans/export`;
+        ? `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/payable/plans/export?plan_id=${planId}`
+        : `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/payable/plans/export`;
       const res = await fetch(url, { headers: { "Authorization": `Bearer ${getToken()}` } });
       const blob = await res.blob();
       const a = document.createElement("a"); a.href = window.URL.createObjectURL(blob);

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, DollarSign, Pencil, Trash2, TrendingUp, RefreshCw, Download, Search } from "lucide-react";
 
 const CATEGORY_GROUP = "other";
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function OtherIncomePage() {
   const { toast } = useToast(); const router = useRouter();

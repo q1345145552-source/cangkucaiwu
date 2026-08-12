@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Download, Upload, Plus } from "lucide-react";
 import DataTable from "@/components/common/DataTable";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function IncomingPage() {
   const { toast } = useToast(); const router = useRouter();
@@ -147,7 +147,7 @@ export default function IncomingPage() {
       {/* 操作按钮行 */}
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => {
-          const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+          const API = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
           fetch(`${API}/incoming/template`, { headers: { "Authorization": `Bearer ${getToken()}` } })
             .then(res => res.blob()).then(blob => {
               const a = document.createElement("a"); a.href = window.URL.createObjectURL(blob);

@@ -92,7 +92,7 @@ export default function ReimbursementPage() {
       let receiptPath = null;
       if (entryFile) {
         const fd = new FormData(); fd.append("file", entryFile);
-        const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/upload`, {
+        const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/upload`, {
           method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
         });
         const upData = await upRes.json();
@@ -174,7 +174,7 @@ export default function ReimbursementPage() {
       if (selMonth) params.set("month", selMonth);
       if (selStatus) params.set("status", selStatus);
       if (selEmployee) params.set("employee_id", selEmployee);
-      const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/reimbursement/export?${params.toString()}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/reimbursement/export?${params.toString()}`;
       const res = await fetch(url, { headers: { "Authorization": `Bearer ${getToken()}` } });
       const blob = await res.blob();
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob);

@@ -69,7 +69,7 @@ export default function LedgerPage() {
     if (source) params.set("source", source);
     if (flowType) params.set("flow_type", flowType);
     const token = getToken();
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
     try {
       const res = await fetch(`${base}/income-expense/ledger/export?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },

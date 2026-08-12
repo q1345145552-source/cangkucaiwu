@@ -124,7 +124,7 @@ export default function ReconciliationPage() {
 
   async function handleExport() {
     try {
-      let url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/reconciliation/export?start_date=${resultsStartDate}&end_date=${resultsEndDate}&warehouse_id=${whId}`;
+      let url = `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/reconciliation/export?start_date=${resultsStartDate}&end_date=${resultsEndDate}&warehouse_id=${whId}`;
       if (resultsSearch) url += `&search=${encodeURIComponent(resultsSearch)}`;
       if (resultsSearchCode) url += `&search_code=${encodeURIComponent(resultsSearchCode)}`;
       const res = await fetch(url, { headers: { "Authorization": `Bearer ${getToken()}` } });
@@ -146,7 +146,7 @@ export default function ReconciliationPage() {
     { key: "declare_date", label: "申报日期", render: (v: string) => v?.slice(0,10) },
     { key: "amount", label: "金额", align: "right" as const, render: (v: number, row: any) => `${v?.toLocaleString()} ${row.currency || ""}` },
     { key: "screenshot", label: "截图", render: (v: string) => v ? (
-      <button onClick={() => setPreviewScreenshot(v.startsWith("http") ? v : `http://localhost:8000/${v}`)} className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"><ImageIcon size={12} />查看</button>
+      <button onClick={() => setPreviewScreenshot(v.startsWith("http") ? v : `/${v}`)} className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"><ImageIcon size={12} />查看</button>
     ) : <span className="text-red-400 text-xs">未上传</span> },
     { key: "payment_method", label: "方式", render: (v: string) => v || "-" },
   ];
@@ -159,7 +159,7 @@ export default function ReconciliationPage() {
     { key: "received_date", label: "到账日期", render: (v: string) => v?.slice(0,10) },
     { key: "amount", label: "金额", align: "right" as const, render: (v: number, row: any) => `${v?.toLocaleString()} ${row.currency || ""}` },
     { key: "screenshot", label: "截图", render: (v: string) => v ? (
-      <button onClick={() => setPreviewScreenshot(v.startsWith("http") ? v : `http://localhost:8000/${v}`)} className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"><ImageIcon size={12} />查看</button>
+      <button onClick={() => setPreviewScreenshot(v.startsWith("http") ? v : `/${v}`)} className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"><ImageIcon size={12} />查看</button>
     ) : <span className="text-red-400 text-xs">未上传</span> },
     { key: "payment_method", label: "方式", render: (v: string) => v || "-" },
   ];
