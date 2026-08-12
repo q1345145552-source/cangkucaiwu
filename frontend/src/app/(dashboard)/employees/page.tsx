@@ -28,6 +28,10 @@ export default function EmployeesPage() {
   const [newTag, setNewTag] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [passportPhotoFile, setPassportPhotoFile] = useState<File | null>(null);
+  const [workPermitPhotoFile, setWorkPermitPhotoFile] = useState<File | null>(null);
+  const [uploadingPassportPhoto, setUploadingPassportPhoto] = useState(false);
+  const [uploadingWorkPermitPhoto, setUploadingWorkPermitPhoto] = useState(false);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,6 +99,12 @@ export default function EmployeesPage() {
         if (photoFile && r && (r as any).id !== undefined) {
           await uploadPhoto((r as any).id);
         }
+        if (passportPhotoFile && r && (r as any).id !== undefined) {
+          await uploadPassportPhoto((r as any).id);
+        }
+        if (workPermitPhotoFile && r && (r as any).id !== undefined) {
+          await uploadWorkPermitPhoto((r as any).id);
+        }
         toast("success", "员工创建成功");
       }
       if (!detailEmp) {
@@ -132,6 +142,57 @@ export default function EmployeesPage() {
     } catch { toast("error", "照片上传失败"); }
     setUploadingPhoto(false);
     setPhotoFile(null);
+    load();
+  }
+
+
+  async function uploadPassportPhoto(empId?: number) {
+    const targetId = empId || editingId;
+    if (!targetId || !passportPhotoFile) return;
+    setUploadingPassportPhoto(true);
+    try {
+      const token = getToken();
+      const fd = new FormData();
+      fd.append("file", passportPhotoFile);
+      const res = await fetch(`/api/v1/employees/${targetId}/passport-photo`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      if (res.ok) {
+        const r = await res.json();
+        toast("success", "护照照片上传成功");
+        if (detailEmp) setDetailEmp({ ...detailEmp, passport_photo_path: r.passport_photo_path });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast("error", err.detail || "上传失败");
+      }
+    } catch { toast("error", "护照照片上传失败"); }
+    setUploadingPassportPhoto(false);
+    setPassportPhotoFile(null);
+    load();
+  }
+
+  async function uploadWorkPermitPhoto(empId?: number) {
+    const targetId = empId || editingId;
+    if (!targetId || !workPermitPhotoFile) return;
+    setUploadingWorkPermitPhoto(true);
+    try {
+      const token = getToken();
+      const fd = new FormData();
+      fd.append("file", workPermitPhotoFile);
+      const res = await fetch(`/api/v1/employees/${targetId}/work-permit-photo`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      if (res.ok) {
+        const r = await res.json();
+        toast("success", "工作证照片上传成功");
+        if (detailEmp) setDetailEmp({ ...detailEmp, work_permit_photo_path: r.work_permit_photo_path });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast("error", err.detail || "上传失败");
+      }
+    } catch { toast("error", "工作证照片上传失败"); }
+    setUploadingWorkPermitPhoto(false);
+    setWorkPermitPhotoFile(null);
     load();
   }
 
@@ -623,6 +684,28 @@ export default function EmployeesPage() {
                   <div>
                     <label className="text-xs text-gray-400">工作证有效期</label>
                     <p className="text-sm text-gray-700 mt-0.5">{detailEmp.work_permit_expiry || "-"}</p>
+                  </div>
+                </div>
+                {/* Passport Photo */}
+                <div className="mt-3">
+                  <label className="text-xs text-gray-400">护照照片</label>
+                  <div className="mt-1">
+                    {detailEmp.passport_photo_path ? (
+                      <img src={photoUrl(detailEmp.passport_photo_path)} alt="护照照片" className="w-40 h-28 object-cover border rounded cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={() => setZoomedPhoto(`/${detailEmp.passport_photo_path}`)} />
+                    ) : (
+                      <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
+                    )}
+                  </div>
+                </div>
+                {/* Work Permit Photo */}
+                <div className="mt-3">
+                  <label className="text-xs text-gray-400">工作证照片</label>
+                  <div className="mt-1">
+                    {detailEmp.work_permit_photo_path ? (
+                      <img src={photoUrl(detailEmp.work_permit_photo_path)} alt="工作证照片" className="w-40 h-28 object-cover border rounded cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={() => setZoomedPhoto(`/${detailEmp.work_permit_photo_path}`)} />
+                    ) : (
+                      <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -22,6 +22,8 @@ class Employee(Base):
 
     # Photo
     photo_path = Column(String(500), nullable=True, comment="员工本人照片路径")
+    passport_photo_path = Column(String(500), nullable=True, comment="护照照片路径")
+    work_permit_photo_path = Column(String(500), nullable=True, comment="工作证照片路径")
 
     # Passport & Work Permit (compliance)
     passport_number = Column(String(50), nullable=True, comment="护照号码")
