@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import { TrendingUp, TrendingDown, Plus, DollarSign, Minus, ArrowUp, ArrowDown, Search } from "lucide-react";
@@ -20,6 +20,9 @@ export default function OperatingPage() {
   const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: new Date().toISOString().slice(0, 10), remark: "" });
   const [expFilters, setExpFilters] = useState({ category_id: 0, account_id: 0, currency: "", start_date: "", end_date: "" });
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
+  const [voucherFile, setVoucherFile] = useState<File | null>(null);
+  const [voucherPreview, setVoucherPreview] = useState<string | null>(null);
+  const [zoomVoucher, setZoomVoucher] = useState<string | null>(null);
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadDashboard(); loadRefs(); }, []);
   useEffect(() => { loadExpenses(); }, [expPage, month, expFilters, viewMode]);
@@ -80,11 +83,57 @@ export default function OperatingPage() {
     } catch {}
   }
 
+  function handleVoucherSelect(e: any) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setVoucherFile(f);
+    if (voucherPreview) URL.revokeObjectURL(voucherPreview);
+    setVoucherPreview(URL.createObjectURL(f));
+  }
+
+  function clearVoucher() {
+    setVoucherFile(null);
+    if (voucherPreview) URL.revokeObjectURL(voucherPreview);
+    setVoucherPreview(null);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    clearVoucher();
+  }
+
   async function handleCreate() {
+    if (!form.category_id) { toast("error", "请选择类别"); return; }
+    if (!form.account_id) { toast("error", "请选择账户"); return; }
     try {
-      await api.post("/income-expense/expense", { ...form, amount: form.amount || 0, expense_date: form.date, currency: form.currency });
+      const fd = new FormData();
+      fd.append("category_id", String(form.category_id));
+      fd.append("account_id", String(form.account_id));
+      fd.append("amount", String(form.amount || 0));
+      fd.append("currency", form.currency || "THB");
+      fd.append("expense_date", form.date);
+      if (form.remark) fd.append("remark", form.remark);
+      if (voucherFile) fd.append("file", voucherFile);
+
+      const headers: Record<string, string> = {};
+      const token = getToken();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const whId = getActiveWarehouseId();
+      if (whId !== null) headers["X-Warehouse-ID"] = whId;
+
+      const res = await fetch("/api/v1/income-expense/expense", {
+        method: "POST", headers, body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        let msg = err.detail || "录入失败";
+        if (Array.isArray(err.detail)) msg = err.detail.map((e: any) => e.msg).join("; ");
+        throw new Error(msg);
+      }
       toast("success", "支出录入成功");
-      setShowForm(false); setForm({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: new Date().toISOString().slice(0, 10), remark: "" });
+      setShowForm(false);
+      setForm({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: new Date().toISOString().slice(0, 10), remark: "" });
+      clearVoucher();
       loadExpenses(); loadDashboard();
     } catch (err: any) { toast("error", err.message || "录入失败"); }
   }
@@ -212,6 +261,9 @@ export default function OperatingPage() {
               { key: "amount", label: "金额", render: (v: number) => <span className="font-medium">¥{v?.toLocaleString()}</span> },
               { key: "currency", label: "币种" },
               { key: "remark", label: "备注" },
+              { key: "voucher", label: "凭证", render: (v: string) => v ? (
+                  <button onClick={(e) => { e.stopPropagation(); setZoomVoucher(v); }} className="text-blue-600 hover:underline text-xs font-medium">查看</button>
+                ) : <span className="text-gray-300">无</span> },
             ]}
             data={expenses} total={expTotal} page={expPage} pageSize={25} onPageChange={setExpPage}
           />
@@ -256,11 +308,11 @@ export default function OperatingPage() {
 
       {/* 录入弹窗 */}
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={closeForm}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
               <Minus size={20} /><h2 className="text-lg font-semibold">录入运营支出</h2>
-              <button onClick={() => setShowForm(false)} className="ml-auto text-red-200 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={closeForm} className="ml-auto text-red-200 hover:text-white text-xl leading-none">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               <div><label className="form-label">日期</label><input type="date" className="form-input" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
@@ -271,11 +323,31 @@ export default function OperatingPage() {
                 <div><label className="form-label">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
               </div>
               <div><label className="form-label">备注</label><input className="form-input" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
+              <div>
+                <label className="form-label">凭证图片（可选）</label>
+                <input type="file" accept="image/*" className="form-input" onChange={handleVoucherSelect} />
+                {voucherPreview && (
+                  <div className="mt-2 relative inline-block">
+                    <img src={voucherPreview} alt="凭证预览" className="h-24 rounded-lg border object-cover" />
+                    <button onClick={clearVoucher} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary">取消</button>
+              <button onClick={closeForm} className="btn-secondary">取消</button>
               <button onClick={handleCreate} className="btn-primary">保存</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 凭证大图预览 */}
+      {zoomVoucher && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setZoomVoucher(null)}>
+          <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setZoomVoucher(null)} className="absolute -top-3 -right-3 bg-white rounded-full w-8 h-8 shadow text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+            <img src={`/${zoomVoucher}`} alt="凭证大图" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain" />
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
@@ -226,22 +227,55 @@ async def list_expense(
     } for r in records], "total": total, "page": page, "page_size": page_size}
 
 @router.post("/expense")
-async def create_expense(req: ExpenseRecordCreate, current_user: User = Depends(get_current_user),
-                         db: AsyncSession = Depends(get_db)):
+async def create_expense(
+    category_id: int = Form(...),
+    account_id: int = Form(...),
+    amount: float = Form(...),
+    currency: str = Form("THB"),
+    expense_date: str = Form(...),
+    supplier_id: Optional[int] = Form(None),
+    remark: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role == Role.STAFF and "收付款管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无确认出账权限")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
+
+    wh_id = get_wh_id(current_user)
+
+    # 凭证图片（可选）：保存到 uploads 目录，路径写入 voucher 字段
+    voucher_path = None
+    if file is not None and file.filename:
+        ext = file.filename.split(".")[-1].lower() if file.filename else ""
+        if ext not in ("png", "jpg", "jpeg", "webp"):
+            raise HTTPException(400, "凭证仅支持图片格式 png/jpg/jpeg/webp")
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(400, "凭证图片不能超过10MB")
+        import os, uuid
+        UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
+        today_str = thai_now().strftime("%Y-%m-%d")
+        subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "expense_vouchers")
+        os.makedirs(subdir, exist_ok=True)
+        fname = f"{uuid.uuid4().hex}.{ext}"
+        fpath = os.path.join(subdir, fname)
+        with open(fpath, "wb") as f:
+            f.write(content)
+        voucher_path = f"uploads/{wh_id}/{today_str}/expense_vouchers/{fname}"
+
     r = ExpenseRecord(
-        warehouse_id=get_wh_id(current_user), category_id=req.category_id,
-        account_id=req.account_id, supplier_id=req.supplier_id,
-        amount=req.amount, currency=req.currency,
-        expense_date=datetime.fromisoformat(req.expense_date),
-        voucher=req.voucher, remark=req.remark, approved_by=current_user.id,
+        warehouse_id=wh_id, category_id=category_id,
+        account_id=account_id, supplier_id=supplier_id,
+        amount=amount, currency=currency,
+        expense_date=datetime.fromisoformat(expense_date),
+        voucher=voucher_path, remark=remark, approved_by=current_user.id,
     )
-    db.add(r); await db.flush(); return {"id": r.id, "message": "付款记录创建成功"}
+    db.add(r); await db.flush(); return {"id": r.id, "message": "付款记录创建成功", "voucher": voucher_path}
 
 # ==== Ledger ====
 @router.get("/ledger")
