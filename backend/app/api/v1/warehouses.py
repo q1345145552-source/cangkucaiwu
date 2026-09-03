@@ -7,6 +7,7 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.core.permissions import get_current_user, require_role, Role
 from app.schemas.business import WarehouseCreate, WarehouseUpdate
+from app.services.default_categories import ensure_default_categories
 
 router = APIRouter()
 
@@ -42,7 +43,10 @@ async def create_warehouse(req: WarehouseCreate,
     db.add(uw)
     await db.flush()
 
-    return {"id": w.id, "message": "创建成功"}
+    # 自动创建默认收支分类（运营支出/运营收入/其他收入/其他支出）
+    categories_created = await ensure_default_categories(db, w.id)
+
+    return {"id": w.id, "message": "创建成功", "categories_created": categories_created}
 
 @router.put("/{warehouse_id}")
 async def update_warehouse(warehouse_id: int, req: WarehouseUpdate,
