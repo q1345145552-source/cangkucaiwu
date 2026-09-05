@@ -58,19 +58,20 @@ export default function ReportsPage() {
   const router = useRouter();
   const today = new Date();
   const curMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const [selected, setSelected] = useState("");
   const [data, setData] = useState<any>(null);
-  const [month, setMonth] = useState(curMonth);
+  const [dateRange, setDateRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<Record<string, any>>({});
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadPreviews(); }, []);
-  useEffect(() => { loadPreviews(); }, [month]);
+  useEffect(() => { loadPreviews(); if (selected) loadReport(selected); }, [dateRange]);
 
   async function loadPreviews() {
     try {
-      const r = await api.get<any>(`/reports/previews?month=${month}`);
+      const r = await api.get<any>(`/reports/previews?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
       setPreviews(r.previews || {});
     } catch {}
   }
@@ -78,7 +79,7 @@ export default function ReportsPage() {
   async function loadReport(key: string) {
     setSelected(key); setLoading(true);
     try {
-      const r = await api.get<any>(`/reports/${key}?month=${month}`);
+      const r = await api.get<any>(`/reports/${key}?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
       setData(r);
     } catch { setData(null); }
     setLoading(false);
@@ -88,7 +89,7 @@ export default function ReportsPage() {
     const token = getToken();
     const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
     try {
-      const res = await fetch(`${base}/reports/${key}?format=excel&month=${month}`, {
+      const res = await fetch(`${base}/reports/${key}?format=excel&start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("导出失败");
@@ -96,7 +97,7 @@ export default function ReportsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `report_${key}_${month}.xlsx`;
+      a.download = `report_${key}_${dateRange.start_date}_${dateRange.end_date}.xlsx`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch (err) { console.error("导出失败:", err); }
@@ -122,7 +123,9 @@ export default function ReportsPage() {
           <h1 className="page-title">报表中心</h1>
         </div>
         <div className="flex items-center gap-2">
-          <input type="month" value={month} onChange={e => { setMonth(e.target.value); if (selected) loadReport(selected); }} className="form-input text-sm py-1.5 w-36" />
+          <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
+          <span className="text-gray-400 text-xs">至</span>
+          <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
         </div>
       </div>
 

@@ -31,7 +31,10 @@ export default function PayablePage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLabel, setPreviewLabel] = useState("");
-  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: "", end_date: "", status: "" });
+  const _now = new Date();
+  const _curMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}`;
+  const _todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
+  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: `${_curMonth}-01`, end_date: _todayStr, status: "" });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadStats(); }, [page, listFilters]);
 
@@ -49,7 +52,7 @@ export default function PayablePage() {
     setLoading(false);
   }
   async function loadSuppliers() { try { const r = await api.get<any>("/suppliers?page_size=100"); setSuppliers(r.data); } catch {} }
-  async function loadStats() { try { const r = await api.get<any>("/payable/stats"); setStats(r); } catch {} }
+  async function loadStats() { try { const r = await api.get<any>(`/payable/stats?start_date=${listFilters.start_date}&end_date=${listFilters.end_date}`); setStats(r); } catch {} }
 
   // === 月度订单量 ===
   const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,"0");

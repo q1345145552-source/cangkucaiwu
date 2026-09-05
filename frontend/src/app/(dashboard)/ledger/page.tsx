@@ -25,12 +25,13 @@ export default function LedgerPage() {
   const router = useRouter();
   const today = new Date();
   const curMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
-  const [month, setMonth] = useState(curMonth);
+  const [dateRange, setDateRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [source, setSource] = useState("");
   const [flowType, setFlowType] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,8 +42,8 @@ export default function LedgerPage() {
   const [net, setNet] = useState(0);
 
   useEffect(() => { if (!getToken()) router.push("/login"); }, []);
-  useEffect(() => { setPage(1); }, [month, source, flowType]);
-  useEffect(() => { loadData(); }, [page, month, source, flowType]);
+  useEffect(() => { setPage(1); }, [dateRange, source, flowType]);
+  useEffect(() => { loadData(); }, [page, dateRange, source, flowType]);
 
   async function loadData() {
     setLoading(true);
@@ -50,7 +51,8 @@ export default function LedgerPage() {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("page_size", String(pageSize));
-      if (month) params.set("month", month);
+      if (dateRange.start_date) params.set("start_date", dateRange.start_date);
+      if (dateRange.end_date) params.set("end_date", dateRange.end_date);
       if (source) params.set("source", source);
       if (flowType) params.set("flow_type", flowType);
       const r = await api.get<any>(`/income-expense/ledger?${params.toString()}`);
@@ -65,7 +67,8 @@ export default function LedgerPage() {
 
   async function handleExport() {
     const params = new URLSearchParams();
-    if (month) params.set("month", month);
+    if (dateRange.start_date) params.set("start_date", dateRange.start_date);
+    if (dateRange.end_date) params.set("end_date", dateRange.end_date);
     if (source) params.set("source", source);
     if (flowType) params.set("flow_type", flowType);
     const token = getToken();
@@ -79,14 +82,14 @@ export default function LedgerPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ledger_${month || "all"}.xlsx`;
+      a.download = `ledger_${dateRange.start_date}_${dateRange.end_date}.xlsx`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch (err) { console.error("导出失败:", err); }
   }
 
   function handleReset() {
-    setMonth(curMonth);
+    setDateRange({ start_date: `${curMonth}-01`, end_date: todayStr });
     setSource("");
     setFlowType("");
   }
@@ -114,7 +117,7 @@ export default function LedgerPage() {
             <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
               <TrendingUp size={16} className="text-green-600" />
             </div>
-            <span className="text-xs text-gray-400">当月总收入</span>
+            <span className="text-xs text-gray-400">总收入</span>
           </div>
           <div className="text-2xl font-bold text-green-700">฿{totalIncome.toLocaleString()}</div>
         </div>
@@ -123,7 +126,7 @@ export default function LedgerPage() {
             <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
               <TrendingDown size={16} className="text-red-500" />
             </div>
-            <span className="text-xs text-gray-400">当月总支出</span>
+            <span className="text-xs text-gray-400">总支出</span>
           </div>
           <div className="text-2xl font-bold text-red-600">฿{totalExpense.toLocaleString()}</div>
         </div>
@@ -132,7 +135,7 @@ export default function LedgerPage() {
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${net >= 0 ? "bg-indigo-50" : "bg-red-50"}`}>
               {net >= 0 ? <ArrowUp size={16} className="text-indigo-600" /> : <ArrowDown size={16} className="text-red-500" />}
             </div>
-            <span className="text-xs text-gray-400">当月净额</span>
+            <span className="text-xs text-gray-400">净额</span>
           </div>
           <div className={`text-2xl font-bold ${net >= 0 ? "text-indigo-700" : "text-red-600"}`}>
             {net >= 0 ? "" : "-"}฿{Math.abs(net).toLocaleString()}
@@ -145,8 +148,12 @@ export default function LedgerPage() {
         <div className="px-6 py-4 border-b bg-gray-50/50">
           <div className="flex items-end gap-3 flex-wrap">
             <div className="w-[150px]">
-              <label className="form-label text-xs">月份</label>
-              <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="form-input text-sm" />
+              <label className="form-label text-xs">开始日期</label>
+              <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-sm" />
+            </div>
+            <div className="w-[150px]">
+              <label className="form-label text-xs">结束日期</label>
+              <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm" />
             </div>
             <div className="w-[150px]">
               <label className="form-label text-xs">来源模块</label>

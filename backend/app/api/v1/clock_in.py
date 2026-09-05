@@ -149,7 +149,8 @@ async def get_today(
 
 @router.get("/records")
 async def list_records(
-    month: str = None,
+    start_date: str = None,
+    end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -178,8 +179,10 @@ async def list_records(
         pass
     elif active_wh:
         query = query.where(ClockInRecord.warehouse_id == active_wh)
-    if month:
-        query = query.where(func.to_char(ClockInRecord.clock_date, "YYYY-MM") == month)
+    if start_date:
+        query = query.where(ClockInRecord.clock_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+    if end_date:
+        query = query.where(ClockInRecord.clock_date <= datetime.strptime(end_date, "%Y-%m-%d").date())
     result = await db.execute(query.order_by(ClockInRecord.clock_date.asc(), ClockInRecord.session))
     records = result.scalars().all()
 

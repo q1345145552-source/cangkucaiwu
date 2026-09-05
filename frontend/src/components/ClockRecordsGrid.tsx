@@ -7,27 +7,38 @@ const SESSION_LABELS: Record<number, string> = {
   1: "早上上班", 2: "中午休息结束", 3: "下午上班", 4: "下午下班",
 };
 
-function daysInMonth(y: number, m: number) {
-  return new Date(y, m, 0).getDate();
+function buildDateList(startDate: string, endDate: string): { date: string; day: number; weekday: string; isSunday: boolean }[] {
+  const list: { date: string; day: number; weekday: string; isSunday: boolean }[] = [];
+  const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
+  const s = new Date(startDate + "T00:00:00");
+  const e = new Date(endDate + "T00:00:00");
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return list;
+  for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    list.push({ date: `${y}-${m}-${dd}`, day: d.getDate(), weekday: dayNames[d.getDay()], isSunday: d.getDay() === 0 });
+  }
+  return list;
 }
 
-export default function ClockRecordsGrid(props: { year: number; month: number }) {
-  const { year, month } = props;
+export default function ClockRecordsGrid(props: { startDate: string; endDate: string }) {
+  const { startDate, endDate } = props;
   const [employees, setEmployees] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [detailPopup, setDetailPopup] = useState<{ empName: string; date: string; sessions: Record<number, any> } | null>(null);
 
-  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-  const totalDays = daysInMonth(year, month);
+  const dateList = buildDateList(startDate, endDate);
+  const totalDays = dateList.length;
 
-  useEffect(() => { load(); }, [monthStr]);
+  useEffect(() => { load(); }, [startDate, endDate]);
 
   async function load() {
     setLoading(true);
     try {
-      const r = await api.get<any>(`/clock-in/records?month=${monthStr}`);
+      const r = await api.get<any>(`/clock-in/records?start_date=${startDate}&end_date=${endDate}`);
       setEmployees(r.employees || []);
       setRecords(r.records || []);
     } catch {}
@@ -49,10 +60,10 @@ export default function ClockRecordsGrid(props: { year: number; month: number })
     const today = new Date().toISOString().slice(0, 10);
     employees.forEach(e => {
       let attendanceDays = 0, lateCount = 0, absentDays = 0;
-      for (let d = 1; d <= totalDays; d++) {
-        const dt = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      for (const d of dateList) {
+        const dt = d.date;
         if (dt > today) break;
-        if (new Date(dt).getDay() === 0) continue;
+        if (d.isSunday) continue;
         const cell = grid[`${e.id}_${dt}`];
         if (cell) {
           attendanceDays++;
@@ -64,7 +75,7 @@ export default function ClockRecordsGrid(props: { year: number; month: number })
       result[e.id] = { days: attendanceDays, late: lateCount, absent: absentDays };
     });
     return result;
-  }, [employees, records, grid, year, month, totalDays]);
+  }, [employees, records, grid, dateList]);
 
   const formatTime = (iso: string) => {
     if (!iso) return "";
@@ -84,15 +95,12 @@ export default function ClockRecordsGrid(props: { year: number; month: number })
               <thead>
                 <tr className="bg-gray-50">
                   <th className="sticky left-0 bg-gray-50 z-10 text-left px-3 py-2 font-medium text-gray-600 whitespace-nowrap w-[90px]">员工</th>
-                  {Array.from({ length: totalDays }, (_, i) => {
-                    const dt = new Date(year, month - 1, i + 1);
-                    return (
-                      <th key={i} className={`px-1 py-2 text-center font-medium w-[38px] ${dt.getDay() === 0 ? "text-red-400" : "text-gray-500"}`}>
-                        <div className="text-[10px]">{i + 1}</div>
-                        <div className="text-[9px]">{dayHeaders[dt.getDay()]}</div>
-                      </th>
-                    );
-                  })}
+                  {dateList.map((d) => (
+                    <th key={d.date} className={`px-1 py-2 text-center font-medium w-[38px] ${d.isSunday ? "text-red-400" : "text-gray-500"}`}>
+                      <div className="text-[10px]">{d.day}</div>
+                      <div className="text-[9px]">{d.weekday}</div>
+                    </th>
+                  ))}
                   <th className="text-center px-2 py-2 font-medium text-gray-600 bg-blue-50 whitespace-nowrap">出勤</th>
                   <th className="text-center px-2 py-2 font-medium text-orange-500 bg-orange-50 whitespace-nowrap">迟到</th>
                   <th className="text-center px-2 py-2 font-medium text-red-400 bg-red-50 whitespace-nowrap">缺勤</th>
@@ -114,16 +122,15 @@ export default function ClockRecordsGrid(props: { year: number; month: number })
                           <span>{emp.name}</span>
                         </div>
                       </td>
-                      {Array.from({ length: totalDays }, (_, i) => {
-                        const d = i + 1;
-                        const dt = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                      {dateList.map((d) => {
+                        const dt = d.date;
                         const cell = grid[`${emp.id}_${dt}`];
                         const today = new Date().toISOString().slice(0, 10);
                         const isFuture = dt > today;
-                        const isSunday = new Date(dt).getDay() === 0;
+                        const isSunday = d.isSunday;
                         const hasLate = cell && Object.values(cell).some((cr: any) => cr.status === "late_half" || cr.status === "late_one");
                         return (
-                          <td key={i} className={`px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50 ${isSunday ? "bg-red-50/30" : ""}`}
+                          <td key={dt} className={`px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50 ${isSunday ? "bg-red-50/30" : ""}`}
                             onClick={() => setDetailPopup({ empName: emp.name, date: dt, sessions: cell || {} })}>
                             {isFuture ? (
                               <span className="text-gray-200">-</span>

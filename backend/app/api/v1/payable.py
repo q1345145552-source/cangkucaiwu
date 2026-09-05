@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.payable import PayableBill, PayablePlan, PlanTemplate, PayableStatus, PlanStatus, MonthlyOrderVolume
 from app.models.supplier import Supplier, SupplierCategory
@@ -29,7 +29,7 @@ class PlanCreate(BaseModel):
 @router.get("")
 async def list_bills(
     page: int = 1, page_size: int = 20, supplier_id: int = None,
-    status: str = None, month: str = None,
+    status: str = None, month: str = None, start_date: str = None, end_date: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -47,6 +47,13 @@ async def list_bills(
     if month:
         query = query.where(func.to_char(PayableBill.bill_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(PayableBill.bill_date, 'YYYY-MM') == month)
+    if start_date:
+        query = query.where(PayableBill.bill_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+        count_q = count_q.where(PayableBill.bill_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+    if end_date:
+        end_next = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        query = query.where(PayableBill.bill_date < end_next)
+        count_q = count_q.where(PayableBill.bill_date < end_next)
     total = (await db.execute(count_q)).scalar()
     result = await db.execute(query.order_by(PayableBill.due_date.asc()).offset((page-1)*page_size).limit(page_size))
     bills = result.scalars().all()
@@ -231,34 +238,42 @@ async def update_bill(bill_id: int, req: BillUpdate,
 
 # === Stats Dashboard ===
 @router.get("/stats")
-async def payable_stats(current_user: User = Depends(get_current_user),
-                         db: AsyncSession = Depends(get_db)):
+async def payable_stats(start_date: str = None, end_date: str = None,
+                        current_user: User = Depends(get_current_user),
+                        db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    from datetime import date
-    from sqlalchemy import extract
     wh_id = get_wh_id(current_user)
     today = thai_today()
 
     def wh(q):
         return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
 
-    # Month totals
-    month_cond = [extract("year", PayableBill.bill_date) == today.year, extract("month", PayableBill.bill_date) == today.month]
-    month_total = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.amount), 0))).where(*month_cond))).scalar() or 0)
-    month_paid = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.paid_amount), 0))).where(*month_cond))).scalar() or 0)
+    # 日期范围条件（默认当月1号到当天）
+    if start_date:
+        range_start = datetime.strptime(start_date, "%Y-%m-%d")
+    else:
+        range_start = datetime(today.year, today.month, 1)
+    if end_date:
+        range_end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+    else:
+        range_end = datetime(today.year, today.month, today.day) + timedelta(days=1)
+    date_cond = [PayableBill.bill_date >= range_start, PayableBill.bill_date < range_end]
+
+    month_total = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.amount), 0))).where(*date_cond))).scalar() or 0)
+    month_paid = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.paid_amount), 0))).where(*date_cond))).scalar() or 0)
     month_unpaid = month_total - month_paid
 
     # Overdue
     overdue_total = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.amount - PayableBill.paid_amount), 0)))
-        .where(PayableBill.status == PayableStatus.OVERDUE.value))).scalar() or 0)
+        .where(PayableBill.status == PayableStatus.OVERDUE.value, *date_cond))).scalar() or 0)
 
-    # Supplier summary (month)
+    # Supplier summary (range)
     sup_q = wh(select(PayableBill.supplier_id,
         func.count(PayableBill.id).label("count"),
         func.sum(PayableBill.amount).label("total"),
         func.sum(PayableBill.paid_amount).label("paid"))
-        .where(*month_cond).group_by(PayableBill.supplier_id).order_by(func.sum(PayableBill.amount).desc()))
+        .where(*date_cond).group_by(PayableBill.supplier_id).order_by(func.sum(PayableBill.amount).desc()))
     sup_rows = (await db.execute(sup_q)).all()
     sids = [r.supplier_id for r in sup_rows]
     smap = {}

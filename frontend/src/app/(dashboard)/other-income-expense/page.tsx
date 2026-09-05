@@ -12,7 +12,9 @@ export default function OtherIncomePage() {
   const { toast } = useToast(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [monthTotal, setMonthTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -27,10 +29,10 @@ export default function OtherIncomePage() {
   const [currencyFilter, setCurrencyFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [catFilter, setCatFilter] = useState(0);
-  const [dateStart, setDateStart] = useState("");
-  const [dateEnd, setDateEnd] = useState("");
+  const [dateStart, setDateStart] = useState(`${curMonth}-01`);
+  const [dateEnd, setDateEnd] = useState(todayStr);
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); loadSummary(); loadRate(); }, [page, month, currencyFilter, searchText, catFilter, dateStart, dateEnd]);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); loadSummary(); loadRate(); }, [page, currencyFilter, searchText, catFilter, dateStart, dateEnd]);
 
   async function load() {
     setLoading(true);
@@ -38,12 +40,11 @@ export default function OtherIncomePage() {
       const params = new URLSearchParams();
       params.set("page", String(page)); params.set("page_size", "25");
       params.set("category_group", CATEGORY_GROUP);
-      if (month) params.set("month", month);
+      params.set("start_date", dateStart);
+      params.set("end_date", dateEnd);
       if (currencyFilter) params.set("currency", currencyFilter);
       if (searchText) params.set("search", searchText);
       if (catFilter) params.set("category_id", String(catFilter));
-      if (dateStart) params.set("start_date", dateStart);
-      if (dateEnd) params.set("end_date", dateEnd);
       const res = await api.get<any>(`/income-expense/income?${params.toString()}`);
       setData(res.data); setTotal(res.total);
     } catch (err) { console.error("加载失败:", err); }
@@ -52,7 +53,7 @@ export default function OtherIncomePage() {
 
   async function loadSummary() {
     try {
-      const s = await api.get<any>(`/income-expense/monthly-summary?month=${month || new Date().toISOString().slice(0,7)}&category_group=${CATEGORY_GROUP}`);
+      const s = await api.get<any>(`/income-expense/monthly-summary?start_date=${dateStart}&end_date=${dateEnd}&category_group=${CATEGORY_GROUP}`);
       setMonthTotal(s.total_income || 0);
     } catch {}
   }
@@ -119,12 +120,11 @@ export default function OtherIncomePage() {
     try {
       const params = new URLSearchParams();
       params.set("category_group", CATEGORY_GROUP);
-      if (month) params.set("month", month);
+      params.set("start_date", dateStart);
+      params.set("end_date", dateEnd);
       if (currencyFilter) params.set("currency", currencyFilter);
       if (searchText) params.set("search", searchText);
       if (catFilter) params.set("category_id", String(catFilter));
-      if (dateStart) params.set("start_date", dateStart);
-      if (dateEnd) params.set("end_date", dateEnd);
       const token = getToken();
       const res = await fetch(`${API_URL}/income-expense/income/export?${params.toString()}`, {
         headers: { "Authorization": `Bearer ${token}` },
@@ -162,7 +162,7 @@ export default function OtherIncomePage() {
     setShowForm(true);
   }
 
-  function resetFilters() { setCurrencyFilter(""); setSearchText(""); setCatFilter(0); setDateStart(""); setDateEnd(""); setPage(1); }
+  function resetFilters() { setCurrencyFilter(""); setSearchText(""); setCatFilter(0); setDateStart(`${curMonth}-01`); setDateEnd(todayStr); setPage(1); }
 
   return (
     <>
@@ -199,10 +199,6 @@ export default function OtherIncomePage() {
       {/* 筛选 + 列表 */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-end gap-3 mb-4 flex-wrap">
-          <div className="w-[140px]">
-            <label className="form-label text-xs">月份</label>
-            <input type="month" value={month} onChange={e => { setMonth(e.target.value); setPage(1); }} className="form-input text-sm" />
-          </div>
           <div className="w-[130px]">
             <label className="form-label text-xs">开始日期</label>
             <input type="date" value={dateStart} onChange={e => { setDateStart(e.target.value); setPage(1); }} className="form-input text-sm" />

@@ -57,12 +57,12 @@ async def create_leave(
         raise HTTPException(400, "日期格式错误")
 
     # Check max 1 sick leave per month
-    month_start = leave_dt.replace(day=1)
+    range_start = leave_dt.replace(day=1)
     month_leaves = (await db.execute(
         select(func.count(LeaveRequest.id)).where(
             LeaveRequest.employee_id == emp.id,
-            LeaveRequest.leave_date >= month_start,
-            LeaveRequest.leave_date < (month_start.replace(month=month_start.month % 12 + 1, day=1) if month_start.month < 12 else month_start.replace(year=month_start.year + 1, month=1, day=1)),
+            LeaveRequest.leave_date >= range_start,
+            LeaveRequest.leave_date < (range_start.replace(month=range_start.month % 12 + 1, day=1) if range_start.month < 12 else range_start.replace(year=range_start.year + 1, month=1, day=1)),
             LeaveRequest.status != "rejected",
         )
     )).scalar()
@@ -108,7 +108,8 @@ async def create_leave(
 
 @router.get("/leaves")
 async def list_leaves(
-    month: str = None,
+    start_date: str = None,
+    end_date: str = None,
     status: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -139,8 +140,10 @@ async def list_leaves(
         if active_wh:
             query = query.where(LeaveRequest.warehouse_id == active_wh)
 
-    if month:
-        query = query.where(func.to_char(LeaveRequest.leave_date, "YYYY-MM") == month)
+    if start_date:
+        query = query.where(LeaveRequest.leave_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+    if end_date:
+        query = query.where(LeaveRequest.leave_date <= datetime.strptime(end_date, "%Y-%m-%d").date())
     if status:
         query = query.where(LeaveRequest.status == status)
 
@@ -232,7 +235,8 @@ async def set_rest_days(
 
 @router.get("/rest-days")
 async def list_rest_days(
-    month: str = Query(...),
+    start_date: str = None,
+    end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -254,8 +258,10 @@ async def list_rest_days(
         else:
             return {"data": []}
 
-    if month:
-        query = query.where(func.to_char(RestDay.rest_date, "YYYY-MM") == month)
+    if start_date:
+        query = query.where(RestDay.rest_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+    if end_date:
+        query = query.where(RestDay.rest_date <= datetime.strptime(end_date, "%Y-%m-%d").date())
 
     result = await db.execute(query.order_by(RestDay.rest_date))
     rows = result.all()
@@ -326,17 +332,31 @@ async def remove_absence(absence_id: int, current_user: User = Depends(get_curre
 # ═══ Calendar View ════════════════════════════
 @router.get("/calendar")
 async def get_calendar(
-    month: str = Query(...),  # YYYY-MM
+    start_date: str = None,
+    end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
 
-    try:
-        ym = datetime.strptime(month, "%Y-%m").date()
-    except:
-        raise HTTPException(400, "月份格式错误 YYYY-MM")
+    # 默认：当月 1 号到当天
+    if start_date:
+        try:
+            range_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except:
+            raise HTTPException(400, "开始日期格式错误 YYYY-MM-DD")
+    else:
+        range_start = thai_today().replace(day=1)
+    if end_date:
+        try:
+            range_end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except:
+            raise HTTPException(400, "结束日期格式错误 YYYY-MM-DD")
+    else:
+        range_end = thai_today()
+    if range_start > range_end:
+        raise HTTPException(400, "开始日期不能晚于结束日期")
 
     wh_id = get_wh_id(current_user)
     wh_ids = get_wh_ids(current_user)
@@ -359,16 +379,9 @@ async def get_calendar(
         if emp:
             emp_query = emp_query.where(Employee.id == emp)
         else:
-            return {"employees": [], "days": [], "month": month}
+            return {"employees": [], "events": [], "start_date": start_date, "end_date": end_date}
 
     emps = (await db.execute(emp_query.order_by(Employee.name))).scalars().all()
-
-    month_start = ym.replace(day=1)
-    if ym.month == 12:
-        month_end = ym.replace(year=ym.year + 1, month=1, day=1) - timedelta(days=1)
-    else:
-        month_end = ym.replace(month=ym.month + 1, day=1) - timedelta(days=1)
-
     emp_ids = [e.id for e in emps]
 
     # Build employee_id -> user_id mapping (match by employee name to user display_name)
@@ -387,8 +400,8 @@ async def get_calendar(
             select(ClockInRecord).where(
                 ClockInRecord.warehouse_id.in_(wh_ids),
                 ClockInRecord.user_id.in_(user_ids),
-                ClockInRecord.clock_date >= month_start,
-                ClockInRecord.clock_date <= month_end,
+                ClockInRecord.clock_date >= range_start,
+                ClockInRecord.clock_date <= range_end,
             )
         )).scalars().all()
     else:
@@ -407,8 +420,8 @@ async def get_calendar(
         select(LeaveRequest).where(
             LeaveRequest.warehouse_id.in_(wh_ids),
             LeaveRequest.employee_id.in_(emp_ids),
-            LeaveRequest.leave_date >= month_start,
-            LeaveRequest.leave_date <= month_end,
+            LeaveRequest.leave_date >= range_start,
+            LeaveRequest.leave_date <= range_end,
             LeaveRequest.status == "approved",
         )
     )).scalars().all()
@@ -419,8 +432,8 @@ async def get_calendar(
         select(RestDay).where(
             RestDay.warehouse_id.in_(wh_ids),
             RestDay.employee_id.in_(emp_ids),
-            RestDay.rest_date >= month_start,
-            RestDay.rest_date <= month_end,
+            RestDay.rest_date >= range_start,
+            RestDay.rest_date <= range_end,
         )
     )).scalars().all()
     rest_set = {(r.employee_id, r.rest_date) for r in rests}
@@ -430,16 +443,16 @@ async def get_calendar(
         select(Absence).where(
             Absence.warehouse_id.in_(wh_ids),
             Absence.employee_id.in_(emp_ids),
-            Absence.absence_date >= month_start,
-            Absence.absence_date <= month_end,
+            Absence.absence_date >= range_start,
+            Absence.absence_date <= range_end,
         )
     )).scalars().all()
     absence_map = {(a.employee_id, a.absence_date): a for a in absences}
 
     # Build calendar data
     days = []
-    current = month_start
-    while current <= month_end:
+    current = range_start
+    while current <= range_end:
         day_data = {"date": current.isoformat(), "employees": {}}
         for e in emps:
             key = (e.id, current)
@@ -454,8 +467,8 @@ async def get_calendar(
     # Better approach: return lists of events mapped by date+employee
     events = {}
     for e in emps:
-        for d in range((month_end - month_start).days + 1):
-            dt = month_start + timedelta(days=d)
+        for d in range((range_end - range_start).days + 1):
+            dt = range_start + timedelta(days=d)
             statuses = []
 
             # Check leave/rest/absence FIRST (applies to all dates)
@@ -496,7 +509,8 @@ async def get_calendar(
                 events[key_str]["detail"] = absence_map[(e.id, dt)].reason or ""
 
     return {
-        "month": month,
+        "start_date": range_start.isoformat(),
+        "end_date": range_end.isoformat(),
         "employees": [{"id": e.id, "name": e.name, "position": e.position} for e in emps],
         "events": list(events.values()),
         "summary": {

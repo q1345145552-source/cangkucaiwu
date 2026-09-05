@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from app.database import get_db
 from app.models.credit import CreditCustomer, CreditRepayment, CreditShipment, CreditStatus
 from app.models.customer import Customer
@@ -204,7 +204,8 @@ async def update_credit(credit_id: int, req: CreditUpdate,
     await db.flush(); return {"message": "更新成功"}
 
 @router.get("/{credit_id}/detail")
-async def credit_detail(credit_id: int, current_user: User = Depends(get_current_user),
+async def credit_detail(credit_id: int, start_date: str = None, end_date: str = None,
+                        current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -213,17 +214,20 @@ async def credit_detail(credit_id: int, current_user: User = Depends(get_current
     if not c: raise HTTPException(404, "记录不存在")
     cust = (await db.execute(select(Customer).where(Customer.id == c.customer_id))).scalar_one_or_none()
 
-    # Get repayments
-    reps = (await db.execute(
-        select(CreditRepayment).where(CreditRepayment.credit_customer_id == credit_id)
-        .order_by(CreditRepayment.created_at.desc())
-    )).scalars().all()
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+    end_dt = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)) if end_date else None
 
-    # Get shipments
-    ships = (await db.execute(
-        select(CreditShipment).where(CreditShipment.credit_customer_id == credit_id)
-        .order_by(CreditShipment.ship_date.desc())
-    )).scalars().all()
+    # Get repayments（按范围）
+    rep_q = select(CreditRepayment).where(CreditRepayment.credit_customer_id == credit_id)
+    if start_dt: rep_q = rep_q.where(CreditRepayment.repayment_date >= start_dt)
+    if end_dt: rep_q = rep_q.where(CreditRepayment.repayment_date < end_dt)
+    reps = (await db.execute(rep_q.order_by(CreditRepayment.created_at.desc()))).scalars().all()
+
+    # Get shipments（按范围）
+    ship_q = select(CreditShipment).where(CreditShipment.credit_customer_id == credit_id)
+    if start_dt: ship_q = ship_q.where(CreditShipment.ship_date >= start_dt)
+    if end_dt: ship_q = ship_q.where(CreditShipment.ship_date < end_dt)
+    ships = (await db.execute(ship_q.order_by(CreditShipment.ship_date.desc()))).scalars().all()
 
     # Compute debt/overdue
     debt, overdue = await _compute_debt_and_overdue(db, credit_id)

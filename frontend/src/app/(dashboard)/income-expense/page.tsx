@@ -12,20 +12,24 @@ export default function IncomeExpensePage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [tab, setTab] = useState("income");
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1); const [month, setMonth] = useState("");
+  const [page, setPage] = useState(1);
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const [dateRange, setDateRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [totals, setTotals] = useState({ total_income: 0, total_expense: 0, net: 0 });
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: "", remark: "" });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); }, [page, tab, month]);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); }, [page, tab, dateRange]);
 
   async function load() {
     const ep = tab === "income" ? "/income-expense/income" : "/income-expense/expense";
-    const res = await api.get<any>(`${ep}?page=${page}&page_size=25${month ? "&month="+month : ""}`);
+    const res = await api.get<any>(`${ep}?page=${page}&page_size=25&start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
     setData(res.data); setTotal(res.total);
-    const s = await api.get<any>(`/income-expense/monthly-summary?month=${month || "2026-07"}`);
+    const s = await api.get<any>(`/income-expense/monthly-summary?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
     setTotals(s);
   }
 
@@ -72,7 +76,9 @@ export default function IncomeExpensePage() {
       </div>
       <div className="flex items-center gap-3 mb-4">
         <div className="bg-white rounded-lg p-1 flex"><button onClick={() => { setTab("income"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "income" ? "bg-primary text-white" : ""}`}>收款</button><button onClick={() => { setTab("expense"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "expense" ? "bg-primary text-white" : ""}`}>付款</button></div>
-        <input type="month" value={month} onChange={e => { setMonth(e.target.value); setPage(1); }} className="border rounded px-3 py-2 text-sm" />
+        <input type="date" value={dateRange.start_date} onChange={e => { setDateRange({ ...dateRange, start_date: e.target.value }); setPage(1); }} className="border rounded px-3 py-2 text-sm" />
+        <span className="text-gray-400 text-xs">至</span>
+        <input type="date" value={dateRange.end_date} onChange={e => { setDateRange({ ...dateRange, end_date: e.target.value }); setPage(1); }} className="border rounded px-3 py-2 text-sm" />
       </div>
       <DataTable columns={columns} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} />
       {showForm && (

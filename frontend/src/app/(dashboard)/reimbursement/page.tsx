@@ -23,6 +23,9 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ReimbursementPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const isAdmin = user?.role === "warehouse_admin";
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // ===== Tabs =====
   const [tab, setTab] = useState<"list" | "review">("list");
@@ -30,7 +33,7 @@ export default function ReimbursementPage() {
   // ===== List state =====
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [selMonth, setSelMonth] = useState("");
+  const [selRange, setSelRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [selStatus, setSelStatus] = useState("");
   const [selEmployee, setSelEmployee] = useState("");
   const [employees, setEmployees] = useState<any[]>([]);
@@ -50,7 +53,7 @@ export default function ReimbursementPage() {
   // ===== Review state =====
   const [reviewData, setReviewData] = useState<any[]>([]); const [reviewTotal, setReviewTotal] = useState(0);
   const [reviewLoading, setReviewLoading] = useState(false);
-  const [reviewMonth, setReviewMonth] = useState("");
+  const [reviewRange, setReviewRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [reviewEmployee, setReviewEmployee] = useState("");
   const [reviewPage, setReviewPage] = useState(1);
   const [expandedReimb, setExpandedReimb] = useState<number | null>(null);
@@ -75,7 +78,8 @@ export default function ReimbursementPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), page_size: "20" });
-      if (selMonth) params.set("month", selMonth);
+      params.set("start_date", selRange.start_date);
+      params.set("end_date", selRange.end_date);
       if (selStatus) params.set("status", selStatus);
       if (selEmployee) params.set("employee_id", selEmployee);
       const r = await api.get<any>(`/reimbursement?${params.toString()}`);
@@ -117,7 +121,8 @@ export default function ReimbursementPage() {
     setReviewLoading(true);
     try {
       const params = new URLSearchParams({ page: String(reviewPage), page_size: "20", status: "pending" });
-      if (reviewMonth) params.set("month", reviewMonth);
+      params.set("start_date", reviewRange.start_date);
+      params.set("end_date", reviewRange.end_date);
       if (reviewEmployee) params.set("employee_id", reviewEmployee);
       const r = await api.get<any>(`/reimbursement?${params.toString()}`);
       setReviewData(r.data); setReviewTotal(r.total);
@@ -171,7 +176,8 @@ export default function ReimbursementPage() {
   async function doExport() {
     try {
       const params = new URLSearchParams();
-      if (selMonth) params.set("month", selMonth);
+      params.set("start_date", selRange.start_date);
+      params.set("end_date", selRange.end_date);
       if (selStatus) params.set("status", selStatus);
       if (selEmployee) params.set("employee_id", selEmployee);
       const url = `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/reimbursement/export?${params.toString()}`;
@@ -280,8 +286,10 @@ export default function ReimbursementPage() {
           {/* Filters */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <label className="text-xs text-gray-500">月份</label>
-              <input type="month" className="form-input text-sm py-1.5 w-36" value={selMonth} onChange={e => setSelMonth(e.target.value)} />
+              <label className="text-xs text-gray-500">起止日期</label>
+              <input type="date" className="form-input text-sm py-1.5 w-36" value={selRange.start_date} onChange={e => setSelRange({ ...selRange, start_date: e.target.value })} />
+              <span className="text-gray-400 text-xs">至</span>
+              <input type="date" className="form-input text-sm py-1.5 w-36" value={selRange.end_date} onChange={e => setSelRange({ ...selRange, end_date: e.target.value })} />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-xs text-gray-500">状态</label>
@@ -370,8 +378,10 @@ export default function ReimbursementPage() {
           {/* Review filters */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <label className="text-xs text-gray-500">月份</label>
-              <input type="month" className="form-input text-sm py-1.5 w-36" value={reviewMonth} onChange={e => setReviewMonth(e.target.value)} />
+              <label className="text-xs text-gray-500">起止日期</label>
+              <input type="date" className="form-input text-sm py-1.5 w-36" value={reviewRange.start_date} onChange={e => setReviewRange({ ...reviewRange, start_date: e.target.value })} />
+              <span className="text-gray-400 text-xs">至</span>
+              <input type="date" className="form-input text-sm py-1.5 w-36" value={reviewRange.end_date} onChange={e => setReviewRange({ ...reviewRange, end_date: e.target.value })} />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-xs text-gray-500">报销人</label>

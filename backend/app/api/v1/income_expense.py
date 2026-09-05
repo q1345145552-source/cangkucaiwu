@@ -3,7 +3,7 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpenseCategory, IncomeExpenseType, CategoryStatus
 from app.models.customer import Customer, PaymentAccount
@@ -52,6 +52,7 @@ async def create_category(req: CategoryCreate, current_user: User = Depends(get_
 @router.get("/income")
 async def list_income(
     page: int = 1, page_size: int = 20, month: str = None,
+    start_date: str = None, end_date: str = None,
     account_id: int = None, customer_id: int = None,
     category_id: int = None,
     category_group: str = None,
@@ -73,6 +74,13 @@ async def list_income(
     if month:
         query = query.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
+    if start_date:
+        query = query.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+        count_q = count_q.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+    if end_date:
+        end_next = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        query = query.where(IncomeRecord.income_date < end_next)
+        count_q = count_q.where(IncomeRecord.income_date < end_next)
     if account_id:
         query = query.where(IncomeRecord.account_id == account_id)
         count_q = count_q.where(IncomeRecord.account_id == account_id)
@@ -187,8 +195,9 @@ async def list_expense(
         query = query.where(ExpenseRecord.expense_date >= datetime.strptime(start_date, "%Y-%m-%d"))
         count_q = count_q.where(ExpenseRecord.expense_date >= datetime.strptime(start_date, "%Y-%m-%d"))
     if end_date:
-        query = query.where(ExpenseRecord.expense_date <= datetime.strptime(end_date, "%Y-%m-%d"))
-        count_q = count_q.where(ExpenseRecord.expense_date <= datetime.strptime(end_date, "%Y-%m-%d"))
+        end_next = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        query = query.where(ExpenseRecord.expense_date < end_next)
+        count_q = count_q.where(ExpenseRecord.expense_date < end_next)
     if currency:
         query = query.where(ExpenseRecord.currency == currency)
         count_q = count_q.where(ExpenseRecord.currency == currency)
@@ -282,11 +291,111 @@ async def create_expense(
     )
     db.add(r); await db.flush(); return {"id": r.id, "message": "付款记录创建成功", "voucher": voucher_field}
 
+@router.put("/expense/{expense_id}")
+async def update_expense(
+    expense_id: int,
+    category_id: int = Form(...),
+    account_id: int = Form(...),
+    amount: float = Form(...),
+    currency: str = Form("THB"),
+    expense_date: str = Form(...),
+    supplier_id: Optional[int] = Form(None),
+    remark: Optional[str] = Form(None),
+    delete_vouchers: Optional[str] = Form(None),  # JSON 数组字符串：要删除的凭证路径
+    files: Optional[List[UploadFile]] = File(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+
+    r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(404, "记录不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权限")
+
+    import os, uuid, json
+    UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
+    today_str = thai_now().strftime("%Y-%m-%d")
+
+    # 解析当前凭证（兼容旧单路径字符串 + 新 JSON 数组）
+    def _parse(v):
+        if not v:
+            return []
+        s = v.strip() if isinstance(v, str) else ""
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                a = json.loads(s)
+                return [x for x in a if x] if isinstance(a, list) else [s]
+            except Exception:
+                return [s]
+        return [s]
+
+    vouchers = _parse(r.voucher)
+
+    # 删除指定凭证
+    if delete_vouchers:
+        try:
+            del_list = json.loads(delete_vouchers)
+            if not isinstance(del_list, list):
+                del_list = [delete_vouchers]
+        except Exception:
+            del_list = [delete_vouchers]
+        del_set = set(del_list)
+        vouchers = [p for p in vouchers if p not in del_set]
+        for p in del_set:
+            if p and p.startswith("uploads/"):
+                try:
+                    fpath = os.path.join(UPLOAD_DIR, p[len("uploads/"):])
+                    if os.path.isfile(fpath):
+                        os.remove(fpath)
+                except Exception:
+                    pass
+
+    # 追加新凭证
+    if files:
+        subdir = os.path.join(UPLOAD_DIR, str(r.warehouse_id), today_str, "expense_vouchers")
+        os.makedirs(subdir, exist_ok=True)
+        for file in files:
+            if file is None or not file.filename:
+                continue
+            ext = file.filename.split(".")[-1].lower() if file.filename else ""
+            if ext not in ("png", "jpg", "jpeg", "webp"):
+                raise HTTPException(400, "凭证仅支持图片格式 png/jpg/jpeg/webp")
+            content = await file.read()
+            if len(content) > 10 * 1024 * 1024:
+                raise HTTPException(400, "单张凭证图片不能超过10MB")
+            fname = f"{uuid.uuid4().hex}.{ext}"
+            fpath = os.path.join(subdir, fname)
+            with open(fpath, "wb") as f:
+                f.write(content)
+            vouchers.append(f"uploads/{r.warehouse_id}/{today_str}/expense_vouchers/{fname}")
+
+    # 更新字段
+    r.category_id = category_id
+    r.account_id = account_id
+    r.amount = amount
+    r.currency = currency
+    r.expense_date = datetime.fromisoformat(expense_date)
+    if supplier_id is not None:
+        r.supplier_id = supplier_id
+    r.remark = remark
+    r.voucher = json.dumps(vouchers, ensure_ascii=False) if vouchers else None
+
+    await db.flush()
+    return {"message": "更新成功", "voucher": r.voucher}
+
 # ==== Ledger ====
 @router.get("/ledger")
 async def ledger(
     page: int = 1, page_size: int = 30,
-    month: str = None,
+    start_date: str = None,
+    end_date: str = None,
     source: str = None,
     flow_type: str = None,
     current_user: User = Depends(get_current_user),
@@ -298,17 +407,25 @@ async def ledger(
     today = __import__('datetime').thai_today()
     cur_month = f"{today.year}-{today.month:02d}"
 
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+    end_dt = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)) if end_date else None
+
     # Build SQL UNION ALL for pagination at DB level
     # Each subquery has: date_val, amount, currency, flow_type, source, source_label, remark, ref_no, raw_id
     from sqlalchemy import text
 
-    # NOTE: alias/col are internal constants (never user input); wh_id and month
-    # are passed as bind parameters to avoid SQL injection.
+    # NOTE: alias/col are internal constants (never user input); wh_id and date
+    # range are passed as bind parameters to avoid SQL injection.
     def wh_cond(alias: str):
         return f"{alias}.warehouse_id = :wh_id"
 
-    def month_cond(alias: str, col: str):
-        return f"to_char({alias}.{col}, 'YYYY-MM') = :month" if month else "1=1"
+    def date_cond(alias: str, col: str):
+        conds = []
+        if start_dt is not None:
+            conds.append(f"{alias}.{col} >= :start_date")
+        if end_dt is not None:
+            conds.append(f"{alias}.{col} < :end_date")
+        return " AND ".join(conds) if conds else "1=1"
 
     unions = []
     params = {}
@@ -322,7 +439,7 @@ async def ledger(
                    'RC-' || d.id AS ref_no, d.id AS raw_id, 1 AS sort_ord
             FROM recharge_declarations d
             LEFT JOIN customers cust ON d.customer_id = cust.id
-            WHERE {wh_cond('d')} AND {month_cond('d', 'declare_date')}
+            WHERE {wh_cond('d')} AND {date_cond('d', 'declare_date')}
         """)
 
     # 2. 到账流水
@@ -333,7 +450,7 @@ async def ledger(
                    '付款方: ' || COALESCE(f.payer_name, '') || COALESCE(' (' || f.payment_method || ')', '') AS remark,
                    'FL-' || f.id AS ref_no, f.id AS raw_id, 2 AS sort_ord
             FROM incoming_flows f
-            WHERE {wh_cond('f')} AND {month_cond('f', 'received_date')}
+            WHERE {wh_cond('f')} AND {date_cond('f', 'received_date')}
         """)
 
     # 3. 备用金领用
@@ -345,7 +462,7 @@ async def ledger(
                    'EF-' || ef.id AS ref_no, ef.id AS raw_id, 3 AS sort_ord
             FROM expense_funds ef
             LEFT JOIN users u ON ef.employee_id = u.id
-            WHERE {wh_cond('ef')} AND ef.amount > 0 AND {month_cond('ef', 'receive_date')}
+            WHERE {wh_cond('ef')} AND ef.amount > 0 AND {date_cond('ef', 'receive_date')}
         """)
 
     # 4. 备用金开销
@@ -358,7 +475,7 @@ async def ledger(
             FROM expense_fund_items efi
             JOIN expense_funds ef2 ON efi.fund_id = ef2.id
             LEFT JOIN users u2 ON ef2.employee_id = u2.id
-            WHERE {wh_cond('ef2')} AND {month_cond('efi', 'expense_date')}
+            WHERE {wh_cond('ef2')} AND {date_cond('efi', 'expense_date')}
         """)
 
     # 5. 报销出款
@@ -371,7 +488,7 @@ async def ledger(
                    'RB-' || rb.id AS ref_no, rb.id AS raw_id, 5 AS sort_ord
             FROM reimbursements rb
             LEFT JOIN users u3 ON rb.employee_id = u3.id
-            WHERE rb.status = 'paid' AND {wh_cond('rb')} AND {month_cond('rb', 'paid_at')}
+            WHERE rb.status = 'paid' AND {wh_cond('rb')} AND {date_cond('rb', 'paid_at')}
         """)
 
     # 6. 应付账款付款
@@ -383,7 +500,7 @@ async def ledger(
                    '账单: ' || COALESCE(pb.bill_number, '') || COALESCE(' (' || pb.remark || ')', '') AS remark,
                    'PB-' || pb.id AS ref_no, pb.id AS raw_id, 6 AS sort_ord
             FROM payable_bills pb
-            WHERE pb.paid_amount > 0 AND {wh_cond('pb')} AND {month_cond('pb', 'paid_at')}
+            WHERE pb.paid_amount > 0 AND {wh_cond('pb')} AND {date_cond('pb', 'paid_at')}
         """)
 
     # 7. 手工收支
@@ -395,7 +512,7 @@ async def ledger(
                    'IN-' || ir.id AS ref_no, ir.id AS raw_id, 7 AS sort_ord
             FROM income_records ir
             LEFT JOIN income_expense_categories iec ON ir.category_id = iec.id
-            WHERE {wh_cond('ir')} AND {month_cond('ir', 'income_date')}
+            WHERE {wh_cond('ir')} AND {date_cond('ir', 'income_date')}
         """)
         unions.append(f"""
             SELECT er.expense_date AS date_val, er.amount, COALESCE(er.currency, 'THB') AS currency,
@@ -404,7 +521,7 @@ async def ledger(
                    'EX-' || er.id AS ref_no, er.id AS raw_id, 8 AS sort_ord
             FROM expense_records er
             LEFT JOIN income_expense_categories iec2 ON er.category_id = iec2.id
-            WHERE {wh_cond('er')} AND {month_cond('er', 'expense_date')}
+            WHERE {wh_cond('er')} AND {date_cond('er', 'expense_date')}
         """)
 
     if not unions:
@@ -443,8 +560,10 @@ async def ledger(
 
     # Bind params shared by every statement (all embed full_union)
     base_params = {"wh_id": wh_id}
-    if month:
-        base_params["month"] = month
+    if start_dt is not None:
+        base_params["start_date"] = start_dt
+    if end_dt is not None:
+        base_params["end_date"] = end_dt
 
     offset = (page - 1) * page_size
     result = await db.execute(text(sql), {**base_params, "page_size": page_size, "offset": offset})
@@ -511,14 +630,14 @@ async def ledger(
 # ==== Ledger Export ====
 @router.get("/ledger/export")
 async def ledger_export(
-    month: str = None, source: str = None, flow_type: str = None,
+    start_date: str = None, end_date: str = None, source: str = None, flow_type: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # Reuse same aggregation logic
-    r = await ledger(page=1, page_size=99999, month=month, source=source, flow_type=flow_type, current_user=current_user, db=db)
+    r = await ledger(page=1, page_size=99999, start_date=start_date, end_date=end_date, source=source, flow_type=flow_type, current_user=current_user, db=db)
     data = r.get("data", [])
 
     wb = __import__('openpyxl').Workbook()
@@ -615,12 +734,20 @@ async def export_income(
 
 # ==== Monthly Summary ====
 @router.get("/monthly-summary")
-async def monthly_summary(month: str, category_group: str = None, current_user: User = Depends(get_current_user),
+async def monthly_summary(start_date: str = None, end_date: str = None, category_group: str = None,
+                          current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    iq = select(func.sum(IncomeRecord.amount)).where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
-    eq = select(func.sum(ExpenseRecord.amount)).where(func.to_char(ExpenseRecord.expense_date, 'YYYY-MM') == month)
+    iq = select(func.sum(IncomeRecord.amount))
+    eq = select(func.sum(ExpenseRecord.amount))
+    if start_date:
+        iq = iq.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+        eq = eq.where(ExpenseRecord.expense_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+    if end_date:
+        end_next = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        iq = iq.where(IncomeRecord.income_date < end_next)
+        eq = eq.where(ExpenseRecord.expense_date < end_next)
     if category_group:
         iq = iq.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id).where(IncomeExpenseCategory.category_group == category_group)
         eq = eq.join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id).where(IncomeExpenseCategory.category_group == category_group)
@@ -629,10 +756,12 @@ async def monthly_summary(month: str, category_group: str = None, current_user: 
         eq = eq.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
     ti = (await db.execute(iq)).scalar() or 0
     te = (await db.execute(eq)).scalar() or 0
-    return {"month": month, "total_income": float(ti), "total_expense": float(te), "net": float(ti - te)}
+    return {"start_date": start_date, "end_date": end_date, "total_income": float(ti), "total_expense": float(te), "net": float(ti - te)}
 # ==== Operating Dashboard ====
 @router.get("/operating-dashboard")
 async def operating_dashboard(
+    start_date: str = None,
+    end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -642,62 +771,90 @@ async def operating_dashboard(
     import calendar
 
     today = thai_today()
-    months_list = []
-    for i in range(11, -1, -1):
-        m = today.month - i; y = today.year
-        if m <= 0: m += 12; y -= 1
-        months_list.append(f"{y}-{m:02d}")
 
-    # Monthly recharge totals (income)
+    # 默认时间范围：当月 1 号到当天
+    if start_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except Exception:
+            raise HTTPException(400, "开始日期格式错误，应为 YYYY-MM-DD")
+    else:
+        start = date(today.year, today.month, 1)
+    if end_date:
+        try:
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except Exception:
+            raise HTTPException(400, "结束日期格式错误，应为 YYYY-MM-DD")
+    else:
+        end = today
+    if start > end:
+        raise HTTPException(400, "开始日期不能晚于结束日期")
+
+    wh_ids = get_wh_ids(current_user)
     from app.models.recharge import RechargeDeclaration
-    recharge_map = {}
-    for month in months_list:
-        m_start = f"{month}-01"
-        last_day = calendar.monthrange(int(month[:4]), int(month[5:]))[1]
-        m_end = f"{month}-{last_day:02d}"
-        q = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0)).where(
-            RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)),
-            func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month,
-        )
-        total = float((await db.execute(q)).scalar() or 0)
-        recharge_map[month] = total
 
-    # Monthly operating expense totals
-    expense_map = {}
-    for month in months_list:
-        m_start = f"{month}-01"
-        last_day = calendar.monthrange(int(month[:4]), int(month[5:]))[1]
-        m_end = f"{month}-{last_day:02d}"
-        q = select(func.coalesce(func.sum(ExpenseRecord.amount), 0)).where(
-            ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)),
-            func.to_char(ExpenseRecord.expense_date, 'YYYY-MM') == month,
-        )
-        # Join to filter only operating categories
-        q = q.join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id)
-        q = q.where(IncomeExpenseCategory.category_group == "operating")
-        total = float((await db.execute(q)).scalar() or 0)
-        expense_map[month] = total
+    # 聚合粒度：31 天及以内按日，否则按自然月
+    days_span = (end - start).days
+    if days_span <= 31:
+        granularity = "day"
+        buckets = []
+        d = start
+        while d <= end:
+            buckets.append((d, d + timedelta(days=1)))
+            d += timedelta(days=1)
+    else:
+        granularity = "month"
+        buckets = []
+        y, m = start.year, start.month
+        while (y, m) <= (end.year, end.month):
+            _, last = calendar.monthrange(y, m)
+            buckets.append((date(y, m, 1), date(y, m, last) + timedelta(days=1)))
+            m += 1
+            if m > 12:
+                m = 1
+                y += 1
 
     data = []
-    for month in months_list:
-        income = recharge_map.get(month, 0)
-        expense = expense_map.get(month, 0)
-        data.append({
-            "month": month,
-            "recharge_income": income,
-            "operating_expense": expense,
-            "net": income - expense,
-        })
+    total_income = 0.0
+    total_expense = 0.0
+    for bs, be in buckets:  # [bs, be) 半开区间，覆盖整天
+        bs_dt = datetime.combine(bs, datetime.min.time())
+        be_dt = datetime.combine(be, datetime.min.time())
 
-    cur_month = f"{today.year}-{today.month:02d}"
-    cur_income = recharge_map.get(cur_month, 0)
-    cur_expense = expense_map.get(cur_month, 0)
+        inc = (await db.execute(
+            select(func.coalesce(func.sum(RechargeDeclaration.amount), 0)).where(
+                RechargeDeclaration.warehouse_id.in_(wh_ids),
+                RechargeDeclaration.declare_date >= bs_dt,
+                RechargeDeclaration.declare_date < be_dt,
+            )
+        )).scalar() or 0
+        exp = (await db.execute(
+            select(func.coalesce(func.sum(ExpenseRecord.amount), 0))
+            .join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id)
+            .where(
+                ExpenseRecord.warehouse_id.in_(wh_ids),
+                ExpenseRecord.expense_date >= bs_dt,
+                ExpenseRecord.expense_date < be_dt,
+                IncomeExpenseCategory.category_group == "operating",
+            )
+        )).scalar() or 0
+        inc = float(inc); exp = float(exp)
+        total_income += inc; total_expense += exp
+        label = bs.strftime("%Y-%m-%d") if granularity == "day" else bs.strftime("%Y-%m")
+        data.append({
+            "label": label,
+            "recharge_income": inc,
+            "operating_expense": exp,
+            "net": inc - exp,
+        })
 
     return {
         "data": data,
-        "current_month": cur_month,
-        "current_income": cur_income,
-        "current_expense": cur_expense,
-        "current_net": cur_income - cur_expense,
+        "granularity": granularity,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "total_net": total_income - total_expense,
     }
 

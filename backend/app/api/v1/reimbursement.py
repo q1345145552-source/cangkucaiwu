@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory, ReimbStatus
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
@@ -31,6 +31,7 @@ class CategoryReq(BaseModel):
 @router.get("")
 async def list_reimbursements(
     page: int = 1, page_size: int = 20, month: str = None, status: str = None,
+    start_date: str = None, end_date: str = None,
     employee_id: int = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
@@ -43,6 +44,13 @@ async def list_reimbursements(
     if month:
         query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
+    if start_date:
+        query = query.where(Reimbursement.submit_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+        count_q = count_q.where(Reimbursement.submit_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+    if end_date:
+        end_next = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        query = query.where(Reimbursement.submit_date < end_next)
+        count_q = count_q.where(Reimbursement.submit_date < end_next)
     if status:
         query = query.where(Reimbursement.status == status)
         count_q = count_q.where(Reimbursement.status == status)
@@ -125,6 +133,7 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
 @router.get("/export")
 async def export_reimbursements(
     month: str = Query(None), status: str = Query(None),
+    start_date: str = Query(None), end_date: str = Query(None),
     employee_id: int = Query(None),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
@@ -139,6 +148,10 @@ async def export_reimbursements(
     query = select(Reimbursement).where(Reimbursement.warehouse_id.in_(get_wh_ids(current_user)))
     if month:
         query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
+    if start_date:
+        query = query.where(Reimbursement.submit_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+    if end_date:
+        query = query.where(Reimbursement.submit_date < datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1))
     if status:
         query = query.where(Reimbursement.status == status)
     if employee_id:

@@ -27,6 +27,10 @@ export default function CreditPage() {
   const [form, setForm] = useState({ customer_id: 0, credit_limit: 0, repayment_day: 15 });
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const _now = new Date();
+  const _curMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}`;
+  const _todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
+  const [detailRange, setDetailRange] = useState({ start_date: `${_curMonth}-01`, end_date: _todayStr });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadDashboard(); loadCustomers(); loadAlerts(); }, [page]);
 
@@ -50,9 +54,9 @@ export default function CreditPage() {
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
-  async function viewDetail(id: number) {
+  async function viewDetail(id: number, rng = detailRange) {
     try {
-      const d = await api.get<any>(`/credit/${id}/detail`);
+      const d = await api.get<any>(`/credit/${id}/detail?start_date=${rng.start_date}&end_date=${rng.end_date}`);
       setDetail(d);
     } catch {}
   }
@@ -219,6 +223,16 @@ export default function CreditPage() {
                 )}
               </h2>
               <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+
+            {/* 还款/发货记录时间范围 */}
+            <div className="flex items-center gap-2 mb-4">
+              <label className="text-xs text-gray-500">记录起止日期</label>
+              <input type="date" className="form-input text-sm py-1 w-36" value={detailRange.start_date}
+                onChange={e => { const rng = { ...detailRange, start_date: e.target.value }; setDetailRange(rng); viewDetail(detail.id, rng); }} />
+              <span className="text-gray-400 text-xs">至</span>
+              <input type="date" className="form-input text-sm py-1 w-36" value={detailRange.end_date}
+                onChange={e => { const rng = { ...detailRange, end_date: e.target.value }; setDetailRange(rng); viewDetail(detail.id, rng); }} />
             </div>
 
             {/* Assessment data */}

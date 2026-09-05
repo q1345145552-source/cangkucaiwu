@@ -17,15 +17,31 @@ const STATUS_COLORS: Record<string, string> = {
   "future": "bg-white text-gray-300 border-gray-100",
 };
 
+function buildDateList(startDate: string, endDate: string): { date: string; day: number; weekday: string; isSunday: boolean }[] {
+  const list: { date: string; day: number; weekday: string; isSunday: boolean }[] = [];
+  const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
+  const s = new Date(startDate + "T00:00:00");
+  const e = new Date(endDate + "T00:00:00");
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return list;
+  for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    list.push({ date: `${y}-${m}-${dd}`, day: d.getDate(), weekday: dayNames[d.getDay()], isSunday: d.getDay() === 0 });
+  }
+  return list;
+}
+
 export default function AttendancePage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const isAdmin = user?.role === "warehouse_admin" || user?.role === "super_admin";
   const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
 
-  // Month navigation
+  // 自定义日期范围（默认当月 1 号到当天）
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const [dateRange, setDateRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
 
   // Data
   const [employees, setEmployees] = useState<any[]>([]);
@@ -55,7 +71,7 @@ export default function AttendancePage() {
   const [photoPopup, setPhotoPopup] = useState<any>(null);
   const [photoSessions, setPhotoSessions] = useState<any[]>([]);
 
-  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+  const dateList = buildDateList(dateRange.start_date, dateRange.end_date);
 
   async function openPhotoPopup(empId: number, empName: string, dateStr: string) {
     try {
@@ -65,15 +81,12 @@ export default function AttendancePage() {
     } catch {}
   }
 
-  useEffect(() => { if (!getToken()) router.push("/login"); loadCalendar(); loadLeaves(); loadRestDays(); }, [monthStr]);
-
-  function prevMonth() { if (month === 1) { setMonth(12); setYear(y => y - 1); } else { setMonth(m => m - 1); } }
-  function nextMonth() { setMonth(m => m === 12 ? 1 : m + 1); if (month === 12) setYear(y => y + 1); }
+  useEffect(() => { if (!getToken()) router.push("/login"); loadCalendar(); loadLeaves(); loadRestDays(); }, [dateRange]);
 
   async function loadCalendar() {
     setLoading(true);
     try {
-      const r = await api.get<any>(`/attendance/calendar?month=${monthStr}`);
+      const r = await api.get<any>(`/attendance/calendar?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
       const evtMap: Record<string, any> = {};
       (r.events || []).forEach((e: any) => { evtMap[`${e.date}_${e.employee_id}`] = e; });
       setEvents(evtMap);
@@ -84,14 +97,14 @@ export default function AttendancePage() {
 
   async function loadLeaves() {
     try {
-      const r = await api.get<any>(`/attendance/leaves?month=${monthStr}`);
+      const r = await api.get<any>(`/attendance/leaves?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
       setLeaves(r.data || []);
     } catch {}
   }
 
   async function loadRestDays() {
     try {
-      const r = await api.get<any>(`/attendance/rest-days?month=${monthStr}`);
+      const r = await api.get<any>(`/attendance/rest-days?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
       setRestDays(r.data || []);
     } catch {}
   }
@@ -148,23 +161,16 @@ export default function AttendancePage() {
     } catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
-  // Build calendar grid
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
-  const dayHeaders = ["日", "一", "二", "三", "四", "五", "六"];
-
   return (
     <div className="space-y-6">
       {/* Header: Month Navigation + Tab Bar + Action Buttons */}
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <button onClick={prevMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
-            <ChevronLeft size={20} />
-          </button>
-          <h1 className="text-lg font-bold min-w-[120px] text-center">{year}年{month}月</h1>
-          <button onClick={nextMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
-            <ChevronRight size={20} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-xs py-1.5 w-36" />
+            <span className="text-gray-400 text-xs">至</span>
+            <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-xs py-1.5 w-36" />
+          </div>
           {isAdmin && (
             <div className="flex items-center gap-1.5 ml-2">
               <button onClick={() => setShowLeaveForm(true)} className="px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 flex items-center gap-1">
@@ -192,7 +198,7 @@ export default function AttendancePage() {
       </div>
 
       {activeTab === "records" ? (
-        <ClockRecordsGrid year={year} month={month} />
+        <ClockRecordsGrid startDate={dateRange.start_date} endDate={dateRange.end_date} />
       ) : (
         <>
 
@@ -203,10 +209,10 @@ export default function AttendancePage() {
             <thead>
               <tr className="bg-gray-50">
                 <th className="px-3 py-2 text-left text-gray-500 font-medium w-[100px]">员工</th>
-                {Array.from({ length: daysInMonth }, (_, i) => (
-                  <th key={i} className={`px-1 py-2 text-center text-gray-500 font-medium w-[36px] ${dayHeaders[(firstDayOfWeek + i) % 7] === "日" ? "text-red-400" : ""}`}>
-                    <div className="text-xs">{dayHeaders[(firstDayOfWeek + i) % 7]}</div>
-                    <div>{i + 1}</div>
+                {dateList.map((d) => (
+                  <th key={d.date} className={`px-1 py-2 text-center text-gray-500 font-medium w-[36px] ${d.isSunday ? "text-red-400" : ""}`}>
+                    <div className="text-xs">{d.weekday}</div>
+                    <div>{d.day}</div>
                   </th>
                 ))}
               </tr>
@@ -218,8 +224,8 @@ export default function AttendancePage() {
                     {emp.name}
                     <div className="text-gray-400 font-normal">{emp.position}</div>
                   </td>
-                  {Array.from({ length: daysInMonth }, (_, i) => {
-                    const dt = `${year}-${String(month).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`;
+                  {dateList.map((d) => {
+                    const dt = d.date;
                     const key = `${dt}_${emp.id}`;
                     const evt = events[key];
                     const status = evt?.status || "future";
@@ -227,7 +233,7 @@ export default function AttendancePage() {
                     const today = new Date().toISOString().slice(0, 10);
                     const isToday = dt === today;
                     return (
-                      <td key={i} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
+                      <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
                           className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"}`}
                           title={label + " - 点击查看打卡照片"}
@@ -241,7 +247,7 @@ export default function AttendancePage() {
                 </tr>
               ))}
               {employees.length === 0 && (
-                <tr><td colSpan={daysInMonth + 1} className="text-center py-12 text-gray-400">暂无员工数据</td></tr>
+                <tr><td colSpan={dateList.length + 1} className="text-center py-12 text-gray-400">暂无员工数据</td></tr>
               )}
             </tbody>
           </table>
