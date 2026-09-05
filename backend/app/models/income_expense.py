@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -55,7 +55,7 @@ class ExpenseRecord(Base):
     amount = Column(Float, nullable=False)
     currency = Column(String(5), nullable=False, default="THB")
     expense_date = Column(DateTime, nullable=False)
-    voucher = Column(String(500), nullable=True)
+    voucher = Column(Text, nullable=True)  # 多张凭证路径，JSON 数组字符串（兼容旧单路径字符串）
     remark = Column(String(500), nullable=True)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

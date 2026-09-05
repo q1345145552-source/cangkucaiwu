@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
@@ -235,7 +235,7 @@ async def create_expense(
     expense_date: str = Form(...),
     supplier_id: Optional[int] = Form(None),
     remark: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -248,34 +248,39 @@ async def create_expense(
 
     wh_id = get_wh_id(current_user)
 
-    # 凭证图片（可选）：保存到 uploads 目录，路径写入 voucher 字段
-    voucher_path = None
-    if file is not None and file.filename:
-        ext = file.filename.split(".")[-1].lower() if file.filename else ""
-        if ext not in ("png", "jpg", "jpeg", "webp"):
-            raise HTTPException(400, "凭证仅支持图片格式 png/jpg/jpeg/webp")
-        content = await file.read()
-        if len(content) > 10 * 1024 * 1024:
-            raise HTTPException(400, "凭证图片不能超过10MB")
-        import os, uuid
-        UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
-        today_str = thai_now().strftime("%Y-%m-%d")
+    # 凭证图片（可选，可多张）：保存到 uploads 目录，路径以 JSON 数组写入 voucher 字段
+    import os, uuid, json
+    UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
+    today_str = thai_now().strftime("%Y-%m-%d")
+    voucher_paths: list = []
+    if files:
         subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "expense_vouchers")
         os.makedirs(subdir, exist_ok=True)
-        fname = f"{uuid.uuid4().hex}.{ext}"
-        fpath = os.path.join(subdir, fname)
-        with open(fpath, "wb") as f:
-            f.write(content)
-        voucher_path = f"uploads/{wh_id}/{today_str}/expense_vouchers/{fname}"
+        for file in files:
+            if file is None or not file.filename:
+                continue
+            ext = file.filename.split(".")[-1].lower() if file.filename else ""
+            if ext not in ("png", "jpg", "jpeg", "webp"):
+                raise HTTPException(400, "凭证仅支持图片格式 png/jpg/jpeg/webp")
+            content = await file.read()
+            if len(content) > 10 * 1024 * 1024:
+                raise HTTPException(400, "单张凭证图片不能超过10MB")
+            fname = f"{uuid.uuid4().hex}.{ext}"
+            fpath = os.path.join(subdir, fname)
+            with open(fpath, "wb") as f:
+                f.write(content)
+            voucher_paths.append(f"uploads/{wh_id}/{today_str}/expense_vouchers/{fname}")
+
+    voucher_field = json.dumps(voucher_paths, ensure_ascii=False) if voucher_paths else None
 
     r = ExpenseRecord(
         warehouse_id=wh_id, category_id=category_id,
         account_id=account_id, supplier_id=supplier_id,
         amount=amount, currency=currency,
         expense_date=datetime.fromisoformat(expense_date),
-        voucher=voucher_path, remark=remark, approved_by=current_user.id,
+        voucher=voucher_field, remark=remark, approved_by=current_user.id,
     )
-    db.add(r); await db.flush(); return {"id": r.id, "message": "付款记录创建成功", "voucher": voucher_path}
+    db.add(r); await db.flush(); return {"id": r.id, "message": "付款记录创建成功", "voucher": voucher_field}
 
 # ==== Ledger ====
 @router.get("/ledger")

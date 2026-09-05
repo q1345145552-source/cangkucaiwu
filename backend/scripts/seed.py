@@ -34,6 +34,13 @@ async def seed():
             ))
         except Exception:
             pass
+        # Migration: expense_records.voucher 加宽为 TEXT（支持多张凭证 JSON 数组）
+        try:
+            await conn.execute(text(
+                "ALTER TABLE expense_records ALTER COLUMN voucher TYPE TEXT"
+            ))
+        except Exception:
+            pass
     factory = async_session_factory()
     async with factory() as session:
         from sqlalchemy import select

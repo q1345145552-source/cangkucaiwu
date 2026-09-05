@@ -20,9 +20,10 @@ export default function OperatingPage() {
   const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: new Date().toISOString().slice(0, 10), remark: "" });
   const [expFilters, setExpFilters] = useState({ category_id: 0, account_id: 0, currency: "", start_date: "", end_date: "" });
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
-  const [voucherFile, setVoucherFile] = useState<File | null>(null);
-  const [voucherPreview, setVoucherPreview] = useState<string | null>(null);
-  const [zoomVoucher, setZoomVoucher] = useState<string | null>(null);
+  const [voucherFiles, setVoucherFiles] = useState<File[]>([]);
+  const [voucherPreviews, setVoucherPreviews] = useState<string[]>([]);
+  const [zoomVouchers, setZoomVouchers] = useState<string[]>([]);
+  const [zoomIndex, setZoomIndex] = useState(0);
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadDashboard(); loadRefs(); }, []);
   useEffect(() => { loadExpenses(); }, [expPage, month, expFilters, viewMode]);
@@ -83,18 +84,41 @@ export default function OperatingPage() {
     } catch {}
   }
 
+  // 兼容旧单路径字符串 + 新 JSON 数组字符串
+  function parseVouchers(v: any): string[] {
+    if (!v) return [];
+    if (Array.isArray(v)) return v.filter(Boolean);
+    if (typeof v === "string") {
+      const s = v.trim();
+      if (!s) return [];
+      if (s.startsWith("[")) {
+        try { const a = JSON.parse(s); return Array.isArray(a) ? a.filter(Boolean) : [s]; } catch { return [s]; }
+      }
+      return [s];
+    }
+    return [];
+  }
+
   function handleVoucherSelect(e: any) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setVoucherFile(f);
-    if (voucherPreview) URL.revokeObjectURL(voucherPreview);
-    setVoucherPreview(URL.createObjectURL(f));
+    const fileList: FileList | null = e.target.files;
+    if (!fileList || !fileList.length) return;
+    const files: File[] = Array.from(fileList);
+    const newPreviews = files.map((f: File) => URL.createObjectURL(f));
+    setVoucherFiles(prev => [...prev, ...files]);
+    setVoucherPreviews(prev => [...prev, ...newPreviews]);
+    e.target.value = "";
+  }
+
+  function removeVoucher(i: number) {
+    if (voucherPreviews[i]) URL.revokeObjectURL(voucherPreviews[i]);
+    setVoucherFiles(prev => prev.filter((_, idx) => idx !== i));
+    setVoucherPreviews(prev => prev.filter((_, idx) => idx !== i));
   }
 
   function clearVoucher() {
-    setVoucherFile(null);
-    if (voucherPreview) URL.revokeObjectURL(voucherPreview);
-    setVoucherPreview(null);
+    voucherPreviews.forEach(p => URL.revokeObjectURL(p));
+    setVoucherFiles([]);
+    setVoucherPreviews([]);
   }
 
   function closeForm() {
@@ -113,7 +137,7 @@ export default function OperatingPage() {
       fd.append("currency", form.currency || "THB");
       fd.append("expense_date", form.date);
       if (form.remark) fd.append("remark", form.remark);
-      if (voucherFile) fd.append("file", voucherFile);
+      if (voucherFiles.length) voucherFiles.forEach(f => fd.append("files", f));
 
       const headers: Record<string, string> = {};
       const token = getToken();
@@ -261,9 +285,12 @@ export default function OperatingPage() {
               { key: "amount", label: "金额", render: (v: number) => <span className="font-medium">¥{v?.toLocaleString()}</span> },
               { key: "currency", label: "币种" },
               { key: "remark", label: "备注" },
-              { key: "voucher", label: "凭证", render: (v: string) => v ? (
-                  <button onClick={(e) => { e.stopPropagation(); setZoomVoucher(v); }} className="text-blue-600 hover:underline text-xs font-medium">查看</button>
-                ) : <span className="text-gray-300">无</span> },
+              { key: "voucher", label: "凭证", render: (v: any) => {
+                  const list = parseVouchers(v);
+                  return list.length ? (
+                    <button onClick={(e) => { e.stopPropagation(); setZoomVouchers(list); setZoomIndex(0); }} className="text-blue-600 hover:underline text-xs font-medium">凭证({list.length})</button>
+                  ) : <span className="text-gray-300">无</span>;
+                } },
             ]}
             data={expenses} total={expTotal} page={expPage} pageSize={25} onPageChange={setExpPage}
           />
@@ -324,12 +351,16 @@ export default function OperatingPage() {
               </div>
               <div><label className="form-label">备注</label><input className="form-input" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
               <div>
-                <label className="form-label">凭证图片（可选）</label>
-                <input type="file" accept="image/*" className="form-input" onChange={handleVoucherSelect} />
-                {voucherPreview && (
-                  <div className="mt-2 relative inline-block">
-                    <img src={voucherPreview} alt="凭证预览" className="h-24 rounded-lg border object-cover" />
-                    <button onClick={clearVoucher} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
+                <label className="form-label">凭证图片（可选，可多张）</label>
+                <input type="file" accept="image/*" multiple className="form-input" onChange={handleVoucherSelect} />
+                {voucherPreviews.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {voucherPreviews.map((p, i) => (
+                      <div key={i} className="relative inline-block">
+                        <img src={p} alt={`凭证${i + 1}`} className="h-20 w-20 rounded-lg border object-cover" />
+                        <button onClick={() => removeVoucher(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -342,12 +373,24 @@ export default function OperatingPage() {
         </div>
       )}
 
-      {/* 凭证大图预览 */}
-      {zoomVoucher && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setZoomVoucher(null)}>
-          <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setZoomVoucher(null)} className="absolute -top-3 -right-3 bg-white rounded-full w-8 h-8 shadow text-gray-600 hover:text-black text-xl leading-none">&times;</button>
-            <img src={`/${zoomVoucher}`} alt="凭证大图" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain" />
+      {/* 凭证大图预览（多图可切换） */}
+      {zoomVouchers.length > 0 && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setZoomVouchers([])}>
+          <div className="relative w-full max-w-4xl" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setZoomVouchers([])} className="absolute -top-3 -right-3 bg-white rounded-full w-8 h-8 shadow z-10 text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+            <img src={`/${zoomVouchers[zoomIndex]}`} alt={`凭证${zoomIndex + 1}`} className="mx-auto max-h-[68vh] max-w-full rounded-lg shadow-2xl object-contain" />
+            {zoomVouchers.length > 1 && (
+              <>
+                <button onClick={() => setZoomIndex(i => (i - 1 + zoomVouchers.length) % zoomVouchers.length)} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-9 h-9 shadow text-xl leading-none text-gray-700">‹</button>
+                <button onClick={() => setZoomIndex(i => (i + 1) % zoomVouchers.length)} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-9 h-9 shadow text-xl leading-none text-gray-700">›</button>
+              </>
+            )}
+            <div className="flex justify-center gap-2 mt-3 flex-wrap">
+              {zoomVouchers.map((p, i) => (
+                <img key={i} src={`/${p}`} onClick={() => setZoomIndex(i)} className={`h-14 w-14 object-cover rounded cursor-pointer border-2 ${i === zoomIndex ? "border-blue-500" : "border-transparent"}`} />
+              ))}
+            </div>
+            <div className="text-center text-white text-xs mt-2">{zoomIndex + 1} / {zoomVouchers.length}</div>
           </div>
         </div>
       )}
