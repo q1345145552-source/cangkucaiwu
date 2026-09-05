@@ -404,7 +404,7 @@ async def ledger(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
-    today = __import__('datetime').thai_today()
+    today = thai_today()
     cur_month = f"{today.year}-{today.month:02d}"
 
     start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
