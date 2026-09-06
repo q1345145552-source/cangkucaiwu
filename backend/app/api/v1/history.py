@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from datetime import datetime
 from app.database import get_db
 from app.models.data_change_history import DataChangeHistory
 from app.core.permissions import get_current_user, get_wh_ids, Role
@@ -59,11 +60,13 @@ async def list_history(
         query = query.where(DataChangeHistory.operator_id == operator_id)
         count_q = count_q.where(DataChangeHistory.operator_id == operator_id)
     if start_date:
-        query = query.where(func.date(DataChangeHistory.created_at) >= start_date)
-        count_q = count_q.where(func.date(DataChangeHistory.created_at) >= start_date)
+        start_d = datetime.strptime(start_date, "%Y-%m-%d").date()
+        query = query.where(func.date(DataChangeHistory.created_at) >= start_d)
+        count_q = count_q.where(func.date(DataChangeHistory.created_at) >= start_d)
     if end_date:
-        query = query.where(func.date(DataChangeHistory.created_at) <= end_date)
-        count_q = count_q.where(func.date(DataChangeHistory.created_at) <= end_date)
+        end_d = datetime.strptime(end_date, "%Y-%m-%d").date()
+        query = query.where(func.date(DataChangeHistory.created_at) <= end_d)
+        count_q = count_q.where(func.date(DataChangeHistory.created_at) <= end_d)
 
     total = (await db.execute(count_q)).scalar()
     result = await db.execute(
