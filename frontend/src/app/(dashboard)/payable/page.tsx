@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
@@ -203,19 +204,19 @@ export default function PayablePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
           <div className="flex items-center gap-2 mb-1"><DollarSign size={18} /><span className="text-sm opacity-80">本月应付</span></div>
-          <div className="text-2xl font-bold">¥{(stats?.month_total || 0).toLocaleString()}</div>
+          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.month_total_by_currency)}</div>
         </div>
         <div className="card bg-gradient-to-br from-red-500 to-red-600 text-white border-0">
           <div className="flex items-center gap-2 mb-1"><AlertCircle size={18} /><span className="text-sm opacity-80">逾期未付</span></div>
-          <div className="text-2xl font-bold">¥{(stats?.overdue_total || 0).toLocaleString()}</div>
+          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.overdue_by_currency)}</div>
         </div>
         <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
           <div className="flex items-center gap-2 mb-1"><CheckCircle size={18} /><span className="text-sm opacity-80">本月已付</span></div>
-          <div className="text-2xl font-bold">¥{(stats?.month_paid || 0).toLocaleString()}</div>
+          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.month_paid_by_currency)}</div>
         </div>
         <div className="card bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
           <div className="flex items-center gap-2 mb-1"><Clock size={18} /><span className="text-sm opacity-80">本月未付</span></div>
-          <div className="text-2xl font-bold">¥{(stats?.month_unpaid || 0).toLocaleString()}</div>
+          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.month_unpaid_by_currency)}</div>
         </div>
       </div>
 
@@ -313,10 +314,10 @@ export default function PayablePage() {
         {
           key: "amount", label: "金额", align: "right", render: (v: any, row: any) => {
             const diff = row.confirmed_amount && row.confirmed_amount !== row.amount;
-            return <span>{v?.toLocaleString()} {diff && <AlertTriangle size={12} className="inline text-orange-500 ml-1" title={`供应商确认: ${row.confirmed_amount}`} />}</span>
+            return <span>{fmtMoney(v, row.currency)} {diff && <AlertTriangle size={12} className="inline text-orange-500 ml-1" title={`供应商确认: ${row.confirmed_amount}`} />}</span>
           }
         },
-        { key: "paid_amount", label: "已付", align: "right", render: (v: any) => v?.toLocaleString() },
+        { key: "paid_amount", label: "已付", align: "right", render: (v: any, row: any) => fmtMoney(v, row.currency) },
         { key: "status", label: "状态", render: (v: any) => <span className={statusColors[v] || ""}>{statusLabels[v] || v}</span> },
         { key: "detail", label: "明细", render: (v: any) => v ? <span className="text-xs text-gray-500 max-w-32 truncate block" title={v}>{v.length > 12 ? v.slice(0, 12) + "..." : v}</span> : "-" },
         { key: "bill_attachment", label: "附件", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "账单附件")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, DollarSign, Search, Download, RotateCcw, ArrowUp, ArrowDown, Minus } from "lucide-react";
 
@@ -40,6 +41,12 @@ export default function LedgerPage() {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [net, setNet] = useState(0);
+  const [incomeByCurrency, setIncomeByCurrency] = useState<Record<string, number>>({});
+  const [expenseByCurrency, setExpenseByCurrency] = useState<Record<string, number>>({});
+  const netByCurrency: Record<string, number> = {};
+  Object.keys({ ...incomeByCurrency, ...expenseByCurrency }).forEach(c => {
+    netByCurrency[c] = (incomeByCurrency[c] || 0) - (expenseByCurrency[c] || 0);
+  });
 
   useEffect(() => { if (!getToken()) router.push("/login"); }, []);
   useEffect(() => { setPage(1); }, [dateRange, source, flowType]);
@@ -61,6 +68,8 @@ export default function LedgerPage() {
       setTotalIncome(r.total_income || 0);
       setTotalExpense(r.total_expense || 0);
       setNet(r.net || 0);
+      setIncomeByCurrency(r.income_by_currency || {});
+      setExpenseByCurrency(r.expense_by_currency || {});
     } catch (err) { console.error("加载失败:", err); }
     setLoading(false);
   }
@@ -119,7 +128,7 @@ export default function LedgerPage() {
             </div>
             <span className="text-xs text-gray-400">总收入</span>
           </div>
-          <div className="text-2xl font-bold text-green-700">฿{totalIncome.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-green-700">{fmtMoneyByCurrency(incomeByCurrency)}</div>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-2 mb-2">
@@ -128,7 +137,7 @@ export default function LedgerPage() {
             </div>
             <span className="text-xs text-gray-400">总支出</span>
           </div>
-          <div className="text-2xl font-bold text-red-600">฿{totalExpense.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-red-600">{fmtMoneyByCurrency(expenseByCurrency)}</div>
         </div>
         <div className={`bg-white rounded-2xl shadow-sm border p-5 ${net >= 0 ? "border-indigo-100" : "border-red-100"}`}>
           <div className="flex items-center gap-2 mb-2">
@@ -138,7 +147,7 @@ export default function LedgerPage() {
             <span className="text-xs text-gray-400">净额</span>
           </div>
           <div className={`text-2xl font-bold ${net >= 0 ? "text-indigo-700" : "text-red-600"}`}>
-            {net >= 0 ? "" : "-"}฿{Math.abs(net).toLocaleString()}
+            {fmtMoneyByCurrency(netByCurrency)}
           </div>
         </div>
       </div>
@@ -208,7 +217,7 @@ export default function LedgerPage() {
                       <td className={`px-4 py-3 text-right whitespace-nowrap ${row.type === "income" ? "text-green-700" : "text-red-600"}`}>
                         <span className="inline-flex items-center gap-1 font-mono text-sm font-semibold">
                           {row.type === "income" ? <ArrowUp size={14} className="text-green-600" /> : <ArrowDown size={14} className="text-red-500" />}
-                          ฿{(row.amount || 0).toLocaleString()}
+                          {fmtMoney(row.amount, row.currency)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center text-gray-500">{row.currency || "THB"}</td>

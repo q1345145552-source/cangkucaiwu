@@ -268,6 +268,21 @@ async def payable_stats(start_date: str = None, end_date: str = None,
     overdue_total = float((await db.execute(wh(select(func.coalesce(func.sum(PayableBill.amount - PayableBill.paid_amount), 0)))
         .where(PayableBill.status == PayableStatus.OVERDUE.value, *date_cond))).scalar() or 0)
 
+    # 按币种汇总
+    month_total_by_cur = {c: float(v) for c, v in (await db.execute(
+        wh(select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount), 0)).where(*date_cond).group_by(PayableBill.currency))
+    )).all()}
+    month_paid_by_cur = {c: float(v) for c, v in (await db.execute(
+        wh(select(PayableBill.currency, func.coalesce(func.sum(PayableBill.paid_amount), 0)).where(*date_cond).group_by(PayableBill.currency))
+    )).all()}
+    overdue_by_cur = {c: float(v) for c, v in (await db.execute(
+        wh(select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - PayableBill.paid_amount), 0))
+           .where(PayableBill.status == PayableStatus.OVERDUE.value, *date_cond).group_by(PayableBill.currency))
+    )).all()}
+    unpaid_by_cur = {}
+    for c in set(list(month_total_by_cur.keys()) + list(month_paid_by_cur.keys())):
+        unpaid_by_cur[c] = round(month_total_by_cur.get(c, 0) - month_paid_by_cur.get(c, 0), 2)
+
     # Supplier summary (range)
     sup_q = wh(select(PayableBill.supplier_id,
         func.count(PayableBill.id).label("count"),
@@ -289,6 +304,10 @@ async def payable_stats(start_date: str = None, end_date: str = None,
     return {
         "month_total": month_total, "overdue_total": overdue_total,
         "month_paid": month_paid, "month_unpaid": month_unpaid,
+        "month_total_by_currency": month_total_by_cur,
+        "month_paid_by_currency": month_paid_by_cur,
+        "overdue_by_currency": overdue_by_cur,
+        "month_unpaid_by_currency": unpaid_by_cur,
         "supplier_summary": supplier_summary,
     }
 

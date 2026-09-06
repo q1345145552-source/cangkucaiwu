@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 
@@ -17,7 +18,7 @@ export default function IncomeExpensePage() {
   const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [dateRange, setDateRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
-  const [totals, setTotals] = useState({ total_income: 0, total_expense: 0, net: 0 });
+  const [totals, setTotals] = useState<any>({ total_income: 0, total_expense: 0, net: 0, income_by_currency: {}, expense_by_currency: {} });
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -56,7 +57,7 @@ export default function IncomeExpensePage() {
     { key: "category_name", label: "类别" },
     { key: "account_name", label: "账户" },
     { key: tab === "income" ? "customer_name" : "supplier_name", label: "对象" },
-    { key: "amount", label: "金额" },
+    { key: "amount", label: "金额", render: (v: number, row: any) => fmtMoney(v, row.currency) },
     { key: "currency", label: "币种" },
     { key: "remark", label: "备注" },
   ];
@@ -66,10 +67,10 @@ export default function IncomeExpensePage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="page-title">{t("income_expense")}</h1>
-          <div className="flex gap-6 mt-2 text-sm">
-            <span className="text-green-600">收入: ¥{totals.total_income.toLocaleString()}</span>
-            <span className="text-red-600">支出: ¥{totals.total_expense.toLocaleString()}</span>
-            <span className={totals.net >= 0 ? "text-blue-600" : "text-red-600"}>净额: ¥{totals.net.toLocaleString()}</span>
+          <div className="flex gap-6 mt-2 text-sm flex-wrap">
+            <span className="text-green-600">收入: {fmtMoneyByCurrency(totals.income_by_currency)}</span>
+            <span className="text-red-600">支出: {fmtMoneyByCurrency(totals.expense_by_currency)}</span>
+            <span className={totals.net >= 0 ? "text-blue-600" : "text-red-600"}>净额: {(() => { const all = new Set([...Object.keys(totals.income_by_currency || {}), ...Object.keys(totals.expense_by_currency || {})]); const m: any = {}; all.forEach((c: string) => m[c] = (totals.income_by_currency?.[c] || 0) - (totals.expense_by_currency?.[c] || 0)); return fmtMoneyByCurrency(m); })()}</span>
           </div>
         </div>
         <button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary">新建记录</button>

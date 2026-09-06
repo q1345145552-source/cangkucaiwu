@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import { TrendingUp, TrendingDown, Plus, DollarSign, Minus, ArrowUp, ArrowDown } from "lucide-react";
@@ -390,7 +391,7 @@ export default function OperatingPage() {
               { key: "expense_date", label: "日期", render: (v: string) => v?.slice(0, 10) },
               { key: "category_name", label: "类别" },
               { key: "account_name", label: "账户" },
-              { key: "amount", label: "金额", render: (v: number) => <span className="font-medium">¥{v?.toLocaleString()}</span> },
+              { key: "amount", label: "金额", render: (v: number, row: any) => <span className="font-medium">{fmtMoney(v, row.currency)}</span> },
               { key: "currency", label: "币种" },
               { key: "remark", label: "备注" },
               { key: "voucher", label: "凭证", render: (v: any) => {
@@ -414,7 +415,7 @@ export default function OperatingPage() {
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center"><DollarSign size={18} className="text-red-500" /></div>
           <span className="text-sm text-gray-500">运营支出合计（范围内）</span>
-          <span className="text-xl font-bold text-red-600">¥{(dashboard?.total_expense || 0).toLocaleString()}</span>
+          <span className="text-xl font-bold text-red-600">{fmtMoneyByCurrency(dashboard?.expense_by_currency)}</span>
         </div>
       </div>
 
@@ -428,15 +429,15 @@ export default function OperatingPage() {
           <div className="grid grid-cols-3 gap-5">
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100 shadow-sm">
               <div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center"><ArrowUp size={16} className="text-green-600" /></div><span className="text-sm font-medium text-green-700">充值收入</span></div>
-              <div className="text-2xl font-bold text-green-700">¥{(dashboard.total_income || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-700">{fmtMoneyByCurrency(dashboard.income_by_currency)}</div>
             </div>
             <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl p-6 border border-red-100 shadow-sm">
               <div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center"><ArrowDown size={16} className="text-red-600" /></div><span className="text-sm font-medium text-red-700">运营支出</span></div>
-              <div className="text-2xl font-bold text-red-700">¥{(dashboard.total_expense || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold text-red-700">{fmtMoneyByCurrency(dashboard.expense_by_currency)}</div>
             </div>
             <div className={`bg-gradient-to-br rounded-2xl p-6 border shadow-sm ${(dashboard.total_net || 0) >= 0 ? "from-blue-50 to-sky-50 border-blue-100" : "from-orange-50 to-amber-50 border-orange-100"}`}>
               <div className="flex items-center gap-2 mb-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center ${(dashboard.total_net || 0) >= 0 ? "bg-blue-100" : "bg-orange-100"}`}>{(dashboard.total_net || 0) >= 0 ? <TrendingUp size={16} className="text-blue-600" /> : <TrendingDown size={16} className="text-orange-600" />}</div><span className={`text-sm font-medium ${(dashboard.total_net || 0) >= 0 ? "text-blue-700" : "text-orange-700"}`}>盈亏</span></div>
-              <div className={`text-2xl font-bold ${(dashboard.total_net || 0) >= 0 ? "text-blue-700" : "text-orange-700"}`}>{(dashboard.total_net || 0) >= 0 ? "+" : ""}¥{(dashboard.total_net || 0).toLocaleString()}</div>
+              <div className={`text-2xl font-bold ${(dashboard.total_net || 0) >= 0 ? "text-blue-700" : "text-orange-700"}`}>{fmtMoneyByCurrency(dashboard.net_by_currency)}</div>
             </div>
           </div>
         ) : (

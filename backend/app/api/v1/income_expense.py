@@ -640,6 +640,22 @@ async def ledger(
     total_income = float(sum_row[0]) if sum_row else 0
     total_expense = float(sum_row[1]) if sum_row else 0
 
+    # 按币种汇总
+    by_currency_sql = f"""
+        WITH all_flows AS (
+            {full_union}
+        )
+        SELECT currency,
+            COALESCE(SUM(CASE WHEN flow_type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN flow_type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
+        FROM all_flows
+        {type_filter}
+        GROUP BY currency
+    """
+    by_cur_rows = (await db.execute(text(by_currency_sql), base_params)).fetchall()
+    income_by_currency = {r[0] or "THB": float(r[1]) for r in by_cur_rows}
+    expense_by_currency = {r[0] or "THB": float(r[2]) for r in by_cur_rows}
+
     # Card values: current month only
     card_sql = f"""
         WITH all_flows AS (
@@ -675,6 +691,8 @@ async def ledger(
         "data": data, "total": total_all, "page": page, "page_size": page_size,
         "total_income": total_income, "total_expense": total_expense,
         "net": total_income - total_expense,
+        "income_by_currency": income_by_currency,
+        "expense_by_currency": expense_by_currency,
         "card_income": card_income, "card_expense": card_expense,
         "card_net": card_income - card_expense,
     }
@@ -808,7 +826,28 @@ async def monthly_summary(start_date: str = None, end_date: str = None, category
         eq = eq.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
     ti = (await db.execute(iq)).scalar() or 0
     te = (await db.execute(eq)).scalar() or 0
-    return {"start_date": start_date, "end_date": end_date, "total_income": float(ti), "total_expense": float(te), "net": float(ti - te)}
+
+    # 按币种汇总（复用同样的过滤条件）
+    iq_by = select(IncomeRecord.currency, func.sum(IncomeRecord.amount)).group_by(IncomeRecord.currency)
+    eq_by = select(ExpenseRecord.currency, func.sum(ExpenseRecord.amount)).group_by(ExpenseRecord.currency)
+    if start_date:
+        iq_by = iq_by.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+        eq_by = eq_by.where(ExpenseRecord.expense_date >= datetime.strptime(start_date, "%Y-%m-%d"))
+    if end_date:
+        end_next2 = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        iq_by = iq_by.where(IncomeRecord.income_date < end_next2)
+        eq_by = eq_by.where(ExpenseRecord.expense_date < end_next2)
+    if category_group:
+        iq_by = iq_by.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id).where(IncomeExpenseCategory.category_group == category_group)
+        eq_by = eq_by.join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id).where(IncomeExpenseCategory.category_group == category_group)
+    if current_user.role != Role.SUPER_ADMIN:
+        iq_by = iq_by.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
+        eq_by = eq_by.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
+    income_by_currency = {c: float(v) for c, v in (await db.execute(iq_by)).all()}
+    expense_by_currency = {c: float(v) for c, v in (await db.execute(eq_by)).all()}
+
+    return {"start_date": start_date, "end_date": end_date, "total_income": float(ti), "total_expense": float(te), "net": float(ti - te),
+            "income_by_currency": income_by_currency, "expense_by_currency": expense_by_currency}
 # ==== Operating Dashboard ====
 @router.get("/operating-dashboard")
 async def operating_dashboard(
@@ -900,6 +939,33 @@ async def operating_dashboard(
             "net": inc - exp,
         })
 
+    # 按币种汇总
+    range_start_dt = datetime.combine(start, datetime.min.time())
+    range_end_dt = datetime.combine(end + timedelta(days=1), datetime.min.time())
+    income_by_cur_rows = (await db.execute(
+        select(RechargeDeclaration.currency, func.coalesce(func.sum(RechargeDeclaration.amount), 0))
+        .where(
+            RechargeDeclaration.warehouse_id.in_(wh_ids),
+            RechargeDeclaration.declare_date >= range_start_dt,
+            RechargeDeclaration.declare_date < range_end_dt,
+        ).group_by(RechargeDeclaration.currency)
+    )).all()
+    expense_by_cur_rows = (await db.execute(
+        select(ExpenseRecord.currency, func.coalesce(func.sum(ExpenseRecord.amount), 0))
+        .join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id)
+        .where(
+            ExpenseRecord.warehouse_id.in_(wh_ids),
+            ExpenseRecord.expense_date >= range_start_dt,
+            ExpenseRecord.expense_date < range_end_dt,
+            IncomeExpenseCategory.category_group == "operating",
+        ).group_by(ExpenseRecord.currency)
+    )).all()
+    income_by_currency = {c: float(v) for c, v in income_by_cur_rows}
+    expense_by_currency = {c: float(v) for c, v in expense_by_cur_rows}
+    net_by_currency = {}
+    for c in set(list(income_by_currency.keys()) + list(expense_by_currency.keys())):
+        net_by_currency[c] = round(income_by_currency.get(c, 0) - expense_by_currency.get(c, 0), 2)
+
     return {
         "data": data,
         "granularity": granularity,
@@ -908,5 +974,8 @@ async def operating_dashboard(
         "total_income": total_income,
         "total_expense": total_expense,
         "total_net": total_income - total_expense,
+        "income_by_currency": income_by_currency,
+        "expense_by_currency": expense_by_currency,
+        "net_by_currency": net_by_currency,
     }
 
