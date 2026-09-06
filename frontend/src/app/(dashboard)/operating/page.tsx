@@ -40,6 +40,11 @@ export default function OperatingPage() {
   const [editVoucherFiles, setEditVoucherFiles] = useState<File[]>([]);
   const [editVoucherPreviews, setEditVoucherPreviews] = useState<string[]>([]);
   const [confirmDeleteVoucher, setConfirmDeleteVoucher] = useState<string | null>(null);
+  // 删除记录 / 历史
+  const [deletingExpense, setDeletingExpense] = useState<any>(null);
+  const [historyRow, setHistoryRow] = useState<any>(null);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => { if (!getToken()) { router.push("/login"); return; } loadRefs(); }, []);
   useEffect(() => { loadDashboard(); }, [dateRange]);
@@ -243,6 +248,34 @@ export default function OperatingPage() {
     } catch (err: any) { toast("error", err.message || "更新失败"); }
   }
 
+  async function handleDeleteExpense() {
+    try {
+      await api.delete(`/income-expense/expense/${deletingExpense.id}`);
+      toast("success", "删除成功");
+      setDeletingExpense(null);
+      loadExpenses(); loadDashboard();
+    } catch (err: any) { toast("error", err.message || "删除失败"); }
+  }
+
+  async function openHistory(row: any) {
+    setHistoryRow(row);
+    setHistoryLoading(true);
+    setHistoryData([]);
+    try {
+      const r = await api.get<any>(`/history?module=expense&record_id=${row.id}&page_size=100`);
+      setHistoryData(r.data || []);
+    } catch {}
+    setHistoryLoading(false);
+  }
+
+  const opTypeLabel = (op: string) => op === "create" ? "新建" : op === "edit" ? "编辑" : op === "delete" ? "删除" : op;
+  const opTypeColor = (op: string) => op === "create" ? "bg-green-100 text-green-700" : op === "edit" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700";
+  function renderData(obj: any): string {
+    if (!obj) return "-";
+    if (typeof obj === "object") return Object.entries(obj).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join("，");
+    return String(obj);
+  }
+
   function resetFilters() {
     setExpFilters({ category_id: 0, account_id: 0, currency: "" });
     setDateRange({ start_date: monthStartStr(), end_date: todayStr() });
@@ -367,7 +400,11 @@ export default function OperatingPage() {
                   ) : <span className="text-gray-300">无</span>;
                 } },
               { key: "id", label: "操作", render: (_: any, row: any) => (
-                  <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
+                    <button onClick={(e) => { e.stopPropagation(); openHistory(row); }} className="text-gray-500 hover:underline text-xs font-medium">历史</button>
+                  </div>
                 ) },
             ]}
             data={expenses} total={expTotal} page={expPage} pageSize={25} onPageChange={setExpPage}
@@ -532,6 +569,46 @@ export default function OperatingPage() {
               ))}
             </div>
             <div className="text-center text-white text-xs mt-2">{zoomIndex + 1} / {zoomVouchers.length}</div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除记录确认 */}
+      {deletingExpense && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingExpense(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2">删除支出</h3>
+            <p className="text-sm text-gray-500 mb-5">确定要彻底删除这笔支出吗？删除后变更历史仍会保留。</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setDeletingExpense(null)} className="btn-secondary">取消</button>
+              <button onClick={handleDeleteExpense} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 历史弹窗 */}
+      {historyRow && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setHistoryRow(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-gray-800 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3 sticky top-0">
+              <h2 className="text-lg font-semibold">变更历史</h2>
+              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none">&times;</button>
+            </div>
+            <div className="p-5 space-y-3">
+              {historyLoading ? <div className="text-center py-8 text-gray-400">加载中...</div>
+                : historyData.length === 0 ? <div className="text-center py-8 text-gray-400 text-sm">暂无变更记录</div>
+                : historyData.map((h: any) => (
+                  <div key={h.id} className="border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${opTypeColor(h.operation_type)}`}>{opTypeLabel(h.operation_type)}</span>
+                      <span className="text-xs text-gray-500">{h.operator_name || "-"} · {h.created_at ? new Date(h.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</span>
+                    </div>
+                    {h.before_data && <div className="text-xs text-gray-500 mb-1"><span className="text-gray-400">修改前：</span>{renderData(h.before_data)}</div>}
+                    {h.after_data && <div className="text-xs text-gray-600"><span className="text-gray-400">修改后：</span>{renderData(h.after_data)}</div>}
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}

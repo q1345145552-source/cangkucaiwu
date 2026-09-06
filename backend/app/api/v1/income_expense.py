@@ -11,6 +11,7 @@ from app.models.supplier import Supplier
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
+from app.services.data_history import record_history
 
 OPERATING_NAMES = ["仓储费", "操作费", "增值服务费", "工资", "电费", "网费", "房租", "耗材", "物流运费", "快递费", "保险费", "税费"]
 
@@ -289,7 +290,14 @@ async def create_expense(
         expense_date=datetime.fromisoformat(expense_date),
         voucher=voucher_field, remark=remark, approved_by=current_user.id,
     )
-    db.add(r); await db.flush(); return {"id": r.id, "message": "付款记录创建成功", "voucher": voucher_field}
+    db.add(r); await db.flush()
+    await record_history(db, module="expense", record_id=r.id, operator=current_user,
+                          operation_type="create", after={
+                              "amount": amount, "currency": currency,
+                              "expense_date": expense_date, "category_id": category_id,
+                              "account_id": account_id, "remark": remark, "voucher": voucher_field,
+                          }, warehouse_id=wh_id)
+    return {"id": r.id, "message": "付款记录创建成功", "voucher": voucher_field}
 
 @router.put("/expense/{expense_id}")
 async def update_expense(
@@ -316,6 +324,13 @@ async def update_expense(
         raise HTTPException(404, "记录不存在")
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
+
+    before = {
+        "amount": r.amount, "currency": r.currency,
+        "expense_date": r.expense_date.isoformat() if r.expense_date else None,
+        "category_id": r.category_id, "account_id": r.account_id,
+        "supplier_id": r.supplier_id, "remark": r.remark, "voucher": r.voucher,
+    }
 
     import os, uuid, json
     UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
@@ -388,7 +403,44 @@ async def update_expense(
     r.voucher = json.dumps(vouchers, ensure_ascii=False) if vouchers else None
 
     await db.flush()
+    await record_history(db, module="expense", record_id=r.id, operator=current_user,
+                          operation_type="edit", before=before, after={
+                              "amount": amount, "currency": currency,
+                              "expense_date": expense_date, "category_id": category_id,
+                              "account_id": account_id, "supplier_id": r.supplier_id,
+                              "remark": remark, "voucher": r.voucher,
+                          }, warehouse_id=r.warehouse_id)
     return {"message": "更新成功", "voucher": r.voucher}
+
+@router.delete("/expense/{expense_id}")
+async def delete_expense(
+    expense_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+
+    r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(404, "记录不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权限")
+
+    wh_id = r.warehouse_id
+    before = {
+        "amount": r.amount, "currency": r.currency,
+        "expense_date": r.expense_date.isoformat() if r.expense_date else None,
+        "category_id": r.category_id, "account_id": r.account_id,
+        "supplier_id": r.supplier_id, "remark": r.remark, "voucher": r.voucher,
+    }
+    await db.delete(r)
+    await db.flush()
+    await record_history(db, module="expense", record_id=expense_id, operator=current_user,
+                          operation_type="delete", before=before, warehouse_id=wh_id)
+    return {"message": "删除成功"}
 
 # ==== Ledger ====
 @router.get("/ledger")

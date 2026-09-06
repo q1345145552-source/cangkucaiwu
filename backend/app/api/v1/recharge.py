@@ -9,6 +9,7 @@ from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.schemas.business import RechargeCreate
+from app.services.data_history import record_history
 
 router = APIRouter()
 
@@ -85,7 +86,14 @@ async def create_recharge(req: RechargeCreate, current_user: User = Depends(get_
         screenshot=req.screenshot, remark=req.remark,
         declarer_id=current_user.id,
     )
-    db.add(r); await db.flush(); return {"id": r.id, "message": "申报成功"}
+    db.add(r); await db.flush()
+    await record_history(db, module="recharge", record_id=r.id, operator=current_user,
+                          operation_type="create", after={
+                              "amount": req.amount, "currency": req.currency,
+                              "declare_date": req.declare_date, "customer_id": req.customer_id,
+                              "payment_method": req.payment_method, "remark": req.remark,
+                          }, warehouse_id=wh_id)
+    return {"id": r.id, "message": "申报成功"}
 
 
 @router.get("/{recharge_id}")
@@ -96,18 +104,45 @@ async def get_recharge(recharge_id: int, db: AsyncSession = Depends(get_db)):
     return {"id": r.id, "amount": r.amount, "currency": r.currency, "declare_date": str(r.declare_date), "match_status": r.match_status, "remark": r.remark}
 
 @router.put("/{recharge_id}")
-async def edit_recharge(recharge_id: int, req: RechargeCreate, db: AsyncSession = Depends(get_db)):
+async def edit_recharge(recharge_id: int, req: RechargeCreate,
+                        current_user: User = Depends(get_current_user),
+                        db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
+    before = {
+        "amount": r.amount, "currency": r.currency,
+        "declare_date": r.declare_date.isoformat() if r.declare_date else None,
+        "remark": r.remark, "payment_method": r.payment_method, "customer_id": r.customer_id,
+    }
     r.amount = req.amount; r.currency = req.currency
     r.declare_date = datetime.fromisoformat(req.declare_date)
     r.remark = req.remark; r.payment_method = req.payment_method
-    await db.flush(); return {"message": "更新成功"}
+    if req.customer_id:
+        r.customer_id = req.customer_id
+    await db.flush()
+    await record_history(db, module="recharge", record_id=r.id, operator=current_user,
+                          operation_type="edit", before=before, after={
+                              "amount": req.amount, "currency": req.currency,
+                              "declare_date": req.declare_date, "remark": req.remark,
+                              "payment_method": req.payment_method, "customer_id": r.customer_id,
+                          }, warehouse_id=r.warehouse_id)
+    return {"message": "更新成功"}
 
 @router.delete("/{recharge_id}")
-async def delete_recharge(recharge_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_recharge(recharge_id: int,
+                          current_user: User = Depends(get_current_user),
+                          db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
-    await db.delete(r); await db.flush(); return {"message": "删除成功"}
+    wh_id = r.warehouse_id
+    before = {
+        "amount": r.amount, "currency": r.currency,
+        "declare_date": r.declare_date.isoformat() if r.declare_date else None,
+        "remark": r.remark, "payment_method": r.payment_method, "customer_id": r.customer_id,
+    }
+    await db.delete(r); await db.flush()
+    await record_history(db, module="recharge", record_id=recharge_id, operator=current_user,
+                          operation_type="delete", before=before, warehouse_id=wh_id)
+    return {"message": "删除成功"}

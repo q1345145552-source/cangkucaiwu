@@ -40,6 +40,16 @@ export default function ReimbursementPage() {
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<any>(null);
 
+  // 编辑 / 删除 / 历史
+  const [editingRow, setEditingRow] = useState<any>(null);
+  const [editItems, setEditItems] = useState<any[]>([]);
+  const [editDate, setEditDate] = useState("");
+  const [editCurrency, setEditCurrency] = useState("THB");
+  const [deletingRow, setDeletingRow] = useState<any>(null);
+  const [historyRow, setHistoryRow] = useState<any>(null);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   // Inline entry
   const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10));
   const [entryCategory, setEntryCategory] = useState("交通费");
@@ -114,6 +124,56 @@ export default function ReimbursementPage() {
   async function viewDetail(id: number) {
     const r = await api.get<any>(`/reimbursement/${id}`);
     setDetail(r);
+  }
+
+  // ===== 编辑 / 删除 / 历史 =====
+  async function openEdit(row: any) {
+    try {
+      const d = await api.get<any>(`/reimbursement/${row.id}`);
+      setEditingRow(row);
+      setEditDate(row.submit_date?.slice(0, 10) || "");
+      setEditCurrency(row.currency || "THB");
+      const its = (d.items || []).map((it: any) => ({ category: it.category || "交通费", amount: String(it.amount || ""), description: it.description || "" }));
+      setEditItems(its.length ? its : [{ category: "交通费", amount: "", description: "" }]);
+    } catch { toast("error", "加载明细失败"); }
+  }
+
+  async function handleEditSave() {
+    try {
+      const items = editItems.map(it => ({ category: it.category, amount: +it.amount, description: it.description }));
+      await api.put(`/reimbursement/${editingRow.id}`, { items, submit_date: editDate, currency: editCurrency });
+      toast("success", "更新成功");
+      setEditingRow(null);
+      load();
+    } catch (err: any) { toast("error", err.message || "更新失败"); }
+  }
+
+  async function handleDelete() {
+    try {
+      await api.delete(`/reimbursement/${deletingRow.id}`);
+      toast("success", "删除成功");
+      setDeletingRow(null);
+      load();
+    } catch (err: any) { toast("error", err.message || "删除失败"); }
+  }
+
+  async function openHistory(row: any) {
+    setHistoryRow(row);
+    setHistoryLoading(true);
+    setHistoryData([]);
+    try {
+      const r = await api.get<any>(`/history?module=reimbursement&record_id=${row.id}&page_size=100`);
+      setHistoryData(r.data || []);
+    } catch {}
+    setHistoryLoading(false);
+  }
+
+  const opTypeLabel = (op: string) => op === "create" ? "新建" : op === "edit" ? "编辑" : op === "delete" ? "删除" : op;
+  const opTypeColor = (op: string) => op === "create" ? "bg-green-100 text-green-700" : op === "edit" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700";
+  function renderData(obj: any): string {
+    if (!obj) return "-";
+    if (typeof obj === "object") return Object.entries(obj).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join("，");
+    return String(obj);
   }
 
   // ===== Review logic =====
@@ -348,8 +408,15 @@ export default function ReimbursementPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
                             <button onClick={() => viewDetail(row.id)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">详情</button>
+                            {row.status === "pending" && (
+                              <button onClick={() => openEdit(row)} className="px-2 py-1 rounded text-xs bg-amber-50 text-amber-700 hover:bg-amber-100">编辑</button>
+                            )}
+                            {isAdmin && (
+                              <button onClick={() => setDeletingRow(row)} className="px-2 py-1 rounded text-xs bg-red-50 text-red-600 hover:bg-red-100">删除</button>
+                            )}
+                            <button onClick={() => openHistory(row)} className="px-2 py-1 rounded text-xs bg-gray-50 text-gray-600 hover:bg-gray-100">历史</button>
                             {(row.status === "approved" || row.status === "partially_approved") && isAdmin && (
                               <button onClick={() => { markPaid(row.id); }} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">付款</button>
                             )}
@@ -520,6 +587,80 @@ export default function ReimbursementPage() {
                 </tr>
               ))}</tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 编辑弹窗 */}
+      {editingRow && (
+        <div className="modal-overlay z-50" onClick={() => setEditingRow(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-amber-500 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
+              <Receipt size={20} /><h2 className="text-lg font-semibold">编辑报销</h2>
+              <button onClick={() => setEditingRow(null)} className="ml-auto text-amber-200 hover:text-white text-xl leading-none">&times;</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="form-label">提交日期</label><input type="date" className="form-input" value={editDate} onChange={e => setEditDate(e.target.value)} /></div>
+                <div><label className="form-label">币种</label><select className="form-input" value={editCurrency} onChange={e => setEditCurrency(e.target.value)}><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
+              </div>
+              <div>
+                <label className="form-label">报销明细</label>
+                {editItems.map((it, i) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-end">
+                    <div className="col-span-4"><select className="form-input text-sm" value={it.category} onChange={e => { const arr = [...editItems]; arr[i] = { ...arr[i], category: e.target.value }; setEditItems(arr); }}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    <div className="col-span-3"><input type="number" step="0.01" className="form-input text-sm" placeholder="金额" value={it.amount} onChange={e => { const arr = [...editItems]; arr[i] = { ...arr[i], amount: e.target.value }; setEditItems(arr); }} /></div>
+                    <div className="col-span-4"><input className="form-input text-sm" placeholder="说明" value={it.description} onChange={e => { const arr = [...editItems]; arr[i] = { ...arr[i], description: e.target.value }; setEditItems(arr); }} /></div>
+                    <div className="col-span-1"><button onClick={() => setEditItems(prev => prev.filter((_, idx) => idx !== i))} className="text-red-500 text-sm">×</button></div>
+                  </div>
+                ))}
+                <button onClick={() => setEditItems(prev => [...prev, { category: "交通费", amount: "", description: "" }])} className="text-blue-600 text-xs hover:underline">+ 添加明细</button>
+              </div>
+            </div>
+            <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setEditingRow(null)} className="btn-secondary">取消</button>
+              <button onClick={handleEditSave} className="btn-primary">保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除确认 */}
+      {deletingRow && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingRow(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2">删除报销</h3>
+            <p className="text-sm text-gray-500 mb-5">确定要彻底删除这条报销吗？{deletingRow.is_fund_linked === "1" ? "该报销已关联备用金，删除后将恢复备用金余额。" : ""}删除后变更历史仍会保留。</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setDeletingRow(null)} className="btn-secondary">取消</button>
+              <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 历史弹窗 */}
+      {historyRow && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setHistoryRow(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-gray-800 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3 sticky top-0">
+              <h2 className="text-lg font-semibold">变更历史</h2>
+              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none">&times;</button>
+            </div>
+            <div className="p-5 space-y-3">
+              {historyLoading ? <div className="text-center py-8 text-gray-400">加载中...</div>
+                : historyData.length === 0 ? <div className="text-center py-8 text-gray-400 text-sm">暂无变更记录</div>
+                : historyData.map((h: any) => (
+                  <div key={h.id} className="border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${opTypeColor(h.operation_type)}`}>{opTypeLabel(h.operation_type)}</span>
+                      <span className="text-xs text-gray-500">{h.operator_name || "-"} · {h.created_at ? new Date(h.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</span>
+                    </div>
+                    {h.before_data && <div className="text-xs text-gray-500 mb-1"><span className="text-gray-400">修改前：</span>{renderData(h.before_data)}</div>}
+                    {h.after_data && <div className="text-xs text-gray-600"><span className="text-gray-400">修改后：</span>{renderData(h.after_data)}</div>}
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}

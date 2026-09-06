@@ -41,6 +41,27 @@ async def seed():
             ))
         except Exception:
             pass
+        # Migration: data_change_history 修改历史表（IF NOT EXISTS，幂等）
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS data_change_history (
+                    id SERIAL PRIMARY KEY,
+                    module VARCHAR(50) NOT NULL,
+                    record_id INTEGER NOT NULL,
+                    operator_id INTEGER REFERENCES users(id),
+                    operator_name VARCHAR(100),
+                    operation_type VARCHAR(20) NOT NULL,
+                    before_data JSON,
+                    after_data JSON,
+                    warehouse_id INTEGER REFERENCES warehouses(id),
+                    created_at TIMESTAMPTZ DEFAULT now()
+                )
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_data_change_history_module ON data_change_history (module)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_data_change_history_record_id ON data_change_history (record_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_data_change_history_created_at ON data_change_history (created_at)"))
+        except Exception:
+            pass
     factory = async_session_factory()
     async with factory() as session:
         from sqlalchemy import select

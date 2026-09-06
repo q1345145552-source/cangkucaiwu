@@ -8,6 +8,7 @@ from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCate
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.services.data_history import record_history
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -128,6 +129,12 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
     await db.flush()
 
     msg = "报销单创建成功，已转入备用金审核" if req.is_fund_linked == "1" else "报销单创建成功"
+    await record_history(db, module="reimbursement", record_id=r.id, operator=current_user,
+                          operation_type="create", after={
+                              "total_amount": total, "currency": req.currency,
+                              "submit_date": req.submit_date,
+                              "items": [{"category": i.category, "amount": i.amount, "description": i.description} for i in req.items],
+                          }, warehouse_id=wh_id)
     return {"id": r.id, "message": msg}
 
 @router.get("/export")
@@ -248,14 +255,71 @@ async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depen
     if not r: raise HTTPException(404, "报销单不存在")
     if r.status != ReimbStatus.PENDING.value:
         raise HTTPException(400, "仅待审批状态可编辑")
+    old_items = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id))).scalars().all()
+    before = {
+        "total_amount": r.total_amount, "currency": r.currency,
+        "submit_date": r.submit_date.isoformat() if r.submit_date else None,
+        "items": [{"category": o.category, "amount": o.amount, "description": o.description} for o in old_items],
+    }
     r.total_amount = sum(i.amount for i in req.items)
     # Delete old items and recreate
-    old = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id))).scalars().all()
-    for o in old: await db.delete(o)
+    for o in old_items: await db.delete(o)
     for item in req.items:
         db.add(ReimbursementItem(reimbursement_id=reimb_id, category=item.category,
                                  amount=item.amount, description=item.description, receipt=item.receipt))
-    await db.flush(); return {"message": "更新成功"}
+    await db.flush()
+    await record_history(db, module="reimbursement", record_id=r.id, operator=current_user,
+                          operation_type="edit", before=before, after={
+                              "total_amount": r.total_amount, "currency": req.currency,
+                              "items": [{"category": i.category, "amount": i.amount, "description": i.description} for i in req.items],
+                          }, warehouse_id=r.warehouse_id)
+    return {"message": "更新成功"}
+
+@router.delete("/{reimb_id}")
+async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
+                       db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
+    r = result.scalar_one_or_none()
+    if not r: raise HTTPException(404, "报销单不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权限")
+
+    wh_id = r.warehouse_id
+    before = {
+        "total_amount": r.total_amount, "currency": r.currency,
+        "submit_date": r.submit_date.isoformat() if r.submit_date else None,
+        "status": r.status, "is_fund_linked": r.is_fund_linked,
+    }
+
+    # 处理备用金关联：恢复余额 + 删除关联的备用金开销记录
+    if r.is_fund_linked == "1" and r.fund_item_id:
+        fund_item = (await db.execute(
+            select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id)
+        )).scalar_one_or_none()
+        if fund_item:
+            fund = (await db.execute(
+                select(ExpenseFund).where(ExpenseFund.id == fund_item.fund_id)
+            )).scalar_one_or_none()
+            if fund:
+                fund.remaining_balance = (fund.remaining_balance or 0) + (r.total_amount or 0)
+            await db.delete(fund_item)
+
+    # 删除报销明细 + 报销单
+    items = (await db.execute(
+        select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id)
+    )).scalars().all()
+    for it in items:
+        await db.delete(it)
+    await db.delete(r)
+    await db.flush()
+
+    await record_history(db, module="reimbursement", record_id=reimb_id, operator=current_user,
+                          operation_type="delete", before=before, warehouse_id=wh_id)
+    return {"message": "删除成功"}
 
 @router.post("/{reimb_id}/submit")
 async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_user),

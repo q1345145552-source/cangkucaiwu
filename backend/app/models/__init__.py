@@ -12,6 +12,7 @@ from app.models.credit import CreditCustomer, CreditRepayment
 from app.models.market import MarketItem
 from app.models.group_order import GroupOrder, GroupOrderParticipant
 from app.models.audit_log import AuditLog
+from app.models.data_change_history import DataChangeHistory
 from app.models.user_warehouse import UserWarehouse
 from app.models.employee import Employee
 from app.models.attendance import LeaveRequest, RestDay, Absence
@@ -27,6 +28,7 @@ __all__ = [
     "CreditCustomer", "CreditRepayment",
     "MarketItem", "GroupOrder", "GroupOrderParticipant",
     "AuditLog",
+    "DataChangeHistory",
     "UserWarehouse",
     "Employee",
     "LeaveRequest", "RestDay", "Absence", "ClockInRecord",
