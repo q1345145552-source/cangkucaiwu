@@ -169,7 +169,7 @@ export default function RechargePage() {
     { key: "amount", label: "金额", align: "right" as const, render: (v: number) => v?.toLocaleString() },
     { key: "currency", label: "币种" },
     { key: "payment_method", label: "付款方式", render: (v: string) => {
-      const map: Record<string, string> = { alipay: "支付宝", wechat: "微信", bank_transfer: "银行转账" };
+      const map: Record<string, string> = { alipay: "支付宝", wechat: "微信", bank_transfer: "银行转账", company_account: "公户" };
       return map[v] || v || "-";
     }},
     { key: "screenshot", label: "截图", render: (v: string, row: any) => v ? (
@@ -247,6 +247,7 @@ export default function RechargePage() {
               <option value="alipay">支付宝</option>
               <option value="wechat">微信</option>
               <option value="bank_transfer">银行转账</option>
+              <option value="company_account">公户</option>
             </select>
           </div>
           <div>
@@ -284,7 +285,7 @@ export default function RechargePage() {
                 <div><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value === "" ? "" : +e.target.value })} /></div>
                 <div><label className="form-label">币种</label><select className="form-input" value={editForm.currency} onChange={e => setEditForm({ ...editForm, currency: e.target.value })}><option value="THB">泰铢 (THB)</option><option value="CNY">人民币 (CNY)</option></select></div>
               </div>
-              <div><label className="form-label">付款方式</label><select className="form-input" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })}><option value="">未设置</option><option value="alipay">支付宝</option><option value="wechat">微信</option><option value="bank_transfer">银行转账</option></select></div>
+              <div><label className="form-label">付款方式</label><select className="form-input" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })}><option value="">未设置</option><option value="alipay">支付宝</option><option value="wechat">微信</option><option value="bank_transfer">银行转账</option><option value="company_account">公户</option></select></div>
               <div><label className="form-label">备注</label><input className="form-input" value={editForm.remark} onChange={e => setEditForm({ ...editForm, remark: e.target.value })} /></div>
               <div>
                 <label className="form-label">截图（可选，替换）</label>

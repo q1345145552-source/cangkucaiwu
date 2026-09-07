@@ -225,6 +225,7 @@ export default function CustomersPage() {
                       <option value="alipay">支付宝</option>
                       <option value="wechat">微信</option>
                       <option value="bank_transfer">银行转账</option>
+                      <option value="company_account">公户</option>
                     </select>
                   </div>
                 </div>
