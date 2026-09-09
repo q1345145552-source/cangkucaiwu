@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import { Upload, Plus } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -40,8 +41,14 @@ export default function RechargePage() {
   }
 
   async function loadCustomers() {
-    try { const r = await api.get<any>("/customers?page_size=100"); setCustomers(r.data); } catch {}
+    try { const r = await api.get<any>("/customers?page_size=99999"); setCustomers(r.data); } catch {}
   }
+
+  const customerOptions = customers.map((c: any) => ({
+    value: c.id,
+    label: c.company_name || "",
+    searchText: `${c.company_name || ""} ${c.customer_code || ""}`,
+  }));
 
   function handleCustomerChange(cid: number) {
     const customer = customers.find(c => c.id === cid);
@@ -220,10 +227,7 @@ export default function RechargePage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
           <div>
             <label className="form-label">客户</label>
-            <select className="form-input" value={form.customer_id} onChange={e => handleCustomerChange(+e.target.value)}>
-              <option value={0}>选择客户</option>
-              {customers.map((c: any) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
-            </select>
+            <SearchableSelect value={form.customer_id} options={customerOptions} onChange={(v) => handleCustomerChange(Number(v))} placeholder="选择客户（可搜索）" />
           </div>
           <div>
             <label className="form-label">申报日期</label>
@@ -279,7 +283,7 @@ export default function RechargePage() {
               <button onClick={() => setEditingRow(null)} className="ml-auto text-blue-200 hover:text-white text-xl leading-none">&times;</button>
             </div>
             <div className="p-6 space-y-4">
-              <div><label className="form-label">客户</label><select className="form-input" value={editForm.customer_id} onChange={e => setEditForm({ ...editForm, customer_id: +e.target.value })}><option value={0}>选择客户</option>{customers.map((c: any) => <option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
+              <div><label className="form-label">客户</label><SearchableSelect value={editForm.customer_id} options={customerOptions} onChange={(v) => setEditForm({ ...editForm, customer_id: Number(v) })} placeholder="选择客户（可搜索）" /></div>
               <div><label className="form-label">申报日期</label><input type="date" className="form-input" value={editForm.declare_date} onChange={e => setEditForm({ ...editForm, declare_date: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value === "" ? "" : +e.target.value })} /></div>
