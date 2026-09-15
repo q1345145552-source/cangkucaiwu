@@ -36,6 +36,10 @@ export default function SettingsPage() {
   // Edit user state
   const [editUser, setEditUser] = useState<any>(null);
   const [editPerms, setEditPerms] = useState<string[]>([]);
+  const [editUsername, setEditUsername] = useState("");
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editWarehouseId, setEditWarehouseId] = useState<number | string>("");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -106,6 +110,10 @@ export default function SettingsPage() {
   function openEdit(u: any) {
     setEditUser(u);
     setEditPerms(u.extra_permissions || []);
+    setEditUsername(u.username || "");
+    setEditDisplayName(u.display_name || "");
+    setEditPassword("");
+    setEditWarehouseId(u.warehouse_id || "");
   }
 
   function togglePerm(perm: string) {
@@ -117,7 +125,16 @@ export default function SettingsPage() {
   async function saveEdit() {
     if (!editUser) return;
     try {
-      await api.put(`/users/${editUser.id}`, { extra_permissions: editPerms });
+      const payload: any = {
+        username: editUsername,
+        display_name: editDisplayName,
+        extra_permissions: editPerms,
+      };
+      if (editPassword) payload.password = editPassword;
+      if (user?.role === "warehouse_admin" && editWarehouseId) {
+        payload.warehouse_id = +editWarehouseId;
+      }
+      await api.put(`/users/${editUser.id}`, payload);
       toast("success", "更新成功");
       setEditUser(null);
       loadUsers();
@@ -215,10 +232,15 @@ export default function SettingsPage() {
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
                   <td>
                     <div className="flex items-center gap-2">
-                      {u.role === "staff" && user?.role === "warehouse_admin" && (
-                        <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
-                          <Pencil size={12} /> 权限
-                        </button>
+                      {user?.role === "warehouse_admin" && (u.role === "staff" || u.role === "warehouse_labor") && (
+                        <>
+                          <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
+                            <Pencil size={12} /> 编辑
+                          </button>
+                          <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
+                            <Trash2 size={12} /> 删除
+                          </button>
+                        </>
                       )}
                       {user?.role === "super_admin" && u.role === "warehouse_admin" && (
                         <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
@@ -232,24 +254,40 @@ export default function SettingsPage() {
             </table>
           </div>
 
-          {/* Edit permissions modal */}
+          {/* Edit user modal */}
           {editUser && (
             <div className="modal-overlay" onClick={() => setEditUser(null)}>
-              <div className="bg-white rounded-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-                <h2 className="text-lg font-semibold mb-1">编辑扩展权限</h2>
+              <div className="bg-white rounded-xl w-full max-w-sm p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-lg font-semibold mb-1">编辑用户</h2>
                 <p className="text-sm text-gray-500 mb-4">{editUser.display_name} ({editUser.username})</p>
-                <div className="space-y-2 mb-6">
-                  {Object.entries(PERM_LABELS).map(([key, label]) => (
-                    <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
-                      <input
-                        type="checkbox"
-                        checked={editPerms.includes(key)}
-                        onChange={() => togglePerm(key)}
-                        className="rounded"
-                      />
-                      <span className="text-sm">{label}</span>
-                    </label>
-                  ))}
+                <div className="space-y-3 mb-4">
+                  <div><label className="form-label text-xs">用户名</label><input className="form-input text-sm" value={editUsername} onChange={e => setEditUsername(e.target.value)} /></div>
+                  <div><label className="form-label text-xs">显示名</label><input className="form-input text-sm" value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} /></div>
+                  <div><label className="form-label text-xs">重置密码（留空表示不改）</label><input type="password" className="form-input text-sm" value={editPassword} onChange={e => setEditPassword(e.target.value)} autoComplete="new-password" placeholder="留空不修改密码" /></div>
+                  {user?.role === "warehouse_admin" && (
+                    <div><label className="form-label text-xs">所属仓库</label>
+                      <select className="form-input text-sm" value={editWarehouseId} onChange={e => setEditWarehouseId(e.target.value)}>
+                        <option value="">请选择仓库</option>
+                        {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="mb-4">
+                  <div className="text-sm font-medium mb-2">扩展权限</div>
+                  <div className="space-y-1">
+                    {Object.entries(PERM_LABELS).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
+                        <input
+                          type="checkbox"
+                          checked={editPerms.includes(key)}
+                          onChange={() => togglePerm(key)}
+                          className="rounded"
+                        />
+                        <span className="text-sm">{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex justify-end gap-3">
                   <button onClick={() => setEditUser(null)} className="btn-secondary">取消</button>
@@ -340,7 +378,9 @@ export default function SettingsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         title="删除用户"
-        message={`确定要删除 ${deleteTarget?.display_name} (${deleteTarget?.username}) 吗？该用户创建的所有仓库和数据将被彻底删除，此操作不可恢复。`}
+        message={user?.role === "warehouse_admin"
+          ? `确定要删除 ${deleteTarget?.display_name} (${deleteTarget?.username}) 吗？删除后该账号将无法登录，此操作不可恢复。`
+          : `确定要删除 ${deleteTarget?.display_name} (${deleteTarget?.username}) 吗？该用户创建的所有仓库和数据将被彻底删除，此操作不可恢复。`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />

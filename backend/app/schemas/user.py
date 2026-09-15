@@ -13,6 +13,8 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     display_name: str | None = None
+    username: str | None = None
+    password: str | None = None
     role: Role | None = None
     warehouse_id: int | None = None
     is_active: bool | None = None

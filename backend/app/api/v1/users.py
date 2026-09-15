@@ -160,12 +160,27 @@ async def update_user(
         managed_wh_ids = [w for w in managed_wh_ids] if managed_wh_ids else []
         if not managed_wh_ids or user.warehouse_id not in managed_wh_ids:
             raise HTTPException(status_code=403, detail="只能编辑自己仓库的用户")
-        # warehouse_admin can only edit staff users
-        if user.role != Role.STAFF.value:
-            raise HTTPException(status_code=403, detail="只能编辑staff角色的用户")
-        # warehouse_admin can only set extra_permissions, not change role
+        # warehouse_admin can edit staff and warehouse_labor, but not other admins
+        if user.role not in (Role.STAFF.value, Role.WAREHOUSE_LABOR.value):
+            raise HTTPException(status_code=403, detail="只能编辑财务/劳工账号")
+        # warehouse_admin cannot change role
         if req.role is not None and req.role != user.role:
             raise HTTPException(status_code=403, detail="无权修改用户角色")
+
+    # 修改用户名：校验唯一性
+    if req.username is not None and req.username != user.username:
+        existing = (await db.execute(
+            select(User).where(User.username == req.username, User.id != user_id)
+        )).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=400, detail="用户名已存在")
+        user.username = req.username
+
+    # 重置密码：加密存储
+    if req.password:
+        if len(req.password) < 6:
+            raise HTTPException(status_code=400, detail="密码至少6位")
+        user.password_hash = hash_password(req.password)
 
     if req.display_name is not None:
         user.display_name = req.display_name
@@ -173,6 +188,14 @@ async def update_user(
         user.role = req.role
     if req.warehouse_id is not None:
         user.warehouse_id = req.warehouse_id
+        # 同步更新 user_warehouses 关联
+        existing_uw = (await db.execute(
+            select(UserWarehouse).where(UserWarehouse.user_id == user_id)
+        )).scalars().all()
+        for uw in existing_uw:
+            await db.delete(uw)
+        if user.warehouse_id is not None:
+            db.add(UserWarehouse(user_id=user_id, warehouse_id=user.warehouse_id))
     if req.is_active is not None:
         user.is_active = req.is_active
     if req.line_user_id is not None:
@@ -183,21 +206,38 @@ async def update_user(
     await db.flush()
     return {"message": "用户更新成功"}
 
+async def _delete_staff_or_labor(db: AsyncSession, user_id: int, username: str):
+    """删除财务/劳工账号：解除关联并彻底删除，保留其所在仓库业务数据。"""
+    from sqlalchemy import text
+    uid = user_id
+    # 解除员工档案与登录账号的关联
+    await db.execute(text("UPDATE employees SET user_id = NULL WHERE user_id = :uid"), {"uid": uid})
+    # 清除创建人引用
+    await db.execute(text("UPDATE users SET created_by = NULL WHERE created_by = :uid"), {"uid": uid})
+    # 删除个人数据（打卡、备用金、报销）
+    await db.execute(text("DELETE FROM clock_in_records WHERE user_id = :uid"), {"uid": uid})
+    await db.execute(text("DELETE FROM expense_fund_items WHERE fund_id IN (SELECT id FROM expense_funds WHERE employee_id = :uid)"), {"uid": uid})
+    await db.execute(text("DELETE FROM expense_funds WHERE employee_id = :uid"), {"uid": uid})
+    await db.execute(text("DELETE FROM reimbursement_items WHERE reimbursement_id IN (SELECT id FROM reimbursements WHERE employee_id = :uid)"), {"uid": uid})
+    await db.execute(text("DELETE FROM reimbursements WHERE employee_id = :uid"), {"uid": uid})
+    # 删除用户-仓库关联与用户
+    await db.execute(text("DELETE FROM user_warehouses WHERE user_id = :uid"), {"uid": uid})
+    await db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": uid})
+    await db.commit()
+
+
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Super admin only: delete a warehouse_admin and all their data."""
+    """删除用户：仓库管理员可删除自己仓库的财务/劳工；超级管理员删除仓库管理员（级联）。"""
     import traceback
     import logging
     logger = logging.getLogger("delete_user")
     
     try:
-        if current_user.role != Role.SUPER_ADMIN:
-            raise HTTPException(status_code=403, detail="只有超级管理员可以删除用户")
-
         if current_user.id == user_id:
             raise HTTPException(status_code=400, detail="不能删除自己")
 
@@ -205,6 +245,23 @@ async def delete_user(
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
+
+        # 仓库管理员：删除自己仓库的财务/劳工
+        if current_user.role == Role.WAREHOUSE_ADMIN:
+            if user.role not in (Role.STAFF.value, Role.WAREHOUSE_LABOR.value):
+                raise HTTPException(status_code=403, detail="只能删除财务/劳工账号")
+            managed_wh_ids = (await db.execute(
+                select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == current_user.id)
+            )).scalars().all()
+            managed_wh_ids = list(managed_wh_ids) if managed_wh_ids else []
+            if not managed_wh_ids or user.warehouse_id not in managed_wh_ids:
+                raise HTTPException(status_code=403, detail="只能删除自己仓库的用户")
+            await _delete_staff_or_labor(db, user_id, user.username)
+            return {"message": f"已删除用户 {user.username}"}
+
+        if current_user.role != Role.SUPER_ADMIN:
+            raise HTTPException(status_code=403, detail="只有超级管理员可以删除用户")
+
         if user.role != Role.WAREHOUSE_ADMIN:
             raise HTTPException(status_code=400, detail="只能删除仓库管理员")
 
