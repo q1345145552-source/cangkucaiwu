@@ -17,6 +17,7 @@ from app.models.user_warehouse import UserWarehouse
 from app.models.employee import Employee
 from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.clock_in_records import ClockInRecord
+from app.models.labor_efficiency import EfficiencyOrderCount, EfficiencyManualHour
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -32,5 +33,5 @@ __all__ = [
     "UserWarehouse",
     "Employee",
     "LeaveRequest", "RestDay", "Absence", "ClockInRecord",
-    "FundRechargeRequest",
+    "FundRechargeRequest", "EfficiencyOrderCount", "EfficiencyManualHour",
 ]

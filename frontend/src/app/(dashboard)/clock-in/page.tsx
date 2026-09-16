@@ -4,7 +4,7 @@ import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { ClipboardCheck, Clock, Camera, CheckCircle2, AlertTriangle, Lock } from "lucide-react";
+import { ClipboardCheck, Clock, Camera, CheckCircle2, AlertTriangle } from "lucide-react";
 import { formatThaiTime, formatThaiDate } from "@/lib/thai-time";
 
 const SESSION_LABELS: Record<number, { label: string; time: string; icon: string }> = {
@@ -74,14 +74,7 @@ export default function ClockInPage() {
   const penaltyHalf = Math.round(hourlyRate * 0.5); // 迟到半小时
   const penaltyOne = Math.round(hourlyRate);         // 迟到1小时
 
-  // Check if session N is open: session 1 always open, session N needs session N-1 done
-  function isSessionOpen(session: number): boolean {
-    if (session === 1) return true;
-    return !!completed[session - 1];
-  }
-
   function triggerCamera(session: number) {
-    if (!isSessionOpen(session)) return;
     setCurrentSession(session);
     setPreviewPhoto(null);
     cameraInputRef.current?.click();
@@ -185,7 +178,6 @@ export default function ClockInPage() {
       <div className="space-y-3">
         {[1, 2, 3, 4].map(session => {
           const done = completed[session];
-          const open = isSessionOpen(session);
           const isActive = loading[session];
           const info = SESSION_LABELS[session];
 
@@ -194,15 +186,13 @@ export default function ClockInPage() {
               className={`rounded-2xl border-2 transition-all ${
                 done
                   ? "border-green-300 bg-green-50/50"
-                  : open
-                  ? "border-gray-200 bg-white active:border-blue-300"
-                  : "border-gray-100 bg-gray-50 opacity-60"
+                  : "border-gray-200 bg-white active:border-blue-300"
               }`}>
               {/* Card body */}
               <div className="flex items-center gap-4 p-4">
                 {/* Icon + label */}
                 <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-                  style={{ background: done ? "#dcfce7" : open ? "#eff6ff" : "#f3f4f6" }}>
+                  style={{ background: done ? "#dcfce7" : "#eff6ff" }}>
                   {info.icon}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -228,9 +218,7 @@ export default function ClockInPage() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {open ? "点击右侧按钮拍照打卡" : `需先完成「${SESSION_LABELS[session - 1]?.label}」`}
-                    </p>
+                    <p className="text-xs text-gray-400 mt-1">点击右侧按钮拍照打卡</p>
                   )}
                 </div>
 
@@ -247,15 +235,11 @@ export default function ClockInPage() {
                 ) : (
                   <button
                     onClick={() => triggerCamera(session)}
-                    disabled={!open || isActive}
-                    className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-sm transition-all active:scale-95 ${
-                      open
-                        ? "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200"
-                        : "bg-gray-300 cursor-not-allowed"
-                    } disabled:opacity-70`}
-                    title={open ? "拍照打卡" : "该时段未开放"}
+                    disabled={isActive}
+                    className="flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-sm transition-all active:scale-95 bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200 disabled:opacity-70"
+                    title="拍照打卡"
                   >
-                    {open ? <Camera size={22} /> : <Lock size={18} />}
+                    <Camera size={22} />
                   </button>
                 )}
               </div>
@@ -266,7 +250,7 @@ export default function ClockInPage() {
 
       {/* Legend */}
       <div className="text-center text-xs text-gray-400 pb-4 space-y-1">
-        <p>必须按顺序打卡：上班 → 午休结束 → 下午上班 → 下班</p>
+        <p>四个时段随时可打卡，不限制时间与顺序</p>
         <p>早上9:05前正常，9:05-9:30迟到扣{penaltyHalf}铢，9:31后扣{penaltyOne}铢</p>
         <p className="text-gray-300">日薪 {dailyWage}铢 · 时薪 {hourlyRate}铢</p>
       </div>

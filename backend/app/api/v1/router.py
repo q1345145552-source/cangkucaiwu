@@ -3,7 +3,7 @@ from app.api.v1 import auth, users, dashboard, customers, warehouses, payment_ac
 from app.api.v1 import recharge, incoming, reconciliation, income_expense
 from app.api.v1 import expense_fund, reimbursement, payable, credit, market, group_order, reports
 from app.api.v1 import upload, settings_api, exchange_rates, employees, clock_in, attendance, overtime, payroll
-from app.api.v1 import history
+from app.api.v1 import history, efficiency
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["认证"])
@@ -33,3 +33,4 @@ api_router.include_router(attendance.router, prefix="/attendance", tags=["考勤
 api_router.include_router(overtime.router, prefix="/overtime", tags=["加班管理"])
 api_router.include_router(payroll.router, prefix="/payroll", tags=["工资管理"])
 api_router.include_router(history.router, prefix="/history", tags=["修改历史"])
+api_router.include_router(efficiency.router, prefix="/efficiency", tags=["人效管理"])

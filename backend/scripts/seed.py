@@ -17,6 +17,7 @@ from app.models.payroll import PayrollRecord
 from app.models.recharge import RechargeDeclaration, IncomingFlow
 from app.models.market import MarketItem
 from app.models.credit import CreditCustomer, CreditShipment, CreditRepayment
+from app.models.labor_efficiency import EfficiencyOrderCount
 from app.core.security import hash_password
 
 async def seed():
@@ -60,6 +61,44 @@ async def seed():
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_data_change_history_module ON data_change_history (module)"))
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_data_change_history_record_id ON data_change_history (record_id)"))
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_data_change_history_created_at ON data_change_history (created_at)"))
+        except Exception:
+            pass
+        # Migration: 人效管理订单数表（按周，每仓每周一条，可修改）
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS efficiency_order_counts (
+                    id SERIAL PRIMARY KEY,
+                    warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+                    week_start DATE NOT NULL,
+                    order_count INTEGER NOT NULL DEFAULT 0,
+                    updated_by INTEGER REFERENCES users(id),
+                    created_at TIMESTAMPTZ DEFAULT now(),
+                    updated_at TIMESTAMPTZ,
+                    CONSTRAINT uq_efficiency_wh_week UNIQUE (warehouse_id, week_start)
+                )
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_order_counts_wh ON efficiency_order_counts (warehouse_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_order_counts_week ON efficiency_order_counts (week_start)"))
+        except Exception:
+            pass
+        # Migration: 人效管理手动补录工时表（同一员工同一天一条，可修改）
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS efficiency_manual_hours (
+                    id SERIAL PRIMARY KEY,
+                    warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+                    employee_id INTEGER NOT NULL REFERENCES employees(id),
+                    date DATE NOT NULL,
+                    hours DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    operator_id INTEGER REFERENCES users(id),
+                    created_at TIMESTAMPTZ DEFAULT now(),
+                    updated_at TIMESTAMPTZ,
+                    CONSTRAINT uq_manual_hours_emp_date UNIQUE (employee_id, date)
+                )
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_manual_hours_wh ON efficiency_manual_hours (warehouse_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_manual_hours_emp ON efficiency_manual_hours (employee_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_manual_hours_date ON efficiency_manual_hours (date)"))
         except Exception:
             pass
     factory = async_session_factory()

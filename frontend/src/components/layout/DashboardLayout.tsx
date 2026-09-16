@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList, History,
+  Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList, History, Gauge,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -75,6 +75,7 @@ const navItems: NavItem[] = [
       { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin"] },
       { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin"] },
       { key: "payroll", label: "payroll", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "super_admin"] },
+      { key: "labor_efficiency", label: "人效管理", icon: <Gauge size={18} />, href: "/labor-efficiency", roles: ["warehouse_admin", "super_admin"] },
     ],
   },
   {

@@ -13,10 +13,10 @@ router = APIRouter()
 UPLOAD_DIR = "/app/uploads"
 
 SESSIONS = {
-    1: {"label": "早上上班", "time": time(9, 0),   "window_start": time(6, 0),  "window_end": time(10, 0)},
-    2: {"label": "中午休息结束", "time": time(12, 0), "window_start": time(11, 0), "window_end": time(13, 30)},
-    3: {"label": "下午上班", "time": time(13, 0),  "window_start": time(12, 30),"window_end": time(14, 30)},
-    4: {"label": "下午下班", "time": time(18, 0),  "window_start": time(17, 0), "window_end": time(23, 0)},
+    1: {"label": "早上上班", "time": time(9, 0)},
+    2: {"label": "中午休息结束", "time": time(12, 0)},
+    3: {"label": "下午上班", "time": time(13, 0)},
+    4: {"label": "下午下班", "time": time(18, 0)},
 }
 
 def _get_penalty(session: int, clocked_at: datetime) -> dict:
@@ -45,17 +45,8 @@ async def clock_in(
 
     today = thai_today()
     now = thai_now()
-    now_t = now.time()
 
-    # Time window check
     si = SESSIONS[session]
-    ws = si["window_start"]
-    we = si["window_end"]
-    if now_t < ws or now_t > we:
-        return {
-            "message": f"不在{si['label']}打卡时间内（{ws.strftime('%H:%M')}-{we.strftime('%H:%M')}）",
-            "outside_window": True,
-        }
 
     # Check duplicate
     existing = (await db.execute(
@@ -71,14 +62,12 @@ async def clock_in(
     # Save photo
     photo_path = None
     if photo_base64:
-        # 先解码并做大小校验（在 try 之外，确保超限能正确报错而不是被吞掉）
+        # 解码校验（在 try 之外，确保格式错误能正确报错而不是被吞掉）
         try:
             _, data = photo_base64.split(",", 1) if "," in photo_base64 else ("", photo_base64)
             img_bytes = base64.b64decode(data)
         except Exception:
             raise HTTPException(400, "打卡照片格式无效")
-        if len(img_bytes) > 5 * 1024 * 1024:
-            raise HTTPException(400, "打卡照片不能超过5MB")
         try:
             wh_id = str(get_wh_id(current_user) or 0)
             today_str = today.isoformat()
@@ -141,8 +130,7 @@ async def get_today(
     } for r in records}
     return {
         "today": today.isoformat(),
-        "sessions": [{"session": s, "label": v["label"], "time": str(v["time"]),
-                       "window_start": str(v["window_start"]), "window_end": str(v["window_end"])}
+        "sessions": [{"session": s, "label": v["label"], "time": str(v["time"])}
                       for s, v in SESSIONS.items()],
         "completed": completed,
     }
