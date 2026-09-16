@@ -576,7 +576,12 @@ export default function LaborEfficiencyPage() {
                   const dayMap: Map<string, any> = new Map((emp.days || []).map((d: any) => [d.date, d] as [string, any]));
                   return (
                     <tr key={emp.employee_id ?? emp.user_id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2 font-medium text-gray-700 sticky left-0 bg-white whitespace-nowrap">{emp.name}</td>
+                      <td className="px-4 py-2 font-medium text-gray-700 sticky left-0 bg-white whitespace-nowrap">
+                        {emp.name}
+                        {emp.status === "resigned" && (
+                          <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 text-[10px] font-normal">已离职</span>
+                        )}
+                      </td>
                       {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d) => {
                         const info = dayMap.get(d);
                         const canEdit = emp.employee_id != null;

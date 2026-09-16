@@ -43,6 +43,7 @@ class Employee(Base):
     resignation_date = Column(Date, nullable=True)
     resignation_reason = Column(String(50), nullable=True)
     resignation_note = Column(String(500), nullable=True)
+    pre_resign_status = Column(String(20), nullable=True, comment="离职前的身份状态（trial/regular），用于人效时薪估算")
     blacklisted = Column(Boolean, default=False)
     blacklist_reason = Column(String(500), nullable=True)
 

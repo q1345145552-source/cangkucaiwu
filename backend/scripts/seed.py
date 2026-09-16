@@ -81,6 +81,13 @@ async def seed():
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_order_counts_week ON efficiency_order_counts (week_start)"))
         except Exception:
             pass
+        # Migration: 员工离职前身份状态（人效时薪估算用）
+        try:
+            await conn.execute(text(
+                "ALTER TABLE employees ADD COLUMN IF NOT EXISTS pre_resign_status VARCHAR(20)"
+            ))
+        except Exception:
+            pass
         # Migration: 人效管理手动补录工时表（同一员工同一天一条，可修改）
         try:
             await conn.execute(text("""

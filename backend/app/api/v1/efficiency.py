@@ -92,9 +92,16 @@ def _effective_day(info: dict) -> tuple:
     return "none", None
 
 
+def _employee_status_for_rate(emp) -> str:
+    """用于时薪估算的身份：离职员工用离职前身份，其余用当前身份。"""
+    if (emp.status or "trial") == "resigned":
+        return emp.pre_resign_status or "trial"
+    return emp.status or "trial"
+
+
 def _hourly_rate(emp, month_date: date) -> float:
     """员工时薪。试用期 = 档案日薪 / 8；正式 = 底薪/(当月天数-2) / 8。"""
-    status = emp.status or "trial"
+    status = _employee_status_for_rate(emp)
     if status == "trial":
         daily = emp.daily_wage or 400
     else:
@@ -275,9 +282,9 @@ async def _compute_cross_check(db: AsyncSession, wh_id: int, monday: date) -> di
 
 async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date,
                         include_employees: bool = True) -> dict:
-    # 在职员工
+    # 所有员工（含离职）；离职员工仅在其有工时的周计入统计
     emps = (await db.execute(
-        select(Employee).where(Employee.warehouse_id == wh_id, Employee.status != "resigned")
+        select(Employee).where(Employee.warehouse_id == wh_id)
     )).scalars().all()
 
     # user_id -> employee 映射（正式关联 + 姓名回退）
@@ -347,6 +354,16 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
             info["manual_hours"] = s.hours
             info["supplement_id"] = s.id
 
+    # 确定计入统计的员工：在职全算；离职仅算该周有打卡或补录的
+    clock_uids = {k[0] for k in daily.keys()}
+    supp_emp_ids = {k[0] for k in supp_map.keys()}
+    included_emps = []
+    for e in emps:
+        uid = emp_user.get(e.id)
+        has_hours = (uid in clock_uids) or (e.id in supp_emp_ids)
+        if (e.status or "") != "resigned" or has_hours:
+            included_emps.append(e)
+
     # 汇总
     regular_total = 0.0
     pending_days = 0
@@ -365,7 +382,7 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
 
     # 人工成本 = Σ(员工正常工时 × 时薪)
     labor_cost = 0.0
-    for e in emps:
+    for e in included_emps:
         uid = emp_user.get(e.id)
         if not uid:
             continue
@@ -397,7 +414,7 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
     if include_employees:
         employees = []
         seen_uids = set()
-        for e in emps:
+        for e in included_emps:
             uid = emp_user.get(e.id)
             days = []
             emp_hours = 0.0
@@ -421,7 +438,7 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
                     d += timedelta(days=1)
             employees.append({
                 "employee_id": e.id, "name": e.name, "user_id": uid,
-                "total_hours": round(emp_hours, 1), "days": days,
+                "status": e.status, "total_hours": round(emp_hours, 1), "days": days,
             })
         # 有打卡但没有匹配到员工档案的 user_id
         unmatched_uids = [uid for uid in {k[0] for k in daily.keys()} if uid not in seen_uids]

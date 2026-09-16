@@ -239,8 +239,10 @@ async def resign_employee(
     except:
         raise HTTPException(400, "日期格式错误，应为 YYYY-MM-DD")
 
-    # Capture original status for payroll calculation
+    # Capture original status for payroll calculation & 人效时薪估算
     emp_original_status = e.status
+    if emp_original_status != "resigned":
+        e.pre_resign_status = emp_original_status
 
     # Update employee
     e.status = "resigned"
