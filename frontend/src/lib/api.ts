@@ -61,6 +61,10 @@ async function request<T>(
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
+  // 告知后端当前语言，后端据此返回对应语言的提示消息
+  if (typeof window !== "undefined") {
+    headers["X-Language"] = localStorage.getItem("locale") || "zh";
+  }
   // Add X-Warehouse-ID header (including "all" for total warehouse mode)
   const whId = getActiveWarehouseId();
   if (whId !== null) {

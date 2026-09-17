@@ -63,22 +63,22 @@ async def seed():
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_data_change_history_created_at ON data_change_history (created_at)"))
         except Exception:
             pass
-        # Migration: 人效管理订单数表（按周，每仓每周一条，可修改）
+        # Migration: 人效管理订单数表（按天，每仓每天一条，可修改）
         try:
             await conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS efficiency_order_counts (
+                CREATE TABLE IF NOT EXISTS efficiency_daily_orders (
                     id SERIAL PRIMARY KEY,
                     warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
-                    week_start DATE NOT NULL,
+                    date DATE NOT NULL,
                     order_count INTEGER NOT NULL DEFAULT 0,
                     updated_by INTEGER REFERENCES users(id),
                     created_at TIMESTAMPTZ DEFAULT now(),
                     updated_at TIMESTAMPTZ,
-                    CONSTRAINT uq_efficiency_wh_week UNIQUE (warehouse_id, week_start)
+                    CONSTRAINT uq_efficiency_daily_wh_date UNIQUE (warehouse_id, date)
                 )
             """))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_order_counts_wh ON efficiency_order_counts (warehouse_id)"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_order_counts_week ON efficiency_order_counts (week_start)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_daily_orders_wh ON efficiency_daily_orders (warehouse_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_daily_orders_date ON efficiency_daily_orders (date)"))
         except Exception:
             pass
         # Migration: 员工离职前身份状态（人效时薪估算用）

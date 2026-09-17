@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.database import get_db
@@ -6,6 +6,7 @@ from app.models.overtime import OvertimeTask, OvertimeAssignment
 from app.models.employee import Employee
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.messages import t, get_request_lang
 from pydantic import BaseModel, field_validator
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date
@@ -136,11 +137,13 @@ async def create_overtime(
 @router.post("/{overtime_id}/confirm")
 async def confirm_overtime(
     overtime_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = get_request_lang(request)
     if current_user.role not in (Role.WAREHOUSE_LABOR,):
-        raise HTTPException(403, "只有仓库劳工可以确认加班")
+        raise HTTPException(403, t("overtime_only_labor", lang))
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -183,7 +186,7 @@ async def confirm_overtime(
 
     await db.flush()
     return {
-        "message": f"加班确认成功，已挣 {assignment.earned_amount:.0f} 泰铢",
+        "message": t("overtime_confirm_success", lang, amount=f"{assignment.earned_amount:.0f}"),
         "earned_amount": assignment.earned_amount,
         "confirmed_at": assignment.confirmed_at.isoformat(),
     }

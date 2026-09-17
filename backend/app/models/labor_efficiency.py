@@ -4,15 +4,15 @@ from app.database import Base
 
 
 class EfficiencyOrderCount(Base):
-    """人效管理 - 管理员按周录入的整仓订单数。"""
-    __tablename__ = "efficiency_order_counts"
+    """人效管理 - 管理员按天录入的整仓订单数（每天一条，可修改）。"""
+    __tablename__ = "efficiency_daily_orders"
     __table_args__ = (
-        UniqueConstraint("warehouse_id", "week_start", name="uq_efficiency_wh_week"),
+        UniqueConstraint("warehouse_id", "date", name="uq_efficiency_daily_wh_date"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
-    week_start = Column(Date, nullable=False, index=True)  # 周一日期
+    date = Column(Date, nullable=False, index=True)  # 日期，每天一条
     order_count = Column(Integer, nullable=False, default=0)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

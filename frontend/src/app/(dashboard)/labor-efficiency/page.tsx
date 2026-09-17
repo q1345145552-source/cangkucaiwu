@@ -41,6 +41,19 @@ function addMonths(monthStr: string, delta: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function buildMonthDays(monthStr: string): { date: string | null; day: number }[] {
+  const [y, m] = monthStr.split("-").map(Number);
+  const first = new Date(y, m - 1, 1);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const lead = first.getDay(); // 0=周日
+  const cells: { date: string | null; day: number }[] = [];
+  for (let i = 0; i < lead; i++) cells.push({ date: null, day: 0 });
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ date: `${monthStr}-${String(d).padStart(2, "0")}`, day: d });
+  }
+  return cells;
+}
+
 function weekdayLabel(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
@@ -163,8 +176,11 @@ export default function LaborEfficiencyPage() {
   const [month, setMonth] = useState<string>("");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [orderInput, setOrderInput] = useState("");
-  const [orderSaving, setOrderSaving] = useState(false);
+  const [orderCalMonth, setOrderCalMonth] = useState<string>(currentMonth());
+  const [dailyOrders, setDailyOrders] = useState<Record<string, number>>({});
+  const [orderModal, setOrderModal] = useState<{ date: string; current: number | null } | null>(null);
+  const [orderModalInput, setOrderModalInput] = useState("");
+  const [orderModalSaving, setOrderModalSaving] = useState(false);
   const [stdInput, setStdInput] = useState("450");
   const [stdSaving, setStdSaving] = useState(false);
   const [suppModal, setSuppModal] = useState<{ employee_id: number; name: string; date: string; current: number | null } | null>(null);
@@ -191,7 +207,6 @@ export default function LaborEfficiencyPage() {
       const params = view === "week" ? `view=week&week_start=${weekStart}` : `view=month&month=${month}`;
       const r = await api.get<any>(`/efficiency/summary?${params}`);
       setData(r);
-      setOrderInput(r.order_count != null ? String(r.order_count) : "");
       setStdInput(r.standard != null ? String(r.standard) : "450");
       api.get<any>(`/efficiency/compare?${params}`).then(c => setCompareData(c.warehouses || [])).catch(() => {});
     } catch (e: any) {
@@ -208,18 +223,38 @@ export default function LaborEfficiencyPage() {
     load();
   }, [view, weekStart, month, load]);
 
-  async function saveOrder() {
-    const val = parseInt(orderInput, 10);
-    if (isNaN(val) || val < 0) { toast("error", "请输入有效的订单数"); return; }
-    setOrderSaving(true);
+  const loadDailyOrders = useCallback(async () => {
     try {
-      await api.put("/efficiency/order-count", { week_start: weekStart, order_count: val });
+      const r = await api.get<any>(`/efficiency/daily-orders?month=${orderCalMonth}`);
+      setDailyOrders(r.daily || {});
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderCalMonth]);
+
+  useEffect(() => {
+    if (orderCalMonth) loadDailyOrders();
+  }, [orderCalMonth, loadDailyOrders]);
+
+  function openOrderModal(date: string) {
+    setOrderModal({ date, current: dailyOrders[date] ?? null });
+    setOrderModalInput(dailyOrders[date] != null ? String(dailyOrders[date]) : "");
+  }
+
+  async function saveDailyOrder() {
+    if (!orderModal) return;
+    const val = parseInt(orderModalInput, 10);
+    if (isNaN(val) || val < 0) { toast("error", "请输入有效的订单数"); return; }
+    setOrderModalSaving(true);
+    try {
+      await api.put("/efficiency/order-count", { date: orderModal.date, order_count: val });
       toast("success", "订单数已保存");
+      setOrderModal(null);
+      await loadDailyOrders();
       await load();
     } catch (e: any) {
       toast("error", e.message || "保存失败");
     } finally {
-      setOrderSaving(false);
+      setOrderModalSaving(false);
     }
   }
 
@@ -409,31 +444,41 @@ export default function LaborEfficiencyPage() {
         <TrendChart data={trend} />
       </div>
 
-      {/* Order entry + standard config */}
-      <div className="grid md:grid-cols-2 gap-3">
-        {view === "week" && (
-          <div className="bg-white rounded-xl border p-4">
-            <div className="flex items-center gap-2 text-gray-700 font-medium"><TrendingUp size={16} className="text-blue-600" /> 本周订单数录入</div>
-            <p className="text-xs text-gray-400 mt-1">一周只能录一个数字，可修改。人效将自动重新计算。</p>
-            <div className="flex gap-2 mt-3">
-              <input
-                type="number"
-                min={0}
-                value={orderInput}
-                onChange={e => setOrderInput(e.target.value)}
-                className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                placeholder="输入本周处理单量"
-              />
-              <button
-                onClick={saveOrder}
-                disabled={orderSaving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-1 disabled:opacity-50"
-              >
-                <Save size={16} /> {orderSaving ? "保存中" : "保存"}
-              </button>
+      {/* Daily order entry calendar + standard config */}
+      <div className="grid lg:grid-cols-3 gap-3">
+        <div className="lg:col-span-2 bg-white rounded-xl border p-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <div className="flex items-center gap-2 text-gray-700 font-medium">
+              <TrendingUp size={16} className="text-blue-600" /> 订单数录入（按天）
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setOrderCalMonth(addMonths(orderCalMonth, -1))} className="p-1.5 border rounded hover:bg-gray-50 min-w-[32px]"><ChevronLeft size={16} /></button>
+              <span className="text-sm font-medium w-20 text-center">{orderCalMonth}</span>
+              <button onClick={() => setOrderCalMonth(addMonths(orderCalMonth, 1))} className="p-1.5 border rounded hover:bg-gray-50 min-w-[32px]"><ChevronRight size={16} /></button>
             </div>
           </div>
-        )}
+          <p className="text-xs text-gray-400 mb-3">点击某天录入/修改当天订单数，未录入的天按 0 计算。</p>
+          <div className="grid grid-cols-7 gap-1 text-center text-xs">
+            {["日", "一", "二", "三", "四", "五", "六"].map((w, i) => (
+              <div key={i} className="text-gray-400 py-1">{w}</div>
+            ))}
+            {buildMonthDays(orderCalMonth).map((cell, i) => (
+              cell.date ? (
+                <button key={i} onClick={() => openOrderModal(cell.date!)}
+                  className="min-h-[52px] border rounded-lg p-1 flex flex-col items-center justify-center hover:border-blue-300 hover:bg-blue-50/40 bg-white">
+                  <span className="text-gray-600">{cell.day}</span>
+                  {dailyOrders[cell.date!] != null ? (
+                    <span className="text-blue-600 font-semibold text-xs mt-0.5">{dailyOrders[cell.date!]}</span>
+                  ) : (
+                    <span className="text-gray-300 text-[10px] mt-0.5">-</span>
+                  )}
+                </button>
+              ) : (
+                <div key={i} className="min-h-[52px]"></div>
+              )
+            ))}
+          </div>
+        </div>
         <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 text-gray-700 font-medium"><Gauge size={16} className="text-amber-500" /> 当前标准（{stdMonth || "默认"}）</div>
           <p className="text-xs text-gray-400 mt-1">设置 {stdMonth || "默认"} 的人效标准，低于该值显示红色，达标显示绿色。</p>
@@ -618,6 +663,42 @@ export default function LaborEfficiencyPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 订单数录入弹窗 */}
+      {orderModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setOrderModal(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <TrendingUp size={20} />
+              <h3 className="font-semibold text-lg">录入订单数</h3>
+              <button onClick={() => setOrderModal(null)} className="ml-auto text-2xl text-blue-200">&times;</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-gray-800">{orderModal.date}</span>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">订单数（单）</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={orderModalInput}
+                  onChange={e => setOrderModalInput(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                  placeholder="输入当天处理单量"
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setOrderModal(null)} className="flex-1 py-2 border rounded-lg text-sm active:bg-gray-100">取消</button>
+                <button onClick={saveDailyOrder} disabled={orderModalSaving}
+                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold active:bg-blue-700 disabled:opacity-50">
+                  {orderModalSaving ? "保存中..." : "保存"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

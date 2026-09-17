@@ -18,12 +18,14 @@ export type Locale = "zh" | "th" | "my";
 
 export function useI18n() {
   const [locale, setLocaleState] = useState<Locale>("zh");
+  const [, forceUpdate] = useState(0);
 
-  // Load my.json dynamically
+  // Load my.json dynamically；加载完成后强制重渲染，确保缅甸语立即生效
   useEffect(() => {
     import("@/i18n/my.json").then((m: any) => {
       _myDict = m.default || m;
-      _all.my = _myDict;
+      _all.my = _myDict || {};
+      forceUpdate(v => v + 1);
     }).catch(() => {});
   }, []);
 
@@ -47,9 +49,22 @@ export function useI18n() {
     }
   }, []);
 
+  // 全局同步：任一组件切换语言时，所有 useI18n 实例一起更新
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && (detail.locale === "zh" || detail.locale === "th" || detail.locale === "my")) {
+        setLocaleState(detail.locale);
+      }
+    };
+    window.addEventListener("locale-changed", handler);
+    return () => window.removeEventListener("locale-changed", handler);
+  }, []);
+
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
     localStorage.setItem("locale", l);
+    window.dispatchEvent(new CustomEvent("locale-changed", { detail: { locale: l } }));
   }, []);
 
   const t = useCallback(

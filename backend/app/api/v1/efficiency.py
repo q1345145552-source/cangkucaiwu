@@ -24,7 +24,7 @@ CROSS_CHECK_THRESHOLD = 50.0  # 订单数与充值金额环比偏差阈值（百
 
 
 class OrderCountSet(BaseModel):
-    week_start: str  # YYYY-MM-DD（周一）
+    date: str  # YYYY-MM-DD（某天）
     order_count: int
 
 
@@ -195,14 +195,28 @@ async def _get_standard(db: AsyncSession, wh_id: int, month_str: Optional[str] =
         return float(DEFAULT_STANDARD)
 
 
-async def _get_order_count(db: AsyncSession, wh_id: int, monday: date) -> int:
-    row = (await db.execute(
+async def _get_daily_orders(db: AsyncSession, wh_id: int, start: date, end: date) -> dict:
+    """一段时间内每天的订单数，返回 {date: order_count}。"""
+    rows = (await db.execute(
         select(EfficiencyOrderCount).where(
             EfficiencyOrderCount.warehouse_id == wh_id,
-            EfficiencyOrderCount.week_start == monday,
+            EfficiencyOrderCount.date >= start,
+            EfficiencyOrderCount.date <= end,
         )
-    )).scalar_one_or_none()
-    return int(row.order_count) if row else 0
+    )).scalars().all()
+    return {r.date: int(r.order_count) for r in rows}
+
+
+async def _get_period_order_count(db: AsyncSession, wh_id: int, start: date, end: date) -> int:
+    """一段时间内每天的订单数加总。"""
+    result = (await db.execute(
+        select(func.coalesce(func.sum(EfficiencyOrderCount.order_count), 0)).where(
+            EfficiencyOrderCount.warehouse_id == wh_id,
+            EfficiencyOrderCount.date >= start,
+            EfficiencyOrderCount.date <= end,
+        )
+    )).scalar()
+    return int(result or 0)
 
 
 async def _compute_overtime_hours(db: AsyncSession, wh_id: int, start: date, end: date) -> float:
@@ -237,8 +251,8 @@ async def _compute_cross_check(db: AsyncSession, wh_id: int, monday: date) -> di
     prev_monday = monday - timedelta(days=7)
     prev_sunday = monday - timedelta(days=1)
 
-    cur_order = await _get_order_count(db, wh_id, monday)
-    prev_order = await _get_order_count(db, wh_id, prev_monday)
+    cur_order = await _get_period_order_count(db, wh_id, monday, sunday)
+    prev_order = await _get_period_order_count(db, wh_id, prev_monday, prev_sunday)
     cur_recharge = await _recharge_total(db, wh_id, monday, sunday)
     prev_recharge = await _recharge_total(db, wh_id, prev_monday, prev_sunday)
 
@@ -377,7 +391,7 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
                 pending_days += 1
 
     overtime_hours = await _compute_overtime_hours(db, wh_id, monday, sunday)
-    order_count = await _get_order_count(db, wh_id, monday)
+    order_count = await _get_period_order_count(db, wh_id, monday, sunday)
     standard = await _get_standard(db, wh_id, monday.strftime("%Y-%m"))
 
     # 人工成本 = Σ(员工正常工时 × 时薪)
@@ -489,18 +503,20 @@ async def _aggregate_month(db: AsyncSession, wh_id: int, month_str: str) -> dict
         agg["labor_cost"] += wd["labor_cost"]
 
     standard = await _get_standard(db, wh_id, month_str)
+    # 月订单数 = 当月每天的订单数加总（直接按天汇总，非按周）
+    month_order_count = await _get_period_order_count(db, wh_id, month_start, month_end)
     total_hours = round(agg["total_hours"], 2)
     person_times = round(total_hours / 8.0, 1)
-    efficiency = round(agg["order_count"] / person_times, 1) if person_times > 0 else 0.0
+    efficiency = round(month_order_count / person_times, 1) if person_times > 0 else 0.0
     labor_cost = round(agg["labor_cost"], 2)
-    cost_per_order = round(labor_cost / agg["order_count"], 2) if agg["order_count"] > 0 else 0.0
+    cost_per_order = round(labor_cost / month_order_count, 2) if month_order_count > 0 else 0.0
     overtime_ratio = round(agg["overtime_hours"] / total_hours * 100.0, 1) if total_hours > 0 else 0.0
     return {
         "regular_hours": round(agg["regular_hours"], 2),
         "overtime_hours": round(agg["overtime_hours"], 2),
         "total_hours": total_hours,
         "person_times": person_times,
-        "order_count": agg["order_count"],
+        "order_count": month_order_count,
         "efficiency": efficiency,
         "standard": standard,
         "below_standard": efficiency < standard,
@@ -666,6 +682,24 @@ async def get_compare(
             "month": month if view == "month" else None, "warehouses": results, "count": len(results)}
 
 
+@router.get("/daily-orders")
+async def get_daily_orders(
+    month: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+        raise HTTPException(403, "只有管理员可以查看订单数")
+    wh_id = get_wh_id(current_user)
+    if not month:
+        month = thai_today().strftime("%Y-%m")
+    month_start, month_end = _month_bounds(month)
+    if not wh_id:
+        return {"month": month, "daily": {}}
+    daily_map = await _get_daily_orders(db, wh_id, month_start, month_end)
+    return {"month": month, "daily": {d.isoformat(): c for d, c in daily_map.items()}}
+
+
 @router.put("/order-count")
 async def set_order_count(
     req: OrderCountSet,
@@ -677,14 +711,17 @@ async def set_order_count(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
-    monday = _parse_week_start(req.week_start)
+    try:
+        d = datetime.strptime(req.date, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        raise HTTPException(400, "日期格式错误，应为 YYYY-MM-DD")
     if req.order_count < 0:
         raise HTTPException(400, "订单数不能为负数")
 
     row = (await db.execute(
         select(EfficiencyOrderCount).where(
             EfficiencyOrderCount.warehouse_id == wh_id,
-            EfficiencyOrderCount.week_start == monday,
+            EfficiencyOrderCount.date == d,
         )
     )).scalar_one_or_none()
     if row:
@@ -693,12 +730,12 @@ async def set_order_count(
     else:
         db.add(EfficiencyOrderCount(
             warehouse_id=wh_id,
-            week_start=monday,
+            date=d,
             order_count=req.order_count,
             updated_by=current_user.id,
         ))
     await db.flush()
-    return {"message": f"已保存 {monday.isoformat()} 周订单数 {req.order_count}", "week_start": monday.isoformat(), "order_count": req.order_count}
+    return {"message": f"已保存 {d.isoformat()} 订单数 {req.order_count}", "date": d.isoformat(), "order_count": req.order_count}
 
 
 @router.get("/standard")

@@ -3,16 +3,23 @@ import { useEffect, useState, useRef } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
-import { ClipboardCheck, Clock, Camera, CheckCircle2, AlertTriangle } from "lucide-react";
-import { formatThaiTime, formatThaiDate } from "@/lib/thai-time";
+import { Clock, Camera, CheckCircle2, AlertTriangle, Globe, Check } from "lucide-react";
+import { formatThaiTime } from "@/lib/thai-time";
 
-const SESSION_LABELS: Record<number, { label: string; time: string; icon: string }> = {
-  1: { label: "早上上班", time: "09:00", icon: "🌅" },
-  2: { label: "中午休息结束", time: "12:00", icon: "☀️" },
-  3: { label: "下午上班", time: "13:00", icon: "🕐" },
-  4: { label: "下午下班", time: "18:00", icon: "🌇" },
+const SESSION_LABELS: Record<number, { labelKey: string; time: string; icon: string }> = {
+  1: { labelKey: "morning_shift", time: "09:00", icon: "🌅" },
+  2: { labelKey: "noon_break_end", time: "12:00", icon: "☀️" },
+  3: { labelKey: "afternoon_shift", time: "13:00", icon: "🕐" },
+  4: { labelKey: "evening_shift", time: "18:00", icon: "🌇" },
 };
+
+const LANG_OPTIONS = [
+  { code: "my", label: "缅甸语", native: "မြန်မာ" },
+  { code: "th", label: "泰语", native: "ไทย" },
+  { code: "zh", label: "中文", native: "中文" },
+];
 
 function useThaiClock() {
   const [time, setTime] = useState<Date>(() => {
@@ -36,12 +43,14 @@ function useThaiClock() {
 export default function ClockInPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t, locale, setLocale } = useI18n();
   const router = useRouter();
   const [completed, setCompleted] = useState<Record<number, any>>({});
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [currentSession, setCurrentSession] = useState<number | null>(null);
   const [employeeInfo, setEmployeeInfo] = useState<any>(null);
+  const [showLang, setShowLang] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const thaiTime = useThaiClock();
 
@@ -99,20 +108,23 @@ export default function ClockInPage() {
       formData.append("photo_base64", previewPhoto);
       const res = await fetch("/api/v1/clock-in", {
         method: "POST",
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          "X-Language": localStorage.getItem("locale") || "zh",
+        },
         body: formData,
       });
       const r = await res.json();
       if (res.ok) {
-        toast("success", r.message || "打卡成功");
+        toast("success", r.message || t("clock_in_success"));
         setCurrentSession(null);
         setPreviewPhoto(null);
         loadToday();
       } else {
-        toast("error", r.detail || "打卡失败");
+        toast("error", r.detail || t("clock_in_failed"));
       }
     } catch {
-      toast("error", "网络错误");
+      toast("error", t("network_error"));
     }
     setLoading(prev => ({ ...prev, [currentSession!]: false }));
     if (cameraInputRef.current) cameraInputRef.current.value = "";
@@ -129,18 +141,46 @@ export default function ClockInPage() {
 
   return (
     <div className="max-w-md mx-auto space-y-4 px-1">
+      {/* Language selector (top-right) */}
+      <div className="relative flex justify-end pt-2">
+        <button
+          onClick={() => setShowLang(!showLang)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-sm hover:bg-gray-50 min-h-[36px]"
+        >
+          <Globe size={16} />
+          <span>{t("language")}</span>
+        </button>
+        {showLang && (
+          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-40 py-1 z-50">
+            {LANG_OPTIONS.map(opt => (
+              <button
+                key={opt.code}
+                onClick={() => { setLocale(opt.code as any); setShowLang(false); }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] ${
+                  locale === opt.code ? "text-blue-600 font-medium" : "text-gray-700"
+                }`}
+              >
+                <span className="flex-1">{opt.label}</span>
+                <span className="text-xs text-gray-400">{opt.native}</span>
+                {locale === opt.code && <Check size={14} className="text-blue-500" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Header */}
-      <div className="text-center space-y-2 pt-2">
-        <h1 className="text-xl font-bold text-gray-800">打卡签到</h1>
+      <div className="text-center space-y-2">
+        <h1 className="text-xl font-bold text-gray-800">{t("clock_page_title")}</h1>
         <p className="text-sm text-gray-500">{user?.display_name}</p>
 
         {/* Live clock - large for mobile */}
         <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-5 py-3">
           <Clock size={22} className="text-blue-500" />
           <span className="text-2xl font-mono font-bold text-blue-700">{formatThaiTime(thaiTime)}</span>
-          <span className="text-xs text-blue-400 ml-1">泰国</span>
+          <span className="text-xs text-blue-400 ml-1">{t("thailand")}</span>
         </div>
-        <p className="text-sm text-gray-400">今日已完成 {completedCount}/4</p>
+        <p className="text-sm text-gray-400">{t("clock_completed_today").replace("{count}", String(completedCount))}</p>
       </div>
 
       {/* Photo Preview Modal */}
@@ -149,21 +189,21 @@ export default function ClockInPage() {
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Camera size={20} />
-              <h3 className="font-semibold text-lg">打卡拍照确认</h3>
+              <h3 className="font-semibold text-lg">{t("clock_photo_confirm")}</h3>
               <button onClick={cancelPhoto} className="ml-auto text-2xl text-blue-200">&times;</button>
             </div>
             <div className="p-4">
               <img src={previewPhoto} alt="打卡照片" className="w-full rounded-lg max-h-64 object-cover" />
               <p className="text-base text-gray-600 mt-3 text-center font-medium">
-                {SESSION_LABELS[currentSession!]?.label} · {formatThaiTime()}
+                {t(SESSION_LABELS[currentSession!]?.labelKey || "morning_shift")} · {formatThaiTime()}
               </p>
               <div className="flex gap-3 mt-4">
                 <button onClick={cancelPhoto} className="flex-1 py-3 border rounded-xl text-base active:bg-gray-100">
-                  重新拍照
+                  {t("clock_retake")}
                 </button>
                 <button onClick={confirmClockIn} disabled={loading[currentSession!]}
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-base font-semibold active:bg-blue-700 disabled:opacity-50">
-                  {loading[currentSession!] ? "提交中..." : "确认打卡"}
+                  {loading[currentSession!] ? t("clock_submitting") : t("clock_confirm")}
                 </button>
               </div>
             </div>
@@ -197,7 +237,7 @@ export default function ClockInPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-700">{info.label}</span>
+                    <span className="text-sm font-semibold text-gray-700">{t(info.labelKey)}</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-mono">{info.time}</span>
                   </div>
                   {done ? (
@@ -208,17 +248,17 @@ export default function ClockInPage() {
                       </div>
                       {done.status === "late_half" && (
                         <div className="text-xs text-orange-500 flex items-center gap-1">
-                          <AlertTriangle size={12} /> 迟到 · 预计扣 {penaltyHalf} 泰铢
+                          <AlertTriangle size={12} /> {t("clock_late_half").replace("{amount}", String(penaltyHalf))}
                         </div>
                       )}
                       {done.status === "late_one" && (
                         <div className="text-xs text-red-500 flex items-center gap-1">
-                          <AlertTriangle size={12} /> 严重迟到 · 预计扣 {penaltyOne} 泰铢
+                          <AlertTriangle size={12} /> {t("clock_late_one").replace("{amount}", String(penaltyOne))}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-400 mt-1">点击右侧按钮拍照打卡</p>
+                    <p className="text-xs text-gray-400 mt-1">{t("clock_tap_to_clock")}</p>
                   )}
                 </div>
 
@@ -237,7 +277,7 @@ export default function ClockInPage() {
                     onClick={() => triggerCamera(session)}
                     disabled={isActive}
                     className="flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-sm transition-all active:scale-95 bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200 disabled:opacity-70"
-                    title="拍照打卡"
+                    title={t("clock_take_photo")}
                   >
                     <Camera size={22} />
                   </button>
@@ -250,9 +290,9 @@ export default function ClockInPage() {
 
       {/* Legend */}
       <div className="text-center text-xs text-gray-400 pb-4 space-y-1">
-        <p>四个时段随时可打卡，不限制时间与顺序</p>
-        <p>早上9:05前正常，9:05-9:30迟到扣{penaltyHalf}铢，9:31后扣{penaltyOne}铢</p>
-        <p className="text-gray-300">日薪 {dailyWage}铢 · 时薪 {hourlyRate}铢</p>
+        <p>{t("clock_anytime_hint")}</p>
+        <p>{t("clock_late_rule").replace("{half}", String(penaltyHalf)).replace("{one}", String(penaltyOne))}</p>
+        <p className="text-gray-300">{t("clock_daily_wage_hint").replace("{daily}", String(dailyWage)).replace("{rate}", String(hourlyRate))}</p>
       </div>
     </div>
   );

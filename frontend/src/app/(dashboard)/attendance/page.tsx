@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3 } from "lucide-react";
 import ClockRecordsGrid from "@/components/ClockRecordsGrid";
@@ -17,9 +18,12 @@ const STATUS_COLORS: Record<string, string> = {
   "future": "bg-white text-gray-300 border-gray-100",
 };
 
-function buildDateList(startDate: string, endDate: string): { date: string; day: number; weekday: string; isSunday: boolean }[] {
+const SESSION_KEYS: Record<number, string> = {
+  1: "morning_shift", 2: "noon_break_end", 3: "afternoon_shift", 4: "evening_shift",
+};
+
+function buildDateList(startDate: string, endDate: string, dayNames: string[]): { date: string; day: number; weekday: string; isSunday: boolean }[] {
   const list: { date: string; day: number; weekday: string; isSunday: boolean }[] = [];
-  const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
   const s = new Date(startDate + "T00:00:00");
   const e = new Date(endDate + "T00:00:00");
   if (isNaN(s.getTime()) || isNaN(e.getTime())) return list;
@@ -33,7 +37,7 @@ function buildDateList(startDate: string, endDate: string): { date: string; day:
 }
 
 export default function AttendancePage() {
-  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
+  const { toast } = useToast(); const { user } = useAuth(); const { t } = useI18n(); const router = useRouter();
   const isAdmin = user?.role === "warehouse_admin" || user?.role === "super_admin";
   const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
 
@@ -71,7 +75,8 @@ export default function AttendancePage() {
   const [photoPopup, setPhotoPopup] = useState<any>(null);
   const [photoSessions, setPhotoSessions] = useState<any[]>([]);
 
-  const dateList = buildDateList(dateRange.start_date, dateRange.end_date);
+  const weekdayNames = [0, 1, 2, 3, 4, 5, 6].map(i => t(`att_weekday_${i}`));
+  const dateList = buildDateList(dateRange.start_date, dateRange.end_date, weekdayNames);
 
   async function openPhotoPopup(empId: number, empName: string, dateStr: string) {
     try {
@@ -110,7 +115,7 @@ export default function AttendancePage() {
   }
 
   async function submitLeave() {
-    if (!leaveDate) { toast("error", "请选择请假日期"); return; }
+    if (!leaveDate) { toast("error", t("att_please_select_leave_date")); return; }
     const fd = new FormData();
     fd.append("leave_date", leaveDate);
     if (leaveReason) fd.append("reason", leaveReason);
@@ -118,48 +123,53 @@ export default function AttendancePage() {
 
     try {
       const token = getToken();
-      const res = await fetch("/api/v1/attendance/leaves", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
+      const res = await fetch("/api/v1/attendance/leaves", { method: "POST", headers: { Authorization: `Bearer ${token}`, "X-Language": localStorage.getItem("locale") || "zh" }, body: fd });
       const r = await res.json();
-      if (res.ok) { toast("success", r.message); setShowLeaveForm(false); setLeaveDate(""); setLeavePhoto(null); loadLeaves(); }
-      else toast("error", r.detail || "提交失败");
-    } catch { toast("error", "网络错误"); }
+      if (res.ok) { toast("success", t("submit_ok")); setShowLeaveForm(false); setLeaveDate(""); setLeavePhoto(null); loadLeaves(); }
+      else toast("error", r.detail || t("submit_failed"));
+    } catch { toast("error", t("network_error")); }
   }
 
   async function approveLeave(id: number) {
-    try { await api.put(`/attendance/leaves/${id}/approve`, {}); toast("success", "已批准"); loadLeaves(); loadCalendar(); }
-    catch { toast("error", "操作失败"); }
+    try { await api.put(`/attendance/leaves/${id}/approve`, {}); toast("success", t("att_approved_success")); loadLeaves(); loadCalendar(); }
+    catch { toast("error", t("operation_failed")); }
   }
 
   async function rejectLeave(id: number) {
-    try { await api.put(`/attendance/leaves/${id}/reject`, { reason: "管理员驳回" }); toast("success", "已驳回"); loadLeaves(); }
-    catch { toast("error", "操作失败"); }
+    try { await api.put(`/attendance/leaves/${id}/reject`, { reason: "管理员驳回" }); toast("success", t("att_rejected_success")); loadLeaves(); }
+    catch { toast("error", t("operation_failed")); }
   }
 
   async function submitRestDays() {
-    if (!restEmployeeId) { toast("error", "请选择员工"); return; }
+    if (!restEmployeeId) { toast("error", t("att_please_select_employee")); return; }
     const dates = [restDate1, restDate2].filter(Boolean);
-    if (dates.length === 0) { toast("error", "至少选择一个休息日"); return; }
+    if (dates.length === 0) { toast("error", t("att_at_least_one_rest")); return; }
     try {
-      const r = await api.post<any>("/attendance/rest-days", { employee_id: restEmployeeId, rest_dates: dates });
-      toast("success", r.message);
+      await api.post<any>("/attendance/rest-days", { employee_id: restEmployeeId, rest_dates: dates });
+      toast("success", t("success"));
       setShowRestForm(false); setRestDate1(""); setRestDate2("");
       loadRestDays(); loadCalendar();
-    } catch (err: any) { toast("error", err.message || "设置失败"); }
+    } catch (err: any) { toast("error", err.message || t("att_set_failed")); }
   }
 
   async function deleteRestDay(id: number) {
-    try { await api.delete(`/attendance/rest-days/${id}`); toast("success", "已删除"); loadRestDays(); loadCalendar(); }
-    catch { toast("error", "操作失败"); }
+    try { await api.delete(`/attendance/rest-days/${id}`); toast("success", t("att_deleted_success")); loadRestDays(); loadCalendar(); }
+    catch { toast("error", t("operation_failed")); }
   }
 
   async function submitAbsence() {
-    if (!absenceEmpId || !absenceDate) { toast("error", "请选择员工和日期"); return; }
+    if (!absenceEmpId || !absenceDate) { toast("error", t("att_please_select_employee_and_date")); return; }
     try {
       await api.post("/attendance/absences", { employee_id: absenceEmpId, absence_date: absenceDate, reason: absenceReason });
-      toast("success", "已标记未到");
+      toast("success", t("att_absence_marked"));
       setShowAbsenceForm(false); setAbsenceReason(""); loadCalendar();
-    } catch (err: any) { toast("error", err.message || "操作失败"); }
+    } catch (err: any) { toast("error", err.message || t("operation_failed")); }
   }
+
+  const statusLabels: Record<string, string> = {
+    present: t("att_status_present"), late: t("att_status_late"), leave: t("att_status_leave"),
+    rest: t("att_status_rest"), absent: t("att_status_absent"), missing: t("att_status_missing"),
+  };
 
   return (
     <div className="space-y-6">
@@ -168,19 +178,19 @@ export default function AttendancePage() {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5">
             <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-xs py-1.5 w-36" />
-            <span className="text-gray-400 text-xs">至</span>
+            <span className="text-gray-400 text-xs">{t("att_to")}</span>
             <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-xs py-1.5 w-36" />
           </div>
           {isAdmin && (
             <div className="flex items-center gap-1.5 ml-2">
               <button onClick={() => setShowLeaveForm(true)} className="px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 flex items-center gap-1">
-                <Bed size={14}/>请假
+                <Bed size={14}/>{t("att_leave_btn")}
               </button>
               <button onClick={() => setShowRestForm(true)} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1">
-                <Settings size={14}/>休息日
+                <Settings size={14}/>{t("att_rest_day_btn")}
               </button>
               <button onClick={() => setShowAbsenceForm(true)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1">
-                <UserX size={14}/>未到
+                <UserX size={14}/>{t("att_absence_btn")}
               </button>
             </div>
           )}
@@ -188,10 +198,10 @@ export default function AttendancePage() {
         {isAdmin && (
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setActiveTab("calendar")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-              <Calendar size={15} className="inline mr-1.5"/>日历视图
+              <Calendar size={15} className="inline mr-1.5"/>{t("att_calendar_view")}
             </button>
             <button onClick={() => setActiveTab("records")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "records" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-              <Grid3X3 size={15} className="inline mr-1.5"/>打卡记录
+              <Grid3X3 size={15} className="inline mr-1.5"/>{t("att_records_view")}
             </button>
           </div>
         )}
@@ -208,7 +218,7 @@ export default function AttendancePage() {
           <table className="w-full text-sm min-w-[800px]">
             <thead>
               <tr className="bg-gray-50">
-                <th className="px-3 py-2 text-left text-gray-500 font-medium w-[100px]">员工</th>
+                <th className="px-3 py-2 text-left text-gray-500 font-medium w-[100px]">{t("att_employee")}</th>
                 {dateList.map((d) => (
                   <th key={d.date} className={`px-1 py-2 text-center text-gray-500 font-medium w-[36px] ${d.isSunday ? "text-red-400" : ""}`}>
                     <div className="text-xs">{d.weekday}</div>
@@ -236,7 +246,7 @@ export default function AttendancePage() {
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
                           className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"}`}
-                          title={label + " - 点击查看打卡照片"}
+                          title={label + " - " + t("att_click_view_photos")}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
                           {label.slice(0, 2)}
@@ -247,7 +257,7 @@ export default function AttendancePage() {
                 </tr>
               ))}
               {employees.length === 0 && (
-                <tr><td colSpan={dateList.length + 1} className="text-center py-12 text-gray-400">暂无员工数据</td></tr>
+                <tr><td colSpan={dateList.length + 1} className="text-center py-12 text-gray-400">{t("att_no_employee_data")}</td></tr>
               )}
             </tbody>
           </table>
@@ -256,7 +266,7 @@ export default function AttendancePage() {
 
       {/* Legend */}
       <div className="flex gap-4 flex-wrap text-xs text-gray-500">
-        {Object.entries({ present: "正常出勤", late: "迟到", leave: "请假", rest: "休息日", absent: "未到", missing: "未打卡" }).map(([k, v]) => (
+        {Object.entries(statusLabels).map(([k, v]) => (
           <div key={k} className="flex items-center gap-1"><div className={`w-3 h-3 rounded ${STATUS_COLORS[k]}`} />{v}</div>
         ))}
       </div>
@@ -264,7 +274,7 @@ export default function AttendancePage() {
       {/* Leave Requests Panel (Admin) */}
       {isAdmin && leaves.length > 0 && (
         <div className="bg-white rounded-xl border p-4">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Bed size={18} className="text-purple-500"/>请假审批</h3>
+          <h3 className="font-semibold mb-3 flex items-center gap-2"><Bed size={18} className="text-purple-500"/>{t("att_leave_approve_title")}</h3>
           <div className="space-y-2">
             {leaves.filter((l: any) => l.status === "pending").map((l: any) => (
               <div key={l.id} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg text-sm">
@@ -272,19 +282,19 @@ export default function AttendancePage() {
                   <span className="font-medium">{l.employee_name}</span>
                   <span className="text-gray-500 ml-2">{l.leave_date}</span>
                   {l.reason && <span className="text-gray-400 ml-2">- {l.reason}</span>}
-                  {l.photo_path && <a href={`/${l.photo_path}`} target="_blank" className="text-blue-500 ml-2 text-xs">查看证明</a>}
+                  {l.photo_path && <a href={`/${l.photo_path}`} target="_blank" className="text-blue-500 ml-2 text-xs">{t("att_view_proof")}</a>}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => approveLeave(l.id)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs">通过</button>
-                  <button onClick={() => rejectLeave(l.id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">驳回</button>
+                  <button onClick={() => approveLeave(l.id)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs">{t("att_approve")}</button>
+                  <button onClick={() => rejectLeave(l.id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">{t("att_reject")}</button>
                 </div>
               </div>
             ))}
             {leaves.filter((l: any) => l.status !== "pending").length > 0 && (
               <details className="text-xs text-gray-400">
-                <summary>历史记录</summary>
+                <summary>{t("att_history")}</summary>
                 {leaves.filter((l: any) => l.status !== "pending").map((l: any) => (
-                  <div key={l.id} className="py-1">{l.employee_name} {l.leave_date} - {l.status === "approved" ? "已通过" : "已驳回"}</div>
+                  <div key={l.id} className="py-1">{l.employee_name} {l.leave_date} - {l.status === "approved" ? t("att_approved") : t("att_rejected")}</div>
                 ))}
               </details>
             )}
@@ -295,7 +305,7 @@ export default function AttendancePage() {
       {/* Rest Days Panel (Admin) */}
       {isAdmin && restDays.length > 0 && (
         <div className="bg-white rounded-xl border p-4">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Settings size={18} className="text-blue-500"/>休息日安排</h3>
+          <h3 className="font-semibold mb-3 flex items-center gap-2"><Settings size={18} className="text-blue-500"/>{t("att_rest_day_arrange")}</h3>
           <div className="flex flex-wrap gap-2">
             {restDays.map((r: any) => (
               <div key={r.id} className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
@@ -315,33 +325,33 @@ export default function AttendancePage() {
         <div className="modal-overlay z-50" onClick={() => setShowLeaveForm(false)}>
           <div className="bg-white rounded-2xl w-[420px]" onClick={e => e.stopPropagation()}>
             <div className="bg-purple-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
-              <Bed size={18} /><h3 className="font-semibold">病假申请</h3>
+              <Bed size={18} /><h3 className="font-semibold">{t("att_leave_form_title")}</h3>
               <button onClick={() => setShowLeaveForm(false)} className="ml-auto text-purple-200 hover:text-white">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="form-label text-sm mb-1 block">请假日期 <span className="text-red-400">*</span></label>
+                <label className="form-label text-sm mb-1 block">{t("att_leave_date")} <span className="text-red-400">*</span></label>
                 <input type="date" className="form-input py-2.5" value={leaveDate} onChange={e => setLeaveDate(e.target.value)} />
               </div>
               <div>
-                <label className="form-label text-sm mb-1 block">原因</label>
-                <input className="form-input py-2.5" placeholder="如: 身体不适" value={leaveReason} onChange={e => setLeaveReason(e.target.value)} />
+                <label className="form-label text-sm mb-1 block">{t("reason")}</label>
+                <input className="form-input py-2.5" placeholder={t("att_leave_reason_placeholder")} value={leaveReason} onChange={e => setLeaveReason(e.target.value)} />
               </div>
               <div>
-                <label className="form-label text-sm mb-1 block">证明图片</label>
+                <label className="form-label text-sm mb-1 block">{t("att_proof_image")}</label>
                 <div className="flex items-center gap-2">
                   <button onClick={() => photoInputRef.current?.click()} className="border border-dashed rounded-lg px-4 py-3 text-sm text-gray-400 hover:text-blue-500 hover:border-blue-300 flex items-center gap-2">
-                    <Upload size={16}/>选择图片
+                    <Upload size={16}/>{t("att_select_image")}
                   </button>
                   {leavePhoto && <span className="text-xs text-green-600">{leavePhoto.name}</span>}
                 </div>
                 <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={e => setLeavePhoto(e.target.files?.[0] || null)} className="hidden" />
               </div>
-              <p className="text-xs text-gray-400">每月最多请1天病假</p>
+              <p className="text-xs text-gray-400">{t("att_leave_limit_hint")}</p>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={submitLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">提交申请</button>
+              <button onClick={() => setShowLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={submitLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">{t("att_submit_application")}</button>
             </div>
           </div>
         </div>
@@ -352,32 +362,32 @@ export default function AttendancePage() {
         <div className="modal-overlay z-50" onClick={() => setShowRestForm(false)}>
           <div className="bg-white rounded-2xl w-[420px]" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
-              <Settings size={18} /><h3 className="font-semibold">设置休息日</h3>
+              <Settings size={18} /><h3 className="font-semibold">{t("att_rest_day_form_title")}</h3>
               <button onClick={() => setShowRestForm(false)} className="ml-auto text-blue-200 hover:text-white">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="form-label text-sm mb-1 block">选择员工 <span className="text-red-400">*</span></label>
+                <label className="form-label text-sm mb-1 block">{t("att_select_employee")} <span className="text-red-400">*</span></label>
                 <select className="form-input py-2.5" value={restEmployeeId || ""} onChange={e => setRestEmployeeId(+e.target.value)}>
-                  <option value="">请选择</option>
+                  <option value="">{t("att_please_select")}</option>
                   {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label text-sm mb-1 block">休息日1</label>
+                  <label className="form-label text-sm mb-1 block">{t("att_rest_date_1")}</label>
                   <input type="date" className="form-input py-2.5" value={restDate1} onChange={e => setRestDate1(e.target.value)} />
                 </div>
                 <div>
-                  <label className="form-label text-sm mb-1 block">休息日2</label>
+                  <label className="form-label text-sm mb-1 block">{t("att_rest_date_2")}</label>
                   <input type="date" className="form-input py-2.5" value={restDate2} onChange={e => setRestDate2(e.target.value)} />
                 </div>
               </div>
-              <p className="text-xs text-gray-400">每月固定2天，至少选一个日期</p>
+              <p className="text-xs text-gray-400">{t("att_rest_limit_hint")}</p>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowRestForm(false)} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={submitRestDays} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">保存</button>
+              <button onClick={() => setShowRestForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={submitRestDays} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">{t("save")}</button>
             </div>
           </div>
         </div>
@@ -388,29 +398,29 @@ export default function AttendancePage() {
         <div className="modal-overlay z-50" onClick={() => setShowAbsenceForm(false)}>
           <div className="bg-white rounded-2xl w-[420px]" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
-              <UserX size={18} /><h3 className="font-semibold">标记未到</h3>
+              <UserX size={18} /><h3 className="font-semibold">{t("att_absence_form_title")}</h3>
               <button onClick={() => setShowAbsenceForm(false)} className="ml-auto text-red-200 hover:text-white">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="form-label text-sm mb-1 block">员工 <span className="text-red-400">*</span></label>
+                <label className="form-label text-sm mb-1 block">{t("att_employee")} <span className="text-red-400">*</span></label>
                 <select className="form-input py-2.5" value={absenceEmpId || ""} onChange={e => setAbsenceEmpId(+e.target.value)}>
-                  <option value="">请选择</option>
+                  <option value="">{t("att_please_select")}</option>
                   {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="form-label text-sm mb-1 block">日期 <span className="text-red-400">*</span></label>
+                <label className="form-label text-sm mb-1 block">{t("att_date")} <span className="text-red-400">*</span></label>
                 <input type="date" className="form-input py-2.5" value={absenceDate} onChange={e => setAbsenceDate(e.target.value)} />
               </div>
               <div>
-                <label className="form-label text-sm mb-1 block">原因</label>
-                <input className="form-input py-2.5" placeholder="如: 无故旷工" value={absenceReason} onChange={e => setAbsenceReason(e.target.value)} />
+                <label className="form-label text-sm mb-1 block">{t("reason")}</label>
+                <input className="form-input py-2.5" placeholder={t("att_absence_reason_placeholder")} value={absenceReason} onChange={e => setAbsenceReason(e.target.value)} />
               </div>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowAbsenceForm(false)} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={submitAbsence} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">确认标记</button>
+              <button onClick={() => setShowAbsenceForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={submitAbsence} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">{t("att_confirm_mark")}</button>
             </div>
           </div>
         </div>
@@ -422,7 +432,7 @@ export default function AttendancePage() {
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <Camera size={20} />
-              <span className="font-semibold">{photoPopup.employee_name} · {photoPopup.date} 打卡照片</span>
+              <span className="font-semibold">{t("att_clock_photos").replace("{name}", photoPopup.employee_name).replace("{date}", photoPopup.date)}</span>
               <button onClick={() => setPhotoPopup(null)} className="ml-auto text-2xl text-blue-200">&times;</button>
             </div>
             <div className="p-4 space-y-4">
@@ -430,34 +440,34 @@ export default function AttendancePage() {
                 <div key={s.session} className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-gray-700">
-                      {s.session}. {s.label}
+                      {s.session}. {t(SESSION_KEYS[s.session] || "morning_shift")}
                     </span>
                     {s.clocked_in_at ? (
                       <span className="text-xs text-gray-400">
                         {new Date(s.clocked_in_at).toLocaleTimeString("zh-CN", { timeZone: "Asia/Bangkok" })}
                         {s.status !== "normal" && (
                           <span className={s.status === "late_half" ? "text-orange-500 ml-1" : "text-red-500 ml-1"}>
-                            · 迟到
+                            · {t("att_late")}
                           </span>
                         )}
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-300">未打卡</span>
+                      <span className="text-xs text-gray-300">{t("att_not_clocked")}</span>
                     )}
                   </div>
                   {s.photo_path ? (
-                    <img src={`/${s.photo_path}`} alt={`${s.label}打卡照`}
+                    <img src={`/${s.photo_path}`} alt={`${t(SESSION_KEYS[s.session] || "morning_shift")}`}
                       className="w-full rounded-lg max-h-64 object-cover border" />
                   ) : (
                     <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-                      📷 未拍照
+                      📷 {t("att_no_photo")}
                     </div>
                   )}
                 </div>
               ))}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setPhotoPopup(null)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setPhotoPopup(null)} className="text-sm text-gray-400">{t("close")}</button>
             </div>
           </div>
         </div>

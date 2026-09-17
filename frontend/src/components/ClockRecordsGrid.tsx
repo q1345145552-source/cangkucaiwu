@@ -1,15 +1,15 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
 import { api } from "@/lib/api";
+import { useI18n } from "@/hooks/useI18n";
 import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
 
-const SESSION_LABELS: Record<number, string> = {
-  1: "早上上班", 2: "中午休息结束", 3: "下午上班", 4: "下午下班",
+const SESSION_KEYS: Record<number, string> = {
+  1: "morning_shift", 2: "noon_break_end", 3: "afternoon_shift", 4: "evening_shift",
 };
 
-function buildDateList(startDate: string, endDate: string): { date: string; day: number; weekday: string; isSunday: boolean }[] {
+function buildDateList(startDate: string, endDate: string, dayNames: string[]): { date: string; day: number; weekday: string; isSunday: boolean }[] {
   const list: { date: string; day: number; weekday: string; isSunday: boolean }[] = [];
-  const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
   const s = new Date(startDate + "T00:00:00");
   const e = new Date(endDate + "T00:00:00");
   if (isNaN(s.getTime()) || isNaN(e.getTime())) return list;
@@ -24,13 +24,15 @@ function buildDateList(startDate: string, endDate: string): { date: string; day:
 
 export default function ClockRecordsGrid(props: { startDate: string; endDate: string }) {
   const { startDate, endDate } = props;
+  const { t } = useI18n();
   const [employees, setEmployees] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [detailPopup, setDetailPopup] = useState<{ empName: string; date: string; sessions: Record<number, any> } | null>(null);
 
-  const dateList = buildDateList(startDate, endDate);
+  const dayNames = [0, 1, 2, 3, 4, 5, 6].map(i => t(`att_weekday_${i}`));
+  const dateList = buildDateList(startDate, endDate, dayNames);
   const totalDays = dateList.length;
 
   useEffect(() => { load(); }, [startDate, endDate]);
@@ -82,28 +84,26 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
     return new Date(iso).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
   };
 
-  const dayHeaders = ["日", "一", "二", "三", "四", "五", "六"];
-
   return (
     <div>
       {loading ? (
-        <div className="text-center py-12 text-gray-400">加载中...</div>
+        <div className="text-center py-12 text-gray-400">{t("loading")}</div>
       ) : (
         <div className="bg-white rounded-xl border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[900px]">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="sticky left-0 bg-gray-50 z-10 text-left px-3 py-2 font-medium text-gray-600 whitespace-nowrap w-[90px]">员工</th>
+                  <th className="sticky left-0 bg-gray-50 z-10 text-left px-3 py-2 font-medium text-gray-600 whitespace-nowrap w-[90px]">{t("att_employee")}</th>
                   {dateList.map((d) => (
                     <th key={d.date} className={`px-1 py-2 text-center font-medium w-[38px] ${d.isSunday ? "text-red-400" : "text-gray-500"}`}>
                       <div className="text-[10px]">{d.day}</div>
                       <div className="text-[9px]">{d.weekday}</div>
                     </th>
                   ))}
-                  <th className="text-center px-2 py-2 font-medium text-gray-600 bg-blue-50 whitespace-nowrap">出勤</th>
-                  <th className="text-center px-2 py-2 font-medium text-orange-500 bg-orange-50 whitespace-nowrap">迟到</th>
-                  <th className="text-center px-2 py-2 font-medium text-red-400 bg-red-50 whitespace-nowrap">缺勤</th>
+                  <th className="text-center px-2 py-2 font-medium text-gray-600 bg-blue-50 whitespace-nowrap">{t("att_attendance")}</th>
+                  <th className="text-center px-2 py-2 font-medium text-orange-500 bg-orange-50 whitespace-nowrap">{t("att_late")}</th>
+                  <th className="text-center px-2 py-2 font-medium text-red-400 bg-red-50 whitespace-nowrap">{t("att_absence")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,9 +143,9 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                                 {cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
                               </div>
                             ) : isSunday ? (
-                              <span className="text-gray-300 text-[10px]">休</span>
+                              <span className="text-gray-300 text-[10px]">{t("att_rest_short")}</span>
                             ) : (
-                              <span className="text-gray-300 text-[10px]">未打卡</span>
+                              <span className="text-gray-300 text-[10px]">{t("att_not_clocked")}</span>
                             )}
                           </td>
                         );
@@ -157,7 +157,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                   );
                 })}
                 {employees.length === 0 && (
-                  <tr><td colSpan={totalDays + 4} className="text-center py-12 text-gray-400">暂无员工数据</td></tr>
+                  <tr><td colSpan={totalDays + 4} className="text-center py-12 text-gray-400">{t("att_no_employee_data")}</td></tr>
                 )}
               </tbody>
             </table>
@@ -168,7 +168,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDetailPopup(null)}>
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
-              <Camera size={20} /><span className="font-semibold">{detailPopup.empName} · {detailPopup.date} 打卡详情</span>
+              <Camera size={20} /><span className="font-semibold">{detailPopup.empName} · {detailPopup.date} {t("att_clock_detail_title")}</span>
               <button onClick={() => setDetailPopup(null)} className="ml-auto text-2xl text-blue-200 hover:text-white">&times;</button>
             </div>
             <div className="p-4 space-y-4">
@@ -177,27 +177,27 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                 return (
                   <div key={s} className="bg-gray-50 rounded-xl p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm text-gray-700">{s}. {SESSION_LABELS[s]}</span>
+                      <span className="font-medium text-sm text-gray-700">{s}. {t(SESSION_KEYS[s])}</span>
                       {cr ? (
                         <div className="flex items-center gap-2">
                           {cr.status !== "normal" && (
                             <span className={`text-xs px-1.5 py-0.5 rounded ${cr.status === "late_half" ? "bg-orange-50 text-orange-600" : "bg-red-50 text-red-600"}`}>
-                              {cr.status === "late_half" ? "迟到半小时" : "严重迟到"}</span>
+                              {cr.status === "late_half" ? t("att_late_half_hour") : t("att_late_one_hour")}</span>
                           )}
                           <span className="text-xs text-gray-500">{formatTime(cr.clocked_in_at)}</span>
                         </div>
-                      ) : <span className="text-xs text-gray-300">未打卡</span>}
+                      ) : <span className="text-xs text-gray-300">{t("att_not_clocked")}</span>}
                     </div>
                     {cr?.photo_path ? (
                       <img src={`/${cr.photo_path}`} className="w-full rounded-lg max-h-64 object-cover border cursor-pointer hover:opacity-90"
                         onClick={() => setZoomedPhoto(`/${cr.photo_path}`)} />
-                    ) : <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">📷 未拍照</div>}
+                    ) : <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">📷 {t("att_no_photo")}</div>}
                   </div>
                 );
               })}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400">{t("close")}</button>
             </div>
           </div>
         </div>

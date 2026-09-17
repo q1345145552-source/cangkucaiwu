@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today
+from app.core.messages import t, get_request_lang, session_label
 from datetime import datetime, date, time
 import os, uuid, base64
 
@@ -33,20 +34,23 @@ def _get_penalty(session: int, clocked_at: datetime) -> dict:
 
 @router.post("")
 async def clock_in(
+    request: Request,
     session: int = Form(...),
     photo_base64: str = Form(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = get_request_lang(request)
     if current_user.role not in (Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
-        raise HTTPException(403, "只有仓库劳工可以使用打卡功能")
+        raise HTTPException(403, t("only_labor_can_clock", lang))
     if session not in SESSIONS:
-        raise HTTPException(400, "无效的打卡时段")
+        raise HTTPException(400, t("invalid_session", lang))
 
     today = thai_today()
     now = thai_now()
 
     si = SESSIONS[session]
+    label = session_label(session, lang)
 
     # Check duplicate
     existing = (await db.execute(
@@ -57,7 +61,7 @@ async def clock_in(
         )
     )).scalar_one_or_none()
     if existing:
-        return {"message": f"今日{si['label']}已打卡", "clocked_in_at": existing.clocked_in_at.isoformat(), "duplicate": True}
+        return {"message": t("already_clocked", lang, label=label), "clocked_in_at": existing.clocked_in_at.isoformat(), "duplicate": True}
 
     # Save photo
     photo_path = None
@@ -67,7 +71,7 @@ async def clock_in(
             _, data = photo_base64.split(",", 1) if "," in photo_base64 else ("", photo_base64)
             img_bytes = base64.b64decode(data)
         except Exception:
-            raise HTTPException(400, "打卡照片格式无效")
+            raise HTTPException(400, t("invalid_photo", lang))
         try:
             wh_id = str(get_wh_id(current_user) or 0)
             today_str = today.isoformat()
@@ -96,9 +100,10 @@ async def clock_in(
     db.add(record)
     await db.flush()
 
-    msg = f"{si['label']}打卡成功"
     if penalty["status"] != "normal":
-        msg += "（迟到，月底结算时扣款）"
+        msg = t("clock_in_success_late", lang, label=label)
+    else:
+        msg = t("clock_in_success", lang, label=label)
 
     return {
         "message": msg,
@@ -111,11 +116,13 @@ async def clock_in(
 
 @router.get("/today")
 async def get_today(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = get_request_lang(request)
     if current_user.role not in (Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
-        raise HTTPException(403, "无权限")
+        raise HTTPException(403, t("no_permission", lang))
     today = thai_today()
     records = (await db.execute(
         select(ClockInRecord).where(
@@ -124,13 +131,13 @@ async def get_today(
         ).order_by(ClockInRecord.session)
     )).scalars().all()
     completed = {r.session: {
-        "session": r.session, "label": SESSIONS.get(r.session, {}).get("label", ""),
+        "session": r.session, "label": session_label(r.session, lang),
         "clocked_in_at": r.clocked_in_at.isoformat(), "status": r.status,
         "penalty_amount": r.penalty_amount, "photo_path": r.photo_path,
     } for r in records}
     return {
         "today": today.isoformat(),
-        "sessions": [{"session": s, "label": v["label"], "time": str(v["time"])}
+        "sessions": [{"session": s, "label": session_label(s, lang), "time": str(v["time"])}
                       for s, v in SESSIONS.items()],
         "completed": completed,
     }
