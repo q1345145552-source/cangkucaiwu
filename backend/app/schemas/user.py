@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     display_name: str = Field(..., min_length=1, max_length=100)
     role: Role = Role.STAFF
     warehouse_id: int | None = None
+    warehouse_ids: list[int] | None = None  # 多仓分配（主管）
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
@@ -17,6 +18,7 @@ class UserUpdate(BaseModel):
     password: str | None = None
     role: Role | None = None
     warehouse_id: int | None = None
+    warehouse_ids: list[int] | None = None  # 多仓分配（主管）
     is_active: bool | None = None
     line_user_id: str | None = None
     extra_permissions: list[str] | None = None

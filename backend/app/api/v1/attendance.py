@@ -158,7 +158,7 @@ async def list_leaves(
 
 @router.put("/leaves/{leave_id}/approve")
 async def approve_leave(leave_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以审批")
     lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id))).scalar_one_or_none()
     if not lr: raise HTTPException(404, "请假申请不存在")
@@ -172,7 +172,7 @@ async def approve_leave(leave_id: int, current_user: User = Depends(get_current_
 
 @router.put("/leaves/{leave_id}/reject")
 async def reject_leave(leave_id: int, reason: str = Form(None), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以审批")
     lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id))).scalar_one_or_none()
     if not lr: raise HTTPException(404, "请假申请不存在")
@@ -196,7 +196,7 @@ async def set_rest_days(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以设置休息日")
     wh_id = get_wh_id(current_user)
     if not wh_id: raise HTTPException(400, "请先选择仓库")
@@ -240,11 +240,11 @@ async def list_rest_days(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
 
     query = select(RestDay, Employee.name).join(Employee, RestDay.employee_id == Employee.id)
-    if current_user.role == Role.WAREHOUSE_ADMIN:
+    if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         active_wh = get_wh_id(current_user)
         if active_wh:
             query = query.where(RestDay.warehouse_id == active_wh)
@@ -272,7 +272,7 @@ async def list_rest_days(
 
 @router.delete("/rest-days/{rest_day_id}")
 async def delete_rest_day(rest_day_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以操作")
     rd = (await db.execute(select(RestDay).where(RestDay.id == rest_day_id))).scalar_one_or_none()
     if not rd: raise HTTPException(404, "休息日不存在")
@@ -294,7 +294,7 @@ async def mark_absence(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以标记")
     wh_id = get_wh_id(current_user)
     if not wh_id: raise HTTPException(400, "请先选择仓库")
@@ -319,7 +319,7 @@ async def mark_absence(
 
 @router.delete("/absences/{absence_id}")
 async def remove_absence(absence_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     a = (await db.execute(select(Absence).where(Absence.id == absence_id))).scalar_one_or_none()
     if not a: raise HTTPException(404, "记录不存在")
@@ -337,7 +337,7 @@ async def get_calendar(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
 
     # 默认：当月 1 号到当天
@@ -365,7 +365,7 @@ async def get_calendar(
     emp_query = select(Employee).where(Employee.status != "resigned")
     if current_user.role == Role.SUPER_ADMIN:
         pass  # super_admin sees all employees
-    elif current_user.role == Role.WAREHOUSE_ADMIN:
+    elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         # Use active (header-selected) warehouse, not all warehouses
         active_wh_id = get_wh_id(current_user)
         if active_wh_id:

@@ -8,6 +8,7 @@ const MODULE_LABELS: Record<string, string> = {
   recharge: "充值申报",
   reimbursement: "报销",
   expense: "运营支出",
+  user: "用户账号",
 };
 const OP_LABELS: Record<string, string> = { create: "新建", edit: "编辑", delete: "删除" };
 const OP_COLORS: Record<string, string> = {
@@ -20,6 +21,12 @@ const FIELD_LABELS: Record<string, string> = {
   category_id: "类别", account_id: "账户", remark: "备注", voucher: "凭证",
   payment_method: "付款方式", customer_id: "客户", total_amount: "总额", submit_date: "提交日期",
   items: "明细", status: "状态", supplier_id: "供应商",
+  username: "用户名", display_name: "显示名", role: "角色",
+  warehouse_ids: "所属仓库", password: "密码", is_active: "启用状态",
+};
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "系统总管理员", warehouse_admin: "仓库管理员", supervisor: "仓库主管",
+  staff: "仓库财务", warehouse_labor: "仓库劳工",
 };
 
 function diffSummary(before: any, after: any): string {
@@ -36,6 +43,12 @@ function renderVal(v: any): string {
   if (v === null || v === undefined) return "-";
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
+}
+
+function renderFieldVal(k: string, v: any): string {
+  if (k === "role") return ROLE_LABELS[v] || String(v);
+  if (k === "warehouse_ids" && Array.isArray(v)) return v.length ? v.join(", ") : "-";
+  return renderVal(v);
 }
 
 export default function ModificationLogsPage() {
@@ -103,6 +116,7 @@ export default function ModificationLogsPage() {
               <option value="recharge">充值申报</option>
               <option value="reimbursement">报销</option>
               <option value="expense">运营支出</option>
+              <option value="user">用户账号</option>
             </select>
           </div>
           <div className="w-[160px]">
@@ -193,7 +207,7 @@ export default function ModificationLogsPage() {
                   <div className="text-xs text-gray-400 mb-1.5">修改前</div>
                   <div className="space-y-1">
                     {Object.entries(detail.before_data).map(([k, v]) => (
-                      <div key={k} className="text-sm flex gap-2"><span className="text-gray-500 w-20 shrink-0">{FIELD_LABELS[k] || k}</span><span className="text-gray-700 break-all">{renderVal(v)}</span></div>
+                      <div key={k} className="text-sm flex gap-2"><span className="text-gray-500 w-20 shrink-0">{FIELD_LABELS[k] || k}</span><span className="text-gray-700 break-all">{renderFieldVal(k, v)}</span></div>
                     ))}
                   </div>
                 </div>
@@ -204,7 +218,7 @@ export default function ModificationLogsPage() {
                   <div className="text-xs text-blue-400 mb-1.5">修改后</div>
                   <div className="space-y-1">
                     {Object.entries(detail.after_data).map(([k, v]) => (
-                      <div key={k} className="text-sm flex gap-2"><span className="text-blue-500 w-20 shrink-0">{FIELD_LABELS[k] || k}</span><span className="text-blue-700 break-all">{renderVal(v)}</span></div>
+                      <div key={k} className="text-sm flex gap-2"><span className="text-blue-500 w-20 shrink-0">{FIELD_LABELS[k] || k}</span><span className="text-blue-700 break-all">{renderFieldVal(k, v)}</span></div>
                     ))}
                   </div>
                 </div>

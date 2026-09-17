@@ -12,12 +12,14 @@ security_scheme = HTTPBearer()
 class Role(str, Enum):
     SUPER_ADMIN = "super_admin"
     WAREHOUSE_ADMIN = "warehouse_admin"
+    SUPERVISOR = "supervisor"
     STAFF = "staff"
     WAREHOUSE_LABOR = "warehouse_labor"
 
 ROLE_HIERARCHY = {
-    Role.SUPER_ADMIN: 3,
-    Role.WAREHOUSE_ADMIN: 2,
+    Role.SUPER_ADMIN: 4,
+    Role.WAREHOUSE_ADMIN: 3,
+    Role.SUPERVISOR: 2,
     Role.STAFF: 1,
     Role.WAREHOUSE_LABOR: 0,
 }

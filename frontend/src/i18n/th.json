@@ -33,6 +33,7 @@
   "warehouse_summary": "สรุปแต่ละคลัง",
   "role_super_admin": "ผู้ดูแลระบบ",
   "role_warehouse_admin": "เจ้าของคลังสินค้า",
+  "role_supervisor": "หัวหน้างานคลังสินค้า",
   "role_staff": "การเงินคลังสินค้า",
   "role_warehouse_labor": "แรงงานคลังสินค้า",
   "switch_lang": "Switch to 中文",

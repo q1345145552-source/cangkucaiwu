@@ -31,7 +31,7 @@ async def calculate_payroll(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以计算工资")
 
     wh_id = get_wh_id(current_user)
@@ -478,7 +478,7 @@ async def confirm_payroll(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以确认工资")
 
     wh_id = get_wh_id(current_user)
@@ -509,7 +509,7 @@ async def confirm_all_payroll(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以确认工资")
 
     wh_id = get_wh_id(current_user)
@@ -549,7 +549,7 @@ async def delete_payroll(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以删除工资记录")
 
     wh_id = get_wh_id(current_user)
@@ -577,7 +577,7 @@ async def delete_period_payroll(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete all payroll records for a period (to allow recalculation)"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以操作")
 
     wh_id = get_wh_id(current_user)
@@ -611,7 +611,7 @@ async def disburse_payroll(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以发放工资")
 
     wh_id = get_wh_id(current_user)

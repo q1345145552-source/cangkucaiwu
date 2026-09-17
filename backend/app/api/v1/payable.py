@@ -99,7 +99,7 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     # 重复检测
     existing = (await db.execute(
@@ -137,7 +137,7 @@ async def create_bill(req: BillCreate, current_user: User = Depends(get_current_
 async def upload_voucher(bill_id: int, file: UploadFile = File(...),
                          current_user: User = Depends(get_current_user),
                          db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
@@ -158,7 +158,7 @@ async def upload_voucher(bill_id: int, file: UploadFile = File(...),
 async def upload_bill_attachment(bill_id: int, file: UploadFile = File(...),
                                  current_user: User = Depends(get_current_user),
                                  db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
@@ -181,7 +181,7 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
                    db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
@@ -218,7 +218,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
@@ -618,7 +618,7 @@ async def save_monthly_order(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     # Upsert
     existing = (await db.execute(

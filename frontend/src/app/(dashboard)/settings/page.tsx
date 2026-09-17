@@ -30,7 +30,7 @@ export default function SettingsPage() {
   const [rateForm, setRateForm] = useState({ from_currency: "CNY", to_currency: "THB", rate: "" });
   const [rateLoading, setRateLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "" });
+  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "", warehouse_ids: [] as number[] });
   const [warehouses, setWarehouses] = useState<any[]>([]);
 
   // Edit user state
@@ -40,12 +40,13 @@ export default function SettingsPage() {
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [editWarehouseId, setEditWarehouseId] = useState<number | string>("");
+  const [editWarehouseIds, setEditWarehouseIds] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); } if (tab === "rates") loadRates(); }, [tab]);
   useEffect(() => {
-    if (user?.role === "warehouse_admin") {
+    if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
       setNewUser(prev => ({ ...prev, role: "staff" }));
     } else if (user?.role === "super_admin") {
       setNewUser(prev => ({ ...prev, role: "warehouse_admin" }));
@@ -90,19 +91,29 @@ export default function SettingsPage() {
 
   async function createUser() {
     try {
-      if ((newUser.role === "staff" || newUser.role === "warehouse_labor") && !newUser.warehouse_id) {
+      if (newUser.role === "supervisor") {
+        if (newUser.warehouse_ids.length === 0) {
+          toast("error", "请选择所属仓库");
+          return;
+        }
+      } else if (newUser.role !== "warehouse_admin" && !newUser.warehouse_id) {
         toast("error", "请选择所属仓库");
         return;
       }
-      const payload: any = { ...newUser };
-      if (payload.role === "warehouse_admin") {
-        delete payload.warehouse_id;
-      } else if (payload.warehouse_id) {
-        payload.warehouse_id = +payload.warehouse_id;
+      const payload: any = {
+        username: newUser.username,
+        display_name: newUser.display_name,
+        password: newUser.password,
+        role: newUser.role,
+      };
+      if (newUser.role === "supervisor") {
+        payload.warehouse_ids = newUser.warehouse_ids;
+      } else if (newUser.role !== "warehouse_admin") {
+        payload.warehouse_id = +newUser.warehouse_id;
       }
       await api.post("/users", payload);
       toast("success", "创建成功");
-      setNewUser({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "staff", warehouse_id: "" });
+      setNewUser({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "staff", warehouse_id: "", warehouse_ids: [] });
       loadUsers();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
@@ -114,6 +125,13 @@ export default function SettingsPage() {
     setEditDisplayName(u.display_name || "");
     setEditPassword("");
     setEditWarehouseId(u.warehouse_id || "");
+    setEditWarehouseIds(u.warehouse_ids || []);
+  }
+
+  function toggleWarehouseId(wid: number) {
+    setEditWarehouseIds((prev) =>
+      prev.includes(wid) ? prev.filter((x) => x !== wid) : [...prev, wid]
+    );
   }
 
   function togglePerm(perm: string) {
@@ -131,7 +149,9 @@ export default function SettingsPage() {
         extra_permissions: editPerms,
       };
       if (editPassword) payload.password = editPassword;
-      if (user?.role === "warehouse_admin" && editWarehouseId) {
+      if (editUser.role === "supervisor") {
+        payload.warehouse_ids = editWarehouseIds;
+      } else if (editWarehouseId) {
         payload.warehouse_id = +editWarehouseId;
       }
       await api.put(`/users/${editUser.id}`, payload);
@@ -159,7 +179,7 @@ export default function SettingsPage() {
         <h1 className="page-title">{t("settings")}</h1>
         <div className="flex gap-3 mt-2">
           <button onClick={()=>setTab("profile")} className={`px-4 py-1.5 rounded text-sm ${tab==="profile"?"bg-primary text-white":"border"}`}>个人设置</button>
-          {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
+          {(user?.role === "super_admin" || user?.role === "warehouse_admin" || user?.role === "supervisor") && (
             <button onClick={()=>setTab("users")} className={`px-4 py-1.5 rounded text-sm ${tab==="users"?"bg-primary text-white":"border"}`}>用户管理</button>
           )}
           {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
@@ -203,14 +223,40 @@ export default function SettingsPage() {
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
               <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
                 {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
-                {user?.role === "warehouse_admin" && <><option value="staff">仓库财务</option><option value="warehouse_labor">仓库劳工</option></>}
+                {user?.role === "warehouse_admin" && (<>
+                  <option value="supervisor">仓库主管</option>
+                  <option value="staff">仓库财务</option>
+                  <option value="warehouse_labor">仓库劳工</option>
+                </>)}
+                {user?.role === "supervisor" && (<>
+                  <option value="staff">仓库财务</option>
+                  <option value="warehouse_labor">仓库劳工</option>
+                </>)}
               </select></div>
-              {((user?.role === "super_admin" && newUser.role !== "warehouse_admin") || (user?.role === "warehouse_admin" && (newUser.role === "staff" || newUser.role === "warehouse_labor"))) && (
+              {newUser.role !== "warehouse_admin" && (
                 <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
-                <select className="form-input text-sm" value={newUser.warehouse_id} onChange={e=>setNewUser({...newUser,warehouse_id:e.target.value})}>
-                  <option value="">请选择仓库</option>
-                  {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
-                </select></div>
+                {newUser.role === "supervisor" ? (
+                  <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">
+                    {warehouses.map((w:any) => (
+                      <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">
+                        <input type="checkbox" checked={newUser.warehouse_ids.includes(w.id)}
+                          onChange={(e) => setNewUser(prev => ({
+                            ...prev,
+                            warehouse_ids: e.target.checked
+                              ? [...prev.warehouse_ids, w.id]
+                              : prev.warehouse_ids.filter(x => x !== w.id),
+                          }))} />
+                        <span className="text-sm">{w.name}（{w.code}）</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <select className="form-input text-sm" value={newUser.warehouse_id} onChange={e=>setNewUser({...newUser,warehouse_id:e.target.value})}>
+                    <option value="">请选择仓库</option>
+                    {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
+                  </select>
+                )}
+                </div>
               )}
               <button onClick={createUser} className="btn-primary">创建用户</button>
             </div>
@@ -223,7 +269,8 @@ export default function SettingsPage() {
               <tbody>{users.map((u:any)=>(
                 <tr key={u.id} className="border-b">
                   <td className="px-4 py-2">{u.username}</td><td>{u.display_name}</td>
-                  <td>{t(`role_${u.role}`)}</td><td>{u.warehouse_name || "-"}</td>
+                  <td>{t(`role_${u.role}`)}</td>
+                  <td>{u.warehouse_ids && u.warehouse_ids.length > 1 ? `${u.warehouse_ids.length} 个仓库` : (u.warehouse_name || "-")}</td>
                   <td className="text-xs text-gray-500">
                     {u.extra_permissions && u.extra_permissions.length > 0
                       ? u.extra_permissions.map((p: string) => PERM_LABELS[p] || p).join(", ")
@@ -232,7 +279,7 @@ export default function SettingsPage() {
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
                   <td>
                     <div className="flex items-center gap-2">
-                      {user?.role === "warehouse_admin" && (u.role === "staff" || u.role === "warehouse_labor") && (
+                      {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (u.role === "staff" || u.role === "warehouse_labor") && (
                         <>
                           <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
                             <Pencil size={12} /> 编辑
@@ -264,12 +311,24 @@ export default function SettingsPage() {
                   <div><label className="form-label text-xs">用户名</label><input className="form-input text-sm" value={editUsername} onChange={e => setEditUsername(e.target.value)} /></div>
                   <div><label className="form-label text-xs">显示名</label><input className="form-input text-sm" value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} /></div>
                   <div><label className="form-label text-xs">重置密码（留空表示不改）</label><input type="password" className="form-input text-sm" value={editPassword} onChange={e => setEditPassword(e.target.value)} autoComplete="new-password" placeholder="留空不修改密码" /></div>
-                  {user?.role === "warehouse_admin" && (
+                  {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
                     <div><label className="form-label text-xs">所属仓库</label>
-                      <select className="form-input text-sm" value={editWarehouseId} onChange={e => setEditWarehouseId(e.target.value)}>
-                        <option value="">请选择仓库</option>
-                        {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
-                      </select>
+                      {editUser.role === "supervisor" ? (
+                        <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">
+                          {warehouses.map((w: any) => (
+                            <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">
+                              <input type="checkbox" checked={editWarehouseIds.includes(w.id)}
+                                onChange={() => toggleWarehouseId(w.id)} />
+                              <span className="text-sm">{w.name}（{w.code}）</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <select className="form-input text-sm" value={editWarehouseId} onChange={e => setEditWarehouseId(e.target.value)}>
+                          <option value="">请选择仓库</option>
+                          {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
+                        </select>
+                      )}
                     </div>
                   )}
                 </div>

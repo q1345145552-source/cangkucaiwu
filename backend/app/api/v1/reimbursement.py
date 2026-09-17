@@ -280,7 +280,7 @@ async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_u
                        db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
@@ -339,7 +339,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role == Role.STAFF and "报销管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无审批报销权限")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.STAFF):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无审批权限")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
@@ -390,7 +390,7 @@ async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user
                     db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
@@ -407,7 +407,7 @@ async def create_reimb_category(req: CategoryReq, current_user: User = Depends(g
                                 db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     if not wh_id:

@@ -41,7 +41,7 @@ async def create_category(req: CategoryCreate, current_user: User = Depends(get_
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     # 自动归类：运营类 vs 其他
     from app.api.v1.income_expense import OPERATING_NAMES
@@ -121,7 +121,7 @@ async def create_income(req: IncomeRecordCreate, current_user: User = Depends(ge
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role == Role.STAFF and "收付款管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无确认入账权限")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     r = IncomeRecord(
         warehouse_id=get_wh_id(current_user), category_id=req.category_id,
@@ -253,7 +253,7 @@ async def create_expense(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role == Role.STAFF and "收付款管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无确认出账权限")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
 
     wh_id = get_wh_id(current_user)
@@ -316,7 +316,7 @@ async def update_expense(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
 
     r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()
@@ -420,7 +420,7 @@ async def delete_expense(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
 
     r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()

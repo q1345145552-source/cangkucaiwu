@@ -76,7 +76,7 @@ async def create_item(req: MarketCreate, current_user: User = Depends(get_curren
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "仅仓库管理员可上架")
     i = MarketItem(
         warehouse_id=get_wh_id(current_user), name=req.name, quantity=req.quantity,

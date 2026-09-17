@@ -77,7 +77,7 @@ async def manual_match(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     decl = (await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == declaration_id))).scalar_one_or_none()
     flow = (await db.execute(select(IncomingFlow).where(IncomingFlow.id == flow_id))).scalar_one_or_none()

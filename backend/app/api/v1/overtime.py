@@ -46,7 +46,7 @@ async def create_overtime(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以发起加班")
 
     wh_id = get_wh_id(current_user)
@@ -416,7 +416,7 @@ async def set_overtime_limit(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以设置加班上限")
 
     wh_id = get_wh_id(current_user)
@@ -456,7 +456,7 @@ async def delete_overtime(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以删除加班任务")
 
     wh_ids = get_wh_ids(current_user)

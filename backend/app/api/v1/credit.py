@@ -157,7 +157,7 @@ async def create_credit(req: CreditCreate, current_user: User = Depends(get_curr
                         db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     if req.credit_limit is not None and req.credit_limit < 0:
         raise HTTPException(400, "信用额度不能为负")
@@ -191,7 +191,7 @@ async def update_credit(credit_id: int, req: CreditUpdate,
     if not c: raise HTTPException(404, "记录不存在")
     if current_user.role == Role.SUPER_ADMIN:
         pass
-    elif current_user.role == Role.WAREHOUSE_ADMIN:
+    elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         if c.warehouse_id not in get_wh_ids(current_user):
             raise HTTPException(403, "只能修改自己仓库的账期客户")
     else:
@@ -263,7 +263,7 @@ async def create_shipment(credit_id: int, req: ShipmentCreate,
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN,) and current_user.role != Role.STAFF:
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) and current_user.role != Role.STAFF:
         raise HTTPException(403, "无权限")
     if current_user.role == Role.STAFF and "账期管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无管理账期权限")
@@ -510,7 +510,7 @@ async def credit_assessment(
     """返回所有账期客户的评级和评估数据"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     return await _compute_assessment(current_user, db)
 
@@ -525,7 +525,7 @@ async def export_assessment(
 
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
     # Reuse assessment logic

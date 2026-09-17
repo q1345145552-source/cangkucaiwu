@@ -9,6 +9,7 @@ from app.models.warehouse import Warehouse
 from app.core.security import hash_password
 from app.core.permissions import get_current_user, require_role, Role, STAFF_PERMISSIONS
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.services.data_history import record_history
 
 router = APIRouter()
 
@@ -31,13 +32,17 @@ async def list_users(
         )).scalars().all()
         managed_wh_ids = list(managed_wh_ids) if managed_wh_ids else []
         if managed_wh_ids:
-            # warehouse_admin sees: staff in managed warehouses + self (excludes other warehouse_admins)
+            # supervisor only sees staff/labor; warehouse_admin sees staff/labor/supervisor (+self)
+            if current_user.role == Role.SUPERVISOR:
+                role_filter = User.role.in_((Role.STAFF, Role.WAREHOUSE_LABOR))
+            else:
+                role_filter = (User.role != Role.WAREHOUSE_ADMIN)
             query = query.where(
-                (User.warehouse_id.in_(managed_wh_ids) & (User.role != Role.WAREHOUSE_ADMIN))
+                (User.warehouse_id.in_(managed_wh_ids) & role_filter)
                 | (User.id == current_user.id)
             )
             count_query = count_query.where(
-                (User.warehouse_id.in_(managed_wh_ids) & (User.role != Role.WAREHOUSE_ADMIN))
+                (User.warehouse_id.in_(managed_wh_ids) & role_filter)
                 | (User.id == current_user.id)
             )
         else:
@@ -58,12 +63,23 @@ async def list_users(
     )
     users = result.scalars().all()
 
+    # 批量取每个用户的多仓分配
+    uids = [u.id for u in users]
+    uw_map: dict[int, list[int]] = {uid: [] for uid in uids}
+    if uids:
+        uw_rows = (await db.execute(
+            select(UserWarehouse).where(UserWarehouse.user_id.in_(uids))
+        )).scalars().all()
+        for uw in uw_rows:
+            uw_map.setdefault(uw.user_id, []).append(uw.warehouse_id)
+
     return {
         "data": [
             {
                 "id": u.id, "username": u.username, "display_name": u.display_name,
                 "role": u.role,
                 "warehouse_id": u.warehouse_id,
+                "warehouse_ids": uw_map.get(u.id, []),
                 "warehouse_name": u.warehouse.name if u.warehouse else None,
                 "extra_permissions": u.extra_permissions or [],
                 "is_active": u.is_active,
@@ -97,43 +113,58 @@ async def create_user(
     if existing:
         raise HTTPException(status_code=400, detail="用户名已存在")
 
-    # warehouse_admin role: no warehouse needed (they create their own later)
+    # 确定分配到的仓库列表：多仓 warehouse_ids 优先，其次单仓 warehouse_id
     if req.role == Role.WAREHOUSE_ADMIN:
-        req.warehouse_id = None
+        warehouse_ids: list[int] = []
     else:
-        # Non-superadmin: validate warehouse_id against managed warehouses
-        if current_user.role != Role.SUPER_ADMIN:
-            if req.warehouse_id is not None:
-                uw_check = (await db.execute(
-                    select(UserWarehouse).where(
-                        UserWarehouse.user_id == current_user.id,
-                        UserWarehouse.warehouse_id == req.warehouse_id,
-                    )
-                )).scalar_one_or_none()
-                if not uw_check:
-                    raise HTTPException(status_code=403, detail="无权限将用户分配到该仓库")
-            else:
-                req.warehouse_id = current_user.warehouse_id
+        if req.warehouse_ids:
+            warehouse_ids = list(req.warehouse_ids)
+        elif req.warehouse_id is not None:
+            warehouse_ids = [req.warehouse_id]
+        else:
+            warehouse_ids = []
 
-        # staff MUST have a warehouse_id
-        if req.role == Role.STAFF and req.warehouse_id is None:
-            raise HTTPException(status_code=400, detail="创建员工时必须指定所属仓库")
+        # 非超管：校验每个仓库都在自己管理范围内
+        if current_user.role != Role.SUPER_ADMIN:
+            managed = (await db.execute(
+                select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == current_user.id)
+            )).scalars().all()
+            managed = list(managed) if managed else []
+            for wid in warehouse_ids:
+                if wid not in managed:
+                    raise HTTPException(status_code=403, detail="无权限将用户分配到该仓库")
+            if not warehouse_ids:
+                fallback = current_user.warehouse_id or (managed[0] if managed else None)
+                if fallback:
+                    warehouse_ids = [fallback]
+
+        # staff / supervisor MUST have at least one warehouse
+        if req.role in (Role.STAFF, Role.SUPERVISOR) and not warehouse_ids:
+            raise HTTPException(status_code=400, detail="创建该角色用户时必须指定所属仓库")
+
+    primary_wh = warehouse_ids[0] if warehouse_ids else None
+    req.warehouse_id = primary_wh
 
     user = User(
         username=req.username,
         password_hash=hash_password(req.password),
         display_name=req.display_name,
         role=req.role,
-        warehouse_id=req.warehouse_id,
+        warehouse_id=primary_wh,
         created_by=current_user.id,
     )
     db.add(user)
     await db.flush()
 
-    if user.warehouse_id:
-        uw = UserWarehouse(user_id=user.id, warehouse_id=user.warehouse_id)
-        db.add(uw)
-        await db.flush()
+    for wid in warehouse_ids:
+        db.add(UserWarehouse(user_id=user.id, warehouse_id=wid))
+    await db.flush()
+
+    await record_history(db, module="user", record_id=user.id, operator=current_user,
+                          operation_type="create",
+                          after={"username": user.username, "display_name": user.display_name,
+                                 "role": user.role, "warehouse_ids": warehouse_ids},
+                          warehouse_id=primary_wh)
 
     return {"id": user.id, "message": "用户创建成功"}
 
@@ -149,9 +180,9 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    # Permission check: super_admin can edit anyone, warehouse_admin can only edit own managed warehouse users
+    # Permission check: super_admin can edit anyone, warehouse_admin/supervisor can only edit own managed warehouse users
     if current_user.role != Role.SUPER_ADMIN:
-        if current_user.role != Role.WAREHOUSE_ADMIN:
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
             raise HTTPException(status_code=403, detail="无权限编辑用户")
         # Check if user is in a warehouse managed by current_user
         managed_wh_ids = (await db.execute(
@@ -166,6 +197,16 @@ async def update_user(
         # warehouse_admin cannot change role
         if req.role is not None and req.role != user.role:
             raise HTTPException(status_code=403, detail="无权修改用户角色")
+
+    # 修改前快照（用于修改日志）
+    before_uws = (await db.execute(
+        select(UserWarehouse).where(UserWarehouse.user_id == user_id)
+    )).scalars().all()
+    before_data = {
+        "username": user.username, "display_name": user.display_name,
+        "role": user.role, "warehouse_ids": sorted([uw.warehouse_id for uw in before_uws]),
+        "is_active": user.is_active,
+    }
 
     # 修改用户名：校验唯一性
     if req.username is not None and req.username != user.username:
@@ -186,22 +227,57 @@ async def update_user(
         user.display_name = req.display_name
     if req.role is not None:
         user.role = req.role
-    if req.warehouse_id is not None:
-        user.warehouse_id = req.warehouse_id
+    # 仓库分配：多仓 warehouse_ids 优先，其次单仓 warehouse_id
+    if req.warehouse_ids is not None or req.warehouse_id is not None:
+        if req.warehouse_ids is not None:
+            new_wh_ids = list(req.warehouse_ids)
+        elif req.warehouse_id is not None:
+            new_wh_ids = [req.warehouse_id]
+        else:
+            new_wh_ids = []
+
+        # 非超管：校验新分配的仓库都在自己管理范围内
+        if current_user.role != Role.SUPER_ADMIN:
+            managed = (await db.execute(
+                select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == current_user.id)
+            )).scalars().all()
+            managed = list(managed) if managed else []
+            for wid in new_wh_ids:
+                if wid not in managed:
+                    raise HTTPException(status_code=403, detail="无权限将用户分配到该仓库")
+
+        primary_wh = new_wh_ids[0] if new_wh_ids else None
+        user.warehouse_id = primary_wh
         # 同步更新 user_warehouses 关联
         existing_uw = (await db.execute(
             select(UserWarehouse).where(UserWarehouse.user_id == user_id)
         )).scalars().all()
         for uw in existing_uw:
             await db.delete(uw)
-        if user.warehouse_id is not None:
-            db.add(UserWarehouse(user_id=user_id, warehouse_id=user.warehouse_id))
+        for wid in new_wh_ids:
+            db.add(UserWarehouse(user_id=user_id, warehouse_id=wid))
     if req.is_active is not None:
         user.is_active = req.is_active
     if req.line_user_id is not None:
         user.line_user_id = req.line_user_id
     if req.extra_permissions is not None:
         user.extra_permissions = req.extra_permissions
+
+    # 修改后快照 + 记录日志（密码只记录已重置，不记录内容）
+    after_uws = (await db.execute(
+        select(UserWarehouse).where(UserWarehouse.user_id == user_id)
+    )).scalars().all()
+    after_data = {
+        "username": user.username, "display_name": user.display_name,
+        "role": user.role, "warehouse_ids": sorted([uw.warehouse_id for uw in after_uws]),
+        "is_active": user.is_active,
+    }
+    if req.password:
+        after_data["password"] = "已重置密码"
+
+    await record_history(db, module="user", record_id=user_id, operator=current_user,
+                          operation_type="edit", before=before_data, after=after_data,
+                          warehouse_id=user.warehouse_id)
 
     await db.flush()
     return {"message": "用户更新成功"}
@@ -246,8 +322,21 @@ async def delete_user(
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
 
-        # 仓库管理员：删除自己仓库的财务/劳工
-        if current_user.role == Role.WAREHOUSE_ADMIN:
+        # 删除前快照（用于修改日志）
+        before_uws = (await db.execute(
+            select(UserWarehouse).where(UserWarehouse.user_id == user_id)
+        )).scalars().all()
+        before_data = {
+            "username": user.username, "display_name": user.display_name,
+            "role": user.role, "warehouse_ids": sorted([uw.warehouse_id for uw in before_uws]),
+            "is_active": user.is_active,
+        }
+        await record_history(db, module="user", record_id=user_id, operator=current_user,
+                              operation_type="delete", before=before_data,
+                              warehouse_id=user.warehouse_id)
+
+        # 仓库管理员/主管：删除自己仓库的财务/劳工
+        if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
             if user.role not in (Role.STAFF.value, Role.WAREHOUSE_LABOR.value):
                 raise HTTPException(status_code=403, detail="只能删除财务/劳工账号")
             managed_wh_ids = (await db.execute(

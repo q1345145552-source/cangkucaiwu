@@ -51,7 +51,7 @@ async def create_customer(req: CustomerCreate, current_user: User = Depends(get_
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     if current_user.role == Role.SUPER_ADMIN:
@@ -91,7 +91,7 @@ async def delete_customer(customer_id: int, current_user: User = Depends(get_cur
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     c = result.scalar_one_or_none()

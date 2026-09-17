@@ -33,6 +33,7 @@
   "warehouse_summary": "各仓概况",
   "role_super_admin": "系统总管理员",
   "role_warehouse_admin": "仓库管理员",
+  "role_supervisor": "仓库主管",
   "role_staff": "仓库财务",
   "role_warehouse_labor": "仓库劳工",
   "switch_lang": "สลับเป็นภาษาไทย",

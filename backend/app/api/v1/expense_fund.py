@@ -82,7 +82,7 @@ async def create_account(
     """手动为指定员工创建备用金账户"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     # 验证员工属于本仓库
@@ -186,7 +186,7 @@ async def topup_account(
     """给备用金账户充值，余额不能超过上限"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
 
     account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
@@ -318,7 +318,7 @@ async def list_pending_reviews(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.STAFF):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无审核权限")
     wh_id = get_wh_id(current_user)
 
@@ -383,7 +383,7 @@ async def batch_review(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role == Role.STAFF and "备用金管理" not in (current_user.extra_permissions or []):
         raise HTTPException(403, "无审批备用金权限")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.STAFF):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无审核权限")
 
     new_status = "approved" if req.action == "approve" else "rejected"
@@ -434,7 +434,7 @@ async def submit_recharge_request(
     """财务提交充值申请"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     if req.amount <= 0:
         raise HTTPException(400, "充值金额必须大于0")
@@ -521,8 +521,8 @@ async def review_recharge_request(
     """管理员审核充值申请"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role != Role.WAREHOUSE_ADMIN:
-        raise HTTPException(403, "只有仓库管理员可以审核充值申请")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以审核充值申请")
 
     rr = (await db.execute(select(FundRechargeRequest).where(FundRechargeRequest.id == req.request_id))).scalar_one_or_none()
     if not rr:
@@ -582,7 +582,7 @@ async def update_settings(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     existing = (await db.execute(select(SystemSetting).where(

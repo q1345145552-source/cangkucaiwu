@@ -538,7 +538,7 @@ async def get_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以查看人效管理")
 
     wh_id = get_wh_id(current_user)
@@ -601,7 +601,7 @@ async def get_trend(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以查看人效趋势")
     wh_id = get_wh_id(current_user)
 
@@ -633,7 +633,7 @@ async def get_compare(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以查看多仓库对比")
 
     wh_ids = get_wh_ids(current_user)
@@ -688,7 +688,7 @@ async def get_daily_orders(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以查看订单数")
     wh_id = get_wh_id(current_user)
     if not month:
@@ -706,7 +706,7 @@ async def set_order_count(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以录入订单数")
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -744,7 +744,7 @@ async def get_standard(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以查看人效标准")
     wh_id = get_wh_id(current_user)
     standard = await _get_standard(db, wh_id, month) if wh_id else float(DEFAULT_STANDARD)
@@ -756,7 +756,7 @@ async def get_standards(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以查看人效标准")
     wh_id = get_wh_id(current_user)
     default = await _get_standard(db, wh_id) if wh_id else float(DEFAULT_STANDARD)
@@ -784,7 +784,7 @@ async def set_standard(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以修改人效标准")
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -831,7 +831,7 @@ async def set_manual_hour(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以补录工时")
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -881,7 +881,7 @@ async def delete_manual_hour(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以清除补录")
     wh_id = get_wh_id(current_user)
     if not wh_id:

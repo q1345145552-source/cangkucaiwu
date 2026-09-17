@@ -115,7 +115,7 @@ async def create_group_order(req: GOCreate, current_user: User = Depends(get_cur
                               db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "仅仓库管理员可发起")
     o = GroupOrder(
         warehouse_id=get_wh_id(current_user), item_name=req.item_name,
@@ -251,7 +251,7 @@ async def close_order(go_id: int, current_user: User = Depends(get_current_user)
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     if current_user.role != Role.SUPER_ADMIN and o.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库发起的拼单")
@@ -282,7 +282,7 @@ async def complete_order(go_id: int, req: CompleteRequest,
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     if current_user.role != Role.SUPER_ADMIN and o.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库发起的拼单")
@@ -301,7 +301,7 @@ async def cancel_order(go_id: int, req: CancelRequest,
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     if current_user.role != Role.SUPER_ADMIN and o.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库发起的拼单")
