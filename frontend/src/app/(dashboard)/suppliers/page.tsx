@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
-import { fmtMoney } from "@/lib/currency";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -428,7 +428,7 @@ export default function SuppliersPage() {
   async function addLogisticsPrice() {
     try { await api.post(`/suppliers/${logisticsSupplierId}/logistics-prices`, { ...logisticsForm, price_per_cbm: logisticsForm.price_per_cbm || 0 }); toast("success", "报价添加成功");
       const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);
-      setLogisticsForm({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "人民币" });
+      setLogisticsForm({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "CNY" });
     } catch { toast("error", "添加失败"); }
   }
   async function deleteLogisticsPrice(pid: number) {
@@ -984,18 +984,12 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-5 shadow">
                 <div className="text-sm opacity-80 mb-1">本月采购总支出</div>
-                <div className="text-2xl font-bold">¥{(procurement?.overview?.month_total || 0).toLocaleString()}</div>
-                {procurement?.overview?.pct_change != null && (
-                  <div className={`text-xs mt-2 flex items-center gap-1 ${(procurement?.overview?.pct_change>=0) ? "text-green-200" : "text-red-200"}`}>
-                    {(procurement?.overview?.pct_change >= 0) ? <TrendingUp size={14} className="inline"/> : <TrendingDown size={14} className="inline"/>} 较上月 {Math.abs(procurement.overview.pct_change)}%
-                  </div>
-                )}
+                <div className="text-2xl font-bold">{fmtMoneyByCurrency(procurement?.overview?.month_total_by_currency)}</div>
               </div>
               {Object.entries(procurement?.overview?.cat_spending || {}).map(([cat, amt]: [string, any]) => (
                 <div key={cat} className={`rounded-xl p-5 shadow text-white ${cat==="耗材商" ? "bg-gradient-to-br from-emerald-500 to-emerald-600" : "bg-gradient-to-br from-orange-500 to-orange-600"}`}>
                   <div className="text-sm opacity-80 mb-1">{cat}采购</div>
-                  <div className="text-2xl font-bold">¥{(amt || 0).toLocaleString()}</div>
-                  <div className="text-xs mt-2 opacity-70">占比 {procurement?.overview?.month_total > 0 ? Math.round((amt || 0) / procurement.overview.month_total * 100) : 0}%</div>
+                  <div className="text-2xl font-bold">{fmtMoneyByCurrency(amt)}</div>
                 </div>
               ))}
             </div>
@@ -1015,8 +1009,8 @@ export default function SuppliersPage() {
                           <div className="text-xs text-gray-400">{r.category_name} · 最近采购 {r.last_bill_date || "-"}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-semibold text-sm">¥{(r.month_amount || 0).toLocaleString()}</div>
-                          <div className="text-xs text-gray-400">累计 ¥{(r.total_amount || 0).toLocaleString()}</div>
+                          <div className="font-semibold text-sm">{fmtMoneyByCurrency(r.month_amount_by_currency)}</div>
+                          <div className="text-xs text-gray-400">累计 {fmtMoneyByCurrency(r.total_amount_by_currency)}</div>
                         </div>
                       </div>
                     ))}
@@ -1029,15 +1023,15 @@ export default function SuppliersPage() {
                 <div className="space-y-2 max-h-[200px] overflow-auto mb-4">
                   {(procurement?.product_compare || []).length === 0 ? <div className="text-gray-400 text-sm py-4">暂无产品数据</div> :
                     (procurement?.product_compare || []).map((p: any) => (
-                      <div key={p.product_name + p.spec} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
+                      <div key={p.product_name + p.spec + p.currency} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
                         <div className="flex-1">
                           <span className="font-medium">{p.product_name}</span>
                           <span className="text-gray-400 ml-1">{p.spec || ""}</span>
                           <span className="text-xs text-gray-400 ml-2">{p.supplier_count}家供应商</span>
                         </div>
                         <div className="text-right text-xs">
-                          <div>最低 <span className="text-green-600 font-semibold">¥{p.min_price}</span> <span className="text-gray-400">({p.min_supplier})</span></div>
-                          <div>最高 <span className="text-red-500">¥{p.max_price}</span></div>
+                          <div>最低 <span className="text-green-600 font-semibold">{fmtMoney(p.min_price, p.currency)}</span> <span className="text-gray-400">({p.min_supplier})</span></div>
+                          <div>最高 <span className="text-red-500">{fmtMoney(p.max_price, p.currency)}</span></div>
                         </div>
                       </div>
                     ))}
@@ -1054,8 +1048,8 @@ export default function SuppliersPage() {
                             <Lightbulb size={16} className="text-amber-500 mt-0.5 flex-shrink-0"/>
                             <div>
                               <span className="font-medium">{t.product_name}{t.spec ? ` (${t.spec})` : ""}</span>
-                              <span className="text-gray-600 ml-1">当前最便宜 <span className="text-green-600 font-semibold">{t.cheapest_supplier} ¥{t.cheapest_price}</span></span>
-                              <div className="text-xs text-gray-500 mt-1">比最贵供应商省 ¥{t.savings_per_unit}/件</div>
+                              <span className="text-gray-600 ml-1">当前最便宜 <span className="text-green-600 font-semibold">{t.cheapest_supplier} {fmtMoney(t.cheapest_price, t.currency)}</span></span>
+                              <div className="text-xs text-gray-500 mt-1">比最贵供应商省 {fmtMoney(t.savings_per_unit, t.currency)}/件</div>
                             </div>
                           </div>
                         </div>

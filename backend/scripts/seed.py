@@ -204,6 +204,12 @@ async def seed():
             await conn.execute(text(
                 "UPDATE supplier_cross_border_prices SET currency = 'THB' WHERE currency = '泰铢'"
             ))
+            await conn.execute(text(
+                "UPDATE supplier_products SET currency = 'CNY' WHERE currency = '人民币'"
+            ))
+            await conn.execute(text(
+                "UPDATE supplier_products SET currency = 'THB' WHERE currency = '泰铢'"
+            ))
         except Exception:
             pass
         # Migration: 非最低价采购记录表
