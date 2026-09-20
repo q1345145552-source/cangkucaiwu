@@ -1052,6 +1052,12 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
         "supplier_id": po.supplier_id, "supplier_name": sup_map.get(po.supplier_id, ""),
         "warehouse_name": wh_map.get(po.warehouse_id, ""),
         "total_amount": po.total_amount, "currency": po.currency or "THB", "status": po.status,
+        "flow_status": po.flow_status or "pending_confirmation",
+        "sent_at": po.sent_at.isoformat() if po.sent_at else None, "sent_by": po.sent_by,
+        "receipt_file": po.receipt_file,
+        "receipt_uploaded_by": po.receipt_uploaded_by,
+        "receipt_uploaded_at": po.receipt_uploaded_at.isoformat() if po.receipt_uploaded_at else None,
+        "shipped_at": po.shipped_at.isoformat() if po.shipped_at else None, "shipped_by": po.shipped_by,
         "receipt_status": po.receipt_status or "not_received",
         "items": po.items or [], "arrival_photo": po.arrival_photo,
         "received_by": po.received_by, "received_at": po.received_at.isoformat() if po.received_at else None,
@@ -1118,6 +1124,7 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
         })
     po.items = updated_items
     po.receipt_status = "partially_received" if has_diff else "received"
+    po.flow_status = "arrived" if has_diff else "completed"
     po.arrival_photo = photo_path
     po.received_by = current_user.id
     po.received_at = thai_now()
@@ -1133,8 +1140,74 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
     return {
         "message": "收货验收完成" + ("，存在数量差异" if has_diff else ""),
         "receipt_status": po.receipt_status,
+        "flow_status": po.flow_status,
         "has_diff": has_diff,
     }
+
+
+@router.post("/purchase-orders/{po_id}/mark-sent")
+async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """标记采购单已发送给供应商（记录发送时间/发送人）。"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
+    if not po:
+        raise HTTPException(404, "采购单不存在")
+    if po.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的采购单")
+    po.sent_at = thai_now()
+    po.sent_by = current_user.id
+    await db.flush()
+    return {"message": "已标记发送", "sent_at": po.sent_at.isoformat()}
+
+
+@router.post("/purchase-orders/{po_id}/receipt")
+async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
+                                  current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """上传供应商签字/盖章回执，流程状态变为「供应商已确认」。"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
+    if not po:
+        raise HTTPException(404, "采购单不存在")
+    if po.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的采购单")
+    if po.status != "confirmed":
+        raise HTTPException(400, "仅已生效采购单可上传回执")
+    import os, uuid
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "jpg"
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    upload_dir = "/app/uploads/receipt_files"
+    os.makedirs(upload_dir, exist_ok=True)
+    fpath = os.path.join(upload_dir, fname)
+    with open(fpath, "wb") as f:
+        f.write(await file.read())
+    po.receipt_file = f"/uploads/receipt_files/{fname}"
+    po.receipt_uploaded_by = current_user.id
+    po.receipt_uploaded_at = thai_now()
+    po.flow_status = "supplier_confirmed"
+    await db.flush()
+    return {"message": "回执已上传，供应商已确认", "receipt_file": po.receipt_file, "flow_status": po.flow_status}
+
+
+@router.post("/purchase-orders/{po_id}/mark-shipped")
+async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """标记供应商已发货，流程状态变为「已发货」。"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
+    if not po:
+        raise HTTPException(404, "采购单不存在")
+    if po.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的采购单")
+    po.shipped_at = thai_now()
+    po.shipped_by = current_user.id
+    po.flow_status = "shipped"
+    await db.flush()
+    return {"message": "已标记发货", "flow_status": po.flow_status}
 
 
 @router.get("/purchase-orders/{po_id}/pdf")

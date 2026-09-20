@@ -96,8 +96,19 @@ class PurchaseOrder(Base):
     items = Column(JSON, nullable=False)
     payable_bill_id = Column(Integer, ForeignKey('payable_bills.id'), nullable=True)
     status = Column(String(20), default='confirmed')  # pending / confirmed / rejected
+    flow_status = Column(String(30), default='pending_confirmation', comment="流程状态: pending_confirmation/supplier_confirmed/shipped/arrived/completed")
     remark = Column(String(500), nullable=True)
     reject_reason = Column(String(500), nullable=True, comment="驳回原因")
+    # 发送标记
+    sent_at = Column(DateTime(timezone=True), nullable=True, comment="发送给供应商时间")
+    sent_by = Column(Integer, ForeignKey('users.id'), nullable=True, comment="发送人")
+    # 回执
+    receipt_file = Column(String(500), nullable=True, comment="供应商回执照片路径")
+    receipt_uploaded_by = Column(Integer, ForeignKey('users.id'), nullable=True, comment="回执上传人")
+    receipt_uploaded_at = Column(DateTime(timezone=True), nullable=True, comment="回执上传时间")
+    # 发货
+    shipped_at = Column(DateTime(timezone=True), nullable=True, comment="发货时间")
+    shipped_by = Column(Integer, ForeignKey('users.id'), nullable=True, comment="发货标记人")
     receipt_status = Column(String(20), default='not_received', comment="收货状态: not_received/received/partially_received")
     arrival_photo = Column(String(500), nullable=True, comment="到货照片路径")
     received_by = Column(Integer, ForeignKey('users.id'), nullable=True, comment="收货人")

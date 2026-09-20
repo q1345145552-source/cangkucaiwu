@@ -183,6 +183,34 @@ async def seed():
             ))
         except Exception:
             pass
+        # Migration: 采购单流程状态 + 发送/回执/发货标记
+        try:
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS flow_status VARCHAR(30) DEFAULT 'pending_confirmation'"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS sent_by INTEGER"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS receipt_file VARCHAR(500)"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS receipt_uploaded_by INTEGER"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS receipt_uploaded_at TIMESTAMPTZ"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMPTZ"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS shipped_by INTEGER"
+            ))
+        except Exception:
+            pass
         # Migration: 采购单号唯一约束
         try:
             await conn.execute(text(

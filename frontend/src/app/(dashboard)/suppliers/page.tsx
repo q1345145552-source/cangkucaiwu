@@ -11,6 +11,14 @@ import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbu
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
+const FLOW_STATUS_MAP: Record<string, { label: string; cls: string }> = {
+  pending_confirmation: { label: "待供应商确认", cls: "bg-yellow-100 text-yellow-700" },
+  supplier_confirmed: { label: "供应商已确认", cls: "bg-blue-100 text-blue-700" },
+  shipped: { label: "已发货", cls: "bg-purple-100 text-purple-700" },
+  arrived: { label: "已到货验收", cls: "bg-orange-100 text-orange-700" },
+  completed: { label: "已完成", cls: "bg-green-100 text-green-700" },
+};
+
 export default function SuppliersPage() {
   const { t } = useI18n();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
@@ -89,6 +97,8 @@ export default function SuppliersPage() {
   const [showPoList, setShowPoList] = useState(false);
   const [poList, setPoList] = useState<any[]>([]);
   const [poDetail, setPoDetail] = useState<any>(null);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
+  const [receiptPoId, setReceiptPoId] = useState<number | null>(null);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
 
@@ -393,6 +403,50 @@ export default function SuppliersPage() {
       URL.revokeObjectURL(url);
     } catch { toast("error", "下载失败"); }
   }
+  async function refreshPoDetail() {
+    if (poDetail?.id) {
+      try {
+        const r = await api.get<any>("/suppliers/purchase-orders?page=1&page_size=200");
+        const found = (r.data || []).find((x: any) => x.id === poDetail.id);
+        if (found) setPoDetail(found);
+        setPoList(r.data || []);
+      } catch {}
+    }
+  }
+  async function markSent(po: any) {
+    try {
+      await api.post(`/suppliers/purchase-orders/${po.id}/mark-sent`, {});
+      toast("success", "已标记发送给供应商");
+      refreshPoDetail();
+    } catch (e: any) { toast("error", e.message || "操作失败"); }
+  }
+  async function markShipped(po: any) {
+    try {
+      await api.post(`/suppliers/purchase-orders/${po.id}/mark-shipped`, {});
+      toast("success", "已标记发货");
+      refreshPoDetail();
+    } catch (e: any) { toast("error", e.message || "操作失败"); }
+  }
+  function triggerReceiptUpload(poId: number) {
+    setReceiptPoId(poId);
+    setTimeout(() => receiptInputRef.current?.click(), 50);
+  }
+  async function handleReceiptUpload(file: File) {
+    if (!receiptPoId) return;
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/v1/suppliers/purchase-orders/${receiptPoId}/receipt`, {
+        method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
+      });
+      const r = await res.json();
+      if (!res.ok) { toast("error", r.detail || "上传失败"); return; }
+      toast("success", "回执已上传，供应商已确认");
+      setReceiptPoId(null);
+      refreshPoDetail();
+    } catch { toast("error", "上传失败"); }
+    if (receiptInputRef.current) receiptInputRef.current.value = "";
+  }
   // ─── 价格监控 ───
   async function openPriceMonitor() {
     setShowPriceMonitor(true);
@@ -503,6 +557,7 @@ export default function SuppliersPage() {
               <button onClick={() => downloadTemplate("products")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>耗材模板</button>
               <button onClick={() => downloadTemplate("logistics")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>物流模板</button>
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleSupplierImport} className="hidden" />
+              <input ref={receiptInputRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }} className="hidden" />
               <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
               <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
@@ -1538,6 +1593,7 @@ export default function SuppliersPage() {
                     <th className="px-3 py-2 font-medium">仓库</th>
                     <th className="px-3 py-2 font-medium text-right">金额</th>
                     <th className="px-3 py-2 font-medium">状态</th>
+                    <th className="px-3 py-2 font-medium">流程</th>
                     <th className="px-3 py-2 font-medium">收货</th>
                     <th className="px-3 py-2 font-medium">下单时间</th>
                     <th className="px-3 py-2 font-medium text-center">操作</th>
@@ -1553,6 +1609,11 @@ export default function SuppliersPage() {
                           {po.status === "pending" ? <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">待审批</span>
                             : po.status === "confirmed" ? <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">已生效</span>
                             : <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">已驳回</span>}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`text-xs px-2 py-0.5 rounded ${FLOW_STATUS_MAP[po.flow_status]?.cls || "bg-gray-100 text-gray-600"}`}>
+                            {FLOW_STATUS_MAP[po.flow_status]?.label || po.flow_status || "-"}
+                          </span>
                         </td>
                         <td className="px-3 py-2">
                           {po.receipt_status === "received" ? <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">已收货</span>
@@ -1594,7 +1655,29 @@ export default function SuppliersPage() {
                 <div><span className="text-gray-400">仓库：</span>{poDetail.warehouse_name || "-"}</div>
                 <div><span className="text-gray-400">状态：</span>{poDetail.status === "pending" ? "待审批" : poDetail.status === "confirmed" ? "已生效" : "已驳回"}</div>
                 <div><span className="text-gray-400">下单时间：</span>{poDetail.created_at ? new Date(poDetail.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</div>
+                <div className="col-span-2">
+                  <span className="text-gray-400">流程状态：</span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${FLOW_STATUS_MAP[poDetail.flow_status]?.cls || "bg-gray-100 text-gray-600"}`}>
+                    {FLOW_STATUS_MAP[poDetail.flow_status]?.label || poDetail.flow_status || "-"}
+                  </span>
+                </div>
               </div>
+
+              {/* 流程操作 */}
+              {poDetail.status === "confirmed" && poDetail.flow_status !== "completed" && (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <div className="text-sm font-medium text-gray-600">流程操作</div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => markSent(poDetail)} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs">标记已发送</button>
+                    <button onClick={() => triggerReceiptUpload(poDetail.id)} className="px-3 py-1.5 bg-green-600 text-white rounded text-xs">上传回执</button>
+                    <button onClick={() => markShipped(poDetail)} className="px-3 py-1.5 bg-purple-600 text-white rounded text-xs">标记已发货</button>
+                  </div>
+                  {poDetail.sent_at && <div className="text-xs text-gray-500">已发送：{new Date(poDetail.sent_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" })}</div>}
+                  {poDetail.receipt_uploaded_at && <div className="text-xs text-gray-500">回执上传：{new Date(poDetail.receipt_uploaded_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" })}</div>}
+                  {poDetail.shipped_at && <div className="text-xs text-gray-500">已发货：{new Date(poDetail.shipped_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" })}</div>}
+                </div>
+              )}
+
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                   <th className="px-3 py-2 font-medium">产品名称</th>
@@ -1618,6 +1701,9 @@ export default function SuppliersPage() {
               <div className="text-right font-semibold">总价：{poDetail.total_amount}</div>
             </div>
             <div className="border-t px-5 py-3 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+              {poDetail.receipt_file && (
+                <button onClick={() => window.open(uploadUrl(poDetail.receipt_file), "_blank")} className="bg-amber-500 text-white px-4 py-2 rounded text-sm flex items-center gap-1"><Eye size={14}/>查看回执</button>
+              )}
               <button onClick={() => downloadPoPdf(poDetail)} className="bg-green-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>下载PDF</button>
               <button onClick={() => setPoDetail(null)} className="btn-secondary text-sm px-5 py-2">关闭</button>
             </div>
