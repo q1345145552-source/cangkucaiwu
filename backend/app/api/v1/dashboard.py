@@ -214,6 +214,21 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
                RechargeDeclaration.declare_date < next_month)
         .group_by(RechargeDeclaration.currency)
     )).all()
+    # 本月到账合计
+    incoming_rows = (await db.execute(
+        select(IncomingFlow.currency, func.coalesce(func.sum(IncomingFlow.amount), 0))
+        .where(IncomingFlow.warehouse_id == wh_id,
+               IncomingFlow.received_date >= month_start,
+               IncomingFlow.received_date < next_month)
+        .group_by(IncomingFlow.currency)
+    )).all()
+    # 未对账笔数
+    unmatched_recharge = (await db.execute(
+        select(func.count(RechargeDeclaration.id)).where(
+            RechargeDeclaration.warehouse_id == wh_id,
+            RechargeDeclaration.match_status == MatchStatus.UNMATCHED.value,
+        )
+    )).scalar() or 0
     # 运营支出
     op_rows = (await db.execute(
         select(ExpenseRecord.currency, func.coalesce(func.sum(ExpenseRecord.amount), 0))
@@ -313,18 +328,19 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
         )
     )).scalar() or 0
 
-    # 本月人效（复用效率模块月汇总）
+    # 本月人效（复用效率模块月汇总；用 savepoint 隔离，失败不影响其余统计）
     efficiency = None
     try:
         from app.api.v1.efficiency import _aggregate_month
-        em = await _aggregate_month(db, wh_id, month_str)
-        efficiency = {
-            "person_times": em.get("person_times", 0),
-            "order_count": em.get("order_count", 0),
-            "efficiency": em.get("efficiency", 0),
-            "standard": em.get("standard", 0),
-            "below_standard": bool(em.get("below_standard", False)),
-        }
+        async with db.begin_nested():
+            em = await _aggregate_month(db, wh_id, month_str)
+            efficiency = {
+                "person_times": em.get("person_times", 0),
+                "order_count": em.get("order_count", 0),
+                "efficiency": em.get("efficiency", 0),
+                "standard": em.get("standard", 0),
+                "below_standard": bool(em.get("below_standard", False)),
+            }
     except Exception:
         efficiency = {"person_times": 0, "order_count": 0, "efficiency": 0, "standard": 0, "below_standard": False}
 
@@ -337,6 +353,29 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     overtime_pending = (await db.execute(
         select(func.count(OvertimeTask.id)).where(
             OvertimeTask.warehouse_id == wh_id, OvertimeTask.status == "pending"
+        )
+    )).scalar() or 0
+    ef_pending = (await db.execute(
+        select(func.count(ExpenseFundItem.id)).join(
+            ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id
+        ).where(
+            ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
+            ExpenseFund.warehouse_id == wh_id,
+        )
+    )).scalar() or 0
+    rb_pending = (await db.execute(
+        select(func.count(Reimbursement.id)).where(
+            Reimbursement.warehouse_id == wh_id, Reimbursement.status == ReimbStatus.PENDING.value
+        )
+    )).scalar() or 0
+    market_pending = (await db.execute(
+        select(func.count(MarketItem.id)).where(
+            MarketItem.warehouse_id == wh_id, MarketItem.status == "pending"
+        )
+    )).scalar() or 0
+    group_pending = (await db.execute(
+        select(func.count(GroupOrder.id)).where(
+            GroupOrder.warehouse_id == wh_id, GroupOrder.status == GroupOrderStatus.OPEN.value
         )
     )).scalar() or 0
 
@@ -382,6 +421,47 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     for oid, odate in ot_rows:
         todos.append({"type": "overtime", "description": f"{odate} 的加班任务待确认", "link": "/overtime", "id": oid})
 
+    # 备用金开销待审核
+    ef_rows = (await db.execute(
+        select(ExpenseFundItem.id, User.display_name)
+        .join(ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id)
+        .join(User, ExpenseFund.employee_id == User.id)
+        .where(ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
+               ExpenseFund.warehouse_id == wh_id)
+        .order_by(ExpenseFundItem.created_at.desc()).limit(20)
+    )).all()
+    for iid, uname in ef_rows:
+        todos.append({"type": "expense_fund", "description": f"{uname} 的备用金开销待审核", "link": "/expense-fund", "id": iid})
+
+    # 报销单待审批
+    rb_rows = (await db.execute(
+        select(Reimbursement.id, User.display_name)
+        .join(User, Reimbursement.employee_id == User.id)
+        .where(Reimbursement.warehouse_id == wh_id, Reimbursement.status == ReimbStatus.PENDING.value)
+        .order_by(Reimbursement.created_at.desc()).limit(20)
+    )).all()
+    for rid, uname in rb_rows:
+        todos.append({"type": "reimbursement", "description": f"{uname} 的报销单待审批", "link": "/reimbursement", "id": rid})
+
+    # 商品上架待审核
+    m_rows = (await db.execute(
+        select(MarketItem.id, MarketItem.name, User.display_name)
+        .join(User, MarketItem.uploader_id == User.id)
+        .where(MarketItem.warehouse_id == wh_id, MarketItem.status == "pending")
+        .order_by(MarketItem.created_at.desc()).limit(20)
+    )).all()
+    for mid, mname, uname in m_rows:
+        todos.append({"type": "market", "description": f"{uname} 上架的 {mname} 待审核", "link": "/market", "id": mid})
+
+    # 待拼单
+    g_rows = (await db.execute(
+        select(GroupOrder.id, GroupOrder.item_name)
+        .where(GroupOrder.warehouse_id == wh_id, GroupOrder.status == GroupOrderStatus.OPEN.value)
+        .order_by(GroupOrder.created_at.desc()).limit(20)
+    )).all()
+    for gid, gname in g_rows:
+        todos.append({"type": "group_order", "description": f"待拼单：{gname}", "link": "/group-order", "id": gid})
+
     return {
         "finance": {
             "month": {
@@ -405,11 +485,23 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
                 "price_anomaly_count": price_anomaly,
                 "non_lowest_count": non_lowest,
             },
+            "recharge_reconciliation": {
+                "recharge": _merge_currency(income_rows),
+                "incoming": _merge_currency(incoming_rows),
+                "unmatched_count": unmatched_recharge,
+            },
         },
         "people": {
             "attendance": {"expected": expected, "present": present, "absent": absent},
             "efficiency": efficiency,
-            "todos": {"leave_pending": leave_pending, "overtime_pending": overtime_pending},
+            "todos": {
+                "leave_pending": leave_pending,
+                "overtime_pending": overtime_pending,
+                "expense_fund_pending": ef_pending,
+                "reimbursement_pending": rb_pending,
+                "market_pending": market_pending,
+                "group_order_pending": group_pending,
+            },
         },
         "todos": todos,
     }

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { getToken, api } from "@/lib/api";
-import { TrendingUp, TrendingDown, Wallet, ShoppingCart, Users, Gauge, ListTodo, FileText, Receipt, Bed, Clock, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ShoppingCart, Users, Gauge, ListTodo, FileText, Receipt, Bed, Clock, ClipboardCheck, AlertTriangle, Tag, Package } from "lucide-react";
 
 interface Amount { currency: string; amount: number; }
 
@@ -13,11 +13,12 @@ interface CockpitData {
     receivable_payable: { receivable: Amount[]; payable: Amount[]; overdue_payable: Amount[] };
     balances: { payment_accounts: Amount[]; expense_funds: Amount[] };
     procurement: { expense: Amount[]; price_anomaly_count: number; non_lowest_count: number };
+    recharge_reconciliation: { recharge: Amount[]; incoming: Amount[]; unmatched_count: number };
   };
   people: {
     attendance: { expected: number; present: number; absent: number };
     efficiency: { person_times: number; order_count: number; efficiency: number; standard: number; below_standard: boolean } | null;
-    todos: { leave_pending: number; overtime_pending: number };
+    todos: { leave_pending: number; overtime_pending: number; expense_fund_pending: number; reimbursement_pending: number; market_pending: number; group_order_pending: number };
   };
   todos: { type: string; description: string; link: string; id: number }[];
 }
@@ -50,6 +51,10 @@ const TODO_CONFIG: Record<string, { icon: React.ReactNode; color: string; badge:
   bill_confirm: { icon: <AlertTriangle className="h-4 w-4" />, color: "text-amber-600 bg-amber-50", badge: "账单确认" },
   leave: { icon: <Bed className="h-4 w-4" />, color: "text-pink-600 bg-pink-50", badge: "请假审批" },
   overtime: { icon: <Clock className="h-4 w-4" />, color: "text-indigo-600 bg-indigo-50", badge: "加班确认" },
+  expense_fund: { icon: <FileText className="h-4 w-4" />, color: "text-red-600 bg-red-50", badge: "备用金审核" },
+  reimbursement: { icon: <Receipt className="h-4 w-4" />, color: "text-orange-600 bg-orange-50", badge: "报销审批" },
+  market: { icon: <Tag className="h-4 w-4" />, color: "text-blue-600 bg-blue-50", badge: "商品审核" },
+  group_order: { icon: <Package className="h-4 w-4" />, color: "text-teal-600 bg-teal-50", badge: "待拼单" },
 };
 
 export default function DashboardPage() {
@@ -100,7 +105,7 @@ export default function DashboardPage() {
       {/* 钱的部分 */}
       <section>
         <h2 className="text-base font-semibold text-gray-700 mb-3 flex items-center gap-2"><Wallet className="h-5 w-5 text-green-600" /> 钱</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {/* 本月收支盈亏 */}
           <div className="bg-white rounded-xl p-5 shadow-sm border">
             <div className="flex items-center gap-2 mb-3 text-gray-500 text-sm"><TrendingUp className="h-4 w-4 text-green-600" />本月收支盈亏</div>
@@ -137,6 +142,16 @@ export default function DashboardPage() {
               <div className="flex justify-between"><span className="text-gray-500">采购支出</span><AmountList items={finance.procurement.expense} /></div>
               <div className="flex justify-between"><span className="text-gray-500">价格异常</span><span className={finance.procurement.price_anomaly_count > 0 ? "text-red-600 font-semibold" : "text-gray-700"}>{finance.procurement.price_anomaly_count} 笔</span></div>
               <div className="flex justify-between"><span className="text-gray-500">非最低价</span><span className={finance.procurement.non_lowest_count > 0 ? "text-red-600 font-semibold" : "text-gray-700"}>{finance.procurement.non_lowest_count} 笔</span></div>
+            </div>
+          </div>
+
+          {/* 充值对账 */}
+          <div className="bg-white rounded-xl p-5 shadow-sm border">
+            <div className="flex items-center gap-2 mb-3 text-gray-500 text-sm"><TrendingUp className="h-4 w-4 text-sky-600" />充值对账</div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-gray-500">本月充值</span><AmountList items={finance.recharge_reconciliation.recharge} /></div>
+              <div className="flex justify-between"><span className="text-gray-500">本月到账</span><AmountList items={finance.recharge_reconciliation.incoming} /></div>
+              <div className="flex justify-between border-t pt-2"><span className="text-gray-500">未对账</span><span className="text-red-600 font-semibold">{finance.recharge_reconciliation.unmatched_count} 笔</span></div>
             </div>
           </div>
         </div>
@@ -178,6 +193,9 @@ export default function DashboardPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">请假待审批</span><span className="font-semibold">{people.todos.leave_pending}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">加班待确认</span><span className="font-semibold">{people.todos.overtime_pending}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">备用金审核</span><span className="font-semibold">{people.todos.expense_fund_pending}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">报销审批</span><span className="font-semibold">{people.todos.reimbursement_pending}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">商品审核</span><span className="font-semibold">{people.todos.market_pending}</span></div>
             </div>
           </div>
         </div>
@@ -199,7 +217,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {(["purchase_approval", "bill_confirm", "leave", "overtime"] as const).map((type) => {
+            {(["purchase_approval", "bill_confirm", "leave", "overtime", "expense_fund", "reimbursement", "market", "group_order"] as const).map((type) => {
               const typeTasks = data.todos.filter((t) => t.type === type);
               if (typeTasks.length === 0) return null;
               const cfg = TODO_CONFIG[type];
