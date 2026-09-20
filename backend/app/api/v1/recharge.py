@@ -97,10 +97,12 @@ async def create_recharge(req: RechargeCreate, current_user: User = Depends(get_
 
 
 @router.get("/{recharge_id}")
-async def get_recharge(recharge_id: int, db: AsyncSession = Depends(get_db)):
+async def get_recharge(recharge_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权查看其他仓库的充值申报")
     return {"id": r.id, "amount": r.amount, "currency": r.currency, "declare_date": str(r.declare_date), "match_status": r.match_status, "remark": r.remark}
 
 @router.put("/{recharge_id}")

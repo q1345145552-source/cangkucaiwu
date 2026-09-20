@@ -93,7 +93,7 @@ async def list_users(
     }
 
 @router.get("/permissions")
-async def list_available_permissions():
+async def list_available_permissions(current_user: User = Depends(get_current_user)):
     """Return all available staff extra permissions."""
     return [{"key": k, "label": v} for k, v in STAFF_PERMISSIONS.items()]
 

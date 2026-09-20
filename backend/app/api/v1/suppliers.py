@@ -62,7 +62,7 @@ async def create_category(name: str, current_user: User = Depends(get_current_us
 
 # ═══ Import Templates ════════════════════════════
 @router.get("/import-template/products")
-async def download_products_template():
+async def download_products_template(current_user: User = Depends(get_current_user)):
     """下载耗材产品导入模板"""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
@@ -80,7 +80,7 @@ async def download_products_template():
                             headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"})
 
 @router.get("/import-template/logistics")
-async def download_logistics_template():
+async def download_logistics_template(current_user: User = Depends(get_current_user)):
     """下载跨境物流价格导入模板"""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill

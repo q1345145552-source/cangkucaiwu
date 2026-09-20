@@ -62,10 +62,12 @@ async def create_customer(req: CustomerCreate, current_user: User = Depends(get_
     db.add(c); await db.flush(); return {"id": c.id, "message": "创建成功"}
 
 @router.get("/{customer_id}")
-async def get_customer(customer_id: int, db: AsyncSession = Depends(get_db)):
+async def get_customer(customer_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "客户不存在")
+    if current_user.role != Role.SUPER_ADMIN and c.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权查看其他仓库的客户")
     return {"id": c.id, "warehouse_id": c.warehouse_id, "customer_code": c.customer_code,
             "company_name": c.company_name, "contact_person": c.contact_person,
             "contact_info": c.contact_info, "credit_status": c.credit_status,

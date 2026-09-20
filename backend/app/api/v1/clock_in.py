@@ -150,7 +150,7 @@ async def list_records(
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.employee import Employee
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPERVISOR, Role.SUPER_ADMIN):
         raise HTTPException(403, "无权限")
 
     # Determine warehouse scope
@@ -209,7 +209,6 @@ async def list_records(
     }
 
 @router.get("/photos")
-@router.get("/photos")
 async def get_photos(
     employee_id: int = Query(...),
     date: str = Query(...),
@@ -218,8 +217,8 @@ async def get_photos(
 ):
     """Admin: get all clock-in photos for a specific employee on a specific date"""
     try:
-        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN):
-            raise HTTPException(403, "只有管理员可以查看打卡照片")
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.SUPER_ADMIN):
+            raise HTTPException(403, "只有管理员/主管可以查看打卡照片")
 
         from app.models.employee import Employee
 

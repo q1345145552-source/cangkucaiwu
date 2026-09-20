@@ -78,8 +78,28 @@ export default function SuppliersPage() {
   }
 
   // ─── Import ───
-  function downloadTemplate(mode: string) {
-    window.open(`/api/v1/suppliers/import-template/${mode}`, "_blank");
+  async function downloadTemplate(mode: string) {
+    try {
+      const res = await fetch(`/api/v1/suppliers/import-template/${mode}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "下载失败" }));
+        toast("error", err.detail || "下载失败");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = mode === "products" ? "products_import_template.xlsx" : "logistics_import_template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast("error", e.message || "下载失败");
+    }
   }
 
   async function handleSupplierImport() {
