@@ -46,6 +46,10 @@ class Employee(Base):
     pre_resign_status = Column(String(20), nullable=True, comment="离职前的身份状态（trial/regular），用于人效时薪估算")
     blacklisted = Column(Boolean, default=False)
     blacklist_reason = Column(String(500), nullable=True)
+    # 软删除标记（不真正删除，仅打标记，保留打卡/工资/加班等关联数据）
+    is_deleted = Column(Boolean, default=False, comment="已删除标记")
+    deleted_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="删除人")
+    deleted_at = Column(DateTime(timezone=True), nullable=True, comment="删除时间")
 
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

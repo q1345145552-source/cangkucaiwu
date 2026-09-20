@@ -4,7 +4,7 @@ import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp, Ban, Camera, Clock, Calendar, DollarSign, Tag, X as XIcon, TrendingUp } from "lucide-react";
+import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp, Ban, Camera, Clock, Calendar, DollarSign, Tag, X as XIcon, TrendingUp, Trash2 } from "lucide-react";
 
 export default function EmployeesPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
@@ -24,6 +24,8 @@ export default function EmployeesPage() {
 
   // Detail modal
   const [detailEmp, setDetailEmp] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [summary, setSummary] = useState<any>(null);
   const [newTag, setNewTag] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -258,6 +260,19 @@ export default function EmployeesPage() {
     });
   }
 
+  async function handleDeleteEmployee() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const r = await api.delete(`/employees/${deleteTarget.id}`);
+      toast("success", r.message || "已删除");
+      setDeleteTarget(null);
+      if (detailEmp && detailEmp.id === deleteTarget.id) setDetailEmp(null);
+      load(); loadLimit();
+    } catch (err: any) { toast("error", err.message || "删除失败"); }
+    setDeleting(false);
+  }
+
   async function saveMaxLimit() {
     try {
       const v = parseInt(limitInput) || 50;
@@ -392,6 +407,10 @@ export default function EmployeesPage() {
                         <button onClick={() => openResignModal(e.id)}
                           className="p-1.5 hover:bg-red-50 rounded min-w-[32px]" title="离职">
                           <UserX size={14} className="text-red-400" />
+                        </button>
+                        <button onClick={() => setDeleteTarget(e)}
+                          className="p-1.5 hover:bg-red-50 rounded min-w-[32px]" title="删除">
+                          <Trash2 size={14} className="text-red-500" />
                         </button>
                       </div>
                     )}
@@ -603,7 +622,7 @@ export default function EmployeesPage() {
                   </label>
                 </div>
                 <div className="pb-2">
-                  <h2 className="text-xl font-bold text-white">{detailEmp.name}</h2>
+                  <h2 className="text-xl font-bold text-white">{detailEmp.name}{detailEmp.is_deleted && <span className="ml-2 text-xs font-normal bg-red-500 text-white px-2 py-0.5 rounded-full align-middle">已删除</span>}</h2>
                   <span className="text-white/80 text-sm">{detailEmp.position || "仓库劳工"}{detailEmp.employee_no ? ` · 工号 ${detailEmp.employee_no}` : ""}</span>
                 </div>
               </div>
@@ -850,6 +869,24 @@ export default function EmployeesPage() {
               <button onClick={() => setResigningId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
               <button onClick={resignEmployee} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-red-600">
                 确认离职
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除员工确认框 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Trash2 size={18} className="text-red-500"/> 删除员工档案</h3>
+            <p className="text-sm text-gray-600 mb-1">确定要删除员工「{deleteTarget.name}」吗？</p>
+            <p className="text-xs text-gray-400 mb-4">删除后该员工从列表隐藏，关联的打卡记录、工资单、加班记录都会保留；绑定登录账号将被禁用。</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="btn-secondary text-sm px-4 py-2">取消</button>
+              <button onClick={handleDeleteEmployee} disabled={deleting}
+                className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50">
+                {deleting ? "删除中..." : "确认删除"}
               </button>
             </div>
           </div>

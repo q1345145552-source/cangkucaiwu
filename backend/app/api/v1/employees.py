@@ -6,6 +6,7 @@ from app.models.employee import Employee
 from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.timezone import thai_now
 from pydantic import BaseModel
 from datetime import datetime, date, timedelta
 from typing import Optional
@@ -75,6 +76,7 @@ async def list_employees(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     status: str | None = None,
+    include_deleted: bool = False,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -88,6 +90,9 @@ async def list_employees(
     count_q = select(func.count(Employee.id))
     query = query.where(Employee.warehouse_id.in_(wh_ids))
     count_q = count_q.where(Employee.warehouse_id.in_(wh_ids))
+    if not include_deleted:
+        query = query.where(Employee.is_deleted == False)
+        count_q = count_q.where(Employee.is_deleted == False)
     if status:
         query = query.where(Employee.status == status)
         count_q = count_q.where(Employee.status == status)
@@ -130,6 +135,9 @@ async def list_employees(
             "resignation_date": e.resignation_date.isoformat() if e.resignation_date else None,
             "resignation_reason": e.resignation_reason,
             "resignation_note": e.resignation_note,
+            "is_deleted": bool(e.is_deleted),
+            "deleted_by": e.deleted_by,
+            "deleted_at": e.deleted_at.isoformat() if e.deleted_at else None,
             "blacklisted": e.blacklisted,
             "blacklist_reason": e.blacklist_reason,
             "created_at": e.created_at.isoformat() if e.created_at else None,
@@ -465,6 +473,37 @@ async def resign_employee(
         "employee_id": e.id,
         "blacklisted": e.blacklisted,
     }
+
+
+@router.delete("/{employee_id}")
+async def delete_employee(
+    employee_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """软删除员工档案：打删除标记，保留打卡/工资/加班等关联数据，并禁用关联登录账号。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以删除员工")
+    e = (await db.execute(select(Employee).where(Employee.id == employee_id))).scalar_one_or_none()
+    if not e:
+        raise HTTPException(404, "员工不存在")
+    wh_ids = get_wh_ids(current_user)
+    if e.warehouse_id not in wh_ids:
+        raise HTTPException(403, "只能删除自己管理仓库的员工")
+    if e.is_deleted:
+        raise HTTPException(400, "该员工已删除")
+
+    e.is_deleted = True
+    e.deleted_by = current_user.id
+    e.deleted_at = thai_now()
+
+    # 禁用关联登录账号，防止已删除员工继续登录/打卡
+    if e.user_id:
+        linked = (await db.execute(select(User).where(User.id == e.user_id))).scalar_one_or_none()
+        if linked:
+            linked.is_active = False
+    await db.flush()
+    return {"message": f"已删除员工 {e.name}（软删除，数据保留）", "employee_id": e.id}
 
 
 async def _find_linked_user(db: AsyncSession, emp: Employee):
