@@ -5,7 +5,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Key, UserPlus, MessageCircle, Pencil, Trash2, DollarSign, Clock, History } from "lucide-react";
+import { Key, UserPlus, MessageCircle, Pencil, Trash2, DollarSign, Clock, History, Phone } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const PERM_LABELS: Record<string, string> = {
@@ -32,6 +32,8 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "", warehouse_ids: [] as number[] });
   const [warehouses, setWarehouses] = useState<any[]>([]);
+  // 老板联系方式
+  const [bossContact, setBossContact] = useState({ name: "", phone: "" });
 
   // Edit user state
   const [editUser, setEditUser] = useState<any>(null);
@@ -45,6 +47,17 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); } if (tab === "rates") loadRates(); }, [tab]);
+  useEffect(() => { if (user?.role === "warehouse_admin" || user?.role === "super_admin") loadBossContact(); }, [user?.role]);
+
+  async function loadBossContact() {
+    try { const r = await api.get<any>("/settings/boss-contact"); setBossContact({ name: r.name || "", phone: r.phone || "" }); } catch {}
+  }
+  async function saveBossContact() {
+    try {
+      await api.put("/settings/boss-contact", bossContact);
+      toast("success", "老板联系方式已保存");
+    } catch (err: any) { toast("error", err.message || "保存失败"); }
+  }
   useEffect(() => {
     if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
       setNewUser(prev => ({ ...prev, role: "staff" }));
@@ -190,6 +203,19 @@ export default function SettingsPage() {
 
       {tab === "profile" && (
         <div className="max-w-md space-y-6">
+          {/* 老板联系方式 */}
+          {(user?.role === "warehouse_admin" || user?.role === "super_admin") && (
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><Phone size={18} className="text-blue-500"/> 老板联系方式</h3>
+              <div className="text-xs text-gray-400 mb-3">显示在采购单 PDF 上的联系人信息</div>
+              <div className="space-y-3">
+                <div><label className="form-label">老板称呼</label><input className="form-input text-sm" placeholder="如：王老板" value={bossContact.name} onChange={e=>setBossContact({...bossContact, name: e.target.value})} /></div>
+                <div><label className="form-label">电话号码</label><input className="form-input text-sm" placeholder="如：+66 812345678" value={bossContact.phone} onChange={e=>setBossContact({...bossContact, phone: e.target.value})} /></div>
+                <button onClick={saveBossContact} className="btn-primary">保存联系方式</button>
+              </div>
+            </div>
+          )}
+
           {/* LINE Binding */}
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <h3 className="font-semibold mb-3 flex items-center gap-2"><MessageCircle size={18} className="text-green-500"/> 绑定 LINE 账号</h3>

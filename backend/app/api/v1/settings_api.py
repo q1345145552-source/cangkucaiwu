@@ -1,12 +1,14 @@
 """系统设置：操作日志 + 数据备份"""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text as sa_text
+from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
 from app.models.audit_log import AuditLog
+from app.models.expense_fund import SystemSetting
 from app.models.user import User
 from app.core.permissions import get_current_user, Role
 import io
@@ -14,6 +16,45 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 router = APIRouter()
+
+
+class BossContactSet(BaseModel):
+    name: str = ""
+    phone: str = ""
+
+
+@router.get("/boss-contact")
+async def get_boss_contact(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """读取老板联系方式（称呼 + 电话），用于采购单 PDF。"""
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    rows = (await db.execute(
+        select(SystemSetting).where(
+            SystemSetting.warehouse_id == 0,
+            SystemSetting.key.in_(["boss_contact_name", "boss_contact_phone"]),
+        )
+    )).scalars().all()
+    m = {s.key: s.value for s in rows}
+    return {"name": m.get("boss_contact_name") or "", "phone": m.get("boss_contact_phone") or ""}
+
+
+@router.put("/boss-contact")
+async def set_boss_contact(req: BossContactSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """保存老板联系方式（称呼 + 电话）。"""
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
+        raise HTTPException(403, "无权限")
+    name = (req.name or "").strip()
+    phone = (req.phone or "").strip()
+    for key, val in (("boss_contact_name", name), ("boss_contact_phone", phone)):
+        setting = (await db.execute(
+            select(SystemSetting).where(SystemSetting.warehouse_id == 0, SystemSetting.key == key)
+        )).scalar_one_or_none()
+        if setting:
+            setting.value = val
+        else:
+            db.add(SystemSetting(warehouse_id=0, key=key, value=val, updated_by=current_user.id))
+    await db.flush()
+    return {"message": "老板联系方式已保存", "name": name, "phone": phone}
 
 @router.get("/logs")
 async def operation_logs(

@@ -24,6 +24,97 @@ def _forbid_super_admin(current_user: User) -> None:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
 
 
+async def _get_boss_contact(db: AsyncSession) -> dict:
+    """读取老板联系方式（全局 SystemSetting）。"""
+    rows = (await db.execute(
+        select(SystemSetting).where(
+            SystemSetting.warehouse_id == 0,
+            SystemSetting.key.in_(["boss_contact_name", "boss_contact_phone"]),
+        )
+    )).scalars().all()
+    m = {s.key: s.value for s in rows}
+    return {"name": m.get("boss_contact_name") or "", "phone": m.get("boss_contact_phone") or ""}
+
+
+def _build_purchase_order_pdf(po, supplier_name: str, warehouse_name: str, boss: dict) -> bytes:
+    """生成采购单 PDF（含单号/供应商/产品明细/总价/日期/仓库/联系人）。"""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+
+    pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
+    title_style = ParagraphStyle('title', fontName='STSong-Light', fontSize=18, leading=24, alignment=1, spaceAfter=10)
+    label_style = ParagraphStyle('label', fontName='STSong-Light', fontSize=10, leading=16, textColor=colors.black)
+    cell_style = ParagraphStyle('cell', fontName='STSong-Light', fontSize=9, leading=14)
+    header_style = ParagraphStyle('header', fontName='STSong-Light', fontSize=9, leading=14, textColor=colors.white)
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=16 * mm, bottomMargin=16 * mm,
+                            leftMargin=16 * mm, rightMargin=16 * mm)
+
+    created_str = po.created_at.astimezone(THAI_TZ).strftime("%Y-%m-%d %H:%M") if po.created_at else ""
+    boss_name = boss.get("name") or ""
+    boss_phone = boss.get("phone") or ""
+    contact = f"{boss_name} {boss_phone}".strip() if (boss_name or boss_phone) else "-"
+
+    info_rows = [
+        [Paragraph("采购单号：", label_style), Paragraph(str(po.order_number), cell_style)],
+        [Paragraph("供应商：", label_style), Paragraph(supplier_name or "-", cell_style)],
+        [Paragraph("仓库：", label_style), Paragraph(warehouse_name or "-", cell_style)],
+        [Paragraph("下单日期：", label_style), Paragraph(created_str, cell_style)],
+        [Paragraph("联系人：", label_style), Paragraph(contact, cell_style)],
+    ]
+    info_table = Table(info_rows, colWidths=[30 * mm, 145 * mm])
+    info_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+
+    headers = ["产品名称", "规格", "数量", "单价", "小计"]
+    data = [[Paragraph(h, header_style) for h in headers]]
+    for it in (po.items or []):
+        data.append([
+            Paragraph(str(it.get("product_name") or ""), cell_style),
+            Paragraph(str(it.get("spec") or "-"), cell_style),
+            Paragraph(str(it.get("quantity") or 0), cell_style),
+            Paragraph(str(it.get("unit_price") or 0), cell_style),
+            Paragraph(str(it.get("subtotal") or 0), cell_style),
+        ])
+    data.append([
+        Paragraph("合计", cell_style), Paragraph("", cell_style), Paragraph("", cell_style),
+        Paragraph("", cell_style),
+        Paragraph(str(po.total_amount), cell_style),
+    ])
+
+    items_table = Table(data, colWidths=[60 * mm, 45 * mm, 20 * mm, 25 * mm, 30 * mm], repeatRows=1)
+    items_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563EB')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+    ]))
+
+    elements = [
+        Paragraph("采 购 单", title_style),
+        info_table,
+        Spacer(1, 8 * mm),
+        items_table,
+    ]
+    doc.build(elements)
+    return buf.getvalue()
+
+
 async def _require_supplier_owned(db: AsyncSession, current_user: User, supplier_id: int) -> Supplier:
     """校验供应商属于当前用户管理的仓库，否则 403。超级管理员被拒绝。"""
     _forbid_super_admin(current_user)
@@ -481,6 +572,8 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         p = prod_map.get(it.product_id)
         if not p:
             raise HTTPException(400, f"产品 ID={it.product_id} 不属于该供应商")
+        if not p.unit_price or p.unit_price <= 0:
+            raise HTTPException(400, f"产品「{p.product_name}」尚未录入价格，请先录入价格后再下单")
         qty = max(it.quantity, 1)
         subtotal = p.unit_price * qty
         items_detail.append({
@@ -929,13 +1022,20 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
         query.order_by(PurchaseOrder.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )).scalars().all()
     sid_set = {po.supplier_id for po in rows}
+    wid_set = {po.warehouse_id for po in rows}
     sup_map = {}
     if sid_set:
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sid_set)))).scalars().all()
         sup_map = {s.id: s.name for s in sups}
+    wh_map = {}
+    if wid_set:
+        from app.models.warehouse import Warehouse
+        whs = (await db.execute(select(Warehouse).where(Warehouse.id.in_(wid_set)))).scalars().all()
+        wh_map = {w.id: w.name for w in whs}
     return {"data": [{
         "id": po.id, "order_number": po.order_number,
         "supplier_id": po.supplier_id, "supplier_name": sup_map.get(po.supplier_id, ""),
+        "warehouse_name": wh_map.get(po.warehouse_id, ""),
         "total_amount": po.total_amount, "status": po.status,
         "receipt_status": po.receipt_status or "not_received",
         "items": po.items or [], "arrival_photo": po.arrival_photo,
@@ -1020,6 +1120,30 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
         "receipt_status": po.receipt_status,
         "has_diff": has_diff,
     }
+
+
+@router.get("/purchase-orders/{po_id}/pdf")
+async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """下载采购单 PDF（含单号/供应商/产品明细/总价/日期/仓库/老板联系方式）。"""
+    from app.models.warehouse import Warehouse
+    from urllib.parse import quote
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
+    if not po:
+        raise HTTPException(404, "采购单不存在")
+    if po.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权查看其他仓库的采购单")
+    supplier = (await db.execute(select(Supplier).where(Supplier.id == po.supplier_id))).scalar_one_or_none()
+    wh = (await db.execute(select(Warehouse).where(Warehouse.id == po.warehouse_id))).scalar_one_or_none()
+    boss = await _get_boss_contact(db)
+    pdf_bytes = _build_purchase_order_pdf(po, supplier.name if supplier else "", wh.name if wh else "", boss)
+    filename = f"采购单_{po.order_number}.pdf"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes), media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
 
 
 @router.get("/purchase-receipt-discrepancies")

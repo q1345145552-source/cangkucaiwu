@@ -84,6 +84,10 @@ export default function SuppliersPage() {
   const [receiptSubmitting, setReceiptSubmitting] = useState(false);
   const [showDiscrepancies, setShowDiscrepancies] = useState(false);
   const [discrepancies, setDiscrepancies] = useState<any[]>([]);
+  // 采购单列表
+  const [showPoList, setShowPoList] = useState(false);
+  const [poList, setPoList] = useState<any[]>([]);
+  const [poDetail, setPoDetail] = useState<any>(null);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
 
@@ -183,6 +187,11 @@ export default function SuppliersPage() {
     } catch { toast("error", "加载产品失败"); }
   }
   function toggleOrderItem(pid: number) {
+    const p = products.find((x: any) => x.id === pid);
+    if (!p || !(p.unit_price > 0)) {
+      toast("error", "该产品尚未录入价格，请先录入价格后再下单");
+      return;
+    }
     setOrderItems(prev => {
       const next = { ...prev };
       if (next[pid]) { delete next[pid]; } else { next[pid] = 1; }
@@ -343,6 +352,38 @@ export default function SuppliersPage() {
     if (p.startsWith("http")) return p;
     return API_URL.replace("/api/v1", "") + p;
   }
+  // ─── 采购单列表 ───
+  async function openPoList() {
+    setShowPoList(true);
+    setPoList([]);
+    setPoDetail(null);
+    try {
+      const r = await api.get<any>("/suppliers/purchase-orders?page=1&page_size=100");
+      setPoList(r.data || []);
+    } catch { setPoList([]); }
+  }
+  async function downloadPoPdf(po: any) {
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/v1/suppliers/purchase-orders/${po.id}/pdf`, {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "下载失败" }));
+        toast("error", err.detail || "下载失败");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `采购单_${po.order_number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch { toast("error", "下载失败"); }
+  }
   // ─── 价格监控 ───
   async function openPriceMonitor() {
     setShowPriceMonitor(true);
@@ -467,6 +508,8 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Package size={16}/>收货验收</button>
               <button onClick={openDiscrepancies}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><AlertCircle size={16}/>收货差异</button>
+              <button onClick={openPoList}
+                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><FileText size={16}/>采购单列表</button>
               <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button>
             </>
           )}
@@ -634,22 +677,33 @@ export default function SuppliersPage() {
                   {products.map((p:any) => {
                     const qty = orderItems[p.id] || 0;
                     const selected = qty > 0;
+                    const hasPrice = (p.unit_price || 0) > 0;
                     const subtotal = (p.unit_price || 0) * qty;
                     return (
-                      <tr key={p.id} className={`border-b hover:bg-gray-50/50 transition-colors ${selected ? "bg-green-50/50" : ""}`}>
+                      <tr key={p.id} className={`border-b hover:bg-gray-50/50 transition-colors ${selected ? "bg-green-50/50" : ""} ${!hasPrice ? "opacity-50" : ""}`}>
                         <td className="px-3 py-3 text-center">
-                          <button onClick={()=>toggleOrderItem(p.id)}
-                            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                              selected ? "bg-green-600 border-green-600 text-white" : "border-gray-300 hover:border-green-400"
-                            }`}>
-                            {selected && <CheckCircle size={12} />}
-                          </button>
+                          {hasPrice ? (
+                            <button onClick={()=>toggleOrderItem(p.id)}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                selected ? "bg-green-600 border-green-600 text-white" : "border-gray-300 hover:border-green-400"
+                              }`}>
+                              {selected && <CheckCircle size={12} />}
+                            </button>
+                          ) : (
+                            <button disabled className="w-5 h-5 rounded border-2 border-gray-200 flex items-center justify-center cursor-not-allowed" title="未录入价格">
+                              <span className="text-gray-300 text-xs">×</span>
+                            </button>
+                          )}
                         </td>
                         <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}</td>
                         <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
-                        <td className="px-3 py-3 text-right font-semibold text-gray-700">¥{p.unit_price?.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-right font-semibold text-gray-700">
+                          {hasPrice ? `¥${p.unit_price?.toLocaleString()}` : <span className="text-red-500 text-xs">未录价格</span>}
+                        </td>
                         <td className="px-3 py-3 text-center">
-                          {p.is_lowest ? (
+                          {!hasPrice ? (
+                            <span className="text-xs text-red-400">先录入价格</span>
+                          ) : p.is_lowest ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                               <Tag size={10} />最低价
                             </span>
@@ -1443,6 +1497,113 @@ export default function SuppliersPage() {
             </div>
             <div className="border-t px-5 py-3 text-center">
               <button onClick={() => setShowDiscrepancies(false)} className="text-sm text-gray-400">关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 采购单列表弹窗 */}
+      {showPoList && (
+        <div className="modal-overlay z-50" onClick={() => setShowPoList(false)}>
+          <div className="bg-white rounded-xl w-[960px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <FileText size={20} />
+              <h2 className="font-semibold">采购单列表</h2>
+              <button onClick={() => setShowPoList(false)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5">
+              {poList.length === 0 ? (
+                <div className="text-gray-400 text-sm py-8 text-center">暂无采购单</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                    <th className="px-3 py-2 font-medium">单号</th>
+                    <th className="px-3 py-2 font-medium">供应商</th>
+                    <th className="px-3 py-2 font-medium">仓库</th>
+                    <th className="px-3 py-2 font-medium text-right">金额</th>
+                    <th className="px-3 py-2 font-medium">状态</th>
+                    <th className="px-3 py-2 font-medium">收货</th>
+                    <th className="px-3 py-2 font-medium">下单时间</th>
+                    <th className="px-3 py-2 font-medium text-center">操作</th>
+                  </tr></thead>
+                  <tbody>
+                    {poList.map((po: any) => (
+                      <tr key={po.id} className="border-b">
+                        <td className="px-3 py-2 font-medium">{po.order_number}</td>
+                        <td className="px-3 py-2">{po.supplier_name || "-"}</td>
+                        <td className="px-3 py-2">{po.warehouse_name || "-"}</td>
+                        <td className="px-3 py-2 text-right font-mono">{po.total_amount}</td>
+                        <td className="px-3 py-2">
+                          {po.status === "pending" ? <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">待审批</span>
+                            : po.status === "confirmed" ? <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">已生效</span>
+                            : <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">已驳回</span>}
+                        </td>
+                        <td className="px-3 py-2">
+                          {po.receipt_status === "received" ? <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">已收货</span>
+                            : po.receipt_status === "partially_received" ? <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">有差异</span>
+                            : <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">未收货</span>}
+                        </td>
+                        <td className="px-3 py-2 text-gray-500 text-xs">{po.created_at ? new Date(po.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</td>
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={() => setPoDetail(po)} className="text-blue-600 text-xs hover:underline">明细</button>
+                            <button onClick={() => downloadPoPdf(po)} className="text-green-600 text-xs hover:underline flex items-center gap-1"><Download size={12}/>PDF</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="border-t px-5 py-3 text-center">
+              <button onClick={() => setShowPoList(false)} className="text-sm text-gray-400">关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 采购单明细弹窗 */}
+      {poDetail && (
+        <div className="modal-overlay z-[60]" onClick={() => setPoDetail(null)}>
+          <div className="bg-white rounded-xl w-[720px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <FileText size={20} />
+              <h2 className="font-semibold">采购单明细 - {poDetail.order_number}</h2>
+              <button onClick={() => setPoDetail(null)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-gray-400">供应商：</span>{poDetail.supplier_name || "-"}</div>
+                <div><span className="text-gray-400">仓库：</span>{poDetail.warehouse_name || "-"}</div>
+                <div><span className="text-gray-400">状态：</span>{poDetail.status === "pending" ? "待审批" : poDetail.status === "confirmed" ? "已生效" : "已驳回"}</div>
+                <div><span className="text-gray-400">下单时间：</span>{poDetail.created_at ? new Date(poDetail.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</div>
+              </div>
+              <table className="w-full text-sm">
+                <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                  <th className="px-3 py-2 font-medium">产品名称</th>
+                  <th className="px-3 py-2 font-medium">规格</th>
+                  <th className="px-3 py-2 font-medium text-right">数量</th>
+                  <th className="px-3 py-2 font-medium text-right">单价</th>
+                  <th className="px-3 py-2 font-medium text-right">小计</th>
+                </tr></thead>
+                <tbody>
+                  {(poDetail.items || []).map((it: any, i: number) => (
+                    <tr key={i} className="border-b">
+                      <td className="px-3 py-2">{it.product_name}</td>
+                      <td className="px-3 py-2 text-gray-500">{it.spec || "-"}</td>
+                      <td className="px-3 py-2 text-right">{it.quantity}</td>
+                      <td className="px-3 py-2 text-right">{it.unit_price}</td>
+                      <td className="px-3 py-2 text-right">{it.subtotal}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="text-right font-semibold">总价：{poDetail.total_amount}</div>
+            </div>
+            <div className="border-t px-5 py-3 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+              <button onClick={() => downloadPoPdf(poDetail)} className="bg-green-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>下载PDF</button>
+              <button onClick={() => setPoDetail(null)} className="btn-secondary text-sm px-5 py-2">关闭</button>
             </div>
           </div>
         </div>
