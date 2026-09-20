@@ -239,6 +239,7 @@
   "att_status_rest": "နားရက်",
   "att_status_absent": "မလာ",
   "att_status_missing": "မှတ်တမ်းမတင်ရသေး",
+  "att_status_partial": "တစ်စိတ်တစ်ပိုင်းတင်ပြီး",
   "att_click_view_photos": "ဓာတ်ပုံကြည့်ရန် နှိပ်ပါ",
   "att_no_employee_data": "ဝန်ထမ်းဒေတာမရှိပါ",
   "att_leave_approve_title": "ခွင့်အတည်ပြုခြင်း",

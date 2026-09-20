@@ -150,6 +150,7 @@
   "att_status_rest": "休息日",
   "att_status_absent": "未到",
   "att_status_missing": "未打卡",
+  "att_status_partial": "部分打卡",
   "att_click_view_photos": "点击查看打卡照片",
   "att_no_employee_data": "暂无员工数据",
   "att_leave_approve_title": "请假审批",

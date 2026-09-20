@@ -164,6 +164,11 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                         const today = new Date().toISOString().slice(0, 10);
                         const isFuture = dt > today;
                         const hasLate = cell && Object.values(cell).some((cr: any) => cr.status === "late_half" || cr.status === "late_one");
+                        const count = cell ? [1,2,3,4].filter(s => cell[s]).length : 0;
+                        const isPartial = count > 0 && count < 4;
+                        const colorClass = isPartial
+                          ? "bg-yellow-50 text-yellow-600"
+                          : (hasLate ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600");
                         return (
                           <td key={dt} className="px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50"
                             onClick={() => setDetailPopup({ empName: emp.name, date: dt, sessions: cell || {} })}>
@@ -171,9 +176,9 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                               <span className="text-gray-200">-</span>
                             ) : cell ? (
                               <div className="flex flex-col items-center gap-0.5">
-                                {hasLate && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
-                                <span className={`rounded px-1 py-0.5 font-medium ${hasLate ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600"}`}>
-                                  {[1,2,3,4].filter(s => cell[s]).length}/4
+                                {hasLate && count >= 4 && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
+                                <span className={`rounded px-1 py-0.5 font-medium ${colorClass}`}>
+                                  {count}/4
                                 </span>
                                 {cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
                               </div>

@@ -150,6 +150,7 @@
   "att_status_rest": "วันหยุด",
   "att_status_absent": "ไม่มา",
   "att_status_missing": "ยังไม่ลงเวลา",
+  "att_status_partial": "ลงเวลาบางส่วน",
   "att_click_view_photos": "คลิกเพื่อดูภาพถ่ายลงเวลา",
   "att_no_employee_data": "ไม่มีข้อมูลพนักงาน",
   "att_leave_approve_title": "อนุมัติการลา",

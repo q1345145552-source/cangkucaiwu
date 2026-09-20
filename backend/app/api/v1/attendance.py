@@ -525,6 +525,8 @@ async def get_calendar(
             statuses = []
 
             # Check leave/rest/absence FIRST (applies to all dates)
+            session_count = 0
+            has_late = False
             if (e.id, dt) in leave_set:
                 statuses.append("leave")
             elif (e.id, dt) in rest_set:
@@ -534,8 +536,12 @@ async def get_calendar(
             # Then check clock-in
             elif (e.id, dt) in clock_map:
                 sessions = clock_map[(e.id, dt)]
+                session_count = len(sessions)
                 has_late = any(cr.status in ("late_half", "late_one") for cr in sessions)
-                statuses.append("late" if has_late else "present")
+                if session_count >= 4:
+                    statuses.append("late" if has_late else "present")
+                else:
+                    statuses.append("partial")
             elif dt <= thai_today():
                 # Past date without clock-in
                 statuses.append("missing")
@@ -547,7 +553,7 @@ async def get_calendar(
             status_cn = {
                 "present": "正常出勤", "late": "迟到", "leave": "请假",
                 "rest": "休息日", "absent": "未到", "missing": "未打卡",
-                "future": "未到"
+                "partial": "部分打卡", "future": "未到"
             }
             key_str = f"{dt.isoformat()}_{e.id}"
             events[key_str] = {
@@ -556,6 +562,8 @@ async def get_calendar(
                 "employee_name": e.name,
                 "status": status_name_db,
                 "status_label": status_cn.get(status_name_db, status_name_db),
+                "session_count": session_count,
+                "has_late": has_late,
                 "detail": "",
             }
             if (e.id, dt) in absence_map:
