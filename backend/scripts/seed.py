@@ -239,6 +239,18 @@ async def seed():
                 "ALTER TABLE employees ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ"
             ))
             await conn.execute(text(
+                "ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS is_makeup BOOLEAN DEFAULT false"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS makeup_by INTEGER"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS makeup_at TIMESTAMPTZ"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS makeup_reason VARCHAR(500)"
+            ))
+            await conn.execute(text(
                 "UPDATE supplier_cross_border_prices SET currency = 'CNY' WHERE currency = '人民币'"
             ))
             await conn.execute(text(

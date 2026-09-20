@@ -5,9 +5,11 @@ from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
-from app.core.timezone import thai_now, thai_today
+from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
 from datetime import datetime, date, time, timedelta
+from pydantic import BaseModel
+from typing import Optional, List
 import os, uuid, base64
 
 router = APIRouter()
@@ -189,6 +191,12 @@ async def list_records(
         us = (await db.execute(select(User).where(User.id.in_(uid_set)))).scalars().all()
         users_map = {u.id: u.display_name for u in us}
 
+    makeup_by_ids = {r.makeup_by for r in records if r.makeup_by}
+    makeup_by_names = {}
+    if makeup_by_ids:
+        us2 = (await db.execute(select(User).where(User.id.in_(makeup_by_ids)))).scalars().all()
+        makeup_by_names = {u.id: u.display_name for u in us2}
+
     return {
         "employees": [{
             "id": e.id, "name": e.name, "position": e.position,
@@ -202,8 +210,92 @@ async def list_records(
             "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
             "status": r.status, "penalty_amount": r.penalty_amount,
             "photo_path": r.photo_path,
+            "is_makeup": bool(r.is_makeup),
+            "makeup_by": r.makeup_by,
+            "makeup_by_name": makeup_by_names.get(r.makeup_by, ""),
+            "makeup_at": r.makeup_at.isoformat() if r.makeup_at else None,
+            "makeup_reason": r.makeup_reason,
         } for r in records],
     }
+
+class MakeupCreate(BaseModel):
+    employee_id: int
+    date: str  # YYYY-MM-DD
+    sessions: List[int]  # 1-4
+    reason: str
+
+@router.post("/makeup")
+async def makeup_clock_in(
+    req: MakeupCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """管理员/主管补卡：按标准时段时间生成打卡记录，单独标记为补卡，不参与迟到判定。"""
+    from app.models.employee import Employee
+    from app.services.employee_match import resolve_employee_user_map
+
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有管理员或主管可以补卡")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    try:
+        target = datetime.strptime(req.date, "%Y-%m-%d").date()
+    except:
+        raise HTTPException(400, "日期格式错误")
+
+    today = thai_today()
+    if target > today:
+        raise HTTPException(400, "不能补未来的日期")
+    if (today - target).days > 60:
+        raise HTTPException(400, "不能补超过60天以前的记录，请联系管理员")
+
+    reason = (req.reason or "").strip()
+    if not reason:
+        raise HTTPException(400, "请填写补卡原因")
+
+    sessions: list[int] = []
+    for s in req.sessions:
+        if s in SESSIONS and s not in sessions:
+            sessions.append(s)
+    if not sessions:
+        raise HTTPException(400, "请选择要补的时段")
+
+    emp = (await db.execute(
+        select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
+    )).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(404, "员工不存在")
+
+    emp_to_user, _ = await resolve_employee_user_map(db, [emp])
+    uid = emp_to_user.get(emp.id)
+    if not uid:
+        raise HTTPException(400, "该员工没有关联打卡账号，无法补卡")
+
+    created: list[int] = []
+    skipped: list[int] = []
+    for s in sessions:
+        dup = (await db.execute(
+            select(ClockInRecord).where(ClockInRecord.user_id == uid, ClockInRecord.clock_date == target, ClockInRecord.session == s)
+        )).scalar_one_or_none()
+        if dup:
+            skipped.append(s)
+            continue
+        t_std = SESSIONS[s]["time"]
+        clocked = datetime.combine(target, t_std, tzinfo=THAI_TZ)
+        db.add(ClockInRecord(
+            user_id=uid, warehouse_id=wh_id, clock_date=target, session=s,
+            clocked_in_at=clocked, status="normal", penalty_amount=0,
+            is_makeup=True, makeup_by=current_user.id, makeup_at=thai_now(), makeup_reason=reason,
+        ))
+        created.append(s)
+
+    await db.flush()
+    if skipped:
+        return {"message": f"补卡完成：新增 {len(created)} 段，跳过 {len(skipped)} 段（该时段已有记录）", "created": created, "skipped": skipped}
+    return {"message": f"补卡完成：新增 {len(created)} 段", "created": created, "skipped": skipped}
 
 @router.get("/records/export")
 async def export_records(

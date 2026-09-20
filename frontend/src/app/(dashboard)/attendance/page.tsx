@@ -244,7 +244,7 @@ export default function AttendancePage() {
         </div>
         {canApprove && (
           <div className="flex bg-gray-100 rounded-lg p-0.5">
-            <button onClick={() => setActiveTab("calendar")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            <button onClick={() => { setActiveTab("calendar"); loadCalendar(); }} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               <Calendar size={15} className="inline mr-1.5"/>{t("att_calendar_view")}
             </button>
             <button onClick={() => setActiveTab("records")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "records" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
@@ -255,7 +255,7 @@ export default function AttendancePage() {
       </div>
 
       {activeTab === "records" ? (
-        <ClockRecordsGrid startDate={dateRange.start_date} endDate={dateRange.end_date} />
+        <ClockRecordsGrid startDate={dateRange.start_date} endDate={dateRange.end_date} onChange={loadCalendar} />
       ) : (
         <>
 

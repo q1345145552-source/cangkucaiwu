@@ -3,7 +3,8 @@ import { useState, useMemo, useEffect } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
-import { Camera, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Camera, ChevronLeft, ChevronRight, Download, CalendarClock } from "lucide-react";
 
 const SESSION_KEYS: Record<number, string> = {
   1: "morning_shift", 2: "noon_break_end", 3: "afternoon_shift", 4: "evening_shift",
@@ -23,15 +24,20 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
   return list;
 }
 
-export default function ClockRecordsGrid(props: { startDate: string; endDate: string }) {
-  const { startDate, endDate } = props;
+export default function ClockRecordsGrid(props: { startDate: string; endDate: string; onChange?: () => void }) {
+  const { startDate, endDate, onChange } = props;
   const { t } = useI18n();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canMakeup = user?.role === "warehouse_admin" || user?.role === "supervisor";
   const [employees, setEmployees] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
-  const [detailPopup, setDetailPopup] = useState<{ empName: string; date: string; sessions: Record<number, any> } | null>(null);
+  const [detailPopup, setDetailPopup] = useState<{ empId: number; empName: string; date: string; sessions: Record<number, any> } | null>(null);
+  const [makeupForm, setMakeupForm] = useState<{ empId: number; empName: string; date: string } | null>(null);
+  const [makeupSessions, setMakeupSessions] = useState<number[]>([]);
+  const [makeupReason, setMakeupReason] = useState("");
 
   const dayNames = [0, 1, 2, 3, 4, 5, 6].map(i => t(`att_weekday_${i}`));
   const dateList = buildDateList(startDate, endDate, dayNames);
@@ -47,6 +53,37 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
       setRecords(r.records || []);
     } catch {}
     setLoading(false);
+  }
+
+  function openMakeupForm() {
+    if (!detailPopup) return;
+    setMakeupForm({ empId: detailPopup.empId, empName: detailPopup.empName, date: detailPopup.date });
+    setMakeupSessions([]);
+    setMakeupReason("");
+  }
+
+  function toggleSession(s: number) {
+    setMakeupSessions(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s].sort());
+  }
+
+  async function submitMakeup() {
+    if (!makeupForm) return;
+    if (makeupSessions.length === 0) { toast("error", "请选择要补的时段"); return; }
+    if (!makeupReason.trim()) { toast("error", "请填写补卡原因"); return; }
+    try {
+      const r = await api.post<any>("/clock-in/makeup", {
+        employee_id: makeupForm.empId,
+        date: makeupForm.date,
+        sessions: makeupSessions,
+        reason: makeupReason,
+      });
+      toast("success", r.message || "补卡成功");
+      setMakeupForm(null);
+      setMakeupSessions([]);
+      setMakeupReason("");
+      load();
+      if (onChange) onChange();
+    } catch (err: any) { toast("error", err.message || "补卡失败"); }
   }
 
   async function exportExcel() {
@@ -164,6 +201,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                         const today = new Date().toISOString().slice(0, 10);
                         const isFuture = dt > today;
                         const hasLate = cell && Object.values(cell).some((cr: any) => cr.status === "late_half" || cr.status === "late_one");
+                        const hasMakeup = cell && Object.values(cell).some((cr: any) => cr.is_makeup);
                         const count = cell ? [1,2,3,4].filter(s => cell[s]).length : 0;
                         const isPartial = count > 0 && count < 4;
                         const colorClass = isPartial
@@ -171,7 +209,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                           : (hasLate ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600");
                         return (
                           <td key={dt} className="px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50"
-                            onClick={() => setDetailPopup({ empName: emp.name, date: dt, sessions: cell || {} })}>
+                            onClick={() => setDetailPopup({ empId: emp.id, empName: emp.name, date: dt, sessions: cell || {} })}>
                             {isFuture ? (
                               <span className="text-gray-200">-</span>
                             ) : cell ? (
@@ -180,6 +218,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                                 <span className={`rounded px-1 py-0.5 font-medium ${colorClass}`}>
                                   {count}/4
                                 </span>
+                                {hasMakeup && <span className="text-[9px] font-bold text-purple-600 bg-purple-50 rounded px-0.5">补</span>}
                                 {cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
                               </div>
                             ) : (
@@ -217,7 +256,8 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-sm text-gray-700">{s}. {t(SESSION_KEYS[s])}</span>
                       {cr ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {cr.is_makeup && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">补卡</span>}
                           {cr.status !== "normal" && (
                             <span className={`text-xs px-1.5 py-0.5 rounded ${cr.status === "late_half" ? "bg-orange-50 text-orange-600" : "bg-red-50 text-red-600"}`}>
                               {cr.status === "late_half" ? t("att_late_half_hour") : t("att_late_one_hour")}</span>
@@ -226,6 +266,11 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                         </div>
                       ) : <span className="text-xs text-gray-300">{t("att_not_clocked")}</span>}
                     </div>
+                    {cr?.is_makeup && (
+                      <div className="mb-2 text-[11px] text-purple-600 bg-purple-50 rounded px-2 py-1">
+                        补卡人：{cr.makeup_by_name || "-"} · 原因：{cr.makeup_reason || "-"}
+                      </div>
+                    )}
                     {cr?.photo_path ? (
                       <img src={`/${cr.photo_path}`} className="w-full rounded-lg max-h-64 object-cover border cursor-pointer hover:opacity-90"
                         onClick={() => setZoomedPhoto(`/${cr.photo_path}`)} />
@@ -234,12 +279,62 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                 );
               })}
             </div>
-            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400">{t("close")}</button>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3 items-center">
+              {canMakeup && (
+                <button onClick={openMakeupForm}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-purple-700">
+                  <CalendarClock size={14}/>补卡
+                </button>
+              )}
+              <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400 px-4 py-2">{t("close")}</button>
             </div>
           </div>
         </div>
       )}
+      {makeupForm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setMakeupForm(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-purple-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <CalendarClock size={18} /><span className="font-semibold">补卡</span>
+              <button onClick={() => setMakeupForm(null)} className="ml-auto text-2xl text-purple-200 hover:text-white">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="form-label text-xs mb-1 block">员工</label>
+                <div className="form-input py-2 bg-gray-50 text-gray-700">{makeupForm.empName}</div>
+              </div>
+              <div>
+                <label className="form-label text-xs mb-1 block">日期</label>
+                <div className="form-input py-2 bg-gray-50 text-gray-700">{makeupForm.date}</div>
+              </div>
+              <div>
+                <label className="form-label text-xs mb-1 block">时段 <span className="text-red-400">*</span></label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setMakeupSessions([1,2,3,4])}
+                    className={`px-3 py-1.5 rounded-lg text-xs border ${makeupSessions.length === 4 ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                    补全天
+                  </button>
+                  {[1,2,3,4].map(s => (
+                    <button key={s} type="button" onClick={() => toggleSession(s)}
+                      className={`px-3 py-1.5 rounded-lg text-xs border ${makeupSessions.includes(s) ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                      {t(SESSION_KEYS[s])}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="form-label text-xs mb-1 block">原因 <span className="text-red-400">*</span></label>
+                <textarea className="form-input py-2 w-full" rows={2} value={makeupReason} onChange={e => setMakeupReason(e.target.value)} placeholder="如：忘记打卡" />
+              </div>
+            </div>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setMakeupForm(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
+              <button onClick={submitMakeup} className="bg-purple-600 text-white px-5 py-2 rounded-lg text-sm">提交补卡</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {zoomedPhoto && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4" onClick={() => setZoomedPhoto(null)}>
           <button onClick={() => setZoomedPhoto(null)} className="absolute top-4 right-4 text-white/70 hover:text-white text-4xl">&times;</button>
