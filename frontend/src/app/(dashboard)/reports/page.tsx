@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
-import { fmtMoney } from "@/lib/currency";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, FileText, PiggyBank, Receipt, CreditCard, Clock, AlertTriangle, Download } from "lucide-react";
 
@@ -170,43 +170,39 @@ export default function ReportsPage() {
           <div className="px-6 pt-5 pb-2">
             {selected === "recharge-summary" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-green-50 rounded-xl p-4"><div className="text-xs text-green-500 mb-1">当月总充值金额</div><div className="text-xl font-bold text-green-700">฿{(data.total_amount || 0).toLocaleString()}</div></div>
+                <div className="bg-green-50 rounded-xl p-4"><div className="text-xs text-green-500 mb-1">当月总充值金额</div><div className="text-xl font-bold text-green-700">{fmtMoneyByCurrency(data.total_amount_by_currency)}</div></div>
                 <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">总笔数</div><div className="text-xl font-bold text-blue-700">{data.total_count || 0} 笔</div></div>
               </div>
             )}
             {selected === "incoming-summary" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">当月总到账金额</div><div className="text-xl font-bold text-blue-700">฿{(data.total_amount || 0).toLocaleString()}</div></div>
+                <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">当月总到账金额</div><div className="text-xl font-bold text-blue-700">{fmtMoneyByCurrency(data.total_amount_by_currency)}</div></div>
                 <div className="bg-green-50 rounded-xl p-4"><div className="text-xs text-green-500 mb-1">总笔数</div><div className="text-xl font-bold text-green-700">{data.total_count || 0} 笔</div></div>
               </div>
             )}
             {selected === "income-expense" && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                <div className="bg-green-50 rounded-xl p-4"><div className="text-xs text-green-500 mb-1">总收入</div><div className="text-lg font-bold text-green-700">฿{(data.total_income || 0).toLocaleString()}</div></div>
-                <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">充值收入</div><div className="text-lg font-bold text-blue-700">฿{(data.recharge_income || 0).toLocaleString()}</div></div>
-                <div className="bg-orange-50 rounded-xl p-4"><div className="text-xs text-orange-500 mb-1">其他收入</div><div className="text-lg font-bold text-orange-700">฿{(data.other_income || 0).toLocaleString()}</div></div>
-                <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">总支出</div><div className="text-lg font-bold text-red-700">฿{(data.total_expense || 0).toLocaleString()}</div></div>
-                <div className={`rounded-xl p-4 col-span-2 md:col-span-4 ${(data.net || 0) >= 0 ? "bg-indigo-50" : "bg-red-50"}`}>
-                  <div className={`text-xs mb-1 ${(data.net || 0) >= 0 ? "text-indigo-500" : "text-red-500"}`}>净额（总收入 - 总支出）</div>
-                  <div className={`text-lg font-bold ${(data.net || 0) >= 0 ? "text-indigo-700" : "text-red-700"}`}>฿{(data.net || 0).toLocaleString()}</div>
-                </div>
+                <div className="bg-green-50 rounded-xl p-4"><div className="text-xs text-green-500 mb-1">总收入</div><div className="text-lg font-bold text-green-700">{fmtMoneyByCurrency(data.total_income_by_currency)}</div></div>
+                <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">充值收入</div><div className="text-lg font-bold text-blue-700">{fmtMoneyByCurrency(data.recharge_income_by_currency)}</div></div>
+                <div className="bg-orange-50 rounded-xl p-4"><div className="text-xs text-orange-500 mb-1">其他收入</div><div className="text-lg font-bold text-orange-700">{fmtMoneyByCurrency(data.other_income_by_currency)}</div></div>
+                <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">总支出</div><div className="text-lg font-bold text-red-700">{fmtMoneyByCurrency(data.total_expense_by_currency)}</div></div>
               </div>
             )}
             {selected === "payable" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">待付总额</div><div className="text-xl font-bold text-red-700">฿{(data.total_pending || 0).toLocaleString()}</div></div>
+                <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">待付总额</div><div className="text-xl font-bold text-red-700">{fmtMoneyByCurrency(data.total_pending_by_currency)}</div></div>
                 <div className="bg-orange-50 rounded-xl p-4"><div className="text-xs text-orange-500 mb-1">逾期笔数</div><div className="text-xl font-bold text-orange-700">{data.overdue_count || 0} 笔</div></div>
               </div>
             )}
             {selected === "expense-fund" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-orange-50 rounded-xl p-4"><div className="text-xs text-orange-500 mb-1">在途总额</div><div className="text-xl font-bold text-orange-700">฿{(data.in_transit_total || 0).toLocaleString()}</div></div>
+                <div className="bg-orange-50 rounded-xl p-4"><div className="text-xs text-orange-500 mb-1">在途总额</div><div className="text-xl font-bold text-orange-700">{fmtMoneyByCurrency(data.in_transit_total_by_currency)}</div></div>
                 <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">总笔数</div><div className="text-xl font-bold text-blue-700">{data.total_count || 0} 笔</div></div>
               </div>
             )}
             {selected === "reimbursement" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-teal-50 rounded-xl p-4"><div className="text-xs text-teal-500 mb-1">当月报销总额</div><div className="text-xl font-bold text-teal-700">฿{(data.total_amount || 0).toLocaleString()}</div></div>
+                <div className="bg-teal-50 rounded-xl p-4"><div className="text-xs text-teal-500 mb-1">当月报销总额</div><div className="text-xl font-bold text-teal-700">{fmtMoneyByCurrency(data.total_amount_by_currency)}</div></div>
                 <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">总笔数</div><div className="text-xl font-bold text-blue-700">{data.total_count || 0} 笔</div></div>
               </div>
             )}

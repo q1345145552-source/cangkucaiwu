@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, FileText, Search, X, Image as ImageIcon, Eye, CreditCard } from "lucide-react";
@@ -218,7 +219,7 @@ export default function FundReviewPage() {
                     </td>
                     <td className="px-3 py-3 font-medium text-gray-800">{row.employee_name}</td>
                     <td className="px-3 py-3 text-gray-500">{row.warehouse_name}</td>
-                    <td className="px-3 py-3 text-right text-gray-500">฿{(row.fund_limit || 5000).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right text-gray-500">{fmtMoney(row.fund_limit || 5000, row.fund_currency)}</td>
                     <td className="px-3 py-3 text-gray-500">{row.receive_date?.slice(0, 10) || "-"}</td>
                     <td className="px-3 py-3">{row.expense_date?.slice(0, 10)}</td>
                     <td className="px-3 py-3">{row.category}</td>
@@ -299,8 +300,8 @@ export default function FundReviewPage() {
                     {rechargeData.map((r: any) => (
                       <tr key={r.id} className="border-b hover:bg-gray-50/50">
                         <td className="px-3 py-3 font-medium text-gray-800">{r.applicant_name}</td>
-                        <td className="px-3 py-3 text-right font-medium text-green-700">+฿{r.amount?.toLocaleString()}</td>
-                        <td className="px-3 py-3 text-right text-gray-500">฿{(r.current_balance || 0).toLocaleString()}</td>
+                        <td className="px-3 py-3 text-right font-medium text-green-700">+{fmtMoney(r.amount, r.currency)}</td>
+                        <td className="px-3 py-3 text-right text-gray-500">{fmtMoney(r.current_balance, r.currency)}</td>
                         <td className="px-3 py-3 text-gray-600 max-w-[200px] truncate">{r.reason || "-"}</td>
                         <td className="px-3 py-3 text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleString("zh-CN") : "-"}</td>
                         <td className="px-3 py-3 text-center">

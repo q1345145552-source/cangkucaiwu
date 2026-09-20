@@ -156,20 +156,23 @@ async def list_accounts(
 
     result = []
     for a in accounts:
-        # Count spent amount
-        spent_q = select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
+        # 已用金额按币种分组（排除被驳回的）
+        spent_q = select(ExpenseFundItem.currency, func.sum(ExpenseFundItem.amount).label("total")).where(
             ExpenseFundItem.fund_id == a.id,
-            ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
-        )
-        spent = float((await db.execute(spent_q)).scalar() or 0)
+            ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+        ).group_by(ExpenseFundItem.currency)
+        spent_rows = (await db.execute(spent_q)).all()
+        spent_by_currency = {r.currency or "THB": float(r.total or 0) for r in spent_rows}
+        total_spent = round(sum(spent_by_currency.values()), 2)
         result.append({
             "id": a.id, "employee_id": a.employee_id,
             "employee_name": umap.get(a.employee_id, ""),
             "currency": a.currency or "THB",
             "total_topped_up": a.amount or 0,
             "current_balance": (a.remaining_balance or 0),
-            "total_spent": spent,
-            "available": max(0, (a.remaining_balance or 0) - spent),
+            "total_spent": total_spent,
+            "spent_by_currency": spent_by_currency,
+            "available": max(0, (a.remaining_balance or 0) - total_spent),
             "fund_limit": a.fund_limit or 5000,
             "alert_threshold": a.alert_threshold or 500,
             "is_low": (a.remaining_balance or 0) <= (a.alert_threshold or 500),
@@ -377,6 +380,7 @@ async def list_pending_reviews(
         "employee_name": emp_map.get(funds_map.get(i.fund_id, ExpenseFund()).employee_id, ""),
         "warehouse_name": wh_map.get(funds_map.get(i.fund_id, ExpenseFund()).warehouse_id, ""),
         "fund_limit": funds_map.get(i.fund_id, ExpenseFund()).fund_limit or 5000,
+        "fund_currency": (funds_map.get(i.fund_id, ExpenseFund()).currency or "THB") if funds_map.get(i.fund_id) else "THB",
         "receive_date": funds_map.get(i.fund_id, ExpenseFund()).receive_date.isoformat() if funds_map.get(i.fund_id) and funds_map[i.fund_id].receive_date else None,
         "expense_date": i.expense_date.isoformat() if i.expense_date else None,
         "category": i.category, "amount": i.amount, "currency": i.currency or "THB",
@@ -513,6 +517,7 @@ async def list_recharge_requests(
             "warehouse_name": wh.name,
             "applicant_id": rr.applicant_id, "applicant_name": applicant.display_name,
             "amount": rr.amount, "reason": rr.reason or "", "status": rr.status,
+            "currency": fund.currency or "THB",
             "current_balance": fund.remaining_balance,
             "fund_limit": fund.fund_limit,
             "review_remark": rr.review_remark or "",

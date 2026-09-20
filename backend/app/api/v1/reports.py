@@ -55,6 +55,15 @@ def _apply_date(query, col, start_date, end_date):
     return query
 
 
+def _sum_by_currency(rows, attr: str = "amount"):
+    """按币种汇总 rows 的 attr 字段（币种缺省按 THB）。"""
+    out: dict = {}
+    for r in rows:
+        c = getattr(r, "currency", None) or "THB"
+        out[c] = out.get(c, 0) + (getattr(r, attr, 0) or 0)
+    return out
+
+
 def to_excel(headers, rows, sheet_name="Sheet1"):
     wb = Workbook(); ws = wb.active; ws.title = sheet_name
     fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
@@ -170,7 +179,7 @@ async def recharge_summary(start_date: str = None, end_date: str = None, warehou
     data = [{"日期": r.declare_date.strftime("%Y-%m-%d") if r.declare_date else "", "金额": r.amount, "币种": r.currency, "状态": _(r.match_status)} for r in records]
     headers = ["日期","金额","币种","状态"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "充值汇总")
-    return {"data": data, "total_amount": sum(r.amount for r in records), "total_count": len(records)}
+    return {"data": data, "total_amount_by_currency": _sum_by_currency(records), "total_count": len(records)}
 
 # ===== 2. 到账汇总 =====
 @router.get("/incoming-summary")
@@ -188,7 +197,7 @@ async def incoming_summary(start_date: str = None, end_date: str = None, warehou
     data = [{"日期": r.received_date.strftime("%Y-%m-%d") if r.received_date else "", "金额": r.amount, "币种": r.currency, "付款方": r.payer_name or ""} for r in records]
     headers = ["日期","金额","币种","付款方"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "到账汇总")
-    return {"data": data, "total_amount": sum(r.amount for r in records), "total_count": len(records)}
+    return {"data": data, "total_amount_by_currency": _sum_by_currency(records), "total_count": len(records)}
 
 # ===== 3. 收支报表 =====
 @router.get("/income-expense")
@@ -230,14 +239,16 @@ async def income_expense_report(start_date: str = None, end_date: str = None, wa
         data.append({"类型": "支出", "日期": r.expense_date.strftime("%Y-%m-%d") if r.expense_date else "", "金额": r.amount, "币种": r.currency or "THB", "备注": r.remark or ""})
     data.sort(key=lambda x: x["日期"], reverse=True)
 
-    total_income = sum(r.amount for r in incomes) + sum(r.amount for r in recharges)
-    total_expense = sum(r.amount for r in expenses)
-    recharge_income = sum(r.amount for r in recharges)
-    other_income = sum(r.amount for r in incomes)
+    total_income_by_currency = _sum_by_currency(list(incomes) + list(recharges))
+    total_expense_by_currency = _sum_by_currency(expenses)
+    recharge_income_by_currency = _sum_by_currency(recharges)
+    other_income_by_currency = _sum_by_currency(incomes)
     headers = ["类型","日期","金额","币种","备注"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "收支报表")
-    return {"data": data, "total_income": total_income, "total_expense": total_expense, "net": total_income - total_expense,
-            "recharge_income": recharge_income, "other_income": other_income}
+    return {"data": data, "total_income_by_currency": total_income_by_currency,
+            "total_expense_by_currency": total_expense_by_currency,
+            "recharge_income_by_currency": recharge_income_by_currency,
+            "other_income_by_currency": other_income_by_currency}
 
 # ===== 4. 应付报表 =====
 @router.get("/payable")
@@ -254,11 +265,15 @@ async def payable_report(start_date: str = None, end_date: str = None, warehouse
     bills = result.scalars().all()
     data = [{"账单号": b.bill_number or "", "到期日": b.due_date.strftime("%Y-%m-%d") if b.due_date else "", "金额": b.amount or 0,
              "已付": b.paid_amount or 0, "币种": b.currency or "THB", "状态": _(b.status)} for b in bills]
-    pending_total = sum(b.amount - (b.paid_amount or 0) for b in bills if b.status in ("pending","partially_paid","overdue"))
+    pending_total_by_currency: dict = {}
+    for b in bills:
+        if b.status in ("pending", "partially_paid", "overdue"):
+            c = b.currency or "THB"
+            pending_total_by_currency[c] = pending_total_by_currency.get(c, 0) + (b.amount - (b.paid_amount or 0))
     overdue_count = sum(1 for b in bills if b.status == "overdue")
     headers = ["账单号","到期日","金额","已付","币种","状态"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "应付报表")
-    return {"data": data, "total_pending": pending_total, "overdue_count": overdue_count, "total_count": len(bills)}
+    return {"data": data, "total_pending_by_currency": pending_total_by_currency, "overdue_count": overdue_count, "total_count": len(bills)}
 
 # ===== 5. 备用金报表（当前状态，不按时间） =====
 @router.get("/expense-fund")
@@ -272,11 +287,15 @@ async def expense_fund_report(warehouse_id: int = None, format: str = "json",
     if warehouse_id: query = query.where(ExpenseFund.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ExpenseFund.created_at.desc()))
     funds = result.scalars().all()
-    data = [{"用途": f.purpose or "", "金额": f.amount or 0, "余额": f.remaining_balance or 0, "状态": _(f.status)} for f in funds]
-    in_transit = sum(f.remaining_balance or 0 for f in funds if f.status == "active")
-    headers = ["用途","金额","余额","状态"]
+    data = [{"用途": f.purpose or "", "金额": f.amount or 0, "余额": f.remaining_balance or 0, "币种": f.currency or "THB", "状态": _(f.status)} for f in funds]
+    in_transit_by_currency: dict = {}
+    for f in funds:
+        if f.status == "active":
+            c = f.currency or "THB"
+            in_transit_by_currency[c] = in_transit_by_currency.get(c, 0) + (f.remaining_balance or 0)
+    headers = ["用途","金额","余额","币种","状态"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "备用金报表")
-    return {"data": data, "in_transit_total": in_transit, "total_count": len(funds)}
+    return {"data": data, "in_transit_total_by_currency": in_transit_by_currency, "total_count": len(funds)}
 
 # ===== 6. 报销报表 =====
 @router.get("/reimbursement")
@@ -293,10 +312,9 @@ async def reimbursement_report(start_date: str = None, end_date: str = None, war
     reimbs = result.scalars().all()
     data = [{"日期": r.submit_date.strftime("%Y-%m-%d") if r.submit_date else "", "金额": r.total_amount or 0,
              "币种": r.currency or "THB", "状态": _(r.status)} for r in reimbs]
-    total = sum(r.total_amount or 0 for r in reimbs)
     headers = ["日期","金额","币种","状态"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "报销报表")
-    return {"data": data, "total_amount": total, "total_count": len(reimbs)}
+    return {"data": data, "total_amount_by_currency": _sum_by_currency(reimbs, "total_amount"), "total_count": len(reimbs)}
 
 # ===== 7. 账期报表（当前状态，不按时间） =====
 @router.get("/credit")

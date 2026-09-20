@@ -198,14 +198,20 @@ async def list_results(
         })
 
     total = len(items)
-    # Compute total matched amounts
-    total_matched_decl = sum((it.get("decl_amount") or 0) for it in items)
-    total_matched_flow = sum((it.get("flow_amount") or 0) for it in items)
+    # Compute total matched amounts by currency
+    total_matched_decl_by_currency: dict = {}
+    total_matched_flow_by_currency: dict = {}
+    for it in items:
+        dc = it.get("decl_currency") or "THB"
+        fc = it.get("flow_currency") or "THB"
+        total_matched_decl_by_currency[dc] = total_matched_decl_by_currency.get(dc, 0) + (it.get("decl_amount") or 0)
+        total_matched_flow_by_currency[fc] = total_matched_flow_by_currency.get(fc, 0) + (it.get("flow_amount") or 0)
     # Apply pagination after filtering
     start_idx = (page - 1) * page_size
     paged = items[start_idx:start_idx + page_size]
     return {"data": paged, "total": total, "page": page, "page_size": page_size,
-            "total_matched_decl": total_matched_decl, "total_matched_flow": total_matched_flow}
+            "total_matched_decl_by_currency": total_matched_decl_by_currency,
+            "total_matched_flow_by_currency": total_matched_flow_by_currency}
 
 @router.get("/export")
 async def export_reconciliation(

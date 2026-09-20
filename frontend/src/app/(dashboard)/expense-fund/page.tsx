@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
-import { fmtMoney } from "@/lib/currency";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -244,8 +244,8 @@ export default function ExpenseFundPage() {
   }
 
   // ====== Stats ======
-  const totalBalance = accounts.reduce((s: number, a: any) => s + (a.current_balance || 0), 0);
-  const totalSpent = accounts.reduce((s: number, a: any) => s + (a.total_spent || 0), 0);
+  const totalBalanceByCurrency = accounts.reduce((m: Record<string, number>, a: any) => { const c = a.currency || "THB"; m[c] = (m[c] || 0) + (a.current_balance || 0); return m; }, {});
+  const totalSpentByCurrency = accounts.reduce((m: Record<string, number>, a: any) => { Object.entries(a.spent_by_currency || {}).forEach(([c, v]: [string, any]) => { m[c] = (m[c] || 0) + (v || 0); }); return m; }, {});
   const lowCount = accounts.filter((a: any) => a.is_low).length;
 
   return (
@@ -303,11 +303,11 @@ export default function ExpenseFundPage() {
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
               <div className="flex items-center gap-2 text-xs text-gray-400 mb-2"><DollarSign size={14} />账户总余额</div>
-              <div className="text-2xl font-bold text-blue-700">฿{totalBalance.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-blue-700">{fmtMoneyByCurrency(totalBalanceByCurrency)}</div>
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
               <div className="flex items-center gap-2 text-xs text-gray-400 mb-2"><TrendingUp size={14} />累计开销</div>
-              <div className="text-2xl font-bold text-yellow-700">฿{totalSpent.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-yellow-700">{fmtMoneyByCurrency(totalSpentByCurrency)}</div>
             </div>
             <div className={`bg-white rounded-2xl shadow-sm border p-4 ${lowCount > 0 ? "border-red-200" : "border-gray-100"}`}>
               <div className="flex items-center gap-2 text-xs text-gray-400 mb-2"><AlertTriangle size={14} />余额不足</div>
@@ -430,7 +430,7 @@ export default function ExpenseFundPage() {
                                         </div>
                                         <div className="flex items-center gap-3">
                                           <span className="text-gray-500 max-w-[120px] truncate">{r.reason || "-"}</span>
-                                          <span className="font-medium text-green-700">+฿{r.amount?.toLocaleString()}</span>
+                                          <span className="font-medium text-green-700">+{fmtMoney(r.amount, r.currency)}</span>
                                         </div>
                                       </div>
                                     ))}
@@ -626,7 +626,7 @@ export default function ExpenseFundPage() {
                         <td className="px-2 py-3"><input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleOneReview(row.id)} className="rounded" /></td>
                         <td className="px-3 py-3 font-medium text-gray-800">{row.employee_name}</td>
                         <td className="px-3 py-3 text-gray-500">{row.warehouse_name}</td>
-                        <td className="px-3 py-3 text-right text-gray-500">฿{(row.fund_limit || 5000).toLocaleString()}</td>
+                        <td className="px-3 py-3 text-right text-gray-500">{fmtMoney(row.fund_limit || 5000, row.fund_currency)}</td>
                         <td className="px-3 py-3 text-gray-500">{row.receive_date?.slice(0, 10) || "-"}</td>
                         <td className="px-3 py-3">{row.expense_date?.slice(0, 10)}</td>
                         <td className="px-3 py-3">{row.category}</td>
@@ -686,8 +686,8 @@ export default function ExpenseFundPage() {
                         {rechargeData.map((r: any) => (
                           <tr key={r.id} className="border-b hover:bg-gray-50/50">
                             <td className="px-3 py-3 font-medium text-gray-800">{r.applicant_name}</td>
-                            <td className="px-3 py-3 text-right font-medium text-green-700">+฿{r.amount?.toLocaleString()}</td>
-                            <td className="px-3 py-3 text-right text-gray-500">฿{(r.current_balance || 0).toLocaleString()}</td>
+                            <td className="px-3 py-3 text-right font-medium text-green-700">+{fmtMoney(r.amount, r.currency)}</td>
+                            <td className="px-3 py-3 text-right text-gray-500">{fmtMoney(r.current_balance, r.currency)}</td>
                             <td className="px-3 py-3 text-gray-600 max-w-[200px] truncate">{r.reason || "-"}</td>
                             <td className="px-3 py-3 text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleString("zh-CN") : "-"}</td>
                             <td className="px-3 py-3 text-center">

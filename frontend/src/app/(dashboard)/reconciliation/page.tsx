@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
-import { fmtMoney } from "@/lib/currency";
+import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import { Download, Link2, CheckCircle, Search, ArrowRight, Image as ImageIcon } from "lucide-react";
@@ -33,8 +33,8 @@ export default function ReconciliationPage() {
   const [resultsEndDate, setResultsEndDate] = useState(`${yyyy}-${mm}-${String(today.getDate()).padStart(2,"0")}`);
   const [resultsSearch, setResultsSearch] = useState("");
   const [resultsSearchCode, setResultsSearchCode] = useState("");
-  const [resultsDeclTotal, setResultsDeclTotal] = useState(0);
-  const [resultsFlowTotal, setResultsFlowTotal] = useState(0);
+  const [resultsDeclTotal, setResultsDeclTotal] = useState<Record<string, number>>({});
+  const [resultsFlowTotal, setResultsFlowTotal] = useState<Record<string, number>>({});
 
   function setThisMonth() {
     setStartDate(`${yyyy}-${mm}-01`);
@@ -81,8 +81,8 @@ export default function ReconciliationPage() {
       if (resultsSearchCode) url += `&search_code=${encodeURIComponent(resultsSearchCode)}`;
       const res = await api.get<any>(url);
       setResults(res.data); setResultsTotal(res.total);
-      setResultsDeclTotal(res.total_matched_decl || 0);
-      setResultsFlowTotal(res.total_matched_flow || 0);
+      setResultsDeclTotal(res.total_matched_decl_by_currency || {});
+      setResultsFlowTotal(res.total_matched_flow_by_currency || {});
     } catch {}
     setLoadingResults(false);
   }
@@ -283,8 +283,8 @@ export default function ReconciliationPage() {
                 <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">{resultsTotal} 条</span>
               </div>
               <div className="flex items-center gap-3 text-xs text-gray-500">
-                <span>匹配申报总额 <span className="font-semibold text-blue-600">฿{resultsDeclTotal.toLocaleString()}</span></span>
-                <span>匹配流水总额 <span className="font-semibold text-green-600">฿{resultsFlowTotal.toLocaleString()}</span></span>
+                <span>匹配申报总额 <span className="font-semibold text-blue-600">{fmtMoneyByCurrency(resultsDeclTotal)}</span></span>
+                <span>匹配流水总额 <span className="font-semibold text-green-600">{fmtMoneyByCurrency(resultsFlowTotal)}</span></span>
               </div>
             </div>
             <button onClick={handleExport} className="btn-secondary h-8 text-xs flex items-center gap-1"><Download size={14} />导出</button>
