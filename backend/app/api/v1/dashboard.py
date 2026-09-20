@@ -175,6 +175,158 @@ def _merge_currency(*lists):
     return [{"currency": c, "amount": round(v, 2)} for c, v in sorted(d.items())]
 
 
+@router.get("/trends")
+async def dashboard_trends(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """三个趋势图数据：资金(30天)、收支(6月)、订单(8周)，按币种分组，按当前仓库统计。"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    from app.models.income_expense import IncomeRecord, ExpenseRecord
+    from app.models.payable import PayableBill
+    from app.models.supplier import PurchaseOrder
+
+    today = thai_today()
+    currencies = ["THB", "CNY"]
+
+    # ── 资金趋势：最近30天（Python 聚合，按币种） ──
+    start_30 = today - timedelta(days=29)
+    day_end = today + timedelta(days=1)
+    recharge_rows = (await db.execute(
+        select(RechargeDeclaration.currency, RechargeDeclaration.declare_date, RechargeDeclaration.amount)
+        .where(RechargeDeclaration.warehouse_id == wh_id,
+               RechargeDeclaration.declare_date >= datetime.combine(start_30, datetime.min.time()),
+               RechargeDeclaration.declare_date < datetime.combine(day_end, datetime.min.time()))
+    )).all()
+    incoming_rows = (await db.execute(
+        select(IncomingFlow.currency, IncomingFlow.received_date, IncomingFlow.amount)
+        .where(IncomingFlow.warehouse_id == wh_id,
+               IncomingFlow.received_date >= datetime.combine(start_30, datetime.min.time()),
+               IncomingFlow.received_date < datetime.combine(day_end, datetime.min.time()))
+    )).all()
+
+    def _date_str(dt):
+        return dt.date().isoformat() if hasattr(dt, "date") else str(dt)[:10]
+
+    def _funds_series(cur):
+        rc = {}
+        for c, dt, amt in recharge_rows:
+            if (c or "THB") == cur:
+                k = _date_str(dt)
+                rc[k] = rc.get(k, 0) + float(amt or 0)
+        ic = {}
+        for c, dt, amt in incoming_rows:
+            if (c or "THB") == cur:
+                k = _date_str(dt)
+                ic[k] = ic.get(k, 0) + float(amt or 0)
+        series = []
+        for i in range(30):
+            d = start_30 + timedelta(days=i)
+            ds = d.isoformat()
+            series.append({"date": ds, "recharge": round(rc.get(ds, 0), 2), "incoming": round(ic.get(ds, 0), 2)})
+        return series
+
+    funds = {c: _funds_series(c) for c in currencies}
+
+    # ── 收支趋势：最近6个月（Python 聚合） ──
+    month_starts = []
+    ym = today.replace(day=1)
+    for _ in range(6):
+        month_starts.append(ym)
+        ym = (ym - timedelta(days=1)).replace(day=1)
+    month_starts.reverse()
+    month_labels = [m.strftime("%Y-%m") for m in month_starts]
+    min_month = month_starts[0]
+    max_month_end = (month_starts[-1].replace(day=28) + timedelta(days=10)).replace(day=1)
+
+    def _month_key(dt):
+        d = dt.date() if hasattr(dt, "date") else dt
+        return d.strftime("%Y-%m")
+
+    income_rec_rows = (await db.execute(
+        select(IncomeRecord.currency, IncomeRecord.income_date, IncomeRecord.amount)
+        .where(IncomeRecord.warehouse_id == wh_id,
+               IncomeRecord.income_date >= datetime.combine(min_month, datetime.min.time()),
+               IncomeRecord.income_date < datetime.combine(max_month_end, datetime.min.time()))
+    )).all()
+    recharge_month_rows = (await db.execute(
+        select(RechargeDeclaration.currency, RechargeDeclaration.declare_date, RechargeDeclaration.amount)
+        .where(RechargeDeclaration.warehouse_id == wh_id,
+               RechargeDeclaration.declare_date >= datetime.combine(min_month, datetime.min.time()),
+               RechargeDeclaration.declare_date < datetime.combine(max_month_end, datetime.min.time()))
+    )).all()
+    expense_rec_rows = (await db.execute(
+        select(ExpenseRecord.currency, ExpenseRecord.expense_date, ExpenseRecord.amount)
+        .where(ExpenseRecord.warehouse_id == wh_id,
+               ExpenseRecord.expense_date >= datetime.combine(min_month, datetime.min.time()),
+               ExpenseRecord.expense_date < datetime.combine(max_month_end, datetime.min.time()))
+    )).all()
+    bill_month_rows = (await db.execute(
+        select(PayableBill.currency, PayableBill.bill_date, PayableBill.amount)
+        .where(PayableBill.warehouse_id == wh_id,
+               PayableBill.bill_date >= datetime.combine(min_month, datetime.min.time()),
+               PayableBill.bill_date < datetime.combine(max_month_end, datetime.min.time()))
+    )).all()
+
+    def _ie_series(cur):
+        inc = {}
+        for c, dt, amt in list(income_rec_rows) + list(recharge_month_rows):
+            if (c or "THB") == cur:
+                k = _month_key(dt)
+                inc[k] = inc.get(k, 0) + float(amt or 0)
+        exp = {}
+        for c, dt, amt in list(expense_rec_rows) + list(bill_month_rows):
+            if (c or "THB") == cur:
+                k = _month_key(dt)
+                exp[k] = exp.get(k, 0) + float(amt or 0)
+        series = []
+        for m in month_labels:
+            series.append({"month": m, "income": round(inc.get(m, 0), 2), "expense": round(exp.get(m, 0), 2)})
+        return series
+
+    income_expense = {c: _ie_series(c) for c in currencies}
+
+    # ── 订单趋势：最近8周（采购单数量，Python 分桶） ──
+    this_monday = today - timedelta(days=today.weekday())
+    week_starts = [this_monday - timedelta(weeks=i) for i in range(7, -1, -1)]
+    from app.core.timezone import THAI_TZ
+    po_rows = (await db.execute(
+        select(PurchaseOrder.currency, PurchaseOrder.created_at)
+        .where(PurchaseOrder.warehouse_id == wh_id,
+               PurchaseOrder.created_at >= datetime.combine(week_starts[0], datetime.min.time()))
+    )).all()
+
+    def _week_key(dt):
+        if dt is None:
+            return None
+        d = dt
+        if getattr(d, "tzinfo", None) is not None:
+            d = d.astimezone(THAI_TZ).replace(tzinfo=None)
+        d = d.date() if hasattr(d, "date") else d
+        return d - timedelta(days=d.weekday())
+
+    def _orders_series(cur):
+        cnt = {}
+        for c, dt in po_rows:
+            if (c or "THB") == cur:
+                wk = _week_key(dt)
+                if wk is not None:
+                    cnt[str(wk)] = cnt.get(str(wk), 0) + 1
+        series = []
+        for ws in week_starts:
+            series.append({"week_start": ws.isoformat(), "count": cnt.get(str(ws), 0)})
+        return series
+
+    orders = {c: _orders_series(c) for c in currencies}
+
+    return {"funds": funds, "income_expense": income_expense, "orders": orders}
+
+
 @router.get("/cockpit")
 async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """老板驾驶舱：钱 + 人 + 待办，全部按当前选中仓库统计，按币种分组。"""

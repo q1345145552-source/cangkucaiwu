@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { getToken, api } from "@/lib/api";
-import { TrendingUp, TrendingDown, Wallet, ShoppingCart, Users, Gauge, ListTodo, FileText, Receipt, Bed, Clock, ClipboardCheck, AlertTriangle, Tag, Package } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ShoppingCart, Users, Gauge, ListTodo, FileText, Receipt, Bed, Clock, ClipboardCheck, AlertTriangle, Tag, Package, LineChart as LineChartIcon } from "lucide-react";
+import { LineChart, BarChart } from "@/components/TrendCharts";
 
 interface Amount { currency: string; amount: number; }
 
@@ -21,6 +22,13 @@ interface CockpitData {
     todos: { leave_pending: number; overtime_pending: number; expense_fund_pending: number; reimbursement_pending: number; market_pending: number; group_order_pending: number };
   };
   todos: { type: string; description: string; link: string; id: number }[];
+}
+
+interface TrendPoint { date?: string; month?: string; week_start?: string; recharge?: number; incoming?: number; income?: number; expense?: number; count?: number; }
+interface TrendsData {
+  funds: Record<string, TrendPoint[]>;
+  income_expense: Record<string, TrendPoint[]>;
+  orders: Record<string, TrendPoint[]>;
 }
 
 function curSymbol(c: string) {
@@ -46,6 +54,25 @@ function AmountList({ items, empty = "—" }: { items: Amount[]; empty?: string 
   );
 }
 
+function CurrencyToggle({ value, onChange }: { value: "THB" | "CNY"; onChange: (v: "THB" | "CNY") => void }) {
+  return (
+    <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs">
+      <button onClick={() => onChange("THB")} className={`px-2 py-0.5 rounded-md transition ${value === "THB" ? "bg-white shadow-sm text-gray-800" : "text-gray-500"}`}>泰铢</button>
+      <button onClick={() => onChange("CNY")} className={`px-2 py-0.5 rounded-md transition ${value === "CNY" ? "bg-white shadow-sm text-gray-800" : "text-gray-500"}`}>人民币</button>
+    </div>
+  );
+}
+
+function hasFundData(points: TrendPoint[] | undefined) {
+  return !!(points && points.some(p => (p.recharge || 0) > 0 || (p.incoming || 0) > 0));
+}
+function hasIEData(points: TrendPoint[] | undefined) {
+  return !!(points && points.some(p => (p.income || 0) > 0 || (p.expense || 0) > 0));
+}
+function hasOrderData(points: TrendPoint[] | undefined) {
+  return !!(points && points.some(p => (p.count || 0) > 0));
+}
+
 const TODO_CONFIG: Record<string, { icon: React.ReactNode; color: string; badge: string }> = {
   purchase_approval: { icon: <ClipboardCheck className="h-4 w-4" />, color: "text-purple-600 bg-purple-50", badge: "采购审批" },
   bill_confirm: { icon: <AlertTriangle className="h-4 w-4" />, color: "text-amber-600 bg-amber-50", badge: "账单确认" },
@@ -61,8 +88,12 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<CockpitData | null>(null);
+  const [trends, setTrends] = useState<TrendsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [fundCur, setFundCur] = useState<"THB" | "CNY">("THB");
+  const [ieCur, setIeCur] = useState<"THB" | "CNY">("THB");
+  const [orderCur, setOrderCur] = useState<"THB" | "CNY">("THB");
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
@@ -72,8 +103,12 @@ export default function DashboardPage() {
   async function loadData() {
     setError("");
     try {
-      const d = await api.get<CockpitData>("/dashboard/cockpit");
+      const [d, t] = await Promise.all([
+        api.get<CockpitData>("/dashboard/cockpit"),
+        api.get<TrendsData>("/dashboard/trends"),
+      ]);
       setData(d);
+      setTrends(t);
     } catch (e: any) {
       setError(e?.message || "加载失败");
     }
@@ -200,6 +235,67 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* 趋势图 */}
+      {trends && (
+        <section>
+          <h2 className="text-base font-semibold text-gray-700 mb-3 flex items-center gap-2"><LineChartIcon className="h-5 w-5 text-indigo-600" /> 趋势</h2>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            {/* 资金趋势 */}
+            <div className="bg-white rounded-xl p-5 shadow-sm border">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-600">资金趋势（30天）</span>
+                <CurrencyToggle value={fundCur} onChange={setFundCur} />
+              </div>
+              {hasFundData(trends.funds[fundCur]) ? (
+                <LineChart
+                  labels={trends.funds[fundCur].map(p => p.date || "")}
+                  datasets={[
+                    { name: "充值", color: "#2563eb", values: trends.funds[fundCur].map(p => p.recharge || 0) },
+                    { name: "到账", color: "#16a34a", values: trends.funds[fundCur].map(p => p.incoming || 0) },
+                  ]}
+                  valuePrefix={fundCur === "CNY" ? "¥" : "฿"}
+                />
+              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>}
+            </div>
+
+            {/* 收支趋势 */}
+            <div className="bg-white rounded-xl p-5 shadow-sm border">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-600">收支趋势（6个月）</span>
+                <CurrencyToggle value={ieCur} onChange={setIeCur} />
+              </div>
+              {hasIEData(trends.income_expense[ieCur]) ? (
+                <LineChart
+                  labels={trends.income_expense[ieCur].map(p => p.month || "")}
+                  datasets={[
+                    { name: "收入", color: "#2563eb", values: trends.income_expense[ieCur].map(p => p.income || 0) },
+                    { name: "支出", color: "#dc2626", values: trends.income_expense[ieCur].map(p => p.expense || 0) },
+                  ]}
+                  valuePrefix={ieCur === "CNY" ? "¥" : "฿"}
+                />
+              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>}
+            </div>
+
+            {/* 订单趋势 */}
+            <div className="bg-white rounded-xl p-5 shadow-sm border">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-600">订单趋势（8周）</span>
+                <CurrencyToggle value={orderCur} onChange={setOrderCur} />
+              </div>
+              {hasOrderData(trends.orders[orderCur]) ? (
+                <BarChart
+                  labels={trends.orders[orderCur].map(p => p.week_start || "")}
+                  datasets={[
+                    { name: "订单数", color: "#8b5cf6", values: trends.orders[orderCur].map(p => p.count || 0) },
+                  ]}
+                  valuePrefix=""
+                />
+              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 待办列表 */}
       <section className="bg-white rounded-xl p-6 shadow-sm border">
