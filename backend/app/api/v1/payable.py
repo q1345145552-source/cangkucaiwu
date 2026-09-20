@@ -6,7 +6,7 @@ from app.core.timezone import thai_now, thai_today
 from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.payable import PayableBill, PayablePlan, PlanTemplate, PayableStatus, PlanStatus, MonthlyOrderVolume
-from app.models.supplier import Supplier, SupplierCategory
+from app.models.supplier import Supplier, SupplierCategory, PurchaseOrder
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
@@ -30,7 +30,7 @@ class PlanCreate(BaseModel):
 async def list_bills(
     page: int = 1, page_size: int = 20, supplier_id: int = None,
     status: str = None, month: str = None, start_date: str = None, end_date: str = None,
-    source: str = None,
+    source: str = None, purchase_order_number: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -45,6 +45,16 @@ async def list_bills(
     if source:
         query = query.where(PayableBill.source == source)
         count_q = count_q.where(PayableBill.source == source)
+    if purchase_order_number:
+        po = (await db.execute(
+            select(PurchaseOrder).where(PurchaseOrder.order_number == purchase_order_number.strip())
+        )).scalar_one_or_none()
+        if po:
+            query = query.where(PayableBill.purchase_order_id == po.id)
+            count_q = count_q.where(PayableBill.purchase_order_id == po.id)
+        else:
+            query = query.where(PayableBill.id == -1)
+            count_q = count_q.where(PayableBill.id == -1)
     if status:
         query = query.where(PayableBill.status == status)
         count_q = count_q.where(PayableBill.status == status)
@@ -66,6 +76,12 @@ async def list_bills(
     if sids:
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
         smap = {s.id: s.name for s in sups}
+    # 关联采购单号映射
+    po_ids = {b.purchase_order_id for b in bills if b.purchase_order_id}
+    po_map = {}
+    if po_ids:
+        pos = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id.in_(po_ids)))).scalars().all()
+        po_map = {p.id: p.order_number for p in pos}
     # 自动标记逾期（due_date < now 且未付）
     from sqlalchemy import update as sql_update
     import sqlalchemy
@@ -95,6 +111,7 @@ async def list_bills(
             "is_fund_linked": b.is_fund_linked, "detail": b.detail, "remark": b.remark,
             "diff_note": b.diff_note,
             "source": b.source or "manual", "purchase_order_id": b.purchase_order_id,
+            "purchase_order_number": po_map.get(b.purchase_order_id, "") if b.purchase_order_id else "",
             "need_boss_confirm": b.need_boss_confirm,
         } for b in bills],
         "total": total, "page": page, "page_size": page_size,
@@ -113,6 +130,7 @@ async def create_bill(
     payment_commitment_days: int = Form(None),
     detail: str = Form(None),
     is_fund_linked: str = Form(None),
+    purchase_order_number: str = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -124,6 +142,25 @@ async def create_bill(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+
+    # 关联采购单校验：一张采购单只能生成一张账单
+    purchase_order_id = None
+    source = "manual"
+    if purchase_order_number and purchase_order_number.strip():
+        po = (await db.execute(
+            select(PurchaseOrder).where(PurchaseOrder.order_number == purchase_order_number.strip())
+        )).scalar_one_or_none()
+        if not po:
+            raise HTTPException(400, f"采购单 {purchase_order_number.strip()} 不存在")
+        if po.payable_bill_id:
+            raise HTTPException(400, "该采购单已生成账单，不能重复生成")
+        existing_po_bill = (await db.execute(
+            select(PayableBill).where(PayableBill.purchase_order_id == po.id)
+        )).scalar_one_or_none()
+        if existing_po_bill:
+            raise HTTPException(400, "该采购单已生成账单，不能重复生成")
+        purchase_order_id = po.id
+        source = "purchase_order"
 
     # 重复检测
     existing = (await db.execute(
@@ -164,10 +201,17 @@ async def create_bill(
         currency=currency, detail=detail, remark=remark,
         payment_commitment_days=payment_commitment_days,
         is_fund_linked=is_fund_linked,
-        source="manual", bill_attachment=voucher_path, voucher=voucher_path,
+        source=source, purchase_order_id=purchase_order_id,
+        bill_attachment=voucher_path, voucher=voucher_path,
         created_by=current_user.id,
     )
     db.add(b); await db.flush()
+    # 关联采购单：回写 payable_bill_id
+    if purchase_order_id:
+        po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == purchase_order_id))).scalar_one_or_none()
+        if po:
+            po.payable_bill_id = b.id
+            await db.flush()
     return {"id": b.id, "message": "账单创建成功", "has_diff": has_diff, "diff_note": diff_note}
 
 @router.post("/{bill_id}/upload-voucher")

@@ -19,7 +19,7 @@ export default function PayablePage() {
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [form, setForm] = useState({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "" });
+  const [form, setForm] = useState({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
   const [billFile, setBillFile] = useState<File | null>(null);
   const [payAmounts, setPayAmounts] = useState<Record<number, string | number>>({});
   const [voucherFile, setVoucherFile] = useState<File | null>(null);
@@ -36,7 +36,7 @@ export default function PayablePage() {
   const _now = new Date();
   const _curMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}`;
   const _todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
-  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: `${_curMonth}-01`, end_date: _todayStr, status: "", source: "" });
+  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: `${_curMonth}-01`, end_date: _todayStr, status: "", source: "", purchase_order_number: "" });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadStats(); }, [page, listFilters]);
 
@@ -49,6 +49,7 @@ export default function PayablePage() {
       if (listFilters.end_date) params.set("end_date", listFilters.end_date);
       if (listFilters.status) params.set("status", listFilters.status);
       if (listFilters.source) params.set("source", listFilters.source);
+      if (listFilters.purchase_order_number) params.set("purchase_order_number", listFilters.purchase_order_number);
       const r = await api.get<any>(`/payable?${params.toString()}`); setData(r.data); setTotal(r.total);
     }
     catch (err) { console.error("加载失败:", err); }
@@ -105,6 +106,7 @@ export default function PayablePage() {
       if (form.payment_commitment_days) fd.append("payment_commitment_days", String(form.payment_commitment_days));
       if (form.detail) fd.append("detail", form.detail);
       if (form.is_fund_linked) fd.append("is_fund_linked", form.is_fund_linked);
+      if (form.purchase_order_number) fd.append("purchase_order_number", form.purchase_order_number);
       fd.append("file", billFile);
       const res = await fetch(`${API_URL}/payable`, {
         method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
@@ -112,7 +114,7 @@ export default function PayablePage() {
       const r = await res.json();
       if (!res.ok) { toast("error", r.detail || "创建失败"); return; }
       toast("success", r.has_diff ? "账单创建成功，已标记对账差异" : "创建成功");
-      setShowForm(false); setBillFile(null); setForm({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "" });
+      setShowForm(false); setBillFile(null); setForm({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
       load(); loadStats();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
@@ -317,6 +319,9 @@ export default function PayablePage() {
               <option value="manual">手动</option>
             </select>
           </div>
+          <div className="w-[160px]"><label className="form-label">采购单号</label>
+            <input className="form-input" value={listFilters.purchase_order_number} onChange={e => setListFilters({ ...listFilters, purchase_order_number: e.target.value })} placeholder="输入采购单号" />
+          </div>
           <button onClick={handleQuery} className="btn-primary h-[42px]">查询</button>
           <div className="flex-1" />
           <button onClick={handleExport} className="btn-secondary flex items-center gap-1 h-[42px]" disabled={selectedIds.size === 0}>
@@ -380,6 +385,7 @@ export default function PayablePage() {
                 <div className="form-group"><label className="form-label">账单编号</label><input className="form-input" value={form.bill_number} onChange={e => setForm({ ...form, bill_number: e.target.value })} /></div>
                 <div className="form-group"><label className="form-label">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}><option>THB</option><option>CNY</option><option>USD</option></select></div>
               </div>
+              <div className="form-group"><label className="form-label">关联采购单号（可选）</label><input className="form-input" value={form.purchase_order_number} onChange={e => setForm({ ...form, purchase_order_number: e.target.value })} placeholder="如 PO2026..." /></div>
               <div className="form-grid">
                 <div className="form-group"><label className="form-label">账单日期</label><input type="date" className="form-input" value={form.bill_date} onChange={e => setForm({ ...form, bill_date: e.target.value })} /></div>
                 <div className="form-group"><label className="form-label">到期日期</label><input type="date" className="form-input" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} /></div>

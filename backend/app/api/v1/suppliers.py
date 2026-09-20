@@ -975,6 +975,8 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
         raise HTTPException(403, "无权审批其他仓库的采购单")
     if po.status != "pending":
         raise HTTPException(400, "该采购单已处理")
+    if po.payable_bill_id:
+        raise HTTPException(400, "该采购单已生成账单，不能重复生成")
     supplier = (await db.execute(select(Supplier).where(Supplier.id == po.supplier_id))).scalar_one_or_none()
     if not supplier:
         raise HTTPException(404, "供应商不存在")
