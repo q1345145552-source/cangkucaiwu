@@ -27,6 +27,7 @@ class LeaveCreate(BaseModel):
 @router.post("/leaves")
 async def create_leave(
     leave_date: str = Form(...),
+    leave_type: str = Form("sick"),
     reason: str = Form(None),
     file: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
@@ -34,6 +35,9 @@ async def create_leave(
 ):
     if current_user.role not in (Role.WAREHOUSE_LABOR, Role.STAFF):
         raise HTTPException(403, "无权限")
+
+    if leave_type not in ("sick", "personal"):
+        raise HTTPException(400, "请假类型无效")
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -56,20 +60,7 @@ async def create_leave(
     except:
         raise HTTPException(400, "日期格式错误")
 
-    # Check max 1 sick leave per month
-    range_start = leave_dt.replace(day=1)
-    month_leaves = (await db.execute(
-        select(func.count(LeaveRequest.id)).where(
-            LeaveRequest.employee_id == emp.id,
-            LeaveRequest.leave_date >= range_start,
-            LeaveRequest.leave_date < (range_start.replace(month=range_start.month % 12 + 1, day=1) if range_start.month < 12 else range_start.replace(year=range_start.year + 1, month=1, day=1)),
-            LeaveRequest.status != "rejected",
-        )
-    )).scalar()
-    if (month_leaves or 0) >= 1:
-        raise HTTPException(400, "本月已请过一次病假，每月最多1天")
-
-    # Check duplicate date
+    # Check duplicate date（同一天不可重复申请）
     dup = (await db.execute(
         select(LeaveRequest).where(
             LeaveRequest.employee_id == emp.id,
@@ -80,7 +71,7 @@ async def create_leave(
     if dup:
         raise HTTPException(400, "该日期已提交请假申请")
 
-    # Save photo
+    # Save photo（可选）
     photo_path = None
     if file:
         try:
@@ -99,7 +90,7 @@ async def create_leave(
 
     lr = LeaveRequest(
         warehouse_id=wh_id, employee_id=emp.id,
-        leave_date=leave_dt, leave_type="sick",
+        leave_date=leave_dt, leave_type=leave_type,
         photo_path=photo_path, reason=reason, status="pending",
     )
     db.add(lr)

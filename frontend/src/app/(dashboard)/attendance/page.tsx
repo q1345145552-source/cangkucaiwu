@@ -59,6 +59,7 @@ export default function AttendancePage() {
   const [showRestForm, setShowRestForm] = useState(false);
   const [showAbsenceForm, setShowAbsenceForm] = useState(false);
   const [leaveDate, setLeaveDate] = useState("");
+  const [leaveType, setLeaveType] = useState("sick");
   const [leaveReason, setLeaveReason] = useState("");
   const [leavePhoto, setLeavePhoto] = useState<File | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +119,7 @@ export default function AttendancePage() {
     if (!leaveDate) { toast("error", t("att_please_select_leave_date")); return; }
     const fd = new FormData();
     fd.append("leave_date", leaveDate);
+    fd.append("leave_type", leaveType);
     if (leaveReason) fd.append("reason", leaveReason);
     if (leavePhoto) fd.append("file", leavePhoto);
 
@@ -125,7 +127,7 @@ export default function AttendancePage() {
       const token = getToken();
       const res = await fetch("/api/v1/attendance/leaves", { method: "POST", headers: { Authorization: `Bearer ${token}`, "X-Language": localStorage.getItem("locale") || "zh" }, body: fd });
       const r = await res.json();
-      if (res.ok) { toast("success", t("submit_ok")); setShowLeaveForm(false); setLeaveDate(""); setLeavePhoto(null); loadLeaves(); }
+      if (res.ok) { toast("success", t("submit_ok")); setShowLeaveForm(false); setLeaveDate(""); setLeaveType("sick"); setLeavePhoto(null); loadLeaves(); }
       else toast("error", r.detail || t("submit_failed"));
     } catch { toast("error", t("network_error")); }
   }
@@ -280,6 +282,7 @@ export default function AttendancePage() {
               <div key={l.id} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg text-sm">
                 <div>
                   <span className="font-medium">{l.employee_name}</span>
+                  <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${l.leave_type === "personal" ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"}`}>{l.leave_type === "personal" ? t("att_personal_leave") : t("att_sick_leave")}</span>
                   <span className="text-gray-500 ml-2">{l.leave_date}</span>
                   {l.reason && <span className="text-gray-400 ml-2">- {l.reason}</span>}
                   {l.photo_path && <a href={`/${l.photo_path}`} target="_blank" className="text-blue-500 ml-2 text-xs">{t("att_view_proof")}</a>}
@@ -330,6 +333,19 @@ export default function AttendancePage() {
             </div>
             <div className="p-5 space-y-4">
               <div>
+                <label className="form-label text-sm mb-1 block">{t("att_leave_type")}</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setLeaveType("sick")}
+                    className={`flex-1 py-2 rounded-lg text-sm border ${leaveType === "sick" ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                    {t("att_sick_leave")}
+                  </button>
+                  <button type="button" onClick={() => setLeaveType("personal")}
+                    className={`flex-1 py-2 rounded-lg text-sm border ${leaveType === "personal" ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                    {t("att_personal_leave")}
+                  </button>
+                </div>
+              </div>
+              <div>
                 <label className="form-label text-sm mb-1 block">{t("att_leave_date")} <span className="text-red-400">*</span></label>
                 <input type="date" className="form-input py-2.5" value={leaveDate} onChange={e => setLeaveDate(e.target.value)} />
               </div>
@@ -347,7 +363,7 @@ export default function AttendancePage() {
                 </div>
                 <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={e => setLeavePhoto(e.target.files?.[0] || null)} className="hidden" />
               </div>
-              <p className="text-xs text-gray-400">{t("att_leave_limit_hint")}</p>
+              <p className="text-xs text-gray-400">{t("att_leave_wage_hint")}</p>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
