@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { getToken, api } from "@/lib/api";
 import { TrendingUp, TrendingDown, Wallet, ShoppingCart, Users, Gauge, ListTodo, FileText, Receipt, Bed, Clock, ClipboardCheck, AlertTriangle, Tag, Package, LineChart as LineChartIcon } from "lucide-react";
-import { LineChart, BarChart } from "@/components/TrendCharts";
+import { LineChart, BarChart, DonutChart } from "@/components/TrendCharts";
 
 interface Amount { currency: string; amount: number; }
 
@@ -25,10 +25,13 @@ interface CockpitData {
 }
 
 interface TrendPoint { date?: string; month?: string; week_start?: string; recharge?: number; incoming?: number; income?: number; expense?: number; count?: number; }
+interface DonutItem { name: string; amount: number; }
 interface TrendsData {
   funds: Record<string, TrendPoint[]>;
   income_expense: Record<string, TrendPoint[]>;
   orders: Record<string, TrendPoint[]>;
+  expense_categories: Record<string, DonutItem[]>;
+  procurement_suppliers: Record<string, DonutItem[]>;
 }
 
 function curSymbol(c: string) {
@@ -94,6 +97,8 @@ export default function DashboardPage() {
   const [fundCur, setFundCur] = useState<"THB" | "CNY">("THB");
   const [ieCur, setIeCur] = useState<"THB" | "CNY">("THB");
   const [orderCur, setOrderCur] = useState<"THB" | "CNY">("THB");
+  const [expCur, setExpCur] = useState<"THB" | "CNY">("THB");
+  const [supCur, setSupCur] = useState<"THB" | "CNY">("THB");
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
@@ -291,6 +296,36 @@ export default function DashboardPage() {
                   ]}
                   valuePrefix=""
                 />
+              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 占比环形图 */}
+      {trends && (
+        <section>
+          <h2 className="text-base font-semibold text-gray-700 mb-3">占比</h2>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {/* 支出构成 */}
+            <div className="bg-white rounded-xl p-5 shadow-sm border">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-600">支出构成（本月运营支出）</span>
+                <CurrencyToggle value={expCur} onChange={setExpCur} />
+              </div>
+              {(trends.expense_categories[expCur] || []).length > 0 ? (
+                <DonutChart items={trends.expense_categories[expCur] || []} valuePrefix={expCur === "CNY" ? "¥" : "฿"} />
+              ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>}
+            </div>
+
+            {/* 供应商采购占比 */}
+            <div className="bg-white rounded-xl p-5 shadow-sm border">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-600">供应商采购占比（本月采购支出）</span>
+                <CurrencyToggle value={supCur} onChange={setSupCur} />
+              </div>
+              {(trends.procurement_suppliers[supCur] || []).length > 0 ? (
+                <DonutChart items={trends.procurement_suppliers[supCur] || []} valuePrefix={supCur === "CNY" ? "¥" : "฿"} redAbovePercent={70} />
               ) : <div className="h-40 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>}
             </div>
           </div>

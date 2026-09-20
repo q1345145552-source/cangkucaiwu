@@ -187,9 +187,9 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
-    from app.models.income_expense import IncomeRecord, ExpenseRecord
+    from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpenseCategory
     from app.models.payable import PayableBill
-    from app.models.supplier import PurchaseOrder
+    from app.models.supplier import PurchaseOrder, Supplier
 
     today = thai_today()
     currencies = ["THB", "CNY"]
@@ -324,7 +324,46 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
 
     orders = {c: _orders_series(c) for c in currencies}
 
-    return {"funds": funds, "income_expense": income_expense, "orders": orders}
+    # ── 两个占比环形图数据 ──
+    month_start = today.replace(day=1)
+    if today.month == 12:
+        next_month = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        next_month = today.replace(month=today.month + 1, day=1)
+
+    cat_rows = (await db.execute(
+        select(ExpenseRecord.currency, ExpenseRecord.amount, IncomeExpenseCategory.name)
+        .join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id)
+        .where(ExpenseRecord.warehouse_id == wh_id,
+               ExpenseRecord.expense_date >= datetime.combine(month_start, datetime.min.time()),
+               ExpenseRecord.expense_date < datetime.combine(next_month, datetime.min.time()))
+    )).all()
+    sup_rows = (await db.execute(
+        select(PayableBill.currency, PayableBill.amount, Supplier.name)
+        .join(Supplier, PayableBill.supplier_id == Supplier.id)
+        .where(PayableBill.warehouse_id == wh_id,
+               PayableBill.bill_date >= datetime.combine(month_start, datetime.min.time()),
+               PayableBill.bill_date < datetime.combine(next_month, datetime.min.time()))
+    )).all()
+
+    def _group_by_name(rows, cur):
+        d = {}
+        for c, amt, name in rows:
+            if (c or "THB") == cur:
+                nm = name or "未分类"
+                d[nm] = d.get(nm, 0) + float(amt or 0)
+        return [{"name": n, "amount": round(v, 2)} for n, v in sorted(d.items(), key=lambda x: -x[1])]
+
+    expense_categories = {c: _group_by_name(cat_rows, c) for c in currencies}
+    procurement_suppliers = {c: _group_by_name(sup_rows, c) for c in currencies}
+
+    return {
+        "funds": funds,
+        "income_expense": income_expense,
+        "orders": orders,
+        "expense_categories": expense_categories,
+        "procurement_suppliers": procurement_suppliers,
+    }
 
 
 @router.get("/cockpit")
