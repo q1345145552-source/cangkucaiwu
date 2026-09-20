@@ -41,7 +41,7 @@ async def clock_in(
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role not in (Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
+    if current_user.role != Role.WAREHOUSE_LABOR:
         raise HTTPException(403, t("only_labor_can_clock", lang))
     if session not in SESSIONS:
         raise HTTPException(400, t("invalid_session", lang))
@@ -121,7 +121,7 @@ async def get_today(
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role not in (Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
+    if current_user.role != Role.WAREHOUSE_LABOR:
         raise HTTPException(403, t("no_permission", lang))
     today = thai_today()
     records = (await db.execute(
@@ -150,17 +150,17 @@ async def list_records(
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.employee import Employee
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPERVISOR, Role.SUPER_ADMIN):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
 
     # Determine warehouse scope
-    active_wh = get_wh_id(current_user) if current_user.role != Role.SUPER_ADMIN else None
+    active_wh = get_wh_id(current_user)
 
     # Get active employees in scope
     emp_q = select(Employee).where(Employee.status != "resigned")
-    if current_user.role == Role.SUPER_ADMIN:
-        pass
-    elif current_user.role == Role.WAREHOUSE_LABOR:
+    if current_user.role == Role.WAREHOUSE_LABOR:
         emp_q = emp_q.where(Employee.user_id == current_user.id)
     elif active_wh:
         emp_q = emp_q.where(Employee.warehouse_id == active_wh)
@@ -170,8 +170,6 @@ async def list_records(
     query = select(ClockInRecord)
     if current_user.role == Role.WAREHOUSE_LABOR:
         query = query.where(ClockInRecord.user_id == current_user.id)
-    elif current_user.role == Role.SUPER_ADMIN:
-        pass
     elif active_wh:
         query = query.where(ClockInRecord.warehouse_id == active_wh)
     if start_date:
@@ -217,7 +215,9 @@ async def get_photos(
 ):
     """Admin: get all clock-in photos for a specific employee on a specific date"""
     try:
-        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.SUPER_ADMIN):
+        if current_user.role == Role.SUPER_ADMIN:
+            raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
             raise HTTPException(403, "只有管理员/主管可以查看打卡照片")
 
         from app.models.employee import Employee
@@ -243,10 +243,9 @@ async def get_photos(
         if not emp:
             raise HTTPException(404, "员工不存在")
 
-        if current_user.role != Role.SUPER_ADMIN:
-            wh_ids = get_wh_ids(current_user)
-            if emp.warehouse_id not in wh_ids:
-                raise HTTPException(403, "无权查看该员工")
+        wh_ids = get_wh_ids(current_user)
+        if emp.warehouse_id not in wh_ids:
+            raise HTTPException(403, "无权查看该员工")
 
         # Get user_id from employee link
         uid = emp.user_id

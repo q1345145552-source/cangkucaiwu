@@ -78,15 +78,16 @@ async def list_employees(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     
     wh_ids = get_wh_ids(current_user)
     query = select(Employee)
     count_q = select(func.count(Employee.id))
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(Employee.warehouse_id.in_(wh_ids))
-        count_q = count_q.where(Employee.warehouse_id.in_(wh_ids))
+    query = query.where(Employee.warehouse_id.in_(wh_ids))
+    count_q = count_q.where(Employee.warehouse_id.in_(wh_ids))
     if status:
         query = query.where(Employee.status == status)
         count_q = count_q.where(Employee.status == status)
@@ -611,7 +612,9 @@ async def employee_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """Return attendance & salary summary for an employee"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
 
     wh_ids = get_wh_ids(current_user)

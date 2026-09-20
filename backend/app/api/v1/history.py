@@ -15,11 +15,10 @@ async def list_operators(
     db: AsyncSession = Depends(get_db),
 ):
     """返回有历史记录的操作人列表（供筛选下拉使用）。"""
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
-        raise HTTPException(403, "无权限")
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以查看修改日志")
     query = select(DataChangeHistory.operator_id, DataChangeHistory.operator_name)
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
     query = query.distinct()
     rows = (await db.execute(query)).all()
     return {"data": [{"operator_id": r[0], "operator_name": r[1] or "-"} for r in rows if r[0] is not None]}
@@ -38,15 +37,14 @@ async def list_history(
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询数据修改历史（管理员可见本仓库/名下仓库的历史）。"""
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
-        raise HTTPException(403, "无权限")
+    """查询数据修改历史（仅仓库管理员可见本仓库/名下仓库的历史）。"""
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以查看修改日志")
 
     query = select(DataChangeHistory)
     count_q = select(func.count(DataChangeHistory.id))
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
-        count_q = count_q.where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
+    count_q = count_q.where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
     if module:
         query = query.where(DataChangeHistory.module == module)
         count_q = count_q.where(DataChangeHistory.module == module)

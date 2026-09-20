@@ -105,10 +105,10 @@ async def list_leaves(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(LeaveRequest, Employee.name).join(Employee, LeaveRequest.employee_id == Employee.id)
     if current_user.role == Role.SUPER_ADMIN:
-        pass  # super_admin sees all
-    elif current_user.role in (Role.WAREHOUSE_LABOR, Role.STAFF):
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    query = select(LeaveRequest, Employee.name).join(Employee, LeaveRequest.employee_id == Employee.id)
+    if current_user.role in (Role.WAREHOUSE_LABOR, Role.STAFF):
         wh_id = get_wh_id(current_user)
         # Use user_id link first, fallback to name matching
         emp = (await db.execute(
@@ -126,7 +126,7 @@ async def list_leaves(
         else:
             return {"data": []}
     else:
-        # Use active (header-selected) warehouse for warehouse_admin
+        # Use active (header-selected) warehouse for warehouse_admin/supervisor
         active_wh = get_wh_id(current_user)
         if active_wh:
             query = query.where(LeaveRequest.warehouse_id == active_wh)
@@ -231,7 +231,9 @@ async def list_rest_days(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR):
         raise HTTPException(403, "无权限")
 
     query = select(RestDay, Employee.name).join(Employee, RestDay.employee_id == Employee.id)
@@ -328,7 +330,9 @@ async def get_calendar(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPER_ADMIN):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR):
         raise HTTPException(403, "无权限")
 
     # 默认：当月 1 号到当天
@@ -354,9 +358,7 @@ async def get_calendar(
 
     # Get employees scoped to the active warehouse
     emp_query = select(Employee).where(Employee.status != "resigned")
-    if current_user.role == Role.SUPER_ADMIN:
-        pass  # super_admin sees all employees
-    elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         # Use active (header-selected) warehouse, not all warehouses
         active_wh_id = get_wh_id(current_user)
         if active_wh_id:

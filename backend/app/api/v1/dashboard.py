@@ -21,6 +21,8 @@ def _wh_filter(query, model, current_user):
 
 @router.get("/stats")
 async def dashboard_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # Total recharge this month
     rq = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0)).where(
         func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == func.to_char(func.now(), 'YYYY-MM')
@@ -74,6 +76,8 @@ async def dashboard_stats(current_user: User = Depends(get_current_user), db: As
 
 @router.get("/pending-tasks")
 async def pending_tasks(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     tasks = []
 
     # 1. Pending expense fund item reviews
@@ -136,6 +140,8 @@ async def pending_tasks(current_user: User = Depends(get_current_user), db: Asyn
 
 @router.get("/warehouse-summary")
 async def warehouse_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role != Role.SUPER_ADMIN:
         wh = current_user.warehouse
         if not wh:
