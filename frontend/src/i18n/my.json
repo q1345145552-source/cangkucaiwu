@@ -293,5 +293,11 @@
   "att_please_select_employee_and_date": "ဝန်ထမ်းနှင့် ရက်စွဲရွေးပါ",
   "att_absence_marked": "မလာကြောင်းမှတ်ပြီးပါပြီ",
   "att_approve": "အတည်ပြုရန်",
-  "att_reject": "ငြင်းပယ်ရန်"
+  "att_reject": "ငြင်းပယ်ရန်",
+  "att_proxy_leave_form_title": "ခွင့်ကိုယ်စားမှတ်တမ်း",
+  "att_leave_start_date": "စတင်ရက်",
+  "att_leave_end_date": "ပြီးဆုံးရက်",
+  "att_proxy_leave_hint": "ချက်ချင်းအကျိုးသက်ရောက် (အတည်ပြုပြီး)၊ အတည်ပြုရန်မလို",
+  "att_leave_date_range_invalid": "စတင်ရက်သည် ပြီးဆုံးရက်ထက် နောက်မကျရပါ",
+  "att_super_admin_denied": "စူပါအက်ဒမင်သည် ဂိုဒေါင်အက်ဒမင်အကောင့်ကို အသုံးပြုပါ"
 }

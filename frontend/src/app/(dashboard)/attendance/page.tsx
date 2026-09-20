@@ -38,7 +38,10 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
 
 export default function AttendancePage() {
   const { toast } = useToast(); const { user } = useAuth(); const { t } = useI18n(); const router = useRouter();
-  const isAdmin = user?.role === "warehouse_admin" || user?.role === "super_admin";
+  const role = user?.role;
+  const isSuperAdmin = role === "super_admin";
+  const canApprove = role === "warehouse_admin" || role === "supervisor"; // 管理员/主管
+  const canSelfLeave = role === "warehouse_labor" || role === "staff"; // 劳工/财务
   const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
 
   // 自定义日期范围（默认当月 1 号到当天）
@@ -56,6 +59,7 @@ export default function AttendancePage() {
 
   // Modals
   const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [showProxyLeaveForm, setShowProxyLeaveForm] = useState(false);
   const [showRestForm, setShowRestForm] = useState(false);
   const [showAbsenceForm, setShowAbsenceForm] = useState(false);
   const [leaveDate, setLeaveDate] = useState("");
@@ -63,6 +67,13 @@ export default function AttendancePage() {
   const [leaveReason, setLeaveReason] = useState("");
   const [leavePhoto, setLeavePhoto] = useState<File | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Proxy leave form (管理员/主管代录)
+  const [proxyEmpId, setProxyEmpId] = useState<number>(0);
+  const [proxyStartDate, setProxyStartDate] = useState("");
+  const [proxyEndDate, setProxyEndDate] = useState("");
+  const [proxyType, setProxyType] = useState("sick");
+  const [proxyReason, setProxyReason] = useState("");
 
   // Rest day form
   const [restEmployeeId, setRestEmployeeId] = useState<number>(0);
@@ -132,6 +143,26 @@ export default function AttendancePage() {
     } catch { toast("error", t("network_error")); }
   }
 
+  async function submitProxyLeave() {
+    if (!proxyEmpId) { toast("error", t("att_please_select_employee")); return; }
+    if (!proxyStartDate || !proxyEndDate) { toast("error", t("att_please_select_leave_date")); return; }
+    if (proxyStartDate > proxyEndDate) { toast("error", t("att_leave_date_range_invalid")); return; }
+    try {
+      const r = await api.post<any>("/attendance/leaves/admin-record", {
+        employee_id: proxyEmpId,
+        start_date: proxyStartDate,
+        end_date: proxyEndDate,
+        leave_type: proxyType,
+        reason: proxyReason || undefined,
+      });
+      toast("success", r.message || t("submit_ok"));
+      setShowProxyLeaveForm(false);
+      setProxyEmpId(0); setProxyStartDate(""); setProxyEndDate("");
+      setProxyType("sick"); setProxyReason("");
+      loadLeaves(); loadCalendar();
+    } catch (err: any) { toast("error", err.message || t("operation_failed")); }
+  }
+
   async function approveLeave(id: number) {
     try { await api.put(`/attendance/leaves/${id}/approve`, {}); toast("success", t("att_approved_success")); loadLeaves(); loadCalendar(); }
     catch { toast("error", t("operation_failed")); }
@@ -173,6 +204,15 @@ export default function AttendancePage() {
     rest: t("att_status_rest"), absent: t("att_status_absent"), missing: t("att_status_missing"),
   };
 
+  if (isSuperAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-5xl mb-4">🔒</div>
+        <p className="text-gray-500 text-lg font-medium">{t("att_super_admin_denied")}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header: Month Navigation + Tab Bar + Action Buttons */}
@@ -183,21 +223,25 @@ export default function AttendancePage() {
             <span className="text-gray-400 text-xs">{t("att_to")}</span>
             <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-xs py-1.5 w-36" />
           </div>
-          {isAdmin && (
+          {(canApprove || canSelfLeave) && (
             <div className="flex items-center gap-1.5 ml-2">
-              <button onClick={() => setShowLeaveForm(true)} className="px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 flex items-center gap-1">
+              <button onClick={() => { canApprove ? setShowProxyLeaveForm(true) : setShowLeaveForm(true); }} className="px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 flex items-center gap-1">
                 <Bed size={14}/>{t("att_leave_btn")}
               </button>
-              <button onClick={() => setShowRestForm(true)} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1">
-                <Settings size={14}/>{t("att_rest_day_btn")}
-              </button>
-              <button onClick={() => setShowAbsenceForm(true)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1">
-                <UserX size={14}/>{t("att_absence_btn")}
-              </button>
+              {canApprove && (
+                <>
+                  <button onClick={() => setShowRestForm(true)} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1">
+                    <Settings size={14}/>{t("att_rest_day_btn")}
+                  </button>
+                  <button onClick={() => setShowAbsenceForm(true)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1">
+                    <UserX size={14}/>{t("att_absence_btn")}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
-        {isAdmin && (
+        {canApprove && (
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setActiveTab("calendar")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               <Calendar size={15} className="inline mr-1.5"/>{t("att_calendar_view")}
@@ -273,8 +317,8 @@ export default function AttendancePage() {
         ))}
       </div>
 
-      {/* Leave Requests Panel (Admin) */}
-      {isAdmin && leaves.length > 0 && (
+      {/* Leave Requests Panel (Admin/主管) */}
+      {canApprove && leaves.length > 0 && (
         <div className="bg-white rounded-xl border p-4">
           <h3 className="font-semibold mb-3 flex items-center gap-2"><Bed size={18} className="text-purple-500"/>{t("att_leave_approve_title")}</h3>
           <div className="space-y-2">
@@ -305,8 +349,8 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* Rest Days Panel (Admin) */}
-      {isAdmin && restDays.length > 0 && (
+      {/* Rest Days Panel (Admin/主管) */}
+      {canApprove && restDays.length > 0 && (
         <div className="bg-white rounded-xl border p-4">
           <h3 className="font-semibold mb-3 flex items-center gap-2"><Settings size={18} className="text-blue-500"/>{t("att_rest_day_arrange")}</h3>
           <div className="flex flex-wrap gap-2">
@@ -368,6 +412,59 @@ export default function AttendancePage() {
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
               <button onClick={submitLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">{t("att_submit_application")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proxy Leave Form Modal (管理员/主管代录) */}
+      {showProxyLeaveForm && (
+        <div className="modal-overlay z-50" onClick={() => setShowProxyLeaveForm(false)}>
+          <div className="bg-white rounded-2xl w-[460px]" onClick={e => e.stopPropagation()}>
+            <div className="bg-purple-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <Bed size={18} /><h3 className="font-semibold">{t("att_proxy_leave_form_title")}</h3>
+              <button onClick={() => setShowProxyLeaveForm(false)} className="ml-auto text-purple-200 hover:text-white">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="form-label text-sm mb-1 block">{t("att_select_employee")} <span className="text-red-400">*</span></label>
+                <select className="form-input py-2.5" value={proxyEmpId || ""} onChange={e => setProxyEmpId(+e.target.value)}>
+                  <option value="">{t("att_please_select")}</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label text-sm mb-1 block">{t("att_leave_start_date")} <span className="text-red-400">*</span></label>
+                  <input type="date" className="form-input py-2.5" value={proxyStartDate} onChange={e => setProxyStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="form-label text-sm mb-1 block">{t("att_leave_end_date")} <span className="text-red-400">*</span></label>
+                  <input type="date" className="form-input py-2.5" value={proxyEndDate} onChange={e => setProxyEndDate(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="form-label text-sm mb-1 block">{t("att_leave_type")}</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setProxyType("sick")}
+                    className={`flex-1 py-2 rounded-lg text-sm border ${proxyType === "sick" ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                    {t("att_sick_leave")}
+                  </button>
+                  <button type="button" onClick={() => setProxyType("personal")}
+                    className={`flex-1 py-2 rounded-lg text-sm border ${proxyType === "personal" ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                    {t("att_personal_leave")}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="form-label text-sm mb-1 block">{t("reason")}</label>
+                <input className="form-input py-2.5" placeholder={t("att_leave_reason_placeholder")} value={proxyReason} onChange={e => setProxyReason(e.target.value)} />
+              </div>
+              <p className="text-xs text-gray-400">{t("att_proxy_leave_hint")}</p>
+            </div>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setShowProxyLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={submitProxyLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">{t("att_submit_application")}</button>
             </div>
           </div>
         </div>

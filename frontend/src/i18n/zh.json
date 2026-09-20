@@ -204,5 +204,11 @@
   "att_please_select_employee_and_date": "请选择员工和日期",
   "att_absence_marked": "已标记未到",
   "att_approve": "通过",
-  "att_reject": "驳回"
+  "att_reject": "驳回",
+  "att_proxy_leave_form_title": "代录请假",
+  "att_leave_start_date": "开始日期",
+  "att_leave_end_date": "结束日期",
+  "att_proxy_leave_hint": "代录后直接生效（已通过），无需审批",
+  "att_leave_date_range_invalid": "开始日期不能晚于结束日期",
+  "att_super_admin_denied": "超级管理员请使用各仓库管理员账号操作"
 }

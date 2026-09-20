@@ -97,6 +97,70 @@ async def create_leave(
     await db.flush()
     return {"message": "请假申请已提交，等待审批", "id": lr.id}
 
+class LeaveBatchCreate(BaseModel):
+    employee_id: int
+    start_date: str  # YYYY-MM-DD
+    end_date: str    # YYYY-MM-DD
+    leave_type: str = "sick"  # sick / personal
+    reason: Optional[str] = None
+
+@router.post("/leaves/admin-record")
+async def admin_record_leave(
+    req: LeaveBatchCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """仓库管理员/主管代员工录请假：选日期范围，每天生成一条，直接生效(已通过)，不走审批。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有管理员或主管可以代录请假")
+    if req.leave_type not in ("sick", "personal"):
+        raise HTTPException(400, "请假类型无效")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    try:
+        start = datetime.strptime(req.start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
+    except:
+        raise HTTPException(400, "日期格式错误")
+    if start > end:
+        raise HTTPException(400, "开始日期不能晚于结束日期")
+    if (end - start).days > 365:
+        raise HTTPException(400, "日期范围过大")
+
+    emp = (await db.execute(
+        select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
+    )).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(404, "员工不存在")
+
+    created = 0
+    skipped = 0
+    cur = start
+    while cur <= end:
+        dup = (await db.execute(
+            select(LeaveRequest).where(
+                LeaveRequest.employee_id == req.employee_id,
+                LeaveRequest.leave_date == cur,
+                LeaveRequest.status != "rejected",
+            )
+        )).scalar_one_or_none()
+        if dup:
+            skipped += 1
+        else:
+            db.add(LeaveRequest(
+                warehouse_id=wh_id, employee_id=req.employee_id,
+                leave_date=cur, leave_type=req.leave_type,
+                reason=req.reason, status="approved",
+                reviewed_by=current_user.id, reviewed_at=thai_now(),
+            ))
+            created += 1
+        cur += timedelta(days=1)
+    await db.flush()
+    return {"message": f"已代录 {created} 条请假，跳过 {skipped} 天", "created": created, "skipped": skipped}
+
 @router.get("/leaves")
 async def list_leaves(
     start_date: str = None,

@@ -204,5 +204,11 @@
   "att_please_select_employee_and_date": "กรุณาเลือกพนักงานและวันที่",
   "att_absence_marked": "ทำเครื่องหมายไม่มาแล้ว",
   "att_approve": "อนุมัติ",
-  "att_reject": "ปฏิเสธ"
+  "att_reject": "ปฏิเสธ",
+  "att_proxy_leave_form_title": "บันทึกการลาแทน",
+  "att_leave_start_date": "วันที่เริ่มต้น",
+  "att_leave_end_date": "วันที่สิ้นสุด",
+  "att_proxy_leave_hint": "มีผลทันที (อนุมัติแล้ว) ไม่ต้องรออนุมัติ",
+  "att_leave_date_range_invalid": "วันที่เริ่มต้นต้องไม่ช้ากว่าวันที่สิ้นสุด",
+  "att_super_admin_denied": "ซูเปอร์แอดมินกรุณาใช้บัญชีผู้ดูแลคลังสินค้า"
 }
