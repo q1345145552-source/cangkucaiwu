@@ -60,12 +60,15 @@ def _build_purchase_order_pdf(po, supplier_name: str, warehouse_name: str, boss:
     boss_name = boss.get("name") or ""
     boss_phone = boss.get("phone") or ""
     contact = f"{boss_name} {boss_phone}".strip() if (boss_name or boss_phone) else "-"
+    cur = po.currency or "THB"
+    sym = "¥" if cur == "CNY" else "฿"
 
     info_rows = [
         [Paragraph("采购单号：", label_style), Paragraph(str(po.order_number), cell_style)],
         [Paragraph("供应商：", label_style), Paragraph(supplier_name or "-", cell_style)],
         [Paragraph("仓库：", label_style), Paragraph(warehouse_name or "-", cell_style)],
         [Paragraph("下单日期：", label_style), Paragraph(created_str, cell_style)],
+        [Paragraph("币种：", label_style), Paragraph(f"{cur} ({sym})", cell_style)],
         [Paragraph("联系人：", label_style), Paragraph(contact, cell_style)],
     ]
     info_table = Table(info_rows, colWidths=[30 * mm, 145 * mm])
@@ -84,13 +87,13 @@ def _build_purchase_order_pdf(po, supplier_name: str, warehouse_name: str, boss:
             Paragraph(str(it.get("product_name") or ""), cell_style),
             Paragraph(str(it.get("spec") or "-"), cell_style),
             Paragraph(str(it.get("quantity") or 0), cell_style),
-            Paragraph(str(it.get("unit_price") or 0), cell_style),
-            Paragraph(str(it.get("subtotal") or 0), cell_style),
+            Paragraph(f"{sym}{it.get('unit_price') or 0}", cell_style),
+            Paragraph(f"{sym}{it.get('subtotal') or 0}", cell_style),
         ])
     data.append([
         Paragraph("合计", cell_style), Paragraph("", cell_style), Paragraph("", cell_style),
         Paragraph("", cell_style),
-        Paragraph(str(po.total_amount), cell_style),
+        Paragraph(f"{sym}{po.total_amount}", cell_style),
     ])
 
     items_table = Table(data, colWidths=[60 * mm, 45 * mm, 20 * mm, 25 * mm, 30 * mm], repeatRows=1)
@@ -340,7 +343,7 @@ async def download_logistics_template(current_user: User = Depends(get_current_u
     hfont = Font(bold=True, color="FFFFFF")
     for c, h in enumerate(["供应商名称", "运输方式", "货物类型", "发货仓库", "单价(元/方)", "时效", "币种"], 1):
         cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hfill
-    for c, v in enumerate(["示例: 物流公司A", "陆运", "普货", "深圳仓", 800, "5-7天", "人民币"], 1):
+    for c, v in enumerate(["示例: 物流公司A", "陆运", "普货", "深圳仓", 800, "5-7天", "CNY"], 1):
         ws.cell(row=2, column=c, value=v)
     for col, w in [('A',22),('B',10),('C',10),('D',10),('E',12),('F',10),('G',8)]:
         ws.column_dimensions[col].width = w
@@ -408,7 +411,7 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
                 origin_warehouse=str(row[3] or "").strip(),
                 price_per_cbm=float(row[4] or 0),
                 estimated_days=str(row[5] or "").strip() if row[5] else None,
-                currency=str(row[6] or "人民币").strip(),
+                currency=str(row[6] or "CNY").strip(),
             )
             db.add(p); imported += 1
         except Exception as e:
@@ -469,7 +472,7 @@ async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = Fil
                 origin_warehouse=str(row[2] or "").strip() if len(row)>2 else "",
                 price_per_cbm=float(row[3] or 0) if len(row)>3 and row[3] else 0,
                 estimated_days=str(row[4] or "").strip() if len(row)>4 and row[4] else None,
-                currency=str(row[5] or "人民币").strip() if len(row)>5 else "人民币",
+                currency=str(row[5] or "CNY").strip() if len(row)>5 else "CNY",
             )
             db.add(p); imported += 1
         except Exception as e:
@@ -513,6 +516,7 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
         item = {
             'id': p.id, 'product_name': p.product_name, 'spec': p.spec,
             'spec_price': p.spec_price, 'unit_price': p.unit_price,
+            'currency': p.currency or "THB",
             'unit': p.unit, 'remark': p.remark,
             'is_lowest': False, 'min_price': None,
             'min_supplier_name': None, 'price_diff': None,
@@ -531,7 +535,11 @@ async def add_product(supplier_id: int, req: SupplierProductCreate, current_user
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
-    p = SupplierProduct(supplier_id=supplier_id, **req.model_dump())
+    supplier = (await db.execute(select(Supplier).where(Supplier.id == supplier_id))).scalar_one_or_none()
+    d = req.model_dump()
+    if not d.get("currency"):
+        d["currency"] = (supplier.default_currency if supplier and supplier.default_currency else "THB")
+    p = SupplierProduct(supplier_id=supplier_id, **d)
     db.add(p); await db.flush()
     return {"id": p.id, "message": "添加成功"}
 
@@ -564,6 +572,12 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     )).scalars().all()
     prod_map = {p.id: p for p in products}
 
+    # 币种一致性校验：同一张采购单内产品币种必须一致
+    currencies = {p.currency or "THB" for p in prod_map.values()}
+    if len(currencies) > 1:
+        raise HTTPException(400, "不同币种不能放在同一张采购单，请分开下单")
+    order_currency = currencies.pop() if currencies else "THB"
+
     items_detail = []
     total = 0.0
     anomalies = []
@@ -580,6 +594,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
             "product_name": p.product_name, "spec": p.spec,
             "unit_price": p.unit_price, "quantity": qty,
             "subtotal": round(subtotal, 2),
+            "currency": order_currency,
             "reason": (it.reason or "").strip(),
         })
         total += subtotal
@@ -642,7 +657,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     po = PurchaseOrder(
         warehouse_id=wh_id, supplier_id=supplier_id,
         order_number=order_number, total_amount=total,
-        currency="THB", items=items_detail,
+        currency=order_currency, items=items_detail,
         status="pending" if is_pending else "confirmed",
         remark=req.remark, created_by=current_user.id,
     )
@@ -662,7 +677,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
             warehouse_id=wh_id, supplier_id=supplier_id,
             bill_number=bill_number, bill_date=now.replace(tzinfo=None),
             due_date=(now + timedelta(days=_parse_settlement_days(supplier.settlement_cycle))).replace(tzinfo=None),
-            amount=total, currency="THB", status="pending",
+            amount=total, currency=order_currency, status="pending",
             detail="\n".join(detail_lines),
             source="purchase_order", purchase_order_id=po.id,
             created_by=current_user.id,
@@ -1036,7 +1051,7 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
         "id": po.id, "order_number": po.order_number,
         "supplier_id": po.supplier_id, "supplier_name": sup_map.get(po.supplier_id, ""),
         "warehouse_name": wh_map.get(po.warehouse_id, ""),
-        "total_amount": po.total_amount, "status": po.status,
+        "total_amount": po.total_amount, "currency": po.currency or "THB", "status": po.status,
         "receipt_status": po.receipt_status or "not_received",
         "items": po.items or [], "arrival_photo": po.arrival_photo,
         "received_by": po.received_by, "received_at": po.received_at.isoformat() if po.received_at else None,
@@ -1219,10 +1234,11 @@ def _month_range(month: str):
 
 
 async def _monthly_concentration(db: AsyncSession, wh_ids: list | None, month: str) -> dict:
-    """计算某月各供应商采购金额/占比/订单数，以及总金额。"""
+    """计算某月各供应商采购金额/占比/订单数（含币种），以及总金额。"""
     start, end = _month_range(month)
     q = select(
         PurchaseOrder.supplier_id,
+        PurchaseOrder.currency,
         func.sum(PurchaseOrder.total_amount).label("amount"),
         func.count(PurchaseOrder.id).label("orders"),
     ).where(
@@ -1231,24 +1247,31 @@ async def _monthly_concentration(db: AsyncSession, wh_ids: list | None, month: s
         PurchaseOrder.created_at < end,
     )
     q = q.where(PurchaseOrder.warehouse_id.in_(wh_ids or []))
-    q = q.group_by(PurchaseOrder.supplier_id)
+    q = q.group_by(PurchaseOrder.supplier_id, PurchaseOrder.currency)
     rows = (await db.execute(q)).all()
     total = round(sum(float(r.amount or 0) for r in rows), 2)
-    sids = [r.supplier_id for r in rows]
+    sids = list({r.supplier_id for r in rows})
     smap = {}
     if sids:
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
         smap = {s.id: s.name for s in sups}
-    data = []
+    by_sup: dict = {}
     for r in rows:
-        amt = float(r.amount or 0)
-        pct = round(amt / total * 100, 2) if total > 0 else 0.0
+        acc = by_sup.setdefault(r.supplier_id, {"amount": 0.0, "orders": 0, "currencies": set()})
+        acc["amount"] += float(r.amount or 0)
+        acc["orders"] += int(r.orders or 0)
+        acc["currencies"].add(r.currency or "THB")
+    data = []
+    for sid, acc in by_sup.items():
+        cur = acc["currencies"].pop() if len(acc["currencies"]) == 1 else "mixed"
+        pct = round(acc["amount"] / total * 100, 2) if total > 0 else 0.0
         data.append({
-            "supplier_id": r.supplier_id,
-            "supplier_name": smap.get(r.supplier_id, ""),
-            "amount": amt,
+            "supplier_id": sid,
+            "supplier_name": smap.get(sid, ""),
+            "amount": round(acc["amount"], 2),
+            "currency": cur,
             "percent": pct,
-            "order_count": int(r.orders or 0),
+            "order_count": acc["orders"],
         })
     data.sort(key=lambda x: x["amount"], reverse=True)
     return {"total": total, "data": data}
@@ -1415,7 +1438,7 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
         result.append({
             "product_id": p.id, "supplier_id": p.supplier_id, "supplier_name": s.name if s else "",
             "category_name": cat_name, "product_name": p.product_name, "spec": p.spec,
-            "spec_price": p.spec_price, "unit_price": p.unit_price, "unit": p.unit, "remark": p.remark,
+            "spec_price": p.spec_price, "unit_price": p.unit_price, "currency": p.currency or "THB", "unit": p.unit, "remark": p.remark,
         })
     return {"data": result, "total": len(result)}
 
@@ -1580,6 +1603,7 @@ async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
                       "address": s.address, "payment_terms": s.payment_terms,
                       "cooperation_content": s.cooperation_content,
                       "settlement_cycle": s.settlement_cycle,
+                      "default_currency": s.default_currency or "THB",
                       "history_notes": s.history_notes,
                       "ai_evaluation": s.ai_evaluation,
                       "category_id": s.category_id,
@@ -1595,6 +1619,7 @@ async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     d = req.model_dump()
+    d["default_currency"] = (d.get("default_currency") or "THB")
     s = Supplier(warehouse_id=get_wh_id(current_user), **d)
     db.add(s); await db.flush(); return {"id": s.id, "message": "创建成功"}
 
@@ -1763,6 +1788,7 @@ async def get_supplier(supplier_id: int, current_user: User = Depends(get_curren
             "address": s.address, "payment_terms": s.payment_terms,
             "cooperation_content": s.cooperation_content,
             "settlement_cycle": s.settlement_cycle,
+            "default_currency": s.default_currency or "THB",
             "history_notes": s.history_notes,
             "ai_evaluation": s.ai_evaluation,
             "category_id": s.category_id, "category_name": cat_name}

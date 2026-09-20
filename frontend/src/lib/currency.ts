@@ -1,8 +1,8 @@
 // 币种符号与格式化工具（不做换算，按记录币种显示）
 export function currencySymbol(c?: string): string {
-  if (c === "CNY") return "¥";
-  if (c === "THB") return "฿";
-  return "";
+  if (c === "CNY" || c === "人民币") return "¥";
+  if (c === "THB" || c === "泰铢") return "฿";
+  return "฿"; // 无币种字段的记录默认按泰铢显示
 }
 
 export function fmtMoney(amount?: number, currency?: string): string {

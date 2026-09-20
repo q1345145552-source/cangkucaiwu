@@ -276,9 +276,9 @@ export default function PayablePage() {
                   <div className="text-xs text-gray-400">{s.bill_count}笔账单</div>
                 </div>
                 <div className="text-right text-xs">
-                  <div>应付 <span className="font-medium">¥{s.total_amount.toLocaleString()}</span></div>
-                  <div>已付 <span className="text-green-600">¥{s.paid_amount.toLocaleString()}</span></div>
-                  <div>未付 <span className="text-red-500">¥{s.unpaid_amount.toLocaleString()}</span></div>
+                  <div>应付 <span className="font-medium">{fmtMoney(s.total_amount)}</span></div>
+                  <div>已付 <span className="text-green-600">{fmtMoney(s.paid_amount)}</span></div>
+                  <div>未付 <span className="text-red-500">{fmtMoney(s.unpaid_amount)}</span></div>
                 </div>
               </div>
             ))}
@@ -428,7 +428,7 @@ export default function PayablePage() {
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">原金额</label>
-                  <div className="form-input bg-gray-50 text-gray-600 flex items-center">¥{editingBill.amount?.toLocaleString()}</div>
+                  <div className="form-input bg-gray-50 text-gray-600 flex items-center">{fmtMoney(editingBill.amount, editingBill.currency)}</div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">确认金额</label>
@@ -438,7 +438,7 @@ export default function PayablePage() {
               {editForm.confirmed_amount !== "" && +editForm.confirmed_amount !== editingBill.amount && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700 flex items-center gap-2">
                   <AlertTriangle size={16} />
-                  确认金额与原金额不一致，差额 ¥{Math.abs(editingBill.amount - +editForm.confirmed_amount).toLocaleString()}
+                  确认金额与原金额不一致，差额 {fmtMoney(Math.abs(editingBill.amount - +editForm.confirmed_amount), editingBill.currency)}
                 </div>
               )}
               <div className="form-group">
@@ -480,19 +480,19 @@ export default function PayablePage() {
               <div className="grid grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
                   <div className="text-xs text-blue-500 mb-1">应付总额</div>
-                  <div className="font-bold text-lg text-blue-700">¥{payingRow.amount.toLocaleString()}</div>
+                  <div className="font-bold text-lg text-blue-700">{fmtMoney(payingRow.amount, payingRow.currency)}</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-3 text-center">
                   <div className="text-xs text-green-500 mb-1">已付金额</div>
-                  <div className="font-bold text-lg text-green-700">¥{payingRow.paid_amount.toLocaleString()}</div>
+                  <div className="font-bold text-lg text-green-700">{fmtMoney(payingRow.paid_amount, payingRow.currency)}</div>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-3 text-center">
                   <div className="text-xs text-purple-500 mb-1">本次付款</div>
-                  <div className="font-bold text-lg text-purple-700">¥{(payAmounts[payingBillId] || 0).toLocaleString()}</div>
+                  <div className="font-bold text-lg text-purple-700">{fmtMoney(payAmounts[payingBillId] || 0, payingRow.currency)}</div>
                 </div>
                 <div className={`rounded-lg p-3 text-center ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "bg-orange-50" : "bg-green-100"}`}>
                   <div className={`text-xs mb-1 ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "text-orange-500" : "text-green-600"}`}>付款后余额</div>
-                  <div className={`font-bold text-lg ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "text-orange-700" : "text-green-700"}`}>¥{(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)).toLocaleString()}</div>
+                  <div className={`font-bold text-lg ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "text-orange-700" : "text-green-700"}`}>{fmtMoney(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0), payingRow.currency)}</div>
                 </div>
               </div>
 
@@ -565,7 +565,7 @@ export default function PayablePage() {
                   lineO += (i === 0 ? "M" : "L") + x + "," + yO + " ";
                   lineS += (i === 0 ? "M" : "L") + x + "," + yS + " ";
                   dotsO.push(<circle key={"o"+i} cx={x} cy={yO} r={4} fill="#2563EB"><title>订单量: {d[i].order_count}</title></circle>);
-                  dotsS.push(<circle key={"s"+i} cx={x} cy={yS} r={4} fill="#EF4444"><title>耗材支出: ¥{d[i].consumable_spending.toLocaleString()}</title></circle>);
+                  dotsS.push(<circle key={"s"+i} cx={x} cy={yS} r={4} fill="#EF4444"><title>耗材支出: {fmtMoney(d[i].consumable_spending)}</title></circle>);
                 }
                 const grid: any[] = [];
                 for (let j = 0; j <= 4; j++) {

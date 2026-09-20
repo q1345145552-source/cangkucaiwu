@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import { Edit, Trash2 } from "lucide-react";
@@ -105,9 +106,9 @@ export default function CustomersPage() {
     { key: "line_id", label: "微信账号", render: (v: string) => v || "-" },
     { key: "cargo_type", label: "常用货品", render: (v: string) => cargoTypeLabel(v) },
     { key: "total_shipments", label: "累计发货", align: "right" as const },
-    { key: "total_shipping_cost", label: "累计运费", align: "right" as const, render: (v: number) => v ? `¥${v.toLocaleString()}` : "-" },
+    { key: "total_shipping_cost", label: "累计运费", align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.default_currency) : "-" },
     { key: "credit_status", label: "账期客户", render: (v: boolean) => v ? <span className="text-green-600 text-xs font-medium">是</span> : <span className="text-gray-400 text-xs">否</span> },
-    { key: "debt_amount", label: "欠款", align: "right" as const, render: (v: number) => v ? <span className="text-red-500 font-medium">¥{v.toLocaleString()}</span> : "-" },
+    { key: "debt_amount", label: "欠款", align: "right" as const, render: (v: number, row: any) => v ? <span className="text-red-500 font-medium">{fmtMoney(v, row.default_currency)}</span> : "-" },
     { key: "id", label: "操作", render: (_: any, row: any) => (
       <div className="flex items-center gap-1">
         <button onClick={() => openEdit(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>

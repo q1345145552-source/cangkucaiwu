@@ -300,7 +300,7 @@ export default function OperatingPage() {
       const y = py + gh - ((d[i].recharge_income || 0) / scale * gh);
       linePath += (i === 0 ? "M" : "L") + x + "," + y + " ";
       areaPath += (i === 0 ? "M" : "L") + x + "," + y + " ";
-      dots.push(<circle key={"d" + i} cx={x} cy={y} r={3.5} fill="#2563EB" stroke="white" strokeWidth={2}><title>{d[i].label}: ¥{Math.round(d[i].recharge_income || 0).toLocaleString()}</title></circle>);
+      dots.push(<circle key={"d" + i} cx={x} cy={y} r={3.5} fill="#2563EB" stroke="white" strokeWidth={2}><title>{d[i].label}: {fmtMoney(Math.round(d[i].recharge_income || 0))}</title></circle>);
     }
     areaPath += "L" + (px + (d.length - 1) * step) + "," + (py + gh) + " L" + px + "," + (py + gh) + " Z";
 

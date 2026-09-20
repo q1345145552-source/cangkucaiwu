@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +20,7 @@ export default function SuppliersPage() {
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [filterCat, setFilterCat] = useState(1);
-  const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "", category_id: 0 });
+  const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "", category_id: 0, default_currency: "THB" });
   const [aiResult, setAiResult] = useState("");
   const [procurement, setProcurement] = useState<any>(null);
   const [showProcurement, setShowProcurement] = useState(false);
@@ -48,12 +49,12 @@ export default function SuppliersPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [productSupplierId, setProductSupplierId] = useState(0);
-  const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "" });
+  const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "", currency: "THB" });
   // Logistics prices
   const [logisticsPrices, setLogisticsPrices] = useState<any[]>([]);
   const [showLogistics, setShowLogistics] = useState(false);
   const [logisticsSupplierId, setLogisticsSupplierId] = useState(0);
-  const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "人民币" });
+  const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "CNY" });
   // Compare
   const [compareData, setCompareData] = useState<any[]>([]);
   const [showCompare, setShowCompare] = useState(false);
@@ -159,13 +160,15 @@ export default function SuppliersPage() {
   // ─── Products ───
   async function openProducts(sid: number) {
     setProductSupplierId(sid);
+    const s = data.find((x: any) => x.id === sid);
+    setProductForm(prev => ({ ...prev, currency: s?.default_currency || "THB" }));
     try { const r = await api.get<any>(`/suppliers/${sid}/products`); setProducts(r.data); } catch { setProducts([]); }
     setShowProducts(true);
   }
   async function addProduct() {
     try { await api.post(`/suppliers/${productSupplierId}/products`, { ...productForm, spec_price: productForm.spec_price || 0, unit_price: productForm.unit_price || 0 }); toast("success", "产品添加成功");
       const r = await api.get<any>(`/suppliers/${productSupplierId}/products`); setProducts(r.data);
-      setProductForm({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "" });
+      setProductForm(prev => ({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "", currency: prev.currency }));
     } catch (err: any) { toast("error", err.message || "添加失败"); }
   }
   async function deleteProduct(pid: number) {
@@ -210,6 +213,12 @@ export default function SuppliersPage() {
     });
     setOrderTotal(Math.round(total * 100) / 100);
   }, [orderItems, products]);
+  const orderCurrency = (() => {
+    for (const p of products) {
+      if (orderItems[p.id] > 0) return p.currency || "THB";
+    }
+    return "THB";
+  })();
   const QUICK_REASONS = ["质量更好", "交货更快", "距离更近", "长期合作", "其他"];
 
   async function doSubmitOrder(confirmAnomaly: boolean, reasons: Record<number, string>) {
@@ -565,7 +574,7 @@ export default function SuppliersPage() {
                   <input className="form-input text-base py-2.5" placeholder="如: 38*45cm / 一打80个" value={productForm.spec} onChange={e=>setProductForm({...productForm,spec:e.target.value})} />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div>
                   <label className="form-label text-sm font-medium text-gray-600 mb-1 block">规格报价</label>
                   <input type="number" className="form-input text-base py-2.5" placeholder="规格对应报价" value={productForm.spec_price||""} onChange={e=>setProductForm({...productForm,spec_price:e.target.value===""?"":+e.target.value})} />
@@ -573,6 +582,13 @@ export default function SuppliersPage() {
                 <div>
                   <label className="form-label text-sm font-medium text-gray-600 mb-1 block">单价 <span className="text-red-400">*</span></label>
                   <input type="number" className="form-input text-base py-2.5" placeholder="标准单价" value={productForm.unit_price||""} onChange={e=>setProductForm({...productForm,unit_price:e.target.value===""?"":+e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">币种</label>
+                  <select className="form-input text-base py-2.5" value={productForm.currency} onChange={e=>setProductForm({...productForm,currency:e.target.value})}>
+                    <option value="THB">泰铢 (฿)</option>
+                    <option value="CNY">人民币 (¥)</option>
+                  </select>
                 </div>
                 <div className="flex items-end">
                   <button onClick={addProduct} disabled={!productForm.product_name.trim() || !productForm.unit_price}
@@ -609,15 +625,15 @@ export default function SuppliersPage() {
                           <tr key={p.id} className="border-b hover:bg-gray-50/50 transition-colors">
                             <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}</td>
                             <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
-                            <td className="px-3 py-3 text-right text-gray-700">{p.spec_price != null ? `¥${p.spec_price.toLocaleString()}` : "-"}</td>
-                            <td className="px-3 py-3 text-right font-semibold text-green-700">¥{p.unit_price?.toLocaleString()}</td>
+                            <td className="px-3 py-3 text-right text-gray-700">{p.spec_price != null ? fmtMoney(p.spec_price, p.currency) : "-"}</td>
+                            <td className="px-3 py-3 text-right font-semibold text-green-700">{fmtMoney(p.unit_price, p.currency)}</td>
                             <td className="px-3 py-3 text-center">
                               {p.is_lowest ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                                   <Tag size={10} />最低价
                                 </span>
                               ) : p.price_diff != null ? (
-                                <span className="text-xs text-orange-500">高于最低价 ¥{p.price_diff}</span>
+                                <span className="text-xs text-orange-500">高于最低价 {fmtMoney(p.price_diff, p.currency)}</span>
                               ) : p.min_price != null ? (
                                 <span className="text-xs text-gray-400">与最低价持平</span>
                               ) : (
@@ -698,7 +714,7 @@ export default function SuppliersPage() {
                         <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}</td>
                         <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
                         <td className="px-3 py-3 text-right font-semibold text-gray-700">
-                          {hasPrice ? `¥${p.unit_price?.toLocaleString()}` : <span className="text-red-500 text-xs">未录价格</span>}
+                          {hasPrice ? fmtMoney(p.unit_price, p.currency) : <span className="text-red-500 text-xs">未录价格</span>}
                         </td>
                         <td className="px-3 py-3 text-center">
                           {!hasPrice ? (
@@ -708,7 +724,7 @@ export default function SuppliersPage() {
                               <Tag size={10} />最低价
                             </span>
                           ) : p.price_diff != null ? (
-                            <span className="text-xs text-orange-500">+¥{p.price_diff}</span>
+                            <span className="text-xs text-orange-500">+{fmtMoney(p.price_diff, p.currency)}</span>
                           ) : (
                             <span className="text-xs text-gray-400">-</span>
                           )}
@@ -728,7 +744,7 @@ export default function SuppliersPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-right font-semibold text-green-700">
-                          {selected ? `¥${subtotal.toLocaleString()}` : "-"}
+                          {selected ? fmtMoney(subtotal, p.currency) : "-"}
                         </td>
                       </tr>
                     );
@@ -742,7 +758,7 @@ export default function SuppliersPage() {
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-between items-center">
               <div className="text-sm">
                 已选 <span className="font-semibold text-green-600">{Object.keys(orderItems).filter(k => orderItems[+k] > 0).length}</span> 个产品，
-                总价 <span className="font-semibold text-green-600 text-lg">¥{orderTotal.toLocaleString()}</span>
+                总价 <span className="font-semibold text-green-600 text-lg">{fmtMoney(orderTotal, orderCurrency)}</span>
               </div>
               <div className="flex gap-3">
                 <button onClick={()=>setShowOrder(false)} className="btn-secondary text-sm px-5 py-2">取消</button>
@@ -840,7 +856,7 @@ export default function SuppliersPage() {
                     <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
                       <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.transport_method}</td><td>{r.cargo_type}</td>
                       <td>{r.origin_warehouse}</td><td className="font-semibold text-green-700">{r.price_per_cbm}</td>
-                      <td className="text-xs">{r.min_cbm}方起 / ¥{r.min_amount}</td><td>{r.estimated_days||"-"}</td>
+                      <td className="text-xs">{r.min_cbm}方起 / {fmtMoney(r.min_amount, r.currency)}</td><td>{r.estimated_days||"-"}</td>
                       <td className="text-xs text-orange-600">{r.price_note}{r.heavy_cargo_warning&&<><br/>{r.heavy_cargo_warning}</>}</td></tr>)}</tbody></table>
                 )}
                 <button onClick={doAiCompare} className="bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1 mb-4"><Sparkles size={16}/>AI比价分析</button>
@@ -1329,6 +1345,12 @@ export default function SuppliersPage() {
               <div><label className="form-label">地址</label><input className="form-input" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} /></div>
               <div><label className="form-label">付款条件</label><input className="form-input" value={form.payment_terms} onChange={e=>setForm({...form,payment_terms:e.target.value})} /></div>
               <div><label className="form-label">结算周期</label><input className="form-input" value={form.settlement_cycle} onChange={e=>setForm({...form,settlement_cycle:e.target.value})} placeholder="如: 月结30天" /></div>
+              <div><label className="form-label">默认币种</label>
+                <select className="form-input" value={form.default_currency} onChange={e=>setForm({...form,default_currency:e.target.value})}>
+                  <option value="THB">泰铢 (฿)</option>
+                  <option value="CNY">人民币 (¥)</option>
+                </select>
+              </div>
             </div>
             <div className="mt-3"><label className="form-label">合作内容</label><textarea className="form-input" rows={2} value={form.cooperation_content} onChange={e=>setForm({...form,cooperation_content:e.target.value})} /></div>
 

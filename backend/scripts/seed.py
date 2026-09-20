@@ -190,6 +190,22 @@ async def seed():
             ))
         except Exception:
             pass
+        # Migration: 供应商默认币种 + 产品币种 + 币种值统一
+        try:
+            await conn.execute(text(
+                "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS default_currency VARCHAR(10) DEFAULT 'THB'"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE supplier_products ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'THB'"
+            ))
+            await conn.execute(text(
+                "UPDATE supplier_cross_border_prices SET currency = 'CNY' WHERE currency = '人民币'"
+            ))
+            await conn.execute(text(
+                "UPDATE supplier_cross_border_prices SET currency = 'THB' WHERE currency = '泰铢'"
+            ))
+        except Exception:
+            pass
         # Migration: 非最低价采购记录表
         try:
             await conn.execute(text("""

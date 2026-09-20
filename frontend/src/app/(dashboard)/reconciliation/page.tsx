@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import { Download, Link2, CheckCircle, Search, ArrowRight, Image as ImageIcon } from "lucide-react";
@@ -144,7 +145,7 @@ export default function ReconciliationPage() {
     )},
     { key: "customer_code", label: "编号" }, { key: "customer_name", label: "客户" },
     { key: "declare_date", label: "申报日期", render: (v: string) => v?.slice(0,10) },
-    { key: "amount", label: "金额", align: "right" as const, render: (v: number, row: any) => `${v?.toLocaleString()} ${row.currency || ""}` },
+    { key: "amount", label: "金额", align: "right" as const, render: (v: number, row: any) => fmtMoney(v, row.currency) },
     { key: "screenshot", label: "截图", render: (v: string) => v ? (
       <button onClick={() => setPreviewScreenshot(v.startsWith("http") ? v : `/${v}`)} className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"><ImageIcon size={12} />查看</button>
     ) : <span className="text-red-400 text-xs">未上传</span> },
@@ -157,7 +158,7 @@ export default function ReconciliationPage() {
     )},
     { key: "payer_name", label: "付款方" },
     { key: "received_date", label: "到账日期", render: (v: string) => v?.slice(0,10) },
-    { key: "amount", label: "金额", align: "right" as const, render: (v: number, row: any) => `${v?.toLocaleString()} ${row.currency || ""}` },
+    { key: "amount", label: "金额", align: "right" as const, render: (v: number, row: any) => fmtMoney(v, row.currency) },
     { key: "screenshot", label: "截图", render: (v: string) => v ? (
       <button onClick={() => setPreviewScreenshot(v.startsWith("http") ? v : `/${v}`)} className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"><ImageIcon size={12} />查看</button>
     ) : <span className="text-red-400 text-xs">未上传</span> },
@@ -168,9 +169,9 @@ export default function ReconciliationPage() {
     { key: "created_at", label: "匹配时间", render: (v: string) => v?.slice(0,16)?.replace("T"," ") },
     { key: "customer_code", label: "客户编号" },
     { key: "customer_name", label: "客户名称" },
-    { key: "decl_amount", label: "申报金额", align: "right" as const, render: (v: number, row: any) => v ? `${v?.toLocaleString()} ${row.decl_currency||""}` : "-" },
+    { key: "decl_amount", label: "申报金额", align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.decl_currency) : "-" },
     { key: "flow_payer", label: "流水付款方" },
-    { key: "flow_amount", label: "流水金额", align: "right" as const, render: (v: number, row: any) => v ? `${v?.toLocaleString()} ${row.flow_currency||""}` : "-" },
+    { key: "flow_amount", label: "流水金额", align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.flow_currency) : "-" },
     { key: "amount_diff", label: "差额", align: "right" as const, render: (v: number) => v ? <span className="text-orange-600 font-medium">{v}</span> : <span className="text-green-600">0</span> },
     { key: "handling_note", label: "备注", render: (v: string) => v || "-" },
     { key: "id", label: "操作", render: (_: any, row: any) => (
@@ -242,12 +243,12 @@ export default function ReconciliationPage() {
               <div className="flex-1" /><button onClick={() => setShowMatchConfirm(false)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
             </div>
             <div className="p-6 space-y-4">
-              <div><div className="text-xs text-gray-400 mb-1">申报记录</div><div className="bg-blue-50 rounded-lg p-3 text-sm">{decls.find(d => d.id === selectedDeclId)?.customer_name} · ¥{decls.find(d => d.id === selectedDeclId)?.amount?.toLocaleString()}</div></div>
-              <div><div className="text-xs text-gray-400 mb-1">到账流水</div><div className="bg-green-50 rounded-lg p-3 text-sm">{flows.find(f => f.id === selectedFlowId)?.payer_name} · ¥{flows.find(f => f.id === selectedFlowId)?.amount?.toLocaleString()}</div></div>
+              <div><div className="text-xs text-gray-400 mb-1">申报记录</div><div className="bg-blue-50 rounded-lg p-3 text-sm">{decls.find(d => d.id === selectedDeclId)?.customer_name} · {fmtMoney(decls.find(d => d.id === selectedDeclId)?.amount, decls.find(d => d.id === selectedDeclId)?.currency)}</div></div>
+              <div><div className="text-xs text-gray-400 mb-1">到账流水</div><div className="bg-green-50 rounded-lg p-3 text-sm">{flows.find(f => f.id === selectedFlowId)?.payer_name} · {fmtMoney(flows.find(f => f.id === selectedFlowId)?.amount, flows.find(f => f.id === selectedFlowId)?.currency)}</div></div>
               {(() => {
                 const d = decls.find(d => d.id === selectedDeclId); const f = flows.find(f => f.id === selectedFlowId);
                 const diff = (d?.amount || 0) - (f?.amount || 0);
-                return diff !== 0 ? <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700">差异金额：¥{Math.abs(diff).toLocaleString()}</div>
+                return diff !== 0 ? <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700">差异金额：{fmtMoney(Math.abs(diff), d?.currency || f?.currency)}</div>
                   : <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2"><CheckCircle size={16} />金额一致</div>;
               })()}
               <div className="form-group"><label className="form-label">备注说明</label><input className="form-input" value={note} onChange={e => setNote(e.target.value)} placeholder="匹配备注（可选）" /></div>

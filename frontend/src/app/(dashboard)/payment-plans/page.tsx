@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { Calendar, Play, Download, Eye, X, ChevronRight, FileText } from "lucide-react";
@@ -98,7 +99,7 @@ export default function PaymentPlansPage() {
             <div key={i} className={`${timelineColors[i]} text-white rounded-lg p-3`}>
               <div className="text-xs opacity-80">{w.label}</div>
               <div className="text-xs opacity-60 mt-0.5">{w.start} ~ {w.end}</div>
-              <div className="font-bold text-lg mt-2">¥{w.total.toLocaleString()}</div>
+              <div className="font-bold text-lg mt-2">{fmtMoney(w.total)}</div>
             </div>
           ))}
         </div>
@@ -130,7 +131,7 @@ export default function PaymentPlansPage() {
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "plan_name", label: "计划名称", render: (v: any, row: any) => <button onClick={() => handleViewDetail(row.id)} className="text-blue-600 hover:underline text-left">{v}</button> },
         { key: "planned_date", label: "计划日期", render: (v: any) => v?.slice(0, 10) },
-        { key: "total_amount", label: "金额", align: "right", render: (v: any) => `¥${v?.toLocaleString()}` },
+        { key: "total_amount", label: "金额", align: "right", render: (v: any, row: any) => fmtMoney(v, row.currency) },
         { key: "status", label: "状态", render: (v: any) => {
           const map: Record<string, string> = { pending: "待执行", executed: "已执行", cancelled: "已取消" };
           const colors: Record<string, string> = { pending: "bg-yellow-100 text-yellow-700", executed: "bg-green-100 text-green-700", cancelled: "bg-gray-100 text-gray-500" };
@@ -188,7 +189,7 @@ export default function PaymentPlansPage() {
                     <div key={b.id} className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-gray-50">
                       <input type="checkbox" checked={selectedBills.includes(b.id)} onChange={() => toggleBill(b.id)} className="w-4 h-4" />
                       <span className="text-sm flex-1">{b.supplier_name} - {b.bill_number}</span>
-                      <span className="text-xs text-gray-500">¥{b.amount?.toLocaleString()}</span>
+                      <span className="text-xs text-gray-500">{fmtMoney(b.amount, b.currency)}</span>
                       <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">{b.status}</span>
                     </div>
                   ))}
@@ -197,7 +198,7 @@ export default function PaymentPlansPage() {
                   )}
                 </div>
                 <div className="text-sm text-blue-600 mt-3 pt-3 border-t">
-                  已选 {selectedBills.length} 条，合计 ¥{bills.filter((b: any) => selectedBills.includes(b.id)).reduce((s: number, b: any) => s + (b.amount - (b.paid_amount || 0)), 0).toLocaleString()}
+                  已选 {selectedBills.length} 条，合计 {fmtMoney(bills.filter((b: any) => selectedBills.includes(b.id)).reduce((s: number, b: any) => s + (b.amount - (b.paid_amount || 0)), 0))}
                 </div>
               </div>
             </div>
@@ -218,7 +219,7 @@ export default function PaymentPlansPage() {
               <div className="flex-1">
                 <h2 className="text-lg font-semibold">{showDetail.plan.plan_name}</h2>
                 <div className="text-xs text-indigo-100 mt-0.5">
-                  计划日期：{showDetail.plan.planned_date?.slice(0, 10)} · 总金额：¥{showDetail.plan.total_amount?.toLocaleString()}
+                  计划日期：{showDetail.plan.planned_date?.slice(0, 10)} · 总金额：{fmtMoney(showDetail.plan.total_amount, showDetail.plan.currency)}
                 </div>
               </div>
               <button onClick={() => setShowDetail(null)} className="text-indigo-200 hover:text-white"><span className="text-xl leading-none">&times;</span></button>
@@ -242,7 +243,7 @@ export default function PaymentPlansPage() {
                       <tr key={b.id} className="border-t hover:bg-gray-50">
                         <td className="p-2">{b.supplier_name}</td>
                         <td className="p-2">{b.bill_number}</td>
-                        <td className="p-2 text-right">¥{b.amount?.toLocaleString()}</td>
+                        <td className="p-2 text-right">{fmtMoney(b.amount, b.currency)}</td>
                         <td className="p-2">{b.due_date?.slice(0, 10)}</td>
                         <td className="p-2">
                           <span className={`px-1.5 py-0.5 rounded text-xs ${b.status === "paid" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>

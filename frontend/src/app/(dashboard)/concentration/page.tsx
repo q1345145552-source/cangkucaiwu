@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
@@ -109,7 +110,7 @@ export default function ConcentrationPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
           <div className="flex items-center gap-2 mb-1"><BarChart3 size={18} /><span className="text-sm opacity-80">{month} 采购总额</span></div>
-          <div className="text-2xl font-bold">¥{(total || 0).toLocaleString()}</div>
+          <div className="text-2xl font-bold">{fmtMoney(total)}</div>
         </div>
         <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
           <div className="flex items-center gap-2 mb-1"><Users size={18} /><span className="text-sm opacity-80">供应商数量</span></div>
@@ -146,7 +147,7 @@ export default function ConcentrationPage() {
                   <span className={`text-sm font-semibold w-16 text-right ${s.percent > threshold ? "text-red-600" : "text-gray-700"}`}>
                     {s.percent}%
                   </span>
-                  <span className="text-sm text-gray-600 w-28 text-right">¥{(s.amount || 0).toLocaleString()}</span>
+                  <span className="text-sm text-gray-600 w-28 text-right">{s.currency === "mixed" ? fmtMoney(s.amount) : fmtMoney(s.amount, s.currency)}</span>
                   <span className="text-xs text-gray-400 w-20 text-right">{s.order_count} 笔订单</span>
                   {s.percent > threshold && (
                     <AlertTriangle size={16} className="text-red-500" title={`占比超过 ${threshold}%`} />
