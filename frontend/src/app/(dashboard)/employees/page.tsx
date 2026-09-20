@@ -4,7 +4,7 @@ import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp, Ban, Camera, Clock, Calendar, DollarSign, Tag, X as XIcon, TrendingUp, Trash2 } from "lucide-react";
+import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp, Ban, Camera, Clock, Calendar, DollarSign, Tag, X as XIcon, TrendingUp, Trash2, Link2 } from "lucide-react";
 
 export default function EmployeesPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
@@ -26,6 +26,8 @@ export default function EmployeesPage() {
   const [detailEmp, setDetailEmp] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [bindResult, setBindResult] = useState<any>(null);
+  const [binding, setBinding] = useState(false);
   const [summary, setSummary] = useState<any>(null);
   const [newTag, setNewTag] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -291,6 +293,19 @@ export default function EmployeesPage() {
     } catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
+  async function bindExistingAccounts() {
+    setBinding(true);
+    try {
+      const r = await api.post<any>("/employees/bind-existing-accounts", {});
+      setBindResult(r);
+      toast("success", r.message || "绑定完成");
+      load();
+    } catch (err: any) {
+      toast("error", err.message || "绑定失败");
+    }
+    setBinding(false);
+  }
+
   async function addTag() {
     if (!newTag.trim() || !detailEmp) return;
     const currentTags = Array.isArray(detailEmp.tags) ? detailEmp.tags : (detailEmp.tags ? detailEmp.tags.split(",").filter(Boolean) : []);
@@ -337,6 +352,10 @@ export default function EmployeesPage() {
                 <button onClick={saveMaxLimit} className="text-xs bg-blue-500 text-white px-2 py-1 rounded">保存</button>
               </div>
             )}
+            <button onClick={bindExistingAccounts} disabled={binding}
+              className="border border-blue-300 text-blue-600 px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-50 disabled:opacity-50">
+              <Link2 size={16}/>{binding ? "绑定中..." : "绑定已有账号"}
+            </button>
             <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setShowForm(true); }}
               className="bg-primary text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1">
               <UserPlus size={16}/>新建员工
@@ -906,6 +925,43 @@ export default function EmployeesPage() {
                 className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50">
                 {deleting ? "删除中..." : "确认删除"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 绑定已有账号结果弹窗 */}
+      {bindResult && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setBindResult(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <Link2 size={18} /><span className="font-semibold">绑定已有账号</span>
+              <button onClick={() => setBindResult(null)} className="ml-auto text-2xl text-blue-200 hover:text-white">&times;</button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="flex gap-3 text-center">
+                <div className="flex-1 bg-green-50 rounded-lg py-3">
+                  <div className="text-2xl font-bold text-green-600">{bindResult.bound ?? 0}</div>
+                  <div className="text-xs text-green-600">成功绑定</div>
+                </div>
+                <div className="flex-1 bg-gray-50 rounded-lg py-3">
+                  <div className="text-2xl font-bold text-gray-500">{bindResult.not_found ?? 0}</div>
+                  <div className="text-xs text-gray-500">未找到</div>
+                </div>
+              </div>
+              {(bindResult.details || []).length > 0 && (
+                <div className="max-h-48 overflow-y-auto border rounded-lg">
+                  {bindResult.details.map((d: any) => (
+                    <div key={d.employee_id} className="px-3 py-2 text-sm border-b last:border-0 flex justify-between">
+                      <span className="text-gray-700">{d.name}</span>
+                      <span className="text-gray-400 font-mono">→ {d.username}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end">
+              <button onClick={() => setBindResult(null)} className="bg-blue-500 text-white px-5 py-2 rounded-lg text-sm">关闭</button>
             </div>
           </div>
         </div>

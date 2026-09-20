@@ -7,7 +7,7 @@ from app.models.clock_in_records import ClockInRecord
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today
 from app.core.messages import t, get_request_lang, session_label
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 import os, uuid, base64
 
 router = APIRouter()
@@ -179,16 +179,15 @@ async def list_records(
     result = await db.execute(query.order_by(ClockInRecord.clock_date.asc(), ClockInRecord.session))
     records = result.scalars().all()
 
-    # Maps
+    # Maps（含未绑定账号的兜底匹配：手机号=用户名 / 姓名=显示名）
+    from app.services.employee_match import resolve_employee_user_map
+    _, user_to_emp = await resolve_employee_user_map(db, emps)
+
     uid_set = {r.user_id for r in records}
     users_map = {}
     if uid_set:
         us = (await db.execute(select(User).where(User.id.in_(uid_set)))).scalars().all()
         users_map = {u.id: u.display_name for u in us}
-    emp_map = {}
-    if uid_set:
-        e2s = (await db.execute(select(Employee).where(Employee.user_id.in_(uid_set)))).scalars().all()
-        emp_map = {e.user_id: e.id for e in e2s}
 
     return {
         "employees": [{
@@ -197,7 +196,7 @@ async def list_records(
         } for e in emps],
         "records": [{
             "id": r.id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
-            "employee_id": emp_map.get(r.user_id),
+            "employee_id": user_to_emp.get(r.user_id),
             "clock_date": r.clock_date.isoformat(), "session": r.session,
             "label": SESSIONS.get(r.session, {}).get("label", ""),
             "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
@@ -205,6 +204,163 @@ async def list_records(
             "photo_path": r.photo_path,
         } for r in records],
     }
+
+@router.get("/records/export")
+async def export_records(
+    start_date: str = None,
+    end_date: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出当前时间段内的全部打卡记录（一个员工一天一行），生成 Excel。"""
+    from app.models.employee import Employee
+    from app.models.attendance import LeaveRequest, RestDay, Absence
+    from app.services.employee_match import resolve_employee_user_map
+    from app.core.timezone import THAI_TZ
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    from fastapi.responses import StreamingResponse
+    from urllib.parse import quote
+
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "无权限")
+
+    today = thai_today()
+    if start_date:
+        try:
+            range_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except:
+            raise HTTPException(400, "开始日期格式错误 YYYY-MM-DD")
+    else:
+        range_start = today.replace(day=1)
+    if end_date:
+        try:
+            range_end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except:
+            raise HTTPException(400, "结束日期格式错误 YYYY-MM-DD")
+    else:
+        range_end = today
+    if range_start > range_end:
+        raise HTTPException(400, "开始日期不能晚于结束日期")
+    # 导出只到当天，未来日期无数据
+    range_end = min(range_end, today)
+
+    # 员工范围
+    active_wh = get_wh_id(current_user)
+    emp_q = select(Employee).where(Employee.status != "resigned")
+    if active_wh:
+        emp_q = emp_q.where(Employee.warehouse_id == active_wh)
+    emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
+    emp_ids = [e.id for e in emps]
+
+    emp_to_user, user_to_emp = await resolve_employee_user_map(db, emps)
+    uid_set = set(emp_to_user.values())
+    username_map = {}
+    if uid_set:
+        us = (await db.execute(select(User).where(User.id.in_(uid_set)))).scalars().all()
+        username_map = {u.id: u.username for u in us}
+
+    wh_ids = get_wh_ids(current_user)
+
+    # 打卡记录
+    clock_map = {}
+    if uid_set:
+        clock_records = (await db.execute(
+            select(ClockInRecord).where(
+                ClockInRecord.warehouse_id.in_(wh_ids),
+                ClockInRecord.user_id.in_(uid_set),
+                ClockInRecord.clock_date >= range_start,
+                ClockInRecord.clock_date <= range_end,
+            ).order_by(ClockInRecord.clock_date, ClockInRecord.session)
+        )).scalars().all()
+        for cr in clock_records:
+            eid = user_to_emp.get(cr.user_id)
+            if eid is None:
+                continue
+            clock_map.setdefault((eid, cr.clock_date), {})[cr.session] = cr
+
+    # 请假 / 休息日 / 未到
+    leaves = (await db.execute(select(LeaveRequest).where(
+        LeaveRequest.warehouse_id.in_(wh_ids), LeaveRequest.employee_id.in_(emp_ids),
+        LeaveRequest.leave_date >= range_start, LeaveRequest.leave_date <= range_end,
+        LeaveRequest.status == "approved",
+    ))).scalars().all()
+    leave_set = {(l.employee_id, l.leave_date) for l in leaves}
+
+    rests = (await db.execute(select(RestDay).where(
+        RestDay.warehouse_id.in_(wh_ids), RestDay.employee_id.in_(emp_ids),
+        RestDay.rest_date >= range_start, RestDay.rest_date <= range_end,
+    ))).scalars().all()
+    rest_set = {(r.employee_id, r.rest_date) for r in rests}
+
+    absences = (await db.execute(select(Absence).where(
+        Absence.warehouse_id.in_(wh_ids), Absence.employee_id.in_(emp_ids),
+        Absence.absence_date >= range_start, Absence.absence_date <= range_end,
+    ))).scalars().all()
+    absence_set = {(a.employee_id, a.absence_date) for a in absences}
+
+    def fmt_time(dt):
+        return dt.astimezone(THAI_TZ).strftime("%H:%M") if dt else ""
+
+    rows = []
+    for e in emps:
+        total_days = (range_end - range_start).days + 1
+        for i in range(total_days):
+            dt = range_start + timedelta(days=i)
+            sessions = clock_map.get((e.id, dt), {})
+            times = [fmt_time(sessions.get(s).clocked_in_at) if s in sessions else "" for s in (1, 2, 3, 4)]
+            late = any(sessions.get(s) and sessions.get(s).status in ("late_half", "late_one") for s in (1, 2, 3, 4))
+            if (e.id, dt) in leave_set:
+                status = "请假"
+            elif (e.id, dt) in rest_set:
+                status = "休息日"
+            elif (e.id, dt) in absence_set:
+                status = "缺勤"
+            elif sessions:
+                status = "迟到" if late else "正常"
+            else:
+                status = "缺勤"  # 未打卡
+            rows.append([
+                e.name,
+                username_map.get(emp_to_user.get(e.id), ""),
+                dt.isoformat(),
+                times[0], times[1], times[2], times[3],
+                "是" if late else "否",
+                status,
+            ])
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "打卡记录"
+    headers = ["员工姓名", "工号", "日期", "第一次打卡时间", "第二次打卡时间", "第三次打卡时间", "第四次打卡时间", "是否迟到", "出勤状态"]
+    ws.append(headers)
+    hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+    hfont = Font(bold=True, color="FFFFFF")
+    for c in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=c)
+        cell.fill = hf
+        cell.font = hfont
+    for row in rows:
+        ws.append(row)
+    # 列宽
+    widths = [12, 12, 12, 14, 14, 14, 14, 10, 10]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = w
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"打卡记录_{range_start.isoformat()}_{range_end.isoformat()}.xlsx"
+    encoded = quote(filename)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}"},
+    )
 
 @router.get("/photos")
 async def get_photos(
@@ -247,14 +403,12 @@ async def get_photos(
         if emp.warehouse_id not in wh_ids:
             raise HTTPException(403, "无权查看该员工")
 
-        # Get user_id from employee link
+        # Get user_id from employee link（含兜底匹配：手机号=用户名 / 姓名=显示名）
         uid = emp.user_id
         if not uid:
-            # Fallback name matching
-            u = (await db.execute(
-                select(User).where(User.display_name == emp.name, User.role == "warehouse_labor")
-            )).scalar_one_or_none()
-            uid = u.id if u else None
+            from app.services.employee_match import resolve_employee_user_map
+            emp_to_user, _ = await resolve_employee_user_map(db, [emp])
+            uid = emp_to_user.get(emp.id)
 
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d").date()

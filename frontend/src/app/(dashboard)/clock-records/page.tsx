@@ -75,8 +75,6 @@ export default function ClockRecordsPage() {
       for (let d = 1; d <= totalDays; d++) {
         const dt = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         if (dt > today) break;
-        const dow = new Date(dt).getDay();
-        if (dow === 0) continue; // Sunday
         const key = `${e.id}_${dt}`;
         if (!grid[key]) s[e.id].absent++;
       }
@@ -93,8 +91,6 @@ export default function ClockRecordsPage() {
       for (let d = 1; d <= totalDays; d++) {
         const dt = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         if (dt > today) break;
-        const dow = new Date(dt).getDay();
-        if (dow === 0) continue;
         const cellKey = `${e.id}_${dt}`;
         const cell = grid[cellKey];
         if (cell) {
@@ -142,7 +138,7 @@ export default function ClockRecordsPage() {
                   {Array.from({ length: totalDays }, (_, i) => {
                     const dt = new Date(year, month - 1, i + 1);
                     return (
-                      <th key={i} className={`px-1 py-2 text-center font-medium w-[38px] ${dt.getDay() === 0 ? "text-red-400" : "text-gray-500"}`}>
+                      <th key={i} className="px-1 py-2 text-center font-medium w-[38px] text-gray-500">
                         <div className="text-[10px]">{i + 1}</div>
                         <div className="text-[9px]">{dayHeaders[dt.getDay()]}</div>
                       </th>
@@ -178,10 +174,9 @@ export default function ClockRecordsPage() {
                         const cell = grid[cellKey];
                         const today = new Date().toISOString().slice(0, 10);
                         const isFuture = dt > today;
-                        const isSunday = new Date(dt).getDay() === 0;
                         const hasLate = cell && Object.values(cell).some((cr: any) => cr.status === "late_half" || cr.status === "late_one");
                         return (
-                          <td key={i} className={`px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50 ${isSunday ? "bg-red-50/30" : ""}`}
+                          <td key={i} className="px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50"
                             onClick={() => setDetailPopup({ empName: emp.name, date: dt, sessions: cell || {} })}>
                             {isFuture ? (
                               <span className="text-gray-200">-</span>
@@ -198,8 +193,6 @@ export default function ClockRecordsPage() {
                                   <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>
                                 )}
                               </div>
-                            ) : isSunday ? (
-                              <span className="text-gray-300 text-[10px]">休</span>
                             ) : (
                               <span className="text-gray-300 text-[10px]">未打卡</span>
                             )}

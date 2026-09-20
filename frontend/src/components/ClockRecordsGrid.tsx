@@ -1,15 +1,16 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
-import { api } from "@/lib/api";
+import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
-import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
+import { Camera, ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 const SESSION_KEYS: Record<number, string> = {
   1: "morning_shift", 2: "noon_break_end", 3: "afternoon_shift", 4: "evening_shift",
 };
 
-function buildDateList(startDate: string, endDate: string, dayNames: string[]): { date: string; day: number; weekday: string; isSunday: boolean }[] {
-  const list: { date: string; day: number; weekday: string; isSunday: boolean }[] = [];
+function buildDateList(startDate: string, endDate: string, dayNames: string[]): { date: string; day: number; weekday: string }[] {
+  const list: { date: string; day: number; weekday: string }[] = [];
   const s = new Date(startDate + "T00:00:00");
   const e = new Date(endDate + "T00:00:00");
   if (isNaN(s.getTime()) || isNaN(e.getTime())) return list;
@@ -17,7 +18,7 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
-    list.push({ date: `${y}-${m}-${dd}`, day: d.getDate(), weekday: dayNames[d.getDay()], isSunday: d.getDay() === 0 });
+    list.push({ date: `${y}-${m}-${dd}`, day: d.getDate(), weekday: dayNames[d.getDay()] });
   }
   return list;
 }
@@ -25,6 +26,7 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
 export default function ClockRecordsGrid(props: { startDate: string; endDate: string }) {
   const { startDate, endDate } = props;
   const { t } = useI18n();
+  const { toast } = useToast();
   const [employees, setEmployees] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,6 +49,35 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
     setLoading(false);
   }
 
+  async function exportExcel() {
+    try {
+      const token = getToken();
+      const url = `/api/v1/clock-in/records/export?start_date=${startDate}&end_date=${endDate}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast("error", err.detail || "导出失败");
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") || "";
+      let filename = `打卡记录_${startDate}_${endDate}.xlsx`;
+      const m = cd.match(/filename\*=UTF-8''(.+)/);
+      if (m) filename = decodeURIComponent(m[1]);
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast("success", "导出成功");
+    } catch {
+      toast("error", "导出失败");
+    }
+  }
+
   const grid = useMemo(() => {
     const map: Record<string, Record<number, any>> = {};
     records.forEach((r: any) => {
@@ -65,7 +96,6 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
       for (const d of dateList) {
         const dt = d.date;
         if (dt > today) break;
-        if (d.isSunday) continue;
         const cell = grid[`${e.id}_${dt}`];
         if (cell) {
           attendanceDays++;
@@ -86,6 +116,12 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
 
   return (
     <div>
+      <div className="flex justify-end mb-2">
+        <button onClick={exportExcel}
+          className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">
+          <Download size={14}/>导出Excel
+        </button>
+      </div>
       {loading ? (
         <div className="text-center py-12 text-gray-400">{t("loading")}</div>
       ) : (
@@ -96,7 +132,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                 <tr className="bg-gray-50">
                   <th className="sticky left-0 bg-gray-50 z-10 text-left px-3 py-2 font-medium text-gray-600 whitespace-nowrap w-[90px]">{t("att_employee")}</th>
                   {dateList.map((d) => (
-                    <th key={d.date} className={`px-1 py-2 text-center font-medium w-[38px] ${d.isSunday ? "text-red-400" : "text-gray-500"}`}>
+                    <th key={d.date} className="px-1 py-2 text-center font-medium w-[38px] text-gray-500">
                       <div className="text-[10px]">{d.day}</div>
                       <div className="text-[9px]">{d.weekday}</div>
                     </th>
@@ -127,10 +163,9 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                         const cell = grid[`${emp.id}_${dt}`];
                         const today = new Date().toISOString().slice(0, 10);
                         const isFuture = dt > today;
-                        const isSunday = d.isSunday;
                         const hasLate = cell && Object.values(cell).some((cr: any) => cr.status === "late_half" || cr.status === "late_one");
                         return (
-                          <td key={dt} className={`px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50 ${isSunday ? "bg-red-50/30" : ""}`}
+                          <td key={dt} className="px-0.5 py-0.5 text-center cursor-pointer hover:bg-blue-50/50"
                             onClick={() => setDetailPopup({ empName: emp.name, date: dt, sessions: cell || {} })}>
                             {isFuture ? (
                               <span className="text-gray-200">-</span>
@@ -142,8 +177,6 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                                 </span>
                                 {cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
                               </div>
-                            ) : isSunday ? (
-                              <span className="text-gray-300 text-[10px]">{t("att_rest_short")}</span>
                             ) : (
                               <span className="text-gray-300 text-[10px]">{t("att_not_clocked")}</span>
                             )}

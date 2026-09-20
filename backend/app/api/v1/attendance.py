@@ -442,14 +442,9 @@ async def get_calendar(
     emps = (await db.execute(emp_query.order_by(Employee.name))).scalars().all()
     emp_ids = [e.id for e in emps]
 
-    # Build employee_id -> user_id mapping (match by employee name to user display_name)
-    # Build employee_id <-> user_id mapping via the formal Employee.user_id link (NOT name matching)
-    emp_to_user = {}  # employee_id -> user_id
-    user_to_emp = {}  # user_id -> employee_id
-    for e in emps:
-        if e.user_id:
-            emp_to_user[e.id] = e.user_id
-            user_to_emp[e.user_id] = e.id
+    # Build employee_id <-> user_id mapping（含未绑定账号的兜底匹配：手机号=用户名 / 姓名=显示名）
+    from app.services.employee_match import resolve_employee_user_map
+    emp_to_user, user_to_emp = await resolve_employee_user_map(db, emps)
 
     # Get all clock-in records for this month, filtered by warehouse_id AND user_ids
     user_ids = list(emp_to_user.values())

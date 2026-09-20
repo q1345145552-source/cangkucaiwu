@@ -22,8 +22,8 @@ const SESSION_KEYS: Record<number, string> = {
   1: "morning_shift", 2: "noon_break_end", 3: "afternoon_shift", 4: "evening_shift",
 };
 
-function buildDateList(startDate: string, endDate: string, dayNames: string[]): { date: string; day: number; weekday: string; isSunday: boolean }[] {
-  const list: { date: string; day: number; weekday: string; isSunday: boolean }[] = [];
+function buildDateList(startDate: string, endDate: string, dayNames: string[]): { date: string; day: number; weekday: string }[] {
+  const list: { date: string; day: number; weekday: string }[] = [];
   const s = new Date(startDate + "T00:00:00");
   const e = new Date(endDate + "T00:00:00");
   if (isNaN(s.getTime()) || isNaN(e.getTime())) return list;
@@ -31,7 +31,7 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
-    list.push({ date: `${y}-${m}-${dd}`, day: d.getDate(), weekday: dayNames[d.getDay()], isSunday: d.getDay() === 0 });
+    list.push({ date: `${y}-${m}-${dd}`, day: d.getDate(), weekday: dayNames[d.getDay()] });
   }
   return list;
 }
@@ -266,7 +266,7 @@ export default function AttendancePage() {
               <tr className="bg-gray-50">
                 <th className="px-3 py-2 text-left text-gray-500 font-medium w-[100px]">{t("att_employee")}</th>
                 {dateList.map((d) => (
-                  <th key={d.date} className={`px-1 py-2 text-center text-gray-500 font-medium w-[36px] ${d.isSunday ? "text-red-400" : ""}`}>
+                  <th key={d.date} className="px-1 py-2 text-center text-gray-500 font-medium w-[36px]">
                     <div className="text-xs">{d.weekday}</div>
                     <div>{d.day}</div>
                   </th>

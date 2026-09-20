@@ -598,6 +598,84 @@ async def delete_employee(
     return {"message": f"已删除员工 {e.name}（软删除，数据保留）", "employee_id": e.id}
 
 
+@router.post("/bind-existing-accounts")
+async def bind_existing_accounts(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量绑定已有账号：扫描当前仓库未绑定账号的在职员工，按 手机号=用户名 / 姓名=显示名 自动绑定仓库劳工账号。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以操作")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    # 未绑定账号的在职员工（排除已删除/离职）
+    unbound_emps = (await db.execute(
+        select(Employee).where(
+            Employee.warehouse_id == wh_id,
+            Employee.is_deleted == False,
+            Employee.status != "resigned",
+            Employee.user_id.is_(None),
+        ).order_by(Employee.name)
+    )).scalars().all()
+
+    if not unbound_emps:
+        return {"message": "没有需要绑定的员工", "bound": 0, "not_found": 0, "details": []}
+
+    # 该仓库已被其他员工占用的账号，避免重复绑定
+    used_uids = (await db.execute(
+        select(Employee.user_id).where(
+            Employee.warehouse_id == wh_id,
+            Employee.user_id.isnot(None),
+        )
+    )).scalars().all()
+    used_uids = {u for u in used_uids if u is not None}
+
+    # 该仓库的仓库劳工账号（排除已被占用的）
+    q = select(User).where(
+        User.role == "warehouse_labor",
+        User.warehouse_id == wh_id,
+    )
+    if used_uids:
+        q = q.where(User.id.notin_(used_uids))
+    labor_users = (await db.execute(q)).scalars().all()
+
+    by_username = {}
+    by_display = {}
+    for u in labor_users:
+        by_username.setdefault((u.warehouse_id, u.username), u)
+        by_display.setdefault((u.warehouse_id, u.display_name), u)
+
+    bound = 0
+    not_found = 0
+    details = []
+    for e in unbound_emps:
+        u = None
+        if e.phone:
+            u = by_username.get((wh_id, e.phone))
+        if not u and e.name:
+            u = by_display.get((wh_id, e.name))
+        if u:
+            e.user_id = u.id
+            bound += 1
+            details.append({"employee_id": e.id, "name": e.name, "username": u.username})
+            # 一个账号只绑定一个员工
+            by_username.pop((wh_id, u.username), None)
+            by_display.pop((wh_id, u.display_name), None)
+        else:
+            not_found += 1
+
+    await db.flush()
+    return {
+        "message": f"绑定完成：成功 {bound} 个，未找到 {not_found} 个",
+        "bound": bound,
+        "not_found": not_found,
+        "details": details,
+    }
+
+
 async def _find_linked_user(db: AsyncSession, emp: Employee):
     """Find linked user account for an employee (by user_id, then by name)"""
     if emp.user_id:
