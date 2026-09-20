@@ -264,6 +264,192 @@ async def seed():
             ))
         except Exception:
             pass
+
+        # Migration: 补全各表模型字段（幂等 ADD COLUMN IF NOT EXISTS，缺哪个补哪个）
+        try:
+            # ── 工资表 payroll_records ──
+            payroll_cols = [
+                ("disbursed", "BOOLEAN DEFAULT false"),
+                ("total_days_in_month", "INTEGER DEFAULT 0"),
+                ("attendance_days", "INTEGER DEFAULT 0"),
+                ("leave_days", "INTEGER DEFAULT 0"),
+                ("rest_days", "INTEGER DEFAULT 0"),
+                ("absence_days", "INTEGER DEFAULT 0"),
+                ("employee_status", "VARCHAR(20) DEFAULT 'trial'"),
+                ("daily_wage", "DOUBLE PRECISION DEFAULT 400"),
+                ("base_salary", "DOUBLE PRECISION DEFAULT 12000"),
+                ("base_pay", "DOUBLE PRECISION DEFAULT 0"),
+                ("overtime_pay", "DOUBLE PRECISION DEFAULT 0"),
+                ("overtime_hours", "DOUBLE PRECISION DEFAULT 0"),
+                ("late_penalty", "DOUBLE PRECISION DEFAULT 0"),
+                ("leave_deduction", "DOUBLE PRECISION DEFAULT 0"),
+                ("absence_deduction", "DOUBLE PRECISION DEFAULT 0"),
+                ("gross_pay", "DOUBLE PRECISION DEFAULT 0"),
+                ("total_deductions", "DOUBLE PRECISION DEFAULT 0"),
+                ("net_pay", "DOUBLE PRECISION DEFAULT 0"),
+                ("detail", "VARCHAR(3000)"),
+                ("confirmed_by", "INTEGER"),
+                ("confirmed_at", "TIMESTAMPTZ"),
+                ("disbursed_by", "INTEGER"),
+                ("disbursed_at", "TIMESTAMPTZ"),
+                ("signature_path", "VARCHAR(500)"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+                ("updated_at", "TIMESTAMPTZ"),
+            ]
+            for _c, _t in payroll_cols:
+                await conn.execute(text(f"ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            # ── 打卡记录表 clock_in_records ──
+            clock_cols = [
+                ("warehouse_id", "INTEGER"),
+                ("clock_date", "DATE"),
+                ("session", "INTEGER DEFAULT 1"),
+                ("clocked_in_at", "TIMESTAMPTZ DEFAULT now()"),
+                ("photo_path", "VARCHAR(500)"),
+                ("status", "VARCHAR(20) DEFAULT 'normal'"),
+                ("penalty_amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("remark", "VARCHAR(200)"),
+            ]
+            for _c, _t in clock_cols:
+                await conn.execute(text(f"ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            # ── 员工表 employees ──
+            emp_cols = [
+                ("position", "VARCHAR(50) DEFAULT '仓库劳工'"),
+                ("myanmar_id", "VARCHAR(50)"),
+                ("address", "VARCHAR(300)"),
+                ("phone", "VARCHAR(50)"),
+                ("emergency_contact", "VARCHAR(100)"),
+                ("hire_date", "TIMESTAMPTZ"),
+                ("status", "VARCHAR(20) DEFAULT 'trial'"),
+                ("daily_wage", "DOUBLE PRECISION DEFAULT 400"),
+                ("base_salary", "DOUBLE PRECISION DEFAULT 12000"),
+                ("remark", "VARCHAR(500)"),
+                ("photo_path", "VARCHAR(500)"),
+                ("passport_photo_path", "VARCHAR(500)"),
+                ("work_permit_photo_path", "VARCHAR(500)"),
+                ("passport_number", "VARCHAR(50)"),
+                ("work_permit_number", "VARCHAR(50)"),
+                ("passport_expiry", "DATE"),
+                ("work_permit_expiry", "DATE"),
+                ("promotion_date", "DATE"),
+                ("tags", "TEXT"),
+                ("user_id", "INTEGER"),
+                ("resignation_date", "DATE"),
+                ("resignation_reason", "VARCHAR(50)"),
+                ("resignation_note", "VARCHAR(500)"),
+                ("blacklisted", "BOOLEAN DEFAULT false"),
+                ("blacklist_reason", "VARCHAR(500)"),
+                ("created_by", "INTEGER"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+                ("updated_at", "TIMESTAMPTZ"),
+            ]
+            for _c, _t in emp_cols:
+                await conn.execute(text(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            # ── 报销表 reimbursements / reimbursement_items ──
+            reimb_cols = [
+                ("submit_date", "TIMESTAMPTZ"),
+                ("total_amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("currency", "VARCHAR(5) DEFAULT 'THB'"),
+                ("status", "VARCHAR(30) DEFAULT 'pending'"),
+                ("reviewer_id", "INTEGER"),
+                ("review_remark", "VARCHAR(500)"),
+                ("paid_at", "TIMESTAMPTZ"),
+                ("payment_method", "VARCHAR(20)"),
+                ("is_fund_linked", "VARCHAR(5) DEFAULT '0'"),
+                ("fund_item_id", "INTEGER"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+            ]
+            for _c, _t in reimb_cols:
+                await conn.execute(text(f"ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            reimb_item_cols = [
+                ("category", "VARCHAR(100)"),
+                ("amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("description", "VARCHAR(500)"),
+                ("receipt", "VARCHAR(500)"),
+                ("review_status", "VARCHAR(20) DEFAULT 'pending'"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+            ]
+            for _c, _t in reimb_item_cols:
+                await conn.execute(text(f"ALTER TABLE reimbursement_items ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            # ── 备用金表 expense_funds / expense_fund_items ──
+            fund_cols = [
+                ("fund_number", "VARCHAR(30)"),
+                ("receive_date", "TIMESTAMPTZ"),
+                ("amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("purpose", "VARCHAR(500)"),
+                ("expected_return_date", "TIMESTAMPTZ"),
+                ("status", "VARCHAR(30) DEFAULT 'active'"),
+                ("remaining_balance", "DOUBLE PRECISION DEFAULT 0"),
+                ("fund_limit", "DOUBLE PRECISION DEFAULT 5000"),
+                ("alert_threshold", "DOUBLE PRECISION DEFAULT 500"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+            ]
+            for _c, _t in fund_cols:
+                await conn.execute(text(f"ALTER TABLE expense_funds ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            fund_item_cols = [
+                ("expense_date", "TIMESTAMPTZ"),
+                ("category", "VARCHAR(100)"),
+                ("amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("currency", "VARCHAR(5) DEFAULT 'THB'"),
+                ("description", "VARCHAR(500)"),
+                ("receipt", "VARCHAR(500)"),
+                ("review_status", "VARCHAR(20) DEFAULT 'pending'"),
+                ("review_remark", "VARCHAR(500)"),
+                ("review_action", "VARCHAR(20)"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+            ]
+            for _c, _t in fund_item_cols:
+                await conn.execute(text(f"ALTER TABLE expense_fund_items ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            # ── 应付账款表 payable_bills / payable_plans ──
+            bill_cols = [
+                ("bill_number", "VARCHAR(50)"),
+                ("bill_date", "TIMESTAMPTZ"),
+                ("due_date", "TIMESTAMPTZ"),
+                ("amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("currency", "VARCHAR(5) DEFAULT 'THB'"),
+                ("paid_amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("status", "VARCHAR(30) DEFAULT 'pending'"),
+                ("confirmed_amount", "DOUBLE PRECISION"),
+                ("payment_commitment_days", "INTEGER"),
+                ("payment_voucher", "VARCHAR(500)"),
+                ("payment_method", "VARCHAR(50)"),
+                ("is_fund_linked", "VARCHAR(10)"),
+                ("is_duplicate_warned", "VARCHAR(10)"),
+                ("detail", "VARCHAR(1000)"),
+                ("bill_attachment", "VARCHAR(500)"),
+                ("remark", "VARCHAR(500)"),
+                ("voucher", "VARCHAR(500)"),
+                ("diff_note", "VARCHAR(1000)"),
+                ("paid_at", "TIMESTAMPTZ"),
+                ("created_by", "INTEGER"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+            ]
+            for _c, _t in bill_cols:
+                await conn.execute(text(f"ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            plan_cols = [
+                ("plan_name", "VARCHAR(200)"),
+                ("planned_date", "TIMESTAMPTZ"),
+                ("total_amount", "DOUBLE PRECISION DEFAULT 0"),
+                ("status", "VARCHAR(20) DEFAULT 'pending'"),
+                ("bill_ids", "JSON"),
+                ("detail", "VARCHAR(1000)"),
+                ("bill_attachment", "VARCHAR(500)"),
+                ("remark", "VARCHAR(500)"),
+                ("created_by", "INTEGER"),
+                ("created_at", "TIMESTAMPTZ DEFAULT now()"),
+            ]
+            for _c, _t in plan_cols:
+                await conn.execute(text(f"ALTER TABLE payable_plans ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+        except Exception:
+            pass
+
         # Migration: 非最低价采购记录表
         try:
             await conn.execute(text("""
