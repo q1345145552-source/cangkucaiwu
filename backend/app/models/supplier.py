@@ -93,7 +93,66 @@ class PurchaseOrder(Base):
     currency = Column(String(10), nullable=False, default='THB')
     items = Column(JSON, nullable=False)
     payable_bill_id = Column(Integer, ForeignKey('payable_bills.id'), nullable=True)
-    status = Column(String(20), default='confirmed')
+    status = Column(String(20), default='confirmed')  # pending / confirmed / rejected
     remark = Column(String(500), nullable=True)
+    reject_reason = Column(String(500), nullable=True, comment="驳回原因")
+    receipt_status = Column(String(20), default='not_received', comment="收货状态: not_received/received/partially_received")
+    arrival_photo = Column(String(500), nullable=True, comment="到货照片路径")
+    received_by = Column(Integer, ForeignKey('users.id'), nullable=True, comment="收货人")
+    received_at = Column(DateTime(timezone=True), nullable=True, comment="收货时间")
     created_by = Column(Integer, ForeignKey('users.id'), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ProcurementPriceHistory(Base):
+    """耗材采购价格历史：每次下单的每个产品记录一行，按 产品名+规格 形成价格历史。"""
+    __tablename__ = "procurement_price_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=True)
+    product_name = Column(String(200), nullable=False)
+    spec = Column(String(300), nullable=True)
+    unit_price = Column(Float, nullable=False)
+    quantity = Column(Integer, default=1)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ProcurementPriceAnomaly(Base):
+    """耗材采购价格异常记录：下单价格高于历史均价一定比例时记录。"""
+    __tablename__ = "procurement_price_anomalies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    product_name = Column(String(200), nullable=False)
+    spec = Column(String(300), nullable=True)
+    purchase_price = Column(Float, nullable=False)
+    historical_avg = Column(Float, nullable=False, default=0)
+    exceed_percent = Column(Float, nullable=False, default=0)
+    orderer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    orderer_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ProcurementNonLowestRecord(Base):
+    """非最低价采购记录：所选供应商价格高于该产品最低报价，需填原因。"""
+    __tablename__ = "procurement_non_lowest_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    product_name = Column(String(200), nullable=False)
+    spec = Column(String(300), nullable=True)
+    selected_supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
+    selected_supplier_name = Column(String(200), nullable=True)
+    selected_price = Column(Float, nullable=False)
+    lowest_supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
+    lowest_supplier_name = Column(String(200), nullable=True)
+    lowest_price = Column(Float, nullable=False, default=0)
+    price_diff = Column(Float, nullable=False, default=0)
+    quantity = Column(Integer, default=1)
+    reason = Column(String(500), nullable=True)
+    orderer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    orderer_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

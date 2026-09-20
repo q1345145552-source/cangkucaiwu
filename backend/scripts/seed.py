@@ -108,6 +108,106 @@ async def seed():
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_efficiency_manual_hours_date ON efficiency_manual_hours (date)"))
         except Exception:
             pass
+        # Migration: 耗材采购价格历史表（每次下单每个产品一行）
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS procurement_price_history (
+                    id SERIAL PRIMARY KEY,
+                    warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+                    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+                    purchase_order_id INTEGER REFERENCES purchase_orders(id),
+                    product_name VARCHAR(200) NOT NULL,
+                    spec VARCHAR(300),
+                    unit_price DOUBLE PRECISION NOT NULL,
+                    quantity INTEGER DEFAULT 1,
+                    created_by INTEGER REFERENCES users(id),
+                    created_at TIMESTAMPTZ DEFAULT now()
+                )
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_proc_price_history_wh ON procurement_price_history (warehouse_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_proc_price_history_prod ON procurement_price_history (product_name, spec)"))
+        except Exception:
+            pass
+        # Migration: 耗材采购价格异常记录表
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS procurement_price_anomalies (
+                    id SERIAL PRIMARY KEY,
+                    warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+                    product_name VARCHAR(200) NOT NULL,
+                    spec VARCHAR(300),
+                    purchase_price DOUBLE PRECISION NOT NULL,
+                    historical_avg DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    exceed_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    orderer_id INTEGER REFERENCES users(id),
+                    orderer_name VARCHAR(100),
+                    created_at TIMESTAMPTZ DEFAULT now()
+                )
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_proc_price_anomaly_wh ON procurement_price_anomalies (warehouse_id)"))
+        except Exception:
+            pass
+        # Migration: 采购单驳回原因字段
+        try:
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS reject_reason VARCHAR(500)"
+            ))
+        except Exception:
+            pass
+        # Migration: 应付账单来源 + 关联采购单
+        try:
+            await conn.execute(text(
+                "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'manual'"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS purchase_order_id INTEGER"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS need_boss_confirm VARCHAR(5) DEFAULT 'false'"
+            ))
+        except Exception:
+            pass
+        # Migration: 采购收货验收字段
+        try:
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS receipt_status VARCHAR(20) DEFAULT 'not_received'"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS arrival_photo VARCHAR(500)"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS received_by INTEGER"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ"
+            ))
+        except Exception:
+            pass
+        # Migration: 非最低价采购记录表
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS procurement_non_lowest_records (
+                    id SERIAL PRIMARY KEY,
+                    warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+                    product_name VARCHAR(200) NOT NULL,
+                    spec VARCHAR(300),
+                    selected_supplier_id INTEGER REFERENCES suppliers(id),
+                    selected_supplier_name VARCHAR(200),
+                    selected_price DOUBLE PRECISION NOT NULL,
+                    lowest_supplier_id INTEGER REFERENCES suppliers(id),
+                    lowest_supplier_name VARCHAR(200),
+                    lowest_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    price_diff DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    quantity INTEGER DEFAULT 1,
+                    reason VARCHAR(500),
+                    orderer_id INTEGER REFERENCES users(id),
+                    orderer_name VARCHAR(100),
+                    created_at TIMESTAMPTZ DEFAULT now()
+                )
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_proc_non_lowest_wh ON procurement_non_lowest_records (warehouse_id)"))
+        except Exception:
+            pass
     factory = async_session_factory()
     async with factory() as session:
         from sqlalchemy import select

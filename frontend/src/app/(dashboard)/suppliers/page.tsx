@@ -6,7 +6,9 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag } from "lucide-react";
+import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag, AlertCircle } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function SuppliersPage() {
   const { t } = useI18n();
@@ -21,6 +23,26 @@ export default function SuppliersPage() {
   const [aiResult, setAiResult] = useState("");
   const [procurement, setProcurement] = useState<any>(null);
   const [showProcurement, setShowProcurement] = useState(false);
+  // Price monitor
+  const [showPriceMonitor, setShowPriceMonitor] = useState(false);
+  const [priceAnomalies, setPriceAnomalies] = useState<any[]>([]);
+  const [priceStats, setPriceStats] = useState<any[]>([]);
+  const [priceTrend, setPriceTrend] = useState<any[]>([]);
+  const [trendProduct, setTrendProduct] = useState<any>(null);
+  const [priceThreshold, setPriceThreshold] = useState(10);
+  const [nonLowestRecords, setNonLowestRecords] = useState<any[]>([]);
+  const [nonLowestSummary, setNonLowestSummary] = useState<any>(null);
+  // 非最低价原因弹窗
+  const [showReasonDialog, setShowReasonDialog] = useState(false);
+  const [reasonItems, setReasonItems] = useState<any[]>([]);
+  const [reasonMap, setReasonMap] = useState<Record<number, string>>({});
+  // 采购审批
+  const [showApprovals, setShowApprovals] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [splitGroups, setSplitGroups] = useState<any[]>([]);
+  const [approvalThreshold, setApprovalThreshold] = useState(0);
+  const [rejectTarget, setRejectTarget] = useState<any>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [detail, setDetail] = useState<any>(null);
   // Products
   const [products, setProducts] = useState<any[]>([]);
@@ -53,6 +75,15 @@ export default function SuppliersPage() {
   const [orderSupplierId, setOrderSupplierId] = useState(0);
   const [orderTotal, setOrderTotal] = useState(0);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  // 采购收货验收
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptOrders, setReceiptOrders] = useState<any[]>([]);
+  const [receiveTarget, setReceiveTarget] = useState<any>(null);
+  const [receiveQty, setReceiveQty] = useState<Record<number, number>>({});
+  const [receivePhoto, setReceivePhoto] = useState<File | null>(null);
+  const [receiptSubmitting, setReceiptSubmitting] = useState(false);
+  const [showDiscrepancies, setShowDiscrepancies] = useState(false);
+  const [discrepancies, setDiscrepancies] = useState<any[]>([]);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCategories(); }, [page, filterCat]);
 
@@ -170,23 +201,173 @@ export default function SuppliersPage() {
     });
     setOrderTotal(Math.round(total * 100) / 100);
   }, [orderItems, products]);
-  async function submitOrder() {
+  const QUICK_REASONS = ["质量更好", "交货更快", "距离更近", "长期合作", "其他"];
+
+  async function doSubmitOrder(confirmAnomaly: boolean, reasons: Record<number, string>) {
     const selectedIds = Object.keys(orderItems).map(Number).filter(id => orderItems[id] > 0);
     if (selectedIds.length === 0) { toast("error", "请至少选择一个产品"); return; }
     setOrderSubmitting(true);
     try {
-      const r = await api.post<any>(
-        `/suppliers/${orderSupplierId}/purchase-order`,
-        { items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id] })) }
-      );
+      const payload = {
+        items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id], reason: reasons[id] || "" })),
+        confirm_price_anomaly: confirmAnomaly,
+      };
+      const r = await api.post<any>(`/suppliers/${orderSupplierId}/purchase-order`, payload);
+      if (r.need_confirm) {
+        // 价格异常：确认后再提交
+        const lines = (r.anomalies || []).map((a: any) =>
+          `· ${a.product_name}${a.spec ? `（${a.spec}）` : ""}：采购价 ${a.unit_price}，历史均价 ${a.historical_avg}，高出 ${a.exceed_percent}%`
+        ).join("\n");
+        const ok = confirm(`${r.message}\n\n${lines}\n\n价格高于历史均价，确认仍要提交？`);
+        if (!ok) return;
+        await doSubmitOrder(true, reasons);
+        return;
+      }
+      if (r.need_reason) {
+        // 非最低价：弹原因输入框
+        setReasonItems(r.non_lowest_items || []);
+        setReasonMap({ ...reasons });
+        setShowReasonDialog(true);
+        return;
+      }
       toast("success", r.message || "下单成功");
       setShowOrder(false);
       setShowProducts(false);
+      if (r.pending) {
+        return; // 待审批，不跳转
+      }
       if (confirm(`采购单已创建，应付账单编号: ${r.payable_bill_number}\n是否跳转到应付账款页面？`)) {
         router.push("/payable");
       }
     } catch (err: any) { toast("error", err.message || "下单失败"); }
-    setOrderSubmitting(false);
+    finally { setOrderSubmitting(false); }
+  }
+
+  function submitOrder() { doSubmitOrder(false, {}); }
+
+  function confirmReasonSubmit() {
+    for (const item of reasonItems) {
+      if (!(reasonMap[item.product_id] || "").trim()) {
+        toast("error", `请为「${item.product_name}」填写采购原因`);
+        return;
+      }
+    }
+    setShowReasonDialog(false);
+    doSubmitOrder(true, reasonMap);
+  }
+  // ─── 采购审批 ───
+  async function openApprovals() {
+    setShowApprovals(true);
+    try {
+      const [r, th] = await Promise.all([
+        api.get<any>("/suppliers/purchase-approvals"),
+        api.get<any>("/suppliers/purchase-approval-threshold"),
+      ]);
+      setPendingOrders(r.pending || []);
+      setSplitGroups(r.split_groups || []);
+      setApprovalThreshold(th.threshold ?? 0);
+    } catch {}
+  }
+  async function approveOrder(id: number) {
+    try {
+      await api.put(`/suppliers/purchase-approvals/${id}/approve`, {});
+      toast("success", "审批通过，应付账单已生成");
+      openApprovals();
+    } catch (e: any) { toast("error", e.message || "审批失败"); }
+  }
+  async function confirmReject() {
+    if (!rejectTarget) return;
+    if (!rejectReason.trim()) { toast("error", "请填写驳回原因"); return; }
+    try {
+      await api.put(`/suppliers/purchase-approvals/${rejectTarget.id}/reject`, { reason: rejectReason });
+      toast("success", "已驳回");
+      setRejectTarget(null); setRejectReason("");
+      openApprovals();
+    } catch (e: any) { toast("error", e.message || "驳回失败"); }
+  }
+  async function saveApprovalThreshold() {
+    try {
+      await api.put("/suppliers/purchase-approval-threshold", { threshold: approvalThreshold });
+      toast("success", "门槛金额已保存");
+    } catch (e: any) { toast("error", e.message || "保存失败"); }
+  }
+  // ─── 采购收货验收 ───
+  async function openReceipt() {
+    setShowReceipt(true);
+    setReceiptOrders([]);
+    try {
+      const r = await api.get<any>("/suppliers/purchase-orders?page=1&page_size=100");
+      setReceiptOrders(r.data || []);
+    } catch { setReceiptOrders([]); }
+  }
+  function openReceiveForm(po: any) {
+    setReceiveTarget(po);
+    const init: Record<number, number> = {};
+    (po.items || []).forEach((it: any, i: number) => { init[i] = it.quantity || 0; });
+    setReceiveQty(init);
+    setReceivePhoto(null);
+  }
+  async function submitReceive() {
+    if (!receiveTarget) return;
+    if (!receivePhoto) { toast("error", "请上传到货照片"); return; }
+    const items = (receiveTarget.items || []).map((it: any, i: number) => ({
+      product_name: it.product_name, spec: it.spec, received_quantity: receiveQty[i] ?? 0,
+    }));
+    setReceiptSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append("items", JSON.stringify(items));
+      fd.append("file", receivePhoto);
+      const headers: Record<string, string> = { "Authorization": `Bearer ${getToken()}` };
+      const whId = getActiveWarehouseId();
+      if (whId) headers["X-Warehouse-ID"] = whId;
+      const res = await fetch(`/api/v1/suppliers/purchase-orders/${receiveTarget.id}/receive`, { method: "POST", headers, body: fd });
+      const r = await res.json();
+      if (!res.ok) { toast("error", r.detail || "收货失败"); return; }
+      toast("success", r.has_diff ? "收货验收完成，存在数量差异，已标记待老板确认" : "收货验收完成");
+      setReceiveTarget(null);
+      openReceipt();
+    } catch (err: any) { toast("error", err.message || "收货失败"); }
+    finally { setReceiptSubmitting(false); }
+  }
+  async function openDiscrepancies() {
+    setShowDiscrepancies(true);
+    setDiscrepancies([]);
+    try {
+      const r = await api.get<any>("/suppliers/purchase-receipt-discrepancies");
+      setDiscrepancies(r.data || []);
+    } catch { setDiscrepancies([]); }
+  }
+  function uploadUrl(p: string) {
+    if (!p) return "";
+    if (p.startsWith("http")) return p;
+    return API_URL.replace("/api/v1", "") + p;
+  }
+  // ─── 价格监控 ───
+  async function openPriceMonitor() {
+    setShowPriceMonitor(true);
+    setTrendProduct(null); setPriceTrend([]);
+    try {
+      const [anoms, stats, th, nl, nls] = await Promise.all([
+        api.get<any>("/suppliers/price-anomalies?page_size=100"),
+        api.get<any>("/suppliers/price-stats"),
+        api.get<any>("/suppliers/price-threshold"),
+        api.get<any>("/suppliers/non-lowest-records?page_size=100"),
+        api.get<any>("/suppliers/non-lowest-summary"),
+      ]);
+      setPriceAnomalies(anoms.data || []);
+      setPriceStats(stats.data || []);
+      setPriceThreshold(th.threshold ?? 10);
+      setNonLowestRecords(nl.data || []);
+      setNonLowestSummary(nls);
+    } catch {}
+  }
+  async function loadPriceTrend(name: string, spec: string | null) {
+    setTrendProduct({ product_name: name, spec });
+    try {
+      const r = await api.get<any>(`/suppliers/price-trend?product_name=${encodeURIComponent(name)}&spec=${encodeURIComponent(spec || "")}`);
+      setPriceTrend(r.data || []);
+    } catch { setPriceTrend([]); }
   }
   // ─── Logistics Prices ───
   async function openLogistics(sid: number) {
@@ -276,6 +457,16 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
               <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
+              <button onClick={openPriceMonitor}
+                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><BarChart3 size={16}/>价格监控</button>
+              {(user?.role === "super_admin" || user?.role === "supervisor") && (
+                <button onClick={openApprovals}
+                  className="border px-3 py-2 rounded text-sm flex items-center gap-1"><CheckCircle size={16}/>采购审批</button>
+              )}
+              <button onClick={openReceipt}
+                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Package size={16}/>收货验收</button>
+              <button onClick={openDiscrepancies}
+                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><AlertCircle size={16}/>收货差异</button>
               <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button>
             </>
           )}
@@ -807,6 +998,270 @@ export default function SuppliersPage() {
           </div></div>
       )}
 
+      {/* 价格监控 */}
+      {showPriceMonitor && (
+        <div className="modal-overlay z-50" onClick={() => setShowPriceMonitor(false)}>
+          <div className="bg-white rounded-xl w-[760px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-indigo-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <BarChart3 size={20} />
+              <h2 className="font-semibold">价格监控</h2>
+              <span className="text-xs text-indigo-200 ml-2">偏高阈值 {priceThreshold}%</span>
+              <button onClick={() => setShowPriceMonitor(false)} className="ml-auto text-indigo-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5 space-y-5">
+              {/* 价格异常列表 */}
+              <div>
+                <h3 className="font-semibold mb-2 text-sm text-red-600">价格异常记录</h3>
+                {priceAnomalies.length === 0 ? (
+                  <div className="text-gray-400 text-sm py-4 text-center">暂无价格异常</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                        <th className="px-3 py-2 font-medium">产品</th><th className="px-3 py-2 font-medium text-right">采购价</th>
+                        <th className="px-3 py-2 font-medium text-right">历史均价</th><th className="px-3 py-2 font-medium text-right">高出</th>
+                        <th className="px-3 py-2 font-medium">下单人</th><th className="px-3 py-2 font-medium">时间</th>
+                      </tr></thead>
+                      <tbody>
+                        {priceAnomalies.map((a: any) => (
+                          <tr key={a.id} className="border-b">
+                            <td className="px-3 py-2">{a.product_name}{a.spec ? <span className="text-gray-400 text-xs">（{a.spec}）</span> : null}</td>
+                            <td className="px-3 py-2 text-right font-mono">{a.purchase_price}</td>
+                            <td className="px-3 py-2 text-right font-mono">{a.historical_avg}</td>
+                            <td className="px-3 py-2 text-right text-red-600 font-semibold">+{a.exceed_percent}%</td>
+                            <td className="px-3 py-2">{a.orderer_name || "-"}</td>
+                            <td className="px-3 py-2 text-gray-500 text-xs">{a.created_at ? new Date(a.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* 非最低价采购列表 */}
+              <div>
+                <h3 className="font-semibold mb-2 text-sm text-amber-600">
+                  非最低价采购
+                  {nonLowestSummary && (
+                    <span className="ml-2 text-xs font-normal text-gray-500">
+                      本期多花 <span className="text-red-600 font-semibold">{nonLowestSummary.total_extra_amount ?? 0}</span>（{nonLowestSummary.count ?? 0} 条记录）
+                    </span>
+                  )}
+                </h3>
+                {nonLowestRecords.length === 0 ? (
+                  <div className="text-gray-400 text-sm py-4 text-center">暂无非最低价采购</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                        <th className="px-3 py-2 font-medium">产品</th><th className="px-3 py-2 font-medium">所选供应商/价格</th>
+                        <th className="px-3 py-2 font-medium">最低供应商/价格</th><th className="px-3 py-2 font-medium text-right">差价</th>
+                        <th className="px-3 py-2 font-medium">原因</th><th className="px-3 py-2 font-medium">下单人</th><th className="px-3 py-2 font-medium">时间</th>
+                      </tr></thead>
+                      <tbody>
+                        {nonLowestRecords.map((r: any) => (
+                          <tr key={r.id} className="border-b">
+                            <td className="px-3 py-2">{r.product_name}{r.spec ? <span className="text-gray-400 text-xs">（{r.spec}）</span> : null}</td>
+                            <td className="px-3 py-2">{r.selected_supplier_name || "-"} <span className="font-mono text-gray-500">{r.selected_price}</span></td>
+                            <td className="px-3 py-2">{r.lowest_supplier_name || "-"} <span className="font-mono text-green-600">{r.lowest_price}</span></td>
+                            <td className="px-3 py-2 text-right text-amber-600 font-semibold">{r.price_diff}</td>
+                            <td className="px-3 py-2">{r.reason || "-"}</td>
+                            <td className="px-3 py-2">{r.orderer_name || "-"}</td>
+                            <td className="px-3 py-2 text-gray-500 text-xs">{r.created_at ? new Date(r.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* 产品价格统计 + 趋势 */}
+              <div>
+                <h3 className="font-semibold mb-2 text-sm text-gray-700">产品价格统计（点击看趋势）</h3>
+                {priceStats.length === 0 ? (
+                  <div className="text-gray-400 text-sm py-4 text-center">暂无采购记录</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                        <th className="px-3 py-2 font-medium">产品</th><th className="px-3 py-2 font-medium text-right">历史最低</th>
+                        <th className="px-3 py-2 font-medium text-right">历史均价</th><th className="px-3 py-2 font-medium text-right">最近采购</th>
+                        <th className="px-3 py-2 font-medium text-right">次数</th>
+                      </tr></thead>
+                      <tbody>
+                        {priceStats.map((p: any) => (
+                          <tr key={p.product_name + (p.spec || "")} className="border-b cursor-pointer hover:bg-indigo-50/40" onClick={() => loadPriceTrend(p.product_name, p.spec)}>
+                            <td className="px-3 py-2">{p.product_name}{p.spec ? <span className="text-gray-400 text-xs">（{p.spec}）</span> : null}</td>
+                            <td className="px-3 py-2 text-right font-mono text-green-600">{p.lowest}</td>
+                            <td className="px-3 py-2 text-right font-mono">{p.avg}</td>
+                            <td className="px-3 py-2 text-right font-mono">{p.last}</td>
+                            <td className="px-3 py-2 text-right text-gray-500">{p.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* 趋势 */}
+              {trendProduct && (
+                <div>
+                  <h3 className="font-semibold mb-2 text-sm text-gray-700">价格趋势 · {trendProduct.product_name}{trendProduct.spec ? `（${trendProduct.spec}）` : ""}</h3>
+                  {priceTrend.length === 0 ? (
+                    <div className="text-gray-400 text-sm py-3 text-center">暂无价格记录</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {priceTrend.map((t: any, i: number) => (
+                        <div key={t.id} className="flex items-center gap-3 text-sm">
+                          <span className="text-gray-400 text-xs w-5">{i + 1}</span>
+                          <span className="font-mono">{t.unit_price}</span>
+                          <span className="text-gray-400 text-xs">x{t.quantity}</span>
+                          <span className="text-gray-500 text-xs ml-auto">{t.created_at ? new Date(t.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t px-5 py-3 text-center">
+              <button onClick={() => setShowPriceMonitor(false)} className="text-sm text-gray-400">关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 采购审批弹窗 */}
+      {showApprovals && (
+        <div className="modal-overlay z-[60]" onClick={() => setShowApprovals(false)}>
+          <div className="bg-white rounded-xl w-[820px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <CheckCircle size={20} />
+              <h2 className="font-semibold">采购审批</h2>
+              <span className="text-xs text-blue-200 ml-2">门槛 {approvalThreshold} 泰铢</span>
+              <button onClick={() => setShowApprovals(false)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5 space-y-5">
+              {/* 门槛设置（仅老板） */}
+              {user?.role === "super_admin" && (
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">审批门槛（泰铢）</label>
+                  <input type="number" min={0} value={approvalThreshold} onChange={e => setApprovalThreshold(+e.target.value)}
+                    className="border rounded px-3 py-1.5 text-sm w-32" />
+                  <button onClick={saveApprovalThreshold} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">保存门槛</button>
+                </div>
+              )}
+
+              {/* 疑似拆单 */}
+              {splitGroups.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2 text-sm text-red-600">疑似拆单</h3>
+                  {splitGroups.map((g: any, i: number) => (
+                    <div key={i} className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2 text-sm">
+                      <div className="font-medium text-red-700">
+                        {g.date} · {g.supplier_name || "-"} · {g.orderer_name || "-"} · {g.order_count} 笔合计 {g.total_amount} 泰铢
+                      </div>
+                      <div className="text-xs text-red-500 mt-1">
+                        {g.orders.map((o: any) => `${o.order_number}(${o.total_amount})`).join("、")} 每笔未超门槛，合计已超门槛
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 待审批 */}
+              <div>
+                <h3 className="font-semibold mb-2 text-sm text-gray-700">待审批采购单</h3>
+                {pendingOrders.length === 0 ? (
+                  <div className="text-gray-400 text-sm py-4 text-center">暂无待审批采购单</div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingOrders.map((po: any) => (
+                      <div key={po.id} className="border rounded-lg p-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <div>
+                            <span className="font-medium">{po.order_number}</span>
+                            <span className="text-gray-500 ml-2">{po.supplier_name}</span>
+                            <span className="text-gray-400 ml-2">下单人 {po.orderer_name || "-"}</span>
+                            <span className="text-gray-400 ml-2">{po.created_at ? new Date(po.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</span>
+                          </div>
+                          <div className="font-semibold text-gray-800">{po.total_amount} 泰铢</div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-600 space-y-0.5">
+                          {(po.items || []).map((it: any, i: number) => (
+                            <div key={i}>{it.product_name}{it.spec ? `（${it.spec}）` : ""} ×{it.quantity} @ {it.unit_price} = {it.subtotal}</div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => approveOrder(po.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">通过</button>
+                          <button onClick={() => { setRejectTarget(po); setRejectReason(""); }} className="px-3 py-1 bg-red-500 text-white rounded text-xs">驳回</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 驳回原因弹窗 */}
+      {rejectTarget && (
+        <div className="modal-overlay z-[70]" onClick={() => setRejectTarget(null)}>
+          <div className="bg-white rounded-xl w-[420px] max-w-[95vw] p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold mb-3">驳回采购单 {rejectTarget.order_number}</h3>
+            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+              className="w-full border rounded px-3 py-2 text-sm" rows={3} placeholder="填写驳回原因" />
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={() => setRejectTarget(null)} className="px-4 py-2 border rounded text-sm">取消</button>
+              <button onClick={confirmReject} className="px-4 py-2 bg-red-500 text-white rounded text-sm">确认驳回</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 非最低价原因弹窗 */}
+      {showReasonDialog && (
+        <div className="modal-overlay z-[60]" onClick={() => setShowReasonDialog(false)}>
+          <div className="bg-white rounded-xl w-[560px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-amber-500 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <AlertCircle size={20} />
+              <h2 className="font-semibold">非最低价采购原因</h2>
+              <button onClick={() => setShowReasonDialog(false)} className="ml-auto text-amber-100 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-gray-600">以下产品所选价格高于该产品最低报价，需填写采购原因后才能提交。</p>
+              {reasonItems.map((item: any) => (
+                <div key={item.product_id} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{item.product_name}{item.spec ? `（${item.spec}）` : ""}</span>
+                    <span className="text-xs text-amber-600">采购价 {item.unit_price} · 最低 {item.lowest_price}（{item.lowest_supplier_name}）· 差价 {item.price_diff}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {QUICK_REASONS.map(q => (
+                      <button key={q} onClick={() => setReasonMap(prev => ({ ...prev, [item.product_id]: q }))}
+                        className={`px-2.5 py-1 rounded-full text-xs border ${reasonMap[item.product_id] === q ? "bg-amber-500 text-white border-amber-500" : "bg-white text-gray-600 border-gray-200 hover:border-amber-300"}`}>
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                  <input value={reasonMap[item.product_id] || ""} onChange={e => setReasonMap(prev => ({ ...prev, [item.product_id]: e.target.value }))}
+                    className="w-full border rounded px-3 py-2 text-sm mt-2" placeholder="填写采购原因" />
+                </div>
+              ))}
+            </div>
+            <div className="border-t px-5 py-3 flex justify-end gap-3">
+              <button onClick={() => setShowReasonDialog(false)} className="px-4 py-2 border rounded text-sm">取消</button>
+              <button onClick={confirmReasonSubmit} className="px-4 py-2 bg-amber-500 text-white rounded text-sm">确认提交</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Supplier Form */}
       {showForm && (
         <div className="modal-overlay" onClick={()=>setShowForm(false)}>
@@ -825,6 +1280,172 @@ export default function SuppliersPage() {
 
             <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">保存</button></div>
           </div></div>
+      )}
+
+      {/* 收货验收弹窗 */}
+      {showReceipt && (
+        <div className="modal-overlay z-50" onClick={() => setShowReceipt(false)}>
+          <div className="bg-white rounded-xl w-[880px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-green-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <Package size={20} />
+              <h2 className="font-semibold">采购收货验收</h2>
+              <button onClick={() => setShowReceipt(false)} className="ml-auto text-green-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5">
+              {receiptOrders.length === 0 ? (
+                <div className="text-gray-400 text-sm py-8 text-center">暂无采购单</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                    <th className="px-3 py-2 font-medium">单号</th>
+                    <th className="px-3 py-2 font-medium">供应商</th>
+                    <th className="px-3 py-2 font-medium text-right">金额</th>
+                    <th className="px-3 py-2 font-medium">状态</th>
+                    <th className="px-3 py-2 font-medium">收货状态</th>
+                    <th className="px-3 py-2 font-medium text-center">操作</th>
+                  </tr></thead>
+                  <tbody>
+                    {receiptOrders.map((po: any) => (
+                      <tr key={po.id} className="border-b">
+                        <td className="px-3 py-2 font-medium">{po.order_number}</td>
+                        <td className="px-3 py-2">{po.supplier_name || "-"}</td>
+                        <td className="px-3 py-2 text-right font-mono">{po.total_amount}</td>
+                        <td className="px-3 py-2">
+                          {po.status === "pending" ? <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">待审批</span>
+                            : po.status === "confirmed" ? <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">已生效</span>
+                            : <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">已驳回</span>}
+                        </td>
+                        <td className="px-3 py-2">
+                          {po.receipt_status === "received" ? <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">已收货</span>
+                            : po.receipt_status === "partially_received" ? <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">有差异</span>
+                            : <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">未收货</span>}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {po.status === "confirmed" && po.receipt_status !== "received" && (
+                            <button onClick={() => openReceiveForm(po)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">收货</button>
+                          )}
+                          {po.arrival_photo && (
+                            <button onClick={() => window.open(uploadUrl(po.arrival_photo), "_blank")} className="text-blue-600 text-xs hover:underline ml-2">照片</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="border-t px-5 py-3 text-center">
+              <button onClick={() => setShowReceipt(false)} className="text-sm text-gray-400">关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 收货录入弹窗 */}
+      {receiveTarget && (
+        <div className="modal-overlay z-[60]" onClick={() => setReceiveTarget(null)}>
+          <div className="bg-white rounded-xl w-[760px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-green-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <CheckCircle size={20} />
+              <h2 className="font-semibold">收货验收 - {receiveTarget.order_number}</h2>
+              <button onClick={() => setReceiveTarget(null)} className="ml-auto text-green-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="text-sm text-gray-600">供应商：{receiveTarget.supplier_name || "-"} · 金额：{receiveTarget.total_amount}</div>
+              <table className="w-full text-sm">
+                <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                  <th className="px-3 py-2 font-medium">产品</th>
+                  <th className="px-3 py-2 font-medium">规格</th>
+                  <th className="px-3 py-2 font-medium text-right">订购数量</th>
+                  <th className="px-3 py-2 font-medium text-center">实收数量</th>
+                  <th className="px-3 py-2 font-medium text-right">差异</th>
+                </tr></thead>
+                <tbody>
+                  {(receiveTarget.items || []).map((it: any, i: number) => {
+                    const rq = receiveQty[i] ?? 0;
+                    const diff = (it.quantity || 0) - rq;
+                    return (
+                      <tr key={i} className="border-b">
+                        <td className="px-3 py-2">{it.product_name}</td>
+                        <td className="px-3 py-2 text-gray-500">{it.spec || "-"}</td>
+                        <td className="px-3 py-2 text-right">{it.quantity}</td>
+                        <td className="px-3 py-2 text-center">
+                          <input type="number" min={0} value={rq}
+                            onChange={e => setReceiveQty(prev => ({ ...prev, [i]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                            className="w-20 text-center border rounded py-1 text-sm" />
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {diff === 0 ? <span className="text-xs text-green-600">正常</span>
+                            : <span className="text-xs font-semibold text-red-600">{diff > 0 ? "少" : "多"} {Math.abs(diff)}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">到货照片 <span className="text-red-400">*</span></label>
+                <input type="file" accept="image/*" onChange={e => setReceivePhoto(e.target.files?.[0] || null)} className="text-sm text-gray-500" />
+                {receivePhoto && <div className="text-xs text-green-600 mt-1">{receivePhoto.name}</div>}
+              </div>
+            </div>
+            <div className="border-t px-5 py-3 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+              <button onClick={() => setReceiveTarget(null)} className="btn-secondary text-sm px-5 py-2">取消</button>
+              <button onClick={submitReceive} disabled={receiptSubmitting}
+                className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+                {receiptSubmitting ? "提交中..." : "确认收货"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 收货差异列表弹窗 */}
+      {showDiscrepancies && (
+        <div className="modal-overlay z-50" onClick={() => setShowDiscrepancies(false)}>
+          <div className="bg-white rounded-xl w-[900px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-red-500 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
+              <AlertCircle size={20} />
+              <h2 className="font-semibold">收货差异列表</h2>
+              <button onClick={() => setShowDiscrepancies(false)} className="ml-auto text-red-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <div className="p-5">
+              {discrepancies.length === 0 ? (
+                <div className="text-gray-400 text-sm py-8 text-center">暂无收货差异</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
+                    <th className="px-3 py-2 font-medium">单号</th>
+                    <th className="px-3 py-2 font-medium">供应商</th>
+                    <th className="px-3 py-2 font-medium">产品</th>
+                    <th className="px-3 py-2 font-medium text-right">订购</th>
+                    <th className="px-3 py-2 font-medium text-right">实收</th>
+                    <th className="px-3 py-2 font-medium text-right">差异</th>
+                    <th className="px-3 py-2 font-medium text-right">差异金额</th>
+                    <th className="px-3 py-2 font-medium">收货人</th>
+                  </tr></thead>
+                  <tbody>
+                    {discrepancies.map((d: any, i: number) => (
+                      <tr key={i} className="border-b">
+                        <td className="px-3 py-2 font-medium">{d.order_number}</td>
+                        <td className="px-3 py-2">{d.supplier_name || "-"}</td>
+                        <td className="px-3 py-2">{d.product_name}{d.spec ? <span className="text-gray-400 text-xs">（{d.spec}）</span> : null}</td>
+                        <td className="px-3 py-2 text-right">{d.order_quantity}</td>
+                        <td className="px-3 py-2 text-right">{d.received_quantity}</td>
+                        <td className="px-3 py-2 text-right text-red-600 font-semibold">{d.diff_quantity > 0 ? "少" : "多"} {Math.abs(d.diff_quantity)}</td>
+                        <td className="px-3 py-2 text-right text-red-600 font-semibold">{d.diff_amount}</td>
+                        <td className="px-3 py-2 text-gray-500">{d.receiver_name || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="border-t px-5 py-3 text-center">
+              <button onClick={() => setShowDiscrepancies(false)} className="text-sm text-gray-400">关闭</button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

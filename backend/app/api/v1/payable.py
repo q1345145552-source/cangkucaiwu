@@ -30,6 +30,7 @@ class PlanCreate(BaseModel):
 async def list_bills(
     page: int = 1, page_size: int = 20, supplier_id: int = None,
     status: str = None, month: str = None, start_date: str = None, end_date: str = None,
+    source: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -41,6 +42,9 @@ async def list_bills(
     if supplier_id:
         query = query.where(PayableBill.supplier_id == supplier_id)
         count_q = count_q.where(PayableBill.supplier_id == supplier_id)
+    if source:
+        query = query.where(PayableBill.source == source)
+        count_q = count_q.where(PayableBill.source == source)
     if status:
         query = query.where(PayableBill.status == status)
         count_q = count_q.where(PayableBill.status == status)
@@ -90,44 +94,77 @@ async def list_bills(
             "payment_voucher": b.payment_voucher, "payment_method": b.payment_method, "bill_attachment": b.bill_attachment,
             "is_fund_linked": b.is_fund_linked, "detail": b.detail, "remark": b.remark,
             "diff_note": b.diff_note,
+            "source": b.source or "manual", "purchase_order_id": b.purchase_order_id,
+            "need_boss_confirm": b.need_boss_confirm,
         } for b in bills],
         "total": total, "page": page, "page_size": page_size,
     }
 
 @router.post("")
-async def create_bill(req: BillCreate, current_user: User = Depends(get_current_user),
-                      db: AsyncSession = Depends(get_db)):
+async def create_bill(
+    supplier_id: int = Form(...),
+    bill_number: str = Form(...),
+    bill_date: str = Form(...),
+    due_date: str = Form(...),
+    amount: float = Form(...),
+    confirmed_amount: float = Form(None),
+    currency: str = Form("THB"),
+    remark: str = Form(None),
+    payment_commitment_days: int = Form(None),
+    detail: str = Form(None),
+    is_fund_linked: str = Form(None),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
     # 重复检测
     existing = (await db.execute(
         select(PayableBill).where(
             PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
-            PayableBill.bill_number == req.bill_number,
-            PayableBill.supplier_id == req.supplier_id,
+            PayableBill.bill_number == bill_number,
+            PayableBill.supplier_id == supplier_id,
         )
     )).scalar_one_or_none()
     if existing and not existing.is_duplicate_warned:
-        raise HTTPException(409, f"重复账单警告: 账单号 {req.bill_number} 已存在，请确认是否新账单")
+        raise HTTPException(409, f"重复账单警告: 账单号 {bill_number} 已存在，请确认是否新账单")
+
+    # 保存凭证图片（必传）
+    import os, uuid
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "png"
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    upload_dir = "/app/uploads/bill_attachments"
+    os.makedirs(upload_dir, exist_ok=True)
+    fpath = os.path.join(upload_dir, fname)
+    content = await file.read()
+    with open(fpath, "wb") as f:
+        f.write(content)
+    voucher_path = f"/uploads/bill_attachments/{fname}"
 
     # 对账差异检测
     has_diff = False
     diff_note = None
-    if req.confirmed_amount is not None and req.confirmed_amount != req.amount:
+    if confirmed_amount is not None and confirmed_amount != amount:
         has_diff = True
-        diff_note = f"供应商确认金额 {req.confirmed_amount} 与仓库记录 {req.amount} 不一致"
-    
+        diff_note = f"供应商确认金额 {confirmed_amount} 与仓库记录 {amount} 不一致"
+
     b = PayableBill(
-        warehouse_id=get_wh_id(current_user), supplier_id=req.supplier_id,
-        bill_number=req.bill_number,
-        bill_date=datetime.fromisoformat(req.bill_date),
-        due_date=datetime.fromisoformat(req.due_date),
-        amount=req.amount, confirmed_amount=req.confirmed_amount,
-        currency=req.currency, detail=req.detail, remark=req.remark,
-        payment_commitment_days=req.payment_commitment_days,
-        is_fund_linked=req.is_fund_linked,
+        warehouse_id=wh_id, supplier_id=supplier_id,
+        bill_number=bill_number,
+        bill_date=datetime.fromisoformat(bill_date),
+        due_date=datetime.fromisoformat(due_date),
+        amount=amount, confirmed_amount=confirmed_amount,
+        currency=currency, detail=detail, remark=remark,
+        payment_commitment_days=payment_commitment_days,
+        is_fund_linked=is_fund_linked,
+        source="manual", bill_attachment=voucher_path, voucher=voucher_path,
         created_by=current_user.id,
     )
     db.add(b); await db.flush()
@@ -192,6 +229,8 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     if not b: raise HTTPException(404, "账单不存在")
     if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权操作其他仓库的账单")
+    if b.need_boss_confirm == "true":
+        raise HTTPException(400, "该账单存在收货差异，需老板确认后才能付款")
     remaining = b.amount - b.paid_amount
     pay = paid_amount if paid_amount is not None else remaining
     # Boundary checks
@@ -211,6 +250,18 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     if b.status in (PayableStatus.PAID.value, PayableStatus.PARTIALLY_PAID.value) and b.status != PayableStatus.OVERDUE.value:
         pass
     await db.flush(); return {"message": "付款记录成功"}
+
+@router.put("/{bill_id}/confirm")
+async def confirm_bill(bill_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """老板确认收货差异账单，确认后才能付款。"""
+    if current_user.role != Role.SUPER_ADMIN:
+        raise HTTPException(403, "只有老板可以确认")
+    b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id))).scalar_one_or_none()
+    if not b:
+        raise HTTPException(404, "账单不存在")
+    b.need_boss_confirm = "false"
+    await db.flush()
+    return {"message": "已确认，可以付款"}
 
 class BillUpdate(BaseModel):
     confirmed_amount: Optional[float] = None

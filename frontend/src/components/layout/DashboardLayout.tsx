@@ -55,6 +55,7 @@ const navItems: NavItem[] = [
       { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin", "super_admin", "supervisor"] },
       { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin", "super_admin", "supervisor"] },
       { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin", "super_admin", "supervisor"] },
+      { key: "concentration", label: "供应商采购分析", icon: <BarChart3 size={18} />, href: "/concentration", roles: ["super_admin", "supervisor"] },
     ],
   },
   { key: "warehouses", label: "warehouses", icon: <Warehouse size={20} />, href: "/warehouses", roles: ["super_admin"] },

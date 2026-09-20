@@ -5,6 +5,7 @@ import { api, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, FileText, Receipt, Download, Edit, TrendingUp, Package } from "lucide-react";
 
@@ -12,7 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function PayablePage() {
   const { t } = useI18n();
-  const { toast } = useToast(); const router = useRouter();
+  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
@@ -35,7 +36,7 @@ export default function PayablePage() {
   const _now = new Date();
   const _curMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}`;
   const _todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
-  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: `${_curMonth}-01`, end_date: _todayStr, status: "" });
+  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: `${_curMonth}-01`, end_date: _todayStr, status: "", source: "" });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadStats(); }, [page, listFilters]);
 
@@ -47,6 +48,7 @@ export default function PayablePage() {
       if (listFilters.start_date) params.set("start_date", listFilters.start_date);
       if (listFilters.end_date) params.set("end_date", listFilters.end_date);
       if (listFilters.status) params.set("status", listFilters.status);
+      if (listFilters.source) params.set("source", listFilters.source);
       const r = await api.get<any>(`/payable?${params.toString()}`); setData(r.data); setTotal(r.total);
     }
     catch (err) { console.error("加载失败:", err); }
@@ -89,15 +91,27 @@ export default function PayablePage() {
   }
 
   async function handleCreate() {
+    if (!billFile) { toast("error", "请上传凭证图片"); return; }
     try {
-      const res = await api.post<any>("/payable", { ...form, amount: form.amount || 0, confirmed_amount: form.confirmed_amount || 0, payment_commitment_days: form.payment_commitment_days || 0 });
-      if (billFile && res.id) {
-        const fd = new FormData(); fd.append("file", billFile);
-        await fetch(`${API_URL}/payable/${res.id}/upload-attachment`, {
-          method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
-        });
-      }
-      toast("success", res.has_diff ? "账单创建成功，已标记对账差异" : "创建成功");
+      const fd = new FormData();
+      fd.append("supplier_id", String(form.supplier_id));
+      fd.append("bill_number", form.bill_number);
+      fd.append("bill_date", form.bill_date);
+      fd.append("due_date", form.due_date);
+      fd.append("amount", String(form.amount || 0));
+      if (form.confirmed_amount) fd.append("confirmed_amount", String(form.confirmed_amount));
+      fd.append("currency", form.currency || "THB");
+      if (form.remark) fd.append("remark", form.remark);
+      if (form.payment_commitment_days) fd.append("payment_commitment_days", String(form.payment_commitment_days));
+      if (form.detail) fd.append("detail", form.detail);
+      if (form.is_fund_linked) fd.append("is_fund_linked", form.is_fund_linked);
+      fd.append("file", billFile);
+      const res = await fetch(`${API_URL}/payable`, {
+        method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
+      });
+      const r = await res.json();
+      if (!res.ok) { toast("error", r.detail || "创建失败"); return; }
+      toast("success", r.has_diff ? "账单创建成功，已标记对账差异" : "创建成功");
       setShowForm(false); setBillFile(null); setForm({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "" });
       load(); loadStats();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
@@ -137,6 +151,15 @@ export default function PayablePage() {
       diff_note: row.diff_note || "",
     });
     setShowEditModal(true);
+  }
+
+  async function confirmBoss(billId: number) {
+    if (!confirm("确认该账单收货差异已核实，可以付款？")) return;
+    try {
+      await api.put(`/payable/${billId}/confirm`, {});
+      toast("success", "已确认，可以付款");
+      load(); loadStats();
+    } catch (e: any) { toast("error", e.message || "确认失败"); }
   }
 
   async function handleEdit() {
@@ -287,6 +310,13 @@ export default function PayablePage() {
               <option value="overdue">逾期</option>
             </select>
           </div>
+          <div className="w-[130px]"><label className="form-label">来源</label>
+            <select className="form-input" value={listFilters.source} onChange={e => setListFilters({ ...listFilters, source: e.target.value })}>
+              <option value="">全部</option>
+              <option value="purchase_order">采购单</option>
+              <option value="manual">手动</option>
+            </select>
+          </div>
           <button onClick={handleQuery} className="btn-primary h-[42px]">查询</button>
           <div className="flex-1" />
           <button onClick={handleExport} className="btn-secondary flex items-center gap-1 h-[42px]" disabled={selectedIds.size === 0}>
@@ -309,6 +339,8 @@ export default function PayablePage() {
         },
         { key: "supplier_name", label: "供应商" },
         { key: "bill_number", label: "账单编号" },
+        { key: "source", label: "来源", render: (v: any, row: any) => v === "purchase_order" ? <span className="px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-600">采购单</span> : <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">手动</span> },
+        { key: "need_boss_confirm", label: "标记", render: (v: any) => v === "true" ? <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-600 font-medium">待老板确认</span> : <span className="text-xs text-gray-300">-</span> },
         { key: "bill_date", label: "账单日期", render: (v: any) => v?.slice(0, 10) },
         { key: "due_date", label: "到期日", render: (v: any) => v?.slice(0, 10) },
         {
@@ -322,7 +354,7 @@ export default function PayablePage() {
         { key: "detail", label: "明细", render: (v: any) => v ? <span className="text-xs text-gray-500 max-w-32 truncate block" title={v}>{v.length > 12 ? v.slice(0, 12) + "..." : v}</span> : "-" },
         { key: "bill_attachment", label: "附件", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "账单附件")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
         { key: "payment_voucher", label: "凭证", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "付款凭证")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
-        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{row.status !== "paid" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}<button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button></div> },
+        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{row.need_boss_confirm === "true" && user?.role === "super_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{row.status !== "paid" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}<button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button></div> },
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} />}
 
       {/* 新建账单弹窗 */}
@@ -363,11 +395,12 @@ export default function PayablePage() {
               <div className="text-sm font-semibold text-gray-400 pb-1 border-b">补充信息</div>
               <div className="form-group"><label className="form-label">费用明细</label><textarea className="form-input" rows={3} value={form.detail} onChange={e => setForm({ ...form, detail: e.target.value })} placeholder="费用明细描述" /></div>
               <div className="form-group">
-                <label className="form-label">账单附件（非必填，支持图片和PDF）</label>
+                <label className="form-label">凭证图片 <span className="text-red-400">*</span></label>
                 <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-blue-400 transition-colors">
                   <Upload size={24} className="mx-auto text-gray-300 mb-2" />
-                  <input type="file" accept="image/*,.pdf" onChange={e => setBillFile(e.target.files?.[0] || null)} className="text-sm text-gray-500" />
-                  <div className="text-xs text-gray-400 mt-2">上传供应商发来的账单文件</div>
+                  <input type="file" accept="image/*" onChange={e => setBillFile(e.target.files?.[0] || null)} className="text-sm text-gray-500" />
+                  <div className="text-xs text-gray-400 mt-2">手动账单必须上传凭证图片</div>
+                  {billFile && <div className="text-xs text-green-600 mt-1">{billFile.name}</div>}
                 </div>
               </div>
             </div>
