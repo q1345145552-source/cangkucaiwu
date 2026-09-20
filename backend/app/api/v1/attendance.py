@@ -71,20 +71,19 @@ async def create_leave(
     if dup:
         raise HTTPException(400, "该日期已提交请假申请")
 
-    # Save photo（可选）
+    # Save photo（可选，压缩 + 缩略图）
     photo_path = None
     if file:
         try:
+            from app.services.image_utils import save_image
             ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
             content = await file.read()
             today_str = thai_today().isoformat()
-            subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "leaves")
-            os.makedirs(subdir, exist_ok=True)
+            abs_subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "leaves")
+            rel_subdir = f"uploads/{wh_id}/{today_str}/leaves"
             fname = f"{uuid.uuid4().hex}.{ext}"
-            fpath = os.path.join(subdir, fname)
-            with open(fpath, "wb") as f:
-                f.write(content)
-            photo_path = f"uploads/{wh_id}/{today_str}/leaves/{fname}"
+            result = save_image(content, abs_subdir, rel_subdir, fname)
+            photo_path = result["path"]
         except:
             pass
 

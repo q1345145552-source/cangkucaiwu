@@ -308,13 +308,11 @@ async def upload_receipt(
     ))).scalar_one_or_none()
     if not item:
         raise HTTPException(404, "开销记录不存在")
-    upload_dir = "uploads/fund_receipts"
-    os.makedirs(upload_dir, exist_ok=True)
+    from app.services.image_utils import save_image
     ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "jpg"
     filename = f"{uuid.uuid4().hex}.{ext}"
-    with open(os.path.join(upload_dir, filename), "wb") as f:
-        f.write(await file.read())
-    item.receipt = f"/uploads/fund_receipts/{filename}"
+    result = save_image(await file.read(), "/app/uploads/fund_receipts", "/uploads/fund_receipts", filename)
+    item.receipt = result["path"]
     await db.flush()
     return {"message": "凭证上传成功", "receipt": item.receipt}
 

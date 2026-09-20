@@ -1098,16 +1098,13 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
         except (ValueError, TypeError):
             received_map[key] = 0
 
-    # 保存到货照片
+    # 保存到货照片（压缩 + 缩略图）
     import os, uuid
+    from app.services.image_utils import save_image
     ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "jpg"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    upload_dir = "/app/uploads/arrival_photos"
-    os.makedirs(upload_dir, exist_ok=True)
-    fpath = os.path.join(upload_dir, fname)
-    with open(fpath, "wb") as f:
-        f.write(await file.read())
-    photo_path = f"/uploads/arrival_photos/{fname}"
+    result = save_image(await file.read(), "/app/uploads/arrival_photos", "/uploads/arrival_photos", fname)
+    photo_path = result["path"]
 
     # 逐项对比订单数量与实收数量
     updated_items = []
@@ -1179,14 +1176,11 @@ async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
     if po.status != "confirmed":
         raise HTTPException(400, "仅已生效采购单可上传回执")
     import os, uuid
+    from app.services.image_utils import save_image
     ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "jpg"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    upload_dir = "/app/uploads/receipt_files"
-    os.makedirs(upload_dir, exist_ok=True)
-    fpath = os.path.join(upload_dir, fname)
-    with open(fpath, "wb") as f:
-        f.write(await file.read())
-    po.receipt_file = f"/uploads/receipt_files/{fname}"
+    result = save_image(await file.read(), "/app/uploads/receipt_files", "/uploads/receipt_files", fname)
+    po.receipt_file = result["path"]
     po.receipt_uploaded_by = current_user.id
     po.receipt_uploaded_at = thai_now()
     po.flow_status = "supplier_confirmed"

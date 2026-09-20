@@ -30,17 +30,15 @@ async def upload_file(
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(400, "文件大小不能超过10MB")
 
-    # Build path: uploads/warehouse_id/date/uuid.ext
+    # Build path: uploads/warehouse_id/date/uuid.ext（压缩 + 缩略图）
+    from app.services.image_utils import save_image
     today = thai_now().strftime("%Y-%m-%d")
     wh_id = str(get_wh_id(current_user) or 0)
-    subdir = os.path.join(UPLOAD_DIR, wh_id, today)
-    os.makedirs(subdir, exist_ok=True)
+    abs_subdir = os.path.join(UPLOAD_DIR, wh_id, today)
+    rel_subdir = f"uploads/{wh_id}/{today}"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(subdir, fname)
-    with open(fpath, "wb") as f:
-        f.write(content)
-    rel_path = f"uploads/{wh_id}/{today}/{fname}"
-    return {"path": rel_path, "filename": file.filename, "size": len(content)}
+    result = save_image(content, abs_subdir, rel_subdir, fname)
+    return {"path": result["path"], "thumb_path": result["thumb_path"], "filename": file.filename, "size": result["size"]}
 
 @router.post("/recharge-screenshot")
 async def upload_recharge_screenshot(
@@ -62,15 +60,13 @@ async def upload_recharge_screenshot(
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(400, "文件不能超过10MB")
 
+    from app.services.image_utils import save_image
     today = thai_now().strftime("%Y-%m-%d")
     wh_id = str(rec.warehouse_id)
-    subdir = os.path.join(UPLOAD_DIR, wh_id, today, "recharge")
-    os.makedirs(subdir, exist_ok=True)
+    abs_subdir = os.path.join(UPLOAD_DIR, wh_id, today, "recharge")
+    rel_subdir = f"uploads/{wh_id}/{today}/recharge"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(subdir, fname)
-    with open(fpath, "wb") as f:
-        f.write(content)
-    rel_path = f"uploads/{wh_id}/{today}/recharge/{fname}"
-    rec.screenshot = rel_path
+    result = save_image(content, abs_subdir, rel_subdir, fname)
+    rec.screenshot = result["path"]
     await db.flush()
-    return {"path": rel_path, "message": "截图上传成功"}
+    return {"path": result["path"], "thumb_path": result["thumb_path"], "message": "截图上传成功"}

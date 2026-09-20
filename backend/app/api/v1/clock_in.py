@@ -7,6 +7,7 @@ from app.models.clock_in_records import ClockInRecord
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
+from app.services.image_utils import thumb_path_of
 from datetime import datetime, date, time, timedelta
 from pydantic import BaseModel
 from typing import Optional, List
@@ -75,15 +76,14 @@ async def clock_in(
         except Exception:
             raise HTTPException(400, t("invalid_photo", lang))
         try:
+            from app.services.image_utils import save_image
             wh_id = str(get_wh_id(current_user) or 0)
             today_str = today.isoformat()
-            subdir = os.path.join(UPLOAD_DIR, wh_id, today_str, "clockin")
-            os.makedirs(subdir, exist_ok=True)
+            abs_subdir = os.path.join(UPLOAD_DIR, wh_id, today_str, "clockin")
+            rel_subdir = f"uploads/{wh_id}/{today_str}/clockin"
             fname = f"{uuid.uuid4().hex}.jpg"
-            fpath = os.path.join(subdir, fname)
-            with open(fpath, "wb") as f:
-                f.write(img_bytes)
-            photo_path = f"uploads/{wh_id}/{today_str}/clockin/{fname}"
+            result = save_image(img_bytes, abs_subdir, rel_subdir, fname)
+            photo_path = result["path"]
         except Exception:
             pass
 
@@ -214,6 +214,7 @@ async def list_records(
             "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
             "status": r.status, "penalty_amount": r.penalty_amount,
             "photo_path": r.photo_path,
+            "photo_thumb_path": thumb_path_of(r.photo_path),
             "is_makeup": bool(r.is_makeup),
             "makeup_by": r.makeup_by,
             "makeup_by_name": makeup_by_names.get(r.makeup_by, ""),
@@ -533,6 +534,7 @@ async def get_photos(
                 "status": r.status,
                 "penalty_amount": r.penalty_amount,
                 "photo_path": r.photo_path,
+                "photo_thumb_path": thumb_path_of(r.photo_path),
             }
 
         all_sessions = []
@@ -547,6 +549,7 @@ async def get_photos(
                     "status": "missing",
                     "penalty_amount": 0,
                     "photo_path": None,
+                    "photo_thumb_path": None,
                 })
 
         return {

@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.security import hash_password
+from app.services.image_utils import thumb_path_of
 from app.core.timezone import thai_now
 from pydantic import BaseModel
 from datetime import datetime, date, timedelta
@@ -130,8 +131,11 @@ async def list_employees(
             "status": e.status, "daily_wage": e.daily_wage, "base_salary": e.base_salary,
             "remark": e.remark,
             "photo_path": e.photo_path,
+            "photo_thumb_path": thumb_path_of(e.photo_path),
             "passport_photo_path": e.passport_photo_path,
+            "passport_photo_thumb_path": thumb_path_of(e.passport_photo_path),
             "work_permit_photo_path": e.work_permit_photo_path,
+            "work_permit_photo_thumb_path": thumb_path_of(e.work_permit_photo_path),
             "passport_number": e.passport_number,
             "work_permit_number": e.work_permit_number,
             "passport_expiry": e.passport_expiry.isoformat() if e.passport_expiry else None,
@@ -718,23 +722,20 @@ async def upload_employee_photo(
     if not emp:
         raise HTTPException(404, "员工不存在")
 
-    # Save photo
+    # Save photo（压缩 + 缩略图）
     import os, uuid
-    UPLOAD_DIR = "/app/uploads"
+    from app.services.image_utils import save_image
     ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
     content_bytes = await file.read()
     today_str = datetime.now().strftime("%Y-%m-%d")
-    subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "employee_photos")
-    os.makedirs(subdir, exist_ok=True)
+    abs_subdir = os.path.join("/app/uploads", str(wh_id), today_str, "employee_photos")
+    rel_subdir = f"uploads/{wh_id}/{today_str}/employee_photos"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(subdir, fname)
-    with open(fpath, "wb") as f:
-        f.write(content_bytes)
-    photo_path = f"uploads/{wh_id}/{today_str}/employee_photos/{fname}"
+    result = save_image(content_bytes, abs_subdir, rel_subdir, fname)
 
-    emp.photo_path = photo_path
+    emp.photo_path = result["path"]
     await db.flush()
-    return {"message": "照片上传成功", "photo_path": photo_path}
+    return {"message": "照片上传成功", "photo_path": result["path"], "photo_thumb_path": result["thumb_path"]}
 
 
 # ═══ Passport & Work Permit Photo Upload ═══════
@@ -760,21 +761,18 @@ async def upload_passport_photo(
         raise HTTPException(404, "员工不存在")
 
     import os, uuid
-    UPLOAD_DIR = "/app/uploads"
+    from app.services.image_utils import save_image
     ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
     content_bytes = await file.read()
     today_str = datetime.now().strftime("%Y-%m-%d")
-    subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "employee_photos")
-    os.makedirs(subdir, exist_ok=True)
+    abs_subdir = os.path.join("/app/uploads", str(wh_id), today_str, "employee_photos")
+    rel_subdir = f"uploads/{wh_id}/{today_str}/employee_photos"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(subdir, fname)
-    with open(fpath, "wb") as f:
-        f.write(content_bytes)
-    passport_photo_path = f"uploads/{wh_id}/{today_str}/employee_photos/{fname}"
+    result = save_image(content_bytes, abs_subdir, rel_subdir, fname)
 
-    emp.passport_photo_path = passport_photo_path
+    emp.passport_photo_path = result["path"]
     await db.flush()
-    return {"message": "护照照片上传成功", "passport_photo_path": passport_photo_path}
+    return {"message": "护照照片上传成功", "passport_photo_path": result["path"], "passport_photo_thumb_path": result["thumb_path"]}
 
 
 @router.post("/{employee_id}/work-permit-photo")
@@ -798,21 +796,18 @@ async def upload_work_permit_photo(
         raise HTTPException(404, "员工不存在")
 
     import os, uuid
-    UPLOAD_DIR = "/app/uploads"
+    from app.services.image_utils import save_image
     ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
     content_bytes = await file.read()
     today_str = datetime.now().strftime("%Y-%m-%d")
-    subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "employee_photos")
-    os.makedirs(subdir, exist_ok=True)
+    abs_subdir = os.path.join("/app/uploads", str(wh_id), today_str, "employee_photos")
+    rel_subdir = f"uploads/{wh_id}/{today_str}/employee_photos"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(subdir, fname)
-    with open(fpath, "wb") as f:
-        f.write(content_bytes)
-    work_permit_photo_path = f"uploads/{wh_id}/{today_str}/employee_photos/{fname}"
+    result = save_image(content_bytes, abs_subdir, rel_subdir, fname)
 
-    emp.work_permit_photo_path = work_permit_photo_path
+    emp.work_permit_photo_path = result["path"]
     await db.flush()
-    return {"message": "工作证照片上传成功", "work_permit_photo_path": work_permit_photo_path}
+    return {"message": "工作证照片上传成功", "work_permit_photo_path": result["path"], "work_permit_photo_thumb_path": result["thumb_path"]}
 
 
 

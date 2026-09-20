@@ -631,20 +631,20 @@ async def disburse_payroll(
     if r.disbursed:
         raise HTTPException(400, "该工资单已发放")
 
-    # Save signature if provided
+    # Save signature if provided（压缩 + 缩略图）
     sig_path = None
     if req.signature_base64:
         try:
             import os, uuid, base64
+            from app.services.image_utils import save_image
             header, data = req.signature_base64.split(",", 1) if "," in req.signature_base64 else ("", req.signature_base64)
             img_bytes = base64.b64decode(data)
             wh_id_str = str(r.warehouse_id)
-            subdir = os.path.join("/app/uploads", wh_id_str, r.period, "signatures")
-            os.makedirs(subdir, exist_ok=True)
+            abs_subdir = os.path.join("/app/uploads", wh_id_str, r.period, "signatures")
+            rel_subdir = f"uploads/{wh_id_str}/{r.period}/signatures"
             fname = f"{uuid.uuid4().hex}.png"
-            with open(os.path.join(subdir, fname), "wb") as f:
-                f.write(img_bytes)
-            sig_path = f"uploads/{wh_id_str}/{r.period}/signatures/{fname}"
+            result = save_image(img_bytes, abs_subdir, rel_subdir, fname)
+            sig_path = result["path"]
         except Exception:
             pass
 

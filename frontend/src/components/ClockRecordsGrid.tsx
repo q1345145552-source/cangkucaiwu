@@ -272,7 +272,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                       </div>
                     )}
                     {cr?.photo_path ? (
-                      <img src={`/${cr.photo_path}`} className="w-full rounded-lg max-h-64 object-cover border cursor-pointer hover:opacity-90"
+                      <img src={`/${cr.photo_thumb_path || cr.photo_path}`} className="w-full rounded-lg max-h-64 object-cover border cursor-pointer hover:opacity-90"
                         onClick={() => setZoomedPhoto(`/${cr.photo_path}`)} />
                     ) : <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">📷 {t("att_no_photo")}</div>}
                   </div>

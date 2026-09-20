@@ -173,17 +173,14 @@ async def create_bill(
     if existing and not existing.is_duplicate_warned:
         raise HTTPException(409, f"重复账单警告: 账单号 {bill_number} 已存在，请确认是否新账单")
 
-    # 保存凭证图片（必传）
+    # 保存凭证图片（必传，压缩 + 缩略图）
     import os, uuid
+    from app.services.image_utils import save_image
     ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "png"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    upload_dir = "/app/uploads/bill_attachments"
-    os.makedirs(upload_dir, exist_ok=True)
-    fpath = os.path.join(upload_dir, fname)
     content = await file.read()
-    with open(fpath, "wb") as f:
-        f.write(content)
-    voucher_path = f"/uploads/bill_attachments/{fname}"
+    result = save_image(content, "/app/uploads/bill_attachments", "/uploads/bill_attachments", fname)
+    voucher_path = result["path"]
 
     # 对账差异检测
     has_diff = False
@@ -226,14 +223,12 @@ async def upload_voucher(bill_id: int, file: UploadFile = File(...),
     if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权操作其他仓库的账单")
     import os, uuid
-    upload_dir = "/app/uploads/payment_vouchers"
-    os.makedirs(upload_dir, exist_ok=True)
+    from app.services.image_utils import save_image
     ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "png"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(upload_dir, fname)
     content = await file.read()
-    with open(fpath, "wb") as f: f.write(content)
-    b.payment_voucher = f"/uploads/payment_vouchers/{fname}"
+    result = save_image(content, "/app/uploads/payment_vouchers", "/uploads/payment_vouchers", fname)
+    b.payment_voucher = result["path"]
     await db.flush()
     return {"message": "凭证上传成功", "path": b.payment_voucher}
 
@@ -249,14 +244,12 @@ async def upload_bill_attachment(bill_id: int, file: UploadFile = File(...),
     if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权操作其他仓库的账单")
     import os, uuid
-    upload_dir = "/app/uploads/bill_attachments"
-    os.makedirs(upload_dir, exist_ok=True)
+    from app.services.image_utils import save_image
     ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "pdf"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(upload_dir, fname)
     content = await file.read()
-    with open(fpath, "wb") as f: f.write(content)
-    b.bill_attachment = f"/uploads/bill_attachments/{fname}"
+    result = save_image(content, "/app/uploads/bill_attachments", "/uploads/bill_attachments", fname)
+    b.bill_attachment = result["path"]
     await db.flush()
     return {"message": "账单附件上传成功", "path": b.bill_attachment}
 

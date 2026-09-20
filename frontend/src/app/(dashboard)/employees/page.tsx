@@ -393,7 +393,7 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {e.photo_path ? (
-                        <img src={photoUrl(e.photo_path)} className="w-10 h-10 rounded-full object-cover border cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={ev => { ev.stopPropagation(); openZoom(e.photo_path); }} />
+                        <img src={photoUrl(e.photo_thumb_path || e.photo_path)} className="w-10 h-10 rounded-full object-cover border cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={ev => { ev.stopPropagation(); openZoom(e.photo_path); }} />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-bold">
                           {e.name?.[0] || "?"}
@@ -646,7 +646,7 @@ export default function EmployeesPage() {
               <div className="absolute -bottom-8 left-5 flex items-end gap-4">
                 <div className="relative group">
                   {detailEmp.photo_path ? (
-                    <img src={photoUrl(detailEmp.photo_path)} className="w-20 h-20 rounded-full border-4 border-white object-cover shadow cursor-pointer hover:scale-105 transition-transform" onClick={() => openZoom(detailEmp.photo_path)} />
+                    <img src={photoUrl(detailEmp.photo_thumb_path || detailEmp.photo_path)} className="w-20 h-20 rounded-full border-4 border-white object-cover shadow cursor-pointer hover:scale-105 transition-transform" onClick={() => openZoom(detailEmp.photo_path)} />
                   ) : (
                     <div className="w-20 h-20 rounded-full border-4 border-white bg-gray-200 flex items-center justify-center text-gray-400 text-2xl font-bold shadow">
                       {detailEmp.name?.[0] || "?"}

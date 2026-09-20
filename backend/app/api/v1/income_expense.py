@@ -260,12 +260,13 @@ async def create_expense(
 
     # 凭证图片（可选，可多张）：保存到 uploads 目录，路径以 JSON 数组写入 voucher 字段
     import os, uuid, json
+    from app.services.image_utils import save_image
     UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
     today_str = thai_now().strftime("%Y-%m-%d")
     voucher_paths: list = []
     if files:
-        subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "expense_vouchers")
-        os.makedirs(subdir, exist_ok=True)
+        abs_subdir = os.path.join(UPLOAD_DIR, str(wh_id), today_str, "expense_vouchers")
+        rel_subdir = f"uploads/{wh_id}/{today_str}/expense_vouchers"
         for file in files:
             if file is None or not file.filename:
                 continue
@@ -276,10 +277,8 @@ async def create_expense(
             if len(content) > 10 * 1024 * 1024:
                 raise HTTPException(400, "单张凭证图片不能超过10MB")
             fname = f"{uuid.uuid4().hex}.{ext}"
-            fpath = os.path.join(subdir, fname)
-            with open(fpath, "wb") as f:
-                f.write(content)
-            voucher_paths.append(f"uploads/{wh_id}/{today_str}/expense_vouchers/{fname}")
+            result = save_image(content, abs_subdir, rel_subdir, fname)
+            voucher_paths.append(result["path"])
 
     voucher_field = json.dumps(voucher_paths, ensure_ascii=False) if voucher_paths else None
 
@@ -374,8 +373,9 @@ async def update_expense(
 
     # 追加新凭证
     if files:
-        subdir = os.path.join(UPLOAD_DIR, str(r.warehouse_id), today_str, "expense_vouchers")
-        os.makedirs(subdir, exist_ok=True)
+        from app.services.image_utils import save_image
+        abs_subdir = os.path.join(UPLOAD_DIR, str(r.warehouse_id), today_str, "expense_vouchers")
+        rel_subdir = f"uploads/{r.warehouse_id}/{today_str}/expense_vouchers"
         for file in files:
             if file is None or not file.filename:
                 continue
@@ -386,10 +386,8 @@ async def update_expense(
             if len(content) > 10 * 1024 * 1024:
                 raise HTTPException(400, "单张凭证图片不能超过10MB")
             fname = f"{uuid.uuid4().hex}.{ext}"
-            fpath = os.path.join(subdir, fname)
-            with open(fpath, "wb") as f:
-                f.write(content)
-            vouchers.append(f"uploads/{r.warehouse_id}/{today_str}/expense_vouchers/{fname}")
+            result = save_image(content, abs_subdir, rel_subdir, fname)
+            vouchers.append(result["path"])
 
     # 更新字段
     r.category_id = category_id

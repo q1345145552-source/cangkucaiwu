@@ -574,7 +574,7 @@ export default function AttendancePage() {
                     )}
                   </div>
                   {s.photo_path ? (
-                    <img src={`/${s.photo_path}`} alt={`${t(SESSION_KEYS[s.session] || "morning_shift")}`}
+                    <img src={`/${s.photo_thumb_path || s.photo_path}`} alt={`${t(SESSION_KEYS[s.session] || "morning_shift")}`}
                       className="w-full rounded-lg max-h-64 object-cover border" />
                   ) : (
                     <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
