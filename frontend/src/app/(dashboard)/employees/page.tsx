@@ -52,7 +52,7 @@ export default function EmployeesPage() {
 
 
   const defaultForm: any = {
-    name: "", position: "仓库劳工", myanmar_id: "", address: "",
+    name: "", employee_no: "", password: "", position: "仓库劳工", myanmar_id: "", address: "",
     phone: "", emergency_contact: "", hire_date: "",
     status: "trial", daily_wage: 400, base_salary: 12000, remark: "",
     passport_number: "", work_permit_number: "",
@@ -90,6 +90,13 @@ export default function EmployeesPage() {
 
   async function handleCreate() {
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
+    if (!(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
+    if (!editingId) {
+      if (!form.password) { toast("error", "密码必填"); return; }
+      if (form.password.length < 6) { toast("error", "密码至少6位"); return; }
+    } else if (form.password && form.password.length < 6) {
+      toast("error", "密码至少6位"); return;
+    }
     try {
       const payload: any = { ...form };
       // Build comma-separated tags if it's an array
@@ -209,7 +216,8 @@ export default function EmployeesPage() {
   function editEmployee(e: any) {
     setEditingId(e.id);
     setForm({
-      name: e.name || "", position: e.position || "仓库劳工",
+      name: e.name || "", employee_no: e.employee_no || "", password: "",
+      position: e.position || "仓库劳工",
       myanmar_id: e.myanmar_id || "", address: e.address || "",
       phone: e.phone || "", emergency_contact: e.emergency_contact || "",
       hire_date: e.hire_date || "", status: e.status || "trial",
@@ -499,6 +507,16 @@ export default function EmployeesPage() {
                     <option value="叉车司机">叉车司机</option>
                     <option value="财务">财务</option>
                   </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label text-xs mb-1 block">工号（登录用户名） <span className="text-red-400">*</span></label>
+                  <input className="form-input py-2 w-full" value={form.employee_no} onChange={e => setForm({...form, employee_no: e.target.value})} placeholder="如: 001" autoComplete="off" />
+                </div>
+                <div>
+                  <label className="form-label text-xs mb-1 block">密码 {editingId ? <span className="text-gray-400">(留空不修改)</span> : <span className="text-red-400">*</span>}</label>
+                  <input type="password" className="form-input py-2 w-full" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder={editingId ? "留空表示不修改" : "至少6位"} autoComplete="new-password" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

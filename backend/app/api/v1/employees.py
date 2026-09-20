@@ -5,7 +5,9 @@ from app.database import get_db
 from app.models.employee import Employee
 from app.models.warehouse import Warehouse
 from app.models.user import User
+from app.models.user_warehouse import UserWarehouse
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.security import hash_password
 from app.core.timezone import thai_now
 from pydantic import BaseModel
 from datetime import datetime, date, timedelta
@@ -15,6 +17,8 @@ router = APIRouter()
 
 class EmployeeCreate(BaseModel):
     name: str
+    employee_no: str  # 工号 = 登录用户名，必填
+    password: str     # 登录密码，必填（至少6位）
     position: str = "仓库劳工"
     user_id: Optional[int] = None  # 关联登录账号
     myanmar_id: Optional[str] = None
@@ -35,6 +39,8 @@ class EmployeeCreate(BaseModel):
 
 class EmployeeUpdate(BaseModel):
     name: Optional[str] = None
+    employee_no: Optional[str] = None  # 工号 = 登录用户名
+    password: Optional[str] = None     # 留空表示不修改
     position: Optional[str] = None
     myanmar_id: Optional[str] = None
     address: Optional[str] = None
@@ -157,7 +163,37 @@ async def create_employee(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
-    
+
+    # === 工号与登录账号校验 ===
+    employee_no = (req.employee_no or "").strip()
+    password = req.password or ""
+    if not employee_no:
+        raise HTTPException(400, "工号必填")
+    if not password:
+        raise HTTPException(400, "密码必填")
+    if len(password) < 6:
+        raise HTTPException(400, "密码至少6位")
+    # 工号(用户名)唯一性：包括已禁用账号也占用工号
+    existing_user = (await db.execute(
+        select(User).where(User.username == employee_no)
+    )).scalar_one_or_none()
+    if existing_user:
+        raise HTTPException(400, "该工号已被使用")
+
+    # 先创建登录账号（仓库劳工）
+    new_user = User(
+        username=employee_no,
+        password_hash=hash_password(password),
+        display_name=req.name,
+        role=Role.WAREHOUSE_LABOR.value,
+        warehouse_id=wh_id,
+        is_active=True,
+        created_by=current_user.id,
+    )
+    db.add(new_user)
+    await db.flush()
+    db.add(UserWarehouse(user_id=new_user.id, warehouse_id=wh_id))
+
     # Check max_employees limit
     wh = (await db.execute(select(Warehouse).where(Warehouse.id == wh_id))).scalar_one_or_none()
     if wh and wh.max_employees:
@@ -181,6 +217,7 @@ async def create_employee(
     
     e = Employee(
         warehouse_id=wh_id, name=req.name, position=req.position,
+        user_id=new_user.id,
         myanmar_id=req.myanmar_id, address=req.address, phone=req.phone,
         emergency_contact=req.emergency_contact, hire_date=hire_date,
         status=req.status, daily_wage=req.daily_wage, base_salary=req.base_salary,
@@ -188,7 +225,7 @@ async def create_employee(
     )
     db.add(e)
     await db.flush()
-    return {"id": e.id, "message": "员工创建成功"}
+    return {"id": e.id, "employee_no": employee_no, "message": "员工创建成功"}
 
 @router.put("/{employee_id}")
 async def update_employee(
@@ -209,6 +246,60 @@ async def update_employee(
         raise HTTPException(403, "只能编辑自己仓库的员工")
     
     updates = req.model_dump(exclude_unset=True)
+
+    # === 工号 / 密码：同步登录账号（与员工档案字段分离处理）===
+    employee_no = updates.pop("employee_no", None)
+    password = updates.pop("password", None)
+    if employee_no is not None:
+        employee_no = str(employee_no).strip()
+    if password is not None:
+        password = str(password)
+
+    # 编辑时工号必填
+    if employee_no is not None and employee_no == "":
+        raise HTTPException(400, "工号必填")
+
+    linked_user = None
+    if e.user_id:
+        linked_user = (await db.execute(select(User).where(User.id == e.user_id))).scalar_one_or_none()
+
+    if employee_no:
+        # 工号唯一性（含禁用账号；排除当前已绑定账号）
+        q = select(User).where(User.username == employee_no)
+        if linked_user:
+            q = q.where(User.id != linked_user.id)
+        dup = (await db.execute(q)).scalar_one_or_none()
+        if dup:
+            raise HTTPException(400, "该工号已被使用")
+
+        if linked_user:
+            # 改了工号 → 同步修改关联账号用户名
+            linked_user.username = employee_no
+        else:
+            # 原无账号：填了工号+密码 → 创建账号并绑定
+            if not password or len(password) < 6:
+                raise HTTPException(400, "该员工暂无登录账号，请填写密码（至少6位）以创建账号")
+            linked_user = User(
+                username=employee_no,
+                password_hash=hash_password(password),
+                display_name=req.name or e.name,
+                role=Role.WAREHOUSE_LABOR.value,
+                warehouse_id=e.warehouse_id,
+                is_active=True,
+                created_by=current_user.id,
+            )
+            db.add(linked_user)
+            await db.flush()
+            db.add(UserWarehouse(user_id=linked_user.id, warehouse_id=e.warehouse_id))
+            e.user_id = linked_user.id
+            password = None  # 已用于创建账号
+
+    if password:
+        if len(password) < 6:
+            raise HTTPException(400, "密码至少6位")
+        if linked_user:
+            linked_user.password_hash = hash_password(password)
+
     if "hire_date" in updates and updates["hire_date"] is not None:
         try:
             updates["hire_date"] = datetime.fromisoformat(updates["hire_date"])
