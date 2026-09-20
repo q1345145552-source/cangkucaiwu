@@ -357,8 +357,8 @@ async def get_calendar(
     wh_id = get_wh_id(current_user)
     wh_ids = get_wh_ids(current_user)
 
-    # Get employees scoped to the active warehouse（排除已删除）
-    emp_query = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
+    # Get employees scoped to the active warehouse（含已删除，有考勤/请假记录的仍显示）
+    emp_query = select(Employee).where(Employee.status != "resigned")
     if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         # Use active (header-selected) warehouse, not all warehouses
         active_wh_id = get_wh_id(current_user)
