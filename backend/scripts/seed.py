@@ -199,6 +199,9 @@ async def seed():
                 "ALTER TABLE supplier_products ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'THB'"
             ))
             await conn.execute(text(
+                "ALTER TABLE expense_funds ADD COLUMN IF NOT EXISTS currency VARCHAR(5) DEFAULT 'THB'"
+            ))
+            await conn.execute(text(
                 "UPDATE supplier_cross_border_prices SET currency = 'CNY' WHERE currency = '人民币'"
             ))
             await conn.execute(text(

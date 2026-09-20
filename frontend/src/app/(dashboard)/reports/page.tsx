@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, FileText, PiggyBank, Receipt, CreditCard, Clock, AlertTriangle, Download } from "lucide-react";
 
@@ -19,7 +20,7 @@ const columnConfig: Record<string, string[]> = {
   "recharge-summary": ["日期", "金额", "币种", "状态"],
   "incoming-summary": ["日期", "金额", "币种", "付款方"],
   "income-expense": ["类型", "日期", "金额", "币种", "备注"],
-  "payable": ["账单号", "到期日", "金额", "已付", "状态"],
+  "payable": ["账单号", "到期日", "金额", "已付", "币种", "状态"],
   "expense-fund": ["用途", "金额", "余额", "状态"],
   "reimbursement": ["日期", "金额", "币种", "状态"],
   "credit": ["额度", "欠款", "逾期天数", "状态"],
@@ -105,10 +106,8 @@ export default function ReportsPage() {
 
   function formatPreview(key: string, p: any): string {
     if (!p) return "";
-    if (key === "income-expense") return `¥${(p.preview || 0).toLocaleString()}`;
-    if (key === "credit") return `¥${(p.preview || 0).toLocaleString()}`;
     if (key === "reconciliation-diff") return `${p.count || 0}条`;
-    return `¥${(p.preview || 0).toLocaleString()}`;
+    return fmtMoney(p.preview);
   }
 
   const cols = selected ? (columnConfig[selected] || []) : [];
@@ -247,9 +246,10 @@ export default function ReportsPage() {
                         if (dateCols.has(k) && val && String(val).length >= 10) {
                           display = String(val).slice(0, 10);
                         }
-                        // Amount columns: right-aligned bold
+                        // Amount columns: right-aligned bold, with currency symbol
                         if (amtCols.has(k) && typeof val === "number") {
-                          display = val.toLocaleString();
+                          const cur = row["币种"] || "THB";
+                          display = `${cur === "CNY" ? "¥" : "฿"}${val.toLocaleString()}`;
                           return (
                             <td key={k} className="px-4 py-3 text-right font-mono text-sm font-semibold text-gray-800 whitespace-nowrap">
                               {display}

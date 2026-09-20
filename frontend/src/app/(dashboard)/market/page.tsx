@@ -91,7 +91,7 @@ export default function MarketPage() {
             <div key={i.id} className="bg-white rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div>
                 <div className="font-semibold">{i.name}</div>
-                <div className="text-sm text-gray-500">{i.warehouse_name} | 数量:{i.quantity} | 价格:{i.price === 0 ? "无偿" : `¥${i.price}`}</div>
+                <div className="text-sm text-gray-500">{i.warehouse_name} | 数量:{i.quantity} | 价格:{i.price === 0 ? "无偿" : `฿${i.price}`}</div>
                 <div className="text-sm text-gray-400">{i.description}</div>
               </div>
               <div className="flex gap-2">
@@ -122,7 +122,7 @@ export default function MarketPage() {
                     {i.status === "approved" ? "可购买" : i.status === "sold" ? "已售" : i.status}
                   </span>
                 </div>
-                <div className="text-sm text-gray-500 mb-3">数量: {i.quantity} | {i.price === 0 ? "无偿" : `¥${i.price.toLocaleString()}`}</div>
+                <div className="text-sm text-gray-500 mb-3">数量: {i.quantity} | {i.price === 0 ? "无偿" : `฿${i.price.toLocaleString()}`}</div>
                 <div className="text-xs text-gray-400 mb-3 line-clamp-2">{i.description}</div>
                 {i.status === "approved" && user?.role !== "staff" && (
                   <button onClick={() => handlePurchase(i.id)} className="w-full bg-primary text-white py-1.5 rounded text-sm flex items-center justify-center gap-1">

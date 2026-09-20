@@ -28,6 +28,7 @@ class ExpenseFund(Base):
     employee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     receive_date = Column(DateTime, nullable=False)
     amount = Column(Float, nullable=False)
+    currency = Column(String(5), default="THB")
     purpose = Column(String(500), nullable=False)
     expected_return_date = Column(DateTime, nullable=True)
     status = Column(String(30), default=FundStatus.ACTIVE.value)

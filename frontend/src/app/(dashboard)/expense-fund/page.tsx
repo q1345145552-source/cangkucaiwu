@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -356,10 +357,10 @@ export default function ExpenseFundPage() {
                               {acc.employee_name}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-sm">฿{(acc.total_topped_up || 0).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right font-mono text-sm text-yellow-700">฿{accSpentTotal.toLocaleString()}</td>
-                          <td className={`px-4 py-3 text-right font-mono text-sm font-semibold ${accAvailable <= 0 ? "text-red-600" : "text-green-700"}`}>฿{accAvailable.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right font-mono text-sm text-gray-500">฿{(acc.fund_limit || 5000).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right font-mono text-sm">{fmtMoney(acc.total_topped_up, acc.currency)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-sm text-yellow-700">{fmtMoney(accSpentTotal, acc.currency)}</td>
+                          <td className={`px-4 py-3 text-right font-mono text-sm font-semibold ${accAvailable <= 0 ? "text-red-600" : "text-green-700"}`}>{fmtMoney(accAvailable, acc.currency)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-sm text-gray-500">{fmtMoney(acc.fund_limit || 5000, acc.currency)}</td>
                           <td className="px-4 py-3 text-center">
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acc.is_low ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>{acc.is_low ? "余额不足" : "正常"}</span>
                           </td>
@@ -491,8 +492,8 @@ export default function ExpenseFundPage() {
                 <div className="p-5 space-y-4">
                   <div className="bg-green-50 rounded-lg p-3">
                     <div className="text-xs text-green-600 mb-1">{topUpAccount?.employee_name}</div>
-                    <div className="flex items-center justify-between text-sm"><span className="text-gray-500">当前余额</span><span className="font-bold text-green-700">฿{(topUpAccount?.current_balance || 0).toLocaleString()}</span></div>
-                    <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">฿{(topUpAccount?.fund_limit || 5000).toLocaleString()}</span></div>{!isAdmin && (<div className="mt-3"><label className="form-label text-xs">充值事由</label><input className="form-input text-sm" value={topUpReason} onChange={e => setTopUpReason(e.target.value)} placeholder="请输入充值原因" /></div>)}
+                    <div className="flex items-center justify-between text-sm"><span className="text-gray-500">当前余额</span><span className="font-bold text-green-700">{fmtMoney(topUpAccount?.current_balance, topUpAccount?.currency)}</span></div>
+                    <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">{fmtMoney(topUpAccount?.fund_limit || 5000, topUpAccount?.currency)}</span></div>{!isAdmin && (<div className="mt-3"><label className="form-label text-xs">充值事由</label><input className="form-input text-sm" value={topUpReason} onChange={e => setTopUpReason(e.target.value)} placeholder="请输入充值原因" /></div>)}
                   </div>
                   <div><label className="form-label">充值金额</label><input type="number" className="form-input text-lg font-bold" value={topUpAmount} onChange={e => setTopUpAmount(e.target.value)} placeholder="输入金额" autoFocus /></div>
                 </div>
@@ -511,8 +512,8 @@ export default function ExpenseFundPage() {
                 <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2"><FileText size={18} /><h2 className="font-semibold">添加开销 - {expenseAccount?.employee_name}</h2><button onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button></div>
                 <div className="p-5 space-y-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">账户余额</div><div className="text-sm font-bold text-blue-700">฿{(expenseAccount?.current_balance || 0).toLocaleString()}</div></div>
-                    <div className="bg-gray-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-gray-400">可用余额</div><div className="text-sm font-bold text-gray-700">฿{Math.max(0, (expenseAccount?.available ?? expenseAccount?.current_balance ?? 0)).toLocaleString()}</div></div>
+                    <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">账户余额</div><div className="text-sm font-bold text-blue-700">{fmtMoney(expenseAccount?.current_balance, expenseAccount?.currency)}</div></div>
+                    <div className="bg-gray-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-gray-400">可用余额</div><div className="text-sm font-bold text-gray-700">{fmtMoney(Math.max(0, (expenseAccount?.available ?? expenseAccount?.current_balance ?? 0)), expenseAccount?.currency)}</div></div>
                   </div>
                   <div><label className="form-label">日期</label><input type="date" className="form-input" value={itemForm.expense_date} onChange={e => setItemForm({ ...itemForm, expense_date: e.target.value })} /></div>
                   <div><label className="form-label">类别</label><select className="form-input" value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })}><option>耗材</option><option>交通费</option><option>餐饮</option><option>办公用品</option><option>维修</option><option>其他</option></select></div>

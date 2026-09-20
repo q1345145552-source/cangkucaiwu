@@ -253,10 +253,10 @@ async def payable_report(start_date: str = None, end_date: str = None, warehouse
     result = await db.execute(query.order_by(PayableBill.due_date))
     bills = result.scalars().all()
     data = [{"账单号": b.bill_number or "", "到期日": b.due_date.strftime("%Y-%m-%d") if b.due_date else "", "金额": b.amount or 0,
-             "已付": b.paid_amount or 0, "状态": _(b.status)} for b in bills]
+             "已付": b.paid_amount or 0, "币种": b.currency or "THB", "状态": _(b.status)} for b in bills]
     pending_total = sum(b.amount - (b.paid_amount or 0) for b in bills if b.status in ("pending","partially_paid","overdue"))
     overdue_count = sum(1 for b in bills if b.status == "overdue")
-    headers = ["账单号","到期日","金额","已付","状态"]
+    headers = ["账单号","到期日","金额","已付","币种","状态"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "应付报表")
     return {"data": data, "total_pending": pending_total, "overdue_count": overdue_count, "total_count": len(bills)}
 

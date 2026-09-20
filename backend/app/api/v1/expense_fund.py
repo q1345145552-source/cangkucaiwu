@@ -165,6 +165,7 @@ async def list_accounts(
         result.append({
             "id": a.id, "employee_id": a.employee_id,
             "employee_name": umap.get(a.employee_id, ""),
+            "currency": a.currency or "THB",
             "total_topped_up": a.amount or 0,
             "current_balance": (a.remaining_balance or 0),
             "total_spent": spent,
