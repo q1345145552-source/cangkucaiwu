@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_, and_
 from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
@@ -163,7 +163,11 @@ async def list_records(
     # Get employees in scope（含已删除，有打卡记录的行仍显示）
     emp_q = select(Employee).where(Employee.status != "resigned")
     if current_user.role == Role.WAREHOUSE_LABOR:
-        emp_q = emp_q.where(Employee.user_id == current_user.id)
+        wh_id = get_wh_id(current_user)
+        # 劳工：优先绑定账号，兜底按显示名+仓库匹配（只能看到自己）
+        cond = Employee.user_id == current_user.id
+        cond = or_(cond, and_(Employee.name == current_user.display_name, Employee.warehouse_id == wh_id) if wh_id else Employee.name == current_user.display_name)
+        emp_q = emp_q.where(cond)
     elif active_wh:
         emp_q = emp_q.where(Employee.warehouse_id == active_wh)
     emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
@@ -465,8 +469,8 @@ async def get_photos(
     try:
         if current_user.role == Role.SUPER_ADMIN:
             raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-            raise HTTPException(403, "只有管理员/主管可以查看打卡照片")
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.WAREHOUSE_LABOR):
+            raise HTTPException(403, "无权限查看打卡照片")
 
         from app.models.employee import Employee
 
@@ -501,6 +505,10 @@ async def get_photos(
             from app.services.employee_match import resolve_employee_user_map
             emp_to_user, _ = await resolve_employee_user_map(db, [emp])
             uid = emp_to_user.get(emp.id)
+
+        # 劳工只能查看自己的打卡照片
+        if current_user.role == Role.WAREHOUSE_LABOR and (not uid or uid != current_user.id):
+            raise HTTPException(403, "只能查看自己的打卡照片")
 
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d").date()

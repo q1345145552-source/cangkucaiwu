@@ -43,6 +43,7 @@ export default function AttendancePage() {
   const isSuperAdmin = role === "super_admin";
   const canApprove = role === "warehouse_admin" || role === "supervisor"; // 管理员/主管
   const canSelfLeave = role === "warehouse_labor" || role === "staff"; // 劳工/财务
+  const canViewRecords = role === "warehouse_admin" || role === "supervisor" || role === "warehouse_labor"; // 管理员/主管/劳工
   const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
 
   // 自定义日期范围（默认当月 1 号到当天）
@@ -242,7 +243,7 @@ export default function AttendancePage() {
             </div>
           )}
         </div>
-        {canApprove && (
+        {canViewRecords && (
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => { setActiveTab("calendar"); loadCalendar(); }} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               <Calendar size={15} className="inline mr-1.5"/>{t("att_calendar_view")}
