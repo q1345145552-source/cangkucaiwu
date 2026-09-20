@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
@@ -11,6 +11,8 @@ from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.timezone import thai_now, thai_today
+from datetime import datetime, date, timedelta
 
 router = APIRouter()
 
@@ -161,3 +163,253 @@ async def warehouse_summary(current_user: User = Depends(get_current_user), db: 
             RechargeDeclaration.warehouse_id == wh.id, RechargeDeclaration.match_status == 'unmatched'))).scalar() or 0
         result.append({"warehouse_id": wh.id, "warehouse_name": wh.name, "recharge_total": float(rq), "incoming_total": float(iq), "unmatched_count": uq})
     return {"data": result}
+
+
+def _merge_currency(*lists):
+    """把 [(currency, amount), ...] 多组按币种合并，不跨币种相加。"""
+    d: dict[str, float] = {}
+    for lst in lists:
+        for c, amt in lst:
+            c = c or "THB"
+            d[c] = d.get(c, 0) + float(amt or 0)
+    return [{"currency": c, "amount": round(v, 2)} for c, v in sorted(d.items())]
+
+
+@router.get("/cockpit")
+async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """老板驾驶舱：钱 + 人 + 待办，全部按当前选中仓库统计，按币种分组。"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    from app.models.income_expense import ExpenseRecord
+    from app.models.payable import PayableBill
+    from app.models.credit import CreditCustomer
+    from app.models.customer import Customer, PaymentAccount
+    from app.models.employee import Employee
+    from app.models.clock_in_records import ClockInRecord
+    from app.models.attendance import LeaveRequest, Absence
+    from app.models.overtime import OvertimeTask
+    from app.models.supplier import PurchaseOrder, ProcurementPriceAnomaly, ProcurementNonLowestRecord
+
+    today = thai_today()
+    month_start = today.replace(day=1)
+    if today.month == 12:
+        next_month = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        next_month = today.replace(month=today.month + 1, day=1)
+    month_str = today.strftime("%Y-%m")
+
+    # ── 钱 ──
+    # 本月收入（客户充值合计）
+    income_rows = (await db.execute(
+        select(RechargeDeclaration.currency, func.coalesce(func.sum(RechargeDeclaration.amount), 0))
+        .where(RechargeDeclaration.warehouse_id == wh_id,
+               RechargeDeclaration.declare_date >= month_start,
+               RechargeDeclaration.declare_date < next_month)
+        .group_by(RechargeDeclaration.currency)
+    )).all()
+    # 运营支出
+    op_rows = (await db.execute(
+        select(ExpenseRecord.currency, func.coalesce(func.sum(ExpenseRecord.amount), 0))
+        .where(ExpenseRecord.warehouse_id == wh_id,
+               ExpenseRecord.expense_date >= month_start,
+               ExpenseRecord.expense_date < next_month)
+        .group_by(ExpenseRecord.currency)
+    )).all()
+    # 采购支出（应付账单本月）
+    proc_rows = (await db.execute(
+        select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount), 0))
+        .where(PayableBill.warehouse_id == wh_id,
+               PayableBill.bill_date >= month_start,
+               PayableBill.bill_date < next_month)
+        .group_by(PayableBill.currency)
+    )).all()
+
+    expense_rows = _merge_currency(op_rows, proc_rows)
+    income_list = _merge_currency(income_rows)
+    expense_list = expense_rows
+    # 盈亏 = 收入 - 支出（按币种）
+    inc_map = {x["currency"]: x["amount"] for x in income_list}
+    exp_map = {x["currency"]: x["amount"] for x in expense_list}
+    all_cur = set(inc_map) | set(exp_map)
+    profit_list = [{"currency": c, "amount": round(inc_map.get(c, 0) - exp_map.get(c, 0), 2)} for c in sorted(all_cur)]
+
+    # 待收（账期客户欠款）按客户默认币种
+    recv_rows = (await db.execute(
+        select(Customer.default_currency, func.coalesce(func.sum(CreditCustomer.current_debt), 0))
+        .join(Customer, CreditCustomer.customer_id == Customer.id)
+        .where(CreditCustomer.warehouse_id == wh_id, CreditCustomer.current_debt.isnot(None))
+        .group_by(Customer.default_currency)
+    )).all()
+    receivable = _merge_currency(recv_rows)
+
+    # 待付（应付未付 = amount - paid_amount）
+    payable_rows = (await db.execute(
+        select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
+        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid")
+        .group_by(PayableBill.currency)
+    )).all()
+    payable = _merge_currency(payable_rows)
+
+    # 逾期未付
+    overdue_rows = (await db.execute(
+        select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
+        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", func.date(PayableBill.due_date) < today)
+        .group_by(PayableBill.currency)
+    )).all()
+    overdue_payable = _merge_currency(overdue_rows)
+
+    # 账户余额
+    payacct_rows = (await db.execute(
+        select(PaymentAccount.currency, func.coalesce(func.sum(PaymentAccount.opening_balance), 0))
+        .where(PaymentAccount.warehouse_id == wh_id, PaymentAccount.status == "active")
+        .group_by(PaymentAccount.currency)
+    )).all()
+    fund_rows = (await db.execute(
+        select(ExpenseFund.currency, func.coalesce(func.sum(ExpenseFund.remaining_balance), 0))
+        .where(ExpenseFund.warehouse_id == wh_id, ExpenseFund.status == "active")
+        .group_by(ExpenseFund.currency)
+    )).all()
+
+    # 本月采购异常
+    price_anomaly = (await db.execute(
+        select(func.count(ProcurementPriceAnomaly.id))
+        .where(ProcurementPriceAnomaly.warehouse_id == wh_id,
+               ProcurementPriceAnomaly.created_at >= month_start,
+               ProcurementPriceAnomaly.created_at < next_month)
+    )).scalar() or 0
+    non_lowest = (await db.execute(
+        select(func.count(ProcurementNonLowestRecord.id))
+        .where(ProcurementNonLowestRecord.warehouse_id == wh_id,
+               ProcurementNonLowestRecord.created_at >= month_start,
+               ProcurementNonLowestRecord.created_at < next_month)
+    )).scalar() or 0
+
+    # ── 人 ──
+    # 今日出勤
+    expected = (await db.execute(
+        select(func.count(Employee.id)).where(
+            Employee.warehouse_id == wh_id,
+            Employee.status != "resigned",
+            Employee.is_deleted == False,
+        )
+    )).scalar() or 0
+    present = (await db.execute(
+        select(func.count(func.distinct(ClockInRecord.user_id))).where(
+            ClockInRecord.warehouse_id == wh_id,
+            ClockInRecord.clock_date == today,
+        )
+    )).scalar() or 0
+    absent = (await db.execute(
+        select(func.count(Absence.id)).where(
+            Absence.warehouse_id == wh_id,
+            Absence.absence_date == today,
+        )
+    )).scalar() or 0
+
+    # 本月人效（复用效率模块月汇总）
+    efficiency = None
+    try:
+        from app.api.v1.efficiency import _aggregate_month
+        em = await _aggregate_month(db, wh_id, month_str)
+        efficiency = {
+            "person_times": em.get("person_times", 0),
+            "order_count": em.get("order_count", 0),
+            "efficiency": em.get("efficiency", 0),
+            "standard": em.get("standard", 0),
+            "below_standard": bool(em.get("below_standard", False)),
+        }
+    except Exception:
+        efficiency = {"person_times": 0, "order_count": 0, "efficiency": 0, "standard": 0, "below_standard": False}
+
+    # 待办数量
+    leave_pending = (await db.execute(
+        select(func.count(LeaveRequest.id)).where(
+            LeaveRequest.warehouse_id == wh_id, LeaveRequest.status == "pending"
+        )
+    )).scalar() or 0
+    overtime_pending = (await db.execute(
+        select(func.count(OvertimeTask.id)).where(
+            OvertimeTask.warehouse_id == wh_id, OvertimeTask.status == "pending"
+        )
+    )).scalar() or 0
+
+    # ── 待办列表 ──
+    todos = []
+
+    # 采购审批待办（超门槛 → status=pending）
+    po_rows = (await db.execute(
+        select(PurchaseOrder.id, PurchaseOrder.order_number, PurchaseOrder.total_amount)
+        .where(PurchaseOrder.warehouse_id == wh_id, PurchaseOrder.status == "pending")
+        .order_by(PurchaseOrder.created_at.desc()).limit(20)
+    )).all()
+    for pid, order_no, total in po_rows:
+        todos.append({"type": "purchase_approval", "description": f"采购单 {order_no} 待审批",
+                      "link": "/suppliers", "id": pid})
+
+    # 账单待确认（收货有差异）
+    bill_rows = (await db.execute(
+        select(PayableBill.id, PayableBill.bill_number, PayableBill.amount, PayableBill.confirmed_amount)
+        .where(PayableBill.warehouse_id == wh_id,
+               ((PayableBill.need_boss_confirm == "true") | ((PayableBill.confirmed_amount.isnot(None)) & (PayableBill.confirmed_amount != PayableBill.amount))))
+        .order_by(PayableBill.created_at.desc()).limit(20)
+    )).all()
+    for bid, bill_no, amount, confirmed in bill_rows:
+        todos.append({"type": "bill_confirm", "description": f"账单 {bill_no} 收货有差异待确认", "link": "/payable", "id": bid})
+
+    # 请假待审批
+    leave_rows = (await db.execute(
+        select(LeaveRequest.id, Employee.name)
+        .join(Employee, LeaveRequest.employee_id == Employee.id)
+        .where(LeaveRequest.warehouse_id == wh_id, LeaveRequest.status == "pending")
+        .order_by(LeaveRequest.created_at.desc()).limit(20)
+    )).all()
+    for lid, ename in leave_rows:
+        todos.append({"type": "leave", "description": f"{ename} 的请假申请待审批", "link": "/attendance", "id": lid})
+
+    # 加班待确认
+    ot_rows = (await db.execute(
+        select(OvertimeTask.id, OvertimeTask.date)
+        .where(OvertimeTask.warehouse_id == wh_id, OvertimeTask.status == "pending")
+        .order_by(OvertimeTask.created_at.desc()).limit(20)
+    )).all()
+    for oid, odate in ot_rows:
+        todos.append({"type": "overtime", "description": f"{odate} 的加班任务待确认", "link": "/overtime", "id": oid})
+
+    return {
+        "finance": {
+            "month": {
+                "income": income_list,
+                "operating_expense": _merge_currency(op_rows),
+                "procurement_expense": _merge_currency(proc_rows),
+                "expense": expense_list,
+                "profit": profit_list,
+            },
+            "receivable_payable": {
+                "receivable": receivable,
+                "payable": payable,
+                "overdue_payable": overdue_payable,
+            },
+            "balances": {
+                "payment_accounts": _merge_currency(payacct_rows),
+                "expense_funds": _merge_currency(fund_rows),
+            },
+            "procurement": {
+                "expense": _merge_currency(proc_rows),
+                "price_anomaly_count": price_anomaly,
+                "non_lowest_count": non_lowest,
+            },
+        },
+        "people": {
+            "attendance": {"expected": expected, "present": present, "absent": absent},
+            "efficiency": efficiency,
+            "todos": {"leave_pending": leave_pending, "overtime_pending": overtime_pending},
+        },
+        "todos": todos,
+    }
