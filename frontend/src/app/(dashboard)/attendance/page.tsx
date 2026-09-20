@@ -7,6 +7,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3 } from "lucide-react";
 import ClockRecordsGrid from "@/components/ClockRecordsGrid";
+import SafeImage from "@/components/SafeImage";
 
 const STATUS_COLORS: Record<string, string> = {
   "present": "bg-green-100 text-green-700 border-green-300",
@@ -574,8 +575,13 @@ export default function AttendancePage() {
                     )}
                   </div>
                   {s.photo_path ? (
-                    <img src={`/${s.photo_thumb_path || s.photo_path}`} alt={`${t(SESSION_KEYS[s.session] || "morning_shift")}`}
-                      className="w-full rounded-lg max-h-64 object-cover border" />
+                    <SafeImage
+                      src={`/${s.photo_thumb_path || s.photo_path}`}
+                      fallbackSrc={`/${s.photo_path}`}
+                      alt={`${t(SESSION_KEYS[s.session] || "morning_shift")}`}
+                      className="w-full rounded-lg max-h-64 object-cover border"
+                      fallback={<div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">📷 {t("att_no_photo")}</div>}
+                    />
                   ) : (
                     <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
                       📷 {t("att_no_photo")}

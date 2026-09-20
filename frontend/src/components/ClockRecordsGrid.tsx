@@ -5,6 +5,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Camera, ChevronLeft, ChevronRight, Download, CalendarClock } from "lucide-react";
+import SafeImage from "@/components/SafeImage";
 
 const SESSION_KEYS: Record<number, string> = {
   1: "morning_shift", 2: "noon_break_end", 3: "afternoon_shift", 4: "evening_shift",
@@ -272,8 +273,13 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                       </div>
                     )}
                     {cr?.photo_path ? (
-                      <img src={`/${cr.photo_thumb_path || cr.photo_path}`} className="w-full rounded-lg max-h-64 object-cover border cursor-pointer hover:opacity-90"
-                        onClick={() => setZoomedPhoto(`/${cr.photo_path}`)} />
+                      <SafeImage
+                        src={`/${cr.photo_thumb_path || cr.photo_path}`}
+                        fallbackSrc={`/${cr.photo_path}`}
+                        className="w-full rounded-lg max-h-64 object-cover border cursor-pointer hover:opacity-90"
+                        onClick={() => setZoomedPhoto(`/${cr.photo_path}`)}
+                        fallback={<div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">📷 {t("att_no_photo")}</div>}
+                      />
                     ) : <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">📷 {t("att_no_photo")}</div>}
                   </div>
                 );
