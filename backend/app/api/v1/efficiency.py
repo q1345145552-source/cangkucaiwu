@@ -296,9 +296,9 @@ async def _compute_cross_check(db: AsyncSession, wh_id: int, monday: date) -> di
 
 async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date,
                         include_employees: bool = True) -> dict:
-    # 所有员工（含离职）；离职员工仅在其有工时的周计入统计
+    # 所有员工（含离职，排除已删除）；离职员工仅在其有工时的周计入统计
     emps = (await db.execute(
-        select(Employee).where(Employee.warehouse_id == wh_id)
+        select(Employee).where(Employee.warehouse_id == wh_id, Employee.is_deleted == False)
     )).scalars().all()
 
     # user_id -> employee 映射（正式关联 + 姓名回退）
@@ -845,7 +845,7 @@ async def set_manual_hour(
         raise HTTPException(400, "工时不能为负数")
 
     emp = (await db.execute(
-        select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id)
+        select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(400, "员工不存在或不属于当前仓库")

@@ -158,8 +158,8 @@ async def list_records(
     # Determine warehouse scope
     active_wh = get_wh_id(current_user)
 
-    # Get active employees in scope
-    emp_q = select(Employee).where(Employee.status != "resigned")
+    # Get active employees in scope（排除已删除）
+    emp_q = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
     if current_user.role == Role.WAREHOUSE_LABOR:
         emp_q = emp_q.where(Employee.user_id == current_user.id)
     elif active_wh:

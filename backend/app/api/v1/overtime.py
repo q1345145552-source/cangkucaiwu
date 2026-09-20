@@ -77,12 +77,13 @@ async def create_overtime(
     except (ValueError, TypeError):
         raise HTTPException(400, "时间格式错误")
 
-    # Validate employees belong to this warehouse
+    # Validate employees belong to this warehouse（排除已删除）
     employees = (await db.execute(
         select(Employee).where(
             Employee.id.in_(req.employee_ids),
             Employee.warehouse_id == wh_id,
             Employee.status != "resigned",
+            Employee.is_deleted == False,
         )
     )).scalars().all()
     if len(employees) != len(req.employee_ids):

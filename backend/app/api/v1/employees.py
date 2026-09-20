@@ -166,6 +166,7 @@ async def create_employee(
             select(func.count(Employee.id)).where(
                 Employee.warehouse_id == wh_id,
                 Employee.status != "resigned",
+                Employee.is_deleted == False,
             )
         )).scalar()
         if active_count and active_count >= wh.max_employees:
@@ -543,7 +544,7 @@ async def upload_employee_photo(
         raise HTTPException(400, "请先选择仓库")
 
     emp = (await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id)
+        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
@@ -584,7 +585,7 @@ async def upload_passport_photo(
         raise HTTPException(400, "请先选择仓库")
 
     emp = (await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id)
+        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
@@ -622,7 +623,7 @@ async def upload_work_permit_photo(
         raise HTTPException(400, "请先选择仓库")
 
     emp = (await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id)
+        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
@@ -770,7 +771,7 @@ async def get_max_limit(
     max_val = wh.max_employees if wh and wh.max_employees else 50
     active_count = (await db.execute(
         select(func.count(Employee.id)).where(
-            Employee.warehouse_id == wh_id, Employee.status != "resigned"
+            Employee.warehouse_id == wh_id, Employee.status != "resigned", Employee.is_deleted == False
         )
     )).scalar()
     return {"max_employees": max_val, "current_count": active_count or 0}

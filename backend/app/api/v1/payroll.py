@@ -59,11 +59,12 @@ async def calculate_payroll(
         half_label = "上半月" if req.half == "first_half" else "下半月"
         raise HTTPException(400, f"{req.period} {half_label} 的工资已计算过，请先删除旧记录再重新计算")
 
-    # Get all active employees with user_id links
+    # Get all active employees with user_id links（排除已删除）
     employees = (await db.execute(
         select(Employee).where(
             Employee.warehouse_id == wh_id,
             Employee.status != "resigned",
+            Employee.is_deleted == False,
         )
     )).scalars().all()
 
@@ -683,11 +684,12 @@ async def my_payslip(
 
     from app.models.employee import Employee
 
-    # Find employee record matching this user
+    # Find employee record matching this user（排除已删除）
     emp = (await db.execute(
         select(Employee).where(
             Employee.warehouse_id == wh_id,
             Employee.name == current_user.display_name,
+            Employee.is_deleted == False,
         )
     )).scalar_one_or_none()
     if not emp:

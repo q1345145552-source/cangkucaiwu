@@ -43,14 +43,14 @@ async def create_leave(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
-    # Find employee record for this user
+    # Find employee record for this user（排除已删除）
     emp = (await db.execute(
-        select(Employee).where(Employee.warehouse_id == wh_id, Employee.phone == current_user.username)
+        select(Employee).where(Employee.warehouse_id == wh_id, Employee.phone == current_user.username, Employee.is_deleted == False)
     )).scalar_one_or_none()
     if not emp:
         # Try matching by name
         emp = (await db.execute(
-            select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name)
+            select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
         )).scalar_one_or_none()
     if not emp:
         raise HTTPException(400, "未找到您的员工档案，请联系管理员")
@@ -115,11 +115,12 @@ async def list_leaves(
             select(Employee).where(
                 Employee.warehouse_id == wh_id,
                 Employee.user_id == current_user.id,
+                Employee.is_deleted == False,
             )
         )).scalar_one_or_none()
         if not emp:
             emp = (await db.execute(
-                select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name)
+                select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
             )).scalar_one_or_none()
         if emp:
             query = query.where(LeaveRequest.employee_id == emp.id)
@@ -192,8 +193,8 @@ async def set_rest_days(
     wh_id = get_wh_id(current_user)
     if not wh_id: raise HTTPException(400, "请先选择仓库")
 
-    # Validate employee
-    emp = (await db.execute(select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id))).scalar_one_or_none()
+    # Validate employee（排除已删除）
+    emp = (await db.execute(select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False))).scalar_one_or_none()
     if not emp: raise HTTPException(404, "员工不存在")
 
     # Check current month rest day count
@@ -244,7 +245,7 @@ async def list_rest_days(
     else:
         wh_id = get_wh_id(current_user)
         emp = (await db.execute(
-            select(Employee.id).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name)
+            select(Employee.id).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
         )).scalar_one_or_none()
         if emp:
             query = query.where(RestDay.employee_id == emp)
@@ -292,7 +293,7 @@ async def mark_absence(
     wh_id = get_wh_id(current_user)
     if not wh_id: raise HTTPException(400, "请先选择仓库")
 
-    emp = (await db.execute(select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id))).scalar_one_or_none()
+    emp = (await db.execute(select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False))).scalar_one_or_none()
     if not emp: raise HTTPException(404, "员工不存在")
 
     try:
@@ -356,8 +357,8 @@ async def get_calendar(
     wh_id = get_wh_id(current_user)
     wh_ids = get_wh_ids(current_user)
 
-    # Get employees scoped to the active warehouse
-    emp_query = select(Employee).where(Employee.status != "resigned")
+    # Get employees scoped to the active warehouse（排除已删除）
+    emp_query = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
     if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         # Use active (header-selected) warehouse, not all warehouses
         active_wh_id = get_wh_id(current_user)
@@ -367,7 +368,7 @@ async def get_calendar(
             emp_query = emp_query.where(Employee.warehouse_id.in_(wh_ids))
     elif current_user.role in (Role.STAFF, Role.WAREHOUSE_LABOR):
         emp = (await db.execute(
-            select(Employee.id).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name)
+            select(Employee.id).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
         )).scalar_one_or_none()
         if emp:
             emp_query = emp_query.where(Employee.id == emp)
