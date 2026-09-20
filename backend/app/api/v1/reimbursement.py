@@ -233,6 +233,8 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权查看其他仓库的报销单")
     items = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id))).scalars().all()
     return {
         "id": r.id, "warehouse_id": r.warehouse_id, "employee_id": r.employee_id,
@@ -253,6 +255,8 @@ async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depen
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权编辑其他仓库的报销单")
     if r.status != ReimbStatus.PENDING.value:
         raise HTTPException(400, "仅待审批状态可编辑")
     old_items = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id))).scalars().all()
@@ -329,6 +333,8 @@ async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_u
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的报销单")
     r.status = ReimbStatus.PENDING.value
     await db.flush(); return {"message": "已提交审批"}
 
@@ -395,6 +401,8 @@ async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
+    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的报销单")
     if r.status not in (ReimbStatus.APPROVED.value, ReimbStatus.PARTIALLY_APPROVED.value):
         raise HTTPException(400, "仅已审批状态可付款")
     r.status = ReimbStatus.PAID.value; r.paid_at = thai_now()

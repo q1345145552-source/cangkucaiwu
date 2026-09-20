@@ -167,6 +167,11 @@ async def join_group_order(go_id: int, req: JoinRequest, current_user: User = De
 @router.get("/{go_id}/participants")
 async def list_participants(go_id: int, current_user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_db)):
+    go = (await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))).scalar_one_or_none()
+    if not go:
+        raise HTTPException(404, "拼单不存在")
+    if current_user.role != Role.SUPER_ADMIN and go.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权查看其他仓库的拼单")
     items, total_qty, wh_count = await _get_participant_details(db, go_id)
     return {"data": items, "total_quantity": total_qty, "warehouse_count": wh_count}
 

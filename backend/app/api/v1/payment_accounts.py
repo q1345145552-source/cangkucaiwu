@@ -60,6 +60,8 @@ async def toggle_account_status(account_id: int, current_user: User = Depends(ge
     result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id))
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
+    if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作自己仓库的账户")
     a.status = "inactive" if a.status == "active" else "active"
     await db.flush(); return {"message": "状态已切换", "status": a.status}
 

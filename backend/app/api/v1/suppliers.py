@@ -16,6 +16,17 @@ import io
 
 router = APIRouter()
 
+
+async def _require_supplier_owned(db: AsyncSession, current_user: User, supplier_id: int) -> Supplier:
+    """校验供应商属于当前用户管理的仓库，否则 403。超级管理员不受限。"""
+    sup = (await db.execute(select(Supplier).where(Supplier.id == supplier_id))).scalar_one_or_none()
+    if not sup:
+        raise HTTPException(404, "供应商不存在")
+    if current_user.role != Role.SUPER_ADMIN and sup.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的供应商")
+    return sup
+
+
 class PurchaseOrderItem(BaseModel):
     product_id: int
     quantity: int = 1
@@ -161,6 +172,7 @@ async def import_products_for_supplier(supplier_id: int, file: UploadFile = File
                                         db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    await _require_supplier_owned(db, current_user, supplier_id)
     from openpyxl import load_workbook
     content = await file.read()
     wb = load_workbook(io.BytesIO(content)); ws = wb.active
@@ -189,6 +201,7 @@ async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = Fil
                                          db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    await _require_supplier_owned(db, current_user, supplier_id)
     from openpyxl import load_workbook
     data = await file.read()
     wb = load_workbook(io.BytesIO(data)); ws = wb.active
@@ -216,6 +229,7 @@ async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = Fil
 # ═══ Product CRUD ════════════════════════════════
 @router.get("/{supplier_id}/products")
 async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await _require_supplier_owned(db, current_user, supplier_id)
     prods = (await db.execute(select(SupplierProduct).where(SupplierProduct.supplier_id == supplier_id).order_by(SupplierProduct.created_at.desc()))).scalars().all()
     # Price comparison: find lowest price for each product across all suppliers
     price_map = {}
@@ -263,6 +277,7 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
 async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    await _require_supplier_owned(db, current_user, supplier_id)
     p = SupplierProduct(supplier_id=supplier_id, **req.model_dump())
     db.add(p); await db.flush()
     return {"id": p.id, "message": "添加成功"}
@@ -271,6 +286,7 @@ async def add_product(supplier_id: int, req: SupplierProductCreate, current_user
 async def delete_product(supplier_id: int, product_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    await _require_supplier_owned(db, current_user, supplier_id)
     p = (await db.execute(select(SupplierProduct).where(SupplierProduct.id == product_id, SupplierProduct.supplier_id == supplier_id))).scalar_one_or_none()
     if not p: raise HTTPException(404, "产品不存在")
     await db.delete(p); await db.flush()
@@ -341,6 +357,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
 # ═══ Logistics Price CRUD ════════════════════════
 @router.get("/{supplier_id}/logistics-prices")
 async def list_logistics_prices(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await _require_supplier_owned(db, current_user, supplier_id)
     prices = (await db.execute(select(SupplierCrossBorderPrice).where(SupplierCrossBorderPrice.supplier_id == supplier_id).order_by(SupplierCrossBorderPrice.transport_method, SupplierCrossBorderPrice.origin_warehouse))).scalars().all()
     return {"data": [{"id": p.id, "transport_method": p.transport_method, "cargo_type": p.cargo_type,
                       "origin_warehouse": p.origin_warehouse, "price_per_cbm": p.price_per_cbm,
@@ -350,6 +367,7 @@ async def list_logistics_prices(supplier_id: int, current_user = Depends(get_cur
 async def add_logistics_price(supplier_id: int, req: dict, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    await _require_supplier_owned(db, current_user, supplier_id)
     p = SupplierCrossBorderPrice(supplier_id=supplier_id, **req)
     db.add(p); await db.flush()
     return {"id": p.id, "message": "添加成功"}
@@ -358,6 +376,7 @@ async def add_logistics_price(supplier_id: int, req: dict, current_user: User = 
 async def delete_logistics_price(supplier_id: int, price_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    await _require_supplier_owned(db, current_user, supplier_id)
     p = (await db.execute(select(SupplierCrossBorderPrice).where(SupplierCrossBorderPrice.id == price_id, SupplierCrossBorderPrice.supplier_id == supplier_id))).scalar_one_or_none()
     if not p: raise HTTPException(404, "不存在")
     await db.delete(p); await db.flush()

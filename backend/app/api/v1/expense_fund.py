@@ -225,6 +225,11 @@ async def list_items(
     """列出一个账户下所有开销"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "账户不存在")
+    if current_user.role != Role.SUPER_ADMIN and account.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库的备用金账户")
     result = await db.execute(select(ExpenseFundItem).where(
         ExpenseFundItem.fund_id == account_id,
     ).order_by(ExpenseFundItem.expense_date.desc()))
@@ -289,6 +294,11 @@ async def upload_receipt(
     db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
 ):
+    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
+    if not account:
+        raise HTTPException(404, "账户不存在")
+    if current_user.role != Role.SUPER_ADMIN and account.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库的备用金账户")
     item = (await db.execute(select(ExpenseFundItem).where(
         ExpenseFundItem.id == item_id, ExpenseFundItem.fund_id == account_id
     ))).scalar_one_or_none()

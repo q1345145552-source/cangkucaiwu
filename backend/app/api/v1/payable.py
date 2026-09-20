@@ -142,6 +142,8 @@ async def upload_voucher(bill_id: int, file: UploadFile = File(...),
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
+    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的账单")
     import os, uuid
     upload_dir = "/app/uploads/payment_vouchers"
     os.makedirs(upload_dir, exist_ok=True)
@@ -163,6 +165,8 @@ async def upload_bill_attachment(bill_id: int, file: UploadFile = File(...),
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
+    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的账单")
     import os, uuid
     upload_dir = "/app/uploads/bill_attachments"
     os.makedirs(upload_dir, exist_ok=True)
@@ -186,6 +190,8 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
     b = result.scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
+    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的账单")
     remaining = b.amount - b.paid_amount
     pay = paid_amount if paid_amount is not None else remaining
     # Boundary checks
@@ -544,6 +550,8 @@ async def plan_detail(plan_id: int, current_user: User = Depends(get_current_use
     result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id))
     p = result.scalar_one_or_none()
     if not p: raise HTTPException(404, "计划不存在")
+    if current_user.role != Role.SUPER_ADMIN and p.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权查看其他仓库的付款计划")
     bills_data = []
     if p.bill_ids:
         bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(p.bill_ids)))).scalars().all()
