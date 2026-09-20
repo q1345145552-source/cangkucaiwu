@@ -102,11 +102,17 @@ async def list_employees(
     if wh_ids_set:
         whs = (await db.execute(select(Warehouse).where(Warehouse.id.in_(wh_ids_set)))).scalars().all()
         wh_map = {w.id: w.name for w in whs}
+    uid_set = {e.user_id for e in emps if e.user_id}
+    username_map = {}
+    if uid_set:
+        us = (await db.execute(select(User).where(User.id.in_(uid_set)))).scalars().all()
+        username_map = {u.id: u.username for u in us}
     
     return {
         "data": [{
             "id": e.id, "warehouse_id": e.warehouse_id, "warehouse_name": wh_map.get(e.warehouse_id, ""),
             "name": e.name, "position": e.position,
+            "employee_no": username_map.get(e.user_id, "") if e.user_id else "",
             "user_id": e.user_id, "myanmar_id": e.myanmar_id,
             "address": e.address, "phone": e.phone, "emergency_contact": e.emergency_contact,
             "hire_date": e.hire_date.isoformat()[:10] if e.hire_date else None,

@@ -38,6 +38,13 @@ class OvertimeLimitSet(BaseModel):
     max_hours: float
 
 
+# 加班费固定算法：整小时部分 75泰铢/小时，不足1小时零头固定 37泰铢
+def _calc_overtime_pay(total_minutes: int) -> float:
+    full_hours = total_minutes // 60
+    remainder = total_minutes % 60
+    return full_hours * 75 + (37 if remainder > 0 else 0)
+
+
 # ═══ Admin: Create Overtime ═══════════
 
 @router.post("")
@@ -104,7 +111,7 @@ async def create_overtime(
         start_time=req.start_time,
         end_time=req.end_time,
         hours=hours,
-        hourly_rate=req.hourly_rate,
+        hourly_rate=75,
         status="pending",
         created_by=current_user.id,
     )
@@ -112,13 +119,14 @@ async def create_overtime(
     await db.flush()
 
     # Create assignments
+    earned = _calc_overtime_pay(total_minutes)
     for emp in employees:
         linked_user = await _find_linked_user(db, emp)
         assignment = OvertimeAssignment(
             overtime_id=task.id,
             employee_id=emp.id,
             user_id=linked_user.id if linked_user else None,
-            earned_amount=round(hours * req.hourly_rate, 2),
+            earned_amount=earned,
         )
         db.add(assignment)
 
@@ -128,7 +136,7 @@ async def create_overtime(
         "id": task.id,
         "hours": hours,
         "employee_count": len(employees),
-        "total_amount": round(hours * req.hourly_rate * len(employees), 2),
+        "total_amount": round(earned * len(employees), 2),
     }
 
 
@@ -365,6 +373,7 @@ async def monthly_hours(
     rows = (await db.execute(
         select(
             OvertimeAssignment.employee_id,
+            func.sum(OvertimeTask.hours).label("total_hours"),
             func.sum(OvertimeAssignment.earned_amount).label("total_amount"),
             func.count(OvertimeAssignment.id).label("task_count"),
         )
@@ -389,7 +398,7 @@ async def monthly_hours(
         "data": [{
             "employee_id": r.employee_id,
             "employee_name": emp_map.get(r.employee_id, ""),
-            "total_hours": round(r.total_amount / 75, 1) if r.total_amount else 0,
+            "total_hours": round(r.total_hours or 0, 1),
             "total_amount": r.total_amount or 0,
             "task_count": r.task_count or 0,
         } for r in rows],
@@ -542,8 +551,8 @@ async def _get_monthly_overtime_hours(db: AsyncSession, user_id: int, month_str_
         month_end = month_start.replace(month=month_start.month + 1, day=1)
 
     result = (await db.execute(
-        select(func.sum(OvertimeAssignment.earned_amount))
-        .join(OvertimeTask, OvertimeTask.id == OvertimeAssignment.overtime_id)
+        select(func.sum(OvertimeTask.hours))
+        .join(OvertimeAssignment, OvertimeTask.id == OvertimeAssignment.overtime_id)
         .where(
             OvertimeAssignment.user_id == user_id,
             OvertimeAssignment.confirmed == True,
@@ -552,4 +561,4 @@ async def _get_monthly_overtime_hours(db: AsyncSession, user_id: int, month_str_
         )
     )).scalar()
     total = result or 0
-    return total / 75  # Convert back to hours
+    return float(total)

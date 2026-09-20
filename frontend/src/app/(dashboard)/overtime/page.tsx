@@ -24,11 +24,11 @@ export default function OvertimePage() {
   const defaultForm = {
     employee_ids: [] as number[],
     date: new Date().toISOString().slice(0, 10),
-    start_time: "17:00",
-    end_time: "20:00",
-    hourly_rate: 75,
+    start_time: "18:00",
+    end_time: "",
   };
   const [form, setForm] = useState({ ...defaultForm });
+  const [empSearch, setEmpSearch] = useState("");
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, []);
 
@@ -70,10 +70,12 @@ export default function OvertimePage() {
 
   async function handleCreate() {
     if (form.employee_ids.length === 0) { toast("error", "请选择至少一位员工"); return; }
+    if (!form.end_time) { toast("error", "请填写结束时间"); return; }
     try {
       await api.post("/overtime", form);
       toast("success", "加班任务创建成功");
       setShowForm(false);
+      setEmpSearch("");
       setForm({ ...defaultForm, employee_ids: [] });
       load();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
@@ -115,13 +117,30 @@ export default function OvertimePage() {
     }));
   }
 
-  function calcHours() {
+  function calcMinutes() {
     try {
       const [sh, sm] = form.start_time.split(":").map(Number);
       const [eh, em] = form.end_time.split(":").map(Number);
       const mins = (eh * 60 + em) - (sh * 60 + sm);
-      return mins > 0 ? (mins / 60).toFixed(1) : "0.0";
-    } catch { return "0.0"; }
+      return mins > 0 ? mins : 0;
+    } catch { return 0; }
+  }
+  function calcHours() {
+    const m = calcMinutes();
+    return (m / 60).toFixed(1);
+  }
+  function calcPay() {
+    const m = calcMinutes();
+    return Math.floor(m / 60) * 75 + (m % 60 > 0 ? 37 : 0);
+  }
+  function calcPayFromTimes(start: string, end: string) {
+    try {
+      const [sh, sm] = start.split(":").map(Number);
+      const [eh, em] = end.split(":").map(Number);
+      const m = (eh * 60 + em) - (sh * 60 + sm);
+      if (m <= 0) return 0;
+      return Math.floor(m / 60) * 75 + (m % 60 > 0 ? 37 : 0);
+    } catch { return 0; }
   }
 
   return (
@@ -179,7 +198,7 @@ export default function OvertimePage() {
                   <div key={t.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-gray-800">{t.date} {t.start_time}-{t.end_time}</p>
-                      <p className="text-sm text-gray-500">工时 {t.hours}h × {t.hourly_rate}泰铢/h = {(t.hours * t.hourly_rate).toFixed(0)}泰铢</p>
+                      <p className="text-sm text-gray-500">工时 {t.hours}h · 加班费 {calcPayFromTimes(t.start_time, t.end_time)}泰铢</p>
                     </div>
                     <button onClick={() => confirmOvertime(t.id)}
                       className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-1">
@@ -205,7 +224,7 @@ export default function OvertimePage() {
                     <th className="text-left px-4 py-3 font-medium text-gray-500">日期</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500">时间</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500">工时</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">费率</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">加班费/人</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500">参与员工</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500">状态</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-500">操作</th>
@@ -217,7 +236,7 @@ export default function OvertimePage() {
                       <td className="px-4 py-3">{t.date}</td>
                       <td className="px-4 py-3">{t.start_time} - {t.end_time}</td>
                       <td className="px-4 py-3">{t.hours}h</td>
-                      <td className="px-4 py-3">{t.hourly_rate}泰铢/h</td>
+                      <td className="px-4 py-3">{calcPayFromTimes(t.start_time, t.end_time)}泰铢</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {(t.assignments || []).map((a: any) => (
@@ -287,15 +306,17 @@ export default function OvertimePage() {
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <span className="text-sm text-gray-500">预计工时: </span>
                 <span className="font-bold text-blue-600">{calcHours()} 小时</span>
-                <span className="text-sm text-gray-400 ml-2">× {form.hourly_rate}泰铢/h = {(parseFloat(calcHours()) * form.hourly_rate).toFixed(0)}泰铢/人</span>
+                <span className="text-sm text-gray-400 ml-2">加班费 {calcPay()}泰铢/人</span>
               </div>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">选择参与员工（可多选）</label>
+                <input type="text" className="form-input text-base py-2 w-full mb-2" placeholder="按工号搜索员工，如 00" value={empSearch}
+                  onChange={e => setEmpSearch(e.target.value)} />
                 <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
-                  {employees.length === 0 ? (
-                    <p className="text-gray-400 text-sm text-center py-6">暂无可用员工</p>
+                  {employees.filter((e: any) => !empSearch || (e.employee_no || "").toLowerCase().includes(empSearch.toLowerCase()) || e.name.toLowerCase().includes(empSearch.toLowerCase())).length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-6">暂无匹配员工</p>
                   ) : (
-                    employees.map((e: any) => (
+                    employees.filter((e: any) => !empSearch || (e.employee_no || "").toLowerCase().includes(empSearch.toLowerCase()) || e.name.toLowerCase().includes(empSearch.toLowerCase())).map((e: any) => (
                       <label key={e.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 ${
                         form.employee_ids.includes(e.id) ? "bg-blue-50" : ""
                       }`}>
@@ -304,7 +325,7 @@ export default function OvertimePage() {
                           className="w-4 h-4 text-blue-500 rounded" />
                         <div>
                           <p className="text-sm font-medium">{e.name}</p>
-                          <p className="text-xs text-gray-400">{e.position || "仓库劳工"} · {e.phone || "无电话"}</p>
+                          <p className="text-xs text-gray-400">工号 {e.employee_no || "-"} · {e.position || "仓库劳工"}</p>
                         </div>
                       </label>
                     ))

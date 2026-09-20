@@ -294,13 +294,13 @@ export default function EmployeesPage() {
   }
 
   const activeEmployees = data.filter((e: any) => e.status !== "resigned");
-  const isAdmin = user?.role === "warehouse_admin" || user?.role === "super_admin";
+  const isAdmin = user?.role === "warehouse_admin" || user?.role === "supervisor";
 
   return (
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><Users size={24}/>员工档案</h1>
-        {user?.role === "warehouse_admin" && (
+        {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
           <div className="flex gap-2 items-center">
             <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
               <span>{currentCount}/{maxLimit}人</span>
@@ -334,6 +334,7 @@ export default function EmployeesPage() {
           <thead>
             <tr className="border-b bg-gray-50">
               <th className="text-left px-4 py-3 font-medium text-gray-600">姓名</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">工号</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">岗位</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">状态</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">联系电话</th>
@@ -362,6 +363,7 @@ export default function EmployeesPage() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-gray-600 font-mono text-sm">{e.employee_no || "-"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.position || "-"}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -602,7 +604,7 @@ export default function EmployeesPage() {
                 </div>
                 <div className="pb-2">
                   <h2 className="text-xl font-bold text-white">{detailEmp.name}</h2>
-                  <span className="text-white/80 text-sm">{detailEmp.position || "仓库劳工"}</span>
+                  <span className="text-white/80 text-sm">{detailEmp.position || "仓库劳工"}{detailEmp.employee_no ? ` · 工号 ${detailEmp.employee_no}` : ""}</span>
                 </div>
               </div>
             </div>
