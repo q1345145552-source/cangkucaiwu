@@ -18,12 +18,19 @@ import io
 router = APIRouter()
 
 
+def _forbid_super_admin(current_user: User) -> None:
+    """供应商模块业务接口统一拒绝超级管理员，需用仓库管理员账号操作。"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+
+
 async def _require_supplier_owned(db: AsyncSession, current_user: User, supplier_id: int) -> Supplier:
-    """校验供应商属于当前用户管理的仓库，否则 403。超级管理员不受限。"""
+    """校验供应商属于当前用户管理的仓库，否则 403。超级管理员被拒绝。"""
+    _forbid_super_admin(current_user)
     sup = (await db.execute(select(Supplier).where(Supplier.id == supplier_id))).scalar_one_or_none()
     if not sup:
         raise HTTPException(404, "供应商不存在")
-    if current_user.role != Role.SUPER_ADMIN and sup.warehouse_id not in get_wh_ids(current_user):
+    if sup.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权操作其他仓库的供应商")
     return sup
 
@@ -81,14 +88,15 @@ def _calc_stats(rows: list) -> dict:
     }
 
 
-async def _get_lowest_quote(db: AsyncSession, product_name: str, spec: str | None) -> dict | None:
-    """某产品(名+规格)的最低报价（跨供应商，含最低价供应商名）。"""
+async def _get_lowest_quote(db: AsyncSession, product_name: str, spec: str | None, wh_id: int) -> dict | None:
+    """某产品(名+规格)在本仓库内的最低报价（含最低价供应商名）。仅限本仓库，避免跨仓泄露。"""
     rows = (await db.execute(
         select(SupplierProduct, Supplier)
         .join(Supplier, Supplier.id == SupplierProduct.supplier_id)
         .where(
             SupplierProduct.product_name == product_name,
             func.coalesce(SupplierProduct.spec, "") == (spec or ""),
+            Supplier.warehouse_id == wh_id,
         )
     )).all()
     if not rows:
@@ -121,6 +129,82 @@ def _parse_settlement_days(settlement_cycle: str | None) -> int:
     if nums:
         return int(nums[0])
     return 30
+
+
+async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
+    """订单生效时写入价格历史、价格异常、非最低价记录（直接生效或审批通过后调用）。"""
+    wh_id = po.warehouse_id
+    supplier = (await db.execute(select(Supplier).where(Supplier.id == po.supplier_id))).scalar_one_or_none()
+    supplier_name = supplier.name if supplier else ""
+    orderer = (await db.execute(select(User).where(User.id == po.created_by))).scalar_one_or_none() if po.created_by else None
+    orderer_id = po.created_by
+    orderer_name = orderer.display_name if orderer else ""
+    threshold = await _get_price_threshold(db, wh_id)
+
+    # 第一遍：计算异常与非最低价（此时本单尚未写入历史，避免污染历史均价）
+    anomalies = []
+    non_lowest = []
+    for it in (po.items or []):
+        product_name = it.get("product_name") or ""
+        spec = it.get("spec") or None
+        unit_price = float(it.get("unit_price") or 0)
+        quantity = int(it.get("quantity") or 0)
+        reason = (it.get("reason") or "").strip()
+
+        hist_rows = await _get_price_history(db, wh_id, product_name, spec)
+        if hist_rows:
+            avg = sum(r.unit_price for r in hist_rows) / len(hist_rows)
+            if avg > 0 and unit_price > avg * (1 + threshold / 100.0):
+                exceed = round((unit_price - avg) / avg * 100.0, 1)
+                anomalies.append({
+                    "product_name": product_name, "spec": spec,
+                    "unit_price": unit_price, "historical_avg": round(avg, 2),
+                    "exceed_percent": exceed,
+                })
+
+        lowest = await _get_lowest_quote(db, product_name, spec, wh_id)
+        if lowest and unit_price > lowest["lowest_price"] + 0.001:
+            non_lowest.append({
+                "product_name": product_name, "spec": spec,
+                "unit_price": unit_price, "quantity": quantity, "reason": reason,
+                "lowest_price": lowest["lowest_price"],
+                "lowest_supplier_id": lowest["lowest_supplier_id"],
+                "lowest_supplier_name": lowest["lowest_supplier_name"],
+                "price_diff": round(unit_price - lowest["lowest_price"], 2),
+            })
+
+    # 第二遍：写入价格历史
+    for it in (po.items or []):
+        product_name = it.get("product_name") or ""
+        spec = it.get("spec") or None
+        unit_price = float(it.get("unit_price") or 0)
+        quantity = int(it.get("quantity") or 0)
+        db.add(ProcurementPriceHistory(
+            warehouse_id=wh_id, supplier_id=po.supplier_id, purchase_order_id=po.id,
+            product_name=product_name, spec=spec, unit_price=unit_price,
+            quantity=quantity, created_by=orderer_id,
+        ))
+
+    # 写入价格异常
+    for a in anomalies:
+        db.add(ProcurementPriceAnomaly(
+            warehouse_id=wh_id, product_name=a["product_name"], spec=a["spec"],
+            purchase_price=a["unit_price"], historical_avg=a["historical_avg"],
+            exceed_percent=a["exceed_percent"], orderer_id=orderer_id,
+            orderer_name=orderer_name,
+        ))
+
+    # 写入非最低价
+    for n in non_lowest:
+        db.add(ProcurementNonLowestRecord(
+            warehouse_id=wh_id, product_name=n["product_name"], spec=n["spec"],
+            selected_supplier_id=po.supplier_id, selected_supplier_name=supplier_name,
+            selected_price=n["unit_price"], lowest_supplier_id=n["lowest_supplier_id"],
+            lowest_supplier_name=n["lowest_supplier_name"], lowest_price=n["lowest_price"],
+            price_diff=n["price_diff"], quantity=n["quantity"], reason=n["reason"],
+            orderer_id=orderer_id, orderer_name=orderer_name,
+        ))
+    await db.flush()
 
 # ═══ Category CRUD ═══════════════════════════════
 @router.get("/categories")
@@ -313,7 +397,9 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
         from collections import defaultdict
         pnames = list(set(p.product_name for p in prods))
         all_prods = (await db.execute(
-            select(SupplierProduct).where(SupplierProduct.product_name.in_(pnames))
+            select(SupplierProduct)
+            .join(Supplier, SupplierProduct.supplier_id == Supplier.id)
+            .where(SupplierProduct.product_name.in_(pnames), Supplier.warehouse_id.in_(get_wh_ids(current_user)))
         )).scalars().all()
         grouped = defaultdict(list)
         for ap in all_prods:
@@ -372,6 +458,7 @@ async def delete_product(supplier_id: int, product_id: int, current_user: User =
 async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
                                  current_user: User = Depends(get_current_user),
                                  db: AsyncSession = Depends(get_db)):
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     supplier = await _require_supplier_owned(db, current_user, supplier_id)
@@ -400,6 +487,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
             "product_name": p.product_name, "spec": p.spec,
             "unit_price": p.unit_price, "quantity": qty,
             "subtotal": round(subtotal, 2),
+            "reason": (it.reason or "").strip(),
         })
         total += subtotal
 
@@ -415,8 +503,8 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
                     "exceed_percent": exceed,
                 })
 
-        # 非最低价检测：对比该产品(名+规格)的跨供应商最低报价
-        lowest = await _get_lowest_quote(db, p.product_name, p.spec)
+        # 非最低价检测：对比该产品(名+规格)在本仓库内的最低报价
+        lowest = await _get_lowest_quote(db, p.product_name, p.spec, wh_id)
         if lowest and p.unit_price > lowest["lowest_price"] + 0.001:
             non_lowest.append({
                 "product_id": p.id,
@@ -457,7 +545,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     now = thai_now()
     approval_threshold = await _get_approval_threshold(db)
     is_pending = approval_threshold > 0 and total > approval_threshold
-    order_number = f"PO{now.strftime('%Y%m%d%H%M%S')}{supplier_id}"
+    order_number = f"PO{now.strftime('%Y%m%d%H%M%S%f')}{supplier_id}"
     po = PurchaseOrder(
         warehouse_id=wh_id, supplier_id=supplier_id,
         order_number=order_number, total_amount=total,
@@ -468,34 +556,9 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     db.add(po)
     await db.flush()
 
-    # 记录价格历史（每个产品一行）
-    for it in req.items:
-        p = prod_map.get(it.product_id)
-        qty = max(it.quantity, 1)
-        db.add(ProcurementPriceHistory(
-            warehouse_id=wh_id, supplier_id=supplier_id, purchase_order_id=po.id,
-            product_name=p.product_name, spec=p.spec, unit_price=p.unit_price,
-            quantity=qty, created_by=current_user.id,
-        ))
-    # 记录价格异常
-    for a in anomalies:
-        db.add(ProcurementPriceAnomaly(
-            warehouse_id=wh_id, product_name=a["product_name"], spec=a["spec"],
-            purchase_price=a["unit_price"], historical_avg=a["historical_avg"],
-            exceed_percent=a["exceed_percent"], orderer_id=current_user.id,
-            orderer_name=current_user.display_name,
-        ))
-    # 记录非最低价采购
-    for n in non_lowest:
-        db.add(ProcurementNonLowestRecord(
-            warehouse_id=wh_id, product_name=n["product_name"], spec=n["spec"],
-            selected_supplier_id=supplier_id, selected_supplier_name=supplier.name,
-            selected_price=n["unit_price"], lowest_supplier_id=n["lowest_supplier_id"],
-            lowest_supplier_name=n["lowest_supplier_name"], lowest_price=n["lowest_price"],
-            price_diff=n["price_diff"], quantity=n["quantity"], reason=n["reason"],
-            orderer_id=current_user.id, orderer_name=current_user.display_name,
-        ))
-    await db.flush()
+    # 价格历史/异常/非最低价：订单生效时才写入（直接生效立即写，待审批的等审批通过后再写）
+    if not is_pending:
+        await _write_price_evidence(db, po)
 
     bill_id = None
     bill_number = None
@@ -504,7 +567,8 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         detail_lines = [f"- {d['product_name']} {d.get('spec') or ''} x{d['quantity']} @ {d['unit_price']} = {d['subtotal']}" for d in items_detail]
         bill = PayableBill(
             warehouse_id=wh_id, supplier_id=supplier_id,
-            bill_number=bill_number, bill_date=now, due_date=now + timedelta(days=_parse_settlement_days(supplier.settlement_cycle)),
+            bill_number=bill_number, bill_date=now.replace(tzinfo=None),
+            due_date=(now + timedelta(days=_parse_settlement_days(supplier.settlement_cycle))).replace(tzinfo=None),
             amount=total, currency="THB", status="pending",
             detail="\n".join(detail_lines),
             source="purchase_order", purchase_order_id=po.id,
@@ -532,6 +596,9 @@ class PriceThresholdSet(BaseModel):
 
 @router.get("/price-threshold")
 async def get_price_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     threshold = await _get_price_threshold(db, wh_id) if wh_id else DEFAULT_PRICE_THRESHOLD
     return {"threshold": threshold}
@@ -539,6 +606,7 @@ async def get_price_threshold(current_user: User = Depends(get_current_user), db
 
 @router.put("/price-threshold")
 async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
@@ -564,6 +632,9 @@ async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depen
 @router.get("/price-stats")
 async def price_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """每个产品(名+规格)的历史最低价/均价/最近采购价"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "无权限")
     wh_ids = get_wh_ids(current_user)
     rows = (await db.execute(
         select(ProcurementPriceHistory).where(ProcurementPriceHistory.warehouse_id.in_(wh_ids))
@@ -591,6 +662,9 @@ async def price_stats(current_user: User = Depends(get_current_user), db: AsyncS
 async def price_trend(product_name: str, spec: str = None,
                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """某产品的价格变化趋势（按时间）"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "无权限")
     wh_ids = get_wh_ids(current_user)
     rows = (await db.execute(
         select(ProcurementPriceHistory).where(
@@ -608,14 +682,14 @@ async def price_trend(product_name: str, spec: str = None,
 @router.get("/price-anomalies")
 async def price_anomalies(page: int = 1, page_size: int = 20,
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """价格异常列表（管理员/老板可见）"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.SUPER_ADMIN):
+    """价格异常列表（管理员/主管可见）"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     query = select(ProcurementPriceAnomaly)
     count_q = select(func.count(ProcurementPriceAnomaly.id))
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(ProcurementPriceAnomaly.warehouse_id.in_(get_wh_ids(current_user)))
-        count_q = count_q.where(ProcurementPriceAnomaly.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(ProcurementPriceAnomaly.warehouse_id.in_(get_wh_ids(current_user)))
+    count_q = count_q.where(ProcurementPriceAnomaly.warehouse_id.in_(get_wh_ids(current_user)))
     total = (await db.execute(count_q)).scalar()
     rows = (await db.execute(
         query.order_by(ProcurementPriceAnomaly.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
@@ -632,13 +706,13 @@ async def price_anomalies(page: int = 1, page_size: int = 20,
 async def non_lowest_records(page: int = 1, page_size: int = 50,
                              current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """非最低价采购列表（按差价从大到小）"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.SUPER_ADMIN):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     query = select(ProcurementNonLowestRecord)
     count_q = select(func.count(ProcurementNonLowestRecord.id))
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(ProcurementNonLowestRecord.warehouse_id.in_(get_wh_ids(current_user)))
-        count_q = count_q.where(ProcurementNonLowestRecord.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(ProcurementNonLowestRecord.warehouse_id.in_(get_wh_ids(current_user)))
+    count_q = count_q.where(ProcurementNonLowestRecord.warehouse_id.in_(get_wh_ids(current_user)))
     total = (await db.execute(count_q)).scalar()
     rows = (await db.execute(
         query.order_by(ProcurementNonLowestRecord.price_diff.desc(), ProcurementNonLowestRecord.created_at.desc())
@@ -658,11 +732,11 @@ async def non_lowest_records(page: int = 1, page_size: int = 50,
 @router.get("/non-lowest-summary")
 async def non_lowest_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """非最低价采购汇总：本期多花的钱合计"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.SUPER_ADMIN):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     query = select(ProcurementNonLowestRecord)
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(ProcurementNonLowestRecord.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(ProcurementNonLowestRecord.warehouse_id.in_(get_wh_ids(current_user)))
     rows = (await db.execute(query)).scalars().all()
     total_extra = round(sum(r.price_diff * r.quantity for r in rows), 2)
     return {
@@ -682,15 +756,19 @@ class ApprovalThresholdSet(BaseModel):
 
 @router.get("/purchase-approval-threshold")
 async def get_approval_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "无权限")
     threshold = await _get_approval_threshold(db)
     return {"threshold": threshold}
 
 
 @router.put("/purchase-approval-threshold")
 async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """门槛金额只有老板（超级管理员）能设置。"""
-    if current_user.role != Role.SUPER_ADMIN:
-        raise HTTPException(403, "只有老板可以设置门槛金额")
+    """门槛金额只有仓库管理员能设置。"""
+    _forbid_super_admin(current_user)
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以设置门槛金额")
     if req.threshold < 0:
         raise HTTPException(400, "门槛金额不能为负数")
     setting = (await db.execute(
@@ -710,16 +788,16 @@ async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User =
 
 @router.get("/purchase-approvals")
 async def purchase_approvals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """待审批采购单 + 疑似拆单提示。老板和主管可见。"""
-    if current_user.role not in (Role.SUPER_ADMIN, Role.SUPERVISOR):
+    """待审批采购单 + 疑似拆单提示。仓库管理员和主管可见。"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     threshold = await _get_approval_threshold(db)
-    wh_ids = None if current_user.role == Role.SUPER_ADMIN else get_wh_ids(current_user)
+    wh_ids = get_wh_ids(current_user)
 
     # 待审批
     pquery = select(PurchaseOrder).where(PurchaseOrder.status == "pending")
-    if wh_ids is not None:
-        pquery = pquery.where(PurchaseOrder.warehouse_id.in_(wh_ids))
+    pquery = pquery.where(PurchaseOrder.warehouse_id.in_(wh_ids))
     pending_rows = (await db.execute(pquery.order_by(PurchaseOrder.created_at.desc()))).scalars().all()
 
     # 疑似拆单检测（同一天+同供应商+同下单人，每笔<门槛，合计>门槛）
@@ -727,8 +805,7 @@ async def purchase_approvals(current_user: User = Depends(get_current_user), db:
     confirmed_rows = []
     if threshold > 0:
         cquery = select(PurchaseOrder).where(PurchaseOrder.status == "confirmed")
-        if wh_ids is not None:
-            cquery = cquery.where(PurchaseOrder.warehouse_id.in_(wh_ids))
+        cquery = cquery.where(PurchaseOrder.warehouse_id.in_(wh_ids))
         confirmed_rows = (await db.execute(cquery)).scalars().all()
 
     # 供应商/下单人名称映射（覆盖待审批与已确认两种订单）
@@ -779,13 +856,14 @@ async def purchase_approvals(current_user: User = Depends(get_current_user), db:
 
 @router.put("/purchase-approvals/{po_id}/approve")
 async def approve_purchase(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """审批通过：采购单生效，生成应付账单。"""
-    if current_user.role not in (Role.SUPER_ADMIN, Role.SUPERVISOR):
+    """审批通过：采购单生效，生成应付账单，并写入价格历史/异常/非最低价。"""
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if current_user.role != Role.SUPER_ADMIN and po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权审批其他仓库的采购单")
     if po.status != "pending":
         raise HTTPException(400, "该采购单已处理")
@@ -794,10 +872,11 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
         raise HTTPException(404, "供应商不存在")
     bill_number = f"PO-{po.order_number}"
     detail_lines = [f"- {d.get('product_name')} {d.get('spec') or ''} x{d.get('quantity')} @ {d.get('unit_price')} = {d.get('subtotal')}" for d in (po.items or [])]
+    now = thai_now()
     bill = PayableBill(
         warehouse_id=po.warehouse_id, supplier_id=po.supplier_id,
-        bill_number=bill_number, bill_date=thai_now(),
-        due_date=thai_now() + timedelta(days=_parse_settlement_days(supplier.settlement_cycle)),
+        bill_number=bill_number, bill_date=now.replace(tzinfo=None),
+        due_date=(now + timedelta(days=_parse_settlement_days(supplier.settlement_cycle))).replace(tzinfo=None),
         amount=po.total_amount, currency=po.currency or "THB", status="pending",
         detail="\n".join(detail_lines), source="purchase_order", purchase_order_id=po.id,
         created_by=current_user.id,
@@ -807,18 +886,21 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
     po.payable_bill_id = bill.id
     po.status = "confirmed"
     await db.flush()
+    # 审批通过 = 订单生效，此时才写入价格历史/异常/非最低价
+    await _write_price_evidence(db, po)
     return {"message": "审批通过，应付账单已生成", "payable_bill_id": bill.id, "payable_bill_number": bill_number}
 
 
 @router.put("/purchase-approvals/{po_id}/reject")
 async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """审批驳回：采购单作废，需填原因。"""
-    if current_user.role not in (Role.SUPER_ADMIN, Role.SUPERVISOR):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if current_user.role != Role.SUPER_ADMIN and po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权审批其他仓库的采购单")
     if po.status != "pending":
         raise HTTPException(400, "该采购单已处理")
@@ -835,13 +917,13 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
 async def list_purchase_orders(page: int = 1, page_size: int = 50,
                                current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """采购单列表（含收货状态），供收货录入使用。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.SUPER_ADMIN):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     query = select(PurchaseOrder)
     count_q = select(func.count(PurchaseOrder.id))
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
-        count_q = count_q.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
+    count_q = count_q.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
     total = (await db.execute(count_q)).scalar()
     rows = (await db.execute(
         query.order_by(PurchaseOrder.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
@@ -868,12 +950,13 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
                            current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """收货验收：逐个产品填实收数量 + 上传到货照片。"""
     import json
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if current_user.role != Role.SUPER_ADMIN and po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权操作其他仓库的采购单")
     if po.status != "confirmed":
         raise HTTPException(400, "仅已生效采购单可收货")
@@ -942,11 +1025,11 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
 @router.get("/purchase-receipt-discrepancies")
 async def receipt_discrepancies(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """收货差异列表：所有数量不符的采购。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.SUPER_ADMIN):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     query = select(PurchaseOrder).where(PurchaseOrder.receipt_status == "partially_received")
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
     rows = (await db.execute(query.order_by(PurchaseOrder.received_at.desc()))).scalars().all()
 
     sid_set = {po.supplier_id for po in rows}
@@ -1023,8 +1106,7 @@ async def _monthly_concentration(db: AsyncSession, wh_ids: list | None, month: s
         PurchaseOrder.created_at >= start,
         PurchaseOrder.created_at < end,
     )
-    if wh_ids:
-        q = q.where(PurchaseOrder.warehouse_id.in_(wh_ids))
+    q = q.where(PurchaseOrder.warehouse_id.in_(wh_ids or []))
     q = q.group_by(PurchaseOrder.supplier_id)
     rows = (await db.execute(q)).all()
     total = round(sum(float(r.amount or 0) for r in rows), 2)
@@ -1054,7 +1136,8 @@ class ConcentrationThresholdSet(BaseModel):
 
 @router.get("/concentration-threshold")
 async def get_concentration_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.SUPER_ADMIN, Role.SUPERVISOR):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     return {"threshold": await _get_concentration_threshold(db)}
 
@@ -1062,8 +1145,9 @@ async def get_concentration_threshold(current_user: User = Depends(get_current_u
 @router.put("/concentration-threshold")
 async def set_concentration_threshold(req: ConcentrationThresholdSet,
                                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role != Role.SUPER_ADMIN:
-        raise HTTPException(403, "只有老板可以设置")
+    _forbid_super_admin(current_user)
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以设置")
     setting = (await db.execute(
         select(SystemSetting).where(
             SystemSetting.warehouse_id == 0,
@@ -1083,7 +1167,8 @@ async def set_concentration_threshold(req: ConcentrationThresholdSet,
 async def concentration_analysis(month: str = None,
                                  current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """供应商采购集中度：按月统计各供应商采购金额/占比/订单数。"""
-    if current_user.role not in (Role.SUPER_ADMIN, Role.SUPERVISOR):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     if not month:
         month = thai_today().strftime("%Y-%m")
@@ -1093,7 +1178,7 @@ async def concentration_analysis(month: str = None,
             raise ValueError
     except Exception:
         raise HTTPException(400, "月份格式应为 YYYY-MM")
-    wh_ids = None if current_user.role == Role.SUPER_ADMIN else get_wh_ids(current_user)
+    wh_ids = get_wh_ids(current_user)
     res = await _monthly_concentration(db, wh_ids, month)
     threshold = await _get_concentration_threshold(db)
     top = res["data"][0] if res["data"] else None
@@ -1113,13 +1198,14 @@ async def concentration_analysis(month: str = None,
 async def concentration_trend(months: int = 6,
                               current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """集中度趋势：最近 N 个月最高供应商占比变化。"""
-    if current_user.role not in (Role.SUPER_ADMIN, Role.SUPERVISOR):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     try:
         months = max(1, min(int(months), 24))
     except (ValueError, TypeError):
         months = 6
-    wh_ids = None if current_user.role == Role.SUPER_ADMIN else get_wh_ids(current_user)
+    wh_ids = get_wh_ids(current_user)
     today = thai_today()
     trend = []
     for i in range(months - 1, -1, -1):
@@ -1149,6 +1235,7 @@ async def list_logistics_prices(supplier_id: int, current_user = Depends(get_cur
 
 @router.post("/{supplier_id}/logistics-prices")
 async def add_logistics_price(supplier_id: int, req: dict, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
@@ -1158,6 +1245,7 @@ async def add_logistics_price(supplier_id: int, req: dict, current_user: User = 
 
 @router.delete("/{supplier_id}/logistics-prices/{price_id}")
 async def delete_logistics_price(supplier_id: int, price_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
@@ -1171,6 +1259,7 @@ async def delete_logistics_price(supplier_id: int, price_id: int, current_user: 
 async def compare_prices(product_name: str = None, spec: str = None, category_id: int = None,
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """耗材比价：按产品名称/规格对比同类别供应商报价"""
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     q = select(SupplierProduct).join(Supplier, SupplierProduct.supplier_id == Supplier.id).where(Supplier.is_active == "true")
@@ -1185,8 +1274,7 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
     else:
         # Default: consumables (category 1)
         pass
-    if current_user.role != Role.SUPER_ADMIN:
-        q = q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+    q = q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
     prods = (await db.execute(q.order_by(SupplierProduct.unit_price.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prods})
     smap = {}
@@ -1212,6 +1300,7 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
                              category_id: int = None,
                              current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """跨境物流比价：运输方式×货物类型×发货仓库，含义乌加价和最低消费"""
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     # 海运最低0.5方，陆运最低0.3方
@@ -1234,8 +1323,7 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
             q = q.where(SupplierCrossBorderPrice.origin_warehouse == origin_warehouse)
     if category_id:
         q = q.where(Supplier.category_id == category_id)
-    if current_user.role != Role.SUPER_ADMIN:
-        q = q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+    q = q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
     prices = (await db.execute(q.order_by(SupplierCrossBorderPrice.price_per_cbm.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prices})
     smap = {}
@@ -1305,6 +1393,7 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
 # ═══ AI Price Analysis ═══════════════════════════
 @router.post("/ai-compare")
 async def ai_compare(data: dict, current_user: User = Depends(get_current_user)):
+    _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     from app.config import get_settings
@@ -1348,9 +1437,8 @@ async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Supplier); count_q = select(func.count(Supplier.id))
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
-        count_q = count_q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+    count_q = count_q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
     if search:
         query = query.where(Supplier.name.ilike(f"%{search}%")); count_q = count_q.where(Supplier.name.ilike(f"%{search}%"))
     if category_id:
@@ -1417,22 +1505,21 @@ async def delete_supplier(supplier_id: int, current_user: User = Depends(get_cur
 @router.get("/procurement-summary")
 async def procurement_summary(current_user: User = Depends(get_current_user),
                                db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    _forbid_super_admin(current_user)
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     from app.models.payable import PayableBill
     from app.models.warehouse import Warehouse
     from datetime import date, timedelta
     from sqlalchemy import extract
 
-    wh_id = get_wh_id(current_user) if current_user.role != Role.SUPER_ADMIN else None
     today = thai_today()
     this_month_start = today.replace(day=1)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
     last_month_end = this_month_start - timedelta(days=1)
 
     def wh_filter(q):
-        if get_wh_ids(current_user): return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
-        return q
+        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
 
     # --- 本月支出 ---
     month_q = wh_filter(select(func.coalesce(func.sum(PayableBill.amount), 0)))
@@ -1538,10 +1625,11 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
 
 @router.get("/{supplier_id}")
 async def get_supplier(supplier_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _forbid_super_admin(current_user)
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
-    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id not in get_wh_ids(current_user):
+    if s.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能查看自己仓库的供应商")
     cat_name = ""
     if s.category_id:

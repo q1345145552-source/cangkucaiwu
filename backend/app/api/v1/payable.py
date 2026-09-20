@@ -253,12 +253,16 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
 
 @router.put("/{bill_id}/confirm")
 async def confirm_bill(bill_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """老板确认收货差异账单，确认后才能付款。"""
-    if current_user.role != Role.SUPER_ADMIN:
-        raise HTTPException(403, "只有老板可以确认")
+    """仓库管理员确认收货差异账单，确认后才能付款。"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以确认")
     b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id))).scalar_one_or_none()
     if not b:
         raise HTTPException(404, "账单不存在")
+    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的账单")
     b.need_boss_confirm = "false"
     await db.flush()
     return {"message": "已确认，可以付款"}

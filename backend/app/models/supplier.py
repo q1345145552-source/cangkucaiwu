@@ -88,7 +88,7 @@ class PurchaseOrder(Base):
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey('warehouses.id'), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
-    order_number = Column(String(50), nullable=False)
+    order_number = Column(String(50), nullable=False, unique=True, index=True)
     total_amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False, default='THB')
     items = Column(JSON, nullable=False)

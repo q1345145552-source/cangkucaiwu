@@ -90,14 +90,14 @@ async def report_previews(
 
     # 1. 充值汇总
     q = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0), func.count(RechargeDeclaration.id))
-    if wh_ids: q = q.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
+    q = q.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
     q = _apply_date(q, RechargeDeclaration.declare_date, start_date, end_date)
     total_amt, count = (await db.execute(q)).first()
     previews["recharge-summary"] = {"preview": float(total_amt or 0), "count": count or 0}
 
     # 2. 到账汇总
     q = select(func.coalesce(func.sum(IncomingFlow.amount), 0), func.count(IncomingFlow.id))
-    if wh_ids: q = q.where(IncomingFlow.warehouse_id.in_(wh_ids))
+    q = q.where(IncomingFlow.warehouse_id.in_(wh_ids))
     q = _apply_date(q, IncomingFlow.received_date, start_date, end_date)
     total_amt, count = (await db.execute(q)).first()
     previews["incoming-summary"] = {"preview": float(total_amt or 0), "count": count or 0}
@@ -105,48 +105,48 @@ async def report_previews(
     # 3. 收支报表
     iq = select(func.coalesce(func.sum(IncomeRecord.amount), 0))
     eq = select(func.coalesce(func.sum(ExpenseRecord.amount), 0))
-    if wh_ids: iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
+    iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
     iq = _apply_date(iq, IncomeRecord.income_date, start_date, end_date)
     eq = _apply_date(eq, ExpenseRecord.expense_date, start_date, end_date)
     inc = float((await db.execute(iq)).scalar() or 0)
     exp = float((await db.execute(eq)).scalar() or 0)
     # Also add recharge income
     rq2 = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0))
-    if wh_ids: rq2 = rq2.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
+    rq2 = rq2.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
     rq2 = _apply_date(rq2, RechargeDeclaration.declare_date, start_date, end_date)
     rch = float((await db.execute(rq2)).scalar() or 0)
     previews["income-expense"] = {"preview": inc + exp + rch, "total_income": inc + rch, "total_expense": exp, "net": inc + rch - exp}
 
     # 4. 应付报表
     q = select(func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0), func.count(PayableBill.id))
-    if wh_ids: q = q.where(PayableBill.warehouse_id.in_(wh_ids))
+    q = q.where(PayableBill.warehouse_id.in_(wh_ids))
     q = _apply_date(q, PayableBill.due_date, start_date, end_date)
     pending, count = (await db.execute(q)).first()
     previews["payable"] = {"preview": float(pending or 0), "count": count or 0}
 
     # 5. 备用金报表（当前状态，不按时间）
     q = select(func.coalesce(func.sum(ExpenseFund.remaining_balance), 0), func.count(ExpenseFund.id))
-    if wh_ids: q = q.where(ExpenseFund.warehouse_id.in_(wh_ids))
+    q = q.where(ExpenseFund.warehouse_id.in_(wh_ids))
     q = q.where(ExpenseFund.status == "active")
     in_transit, count = (await db.execute(q)).first()
     previews["expense-fund"] = {"preview": float(in_transit or 0), "count": count or 0}
 
     # 6. 报销报表
     q = select(func.coalesce(func.sum(Reimbursement.total_amount), 0), func.count(Reimbursement.id))
-    if wh_ids: q = q.where(Reimbursement.warehouse_id.in_(wh_ids))
+    q = q.where(Reimbursement.warehouse_id.in_(wh_ids))
     q = _apply_date(q, Reimbursement.submit_date, start_date, end_date)
     total_amt, count = (await db.execute(q)).first()
     previews["reimbursement"] = {"preview": float(total_amt or 0), "count": count or 0}
 
     # 7. 账期报表（当前状态，不按时间）
     q = select(func.coalesce(func.sum(CreditCustomer.current_debt), 0), func.count(CreditCustomer.id))
-    if wh_ids: q = q.where(CreditCustomer.warehouse_id.in_(wh_ids))
+    q = q.where(CreditCustomer.warehouse_id.in_(wh_ids))
     total_debt, count = (await db.execute(q)).first()
     previews["credit"] = {"preview": float(total_debt or 0), "count": count or 0}
 
     # 8. 对账差异（按月份字符串范围）
     q = select(func.coalesce(func.sum(func.abs(ReconciliationResult.amount_diff)), 0), func.count(ReconciliationResult.id))
-    if wh_ids: q = q.where(ReconciliationResult.warehouse_id.in_(wh_ids))
+    q = q.where(ReconciliationResult.warehouse_id.in_(wh_ids))
     if start_date: q = q.where(ReconciliationResult.reconciliation_month >= start_date[:7])
     if end_date: q = q.where(ReconciliationResult.reconciliation_month <= end_date[:7])
     total_diff, count = (await db.execute(q)).first()
@@ -162,7 +162,7 @@ async def recharge_summary(start_date: str = None, end_date: str = None, warehou
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(RechargeDeclaration)
     wh_ids = get_wh_ids(current_user)
-    if wh_ids: query = query.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
+    query = query.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
     query = _apply_date(query, RechargeDeclaration.declare_date, start_date, end_date)
     if warehouse_id: query = query.where(RechargeDeclaration.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(RechargeDeclaration.declare_date.desc()))
@@ -180,7 +180,7 @@ async def incoming_summary(start_date: str = None, end_date: str = None, warehou
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomingFlow)
     wh_ids = get_wh_ids(current_user)
-    if wh_ids: query = query.where(IncomingFlow.warehouse_id.in_(wh_ids))
+    query = query.where(IncomingFlow.warehouse_id.in_(wh_ids))
     query = _apply_date(query, IncomingFlow.received_date, start_date, end_date)
     if warehouse_id: query = query.where(IncomingFlow.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(IncomingFlow.received_date.desc()))
@@ -199,8 +199,8 @@ async def income_expense_report(start_date: str = None, end_date: str = None, wa
     wh_ids = get_wh_ids(current_user)
     iq = select(IncomeRecord); eq = select(ExpenseRecord)
     rq = select(RechargeDeclaration)  # 充值申报也作为收入来源
-    if wh_ids: iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
-    if wh_ids: rq = rq.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
+    iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
+    rq = rq.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
     iq = _apply_date(iq, IncomeRecord.income_date, start_date, end_date)
     eq = _apply_date(eq, ExpenseRecord.expense_date, start_date, end_date)
     rq = _apply_date(rq, RechargeDeclaration.declare_date, start_date, end_date)
@@ -247,7 +247,7 @@ async def payable_report(start_date: str = None, end_date: str = None, warehouse
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
     wh_ids = get_wh_ids(current_user)
-    if wh_ids: query = query.where(PayableBill.warehouse_id.in_(wh_ids))
+    query = query.where(PayableBill.warehouse_id.in_(wh_ids))
     query = _apply_date(query, PayableBill.due_date, start_date, end_date)
     if warehouse_id: query = query.where(PayableBill.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(PayableBill.due_date))
@@ -268,7 +268,7 @@ async def expense_fund_report(warehouse_id: int = None, format: str = "json",
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseFund)
     wh_ids = get_wh_ids(current_user)
-    if wh_ids: query = query.where(ExpenseFund.warehouse_id.in_(wh_ids))
+    query = query.where(ExpenseFund.warehouse_id.in_(wh_ids))
     if warehouse_id: query = query.where(ExpenseFund.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ExpenseFund.created_at.desc()))
     funds = result.scalars().all()
@@ -286,7 +286,7 @@ async def reimbursement_report(start_date: str = None, end_date: str = None, war
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Reimbursement)
     wh_ids = get_wh_ids(current_user)
-    if wh_ids: query = query.where(Reimbursement.warehouse_id.in_(wh_ids))
+    query = query.where(Reimbursement.warehouse_id.in_(wh_ids))
     query = _apply_date(query, Reimbursement.submit_date, start_date, end_date)
     if warehouse_id: query = query.where(Reimbursement.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(Reimbursement.submit_date.desc()))
@@ -306,7 +306,7 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(CreditCustomer)
     wh_ids = get_wh_ids(current_user)
-    if wh_ids: query = query.where(CreditCustomer.warehouse_id.in_(wh_ids))
+    query = query.where(CreditCustomer.warehouse_id.in_(wh_ids))
     if warehouse_id: query = query.where(CreditCustomer.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(CreditCustomer.created_at.desc()))
     credits = result.scalars().all()
@@ -322,11 +322,13 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
 @router.get("/reconciliation-diff")
 async def reconciliation_diff_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
                                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_ids = get_wh_ids(current_user)
     query = select(ReconciliationResult)
     if start_date: query = query.where(ReconciliationResult.reconciliation_month >= start_date[:7])
     if end_date: query = query.where(ReconciliationResult.reconciliation_month <= end_date[:7])
-    if wh_ids: query = query.where(ReconciliationResult.warehouse_id.in_(wh_ids))
+    query = query.where(ReconciliationResult.warehouse_id.in_(wh_ids))
     if warehouse_id: query = query.where(ReconciliationResult.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(ReconciliationResult.id))
     records = result.scalars().all()

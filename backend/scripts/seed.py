@@ -183,6 +183,13 @@ async def seed():
             ))
         except Exception:
             pass
+        # Migration: 采购单号唯一约束
+        try:
+            await conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_purchase_orders_order_number ON purchase_orders (order_number)"
+            ))
+        except Exception:
+            pass
         # Migration: 非最低价采购记录表
         try:
             await conn.execute(text("""

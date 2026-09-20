@@ -60,7 +60,7 @@ export default function ConcentrationPage() {
     } catch (err: any) { toast("error", err.message || "保存失败"); }
   }
 
-  const isBoss = user?.role === "super_admin";
+  const isBoss = user?.role === "warehouse_admin";
   const topSupplier = data.length > 0 ? data[0] : null;
 
   return (

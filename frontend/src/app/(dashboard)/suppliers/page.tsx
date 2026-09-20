@@ -430,7 +430,7 @@ export default function SuppliersPage() {
     catch (err: any) { toast("error", err.message || "删除失败"); }
   }
 
-  const isAdmin = user?.role === "super_admin" || user?.role === "warehouse_admin";
+  const isAdmin = user?.role === "warehouse_admin" || user?.role === "supervisor";
 
   return (
     <>
@@ -459,7 +459,7 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
               <button onClick={openPriceMonitor}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><BarChart3 size={16}/>价格监控</button>
-              {(user?.role === "super_admin" || user?.role === "supervisor") && (
+              {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
                 <button onClick={openApprovals}
                   className="border px-3 py-2 rounded text-sm flex items-center gap-1"><CheckCircle size={16}/>采购审批</button>
               )}
@@ -1145,8 +1145,8 @@ export default function SuppliersPage() {
               <button onClick={() => setShowApprovals(false)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
             </div>
             <div className="p-5 space-y-5">
-              {/* 门槛设置（仅老板） */}
-              {user?.role === "super_admin" && (
+              {/* 门槛设置（仅仓库管理员） */}
+              {user?.role === "warehouse_admin" && (
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-gray-600">审批门槛（泰铢）</label>
                   <input type="number" min={0} value={approvalThreshold} onChange={e => setApprovalThreshold(+e.target.value)}
