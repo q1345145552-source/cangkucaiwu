@@ -4,6 +4,7 @@ from sqlalchemy import select, func, and_
 from app.database import get_db
 from app.models.payroll import PayrollRecord
 from app.models.employee import Employee
+from app.models.employee_advance import EmployeeAdvance
 from app.models.clock_in_records import ClockInRecord
 from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.overtime import OvertimeAssignment, OvertimeTask
@@ -25,6 +26,7 @@ class CalculateRequest(BaseModel):
     half: str = "first_half"  # first_half / second_half
     employee_ids: Optional[List[int]] = None  # 单人结算时指定
     end_date: Optional[str] = None  # 结算截止日 YYYY-MM-DD（单人/离职结算用）
+    is_resignation: bool = False  # 离职结算：扣到实发0为止，剩余欠款老板认了
 
 
 class SingleSettleRequest(BaseModel):
@@ -393,7 +395,54 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         work_pay = round(work_pay, 2)
         gross_pay = round(work_pay + overtime_pay, 2)
         total_deductions = round(late_penalty_total, 2)
-        net_pay = round(max(work_pay - late_penalty_total + overtime_pay, 0), 2)
+
+        # ── 预支扣款 ──
+        available = round(max(work_pay - late_penalty_total + overtime_pay, 0), 2)
+        advance_deduction = 0.0
+        advance_deductions = []  # 用于删除工资单时回退
+        remaining_debt = 0.0
+
+        # 找出所有还没扣完的预支（含往期 + 本期新预支），按日期从早到晚依次扣
+        advances = (await db.execute(
+            select(EmployeeAdvance).where(
+                EmployeeAdvance.employee_id == emp.id,
+                EmployeeAdvance.status != "deducted",
+            ).order_by(EmployeeAdvance.advance_date.asc(), EmployeeAdvance.id.asc())
+        )).scalars().all()
+
+        remaining_pay = available
+        for adv in advances:
+            rem = round((adv.amount or 0) - (adv.deducted_amount or 0), 2)
+            if rem <= 0:
+                continue
+            if remaining_pay <= 0:
+                break
+            deduct = round(min(rem, remaining_pay), 2)
+            adv.deducted_amount = round((adv.deducted_amount or 0) + deduct, 2)
+            advance_deduction = round(advance_deduction + deduct, 2)
+            advance_deductions.append({"advance_id": adv.id, "amount": deduct})
+            remaining_pay = round(remaining_pay - deduct, 2)
+
+        # 更新预支状态
+        for adv in advances:
+            rem = round((adv.amount or 0) - (adv.deducted_amount or 0), 2)
+            if rem <= 0:
+                adv.status = "deducted"
+            elif (adv.deducted_amount or 0) > 0:
+                adv.status = "partial"
+            else:
+                adv.status = "unpaid"
+
+        if req.is_resignation:
+            # 离职结算：剩余欠款老板认了，不再追，全部标记已扣完
+            for adv in advances:
+                adv.deducted_amount = adv.amount or 0
+                adv.status = "deducted"
+            remaining_debt = 0.0
+        else:
+            remaining_debt = round(sum(max((adv.amount or 0) - (adv.deducted_amount or 0), 0) for adv in advances), 2)
+
+        net_pay = round(max(available - advance_deduction, 0), 2)
 
         detail_data = {
             "work_hours": round(total_work_hours, 2),
@@ -409,6 +458,9 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "late_one_count": late_one_count,
             "daily_hours": daily_list,
             "late_details": late_details,
+            "advance_deduction": advance_deduction,
+            "remaining_debt": remaining_debt,
+            "advance_deductions": advance_deductions,
         }
 
         record = PayrollRecord(
@@ -432,6 +484,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             late_penalty=late_penalty_total,
             leave_deduction=0,
             absence_deduction=0,
+            advance_deduction=advance_deduction,
+            remaining_debt=remaining_debt,
             gross_pay=gross_pay,
             total_deductions=total_deductions,
             net_pay=net_pay,
@@ -450,6 +504,32 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         "record_count": len(records),
         "skipped": skipped_notes,
     }
+
+
+async def _rollback_advance_deductions(db: AsyncSession, record: PayrollRecord):
+    """删除工资单时回退预支扣款（按 detail 里记录的明细回退，避免重复扣）。"""
+    if not record.detail:
+        return
+    try:
+        detail = json.loads(record.detail)
+    except Exception:
+        return
+    for d in detail.get("advance_deductions", []) or []:
+        adv = (await db.execute(
+            select(EmployeeAdvance).where(EmployeeAdvance.id == d.get("advance_id"))
+        )).scalar_one_or_none()
+        if not adv:
+            continue
+        adv.deducted_amount = round(max((adv.deducted_amount or 0) - (d.get("amount") or 0), 0), 2)
+        rem = round((adv.amount or 0) - adv.deducted_amount, 2)
+        if rem <= 0:
+            adv.status = "deducted" if adv.deducted_amount >= (adv.amount or 0) else "partial"
+        elif adv.deducted_amount > 0:
+            adv.status = "partial"
+        else:
+            adv.status = "unpaid"
+    await db.flush()
+
 
 @router.post("/single-settle")
 async def single_settle(
@@ -538,6 +618,8 @@ async def list_payroll(
             "late_penalty": r.late_penalty,
             "leave_deduction": r.leave_deduction,
             "absence_deduction": r.absence_deduction,
+            "advance_deduction": r.advance_deduction or 0,
+            "remaining_debt": r.remaining_debt or 0,
             "gross_pay": r.gross_pay,
             "total_deductions": r.total_deductions,
             "net_pay": r.net_pay,
@@ -738,6 +820,7 @@ async def batch_delete_payroll(
         raise HTTPException(400, "请先选择仓库")
     records = await _batch_fetch(db, wh_id, req.record_ids)
     for r in records:
+        await _rollback_advance_deductions(db, r)
         await db.delete(r)
     await db.flush()
     return {"message": f"已删除 {len(records)} 条", "count": len(records)}
@@ -764,6 +847,7 @@ async def delete_payroll(
     if not r:
         raise HTTPException(404, "工资记录不存在")
 
+    await _rollback_advance_deductions(db, r)
     await db.delete(r)
     await db.flush()
     return {"message": "工资记录已删除"}
@@ -792,6 +876,7 @@ async def delete_period_payroll(
     records = (await db.execute(summary_q)).scalars().all()
 
     for r in records:
+        await _rollback_advance_deductions(db, r)
         await db.delete(r)
     await db.flush()
 
@@ -927,6 +1012,8 @@ async def my_payslip(
             "late_penalty": r.late_penalty,
             "leave_deduction": r.leave_deduction,
             "absence_deduction": r.absence_deduction,
+            "advance_deduction": r.advance_deduction or 0,
+            "remaining_debt": r.remaining_debt or 0,
             "gross_pay": r.gross_pay,
             "total_deductions": r.total_deductions,
             "net_pay": r.net_pay,

@@ -11,10 +11,12 @@ export default function MyPayslipPage() {
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
+  const [myDebt, setMyDebt] = useState<any[]>([]);
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
     load();
+    loadDebt();
   }, []);
 
   async function load() {
@@ -26,9 +28,33 @@ export default function MyPayslipPage() {
     setLoading(false);
   }
 
+  async function loadDebt() {
+    try {
+      const r = await api.get<any>("/employee-advances/my-debt");
+      setMyDebt(r.total_by_currency || []);
+    } catch {}
+  }
+
   return (
     <div>
       <h1 className="page-title flex items-center gap-2 mb-4"><FileText size={24}/>{t("payslip_title")}</h1>
+
+      {/* 我的欠款 */}
+      <div className="bg-white rounded-xl border p-4 mb-4">
+        <p className="text-sm font-semibold text-gray-700 mb-2">{t("my_debt")}</p>
+        {myDebt.length === 0 ? (
+          <p className="text-sm text-gray-400">0</p>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {myDebt.map((d: any) => (
+              <div key={d.currency}>
+                <p className="text-2xl font-bold text-red-600">{d.total?.toLocaleString()}</p>
+                <p className="text-xs text-gray-400">{d.currency}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">{t("loading")}</div>
@@ -116,6 +142,10 @@ export default function MyPayslipPage() {
                 {selected.leave_deduction > 0 && (
                   <div className="flex justify-between text-sm text-red-500"><span>{t("leave_deduction")}</span><span>-{selected.leave_deduction}</span></div>
                 )}
+                {selected.advance_deduction > 0 && (
+                  <div className="flex justify-between text-sm text-red-500"><span>{t("advance_deduction")}</span><span>-{selected.advance_deduction}</span></div>
+                )}
+                <div className="flex justify-between text-sm text-gray-500"><span>{t("remaining_debt")}</span><span>{selected.remaining_debt ?? 0}</span></div>
               </div>
 
               <div className="border-t pt-3 space-y-1">

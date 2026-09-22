@@ -377,5 +377,10 @@
   "mk_failed": "ဖြည့်စွက်မှုမအောင်မြင်ပါ",
   "supplier_purchase_analysis": "ဝယ်ယူမှုခွဲခြမ်းစိတ်ဖြာမှု",
   "modification_logs": "ပြင်ဆင်မှုမှတ်တမ်း",
-  "labor_efficiency": "လုပ်အားစွမ်းဆောင်ရည်"
+  "labor_efficiency": "လုပ်အားစွမ်းဆောင်ရည်",
+  "employee_advances": "ဝန်ထမ်းကြိုတင်ငွေ",
+  "advance_deduction": "ကြိုတင်ငွေဖြတ်တောက်မှု",
+  "remaining_debt": "ကျန်ကြွေး",
+  "my_debt": "ကျွန်ုပ်၏ကြွေး",
+  "currency_symbol": "ဘတ်"
 }

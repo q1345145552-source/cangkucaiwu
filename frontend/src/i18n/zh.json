@@ -276,5 +276,10 @@
   "mk_failed": "补卡失败",
   "supplier_purchase_analysis": "供应商采购分析",
   "modification_logs": "修改日志",
-  "labor_efficiency": "人效管理"
+  "labor_efficiency": "人效管理",
+  "employee_advances": "员工预支",
+  "advance_deduction": "预支扣款",
+  "remaining_debt": "剩余欠款",
+  "my_debt": "我的欠款",
+  "currency_symbol": "泰铢"
 }

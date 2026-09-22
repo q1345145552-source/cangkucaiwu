@@ -38,6 +38,8 @@ class PayrollRecord(Base):
     late_penalty = Column(Float, default=0)
     leave_deduction = Column(Float, default=0)
     absence_deduction = Column(Float, default=0)
+    advance_deduction = Column(Float, default=0, comment="本周期预支扣款")
+    remaining_debt = Column(Float, default=0, comment="扣完预支后剩余欠款")
 
     # Totals
     gross_pay = Column(Float, default=0)

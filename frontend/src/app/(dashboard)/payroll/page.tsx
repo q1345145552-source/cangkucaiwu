@@ -250,6 +250,8 @@ export default function PayrollPage() {
   const psOvertimeHours = showPayslip?.overtime_hours ?? 0;
   const psLatePenalty = showPayslip?.late_penalty ?? 0;
   const psTotalDeductions = showPayslip?.total_deductions ?? 0;
+  const psAdvanceDeduction = showPayslip?.advance_deduction ?? 0;
+  const psRemainingDebt = showPayslip?.remaining_debt ?? 0;
   const psDailyHours = psDetail.daily_hours || [];
   const psLateDetails = psDetail.late_details || [];
   const psLateHalfCount = psDetail.late_half_count ?? 0;
@@ -610,6 +612,16 @@ export default function PayrollPage() {
                     <span>-{psLatePenalty}{psLateFormula ? <span className="text-red-300 text-xs"> ({psLateFormula})</span> : null}</span>
                   </div>
                 )}
+                {psAdvanceDeduction > 0 && (
+                  <div className="flex justify-between text-sm text-red-500">
+                    <span>预支扣款</span>
+                    <span>-{psAdvanceDeduction.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>剩余欠款</span>
+                  <span>{psRemainingDebt.toLocaleString()}</span>
+                </div>
               </div>
 
               {/* Total */}
@@ -623,7 +635,7 @@ export default function PayrollPage() {
                 <div className="flex justify-between text-base font-bold pt-1 border-t">
                   <span>实发工资</span>
                   <span className="text-blue-600 text-lg">{(showPayslip.net_pay ?? 0).toLocaleString()} 泰铢
-                    <span className="text-gray-400 text-xs font-normal ml-1">({psWorkPay} + {psOvertimePay} - {psTotalDeductions})</span>
+                    <span className="text-gray-400 text-xs font-normal ml-1">({psWorkPay} + {psOvertimePay} - {psTotalDeductions} - {psAdvanceDeduction})</span>
                   </span>
                 </div>
               </div>

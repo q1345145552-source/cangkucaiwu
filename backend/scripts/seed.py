@@ -18,6 +18,8 @@ from app.models.recharge import RechargeDeclaration, IncomingFlow
 from app.models.market import MarketItem
 from app.models.credit import CreditCustomer, CreditShipment, CreditRepayment
 from app.models.labor_efficiency import EfficiencyOrderCount
+from app.models.employee_advance import EmployeeAdvance
+from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
 async def seed():
@@ -294,6 +296,8 @@ async def seed():
                 ("late_penalty", "DOUBLE PRECISION DEFAULT 0"),
                 ("leave_deduction", "DOUBLE PRECISION DEFAULT 0"),
                 ("absence_deduction", "DOUBLE PRECISION DEFAULT 0"),
+                ("advance_deduction", "DOUBLE PRECISION DEFAULT 0"),
+                ("remaining_debt", "DOUBLE PRECISION DEFAULT 0"),
                 ("gross_pay", "DOUBLE PRECISION DEFAULT 0"),
                 ("total_deductions", "DOUBLE PRECISION DEFAULT 0"),
                 ("net_pay", "DOUBLE PRECISION DEFAULT 0"),

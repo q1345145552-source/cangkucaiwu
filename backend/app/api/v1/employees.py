@@ -363,7 +363,7 @@ async def resign_employee(
         half = "first_half" if resign_dt.day <= 15 else "second_half"
         r = await _calc_payroll(
             db, current_user, e.warehouse_id,
-            CalculateRequest(period=period, half=half, employee_ids=[employee_id], end_date=req.resignation_date),
+            CalculateRequest(period=period, half=half, employee_ids=[employee_id], end_date=req.resignation_date, is_resignation=True),
         )
         if r.get("record_count", 0) > 0:
             payroll_msg = f"，已生成离职结算工资单（结算到 {resign_dt.isoformat()}）"
