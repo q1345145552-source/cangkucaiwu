@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -44,7 +44,7 @@ class PayrollRecord(Base):
     total_deductions = Column(Float, default=0)
     net_pay = Column(Float, default=0)
 
-    detail = Column(String(3000), nullable=True)
+    detail = Column(Text, nullable=True)
 
     confirmed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)

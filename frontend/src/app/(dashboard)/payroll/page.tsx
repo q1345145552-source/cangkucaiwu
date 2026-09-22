@@ -45,11 +45,14 @@ export default function PayrollPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [selectedPeriodKey, setSelectedPeriodKey] = useState("");
   const [showPayslip, setShowPayslip] = useState<any>(null);
+  const [dailyDetailOpen, setDailyDetailOpen] = useState(false);
+  const [lateDetailOpen, setLateDetailOpen] = useState(false);
   const [disbursing, setDisbursing] = useState<number | null>(null);
   const [showSingleModal, setShowSingleModal] = useState(false);
   const [singleEmpId, setSingleEmpId] = useState<number>(0);
   const [singleEndDate, setSingleEndDate] = useState(new Date().toISOString().slice(0, 10));
   const [singleEmployees, setSingleEmployees] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -106,6 +109,7 @@ export default function PayrollPage() {
     const { period, half } = periodKeyToApi(key);
     setSelectedPeriod(period);
     setLoading(true);
+    setSelectedIds([]);  // 重新加载/切换周期时清空勾选
     try {
       const params = `period=${period}&half=${half}`;
       const [recR, sumR] = await Promise.all([
@@ -233,6 +237,94 @@ export default function PayrollPage() {
 
   function viewPayslip(record: any) {
     setShowPayslip(record);
+    setDailyDetailOpen(false);
+    setLateDetailOpen(false);
+  }
+
+  // 工资单展示用的计算值 + 公式（空值保护）
+  const psDetail = showPayslip?.detail || {};
+  const psWorkHours = psDetail.work_hours ?? (showPayslip?.attendance_days ?? 0);
+  const psHourlyRate = psDetail.hourly_rate ?? 0;
+  const psWorkPay = showPayslip?.base_pay ?? 0;
+  const psOvertimePay = showPayslip?.overtime_pay ?? 0;
+  const psOvertimeHours = showPayslip?.overtime_hours ?? 0;
+  const psLatePenalty = showPayslip?.late_penalty ?? 0;
+  const psTotalDeductions = showPayslip?.total_deductions ?? 0;
+  const psDailyHours = psDetail.daily_hours || [];
+  const psLateDetails = psDetail.late_details || [];
+  const psLateHalfCount = psDetail.late_half_count ?? 0;
+  const psLateOneCount = psDetail.late_one_count ?? 0;
+  const psHourlyFormula = showPayslip?.employee_status === "trial"
+    ? `日薪 ${showPayslip?.daily_wage ?? 0} ÷ 8`
+    : `底薪 ${showPayslip?.base_salary ?? 0} ÷ ${(showPayslip?.total_days_in_month ?? 30) - 2} ÷ 8`;
+  const psLateFormula = psLateHalfCount > 0 && psLateOneCount > 0
+    ? `迟到半小时${psLateHalfCount}次 + 迟到1小时${psLateOneCount}次`
+    : psLateHalfCount > 0
+      ? `迟到半小时${psLateHalfCount}次 × ${(psHourlyRate * 0.5).toFixed(2)}`
+      : psLateOneCount > 0
+        ? `迟到1小时${psLateOneCount}次 × ${psHourlyRate.toFixed(2)}`
+        : "";
+
+  function fmtClockTime(t: string) {
+    if (!t) return "";
+    const [h, m] = t.split(":");
+    return m === "00" ? `${parseInt(h, 10)}点` : `${parseInt(h, 10)}:${m}`;
+  }
+
+  function dailyStatusText(d: any) {
+    switch (d.status) {
+      case "leave": return "请假 不计算";
+      case "rest": return "休息日";
+      case "absence": return "缺勤";
+      case "no_clock": return "无打卡记录";
+      default: {
+        const times = (d.times || []).map((t: string) => fmtClockTime(t)).join(" ");
+        return `${d.hours ?? 0}小时${times ? ` (${times})` : ""}`;
+      }
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => (prev.length === records.length && records.length > 0) ? [] : records.map(r => r.id));
+  }
+
+  async function handleBatchConfirm() {
+    if (!selectedIds.length) return;
+    setCalculating(true);
+    try {
+      const r = await api.post<any>("/payroll/batch-confirm", { record_ids: selectedIds });
+      toast("success", r.message || `已确认 ${r.count} 条`);
+      loadRecords();
+    } catch (err: any) { toast("error", err.message || "批量确认失败"); }
+    setCalculating(false);
+  }
+
+  async function handleBatchDisburse() {
+    if (!selectedIds.length) return;
+    setCalculating(true);
+    try {
+      const r = await api.post<any>("/payroll/batch-disburse", { record_ids: selectedIds });
+      toast("success", r.message || `已发放 ${r.count} 条`);
+      loadRecords();
+    } catch (err: any) { toast("error", err.message || "批量发放失败"); }
+    setCalculating(false);
+  }
+
+  async function handleBatchDelete() {
+    if (!selectedIds.length) return;
+    if (!confirm(`确定删除选中的 ${selectedIds.length} 条工资单吗？删除后可以重新计算`)) return;
+    setCalculating(true);
+    try {
+      const r = await api.post<any>("/payroll/batch-delete", { record_ids: selectedIds });
+      toast("success", r.message || `已删除 ${r.count} 条`);
+      loadRecords();
+      loadPeriods();
+    } catch (err: any) { toast("error", err.message || "批量删除失败"); }
+    setCalculating(false);
   }
 
   return (
@@ -297,6 +389,21 @@ export default function PayrollPage() {
         </div>
       </div>
 
+      {/* Batch action bar */}
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
+          <span className="text-sm font-medium text-blue-700">已选 {selectedIds.length} 条</span>
+          <div className="flex gap-2">
+            <button onClick={handleBatchConfirm} disabled={calculating}
+              className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 disabled:opacity-50">批量确认</button>
+            <button onClick={handleBatchDisburse} disabled={calculating}
+              className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 disabled:opacity-50">批量发放</button>
+            <button onClick={handleBatchDelete} disabled={calculating}
+              className="bg-red-500 text-white px-3 py-1.5 rounded text-sm hover:bg-red-600 disabled:opacity-50">批量删除</button>
+          </div>
+        </div>
+      )}
+
       {/* Records Table */}
       {loading || periodsLoading ? (
         <div className="text-center py-12 text-gray-400">加载中...</div>
@@ -317,6 +424,10 @@ export default function PayrollPage() {
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="border-b bg-gray-50">
+                <th className="text-center px-2 py-3 w-10">
+                  <input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length}
+                    onChange={toggleSelectAll} className="w-4 h-4 cursor-pointer align-middle" />
+                </th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">员工</th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">类型</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">出勤</th>
@@ -335,6 +446,10 @@ export default function PayrollPage() {
             <tbody>
               {records.map((r: any) => (
                 <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-2 py-3 text-center">
+                    <input type="checkbox" checked={selectedIds.includes(r.id)}
+                      onChange={() => toggleSelect(r.id)} className="w-4 h-4 cursor-pointer align-middle" />
+                  </td>
                   <td className="px-3 py-3 font-medium">
                     {r.employee_name ?? "—"}
                     {r.settle_end_date && <div className="text-[11px] text-gray-400 font-normal">结算到 {r.settle_end_date.slice(5).replace("-", "月")}日</div>}
@@ -472,27 +587,27 @@ export default function PayrollPage() {
               {/* Salary breakdown（按工时） */}
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">上班工时</span>
-                  <span>{showPayslip.detail?.work_hours ?? (showPayslip.attendance_days ?? 0)} 小时</span>
+                  <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">上班工时</button>
+                  <span>{psWorkHours} 小时</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">时薪</span>
-                  <span>{showPayslip.detail?.hourly_rate ?? "—"}</span>
+                  <span>{psHourlyRate} <span className="text-gray-400 text-xs">({psHourlyFormula})</span></span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">上班工资</span>
-                  <span><b>{(showPayslip.base_pay ?? 0).toLocaleString()}</b></span>
+                  <span><b>{psWorkPay.toLocaleString()}</b> <span className="text-gray-400 text-xs">({psWorkHours}小时 × {psHourlyRate})</span></span>
                 </div>
-                {(showPayslip.overtime_pay ?? 0) > 0 && (
+                {psOvertimePay > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>加班费 ({showPayslip.overtime_hours ?? 0}h)</span>
-                    <span>+{showPayslip.overtime_pay}</span>
+                    <span>加班费 ({psOvertimeHours}h)</span>
+                    <span>+{psOvertimePay}</span>
                   </div>
                 )}
-                {(showPayslip.late_penalty ?? 0) > 0 && (
+                {psLatePenalty > 0 && (
                   <div className="flex justify-between text-sm text-red-500">
-                    <span>迟到扣款</span>
-                    <span>-{showPayslip.late_penalty ?? 0}</span>
+                    <button onClick={() => setLateDetailOpen(true)} className="text-red-500 hover:underline cursor-pointer">迟到扣款</button>
+                    <span>-{psLatePenalty}{psLateFormula ? <span className="text-red-300 text-xs"> ({psLateFormula})</span> : null}</span>
                   </div>
                 )}
               </div>
@@ -507,7 +622,9 @@ export default function PayrollPage() {
                 </div>
                 <div className="flex justify-between text-base font-bold pt-1 border-t">
                   <span>实发工资</span>
-                  <span className="text-blue-600 text-lg">{(showPayslip.net_pay ?? 0).toLocaleString()} 泰铢</span>
+                  <span className="text-blue-600 text-lg">{(showPayslip.net_pay ?? 0).toLocaleString()} 泰铢
+                    <span className="text-gray-400 text-xs font-normal ml-1">({psWorkPay} + {psOvertimePay} - {psTotalDeductions})</span>
+                  </span>
                 </div>
               </div>
 
@@ -541,6 +658,58 @@ export default function PayrollPage() {
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
               <button onClick={() => setShowPayslip(null)} className="text-sm text-gray-400">关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 逐天出勤明细 Modal */}
+      {dailyDetailOpen && showPayslip && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDailyDetailOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
+              <FileText size={18} />
+              <span className="font-semibold">上班工时明细</span>
+              <button onClick={() => setDailyDetailOpen(false)} className="ml-auto text-2xl text-white/80 hover:text-white">&times;</button>
+            </div>
+            <div className="p-4 space-y-1.5">
+              {psDailyHours.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">暂无逐天明细</div>
+              ) : psDailyHours.map((d: any) => (
+                <div key={d.date} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-50">
+                  <span className="font-medium text-gray-700 shrink-0">{d.day}号</span>
+                  <span className={`text-gray-600 ${d.status === "leave" ? "text-amber-600" : d.status === "rest" ? "text-blue-600" : d.status === "absence" ? "text-red-600" : d.status === "no_clock" ? "text-gray-400" : ""}`}>{dailyStatusText(d)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
+              <button onClick={() => setDailyDetailOpen(false)} className="text-sm text-gray-400">关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 迟到明细 Modal */}
+      {lateDetailOpen && showPayslip && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setLateDetailOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
+              <AlertTriangle size={18} />
+              <span className="font-semibold">迟到明细</span>
+              <button onClick={() => setLateDetailOpen(false)} className="ml-auto text-2xl text-white/80 hover:text-white">&times;</button>
+            </div>
+            <div className="p-4 space-y-1.5">
+              {psLateDetails.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">暂无迟到记录</div>
+              ) : psLateDetails.map((l: any, i: number) => (
+                <div key={`${l.date}_${i}`} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-50">
+                  <span className="font-medium text-gray-700 shrink-0">{l.day}号</span>
+                  <span className="text-red-600">{l.type === "late_half" ? "迟到半小时" : "迟到1小时"} 扣{l.amount}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
+              <button onClick={() => setLateDetailOpen(false)} className="text-sm text-gray-400">关闭</button>
             </div>
           </div>
         </div>

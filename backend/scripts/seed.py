@@ -275,6 +275,8 @@ async def seed():
         try:
             # ── 工资表 payroll_records ──
             await conn.execute(text("ALTER TABLE payroll_records ALTER COLUMN half TYPE VARCHAR(20)"))
+            # detail 加宽为 TEXT（存逐天明细/迟到明细，VARCHAR(3000) 可能不够）
+            await conn.execute(text("ALTER TABLE payroll_records ALTER COLUMN detail TYPE TEXT"))
             payroll_cols = [
                 ("settle_end_date", "DATE"),
                 ("disbursed", "BOOLEAN DEFAULT false"),

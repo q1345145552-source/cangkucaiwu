@@ -300,19 +300,25 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         absence_set = absence_by_emp.get(emp.id, set())
         leave_map = leave_by_emp.get(emp.id, {})
 
+        daily_list = []  # 逐天出勤明细
+        late_list = []   # 迟到明细（金额在算出时薪后补齐）
+
         current = period_start
         while current <= period_end:
             if current in rest_set:
                 rest_days_count += 1
+                daily_list.append({"day": current.day, "date": current.isoformat(), "status": "rest", "hours": 0.0, "times": []})
                 current += timedelta(days=1)
                 continue
             if current in absence_set:
                 absence_days_count += 1
+                daily_list.append({"day": current.day, "date": current.isoformat(), "status": "absence", "hours": 0.0, "times": []})
                 current += timedelta(days=1)
                 continue
             lt = leave_map.get(current, None)
             if lt == "full":
                 leave_days_count += 1
+                daily_list.append({"day": current.day, "date": current.isoformat(), "status": "leave", "hours": 0.0, "times": []})
                 current += timedelta(days=1)
                 continue
             if lt is not None:
@@ -320,8 +326,20 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
             sessions = clock_by_emp_date.get((emp.id, current), [])
             sessions_sorted = sorted(sessions, key=lambda c: c.clocked_in_at or datetime.min)
+            sessions_by_session = sorted(sessions, key=lambda c: c.session)
             n = len({c.session for c in sessions_sorted})
             hours = _day_hours(sessions_sorted) if n in (2, 4) else 0.0
+
+            # 该天打卡时间（按时段 1-4 顺序，HH:MM）
+            times = []
+            for c in sessions_by_session:
+                t = _local_time_of(c.clocked_in_at)
+                if t is not None:
+                    times.append(t.strftime("%H:%M"))
+            if n == 0:
+                daily_list.append({"day": current.day, "date": current.isoformat(), "status": "no_clock", "hours": 0.0, "times": []})
+            else:
+                daily_list.append({"day": current.day, "date": current.isoformat(), "status": "leave" if lt is not None else "normal", "hours": round(hours, 2), "times": times})
 
             if has_promotion_this_month:
                 if current.day < promotion_day:
@@ -338,8 +356,10 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 if cr.session == 1:
                     if cr.status == "late_half":
                         late_half_count += 1
+                        late_list.append({"day": current.day, "date": current.isoformat(), "type": "late_half"})
                     elif cr.status == "late_one":
                         late_one_count += 1
+                        late_list.append({"day": current.day, "date": current.isoformat(), "type": "late_one"})
 
             current += timedelta(days=1)
 
@@ -366,6 +386,10 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         overtime_hours = float(ot.get("hours", 0) or 0)
 
         late_penalty_total = round(late_half_count * hourly_rate * 0.5 + late_one_count * hourly_rate, 2)
+        late_details = []
+        for l in late_list:
+            amt = round(hourly_rate * 0.5, 2) if l["type"] == "late_half" else round(hourly_rate, 2)
+            late_details.append({"day": l["day"], "date": l["date"], "type": l["type"], "amount": amt})
         work_pay = round(work_pay, 2)
         gross_pay = round(work_pay + overtime_pay, 2)
         total_deductions = round(late_penalty_total, 2)
@@ -383,6 +407,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "absence_days": absence_days_count,
             "late_half_count": late_half_count,
             "late_one_count": late_one_count,
+            "daily_hours": daily_list,
+            "late_details": late_details,
         }
 
         record = PayrollRecord(
@@ -628,6 +654,93 @@ async def confirm_all_payroll(
         "count": len(records),
         "total_net": round(total_net, 2),
     }
+
+
+class BatchIdsRequest(BaseModel):
+    record_ids: List[int]
+
+
+async def _batch_fetch(db: AsyncSession, wh_id: int, record_ids: List[int]):
+    """拉取并校验：只返回当前仓库的记录；id 数量不符说明有越权/不存在记录。"""
+    ids = list(dict.fromkeys(record_ids or []))
+    if not ids:
+        raise HTTPException(400, "请选择要操作的记录")
+    records = (await db.execute(
+        select(PayrollRecord).where(
+            PayrollRecord.id.in_(ids),
+            PayrollRecord.warehouse_id == wh_id,
+        )
+    )).scalars().all()
+    if len(records) != len(ids):
+        raise HTTPException(403, "包含无权操作的记录")
+    return records
+
+
+@router.post("/batch-confirm")
+async def batch_confirm_payroll(
+    req: BatchIdsRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员可以确认工资")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    records = await _batch_fetch(db, wh_id, req.record_ids)
+    now = thai_now()
+    cnt = 0
+    for r in records:
+        if r.status != "confirmed":
+            r.status = "confirmed"
+            r.confirmed_by = current_user.id
+            r.confirmed_at = now
+            cnt += 1
+    await db.flush()
+    return {"message": f"已确认 {cnt} 条", "count": cnt}
+
+
+@router.post("/batch-disburse")
+async def batch_disburse_payroll(
+    req: BatchIdsRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员可以发放工资")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    records = await _batch_fetch(db, wh_id, req.record_ids)
+    now = thai_now()
+    cnt = 0
+    for r in records:
+        # 只发放已确认的；已发放的跳过不重复处理
+        if r.status == "confirmed" and not r.disbursed:
+            r.disbursed = True
+            r.disbursed_at = now
+            r.disbursed_by = current_user.id
+            cnt += 1
+    await db.flush()
+    return {"message": f"已发放 {cnt} 条", "count": cnt}
+
+
+@router.post("/batch-delete")
+async def batch_delete_payroll(
+    req: BatchIdsRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员可以删除工资记录")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    records = await _batch_fetch(db, wh_id, req.record_ids)
+    for r in records:
+        await db.delete(r)
+    await db.flush()
+    return {"message": f"已删除 {len(records)} 条", "count": len(records)}
 
 
 @router.delete("/{record_id}")
