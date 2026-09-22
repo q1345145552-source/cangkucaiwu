@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { api, getToken } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import SafeImage from "@/components/SafeImage";
 
 const SESSION_LABELS: Record<number, string> = {
   1: "早上上班", 2: "中午休息结束", 3: "下午上班", 4: "下午下班",
@@ -157,8 +158,14 @@ export default function ClockRecordsPage() {
                       <td className="sticky left-0 bg-white z-10 px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           {emp.photo_path ? (
-                            <img src={`/${emp.photo_path}?v=${Date.now()}`} className="w-6 h-6 rounded-full object-cover border cursor-pointer"
-                              onClick={() => setZoomedPhoto(`/${emp.photo_path}`)} />
+                            <SafeImage
+                              src={emp.photo_thumb_path ? `/${emp.photo_thumb_path}` : `/${emp.photo_path}`}
+                              fallbackSrc={`/${emp.photo_path}`}
+                              alt={emp.name}
+                              className="w-6 h-6 rounded-full object-cover border cursor-pointer"
+                              onClick={() => setZoomedPhoto(`/${emp.photo_path}`)}
+                              fallback={<div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] text-gray-400 font-bold">{emp.name?.[0]}</div>}
+                            />
                           ) : (
                             <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] text-gray-400 font-bold">
                               {emp.name?.[0]}

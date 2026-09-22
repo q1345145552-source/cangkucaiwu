@@ -506,7 +506,13 @@ export default function EmployeesPage() {
                   {photoFile ? (
                     <img src={URL.createObjectURL(photoFile)} className="w-16 h-16 rounded-full object-cover border" />
                   ) : editingId && data.find(e => e.id === editingId)?.photo_path ? (
-                    <img src={photoUrl(data.find(e => e.id === editingId)?.photo_path)} className="w-16 h-16 rounded-full object-cover border" />
+                    <SafeImage
+                      src={photoUrl(data.find(e => e.id === editingId)?.photo_thumb_path || data.find(e => e.id === editingId)?.photo_path)}
+                      fallbackSrc={photoUrl(data.find(e => e.id === editingId)?.photo_path)}
+                      alt="员工照片"
+                      className="w-16 h-16 rounded-full object-cover border"
+                      fallback={<div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-300"><Camera size={24} /></div>}
+                    />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-300">
                       <Camera size={24} />

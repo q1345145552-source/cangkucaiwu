@@ -188,8 +188,14 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                       <td className="sticky left-0 bg-white z-10 px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           {emp.photo_path ? (
-                            <img src={`/${emp.photo_path}`} className="w-6 h-6 rounded-full object-cover border cursor-pointer"
-                              onClick={() => setZoomedPhoto(`/${emp.photo_path}`)} />
+                            <SafeImage
+                              src={emp.photo_thumb_path ? `/${emp.photo_thumb_path}` : `/${emp.photo_path}`}
+                              fallbackSrc={`/${emp.photo_path}`}
+                              alt={emp.name}
+                              className="w-6 h-6 rounded-full object-cover border cursor-pointer"
+                              onClick={() => setZoomedPhoto(`/${emp.photo_path}`)}
+                              fallback={<div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] text-gray-400 font-bold">{emp.name?.[0]}</div>}
+                            />
                           ) : (
                             <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] text-gray-400 font-bold">{emp.name?.[0]}</div>
                           )}

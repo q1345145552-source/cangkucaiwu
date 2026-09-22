@@ -5,6 +5,8 @@ import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
+import SafeImage from "@/components/SafeImage";
+import { thumbPathOf } from "@/lib/image";
 import { TrendingUp, TrendingDown, Plus, DollarSign, Minus, ArrowUp, ArrowDown } from "lucide-react";
 
 function todayStr(): string {
@@ -397,7 +399,17 @@ export default function OperatingPage() {
               { key: "voucher", label: "凭证", render: (v: any) => {
                   const list = parseVouchers(v);
                   return list.length ? (
-                    <button onClick={(e) => { e.stopPropagation(); setZoomVouchers(list); setZoomIndex(0); }} className="text-blue-600 hover:underline text-xs font-medium">凭证({list.length})</button>
+                    <button onClick={(e) => { e.stopPropagation(); setZoomVouchers(list); setZoomIndex(0); }}
+                      className="inline-flex items-center gap-1.5 group" title="点击查看凭证">
+                      <SafeImage
+                        src={`/${thumbPathOf(list[0])}`}
+                        fallbackSrc={`/${list[0]}`}
+                        alt="凭证"
+                        className="w-10 h-10 rounded border object-cover"
+                        fallback={<span className="w-10 h-10 rounded border bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">凭证</span>}
+                      />
+                      <span className="text-blue-600 text-xs font-medium group-hover:underline">{list.length > 1 ? `${list.length}张` : ""}</span>
+                    </button>
                   ) : <span className="text-gray-300">无</span>;
                 } },
               { key: "id", label: "操作", render: (_: any, row: any) => (
@@ -508,7 +520,14 @@ export default function OperatingPage() {
                   <div className="mt-2 flex flex-wrap gap-2">
                     {editExistingVouchers.map((p, i) => (
                       <div key={p} className="relative inline-block">
-                        <img src={`/${p}`} alt={`凭证${i + 1}`} className="h-20 w-20 rounded-lg border object-cover cursor-pointer" onClick={() => { setZoomVouchers([p]); setZoomIndex(0); }} />
+                        <SafeImage
+                          src={`/${thumbPathOf(p)}`}
+                          fallbackSrc={`/${p}`}
+                          alt={`凭证${i + 1}`}
+                          className="h-20 w-20 rounded-lg border object-cover cursor-pointer"
+                          onClick={() => { setZoomVouchers([p]); setZoomIndex(0); }}
+                          fallback={<span className="h-20 w-20 rounded-lg border bg-gray-100 flex items-center justify-center text-gray-400 text-xs">凭证</span>}
+                        />
                         <button onClick={() => setConfirmDeleteVoucher(p)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs leading-none">×</button>
                       </div>
                     ))}

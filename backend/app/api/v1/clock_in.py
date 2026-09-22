@@ -206,6 +206,7 @@ async def list_records(
         "employees": [{
             "id": e.id, "name": e.name, "position": e.position,
             "user_id": e.user_id, "status": e.status, "photo_path": e.photo_path,
+            "photo_thumb_path": thumb_path_of(e.photo_path),
         } for e in emps],
         "records": [{
             "id": r.id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
