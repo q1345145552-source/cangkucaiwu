@@ -384,19 +384,20 @@ export default function PayrollPage() {
                 </div>
               </div>
 
-              {/* Salary breakdown */}
+              {/* Salary breakdown（按工时） */}
               <div className="space-y-2">
-                {showPayslip.employee_status === "trial" ? (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">日薪 × 出勤天数</span>
-                    <span>{showPayslip.daily_wage} × {showPayslip.attendance_days} = <b>{showPayslip.base_pay}</b></span>
-                  </div>
-                ) : (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">底薪 ÷ 有效天数 × 出勤</span>
-                    <span>{showPayslip.base_salary} ÷ {showPayslip.total_days_in_month - 2} × {showPayslip.attendance_days} = <b>{showPayslip.base_pay}</b></span>
-                  </div>
-                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">上班工时</span>
+                  <span>{showPayslip.detail?.work_hours ?? showPayslip.attendance_days} 小时</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">时薪</span>
+                  <span>{showPayslip.detail?.hourly_rate ?? "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">上班工资</span>
+                  <span><b>{showPayslip.base_pay?.toLocaleString()}</b></span>
+                </div>
                 {showPayslip.overtime_pay > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>加班费 ({showPayslip.overtime_hours}h)</span>
@@ -407,18 +408,6 @@ export default function PayrollPage() {
                   <div className="flex justify-between text-sm text-red-500">
                     <span>迟到扣款</span>
                     <span>-{showPayslip.late_penalty}</span>
-                  </div>
-                )}
-                {showPayslip.leave_deduction > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <span>请假扣款 ({showPayslip.leave_days}天)</span>
-                    <span>-{showPayslip.leave_deduction}</span>
-                  </div>
-                )}
-                {showPayslip.absence_deduction > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <span>缺勤扣款 ({showPayslip.absence_days}天)</span>
-                    <span>-{showPayslip.absence_deduction}</span>
                   </div>
                 )}
               </div>

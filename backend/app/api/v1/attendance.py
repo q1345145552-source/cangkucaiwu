@@ -29,6 +29,8 @@ async def create_leave(
     leave_date: str = Form(...),
     leave_type: str = Form("sick"),
     reason: str = Form(None),
+    duration_type: str = Form("full"),
+    hours: str = Form(None),
     file: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -38,6 +40,18 @@ async def create_leave(
 
     if leave_type not in ("sick", "personal"):
         raise HTTPException(400, "请假类型无效")
+
+    if duration_type not in ("full", "morning", "afternoon", "hours"):
+        raise HTTPException(400, "请假时长类型无效")
+
+    hours_val = None
+    if duration_type == "hours":
+        try:
+            hours_val = float(hours) if hours else None
+        except (ValueError, TypeError):
+            raise HTTPException(400, "小时数无效")
+        if hours_val is None or hours_val <= 0:
+            raise HTTPException(400, "请填写请假小时数")
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -91,6 +105,7 @@ async def create_leave(
         warehouse_id=wh_id, employee_id=emp.id,
         leave_date=leave_dt, leave_type=leave_type,
         photo_path=photo_path, reason=reason, status="pending",
+        duration_type=duration_type, hours=hours_val,
     )
     db.add(lr)
     await db.flush()
@@ -102,6 +117,8 @@ class LeaveBatchCreate(BaseModel):
     end_date: str    # YYYY-MM-DD
     leave_type: str = "sick"  # sick / personal
     reason: Optional[str] = None
+    duration_type: str = "full"  # full/morning/afternoon/hours
+    hours: Optional[float] = None
 
 @router.post("/leaves/admin-record")
 async def admin_record_leave(
@@ -114,6 +131,11 @@ async def admin_record_leave(
         raise HTTPException(403, "只有管理员或主管可以代录请假")
     if req.leave_type not in ("sick", "personal"):
         raise HTTPException(400, "请假类型无效")
+    if req.duration_type not in ("full", "morning", "afternoon", "hours"):
+        raise HTTPException(400, "请假时长类型无效")
+    hours_val = req.hours
+    if req.duration_type == "hours" and (hours_val is None or hours_val <= 0):
+        raise HTTPException(400, "请填写请假小时数")
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -153,6 +175,7 @@ async def admin_record_leave(
                 warehouse_id=wh_id, employee_id=req.employee_id,
                 leave_date=cur, leave_type=req.leave_type,
                 reason=req.reason, status="approved",
+                duration_type=req.duration_type, hours=hours_val,
                 reviewed_by=current_user.id, reviewed_at=thai_now(),
             ))
             created += 1
@@ -207,6 +230,7 @@ async def list_leaves(
     return {"data": [{
         "id": r.id, "employee_id": r.employee_id, "employee_name": name,
         "leave_date": r.leave_date.isoformat(), "leave_type": r.leave_type,
+        "duration_type": r.duration_type or "full", "hours": r.hours,
         "photo_path": r.photo_path, "status": r.status, "reason": r.reason,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     } for r, name in rows]}

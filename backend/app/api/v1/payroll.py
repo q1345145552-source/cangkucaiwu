@@ -10,9 +10,9 @@ from app.models.overtime import OvertimeAssignment, OvertimeTask
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
-from app.core.timezone import thai_now, thai_today
-from app.services.payroll_calc import compute_pay
-from datetime import datetime, date, timedelta
+from app.core.timezone import thai_now, thai_today, THAI_TZ
+from app.services.payroll_calc import compute_pay, late_penalty as _late_penalty
+from datetime import datetime, date, timedelta, time
 from typing import Optional, List
 import calendar
 import json
@@ -144,11 +144,11 @@ async def calculate_payroll(
             LeaveRequest.status == "approved",
         )
     )).scalars().all()
-    leave_by_emp = {}
+    leave_by_emp = {}  # emp_id -> {date: duration_type}
     for lv in leaves:
         if lv.employee_id not in leave_by_emp:
-            leave_by_emp[lv.employee_id] = set()
-        leave_by_emp[lv.employee_id].add(lv.leave_date)
+            leave_by_emp[lv.employee_id] = {}
+        leave_by_emp[lv.employee_id][lv.leave_date] = lv.duration_type or "full"
 
     rests = (await db.execute(
         select(RestDay).where(
@@ -195,17 +195,66 @@ async def calculate_payroll(
     overtime_rows = (await db.execute(overtime_query)).all()
     overtime_map = {r.employee_id: {"amount": r.total or 0, "hours": r.hours or 0} for r in overtime_rows}
 
-    # Now calculate for each employee
+    # ── 算工资前检查待补（打卡 1 次或 3 次的天） ──
+    SESSION_CN = {1: "早上上班", 2: "中午休息结束", 3: "下午上班", 4: "下午下班"}
+
+    def _local_time_of(dt):
+        if dt is None:
+            return None
+        if getattr(dt, "tzinfo", None) is not None:
+            return dt.astimezone(THAI_TZ).time()
+        return dt.time()
+
+    def _day_hours(sessions_sorted):
+        n = len(sessions_sorted)
+        times = [c.clocked_in_at for c in sessions_sorted]
+        if n == 2:
+            if times[0] is None or times[1] is None:
+                return 0.0
+            h = (times[1] - times[0]).total_seconds() / 3600.0
+            t0 = _local_time_of(times[0])
+            if t0 is not None and t0 < time(12, 0):
+                h -= 1.0
+            return max(h, 0.0)
+        if n == 4:
+            def _seg(a, b):
+                if a is None or b is None:
+                    return 0.0
+                return max((b - a).total_seconds() / 3600.0, 0.0)
+            return _seg(times[0], times[1]) + _seg(times[2], times[3])
+        return 0.0
+
+    pending_days = []
+    for emp in employees:
+        rest_set = rest_by_emp.get(emp.id, set())
+        absence_set = absence_by_emp.get(emp.id, set())
+        leave_map = leave_by_emp.get(emp.id, {})
+        current = period_start
+        while current <= period_end:
+            if current in rest_set or current in absence_set:
+                current += timedelta(days=1)
+                continue
+            lt = leave_map.get(current, None)
+            if lt == "full":
+                current += timedelta(days=1)
+                continue
+            sessions = clock_by_emp_date.get((emp.id, current), [])
+            n = len({c.session for c in sessions})
+            if n in (1, 3):
+                have = {c.session for c in sessions}
+                missing = [SESSION_CN[s] for s in (1, 2, 3, 4) if s not in have]
+                pending_days.append({"employee": emp.name, "date": current.isoformat(), "missing": missing})
+            current += timedelta(days=1)
+
+    if pending_days:
+        lines = [f"{p['employee']} {p['date']}（缺 {'、'.join(p['missing'])}）" for p in pending_days[:30]]
+        more = f" 等共 {len(pending_days)} 天" if len(pending_days) > 30 else ""
+        detail = f"本周期有 {len(pending_days)} 天打卡不完整，无法计算，请先补卡再计算：\n" + "\n".join(lines) + more
+        raise HTTPException(400, detail=detail)
+
+    # ── 按工时计算 ──
     records = []
     for emp in employees:
-        attendance_days = 0
-        absence_days_count = 0
-        late_half_count = 0  # 迟到半小时次数
-        late_one_count = 0   # 迟到1小时次数
-        leave_days_count = 0
-        rest_days_count = 0
-
-        # 转正拆分：先在同一套出勤判定里分桶，保证与 attendance_days 口径一致
         emp_status = emp.status or "trial"
         daily_wage = emp.daily_wage or 400
         base_salary = emp.base_salary or 12000
@@ -214,121 +263,109 @@ async def calculate_payroll(
             promotion_date and promotion_date.year == year and promotion_date.month == month
         )
         promotion_day = promotion_date.day if has_promotion_this_month else 0
-        trial_days = 0     # 转正前的出勤天数（口径同 attendance_days）
-        regular_days = 0   # 转正后的出勤天数
 
-        # Iterate each day in the month
+        adjusted_days = total_days - 2
+        if adjusted_days <= 0:
+            adjusted_days = total_days
+        trial_hourly = daily_wage / 8.0
+        regular_daily = base_salary / adjusted_days
+        regular_hourly = regular_daily / 8.0
+
+        trial_hours = 0.0
+        regular_hours = 0.0
+        late_half_count = 0
+        late_one_count = 0
+        rest_days_count = 0
+        leave_days_count = 0
+        absence_days_count = 0
+
+        rest_set = rest_by_emp.get(emp.id, set())
+        absence_set = absence_by_emp.get(emp.id, set())
+        leave_map = leave_by_emp.get(emp.id, {})
+
         current = period_start
         while current <= period_end:
-            leave_set = leave_by_emp.get(emp.id, set())
-            rest_set = rest_by_emp.get(emp.id, set())
-            absence_set = absence_by_emp.get(emp.id, set())
-
             if current in rest_set:
                 rest_days_count += 1
-            elif current in leave_set:
-                leave_days_count += 1
-            elif current in absence_set:
+                current += timedelta(days=1)
+                continue
+            if current in absence_set:
                 absence_days_count += 1
-            else:
-                # Check clock-in records
-                key = (emp.id, current)
-                sessions = clock_by_emp_date.get(key, [])
-                session_count = len({c.session for c in sessions})
+                current += timedelta(days=1)
+                continue
+            lt = leave_map.get(current, None)
+            if lt == "full":
+                leave_days_count += 1
+                current += timedelta(days=1)
+                continue
+            if lt is not None:
+                leave_days_count += 1  # 半天/按小时请假也记一天请假，但工时按实际打卡算
 
-                if session_count >= 3:
-                    # 3 or 4 sessions = full attendance
-                    attendance_days += 1
-                    # 同一判定下按转正日分桶（转正当日及之后算正式）
-                    if has_promotion_this_month:
-                        if current.day < promotion_day:
-                            trial_days += 1
-                        else:
-                            regular_days += 1
-                    # Count late penalties (session 1 only)
-                    for cr in sessions:
-                        if cr.session == 1:
-                            if cr.status == "late_half":
-                                late_half_count += 1
-                            elif cr.status == "late_one":
-                                late_one_count += 1
-                # 不足3场（含0场与1~2场）：一律不计出勤、也不自动计缺勤，
-                # 统一口径消除"漏打卡(1~2场)反而比完全没打卡(0场)更吃亏"的悖论。
-                # 真正的缺勤请通过「缺勤登记」录入，由 absence_set 统一扣款，避免误扣。
+            sessions = clock_by_emp_date.get((emp.id, current), [])
+            sessions_sorted = sorted(sessions, key=lambda c: c.clocked_in_at or datetime.min)
+            n = len({c.session for c in sessions_sorted})
+            hours = _day_hours(sessions_sorted) if n in (2, 4) else 0.0
+
+            if has_promotion_this_month:
+                if current.day < promotion_day:
+                    trial_hours += hours
+                else:
+                    regular_hours += hours
+            else:
+                if emp_status == "trial":
+                    trial_hours += hours
+                else:
+                    regular_hours += hours
+
+            for cr in sessions:
+                if cr.session == 1:
+                    if cr.status == "late_half":
+                        late_half_count += 1
+                    elif cr.status == "late_one":
+                        late_one_count += 1
 
             current += timedelta(days=1)
 
+        total_work_hours = trial_hours + regular_hours
+
         if has_promotion_this_month:
-            # Trial portion
-            trial_hourly = daily_wage / 8
-            trial_pay = daily_wage * trial_days
-
-            # Regular portion
-            adjusted_days = total_days - 2
-            if adjusted_days <= 0:
-                adjusted_days = total_days
-            regular_daily = base_salary / adjusted_days
-            regular_hourly = regular_daily / 8
-            regular_pay = round(regular_daily * regular_days, 2)
-
-            # Weighted average hourly rate for penalty calculation
-            total_present = trial_days + regular_days
-            if total_present > 0:
-                hourly_rate = (trial_hourly * trial_days + regular_hourly * regular_days) / total_present
-                effective_daily = hourly_rate * 8
+            work_pay = trial_hours * trial_hourly + regular_hours * regular_hourly
+            if total_work_hours > 0:
+                hourly_rate = (trial_hourly * trial_hours + regular_hourly * regular_hours) / total_work_hours
             else:
                 hourly_rate = trial_hourly
-                effective_daily = daily_wage
-
-            base_pay = round(trial_pay + regular_pay, 2)
-            emp_status_label = f"试用期→正式(转正{int(promotion_day)}日)"
+            emp_status_label = f"试用期→正式(转正{promotion_day}日)"
         elif emp_status == "trial":
-            hourly_rate = daily_wage / 8  # 日薪÷8
-            effective_daily = daily_wage
-            base_pay = daily_wage * attendance_days
+            hourly_rate = trial_hourly
+            work_pay = total_work_hours * hourly_rate
             emp_status_label = "试用期"
-        else:  # regular
-            adjusted_days = total_days - 2
-            if adjusted_days <= 0:
-                adjusted_days = total_days
-            effective_daily = base_salary / adjusted_days  # 日薪
-            hourly_rate = effective_daily / 8  # 时薪
-            base_pay = round(effective_daily * attendance_days, 2)
-            emp_status_label = "正式员工" 
+        else:
+            hourly_rate = regular_hourly
+            work_pay = total_work_hours * hourly_rate
+            emp_status_label = "正式员工"
 
-        # Overtime
         ot = overtime_map.get(emp.id, {})
-        overtime_pay = ot.get("amount", 0)
-        overtime_hours = ot.get("hours", 0)
+        overtime_pay = float(ot.get("amount", 0) or 0)
+        overtime_hours = float(ot.get("hours", 0) or 0)
 
-        # 用纯函数统一计算扣款与净工资（含负数下限保护），逻辑见 app/services/payroll_calc.py
-        _pay = compute_pay(
-            base_pay=base_pay, overtime_pay=overtime_pay,
-            effective_daily=effective_daily, hourly_rate=hourly_rate,
-            late_half_count=late_half_count, late_one_count=late_one_count,
-            leave_days=leave_days_count, absence_days=absence_days_count,
-        )
-        late_penalty_total = _pay.late_penalty
-        leave_deduction = _pay.leave_deduction
-        absence_deduction = _pay.absence_deduction
-        total_deductions = _pay.total_deductions
-        gross_pay = _pay.gross_pay
-        net_pay = _pay.net_pay
+        late_penalty_total = round(late_half_count * hourly_rate * 0.5 + late_one_count * hourly_rate, 2)
+        work_pay = round(work_pay, 2)
+        gross_pay = round(work_pay + overtime_pay, 2)
+        total_deductions = round(late_penalty_total, 2)
+        net_pay = round(max(work_pay - late_penalty_total + overtime_pay, 0), 2)
 
         detail_data = {
-            "attendance_days": attendance_days,
+            "work_hours": round(total_work_hours, 2),
+            "hourly_rate": round(hourly_rate, 2),
+            "work_pay": work_pay,
+            "late_penalty": late_penalty_total,
+            "overtime_hours": round(overtime_hours, 1),
+            "overtime_pay": round(overtime_pay, 2),
             "leave_days": leave_days_count,
             "rest_days": rest_days_count,
             "absence_days": absence_days_count,
             "late_half_count": late_half_count,
             "late_one_count": late_one_count,
-            "hourly_rate": round(hourly_rate, 2),
-            "effective_daily": round(effective_daily, 2),
-            "late_penalty": late_penalty_total,
-            "leave_deduction": leave_deduction,
-            "absence_deduction": absence_deduction,
-            "overtime_hours": overtime_hours,
-            "overtime_pay": overtime_pay,
         }
 
         record = PayrollRecord(
@@ -338,21 +375,21 @@ async def calculate_payroll(
             period=req.period,
             status="pending",
             total_days_in_month=total_days,
-            attendance_days=attendance_days,
+            attendance_days=round(total_work_hours / 8.0, 2),
             leave_days=leave_days_count,
             rest_days=rest_days_count,
             absence_days=absence_days_count,
             employee_status=emp_status,
             daily_wage=daily_wage,
             base_salary=base_salary,
-            base_pay=round(base_pay, 2),
+            base_pay=work_pay,
             overtime_pay=round(overtime_pay, 2),
             overtime_hours=round(overtime_hours, 1),
-            late_penalty=round(late_penalty_total, 2),
-            leave_deduction=round(leave_deduction, 2),
-            absence_deduction=round(absence_deduction, 2),
-            gross_pay=round(gross_pay, 2),
-            total_deductions=round(total_deductions, 2),
+            late_penalty=late_penalty_total,
+            leave_deduction=0,
+            absence_deduction=0,
+            gross_pay=gross_pay,
+            total_deductions=total_deductions,
             net_pay=net_pay,
             detail=json.dumps(detail_data, ensure_ascii=False),
         )

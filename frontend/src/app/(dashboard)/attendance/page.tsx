@@ -67,6 +67,8 @@ export default function AttendancePage() {
   const [showAbsenceForm, setShowAbsenceForm] = useState(false);
   const [leaveDate, setLeaveDate] = useState("");
   const [leaveType, setLeaveType] = useState("sick");
+  const [leaveDuration, setLeaveDuration] = useState("full");
+  const [leaveHours, setLeaveHours] = useState("");
   const [leaveReason, setLeaveReason] = useState("");
   const [leavePhoto, setLeavePhoto] = useState<File | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +78,8 @@ export default function AttendancePage() {
   const [proxyStartDate, setProxyStartDate] = useState("");
   const [proxyEndDate, setProxyEndDate] = useState("");
   const [proxyType, setProxyType] = useState("sick");
+  const [proxyDuration, setProxyDuration] = useState("full");
+  const [proxyHours, setProxyHours] = useState("");
   const [proxyReason, setProxyReason] = useState("");
 
   // Rest day form
@@ -134,6 +138,8 @@ export default function AttendancePage() {
     const fd = new FormData();
     fd.append("leave_date", leaveDate);
     fd.append("leave_type", leaveType);
+    fd.append("duration_type", leaveDuration);
+    if (leaveDuration === "hours") fd.append("hours", leaveHours || "");
     if (leaveReason) fd.append("reason", leaveReason);
     if (leavePhoto) fd.append("file", leavePhoto);
 
@@ -141,7 +147,7 @@ export default function AttendancePage() {
       const token = getToken();
       const res = await fetch("/api/v1/attendance/leaves", { method: "POST", headers: { Authorization: `Bearer ${token}`, "X-Language": localStorage.getItem("locale") || "zh" }, body: fd });
       const r = await res.json();
-      if (res.ok) { toast("success", t("submit_ok")); setShowLeaveForm(false); setLeaveDate(""); setLeaveType("sick"); setLeavePhoto(null); loadLeaves(); }
+      if (res.ok) { toast("success", t("submit_ok")); setShowLeaveForm(false); setLeaveDate(""); setLeaveType("sick"); setLeaveDuration("full"); setLeaveHours(""); setLeavePhoto(null); loadLeaves(); }
       else toast("error", r.detail || t("submit_failed"));
     } catch { toast("error", t("network_error")); }
   }
@@ -156,12 +162,14 @@ export default function AttendancePage() {
         start_date: proxyStartDate,
         end_date: proxyEndDate,
         leave_type: proxyType,
+        duration_type: proxyDuration,
+        hours: proxyDuration === "hours" ? (parseFloat(proxyHours) || undefined) : undefined,
         reason: proxyReason || undefined,
       });
       toast("success", r.message || t("submit_ok"));
       setShowProxyLeaveForm(false);
       setProxyEmpId(0); setProxyStartDate(""); setProxyEndDate("");
-      setProxyType("sick"); setProxyReason("");
+      setProxyType("sick"); setProxyDuration("full"); setProxyHours(""); setProxyReason("");
       loadLeaves(); loadCalendar();
     } catch (err: any) { toast("error", err.message || t("operation_failed")); }
   }
@@ -400,6 +408,20 @@ export default function AttendancePage() {
                 <input type="date" className="form-input py-2.5" value={leaveDate} onChange={e => setLeaveDate(e.target.value)} />
               </div>
               <div>
+                <label className="form-label text-sm mb-1 block">请假时长</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[["full", "整天"], ["morning", "上午半天"], ["afternoon", "下午半天"], ["hours", "按小时"]].map(([v, lbl]) => (
+                    <button key={v} type="button" onClick={() => setLeaveDuration(v)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs border ${leaveDuration === v ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                {leaveDuration === "hours" && (
+                  <input type="number" step="0.5" min="0.5" className="form-input py-2 mt-2" placeholder="请假小时数" value={leaveHours} onChange={e => setLeaveHours(e.target.value)} />
+                )}
+              </div>
+              <div>
                 <label className="form-label text-sm mb-1 block">{t("reason")}</label>
                 <input className="form-input py-2.5" placeholder={t("att_leave_reason_placeholder")} value={leaveReason} onChange={e => setLeaveReason(e.target.value)} />
               </div>
@@ -461,6 +483,20 @@ export default function AttendancePage() {
                     {t("att_personal_leave")}
                   </button>
                 </div>
+              </div>
+              <div>
+                <label className="form-label text-sm mb-1 block">请假时长</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[["full", "整天"], ["morning", "上午半天"], ["afternoon", "下午半天"], ["hours", "按小时"]].map(([v, lbl]) => (
+                    <button key={v} type="button" onClick={() => setProxyDuration(v)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs border ${proxyDuration === v ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                {proxyDuration === "hours" && (
+                  <input type="number" step="0.5" min="0.5" className="form-input py-2 mt-2" placeholder="请假小时数" value={proxyHours} onChange={e => setProxyHours(e.target.value)} />
+                )}
               </div>
               <div>
                 <label className="form-label text-sm mb-1 block">{t("reason")}</label>

@@ -251,6 +251,12 @@ async def seed():
                 "ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS makeup_reason VARCHAR(500)"
             ))
             await conn.execute(text(
+                "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS duration_type VARCHAR(20) DEFAULT 'full'"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS hours DOUBLE PRECISION"
+            ))
+            await conn.execute(text(
                 "UPDATE supplier_cross_border_prices SET currency = 'CNY' WHERE currency = '人民币'"
             ))
             await conn.execute(text(
