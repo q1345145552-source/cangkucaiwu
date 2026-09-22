@@ -89,21 +89,17 @@ async def create_overtime(
     if len(employees) != len(req.employee_ids):
         raise HTTPException(400, "部分员工不存在或已离职")
 
-    # Check monthly overtime limit
+    # Check monthly overtime limit（按员工档案统计，不管有没有登录账号都检查）
     limit_hours = await _get_monthly_limit(db, wh_id)
-    month_start = ot_date.replace(day=1)
 
     for emp in employees:
-        # Find the linked user for this employee
-        linked_user = await _find_linked_user(db, emp)
-        if linked_user:
-            month_overtime = await _get_monthly_overtime_hours(db, linked_user.id, ot_date)
-            if month_overtime + hours > limit_hours:
-                raise HTTPException(
-                    400,
-                    f"员工 {emp.name} 本月累计加班 {month_overtime:.1f}h，"
-                    f"加上本次 {hours:.1f}h 将超过上限 {limit_hours:.0f}h"
-                )
+        month_overtime = await _get_monthly_overtime_hours_by_employee(db, emp.id, ot_date)
+        if month_overtime + hours > limit_hours:
+            raise HTTPException(
+                400,
+                f"员工 {emp.name} 本月累计加班 {month_overtime:.1f}h，"
+                f"加上本次 {hours:.1f}h 将超过上限 {limit_hours:.0f}h"
+            )
 
     # Create overtime task
     task = OvertimeTask(
@@ -167,10 +163,15 @@ async def confirm_overtime(
     if not task:
         raise HTTPException(404, "加班任务不存在")
 
+    # 先找到登录用户对应的员工档案（绑定账号优先，姓名兜底），再按员工档案找分配记录
+    emp = await _find_employee_for_user(db, wh_id, current_user)
+    if not emp:
+        raise HTTPException(400, "未找到您的员工档案，无法确认加班")
+
     assignment = (await db.execute(
         select(OvertimeAssignment).where(
             OvertimeAssignment.overtime_id == overtime_id,
-            OvertimeAssignment.user_id == current_user.id,
+            OvertimeAssignment.employee_id == emp.id,
         )
     )).scalar_one_or_none()
     if not assignment:
@@ -213,17 +214,20 @@ async def list_overtimes(
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.WAREHOUSE_LABOR:
-        # Employees see their assigned tasks
+        # Employees see their assigned tasks（按员工档案匹配，账号换绑也能看到）
+        emp = await _find_employee_for_user(db, get_wh_id(current_user), current_user)
+        if not emp:
+            return {"data": [], "total": 0, "page": page, "page_size": page_size}
         query = (
             select(OvertimeTask)
             .join(OvertimeAssignment, OvertimeAssignment.overtime_id == OvertimeTask.id)
-            .where(OvertimeAssignment.user_id == current_user.id)
+            .where(OvertimeAssignment.employee_id == emp.id)
             .distinct()
         )
         count_q = (
             select(func.count(func.distinct(OvertimeTask.id)))
             .join(OvertimeAssignment, OvertimeAssignment.overtime_id == OvertimeTask.id)
-            .where(OvertimeAssignment.user_id == current_user.id)
+            .where(OvertimeAssignment.employee_id == emp.id)
         )
     else:
         wh_ids = get_wh_ids(current_user)
@@ -318,11 +322,16 @@ async def pending_overtimes(
     if not wh_id:
         return {"data": [], "pending_count": 0}
 
-    # Find tasks where this user has unconfirmed assignments
+    # 先找到员工档案，再按员工档案找未确认的分配（账号换绑也能找到）
+    emp = await _find_employee_for_user(db, wh_id, current_user)
+    if not emp:
+        return {"data": [], "pending_count": 0}
+
+    # Find tasks where this employee has unconfirmed assignments
     sub = (
         select(OvertimeAssignment.overtime_id)
         .where(
-            OvertimeAssignment.user_id == current_user.id,
+            OvertimeAssignment.employee_id == emp.id,
             OvertimeAssignment.confirmed == False,
         )
         .subquery()
@@ -360,8 +369,11 @@ async def monthly_hours(
         month = thai_today().strftime("%Y-%m")
 
     if current_user.role == Role.WAREHOUSE_LABOR:
-        hours = await _get_monthly_overtime_hours(db, current_user.id, month + "-01")
-        return {"month": month, "total_hours": round(hours, 1), "employee_id": current_user.id}
+        emp = await _find_employee_for_user(db, get_wh_id(current_user), current_user)
+        if not emp:
+            return {"month": month, "total_hours": 0, "employee_id": None}
+        hours = await _get_monthly_overtime_hours_by_employee(db, emp.id, month + "-01")
+        return {"month": month, "total_hours": round(hours, 1), "employee_id": emp.id}
 
     wh_ids = get_wh_ids(current_user)
     y, m = month.split("-")
@@ -524,6 +536,50 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
             )
         )).scalar_one_or_none()
     return user
+
+
+async def _find_employee_for_user(db: AsyncSession, wh_id: int, user: User):
+    """登录用户 → 员工档案：优先绑定账号(user_id)，姓名兜底。"""
+    emp = (await db.execute(
+        select(Employee).where(
+            Employee.warehouse_id == wh_id,
+            Employee.user_id == user.id,
+            Employee.is_deleted == False,
+        )
+    )).scalar_one_or_none()
+    if not emp:
+        emp = (await db.execute(
+            select(Employee).where(
+                Employee.warehouse_id == wh_id,
+                Employee.name == user.display_name,
+                Employee.is_deleted == False,
+            )
+        )).scalar_one_or_none()
+    return emp
+
+
+async def _get_monthly_overtime_hours_by_employee(db: AsyncSession, employee_id: int, month_str_or_date) -> float:
+    """按员工档案统计某员工本月已分配的加班小时数（不管账号，不管是否确认）。"""
+    if isinstance(month_str_or_date, str):
+        d = datetime.strptime(month_str_or_date, "%Y-%m-%d").date()
+    else:
+        d = month_str_or_date
+    month_start = d.replace(day=1)
+    if month_start.month == 12:
+        month_end = month_start.replace(year=month_start.year + 1, month=1, day=1)
+    else:
+        month_end = month_start.replace(month=month_start.month + 1, day=1)
+
+    result = (await db.execute(
+        select(func.sum(OvertimeTask.hours))
+        .join(OvertimeAssignment, OvertimeTask.id == OvertimeAssignment.overtime_id)
+        .where(
+            OvertimeAssignment.employee_id == employee_id,
+            OvertimeTask.date >= month_start,
+            OvertimeTask.date < month_end,
+        )
+    )).scalar()
+    return float(result or 0)
 
 
 async def _get_monthly_limit(db: AsyncSession, warehouse_id: int) -> float:
