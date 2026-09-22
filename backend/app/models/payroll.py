@@ -12,7 +12,8 @@ class PayrollRecord(Base):
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
     period = Column(String(7), nullable=False, index=True)  # YYYY-MM
-    half = Column(String(10), nullable=False, default="first_half", index=True)  # first_half / second_half
+    half = Column(String(20), nullable=False, default="first_half", index=True)  # first_half / second_half
+    settle_end_date = Column(Date, nullable=True, comment="结算截止日：正常周期=周期结束日，离职/单人结算=截止日")
     status = Column(String(20), nullable=False, default="pending")  # pending / confirmed
     disbursed = Column(Boolean, default=False)  # 已发放
 

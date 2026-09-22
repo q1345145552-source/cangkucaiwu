@@ -274,7 +274,9 @@ async def seed():
         # Migration: 补全各表模型字段（幂等 ADD COLUMN IF NOT EXISTS，缺哪个补哪个）
         try:
             # ── 工资表 payroll_records ──
+            await conn.execute(text("ALTER TABLE payroll_records ALTER COLUMN half TYPE VARCHAR(20)"))
             payroll_cols = [
+                ("settle_end_date", "DATE"),
                 ("disbursed", "BOOLEAN DEFAULT false"),
                 ("total_days_in_month", "INTEGER DEFAULT 0"),
                 ("attendance_days", "INTEGER DEFAULT 0"),

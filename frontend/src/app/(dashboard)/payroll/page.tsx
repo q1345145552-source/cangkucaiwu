@@ -4,7 +4,7 @@ import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Calculator, CheckCircle, Trash2, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye } from "lucide-react";
+import { Calculator, CheckCircle, Trash2, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User } from "lucide-react";
 
 export default function PayrollPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
@@ -20,6 +20,10 @@ export default function PayrollPage() {
   const [showCalcModal, setShowCalcModal] = useState(false);
   const [showPayslip, setShowPayslip] = useState<any>(null);
   const [disbursing, setDisbursing] = useState<number | null>(null);
+  const [showSingleModal, setShowSingleModal] = useState(false);
+  const [singleEmpId, setSingleEmpId] = useState<number>(0);
+  const [singleEndDate, setSingleEndDate] = useState(new Date().toISOString().slice(0, 10));
+  const [singleEmployees, setSingleEmployees] = useState<any[]>([]);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -88,6 +92,30 @@ export default function PayrollPage() {
     } catch (err: any) {
       toast("error", err.message || "计算失败");
     }
+    setCalculating(false);
+  }
+
+  async function openSingleModal() {
+    setShowSingleModal(true);
+    setSingleEndDate(new Date().toISOString().slice(0, 10));
+    try {
+      const r = await api.get<any>("/employees?page_size=200");
+      setSingleEmployees((r.data || []).filter((e: any) => e.status !== "resigned"));
+    } catch {}
+  }
+
+  async function handleSingleSettle() {
+    if (!singleEmpId) { toast("error", "请选择员工"); return; }
+    if (!singleEndDate) { toast("error", "请选择截止日期"); return; }
+    setCalculating(true);
+    try {
+      const r = await api.post<any>("/payroll/single-settle", { employee_id: singleEmpId, end_date: singleEndDate });
+      toast("success", r.message || "结算完成");
+      setShowSingleModal(false);
+      const d = new Date(singleEndDate);
+      setSelectedPeriodKey(`${singleEndDate.slice(0, 7)}_${d.getDate() <= 15 ? "first_half" : "second_half"}`);
+      loadPeriods();
+    } catch (err: any) { toast("error", err.message || "结算失败"); }
     setCalculating(false);
   }
 
@@ -175,6 +203,10 @@ export default function PayrollPage() {
                 className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
                 <Calculator size={16}/> 计算工资
               </button>
+              <button onClick={openSingleModal}
+                className="border border-blue-300 text-blue-600 flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-blue-50">
+                <User size={16}/> 单人结算
+              </button>
               {records.length > 0 && (
                 <>
                   <button onClick={handleConfirmAll}
@@ -247,7 +279,10 @@ export default function PayrollPage() {
             <tbody>
               {records.map((r: any) => (
                 <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-3 py-3 font-medium">{r.employee_name}</td>
+                  <td className="px-3 py-3 font-medium">
+                    {r.employee_name}
+                    {r.settle_end_date && <div className="text-[11px] text-gray-400 font-normal">结算到 {r.settle_end_date.slice(5).replace("-", "月")}日</div>}
+                  </td>
                   <td className="px-3 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs ${
                       r.employee_status === "trial" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
@@ -347,6 +382,37 @@ export default function PayrollPage() {
               <button onClick={handleCalculate} disabled={calculating}
                 className="btn-primary text-sm px-6 py-2 flex items-center gap-1">
                 {calculating ? "计算中..." : "开始计算"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 单人结算 Modal */}
+      {showSingleModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowSingleModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <User size={20} /><span className="font-semibold">单人结算</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">选择员工</label>
+                <select className="form-input text-base py-2.5" value={singleEmpId || ""} onChange={e => setSingleEmpId(+e.target.value)}>
+                  <option value="">请选择员工</option>
+                  {singleEmployees.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">截止日期</label>
+                <input type="date" className="form-input text-base py-2.5" value={singleEndDate} onChange={e => setSingleEndDate(e.target.value)} />
+                <p className="text-xs text-gray-400 mt-1">从当前半月周期开始算到截止日（1-15 上半月，16-月末 下半月）。</p>
+              </div>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setShowSingleModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={handleSingleSettle} disabled={calculating} className="btn-primary text-sm px-6 py-2">
+                {calculating ? "结算中..." : "结算"}
               </button>
             </div>
           </div>

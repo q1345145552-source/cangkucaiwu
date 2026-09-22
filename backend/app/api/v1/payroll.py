@@ -23,6 +23,13 @@ router = APIRouter()
 class CalculateRequest(BaseModel):
     period: str  # YYYY-MM
     half: str = "first_half"  # first_half / second_half
+    employee_ids: Optional[List[int]] = None  # 单人结算时指定
+    end_date: Optional[str] = None  # 结算截止日 YYYY-MM-DD（单人/离职结算用）
+
+
+class SingleSettleRequest(BaseModel):
+    employee_id: int
+    end_date: str  # YYYY-MM-DD
 
 
 @router.post("/calculate")
@@ -47,7 +54,30 @@ async def calculate_payroll(
     if month < 1 or month > 12:
         raise HTTPException(400, "月份无效")
 
-    # Check if payroll already calculated for this period+half
+    # 结算截止日：单人/离职结算用 end_date，正常周期用周期结束日
+    _, total_days = calendar.monthrange(year, month)
+    if req.end_date:
+        try:
+            settle_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
+        except:
+            raise HTTPException(400, "截止日期格式错误，应为 YYYY-MM-DD")
+        if settle_end.year != year or settle_end.month != month:
+            raise HTTPException(400, "截止日期必须在本周期内")
+        period_end = settle_end
+    elif req.half == "first_half":
+        period_end = date(year, month, 15)
+        settle_end = period_end
+    else:
+        period_end = date(year, month, total_days)
+        settle_end = period_end
+
+    # 周期开始日：上半月 1 号，下半月 16 号
+    if req.half == "first_half":
+        period_start = date(year, month, 1)
+    else:
+        period_start = date(year, month, 16)
+
+    # 已计算过的员工（同周期同半月）：跳过，不再整单拦截
     existing = (await db.execute(
         select(PayrollRecord).where(
             PayrollRecord.warehouse_id == wh_id,
@@ -55,34 +85,37 @@ async def calculate_payroll(
             PayrollRecord.half == req.half,
         )
     )).scalars().all()
-    if existing:
-        half_label = "上半月" if req.half == "first_half" else "下半月"
-        raise HTTPException(400, f"{req.period} {half_label} 的工资已计算过，请先删除旧记录再重新计算")
+    already_calc_emp_ids = {r.employee_id for r in existing}
 
-    # Get all active employees with user_id links（排除已删除）
-    employees = (await db.execute(
-        select(Employee).where(
-            Employee.warehouse_id == wh_id,
-            Employee.status != "resigned",
-            Employee.is_deleted == False,
-        )
-    )).scalars().all()
+    # 在职员工（排除已删除），单人结算时可限定
+    emp_q = select(Employee).where(
+        Employee.warehouse_id == wh_id,
+        Employee.status != "resigned",
+        Employee.is_deleted == False,
+    )
+    if req.employee_ids:
+        emp_q = emp_q.where(Employee.id.in_(req.employee_ids))
+    employees = (await db.execute(emp_q)).scalars().all()
 
     if not employees:
-        return {"message": "该仓库没有在职员工", "records": []}
+        return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
 
-    # Half-month boundaries
-    if req.half == "first_half":
-        period_start = date(year, month, 1)
-        period_end = date(year, month, 15)
-        period_label = "上半月"
-    else:
-        period_start = date(year, month, 16)
-        _, total_days = calendar.monthrange(year, month)
-        period_end = date(year, month, total_days)
-        period_label = "下半月"
+    # 已离职但本期有结算记录 → 跳过并说明
+    skipped_notes = []
+    resigned_settled = (await db.execute(
+        select(PayrollRecord.employee_id, Employee.name)
+        .join(Employee, Employee.id == PayrollRecord.employee_id)
+        .where(
+            PayrollRecord.warehouse_id == wh_id,
+            PayrollRecord.period == req.period,
+            PayrollRecord.half == req.half,
+            Employee.status == "resigned",
+        )
+    )).all()
+    for eid, ename in resigned_settled:
+        skipped_notes.append(f"{ename} 已离职结算，跳过")
+
     month_start = date(year, month, 1)
-    _, total_days = calendar.monthrange(year, month)
     month_end = date(year, month, total_days)
 
     # Build employee_id -> user_id mapping (via the formal link)
@@ -255,6 +288,8 @@ async def calculate_payroll(
     # ── 按工时计算 ──
     records = []
     for emp in employees:
+        if emp.id in already_calc_emp_ids:
+            continue  # 本期已算过，跳过
         emp_status = emp.status or "trial"
         daily_wage = emp.daily_wage or 400
         base_salary = emp.base_salary or 12000
@@ -373,6 +408,7 @@ async def calculate_payroll(
             half=req.half,
             employee_id=emp.id,
             period=req.period,
+            settle_end_date=settle_end,
             status="pending",
             total_days_in_month=total_days,
             attendance_days=round(total_work_hours / 8.0, 2),
@@ -397,11 +433,41 @@ async def calculate_payroll(
         records.append(record)
 
     await db.flush()
+    msg = f"已为 {len(records)} 名员工计算 {req.period} 工资"
+    if skipped_notes:
+        msg += "；" + "；".join(skipped_notes)
     return {
-        "message": f"已为 {len(records)} 名员工计算 {req.period} 工资",
+        "message": msg,
         "period": req.period,
         "record_count": len(records),
+        "skipped": skipped_notes,
     }
+
+@router.post("/single-settle")
+async def single_settle(
+    req: SingleSettleRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """单人结算：选员工 + 截止日期，从当前周期开始算到截止日。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以单人结算")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    try:
+        d = datetime.strptime(req.end_date, "%Y-%m-%d").date()
+    except:
+        raise HTTPException(400, "截止日期格式错误，应为 YYYY-MM-DD")
+
+    period = d.strftime("%Y-%m")
+    half = "first_half" if d.day <= 15 else "second_half"
+    return await calculate_payroll(
+        CalculateRequest(period=period, half=half, employee_ids=[req.employee_id], end_date=req.end_date),
+        current_user, db,
+    )
 
 @router.get("")
 async def list_payroll(
@@ -449,6 +515,7 @@ async def list_payroll(
             "employee_status": r.employee_status,
             "period": r.period,
             "half": r.half,
+            "settle_end_date": r.settle_end_date.isoformat() if r.settle_end_date else None,
             "status": r.status,
             "total_days_in_month": r.total_days_in_month,
             "attendance_days": r.attendance_days,

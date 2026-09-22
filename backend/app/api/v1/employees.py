@@ -392,8 +392,13 @@ async def resign_employee(
         if existing:
             payroll_msg = f"，{period}工资已存在(ID:{existing.id})"
         else:
-            # Calculate from month start to resignation date
-            month_start = date(resign_dt.year, resign_dt.month, 1)
+            # 按半月周期：1-15 上半月，16-月末 下半月；从周期开始算到离职日
+            if resign_dt.day <= 15:
+                half = "first_half"
+                month_start = date(resign_dt.year, resign_dt.month, 1)
+            else:
+                half = "second_half"
+                month_start = date(resign_dt.year, resign_dt.month, 16)
             _, total_days = calendar.monthrange(resign_dt.year, resign_dt.month)
             month_end = date(resign_dt.year, resign_dt.month, total_days)
 
@@ -532,6 +537,8 @@ async def resign_employee(
                 warehouse_id=e.warehouse_id,
                 employee_id=employee_id,
                 period=period,
+                half=half,
+                settle_end_date=resign_dt,
                 status="pending",
                 total_days_in_month=total_days,
                 attendance_days=attendance_days,

@@ -901,6 +901,9 @@ export default function EmployeesPage() {
                 <textarea className="form-input text-base py-2.5 w-full" rows={2} value={resignForm.note}
                   onChange={e => setResignForm({ ...resignForm, note: e.target.value })} placeholder="选填" />
               </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+                <p>确认离职后将自动结算该员工工资（从当前半月周期开始算到离职日）。</p>
+              </div>
               {resignForm.reason === "fired" && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <label className="flex items-center gap-2 cursor-pointer">
