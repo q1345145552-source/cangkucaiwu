@@ -4,7 +4,35 @@ import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { thaiNow } from "@/lib/thai-time";
 import { Calculator, CheckCircle, Trash2, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User } from "lucide-react";
+
+// 合并周期：后端已有周期 + 当前月上下半月（去重，最近的在前）
+function mergePeriods(ps: any[]): any[] {
+  const t = thaiNow();
+  const cur = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+  const list = [...(ps || [])];
+  for (const half of ["first_half", "second_half"]) {
+    list.push({
+      period: cur,
+      half,
+      label: `${cur} ${half === "second_half" ? "下半月" : "上半月"}`,
+    });
+  }
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const p of list) {
+    const key = `${p.period}_${p.half}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  out.sort((a, b) => {
+    if (a.period !== b.period) return a.period < b.period ? 1 : -1;
+    return a.half < b.half ? 1 : -1;
+  });
+  return out;
+}
 
 export default function PayrollPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
@@ -15,10 +43,7 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("");
-  const [calcPeriod, setCalcPeriod] = useState(new Date().toISOString().slice(0, 7));
-  const [calcHalf, setCalcHalf] = useState("first_half");
   const [selectedPeriodKey, setSelectedPeriodKey] = useState("");
-  const [showCalcModal, setShowCalcModal] = useState(false);
   const [showPayslip, setShowPayslip] = useState<any>(null);
   const [disbursing, setDisbursing] = useState<number | null>(null);
   const [showSingleModal, setShowSingleModal] = useState(false);
@@ -40,7 +65,7 @@ export default function PayrollPage() {
     setPeriodsLoading(true);
     try {
       const r = await api.get<any>("/payroll");
-      const ps = r.periods || [];
+      const ps = mergePeriods(r.periods || []);
       setPeriods(ps);
       if (ps.length > 0) {
         const first = ps[0];
@@ -59,7 +84,7 @@ export default function PayrollPage() {
   async function loadPeriods() {
     try {
       const r = await api.get<any>("/payroll");
-      setPeriods(r.periods || []);
+      setPeriods(mergePeriods(r.periods || []));
     } catch (err: any) {
       toast("error", err.message || "加载工资周期失败");
     }
@@ -96,17 +121,20 @@ export default function PayrollPage() {
   }
 
   async function handleCalculate() {
+    if (!selectedPeriodKey) { toast("error", "请先选择周期"); return; }
+    const { period, half } = periodKeyToApi(selectedPeriodKey);
+    const label = periodLabel(selectedPeriodKey);
+    if (!confirm(`确定计算 ${label} 的工资吗？`)) return;
     setCalculating(true);
     try {
-      await api.post("/payroll/calculate", { period: calcPeriod, half: calcHalf });
-      const halfLabel = calcHalf === "second_half" ? "下半月" : "上半月";
-      toast("success", `${calcPeriod} ${halfLabel} 工资计算完成`);
-      setShowCalcModal(false);
-      const newKey = `${calcPeriod}_${calcHalf}`;
-      setSelectedPeriodKey(newKey);
-      setSelectedPeriod(calcPeriod);
+      const r = await api.post<any>("/payroll/calculate", { period, half });
+      if (r.record_count > 0) {
+        toast("success", `${label} 工资计算完成`);
+      } else {
+        toast("error", `${label} 已计算过，未新增工资单`);
+      }
       loadPeriods();
-      loadRecords(newKey);
+      loadRecords(selectedPeriodKey);
     } catch (err: any) {
       toast("error", err.message || "计算失败");
     }
@@ -178,15 +206,17 @@ export default function PayrollPage() {
   async function handleRecalculate() {
     const { period, half } = periodKeyToApi(selectedPeriodKey);
     if (!confirm(`将删除 ${periodLabel(selectedPeriodKey)} 全部工资记录并重新计算，确定吗？`)) return;
+    setCalculating(true);
     try {
       await api.delete(`/payroll/period/${period}?half=${half}`);
-      setRecords([]);
-      setCalcPeriod(period);
-      setCalcHalf(half);
-      setShowCalcModal(true);
+      await api.post("/payroll/calculate", { period, half });
+      toast("success", `${periodLabel(selectedPeriodKey)} 重新计算完成`);
+      loadPeriods();
+      loadRecords(selectedPeriodKey);
     } catch (err: any) {
       toast("error", err.message || "操作失败");
     }
+    setCalculating(false);
   }
 
   async function handleDisburse(recordId: number) {
@@ -221,7 +251,7 @@ export default function PayrollPage() {
           </select>
           {isAdmin && (
             <>
-              <button onClick={() => { setCalcPeriod(new Date().toISOString().slice(0, 7)); setCalcHalf("first_half"); setShowCalcModal(true); }}
+              <button onClick={handleCalculate}
                 className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
                 <Calculator size={16}/> 计算工资
               </button>
@@ -374,43 +404,6 @@ export default function PayrollPage() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* Calculate Modal */}
-      {showCalcModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowCalcModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
-              <Calculator size={20} />
-              <span className="font-semibold">计算工资</span>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">工资周期</label>
-                <div className="flex gap-2">
-                  <select className="form-input text-base py-2.5 flex-1" value={calcHalf}
-                    onChange={e => setCalcHalf(e.target.value)}>
-                    <option value="first_half">上半月 (1-15日)</option>
-                    <option value="second_half">下半月 (16-月末)</option>
-                  </select>
-                  <input type="month" className="form-input text-base py-2.5 flex-1" value={calcPeriod}
-                    onChange={e => setCalcPeriod(e.target.value)} />
-                </div>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
-                <p>系统将根据打卡记录自动统计每位员工的出勤天数，并计算工资。</p>
-                <p className="mt-1 text-xs text-amber-500">计算完成后请核对并确认工资单。</p>
-              </div>
-            </div>
-            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowCalcModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleCalculate} disabled={calculating}
-                className="btn-primary text-sm px-6 py-2 flex items-center gap-1">
-                {calculating ? "计算中..." : "开始计算"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
