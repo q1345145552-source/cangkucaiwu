@@ -130,18 +130,26 @@ export default function PayablePage() {
   async function handlePay() {
     const payAmount = payAmounts[payingBillId] || (payingRow.amount - payingRow.paid_amount);
     try {
-      await fetch(`${API_URL}/payable/${payingBillId}/pay?paid_amount=${payAmount}&payment_method=${payMethod}`, {
+      const payRes = await fetch(`${API_URL}/payable/${payingBillId}/pay?paid_amount=${payAmount}&payment_method=${payMethod}`, {
         method: "PUT", headers: { "Authorization": `Bearer ${getToken()}` },
       });
+      const payJson = await payRes.json().catch(() => ({}));
+      if (!payRes.ok) {
+        throw new Error(payJson.detail || "付款失败");
+      }
       if (voucherFile) {
         const fd = new FormData(); fd.append("file", voucherFile);
-        await fetch(`${API_URL}/payable/${payingBillId}/upload-voucher`, {
+        const upRes = await fetch(`${API_URL}/payable/${payingBillId}/upload-voucher`, {
           method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
         });
+        const upJson = await upRes.json().catch(() => ({}));
+        if (!upRes.ok) {
+          throw new Error(upJson.detail || "付款凭证上传失败");
+        }
       }
       toast("success", "付款成功");
       setShowPayModal(false); load(); loadStats();
-    } catch { toast("error", "付款失败"); }
+    } catch (err: any) { toast("error", err.message || "付款失败"); }
   }
 
   function openEditModal(row: any) {

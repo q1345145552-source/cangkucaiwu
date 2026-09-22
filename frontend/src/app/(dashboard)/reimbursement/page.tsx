@@ -109,7 +109,10 @@ export default function ReimbursementPage() {
         const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/upload`, {
           method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
         });
-        const upData = await upRes.json();
+        const upData = await upRes.json().catch(() => ({}));
+        if (!upRes.ok) {
+          throw new Error(upData.detail || "附件上传失败");
+        }
         receiptPath = upData.url || upData.path || null;
       }
       const items = [{ category: entryCategory, amount: +entryAmount, description: entryDesc, receipt: receiptPath }];

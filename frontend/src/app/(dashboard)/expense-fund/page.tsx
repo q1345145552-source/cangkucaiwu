@@ -140,9 +140,13 @@ export default function ExpenseFundPage() {
       const res = await api.post<any>(`/expense-fund/accounts/${expenseAccount.id}/items`, { ...itemForm, amount: itemForm.amount || 0, currency: itemForm.currency });
       if (receiptFile && res.id) {
         const fd = new FormData(); fd.append("file", receiptFile);
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/expense-fund/accounts/${expenseAccount.id}/items/${res.id}/upload-receipt`, {
+        const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/expense-fund/accounts/${expenseAccount.id}/items/${res.id}/upload-receipt`, {
           method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
         });
+        const upData = await upRes.json().catch(() => ({}));
+        if (!upRes.ok) {
+          throw new Error(upData.detail || "收据上传失败");
+        }
       }
       toast("success", "开销添加成功");
       setShowExpense(false);
