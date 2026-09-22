@@ -44,7 +44,11 @@ async def calculate_payroll(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+    return await _calc_payroll(db, current_user, wh_id, req)
 
+
+async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest):
+    """核心工资计算（周期/单人/离职共用）。wh_id 已由调用方校验。"""
     try:
         y, m = req.period.split("-")
         year, month = int(y), int(m)
@@ -118,32 +122,10 @@ async def calculate_payroll(
     month_start = date(year, month, 1)
     month_end = date(year, month, total_days)
 
-    # Build employee_id -> user_id mapping (via the formal link)
-    emp_user_map = {}  # employee_id -> user_id
-    user_emp_map = {}  # user_id -> employee_id
+    # Build employee_id -> user_id mapping（绑定账号 + 手机号/姓名兜底，未绑定也能结算）
+    from app.services.employee_match import resolve_employee_user_map
+    emp_user_map, user_emp_map = await resolve_employee_user_map(db, employees)
     emp_id_set = {e.id for e in employees}
-
-    for e in employees:
-        if e.user_id:
-            emp_user_map[e.id] = e.user_id
-            user_emp_map[e.user_id] = e.id
-
-    # Fallback: name matching for employees without user_id link (warehouse-scoped)
-    emp_names = {e.name: e.id for e in employees if e.id not in emp_user_map}
-    if emp_names:
-        labor_users = (await db.execute(
-            select(User).where(
-                User.role == "warehouse_labor",
-                User.is_active == True,
-                User.warehouse_id == wh_id,
-            )
-        )).scalars().all()
-        for u in labor_users:
-            if u.display_name in emp_names:
-                eid = emp_names[u.display_name]
-                emp_user_map[eid] = u.id
-                user_emp_map[u.id] = eid
-
     all_user_ids = list(user_emp_map.keys())
 
     # Batch fetch all clock-in records for this half-month period
