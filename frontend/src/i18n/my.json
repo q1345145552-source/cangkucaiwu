@@ -382,5 +382,6 @@
   "advance_deduction": "ကြိုတင်ငွေဖြတ်တောက်မှု",
   "remaining_debt": "ကျန်ကြွေး",
   "my_debt": "ကျွန်ုပ်၏ကြွေး",
-  "currency_symbol": "ဘတ်"
+  "currency_symbol": "ဘတ်",
+  "overtime_pending_confirm": "ဝန်ထမ်းအတည်ပြုရန်စောင့်ဆိုင်း"
 }

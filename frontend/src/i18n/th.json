@@ -281,5 +281,6 @@
   "advance_deduction": "หักเงินทดรอง",
   "remaining_debt": "หนี้คงเหลือ",
   "my_debt": "หนี้ของฉัน",
-  "currency_symbol": "บาท"
+  "currency_symbol": "บาท",
+  "overtime_pending_confirm": "รอพนักงานยืนยัน"
 }

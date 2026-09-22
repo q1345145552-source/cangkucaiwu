@@ -255,7 +255,7 @@ export default function OvertimePage() {
                           task.status === "completed" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"
                         }`}>
                           {task.status === "completed" ? <CheckCircle size={12}/> : <Clock size={12}/>}
-                          {task.status === "completed" ? t("completed_status") : t("in_progress")}
+                          {task.status === "completed" ? t("completed_status") : t("overtime_pending_confirm")}
                           {task.status !== "completed" && ` (${task.confirmed_count || 0}/${task.total_assignments || 0})`}
                         </span>
                       </td>
