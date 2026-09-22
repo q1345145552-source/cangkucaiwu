@@ -7,6 +7,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { Clock, Camera, CheckCircle2, AlertTriangle, Globe, Check } from "lucide-react";
 import { formatThaiTime } from "@/lib/thai-time";
+import SafeImage from "@/components/SafeImage";
 
 const SESSION_LABELS: Record<number, { labelKey: string; time: string; icon: string }> = {
   1: { labelKey: "morning_shift", time: "09:00", icon: "🌅" },
@@ -265,8 +266,13 @@ export default function ClockInPage() {
                 {/* Action button */}
                 {done ? (
                   done.photo_path ? (
-                    <img src={`/${done.photo_path}`} alt="打卡照"
-                      className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                    <SafeImage
+                      src={done.photo_thumb_path ? `/${done.photo_thumb_path}` : `/${done.photo_path}`}
+                      fallbackSrc={`/${done.photo_path}`}
+                      alt="打卡照"
+                      className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                      fallback={<div className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0"><CheckCircle2 size={24} className="text-green-500" /></div>}
+                    />
                   ) : (
                     <div className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
                       <CheckCircle2 size={24} className="text-green-500" />

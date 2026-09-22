@@ -136,6 +136,7 @@ async def get_today(
         "session": r.session, "label": session_label(r.session, lang),
         "clocked_in_at": r.clocked_in_at.isoformat(), "status": r.status,
         "penalty_amount": r.penalty_amount, "photo_path": r.photo_path,
+        "photo_thumb_path": thumb_path_of(r.photo_path),
     } for r in records}
     return {
         "today": today.isoformat(),

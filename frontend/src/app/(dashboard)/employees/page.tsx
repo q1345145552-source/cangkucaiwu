@@ -180,7 +180,7 @@ export default function EmployeesPage() {
       if (res.ok) {
         const r = await res.json();
         toast("success", "护照照片上传成功");
-        if (detailEmp) setDetailEmp({ ...detailEmp, passport_photo_path: r.passport_photo_path });
+        if (detailEmp) setDetailEmp({ ...detailEmp, passport_photo_path: r.passport_photo_path, passport_photo_thumb_path: r.passport_photo_thumb_path });
       } else {
         const err = await res.json().catch(() => ({}));
         toast("error", err.detail || "上传失败");
@@ -205,7 +205,7 @@ export default function EmployeesPage() {
       if (res.ok) {
         const r = await res.json();
         toast("success", "工作证照片上传成功");
-        if (detailEmp) setDetailEmp({ ...detailEmp, work_permit_photo_path: r.work_permit_photo_path });
+        if (detailEmp) setDetailEmp({ ...detailEmp, work_permit_photo_path: r.work_permit_photo_path, work_permit_photo_thumb_path: r.work_permit_photo_thumb_path });
       } else {
         const err = await res.json().catch(() => ({}));
         toast("error", err.detail || "上传失败");
@@ -772,7 +772,14 @@ export default function EmployeesPage() {
                   <label className="text-xs text-gray-400">护照照片</label>
                   <div className="mt-1">
                     {detailEmp.passport_photo_path ? (
-                      <img src={photoUrl(detailEmp.passport_photo_path)} alt="护照照片" className="w-40 h-28 object-cover border rounded cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={() => openZoom(detailEmp.passport_photo_path)} />
+                      <SafeImage
+                        src={photoUrl(detailEmp.passport_photo_thumb_path || detailEmp.passport_photo_path)}
+                        fallbackSrc={photoUrl(detailEmp.passport_photo_path)}
+                        alt="护照照片"
+                        className="w-40 h-28 object-cover border rounded cursor-pointer hover:ring-2 hover:ring-blue-300"
+                        onClick={() => openZoom(detailEmp.passport_photo_path)}
+                        fallback={<div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>}
+                      />
                     ) : (
                       <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
                     )}
@@ -783,7 +790,14 @@ export default function EmployeesPage() {
                   <label className="text-xs text-gray-400">工作证照片</label>
                   <div className="mt-1">
                     {detailEmp.work_permit_photo_path ? (
-                      <img src={photoUrl(detailEmp.work_permit_photo_path)} alt="工作证照片" className="w-40 h-28 object-cover border rounded cursor-pointer hover:ring-2 hover:ring-blue-300" onClick={() => openZoom(detailEmp.work_permit_photo_path)} />
+                      <SafeImage
+                        src={photoUrl(detailEmp.work_permit_photo_thumb_path || detailEmp.work_permit_photo_path)}
+                        fallbackSrc={photoUrl(detailEmp.work_permit_photo_path)}
+                        alt="工作证照片"
+                        className="w-40 h-28 object-cover border rounded cursor-pointer hover:ring-2 hover:ring-blue-300"
+                        onClick={() => openZoom(detailEmp.work_permit_photo_path)}
+                        fallback={<div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>}
+                      />
                     ) : (
                       <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
                     )}
