@@ -11,6 +11,7 @@ export default function PayrollPage() {
   const [records, setRecords] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [periods, setPeriods] = useState<any[]>([]);
+  const [periodsLoading, setPeriodsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("");
@@ -28,28 +29,40 @@ export default function PayrollPage() {
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
-    loadPeriods();
     // Default to current month
     const now = new Date().toISOString().slice(0, 7);
     setSelectedPeriod(now);
+    initPage();
   }, []);
 
-  useEffect(() => {
-    if (selectedPeriodKey) loadRecords();
-  }, [selectedPeriodKey]);
-
-  async function loadPeriods() {
+  // 首次进入：拉周期下拉 + 自动选中第一个周期并加载
+  async function initPage() {
+    setPeriodsLoading(true);
     try {
       const r = await api.get<any>("/payroll");
       const ps = r.periods || [];
       setPeriods(ps);
-      if (ps.length > 0 && !selectedPeriodKey) {
+      if (ps.length > 0) {
         const first = ps[0];
         const key = `${first.period}_${first.half}`;
         setSelectedPeriodKey(key);
         setSelectedPeriod(first.period);
+        loadRecords(key);
       }
-    } catch {}
+    } catch (err: any) {
+      toast("error", err.message || "加载工资周期失败");
+    }
+    setPeriodsLoading(false);
+  }
+
+  // 刷新周期下拉（计算/删除后调用）
+  async function loadPeriods() {
+    try {
+      const r = await api.get<any>("/payroll");
+      setPeriods(r.periods || []);
+    } catch (err: any) {
+      toast("error", err.message || "加载工资周期失败");
+    }
   }
 
   function periodKeyToApi(periodKey: string) {
@@ -62,8 +75,10 @@ export default function PayrollPage() {
     return parts[0] ? `${parts[0]} ${parts[1] === "second_half" ? "下半月" : "上半月"}` : periodKey;
   }
 
-  async function loadRecords() {
-    const { period, half } = periodKeyToApi(selectedPeriodKey);
+  async function loadRecords(periodKeyOverride?: string) {
+    const key = periodKeyOverride || selectedPeriodKey;
+    if (!key) return;
+    const { period, half } = periodKeyToApi(key);
     setSelectedPeriod(period);
     setLoading(true);
     try {
@@ -74,7 +89,9 @@ export default function PayrollPage() {
       ]);
       setRecords(recR.data || []);
       setSummary(sumR);
-    } catch {}
+    } catch (err: any) {
+      toast("error", err.message || "加载工资数据失败");
+    }
     setLoading(false);
   }
 
@@ -89,6 +106,7 @@ export default function PayrollPage() {
       setSelectedPeriodKey(newKey);
       setSelectedPeriod(calcPeriod);
       loadPeriods();
+      loadRecords(newKey);
     } catch (err: any) {
       toast("error", err.message || "计算失败");
     }
@@ -101,7 +119,9 @@ export default function PayrollPage() {
     try {
       const r = await api.get<any>("/employees?page_size=200");
       setSingleEmployees((r.data || []).filter((e: any) => e.status !== "resigned"));
-    } catch {}
+    } catch (err: any) {
+      toast("error", err.message || "加载员工列表失败");
+    }
   }
 
   async function handleSingleSettle() {
@@ -113,8 +133,10 @@ export default function PayrollPage() {
       toast("success", r.message || "结算完成");
       setShowSingleModal(false);
       const d = new Date(singleEndDate);
-      setSelectedPeriodKey(`${singleEndDate.slice(0, 7)}_${d.getDate() <= 15 ? "first_half" : "second_half"}`);
+      const newKey = `${singleEndDate.slice(0, 7)}_${d.getDate() <= 15 ? "first_half" : "second_half"}`;
+      setSelectedPeriodKey(newKey);
       loadPeriods();
+      loadRecords(newKey);
     } catch (err: any) { toast("error", err.message || "结算失败"); }
     setCalculating(false);
   }
@@ -189,7 +211,7 @@ export default function PayrollPage() {
         <h1 className="page-title flex items-center gap-2"><Calculator size={24}/>工资管理</h1>
         <div className="flex gap-2 items-center">
           {/* Period + Half selector */}
-          <select value={selectedPeriodKey} onChange={e => { setSelectedPeriodKey(e.target.value); }}
+          <select value={selectedPeriodKey} onChange={e => { const v = e.target.value; setSelectedPeriodKey(v); if (v) loadRecords(v); }}
             className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
             <option value="">选择周期</option>
             {periods.map((p: any) => {
@@ -225,31 +247,35 @@ export default function PayrollPage() {
       </div>
 
       {/* Summary Card */}
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-white rounded-xl border p-4">
-            <p className="text-xs text-gray-400">总人数</p>
-            <p className="text-2xl font-bold text-gray-800">{summary.employee_count}</p>
-            <p className="text-xs text-gray-400">{summary.confirmed_count}已确认 / {summary.pending_count}待确认</p>
-          </div>
-          <div className="bg-white rounded-xl border p-4">
-            <p className="text-xs text-gray-400">应发总额</p>
-            <p className="text-2xl font-bold text-blue-600">{summary.total_gross?.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl border p-4">
-            <p className="text-xs text-gray-400">加班费合计</p>
-            <p className="text-2xl font-bold text-green-600">{summary.total_overtime?.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl border p-4">
-            <p className="text-xs text-gray-400">实发总额</p>
-            <p className="text-2xl font-bold text-orange-600">{summary.total_net?.toLocaleString()}</p>
-          </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white rounded-xl border p-4">
+          <p className="text-xs text-gray-400">总人数</p>
+          <p className="text-2xl font-bold text-gray-800">{summary?.employee_count ?? 0}</p>
+          <p className="text-xs text-gray-400">{summary?.confirmed_count ?? 0}已确认 / {summary?.pending_count ?? 0}待确认</p>
         </div>
-      )}
+        <div className="bg-white rounded-xl border p-4">
+          <p className="text-xs text-gray-400">应发总额</p>
+          <p className="text-2xl font-bold text-blue-600">{(summary?.total_gross ?? 0).toLocaleString()}</p>
+        </div>
+        <div className="bg-white rounded-xl border p-4">
+          <p className="text-xs text-gray-400">加班费合计</p>
+          <p className="text-2xl font-bold text-green-600">{(summary?.total_overtime ?? 0).toLocaleString()}</p>
+        </div>
+        <div className="bg-white rounded-xl border p-4">
+          <p className="text-xs text-gray-400">实发总额</p>
+          <p className="text-2xl font-bold text-orange-600">{(summary?.total_net ?? 0).toLocaleString()}</p>
+        </div>
+      </div>
 
       {/* Records Table */}
-      {loading ? (
+      {loading || periodsLoading ? (
         <div className="text-center py-12 text-gray-400">加载中...</div>
+      ) : periods.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 bg-white rounded-xl border">
+          <Calculator size={40} className="mx-auto mb-3 text-gray-300"/>
+          <p>该仓库还没有计算过工资</p>
+          {isAdmin && <p className="text-sm mt-1">点击右上角「计算工资」开始</p>}
+        </div>
       ) : records.length === 0 ? (
         <div className="text-center py-12 text-gray-400 bg-white rounded-xl border">
           <Calculator size={40} className="mx-auto mb-3 text-gray-300"/>
@@ -280,7 +306,7 @@ export default function PayrollPage() {
               {records.map((r: any) => (
                 <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-3 py-3 font-medium">
-                    {r.employee_name}
+                    {r.employee_name ?? "—"}
                     {r.settle_end_date && <div className="text-[11px] text-gray-400 font-normal">结算到 {r.settle_end_date.slice(5).replace("-", "月")}日</div>}
                   </td>
                   <td className="px-3 py-3">
@@ -290,14 +316,14 @@ export default function PayrollPage() {
                       {r.employee_status === "trial" ? "试用期" : "正式"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center">{r.attendance_days}</td>
-                  <td className="px-3 py-3 text-center">{r.leave_days}</td>
-                  <td className="px-3 py-3 text-center">{r.rest_days}</td>
-                  <td className="px-3 py-3 text-center">{r.absence_days}</td>
-                  <td className="px-3 py-3 text-right">{r.base_pay?.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-right text-green-600">{r.overtime_pay > 0 ? r.overtime_pay.toLocaleString() : "-"}</td>
-                  <td className="px-3 py-3 text-right text-red-500">{r.total_deductions > 0 ? r.total_deductions.toLocaleString() : "-"}</td>
-                  <td className="px-3 py-3 text-right font-bold">{r.net_pay?.toLocaleString()}</td>
+                  <td className="px-3 py-3 text-center">{r.attendance_days ?? 0}</td>
+                  <td className="px-3 py-3 text-center">{r.leave_days ?? 0}</td>
+                  <td className="px-3 py-3 text-center">{r.rest_days ?? 0}</td>
+                  <td className="px-3 py-3 text-center">{r.absence_days ?? 0}</td>
+                  <td className="px-3 py-3 text-right">{(r.base_pay ?? 0).toLocaleString()}</td>
+                  <td className="px-3 py-3 text-right text-green-600">{(r.overtime_pay ?? 0) > 0 ? (r.overtime_pay ?? 0).toLocaleString() : "-"}</td>
+                  <td className="px-3 py-3 text-right text-red-500">{(r.total_deductions ?? 0) > 0 ? (r.total_deductions ?? 0).toLocaleString() : "-"}</td>
+                  <td className="px-3 py-3 text-right font-bold">{(r.net_pay ?? 0).toLocaleString()}</td>
                   <td className="px-3 py-3 text-center">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                       r.status === "confirmed" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
@@ -441,12 +467,12 @@ export default function PayrollPage() {
 
               {/* Attendance */}
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-400 mb-2">出勤统计 ({showPayslip.total_days_in_month}天/月)</p>
+                <p className="text-xs text-gray-400 mb-2">出勤统计 ({(showPayslip.total_days_in_month ?? 0)}天/月)</p>
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <div><p className="text-lg font-bold text-green-600">{showPayslip.attendance_days}</p><p className="text-xs text-gray-400">出勤</p></div>
-                  <div><p className="text-lg font-bold text-amber-600">{showPayslip.leave_days}</p><p className="text-xs text-gray-400">请假</p></div>
-                  <div><p className="text-lg font-bold text-blue-600">{showPayslip.rest_days}</p><p className="text-xs text-gray-400">休息</p></div>
-                  <div><p className="text-lg font-bold text-red-600">{showPayslip.absence_days}</p><p className="text-xs text-gray-400">缺勤</p></div>
+                  <div><p className="text-lg font-bold text-green-600">{showPayslip.attendance_days ?? 0}</p><p className="text-xs text-gray-400">出勤</p></div>
+                  <div><p className="text-lg font-bold text-amber-600">{showPayslip.leave_days ?? 0}</p><p className="text-xs text-gray-400">请假</p></div>
+                  <div><p className="text-lg font-bold text-blue-600">{showPayslip.rest_days ?? 0}</p><p className="text-xs text-gray-400">休息</p></div>
+                  <div><p className="text-lg font-bold text-red-600">{showPayslip.absence_days ?? 0}</p><p className="text-xs text-gray-400">缺勤</p></div>
                 </div>
               </div>
 
@@ -454,7 +480,7 @@ export default function PayrollPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">上班工时</span>
-                  <span>{showPayslip.detail?.work_hours ?? showPayslip.attendance_days} 小时</span>
+                  <span>{showPayslip.detail?.work_hours ?? (showPayslip.attendance_days ?? 0)} 小时</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">时薪</span>
@@ -462,18 +488,18 @@ export default function PayrollPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">上班工资</span>
-                  <span><b>{showPayslip.base_pay?.toLocaleString()}</b></span>
+                  <span><b>{(showPayslip.base_pay ?? 0).toLocaleString()}</b></span>
                 </div>
-                {showPayslip.overtime_pay > 0 && (
+                {(showPayslip.overtime_pay ?? 0) > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>加班费 ({showPayslip.overtime_hours}h)</span>
+                    <span>加班费 ({showPayslip.overtime_hours ?? 0}h)</span>
                     <span>+{showPayslip.overtime_pay}</span>
                   </div>
                 )}
-                {showPayslip.late_penalty > 0 && (
+                {(showPayslip.late_penalty ?? 0) > 0 && (
                   <div className="flex justify-between text-sm text-red-500">
                     <span>迟到扣款</span>
-                    <span>-{showPayslip.late_penalty}</span>
+                    <span>-{showPayslip.late_penalty ?? 0}</span>
                   </div>
                 )}
               </div>
@@ -481,14 +507,14 @@ export default function PayrollPage() {
               {/* Total */}
               <div className="border-t pt-3 space-y-1">
                 <div className="flex justify-between text-sm text-gray-500">
-                  <span>应发合计</span><span>{showPayslip.gross_pay}</span>
+                  <span>应发合计</span><span>{showPayslip.gross_pay ?? 0}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-500">
-                  <span>扣款合计</span><span className="text-red-500">-{showPayslip.total_deductions}</span>
+                  <span>扣款合计</span><span className="text-red-500">-{showPayslip.total_deductions ?? 0}</span>
                 </div>
                 <div className="flex justify-between text-base font-bold pt-1 border-t">
                   <span>实发工资</span>
-                  <span className="text-blue-600 text-lg">{showPayslip.net_pay?.toLocaleString()} 泰铢</span>
+                  <span className="text-blue-600 text-lg">{(showPayslip.net_pay ?? 0).toLocaleString()} 泰铢</span>
                 </div>
               </div>
 
@@ -516,7 +542,7 @@ export default function PayrollPage() {
               {showPayslip.status === "confirmed" && !showPayslip.disbursed && isAdmin && (
                 <button onClick={() => { handleDisburse(showPayslip.id); setShowPayslip(null); }}
                   className="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 font-medium">
-                  <Banknote size={18} /> 现金发放 {showPayslip.net_pay?.toLocaleString()} 泰铢
+                  <Banknote size={18} /> 现金发放 {(showPayslip.net_pay ?? 0).toLocaleString()} 泰铢
                 </button>
               )}
             </div>

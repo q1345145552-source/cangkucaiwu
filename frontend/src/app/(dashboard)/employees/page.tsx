@@ -42,7 +42,7 @@ export default function EmployeesPage() {
 
   const photoUrl = (path: string) => {
     if (!path) return "";
-    return `/${path}?v=${Date.now()}`;
+    return `/${path}`;
   };
 
   const openZoom = (path: string | null | undefined) => {
