@@ -57,11 +57,15 @@ export default function IncomingPage() {
         const fd = new FormData();
         fd.append("recharge_id", String(res.id));
         fd.append("file", selectedFile);
-        await fetch(`${API_URL}/upload/recharge-screenshot`, {
+        const upRes = await fetch(`${API_URL}/upload/recharge-screenshot`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${getToken()}` },
           body: fd,
         });
+        const upJson = await upRes.json().catch(() => ({}));
+        if (!upRes.ok) {
+          throw new Error(upJson.detail || "截图上传失败，请重新上传");
+        }
       }
       toast("success", "录入成功");
       setForm({ received_date: today, amount: "", currency: "THB", payer_name: "", payment_method: "银行转账", remark: "" });
@@ -135,7 +139,7 @@ export default function IncomingPage() {
         <div className="flex items-center gap-3 mt-4 pt-3 border-t">
           <div className="flex items-center gap-2">
             <label className="form-label mb-0 whitespace-nowrap">截图 <span className="text-gray-400 font-normal text-xs">非必填</span></label>
-            <input type="file" accept="image/png,image/jpeg,image/jpg" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               className="text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-green-50 file:text-green-700" />
           </div>
           <button onClick={handleCreate} disabled={saving} className="btn-primary h-10 flex items-center gap-1.5 min-w-[100px] justify-center">

@@ -276,6 +276,9 @@ async def create_expense(
             content = await file.read()
             if len(content) > 10 * 1024 * 1024:
                 raise HTTPException(400, "单张凭证图片不能超过10MB")
+            from app.services.image_utils import is_image
+            if not is_image(content):
+                raise HTTPException(400, "文件不是有效的图片，请重新选择")
             fname = f"{uuid.uuid4().hex}.{ext}"
             result = save_image(content, abs_subdir, rel_subdir, fname)
             voucher_paths.append(result["path"])
@@ -385,6 +388,9 @@ async def update_expense(
             content = await file.read()
             if len(content) > 10 * 1024 * 1024:
                 raise HTTPException(400, "单张凭证图片不能超过10MB")
+            from app.services.image_utils import is_image
+            if not is_image(content):
+                raise HTTPException(400, "文件不是有效的图片，请重新选择")
             fname = f"{uuid.uuid4().hex}.{ext}"
             result = save_image(content, abs_subdir, rel_subdir, fname)
             vouchers.append(result["path"])

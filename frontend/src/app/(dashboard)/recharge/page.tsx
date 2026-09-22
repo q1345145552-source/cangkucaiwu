@@ -83,12 +83,16 @@ export default function RechargePage() {
         const fd = new FormData();
         fd.append("recharge_id", String(rechargeId));
         fd.append("file", selectedFile);
-        await fetch(`${API_URL}/upload/recharge-screenshot`, {
+        const upRes = await fetch(`${API_URL}/upload/recharge-screenshot`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${getToken()}` },
           body: fd,
         });
+        const upJson = await upRes.json().catch(() => ({}));
         setUploading(false);
+        if (!upRes.ok) {
+          throw new Error(upJson.detail || "截图上传失败，请重新上传");
+        }
       }
 
       toast("success", "申报成功");
@@ -129,9 +133,13 @@ export default function RechargePage() {
         const fd = new FormData();
         fd.append("recharge_id", String(editingRow.id));
         fd.append("file", editScreenshotFile);
-        await fetch(`${API_URL}/upload/recharge-screenshot`, {
+        const upRes = await fetch(`${API_URL}/upload/recharge-screenshot`, {
           method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: fd,
         });
+        const upJson = await upRes.json().catch(() => ({}));
+        if (!upRes.ok) {
+          throw new Error(upJson.detail || "截图上传失败，请重新上传");
+        }
       }
       toast("success", "更新成功");
       setEditingRow(null);
@@ -188,12 +196,14 @@ export default function RechargePage() {
       <div className="flex items-center gap-1.5">
         <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs">未上传</span>
         <button onClick={() => {
-          const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/jpg';
+          const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/jpg,image/webp';
           inp.onchange = async (e: any) => {
             const file = e.target.files?.[0]; if (!file) return;
             const fd = new FormData(); fd.append('recharge_id', String(row.id)); fd.append('file', file);
             try {
-              await fetch(API_URL + '/upload/recharge-screenshot', { method: 'POST', headers: { Authorization: 'Bearer ' + getToken() }, body: fd });
+              const upRes = await fetch(API_URL + '/upload/recharge-screenshot', { method: 'POST', headers: { Authorization: 'Bearer ' + getToken() }, body: fd });
+              const upJson = await upRes.json().catch(() => ({}));
+              if (!upRes.ok) { toast("error", upJson.detail || "截图补传失败"); return; }
               toast("success", "截图补传成功"); load();
             } catch { toast("error", "补传失败"); }
           }; inp.click();
@@ -257,7 +267,7 @@ export default function RechargePage() {
           <div>
             <label className="form-label">截图 <span className="text-gray-400 font-normal text-xs">非必填</span></label>
             <div className="flex items-center gap-2 h-[42px]">
-              <input type="file" accept="image/png,image/jpeg,image/jpg" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                 className="text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700" />
             </div>
           </div>
@@ -293,7 +303,7 @@ export default function RechargePage() {
               <div><label className="form-label">备注</label><input className="form-input" value={editForm.remark} onChange={e => setEditForm({ ...editForm, remark: e.target.value })} /></div>
               <div>
                 <label className="form-label">截图（可选，替换）</label>
-                <input type="file" accept="image/png,image/jpeg,image/jpg" onChange={e => setEditScreenshotFile(e.target.files?.[0] || null)} className="text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700" />
+                <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={e => setEditScreenshotFile(e.target.files?.[0] || null)} className="text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700" />
                 {editingRow.screenshot && !editScreenshotFile && <div className="mt-1 text-xs text-gray-400">已有截图 <a href={"/"+editingRow.screenshot} target="_blank" className="text-blue-500 hover:underline">查看</a></div>}
               </div>
             </div>

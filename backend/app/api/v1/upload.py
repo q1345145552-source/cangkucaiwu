@@ -22,10 +22,10 @@ async def upload_file(
     file: UploadFile = File(...),
     current_user = Depends(get_current_user),
 ):
-    """通用文件上传，返回文件路径，支持 png/jpg/pdf，最大10MB"""
+    """通用文件上传，返回文件路径，支持 png/jpg/jpeg/webp/pdf，最大10MB"""
     ext = file.filename.split(".")[-1].lower() if file.filename else ""
-    if ext not in ("png", "jpg", "jpeg", "pdf"):
-        raise HTTPException(400, "仅支持 png/jpg/pdf 格式")
+    if ext not in ("png", "jpg", "jpeg", "webp", "pdf"):
+        raise HTTPException(400, "仅支持 png/jpg/jpeg/webp/pdf 格式")
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(400, "文件大小不能超过10MB")
@@ -54,11 +54,14 @@ async def upload_recharge_screenshot(
     if not rec: raise HTTPException(404, "充值申报不存在")
 
     ext = file.filename.split(".")[-1].lower() if file.filename else ""
-    if ext not in ("png", "jpg", "jpeg"):
-        raise HTTPException(400, "仅支持图片格式")
+    if ext not in ("png", "jpg", "jpeg", "webp"):
+        raise HTTPException(400, "仅支持图片格式 png/jpg/jpeg/webp")
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(400, "文件不能超过10MB")
+    from app.services.image_utils import is_image
+    if not is_image(content):
+        raise HTTPException(400, "文件不是有效的图片，请重新选择")
 
     from app.services.image_utils import save_image
     today = thai_now().strftime("%Y-%m-%d")
