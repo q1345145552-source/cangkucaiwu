@@ -152,7 +152,7 @@ async def confirm_overtime(
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
-        raise HTTPException(400, "请先选择仓库")
+        raise HTTPException(400, t("please_select_warehouse", lang))
 
     task = (await db.execute(
         select(OvertimeTask).where(
@@ -161,12 +161,12 @@ async def confirm_overtime(
         )
     )).scalar_one_or_none()
     if not task:
-        raise HTTPException(404, "加班任务不存在")
+        raise HTTPException(404, t("overtime_task_not_found", lang))
 
     # 先找到登录用户对应的员工档案（绑定账号优先，姓名兜底），再按员工档案找分配记录
     emp = await _find_employee_for_user(db, wh_id, current_user)
     if not emp:
-        raise HTTPException(400, "未找到您的员工档案，无法确认加班")
+        raise HTTPException(400, t("employee_not_found_contact_admin", lang))
 
     assignment = (await db.execute(
         select(OvertimeAssignment).where(
@@ -175,10 +175,10 @@ async def confirm_overtime(
         )
     )).scalar_one_or_none()
     if not assignment:
-        raise HTTPException(400, "您未被分配该加班任务")
+        raise HTTPException(400, t("overtime_not_assigned", lang))
 
     if assignment.confirmed:
-        raise HTTPException(400, "您已确认过该加班任务")
+        raise HTTPException(400, t("overtime_already_confirmed", lang))
 
     assignment.confirmed = True
     assignment.confirmed_at = thai_now()

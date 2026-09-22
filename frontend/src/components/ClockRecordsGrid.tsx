@@ -69,8 +69,8 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
 
   async function submitMakeup() {
     if (!makeupForm) return;
-    if (makeupSessions.length === 0) { toast("error", "请选择要补的时段"); return; }
-    if (!makeupReason.trim()) { toast("error", "请填写补卡原因"); return; }
+    if (makeupSessions.length === 0) { toast("error", t("mk_please_select_sessions")); return; }
+    if (!makeupReason.trim()) { toast("error", t("mk_please_enter_reason")); return; }
     try {
       const r = await api.post<any>("/clock-in/makeup", {
         employee_id: makeupForm.empId,
@@ -78,13 +78,13 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
         sessions: makeupSessions,
         reason: makeupReason,
       });
-      toast("success", r.message || "补卡成功");
+      toast("success", r.message || t("mk_success"));
       setMakeupForm(null);
       setMakeupSessions([]);
       setMakeupReason("");
       load();
       if (onChange) onChange();
-    } catch (err: any) { toast("error", err.message || "补卡失败"); }
+    } catch (err: any) { toast("error", err.message || t("mk_failed")); }
   }
 
   async function exportExcel() {
@@ -94,12 +94,12 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast("error", err.detail || "导出失败");
+        toast("error", err.detail || t("export_failed"));
         return;
       }
       const blob = await res.blob();
       const cd = res.headers.get("Content-Disposition") || "";
-      let filename = `打卡记录_${startDate}_${endDate}.xlsx`;
+      let filename = `${t("clock_records")}_${startDate}_${endDate}.xlsx`;
       const m = cd.match(/filename\*=UTF-8''(.+)/);
       if (m) filename = decodeURIComponent(m[1]);
       const objectUrl = URL.createObjectURL(blob);
@@ -110,9 +110,9 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
       a.click();
       a.remove();
       URL.revokeObjectURL(objectUrl);
-      toast("success", "导出成功");
+      toast("success", t("export_success"));
     } catch {
-      toast("error", "导出失败");
+      toast("error", t("export_failed"));
     }
   }
 
@@ -157,7 +157,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
       <div className="flex justify-end mb-2">
         <button onClick={exportExcel}
           className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">
-          <Download size={14}/>导出Excel
+          <Download size={14}/>{t("export_excel")}
         </button>
       </div>
       {loading ? (
@@ -225,7 +225,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                                 <span className={`rounded px-1 py-0.5 font-medium ${colorClass}`}>
                                   {count}/4
                                 </span>
-                                {hasMakeup && <span className="text-[9px] font-bold text-purple-600 bg-purple-50 rounded px-0.5">补</span>}
+                                {hasMakeup && <span className="text-[9px] font-bold text-purple-600 bg-purple-50 rounded px-0.5">{t("makeup_short")}</span>}
                                 {cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
                               </div>
                             ) : (
@@ -264,7 +264,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                       <span className="font-medium text-sm text-gray-700">{s}. {t(SESSION_KEYS[s])}</span>
                       {cr ? (
                         <div className="flex items-center gap-2 flex-wrap">
-                          {cr.is_makeup && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">补卡</span>}
+                          {cr.is_makeup && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">{t("makeup")}</span>}
                           {cr.status !== "normal" && (
                             <span className={`text-xs px-1.5 py-0.5 rounded ${cr.status === "late_half" ? "bg-orange-50 text-orange-600" : "bg-red-50 text-red-600"}`}>
                               {cr.status === "late_half" ? t("att_late_half_hour") : t("att_late_one_hour")}</span>
@@ -275,7 +275,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                     </div>
                     {cr?.is_makeup && (
                       <div className="mb-2 text-[11px] text-purple-600 bg-purple-50 rounded px-2 py-1">
-                        补卡人：{cr.makeup_by_name || "-"} · 原因：{cr.makeup_reason || "-"}
+                        {t("makeup_by")}：{cr.makeup_by_name || "-"} · {t("reason")}：{cr.makeup_reason || "-"}
                       </div>
                     )}
                     {cr?.photo_path ? (
@@ -295,7 +295,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
               {canMakeup && (
                 <button onClick={openMakeupForm}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-purple-700">
-                  <CalendarClock size={14}/>补卡
+                  <CalendarClock size={14}/>{t("makeup")}
                 </button>
               )}
               <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400 px-4 py-2">{t("close")}</button>
@@ -307,24 +307,24 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setMakeupForm(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-purple-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
-              <CalendarClock size={18} /><span className="font-semibold">补卡</span>
+              <CalendarClock size={18} /><span className="font-semibold">{t("makeup")}</span>
               <button onClick={() => setMakeupForm(null)} className="ml-auto text-2xl text-purple-200 hover:text-white">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="form-label text-xs mb-1 block">员工</label>
+                <label className="form-label text-xs mb-1 block">{t("att_employee")}</label>
                 <div className="form-input py-2 bg-gray-50 text-gray-700">{makeupForm.empName}</div>
               </div>
               <div>
-                <label className="form-label text-xs mb-1 block">日期</label>
+                <label className="form-label text-xs mb-1 block">{t("date")}</label>
                 <div className="form-input py-2 bg-gray-50 text-gray-700">{makeupForm.date}</div>
               </div>
               <div>
-                <label className="form-label text-xs mb-1 block">时段 <span className="text-red-400">*</span></label>
+                <label className="form-label text-xs mb-1 block">{t("sessions")} <span className="text-red-400">*</span></label>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => setMakeupSessions([1,2,3,4])}
                     className={`px-3 py-1.5 rounded-lg text-xs border ${makeupSessions.length === 4 ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
-                    补全天
+                    {t("makeup_all_day")}
                   </button>
                   {[1,2,3,4].map(s => (
                     <button key={s} type="button" onClick={() => toggleSession(s)}
@@ -335,13 +335,13 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                 </div>
               </div>
               <div>
-                <label className="form-label text-xs mb-1 block">原因 <span className="text-red-400">*</span></label>
-                <textarea className="form-input py-2 w-full" rows={2} value={makeupReason} onChange={e => setMakeupReason(e.target.value)} placeholder="如：忘记打卡" />
+                <label className="form-label text-xs mb-1 block">{t("reason")} <span className="text-red-400">*</span></label>
+                <textarea className="form-input py-2 w-full" rows={2} value={makeupReason} onChange={e => setMakeupReason(e.target.value)} placeholder={t("mk_please_enter_reason")} />
               </div>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setMakeupForm(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={submitMakeup} className="bg-purple-600 text-white px-5 py-2 rounded-lg text-sm">提交补卡</button>
+              <button onClick={() => setMakeupForm(null)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={submitMakeup} className="bg-purple-600 text-white px-5 py-2 rounded-lg text-sm">{t("submit_makeup")}</button>
             </div>
           </div>
         </div>

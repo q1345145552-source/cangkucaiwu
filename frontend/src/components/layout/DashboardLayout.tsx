@@ -55,11 +55,11 @@ const navItems: NavItem[] = [
       { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin", "supervisor"] },
       { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin", "supervisor"] },
       { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin", "supervisor"] },
-      { key: "concentration", label: "供应商采购分析", icon: <BarChart3 size={18} />, href: "/concentration", roles: ["warehouse_admin", "supervisor"] },
+      { key: "concentration", label: "supplier_purchase_analysis", icon: <BarChart3 size={18} />, href: "/concentration", roles: ["warehouse_admin", "supervisor"] },
     ],
   },
   { key: "warehouses", label: "warehouses", icon: <Warehouse size={20} />, href: "/warehouses", roles: ["super_admin"] },
-  { key: "modification_logs", label: "修改日志", icon: <History size={20} />, href: "/modification-logs", roles: ["warehouse_admin"] },
+  { key: "modification_logs", label: "modification_logs", icon: <History size={20} />, href: "/modification-logs", roles: ["warehouse_admin"] },
   {
     key: "group_order_group", label: "group_order_group", icon: <PackageOpen size={20} />,
     roles: ["super_admin", "warehouse_admin", "staff", "supervisor"],
@@ -72,11 +72,11 @@ const navItems: NavItem[] = [
     key: "hr_group", label: "employee_group", icon: <ClipboardList size={20} />,
     roles: ["warehouse_admin", "supervisor"],
     children: [
-      { key: "employees", label: "员工档案", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "supervisor"] },
+      { key: "employees", label: "employees", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "supervisor"] },
       { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin", "supervisor"] },
       { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin", "supervisor"] },
       { key: "payroll", label: "payroll", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "supervisor"] },
-      { key: "labor_efficiency", label: "人效管理", icon: <Gauge size={18} />, href: "/labor-efficiency", roles: ["warehouse_admin", "supervisor"] },
+      { key: "labor_efficiency", label: "labor_efficiency", icon: <Gauge size={18} />, href: "/labor-efficiency", roles: ["warehouse_admin", "supervisor"] },
     ],
   },
   {
@@ -308,8 +308,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         }`}
                       >
                         <Building2 size={14} className="text-amber-500" />
-                        <span>总仓汇总</span>
-                        <span className="text-xs text-amber-400 ml-auto">全部</span>
+                        <span>{t("all_warehouses")}</span>
+                        <span className="text-xs text-amber-400 ml-auto">{t("all")}</span>
                       </button>
                     )}
                     {user?.role === "warehouse_admin" && pathname === "/reports" && <div className="border-t border-gray-100" />}
@@ -354,11 +354,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </button>
               {showLangSwitcher && (
                 <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-36 py-1 z-50">
-                  {([
-                    { code: "zh", label: "中文" },
-                    { code: "th", label: "ไทย" },
-                    { code: "my", label: "မြန်မာ" },
-                  ] as const).map(lang => (
+                  {((user?.role === "warehouse_labor"
+                    ? [{ code: "th", label: "ไทย" }, { code: "my", label: "မြန်မာ" }]
+                    : [{ code: "zh", label: "中文" }, { code: "th", label: "ไทย" }, { code: "my", label: "မြန်မာ" }]
+                  ) as { code: string; label: string }[]).map(lang => (
                     <button
                       key={lang.code}
                       onClick={() => { setLocale(lang.code); setShowLangSwitcher(false); }}

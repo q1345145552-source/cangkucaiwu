@@ -17,9 +17,8 @@ const SESSION_LABELS: Record<number, { labelKey: string; time: string; icon: str
 };
 
 const LANG_OPTIONS = [
-  { code: "my", label: "缅甸语", native: "မြန်မာ" },
-  { code: "th", label: "泰语", native: "ไทย" },
-  { code: "zh", label: "中文", native: "中文" },
+  { code: "my", label: "မြန်မာ", native: "" },
+  { code: "th", label: "ไทย", native: "" },
 ];
 
 function useThaiClock() {
@@ -194,7 +193,7 @@ export default function ClockInPage() {
               <button onClick={cancelPhoto} className="ml-auto text-2xl text-blue-200">&times;</button>
             </div>
             <div className="p-4">
-              <img src={previewPhoto} alt="打卡照片" className="w-full rounded-lg max-h-64 object-cover" />
+              <img src={previewPhoto} alt="Photo" className="w-full rounded-lg max-h-64 object-cover" />
               <p className="text-base text-gray-600 mt-3 text-center font-medium">
                 {t(SESSION_LABELS[currentSession!]?.labelKey || "morning_shift")} · {formatThaiTime()}
               </p>
@@ -269,7 +268,7 @@ export default function ClockInPage() {
                     <SafeImage
                       src={done.photo_thumb_path ? `/${done.photo_thumb_path}` : `/${done.photo_path}`}
                       fallbackSrc={`/${done.photo_path}`}
-                      alt="打卡照"
+                      alt="Photo"
                       className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
                       fallback={<div className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0"><CheckCircle2 size={24} className="text-green-500" /></div>}
                     />

@@ -180,7 +180,7 @@ export default function AttendancePage() {
   }
 
   async function rejectLeave(id: number) {
-    try { await api.put(`/attendance/leaves/${id}/reject`, { reason: "管理员驳回" }); toast("success", t("att_rejected_success")); loadLeaves(); }
+    try { await api.put(`/attendance/leaves/${id}/reject`, { reason: t("admin_reject_reason") }); toast("success", t("att_rejected_success")); loadLeaves(); }
     catch { toast("error", t("operation_failed")); }
   }
 
@@ -296,17 +296,17 @@ export default function AttendancePage() {
                     const key = `${dt}_${emp.id}`;
                     const evt = events[key];
                     const status = evt?.status || "future";
-                    const label = evt?.status_label || "";
                     const sessionCount = evt?.session_count ?? 0;
                     const today = new Date().toISOString().slice(0, 10);
                     const isToday = dt === today;
                     const showCount = status === "present" || status === "late" || status === "partial";
-                    const cellText = showCount ? `${sessionCount}/4` : (status === "future" ? "" : label.slice(0, 2));
+                    const statusText = statusLabels[status] || "";
+                    const cellText = showCount ? `${sessionCount}/4` : (status === "future" ? "" : statusText);
                     return (
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
                           className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"}`}
-                          title={label + " - " + t("att_click_view_photos")}
+                          title={(status !== "future" ? statusText + " - " : "") + t("att_click_view_photos")}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
                           {cellText}
@@ -408,9 +408,9 @@ export default function AttendancePage() {
                 <input type="date" className="form-input py-2.5" value={leaveDate} onChange={e => setLeaveDate(e.target.value)} />
               </div>
               <div>
-                <label className="form-label text-sm mb-1 block">请假时长</label>
+                <label className="form-label text-sm mb-1 block">{t("leave_duration")}</label>
                 <div className="flex gap-1.5 flex-wrap">
-                  {[["full", "整天"], ["morning", "上午半天"], ["afternoon", "下午半天"], ["hours", "按小时"]].map(([v, lbl]) => (
+                  {[["full", t("full_day")], ["morning", t("morning_half")], ["afternoon", t("afternoon_half")], ["hours", t("by_hours")]].map(([v, lbl]) => (
                     <button key={v} type="button" onClick={() => setLeaveDuration(v)}
                       className={`px-2.5 py-1.5 rounded-lg text-xs border ${leaveDuration === v ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
                       {lbl}
@@ -418,7 +418,7 @@ export default function AttendancePage() {
                   ))}
                 </div>
                 {leaveDuration === "hours" && (
-                  <input type="number" step="0.5" min="0.5" className="form-input py-2 mt-2" placeholder="请假小时数" value={leaveHours} onChange={e => setLeaveHours(e.target.value)} />
+                  <input type="number" step="0.5" min="0.5" className="form-input py-2 mt-2" placeholder={t("leave_hours_placeholder")} value={leaveHours} onChange={e => setLeaveHours(e.target.value)} />
                 )}
               </div>
               <div>
@@ -485,9 +485,9 @@ export default function AttendancePage() {
                 </div>
               </div>
               <div>
-                <label className="form-label text-sm mb-1 block">请假时长</label>
+                <label className="form-label text-sm mb-1 block">{t("leave_duration")}</label>
                 <div className="flex gap-1.5 flex-wrap">
-                  {[["full", "整天"], ["morning", "上午半天"], ["afternoon", "下午半天"], ["hours", "按小时"]].map(([v, lbl]) => (
+                  {[["full", t("full_day")], ["morning", t("morning_half")], ["afternoon", t("afternoon_half")], ["hours", t("by_hours")]].map(([v, lbl]) => (
                     <button key={v} type="button" onClick={() => setProxyDuration(v)}
                       className={`px-2.5 py-1.5 rounded-lg text-xs border ${proxyDuration === v ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
                       {lbl}
@@ -495,7 +495,7 @@ export default function AttendancePage() {
                   ))}
                 </div>
                 {proxyDuration === "hours" && (
-                  <input type="number" step="0.5" min="0.5" className="form-input py-2 mt-2" placeholder="请假小时数" value={proxyHours} onChange={e => setProxyHours(e.target.value)} />
+                  <input type="number" step="0.5" min="0.5" className="form-input py-2 mt-2" placeholder={t("leave_hours_placeholder")} value={proxyHours} onChange={e => setProxyHours(e.target.value)} />
                 )}
               </div>
               <div>

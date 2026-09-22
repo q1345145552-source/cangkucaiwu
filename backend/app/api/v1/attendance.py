@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.database import get_db
@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.warehouse import Warehouse
 
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.messages import t, get_request_lang
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date, timedelta
@@ -26,6 +27,7 @@ class LeaveCreate(BaseModel):
 
 @router.post("/leaves")
 async def create_leave(
+    request: Request,
     leave_date: str = Form(...),
     leave_type: str = Form("sick"),
     reason: str = Form(None),
@@ -35,27 +37,28 @@ async def create_leave(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = get_request_lang(request)
     if current_user.role not in (Role.WAREHOUSE_LABOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
+        raise HTTPException(403, t("no_permission", lang))
 
     if leave_type not in ("sick", "personal"):
-        raise HTTPException(400, "请假类型无效")
+        raise HTTPException(400, t("leave_type_invalid", lang))
 
     if duration_type not in ("full", "morning", "afternoon", "hours"):
-        raise HTTPException(400, "请假时长类型无效")
+        raise HTTPException(400, t("leave_duration_invalid", lang))
 
     hours_val = None
     if duration_type == "hours":
         try:
             hours_val = float(hours) if hours else None
         except (ValueError, TypeError):
-            raise HTTPException(400, "小时数无效")
+            raise HTTPException(400, t("hours_invalid", lang))
         if hours_val is None or hours_val <= 0:
-            raise HTTPException(400, "请填写请假小时数")
+            raise HTTPException(400, t("please_enter_leave_hours", lang))
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
-        raise HTTPException(400, "请先选择仓库")
+        raise HTTPException(400, t("please_select_warehouse", lang))
 
     # Find employee record for this user（排除已删除）
     emp = (await db.execute(
@@ -67,12 +70,12 @@ async def create_leave(
             select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
         )).scalar_one_or_none()
     if not emp:
-        raise HTTPException(400, "未找到您的员工档案，请联系管理员")
+        raise HTTPException(400, t("employee_not_found_contact_admin", lang))
 
     try:
         leave_dt = datetime.strptime(leave_date, "%Y-%m-%d").date()
     except:
-        raise HTTPException(400, "日期格式错误")
+        raise HTTPException(400, t("invalid_date_format", lang))
 
     # Check duplicate date（同一天不可重复申请）
     dup = (await db.execute(
@@ -83,7 +86,7 @@ async def create_leave(
         )
     )).scalar_one_or_none()
     if dup:
-        raise HTTPException(400, "该日期已提交请假申请")
+        raise HTTPException(400, t("leave_already_submitted", lang))
 
     # Save photo（可选，压缩 + 缩略图）
     photo_path = None
@@ -109,7 +112,7 @@ async def create_leave(
     )
     db.add(lr)
     await db.flush()
-    return {"message": "请假申请已提交，等待审批", "id": lr.id}
+    return {"message": t("leave_submitted", lang), "id": lr.id}
 
 class LeaveBatchCreate(BaseModel):
     employee_id: int

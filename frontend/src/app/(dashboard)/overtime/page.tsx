@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { Clock, Plus, Settings, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 
 export default function OvertimePage() {
-  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
+  const { toast } = useToast(); const { user } = useAuth(); const { t } = useI18n(); const router = useRouter();
   const [tasks, setTasks] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
@@ -59,7 +60,7 @@ export default function OvertimePage() {
         const ws: string[] = [];
         for (const d of (mr.data || [])) {
           if (d.total_hours > limitHours * 0.8) {
-            ws.push(`${d.employee_name} 本月已加班 ${d.total_hours}h，接近上限 ${limitHours}h`);
+            ws.push(t("ot_monthly_warning").replace("{name}", d.employee_name).replace("{h}", String(d.total_hours)).replace("{limit}", String(limitHours)));
           }
         }
         setWarnings(ws);
@@ -69,33 +70,33 @@ export default function OvertimePage() {
   }
 
   async function handleCreate() {
-    if (form.employee_ids.length === 0) { toast("error", "请选择至少一位员工"); return; }
-    if (!form.end_time) { toast("error", "请填写结束时间"); return; }
+    if (form.employee_ids.length === 0) { toast("error", t("ot_please_select_employee")); return; }
+    if (!form.end_time) { toast("error", t("ot_please_select_end_time")); return; }
     try {
       await api.post("/overtime", form);
-      toast("success", "加班任务创建成功");
+      toast("success", t("ot_create_success"));
       setShowForm(false);
       setEmpSearch("");
       setForm({ ...defaultForm, employee_ids: [] });
       load();
-    } catch (err: any) { toast("error", err.message || "创建失败"); }
+    } catch (err: any) { toast("error", err.message || t("ot_create_failed")); }
   }
 
   async function confirmOvertime(taskId: number) {
     try {
       const r = await api.post(`/overtime/${taskId}/confirm`);
-      toast("success", r.message || "确认成功");
+      toast("success", r.message || t("ot_confirm_success"));
       load();
-    } catch (err: any) { toast("error", err.message || "确认失败"); }
+    } catch (err: any) { toast("error", err.message || t("ot_confirm_failed")); }
   }
 
   async function deleteTask(taskId: number) {
-    if (!confirm("确定删除该加班任务吗？")) return;
+    if (!confirm(t("ot_delete_confirm"))) return;
     try {
       await api.delete(`/overtime/${taskId}`);
-      toast("success", "已删除");
+      toast("success", t("ot_deleted"));
       load();
-    } catch (err: any) { toast("error", err.message || "删除失败"); }
+    } catch (err: any) { toast("error", err.message || t("ot_delete_failed")); }
   }
 
   async function saveLimit() {
@@ -103,9 +104,9 @@ export default function OvertimePage() {
       const v = parseFloat(limitInput) || 50;
       await api.put("/overtime/limit", { max_hours: v });
       setLimitHours(v);
-      toast("success", `加班上限已设为 ${v}h/月`);
+      toast("success", t("ot_limit_saved").replace("{h}", String(v)));
       setShowLimitSetting(false);
-    } catch (err: any) { toast("error", err.message || "保存失败"); }
+    } catch (err: any) { toast("error", err.message || t("ot_save_failed")); }
   }
 
   function toggleEmployee(id: number) {
@@ -146,25 +147,25 @@ export default function OvertimePage() {
   return (
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
-        <h1 className="page-title flex items-center gap-2"><Clock size={24}/>加班管理</h1>
+        <h1 className="page-title flex items-center gap-2"><Clock size={24}/>{t("overtime_title")}</h1>
         <div className="flex gap-2 items-center">
           {isAdmin && (
             <>
               <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
-                <span>上限: {limitHours}h/月</span>
+                <span>{t("overtime_limit_hint").replace("{h}", String(limitHours))}</span>
                 <button onClick={() => { setShowLimitSetting(!showLimitSetting); load(); }}
                   className="p-1 hover:bg-gray-200 rounded"><Settings size={14}/></button>
               </div>
               {showLimitSetting && (
                 <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1.5 shadow-sm">
-                  <span className="text-xs text-gray-400">上限(h)</span>
+                  <span className="text-xs text-gray-400">{t("overtime_limit_label")}</span>
                   <input type="number" value={limitInput} onChange={e => setLimitInput(e.target.value)}
                     className="w-16 border rounded px-2 py-0.5 text-sm text-center" step="1" />
-                  <button onClick={saveLimit} className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">确定</button>
+                  <button onClick={saveLimit} className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">{t("confirm")}</button>
                 </div>
               )}
               <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
-                <Plus size={16}/> 发起加班
+                <Plus size={16}/> {t("create_overtime")}
               </button>
             </>
           )}
@@ -184,25 +185,25 @@ export default function OvertimePage() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">加载中...</div>
+        <div className="text-center py-12 text-gray-400">{t("loading")}</div>
       ) : (
         <>
           {/* Pending tasks for labor */}
           {isLabor && pendingTasks.length > 0 && (
             <div className="mb-6">
               <h2 className="text-sm font-medium text-orange-600 mb-3 flex items-center gap-1">
-                <Clock size={16} /> 待确认加班 ({pendingTasks.length})
+                <Clock size={16} /> {t("pending_overtime")} ({pendingTasks.length})
               </h2>
               <div className="grid gap-3">
-                {pendingTasks.map((t: any) => (
-                  <div key={t.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
+                {pendingTasks.map((task: any) => (
+                  <div key={task.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-800">{t.date} {t.start_time}-{t.end_time}</p>
-                      <p className="text-sm text-gray-500">工时 {t.hours}h · 加班费 {calcPayFromTimes(t.start_time, t.end_time)}泰铢</p>
+                      <p className="font-medium text-gray-800">{task.date} {task.start_time}-{task.end_time}</p>
+                      <p className="text-sm text-gray-500">{t("ot_hours_pay").replace("{h}", task.hours).replace("{pay}", String(calcPayFromTimes(task.start_time, task.end_time)))}</p>
                     </div>
-                    <button onClick={() => confirmOvertime(t.id)}
+                    <button onClick={() => confirmOvertime(task.id)}
                       className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-1">
-                      <CheckCircle size={16}/> 确认签到
+                      <CheckCircle size={16}/> {t("ot_confirm_btn")}
                     </button>
                   </div>
                 ))}
@@ -214,58 +215,58 @@ export default function OvertimePage() {
           {tasks.length === 0 ? (
             <div className="text-center py-12 text-gray-400 bg-white rounded-xl border">
               <Clock size={40} className="mx-auto mb-3 text-gray-300"/>
-              <p>暂无加班记录</p>
+              <p>{t("no_overtime")}</p>
             </div>
           ) : (
             <div className="bg-white rounded-xl border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">日期</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">时间</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">工时</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">加班费/人</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">参与员工</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">状态</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">操作</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">{t("date")}</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">{t("time")}</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">{t("hours")}</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">{t("ot_pay_per_person")}</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">{t("ot_participants")}</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">{t("status")}</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">{t("operations")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tasks.map((t: any) => (
-                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-4 py-3">{t.date}</td>
-                      <td className="px-4 py-3">{t.start_time} - {t.end_time}</td>
-                      <td className="px-4 py-3">{t.hours}h</td>
-                      <td className="px-4 py-3">{calcPayFromTimes(t.start_time, t.end_time)}泰铢</td>
+                  {tasks.map((task: any) => (
+                    <tr key={task.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-4 py-3">{task.date}</td>
+                      <td className="px-4 py-3">{task.start_time} - {task.end_time}</td>
+                      <td className="px-4 py-3">{task.hours}h</td>
+                      <td className="px-4 py-3">{calcPayFromTimes(task.start_time, task.end_time)} {t("baht")}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {(t.assignments || []).map((a: any) => (
+                          {(task.assignments || []).map((a: any) => (
                             <span key={a.id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
                               a.confirmed ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
                             }`}>
                               {a.confirmed ? <CheckCircle size={12}/> : <Clock size={12}/>}
-                              {a.employee_name} {a.earned_amount?.toFixed(0)}泰铢
+                              {a.employee_name} {a.earned_amount?.toFixed(0)}{t("baht")}
                             </span>
                           ))}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                          t.status === "completed" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"
+                          task.status === "completed" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"
                         }`}>
-                          {t.status === "completed" ? <CheckCircle size={12}/> : <Clock size={12}/>}
-                          {t.status === "completed" ? "已完成" : "进行中"}
-                          {t.status !== "completed" && ` (${t.confirmed_count || 0}/${t.total_assignments || 0})`}
+                          {task.status === "completed" ? <CheckCircle size={12}/> : <Clock size={12}/>}
+                          {task.status === "completed" ? t("completed_status") : t("in_progress")}
+                          {task.status !== "completed" && ` (${task.confirmed_count || 0}/${task.total_assignments || 0})`}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {isLabor && !t.assignments?.find((a: any) => a.confirmed) && (
-                          <button onClick={() => confirmOvertime(t.id)}
-                            className="text-green-600 hover:text-green-800 text-xs font-medium">确认</button>
+                        {isLabor && !task.assignments?.find((a: any) => a.confirmed) && (
+                          <button onClick={() => confirmOvertime(task.id)}
+                            className="text-green-600 hover:text-green-800 text-xs font-medium">{t("confirm")}</button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => deleteTask(t.id)}
-                            className="text-red-500 hover:text-red-700 text-xs font-medium">删除</button>
+                          <button onClick={() => deleteTask(task.id)}
+                            className="text-red-500 hover:text-red-700 text-xs font-medium">{t("delete")}</button>
                         )}
                       </td>
                     </tr>
@@ -283,38 +284,38 @@ export default function OvertimePage() {
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Clock size={20} />
-              <span className="font-semibold">发起加班任务</span>
+              <span className="font-semibold">{t("create_overtime_task")}</span>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">加班日期</label>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">{t("overtime_date")}</label>
                 <input type="date" className="form-input text-base py-2.5 w-full" value={form.date}
                   onChange={e => setForm({ ...form, date: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">开始时间</label>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">{t("start_time")}</label>
                   <input type="time" className="form-input text-base py-2.5 w-full" value={form.start_time}
                     onChange={e => setForm({ ...form, start_time: e.target.value })} />
                 </div>
                 <div>
-                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">结束时间</label>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">{t("end_time")}</label>
                   <input type="time" className="form-input text-base py-2.5 w-full" value={form.end_time}
                     onChange={e => setForm({ ...form, end_time: e.target.value })} />
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <span className="text-sm text-gray-500">预计工时: </span>
-                <span className="font-bold text-blue-600">{calcHours()} 小时</span>
-                <span className="text-sm text-gray-400 ml-2">加班费 {calcPay()}泰铢/人</span>
+                <span className="text-sm text-gray-500">{t("estimated_hours")}: </span>
+                <span className="font-bold text-blue-600">{calcHours()} {t("hours")}</span>
+                <span className="text-sm text-gray-400 ml-2">{t("ot_pay_baht").replace("{pay}", String(calcPay()))}</span>
               </div>
               <div>
-                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">选择参与员工（可多选）</label>
-                <input type="text" className="form-input text-base py-2 w-full mb-2" placeholder="按工号搜索员工，如 00" value={empSearch}
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">{t("select_employees")}</label>
+                <input type="text" className="form-input text-base py-2 w-full mb-2" placeholder={t("search_by_employee_no")} value={empSearch}
                   onChange={e => setEmpSearch(e.target.value)} />
                 <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
                   {employees.filter((e: any) => !empSearch || (e.employee_no || "").toLowerCase().includes(empSearch.toLowerCase()) || e.name.toLowerCase().includes(empSearch.toLowerCase())).length === 0 ? (
-                    <p className="text-gray-400 text-sm text-center py-6">暂无匹配员工</p>
+                    <p className="text-gray-400 text-sm text-center py-6">{t("no_matching_employee")}</p>
                   ) : (
                     employees.filter((e: any) => !empSearch || (e.employee_no || "").toLowerCase().includes(empSearch.toLowerCase()) || e.name.toLowerCase().includes(empSearch.toLowerCase())).map((e: any) => (
                       <label key={e.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 ${
@@ -325,18 +326,18 @@ export default function OvertimePage() {
                           className="w-4 h-4 text-blue-500 rounded" />
                         <div>
                           <p className="text-sm font-medium">{e.name}</p>
-                          <p className="text-xs text-gray-400">工号 {e.employee_no || "-"} · {e.position || "仓库劳工"}</p>
+                          <p className="text-xs text-gray-400">{t("employee_no")} {e.employee_no || "-"} · {e.position || t("position_labor")}</p>
                         </div>
                       </label>
                     ))
                   )}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">已选: {form.employee_ids.length} 人</p>
+                <p className="text-xs text-gray-400 mt-1">{t("selected_count").replace("{n}", String(form.employee_ids.length))}</p>
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">发起加班</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
+              <button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">{t("create_overtime")}</button>
             </div>
           </div>
         </div>
