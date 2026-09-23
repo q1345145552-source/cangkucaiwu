@@ -279,6 +279,15 @@ export default function PayrollPage() {
   const psBaseSalary = psDetail.base_salary ?? showPayslip?.base_salary ?? 0;
   const psLeaveDeduction = showPayslip?.leave_deduction ?? 0;
   const psAbsenceDeduction = showPayslip?.absence_deduction ?? 0;
+  const psEarlyPenalty = showPayslip?.early_penalty ?? 0;
+  const psAbsenceFine = showPayslip?.absence_fine ?? 0;
+  const psFixedDeduction = showPayslip?.fixed_deduction ?? 0;
+  const psTempDeduction = showPayslip?.temp_deduction ?? 0;
+  const psFixedItems = psDetail.fixed_deductions || [];
+  const psTempItems = psDetail.temp_deductions || [];
+  const psEarlyDetails = psDetail.early_details || [];
+  const psEarlyHalfCount = psDetail.early_half_count ?? 0;
+  const psEarlyOneCount = psDetail.early_one_count ?? 0;
   const psPeriodBase = psDetail.period_base ?? null;
   const psPeriodDays = psDetail.period_days ?? null;
   const psHourlyFormula = psTemplateType === "monthly"
@@ -287,9 +296,9 @@ export default function PayrollPage() {
   const psLateFormula = psLateHalfCount > 0 && psLateOneCount > 0
     ? `迟到半小时${psLateHalfCount}次 + 迟到1小时${psLateOneCount}次`
     : psLateHalfCount > 0
-      ? `迟到半小时${psLateHalfCount}次 × ${(psHourlyRate * 0.5).toFixed(2)}`
+      ? `迟到半小时${psLateHalfCount}次`
       : psLateOneCount > 0
-        ? `迟到1小时${psLateOneCount}次 × ${psHourlyRate.toFixed(2)}`
+        ? `迟到1小时${psLateOneCount}次`
         : "";
 
   function fmtClockTime(t: string) {
@@ -663,6 +672,30 @@ export default function PayrollPage() {
                     <span>-{psLatePenalty}{psLateFormula ? <span className="text-red-300 text-xs"> ({psLateFormula})</span> : null}</span>
                   </div>
                 )}
+                {psEarlyPenalty > 0 && (
+                  <div className="flex justify-between text-sm text-red-500">
+                    <span>早退扣款</span>
+                    <span>-{psEarlyPenalty}{psEarlyHalfCount > 0 || psEarlyOneCount > 0 ? <span className="text-red-300 text-xs"> ({psEarlyHalfCount > 0 ? `早退半小时${psEarlyHalfCount}次` : ""}{psEarlyHalfCount > 0 && psEarlyOneCount > 0 ? " + " : ""}{psEarlyOneCount > 0 ? `早退1小时${psEarlyOneCount}次` : ""})</span> : null}</span>
+                  </div>
+                )}
+                {psAbsenceFine > 0 && (
+                  <div className="flex justify-between text-sm text-red-500">
+                    <span>旷工扣款</span>
+                    <span>-{psAbsenceFine.toLocaleString()}</span>
+                  </div>
+                )}
+                {psFixedItems.map((f: any) => (
+                  <div key={f.id || f.name} className="flex justify-between text-sm text-red-500">
+                    <span>固定扣款 · {f.name}</span>
+                    <span>-{Number(f.amount ?? 0).toLocaleString()}</span>
+                  </div>
+                ))}
+                {psTempItems.map((t: any) => (
+                  <div key={t.id || (t.reason + t.date)} className="flex justify-between text-sm text-red-500">
+                    <span>临时扣款 · {t.reason}</span>
+                    <span>-{Number(t.amount ?? 0).toLocaleString()}</span>
+                  </div>
+                ))}
                 {psAdvanceDeduction > 0 && (
                   <div className="flex justify-between text-sm text-red-500">
                     <span>预支扣款</span>

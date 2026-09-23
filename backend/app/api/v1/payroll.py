@@ -6,6 +6,8 @@ from app.models.payroll import PayrollRecord
 from app.models.employee import Employee
 from app.models.employee_advance import EmployeeAdvance
 from app.models.salary_template import SalaryTemplate
+from app.models.deduction_template import DeductionTemplate
+from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.clock_in_records import ClockInRecord
 from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.overtime import OvertimeAssignment, OvertimeTask
@@ -120,6 +122,13 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         ts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(template_ids)))).scalars().all()
         template_map = {t.id: t for t in ts}
 
+    # 扣款模板（考勤扣款规则，可留空 = 不扣考勤款）
+    dt_ids = {e.deduction_template_id for e in employees if e.deduction_template_id}
+    deduction_template_map = {}
+    if dt_ids:
+        dts = (await db.execute(select(DeductionTemplate).where(DeductionTemplate.id.in_(dt_ids)))).scalars().all()
+        deduction_template_map = {t.id: t for t in dts}
+
     # 已离职但本期有结算记录 → 跳过并说明
     skipped_notes = []
     resigned_settled = (await db.execute(
@@ -175,11 +184,11 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             LeaveRequest.status == "approved",
         )
     )).scalars().all()
-    leave_by_emp = {}  # emp_id -> {date: (duration_type, hours)}
+    leave_by_emp = {}  # emp_id -> {date: (duration_type, hours, notified_at)}
     for lv in leaves:
         if lv.employee_id not in leave_by_emp:
             leave_by_emp[lv.employee_id] = {}
-        leave_by_emp[lv.employee_id][lv.leave_date] = (lv.duration_type or "full", lv.hours)
+        leave_by_emp[lv.employee_id][lv.leave_date] = (lv.duration_type or "full", lv.hours, lv.notified_at)
 
     rests = (await db.execute(
         select(RestDay).where(
@@ -225,6 +234,30 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     )
     overtime_rows = (await db.execute(overtime_query)).all()
     overtime_map = {r.employee_id: {"amount": r.total or 0, "hours": r.hours or 0} for r in overtime_rows}
+
+    # 固定扣款（每月固定，下半月周期扣全额）
+    fixed_rows = (await db.execute(
+        select(EmployeeFixedDeduction).where(EmployeeFixedDeduction.employee_id.in_(emp_id_set))
+    )).scalars().all()
+    fixed_by_emp = {}
+    for f in fixed_rows:
+        fixed_by_emp.setdefault(f.employee_id, []).append({"id": f.id, "name": f.name, "amount": f.amount or 0})
+
+    # 临时扣款（按扣款日期落入本周期）
+    temp_rows = (await db.execute(
+        select(EmployeeDeduction).where(
+            EmployeeDeduction.employee_id.in_(emp_id_set),
+            EmployeeDeduction.deduction_date >= period_start,
+            EmployeeDeduction.deduction_date <= period_end,
+        )
+    )).scalars().all()
+    temp_by_emp = {}
+    for d in temp_rows:
+        temp_by_emp.setdefault(d.employee_id, []).append({
+            "id": d.id, "amount": d.amount or 0,
+            "date": d.deduction_date.isoformat() if d.deduction_date else None,
+            "reason": d.reason,
+        })
 
     # ── 算工资前检查待补（打卡 1 次或 3 次的天） ──
     SESSION_CN = {1: "早上上班", 2: "中午休息结束", 3: "下午上班", 4: "下午下班"}
@@ -325,17 +358,25 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         tt = template.type if template else "daily"
         template_amount = template.amount or 0
 
+        # 扣款模板（可留空 = 不扣考勤款）
+        deduction_tpl = deduction_template_map.get(emp.deduction_template_id)
+
         emp_status = emp.status or "trial"
         # 时薪：按小时/按天 = 日薪/8；按月 = 月薪/当月天数/8
         if tt == "monthly":
             hourly_rate = template_amount / total_days / 8.0
+            daily_rate = template_amount / total_days  # 日薪 = 月薪 ÷ 当月天数
         else:
             hourly_rate = template_amount / 8.0
+            daily_rate = template_amount  # 日薪 = 模板金额
 
         work_hours_total = 0.0
         attendance_days_total = 0.0
         late_half_count = 0
         late_one_count = 0
+        early_half_count = 0
+        early_one_count = 0
+        absence_fine_days = 0.0
         rest_days_count = 0
         leave_days_count = 0.0
         absence_days_count = 0.0
@@ -346,6 +387,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
         daily_list = []  # 逐天出勤明细
         late_list = []   # 迟到明细（金额在算出时薪后补齐）
+        early_list = []  # 早退明细
 
         current = period_start
         while current <= period_end:
@@ -363,6 +405,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             lt_info = leave_map.get(current)
             lt = lt_info[0] if lt_info else None
             lv_hours = lt_info[1] if lt_info else None
+            notified_at = lt_info[2] if lt_info else None
             sessions = clock_by_emp_date.get((emp.id, current), [])
             sessions_sorted = sorted(sessions, key=lambda c: c.clocked_in_at or datetime.min)
             sessions_by_session = sorted(sessions, key=lambda c: c.session)
@@ -370,6 +413,33 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             n = len(session_set)
             hours = _day_hours(sessions_sorted) if n in (2, 4) else 0.0
             att, lv, ab = _attendance_of_day(session_set, lt)
+
+            # 旷工自动判定：无打卡的天，当天18点起24小时内报备请假算有效，否则算旷工
+            absent_fine_day = 0.0
+            if n == 0 and lt is None:
+                day_end = datetime.combine(current, time(18, 0), tzinfo=THAI_TZ)
+                deadline = day_end + timedelta(hours=24)
+                if thai_now() > deadline:
+                    # 已过24小时仍未请假 → 旷工
+                    att, lv, ab = 0.0, 0.0, 1.0
+                    absent_fine_day = 1.0
+                else:
+                    # 宽限期内：不发钱，先不算旷工
+                    att, lv, ab = 0.0, 0.0, 0.0
+                    hours = 0.0
+            elif n == 0 and lt == "full":
+                day_end = datetime.combine(current, time(18, 0), tzinfo=THAI_TZ)
+                deadline = day_end + timedelta(hours=24)
+                notified = notified_at
+                if notified is not None and getattr(notified, "tzinfo", None) is None:
+                    notified = notified.replace(tzinfo=THAI_TZ)
+                if notified is None or notified <= deadline:
+                    # 报备在24小时内 → 有效请假
+                    att, lv, ab = 0.0, 1.0, 0.0
+                else:
+                    # 报备超过24小时 → 旷工
+                    att, lv, ab = 0.0, 0.0, 1.0
+                    absent_fine_day = 1.0
 
             # 按小时请假：工时扣掉请假小时数，请假天数记成小时/8 的小数
             if lt == "hours" and lv_hours is not None:
@@ -392,6 +462,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             attendance_days_total += att
             leave_days_count += lv
             absence_days_count += ab
+            absence_fine_days += absent_fine_day
 
             # 该天打卡时间（按时段 1-4 顺序，HH:MM）
             times = []
@@ -400,7 +471,9 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 if t is not None:
                     times.append(t.strftime("%H:%M"))
             status = "normal"
-            if lt == "full" or lv == 1.0:
+            if absent_fine_day > 0:
+                status = "absence"  # 旷工
+            elif lt == "full" or lv == 1.0:
                 status = "leave"
             elif ab == 1.0 and att == 0.0:
                 status = "no_clock"
@@ -418,6 +491,18 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                     elif cr.status == "late_one":
                         late_one_count += 1
                         late_list.append({"day": current.day, "date": current.isoformat(), "type": "late_one"})
+
+            # 早退判定：时段4（下班）打卡时间，17:30前早退半小时，17:00前早退1小时
+            s4 = next((c for c in sessions if c.session == 4), None)
+            if s4 is not None:
+                t4 = _local_time_of(s4.clocked_in_at)
+                if t4 is not None:
+                    if t4 < time(17, 0):
+                        early_one_count += 1
+                        early_list.append({"day": current.day, "date": current.isoformat(), "type": "early_one"})
+                    elif t4 < time(17, 30):
+                        early_half_count += 1
+                        early_list.append({"day": current.day, "date": current.isoformat(), "type": "early_half"})
 
             current += timedelta(days=1)
 
@@ -445,17 +530,47 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         overtime_pay = float(ot.get("amount", 0) or 0)
         overtime_hours = float(ot.get("hours", 0) or 0)
 
-        late_penalty_total = round(late_half_count * hourly_rate * 0.5 + late_one_count * hourly_rate, 2)
+        # ── 考勤扣款（按扣款模板；无模板则不扣）──
+        if deduction_tpl is not None:
+            late_half_mult = deduction_tpl.late_half_multiplier if deduction_tpl.late_half_multiplier is not None else 0.5
+            late_one_mult = deduction_tpl.late_one_multiplier if deduction_tpl.late_one_multiplier is not None else 1.0
+            early_half_mult = deduction_tpl.early_half_multiplier if deduction_tpl.early_half_multiplier is not None else 0.5
+            early_one_mult = deduction_tpl.early_one_multiplier if deduction_tpl.early_one_multiplier is not None else 1.0
+            absence_extra_mult = deduction_tpl.absence_extra_multiplier if deduction_tpl.absence_extra_multiplier is not None else 0.5
+        else:
+            late_half_mult = late_one_mult = early_half_mult = early_one_mult = absence_extra_mult = 0.0
+
+        late_penalty_total = round(late_half_count * hourly_rate * late_half_mult + late_one_count * hourly_rate * late_one_mult, 2)
         late_details = []
         for l in late_list:
-            amt = round(hourly_rate * 0.5, 2) if l["type"] == "late_half" else round(hourly_rate, 2)
+            amt = round(hourly_rate * late_half_mult, 2) if l["type"] == "late_half" else round(hourly_rate * late_one_mult, 2)
             late_details.append({"day": l["day"], "date": l["date"], "type": l["type"], "amount": amt})
+
+        early_penalty_total = round(early_half_count * hourly_rate * early_half_mult + early_one_count * hourly_rate * early_one_mult, 2)
+        early_details = []
+        for l in early_list:
+            amt = round(hourly_rate * early_half_mult, 2) if l["type"] == "early_half" else round(hourly_rate * early_one_mult, 2)
+            early_details.append({"day": l["day"], "date": l["date"], "type": l["type"], "amount": amt})
+
+        # 旷工额外罚 = 日薪 × 旷工倍数 × 旷工天数
+        absence_fine_total = round(daily_rate * absence_extra_mult * absence_fine_days, 2)
+
+        # 固定扣款：下半月周期扣全额，上半月不扣
+        fixed_items = fixed_by_emp.get(emp.id, [])
+        fixed_total = 0.0
+        if req.half == "second_half":
+            fixed_total = round(sum(f["amount"] for f in fixed_items), 2)
+
+        # 临时扣款：本周期内按扣款日期全部扣
+        temp_items = temp_by_emp.get(emp.id, [])
+        temp_total = round(sum(d["amount"] for d in temp_items), 2)
+
         work_pay = round(work_pay, 2)
         gross_pay = round(work_pay + overtime_pay, 2)
-        total_deductions = round(late_penalty_total, 2)
+        total_deductions = round(late_penalty_total + early_penalty_total + absence_fine_total + fixed_total + temp_total, 2)
 
         # ── 预支扣款 ──
-        available = round(max(work_pay - late_penalty_total + overtime_pay, 0), 2)
+        available = round(max(work_pay + overtime_pay - total_deductions, 0), 2)
         advance_deduction = 0.0
         advance_deductions = []  # 用于删除工资单时回退
         remaining_debt = 0.0
@@ -508,6 +623,13 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "attendance_days": round(attendance_days_total, 2),
             "work_pay": work_pay,
             "late_penalty": late_penalty_total,
+            "early_penalty": early_penalty_total,
+            "absence_fine": absence_fine_total,
+            "absence_fine_days": absence_fine_days,
+            "fixed_deduction": fixed_total,
+            "fixed_deductions": fixed_items,
+            "temp_deduction": temp_total,
+            "temp_deductions": temp_items,
             "overtime_hours": round(overtime_hours, 1),
             "overtime_pay": round(overtime_pay, 2),
             "leave_days": round(leave_days_count, 2),
@@ -517,14 +639,18 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "absence_deduction": absence_deduction,
             "late_half_count": late_half_count,
             "late_one_count": late_one_count,
+            "early_half_count": early_half_count,
+            "early_one_count": early_one_count,
             "salary_template_name": template.name if template else "",
             "salary_template_type": tt,
+            "deduction_template_name": deduction_tpl.name if deduction_tpl else "",
             "daily_wage": round(template_amount, 2) if tt in ("hourly", "daily") else None,
             "base_salary": round(template_amount, 2) if tt == "monthly" else None,
             "period_days": period_days,
             "period_base": round(period_base, 2) if period_base is not None else None,
             "daily_hours": daily_list,
             "late_details": late_details,
+            "early_details": early_details,
             "advance_deduction": advance_deduction,
             "remaining_debt": remaining_debt,
             "advance_deductions": advance_deductions,
@@ -549,8 +675,12 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             overtime_pay=round(overtime_pay, 2),
             overtime_hours=round(overtime_hours, 1),
             late_penalty=late_penalty_total,
+            early_penalty=early_penalty_total,
             leave_deduction=leave_deduction,
             absence_deduction=absence_deduction,
+            absence_fine=absence_fine_total,
+            fixed_deduction=fixed_total,
+            temp_deduction=temp_total,
             advance_deduction=advance_deduction,
             remaining_debt=remaining_debt,
             gross_pay=gross_pay,
@@ -683,8 +813,12 @@ async def list_payroll(
             "overtime_pay": r.overtime_pay,
             "overtime_hours": r.overtime_hours,
             "late_penalty": r.late_penalty,
+            "early_penalty": r.early_penalty or 0,
             "leave_deduction": r.leave_deduction,
             "absence_deduction": r.absence_deduction,
+            "absence_fine": r.absence_fine or 0,
+            "fixed_deduction": r.fixed_deduction or 0,
+            "temp_deduction": r.temp_deduction or 0,
             "advance_deduction": r.advance_deduction or 0,
             "remaining_debt": r.remaining_debt or 0,
             "gross_pay": r.gross_pay,
@@ -1077,8 +1211,12 @@ async def my_payslip(
             "overtime_pay": r.overtime_pay,
             "overtime_hours": r.overtime_hours,
             "late_penalty": r.late_penalty,
+            "early_penalty": r.early_penalty or 0,
             "leave_deduction": r.leave_deduction,
             "absence_deduction": r.absence_deduction,
+            "absence_fine": r.absence_fine or 0,
+            "fixed_deduction": r.fixed_deduction or 0,
+            "temp_deduction": r.temp_deduction or 0,
             "advance_deduction": r.advance_deduction or 0,
             "remaining_debt": r.remaining_debt or 0,
             "gross_pay": r.gross_pay,

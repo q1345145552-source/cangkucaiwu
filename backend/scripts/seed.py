@@ -20,6 +20,8 @@ from app.models.credit import CreditCustomer, CreditShipment, CreditRepayment
 from app.models.labor_efficiency import EfficiencyOrderCount
 from app.models.employee_advance import EmployeeAdvance
 from app.models.salary_template import SalaryTemplate
+from app.models.deduction_template import DeductionTemplate
+from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
@@ -260,6 +262,9 @@ async def seed():
                 "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS hours DOUBLE PRECISION"
             ))
             await conn.execute(text(
+                "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ"
+            ))
+            await conn.execute(text(
                 "UPDATE supplier_cross_border_prices SET currency = 'CNY' WHERE currency = '人民币'"
             ))
             await conn.execute(text(
@@ -298,8 +303,12 @@ async def seed():
                 ("overtime_pay", "DOUBLE PRECISION DEFAULT 0"),
                 ("overtime_hours", "DOUBLE PRECISION DEFAULT 0"),
                 ("late_penalty", "DOUBLE PRECISION DEFAULT 0"),
+                ("early_penalty", "DOUBLE PRECISION DEFAULT 0"),
                 ("leave_deduction", "DOUBLE PRECISION DEFAULT 0"),
                 ("absence_deduction", "DOUBLE PRECISION DEFAULT 0"),
+                ("absence_fine", "DOUBLE PRECISION DEFAULT 0"),
+                ("fixed_deduction", "DOUBLE PRECISION DEFAULT 0"),
+                ("temp_deduction", "DOUBLE PRECISION DEFAULT 0"),
                 ("advance_deduction", "DOUBLE PRECISION DEFAULT 0"),
                 ("remaining_debt", "DOUBLE PRECISION DEFAULT 0"),
                 ("gross_pay", "DOUBLE PRECISION DEFAULT 0"),
@@ -354,6 +363,7 @@ async def seed():
                 ("tags", "TEXT"),
                 ("user_id", "INTEGER"),
                 ("salary_template_id", "INTEGER"),
+                ("deduction_template_id", "INTEGER"),
                 ("resignation_date", "DATE"),
                 ("resignation_reason", "VARCHAR(50)"),
                 ("resignation_note", "VARCHAR(500)"),

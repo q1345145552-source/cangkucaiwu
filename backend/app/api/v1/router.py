@@ -6,6 +6,8 @@ from app.api.v1 import upload, settings_api, exchange_rates, employees, clock_in
 from app.api.v1 import history, efficiency
 from app.api.v1 import employee_advance
 from app.api.v1 import salary_template
+from app.api.v1 import deduction_template
+from app.api.v1 import employee_deduction
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["认证"])
@@ -38,3 +40,5 @@ api_router.include_router(history.router, prefix="/history", tags=["修改历史
 api_router.include_router(efficiency.router, prefix="/efficiency", tags=["人效管理"])
 api_router.include_router(employee_advance.router, prefix="/employee-advances", tags=["员工预支"])
 api_router.include_router(salary_template.router, prefix="/salary-templates", tags=["薪资模板"])
+api_router.include_router(deduction_template.router, prefix="/deduction-templates", tags=["扣款模板"])
+api_router.include_router(employee_deduction.router, prefix="/employee-deductions", tags=["员工扣款"])

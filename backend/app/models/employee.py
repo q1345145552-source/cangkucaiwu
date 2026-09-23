@@ -43,6 +43,9 @@ class Employee(Base):
     # 薪资模板
     salary_template_id = Column(Integer, ForeignKey("salary_templates.id"), nullable=True, comment="薪资模板")
 
+    # 扣款模板（考勤扣款规则，可留空 = 不扣考勤类款）
+    deduction_template_id = Column(Integer, ForeignKey("deduction_templates.id"), nullable=True, comment="扣款模板")
+
     resignation_date = Column(Date, nullable=True)
     resignation_reason = Column(String(50), nullable=True)
     resignation_note = Column(String(500), nullable=True)
@@ -61,3 +64,4 @@ class Employee(Base):
     warehouse = relationship("Warehouse", backref="employees")
     user = relationship("User", foreign_keys=[user_id], backref="employee_profile")
     salary_template = relationship("SalaryTemplate", foreign_keys=[salary_template_id], back_populates="employees")
+    deduction_template = relationship("DeductionTemplate", foreign_keys=[deduction_template_id], back_populates="employees")

@@ -7,6 +7,7 @@ from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.models.salary_template import SalaryTemplate
+from app.models.deduction_template import DeductionTemplate
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.security import hash_password
 from app.services.image_utils import thumb_path_of
@@ -32,6 +33,7 @@ class EmployeeCreate(BaseModel):
     daily_wage: float = 400
     base_salary: float = 12000
     salary_template_id: Optional[int] = None
+    deduction_template_id: Optional[int] = None
     remark: Optional[str] = None
     passport_number: Optional[str] = None
     work_permit_number: Optional[str] = None
@@ -54,6 +56,7 @@ class EmployeeUpdate(BaseModel):
     daily_wage: Optional[float] = None
     base_salary: Optional[float] = None
     salary_template_id: Optional[int] = None
+    deduction_template_id: Optional[int] = None
     remark: Optional[str] = None
     user_id: Optional[int] = None
     passport_number: Optional[str] = None
@@ -127,6 +130,11 @@ async def list_employees(
     if st_ids:
         sts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(st_ids)))).scalars().all()
         st_map = {s.id: s for s in sts}
+    dt_ids = {e.deduction_template_id for e in emps if e.deduction_template_id}
+    dt_map = {}
+    if dt_ids:
+        dts = (await db.execute(select(DeductionTemplate).where(DeductionTemplate.id.in_(dt_ids)))).scalars().all()
+        dt_map = {d.id: d for d in dts}
     
     return {
         "data": [{
@@ -142,6 +150,8 @@ async def list_employees(
             "salary_template_type": st_map.get(e.salary_template_id).type if st_map.get(e.salary_template_id) else "",
             "salary_template_amount": st_map.get(e.salary_template_id).amount if st_map.get(e.salary_template_id) else None,
             "salary_template_overtime_fee": st_map.get(e.salary_template_id).overtime_half_hour_fee if st_map.get(e.salary_template_id) else None,
+            "deduction_template_id": e.deduction_template_id,
+            "deduction_template_name": dt_map.get(e.deduction_template_id).name if dt_map.get(e.deduction_template_id) else "",
             "remark": e.remark,
             "photo_path": e.photo_path,
             "photo_thumb_path": thumb_path_of(e.photo_path),
@@ -212,6 +222,15 @@ async def create_employee(
     else:
         base_salary = template.amount
 
+    # 扣款模板（可留空 = 不扣考勤类款）
+    deduction_template_id = req.deduction_template_id or None
+    if deduction_template_id:
+        dt = (await db.execute(
+            select(DeductionTemplate).where(DeductionTemplate.id == deduction_template_id, DeductionTemplate.warehouse_id == wh_id)
+        )).scalar_one_or_none()
+        if not dt:
+            raise HTTPException(400, "扣款模板不存在")
+
     # 先创建登录账号（仓库劳工）
     new_user = User(
         username=employee_no,
@@ -254,6 +273,7 @@ async def create_employee(
         emergency_contact=req.emergency_contact, hire_date=hire_date,
         status=req.status, daily_wage=daily_wage, base_salary=base_salary,
         salary_template_id=template.id,
+        deduction_template_id=deduction_template_id,
         remark=req.remark, created_by=current_user.id,
     )
     db.add(e)
@@ -364,6 +384,19 @@ async def update_employee(
                 e.daily_wage = template.amount
             else:
                 e.base_salary = template.amount
+
+    # 扣款模板变更（可清空 = 不扣考勤类款）
+    if "deduction_template_id" in updates:
+        dt_id = updates.pop("deduction_template_id")
+        if dt_id:
+            dt = (await db.execute(
+                select(DeductionTemplate).where(DeductionTemplate.id == dt_id, DeductionTemplate.warehouse_id == e.warehouse_id)
+            )).scalar_one_or_none()
+            if not dt:
+                raise HTTPException(400, "扣款模板不存在")
+            e.deduction_template_id = dt.id
+        else:
+            e.deduction_template_id = None
 
     for k, v in updates.items():
         setattr(e, k, v)

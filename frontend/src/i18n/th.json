@@ -288,5 +288,7 @@
   "my_debt": "หนี้ของฉัน",
   "currency_symbol": "บาท",
   "overtime_pending_confirm": "รอพนักงานยืนยัน",
-  "salary_templates": "เทมเพลตเงินเดือน"
+  "salary_templates": "เทมเพลตเงินเดือน",
+  "deduction_templates": "เทมเพลตหักเงิน",
+  "employee_deductions": "หักเงินพนักงาน"
 }

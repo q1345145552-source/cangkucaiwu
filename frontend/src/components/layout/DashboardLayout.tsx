@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList, History, Gauge,
+  Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList, History, Gauge, Scale, MinusCircle,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -74,6 +74,8 @@ const navItems: NavItem[] = [
     children: [
       { key: "employees", label: "employees", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "supervisor"] },
       { key: "salary_templates", label: "salary_templates", icon: <DollarSign size={18} />, href: "/salary-templates", roles: ["warehouse_admin", "supervisor"] },
+      { key: "deduction_templates", label: "deduction_templates", icon: <Scale size={18} />, href: "/deduction-templates", roles: ["warehouse_admin", "supervisor"] },
+      { key: "employee_deductions", label: "employee_deductions", icon: <MinusCircle size={18} />, href: "/employee-deductions", roles: ["warehouse_admin", "supervisor"] },
       { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin", "supervisor"] },
       { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin", "supervisor"] },
       { key: "payroll", label: "payroll", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "supervisor"] },

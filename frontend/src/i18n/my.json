@@ -389,5 +389,7 @@
   "my_debt": "ကျွန်ုပ်၏ကြွေး",
   "currency_symbol": "ဘတ်",
   "overtime_pending_confirm": "ဝန်ထမ်းအတည်ပြုရန်စောင့်ဆိုင်း",
-  "salary_templates": "လစာပုံစံခွက်"
+  "salary_templates": "လစာပုံစံခွက်",
+  "deduction_templates": "နုတ်ယူပုံစံခွက်",
+  "employee_deductions": "ဝန်ထမ်းနုတ်ယူမှု"
 }

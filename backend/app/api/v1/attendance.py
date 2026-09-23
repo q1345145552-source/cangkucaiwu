@@ -109,6 +109,7 @@ async def create_leave(
         leave_date=leave_dt, leave_type=leave_type,
         photo_path=photo_path, reason=reason, status="pending",
         duration_type=duration_type, hours=hours_val,
+        notified_at=thai_now(),  # 员工自己申请：报备时间=申请时间
     )
     db.add(lr)
     await db.flush()
@@ -122,6 +123,7 @@ class LeaveBatchCreate(BaseModel):
     reason: Optional[str] = None
     duration_type: str = "full"  # full/morning/afternoon/hours
     hours: Optional[float] = None
+    notified_at: Optional[str] = None  # 实际报备时间 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM
 
 @router.post("/leaves/admin-record")
 async def admin_record_leave(
@@ -160,6 +162,17 @@ async def admin_record_leave(
     if not emp:
         raise HTTPException(404, "员工不存在")
 
+    # 实际报备时间：默认今天；支持 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM
+    notified_at = thai_now()
+    if req.notified_at:
+        try:
+            notified_at = datetime.fromisoformat(req.notified_at)
+        except (ValueError, TypeError):
+            try:
+                notified_at = datetime.strptime(req.notified_at, "%Y-%m-%d")
+            except (ValueError, TypeError):
+                notified_at = thai_now()
+
     created = 0
     skipped = 0
     cur = start
@@ -179,6 +192,7 @@ async def admin_record_leave(
                 leave_date=cur, leave_type=req.leave_type,
                 reason=req.reason, status="approved",
                 duration_type=req.duration_type, hours=hours_val,
+                notified_at=notified_at,
                 reviewed_by=current_user.id, reviewed_at=thai_now(),
             ))
             created += 1
@@ -235,6 +249,7 @@ async def list_leaves(
         "leave_date": r.leave_date.isoformat(), "leave_type": r.leave_type,
         "duration_type": r.duration_type or "full", "hours": r.hours,
         "photo_path": r.photo_path, "status": r.status, "reason": r.reason,
+        "notified_at": r.notified_at.isoformat() if r.notified_at else None,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     } for r, name in rows]}
 

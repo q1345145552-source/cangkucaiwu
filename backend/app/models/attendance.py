@@ -15,6 +15,7 @@ class LeaveRequest(Base):
     reason = Column(String(500), nullable=True)
     duration_type = Column(String(20), default="full", comment="full/morning/afternoon/hours")
     hours = Column(Float, nullable=True, comment="按小时请假的具体小时数")
+    notified_at = Column(DateTime(timezone=True), nullable=True, comment="实际报备时间（判断旷工用）")
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

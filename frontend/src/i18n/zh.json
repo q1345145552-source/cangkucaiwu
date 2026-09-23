@@ -288,5 +288,7 @@
   "my_debt": "我的欠款",
   "currency_symbol": "泰铢",
   "overtime_pending_confirm": "待员工确认",
-  "salary_templates": "薪资模板"
+  "salary_templates": "薪资模板",
+  "deduction_templates": "扣款模板",
+  "employee_deductions": "员工扣款"
 }

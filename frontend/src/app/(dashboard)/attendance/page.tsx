@@ -83,6 +83,7 @@ export default function AttendancePage() {
   const [proxyDuration, setProxyDuration] = useState("full");
   const [proxyHours, setProxyHours] = useState("");
   const [proxyReason, setProxyReason] = useState("");
+  const [proxyNotifiedAt, setProxyNotifiedAt] = useState(todayStr);
 
   // Rest day form
   const [restEmployeeId, setRestEmployeeId] = useState<number>(0);
@@ -167,11 +168,13 @@ export default function AttendancePage() {
         duration_type: proxyDuration,
         hours: proxyDuration === "hours" ? (parseFloat(proxyHours) || undefined) : undefined,
         reason: proxyReason || undefined,
+        notified_at: proxyNotifiedAt || undefined,
       });
       toast("success", r.message || t("submit_ok"));
       setShowProxyLeaveForm(false);
       setProxyEmpId(0); setProxyStartDate(""); setProxyEndDate("");
       setProxyType("sick"); setProxyDuration("full"); setProxyHours(""); setProxyReason("");
+      setProxyNotifiedAt(todayStr);
       loadLeaves(); loadCalendar();
     } catch (err: any) { toast("error", err.message || t("operation_failed")); }
   }
@@ -500,6 +503,11 @@ export default function AttendancePage() {
                 {proxyDuration === "hours" && (
                   <input type="number" step="0.5" min="0.5" className="form-input py-2 mt-2" placeholder={t("leave_hours_placeholder")} value={proxyHours} onChange={e => setProxyHours(e.target.value)} />
                 )}
+              </div>
+              <div>
+                <label className="form-label text-sm mb-1 block">实际报备时间</label>
+                <input type="date" className="form-input py-2.5" value={proxyNotifiedAt} onChange={e => setProxyNotifiedAt(e.target.value)} />
+                <p className="text-xs text-gray-400 mt-1">用于判断旷工，报备时间在24小时内算有效</p>
               </div>
               <div>
                 <label className="form-label text-sm mb-1 block">{t("reason")}</label>

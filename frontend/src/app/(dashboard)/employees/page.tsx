@@ -38,6 +38,10 @@ export default function EmployeesPage() {
   const [uploadingPassportPhoto, setUploadingPassportPhoto] = useState(false);
   const [uploadingWorkPermitPhoto, setUploadingWorkPermitPhoto] = useState(false);
   const [salaryTemplates, setSalaryTemplates] = useState<any[]>([]);
+  const [deductionTemplates, setDeductionTemplates] = useState<any[]>([]);
+  const [fixedDeductions, setFixedDeductions] = useState<any[]>([]);
+  const [fixedForm, setFixedForm] = useState({ name: "", amount: "" });
+  const [editingFixedId, setEditingFixedId] = useState<number | null>(null);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,14 +62,15 @@ export default function EmployeesPage() {
   const defaultForm: any = {
     name: "", employee_no: "", password: "", position: "仓库劳工", myanmar_id: "", address: "",
     phone: "", emergency_contact: "", hire_date: "",
-    status: "trial", daily_wage: 400, base_salary: 12000, salary_template_id: 0, remark: "",
+    status: "trial", daily_wage: 400, base_salary: 12000, salary_template_id: 0,
+    deduction_template_id: 0, remark: "",
     passport_number: "", work_permit_number: "",
     passport_expiry: "", work_permit_expiry: "",
     promotion_date: "", tags: "",
   };
   const [form, setForm] = useState({ ...defaultForm });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadLimit(); loadTemplates(); }, []);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadLimit(); loadTemplates(); loadDeductionTemplates(); }, []);
 
   async function load() {
     setLoading(true);
@@ -89,6 +94,13 @@ export default function EmployeesPage() {
     try {
       const r = await api.get<any>("/salary-templates");
       setSalaryTemplates((r.data || []).filter((t: any) => t.is_active !== false));
+    } catch {}
+  }
+
+  async function loadDeductionTemplates() {
+    try {
+      const r = await api.get<any>("/deduction-templates");
+      setDeductionTemplates((r.data || []).filter((t: any) => t.is_active !== false));
     } catch {}
   }
 
@@ -235,6 +247,7 @@ export default function EmployeesPage() {
       hire_date: e.hire_date || "", status: e.status || "trial",
       daily_wage: e.daily_wage ?? 400, base_salary: e.base_salary ?? 12000,
       salary_template_id: e.salary_template_id || 0,
+      deduction_template_id: e.deduction_template_id || 0,
       remark: e.remark || "",
       passport_number: e.passport_number || "",
       work_permit_number: e.work_permit_number || "",
@@ -249,6 +262,7 @@ export default function EmployeesPage() {
   function openDetail(emp: any) {
     setDetailEmp(emp);
     loadSummary(emp.id);
+    loadFixedDeductions(emp.id);
   }
 
   async function reloadDetail(empId: number) {
@@ -342,6 +356,52 @@ export default function EmployeesPage() {
     } catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
+  async function loadFixedDeductions(empId: number) {
+    try {
+      const r = await api.get<any>(`/employee-deductions/fixed?employee_id=${empId}`);
+      setFixedDeductions(r.data || []);
+    } catch { setFixedDeductions([]); }
+  }
+
+  function openFixedCreate() {
+    setEditingFixedId(null);
+    setFixedForm({ name: "", amount: "" });
+  }
+
+  function openFixedEdit(item: any) {
+    setEditingFixedId(item.id);
+    setFixedForm({ name: item.name, amount: String(item.amount ?? "") });
+  }
+
+  async function saveFixedDeduction() {
+    if (!detailEmp) return;
+    if (!fixedForm.name.trim()) { toast("error", "请填写扣款项目名称"); return; }
+    const amount = parseFloat(fixedForm.amount);
+    if (isNaN(amount) || amount < 0) { toast("error", "金额必须大于等于0"); return; }
+    try {
+      if (editingFixedId) {
+        await api.put(`/employee-deductions/fixed/${editingFixedId}`, { name: fixedForm.name.trim(), amount });
+        toast("success", "固定扣款已更新");
+      } else {
+        await api.post("/employee-deductions/fixed", { employee_id: detailEmp.id, name: fixedForm.name.trim(), amount });
+        toast("success", "固定扣款已添加");
+      }
+      setEditingFixedId(null);
+      setFixedForm({ name: "", amount: "" });
+      loadFixedDeductions(detailEmp.id);
+    } catch (err: any) { toast("error", err.message || "操作失败"); }
+  }
+
+  async function deleteFixedDeduction(id: number) {
+    if (!confirm("确定删除这条固定扣款吗？")) return;
+    if (!detailEmp) return;
+    try {
+      await api.delete(`/employee-deductions/fixed/${id}`);
+      toast("success", "已删除");
+      loadFixedDeductions(detailEmp.id);
+    } catch (err: any) { toast("error", err.message || "删除失败"); }
+  }
+
   const activeEmployees = data.filter((e: any) => e.status !== "resigned");
   const isAdmin = user?.role === "warehouse_admin" || user?.role === "supervisor";
 
@@ -390,6 +450,7 @@ export default function EmployeesPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">工号</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">岗位</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">薪资模板</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">扣款模板</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">状态</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">联系电话</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">入职日期</th>
@@ -427,6 +488,7 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3 text-gray-600 font-mono text-sm">{e.employee_no || "-"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.position || "-"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.salary_template_name || "-"}</td>
+                  <td className="px-4 py-3 text-gray-600">{e.deduction_template_name || "-"}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       e.status === "trial" ? "bg-amber-50 text-amber-700" :
@@ -634,6 +696,15 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div className="mt-3">
+                  <label className="form-label text-xs mb-1 block">扣款模板 <span className="text-gray-400">(可选，留空不扣考勤款)</span></label>
+                  <select className="form-input py-2 w-full" value={form.deduction_template_id || ""} onChange={e => setForm({ ...form, deduction_template_id: +e.target.value })}>
+                    <option value="">不扣考勤款</option>
+                    {deductionTemplates.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-3">
                   <label className="form-label text-xs mb-1 block">转正日期</label>
                   <input type="date" className="form-input py-2 w-full" value={form.promotion_date || ""} onChange={e => setForm({...form, promotion_date: e.target.value})} />
                 </div>
@@ -757,6 +828,10 @@ export default function EmployeesPage() {
                     )}
                   </p>
                 </div>
+                <div>
+                  <label className="text-xs text-gray-400">扣款模板</label>
+                  <p className="text-sm text-gray-700 mt-0.5">{detailEmp.deduction_template_name || "不扣考勤款"}</p>
+                </div>
                 <div className="col-span-2">
                   <label className="text-xs text-gray-400">地址</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.address || "-"}</p>
@@ -841,6 +916,41 @@ export default function EmployeesPage() {
                   <input className="form-input py-1.5 text-sm flex-1" placeholder="添加标签..." value={newTag}
                     onChange={e => setNewTag(e.target.value)} onKeyDown={e => e.key === "Enter" && addTag()} />
                   <button onClick={addTag} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">添加</button>
+                </div>
+              </div>
+
+              {/* Fixed Deductions 固定扣款 */}
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1"><DollarSign size={14}/> 固定扣款</h4>
+                <p className="text-xs text-gray-400 mb-2">每月固定扣的（宿舍费、伙食费等），整月扣一次，在下半月周期扣全额。</p>
+                {fixedDeductions.length === 0 ? (
+                  <p className="text-sm text-gray-400 mb-2">暂无固定扣款项目</p>
+                ) : (
+                  <div className="space-y-2 mb-2">
+                    {fixedDeductions.map((f: any) => (
+                      <div key={f.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                        <span className="text-sm text-gray-700">{f.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-red-600">{f.amount?.toLocaleString()}</span>
+                          <button onClick={() => openFixedEdit(f)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={14}/></button>
+                          <button onClick={() => deleteFixedDeduction(f.id)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={14}/></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input className="form-input py-1.5 text-sm flex-1" placeholder="项目名称（如 宿舍费）" value={fixedForm.name}
+                    onChange={e => setFixedForm({ ...fixedForm, name: e.target.value })} />
+                  <input className="form-input py-1.5 text-sm w-28" type="number" step="0.01" placeholder="金额" value={fixedForm.amount}
+                    onChange={e => setFixedForm({ ...fixedForm, amount: e.target.value })} />
+                  <button onClick={saveFixedDeduction} className="bg-blue-500 text-white px-3 py-1 rounded text-sm whitespace-nowrap">
+                    {editingFixedId ? "保存" : "添加"}
+                  </button>
+                  {editingFixedId && (
+                    <button onClick={() => { setEditingFixedId(null); setFixedForm({ name: "", amount: "" }); }}
+                      className="text-gray-500 text-sm px-2">取消</button>
+                  )}
                 </div>
               </div>
 

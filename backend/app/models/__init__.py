@@ -20,6 +20,8 @@ from app.models.clock_in_records import ClockInRecord
 from app.models.labor_efficiency import EfficiencyOrderCount, EfficiencyManualHour
 from app.models.employee_advance import EmployeeAdvance
 from app.models.salary_template import SalaryTemplate
+from app.models.deduction_template import DeductionTemplate
+from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -37,4 +39,5 @@ __all__ = [
     "LeaveRequest", "RestDay", "Absence", "ClockInRecord",
     "FundRechargeRequest", "EfficiencyOrderCount", "EfficiencyManualHour",
     "EmployeeAdvance", "SalaryTemplate",
+    "DeductionTemplate", "EmployeeDeduction", "EmployeeFixedDeduction",
 ]
