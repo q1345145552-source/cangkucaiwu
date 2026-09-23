@@ -94,13 +94,18 @@ export default function PayrollPage() {
   }
 
   function periodKeyToApi(periodKey: string) {
-    const [p, h] = periodKey.split("_");
-    return { period: p || periodKey, half: h || "first_half" };
+    // 键格式: "2026-09_first_half" → 用第一个下划线拆开，后半段整体作为半月
+    const idx = periodKey.indexOf("_");
+    if (idx === -1) return { period: periodKey, half: "first_half" };
+    return { period: periodKey.slice(0, idx), half: periodKey.slice(idx + 1) || "first_half" };
   }
   
   function periodLabel(periodKey: string) {
-    const parts = periodKey.split("_");
-    return parts[0] ? `${parts[0]} ${parts[1] === "second_half" ? "下半月" : "上半月"}` : periodKey;
+    const idx = periodKey.indexOf("_");
+    if (idx === -1) return periodKey;
+    const period = periodKey.slice(0, idx);
+    const half = periodKey.slice(idx + 1);
+    return `${period} ${half === "second_half" ? "下半月" : "上半月"}`;
   }
 
   async function loadRecords(periodKeyOverride?: string) {
