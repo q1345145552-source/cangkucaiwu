@@ -242,12 +242,15 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         return 0.0
 
     pending_days = []
+    today = thai_today()
     for emp in employees:
         rest_set = rest_by_emp.get(emp.id, set())
         absence_set = absence_by_emp.get(emp.id, set())
         leave_map = leave_by_emp.get(emp.id, {})
         current = period_start
         while current <= period_end:
+            if current >= today:
+                break  # 今天还没过完、未来日子不检查打卡完整性
             if current in rest_set or current in absence_set:
                 current += timedelta(days=1)
                 continue
