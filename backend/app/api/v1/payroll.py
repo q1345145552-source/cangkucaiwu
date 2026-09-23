@@ -13,7 +13,6 @@ from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today, THAI_TZ
-from app.services.payroll_calc import compute_pay, late_penalty as _late_penalty
 from datetime import datetime, date, timedelta, time
 from typing import Optional, List
 import calendar
@@ -173,11 +172,11 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             LeaveRequest.status == "approved",
         )
     )).scalars().all()
-    leave_by_emp = {}  # emp_id -> {date: duration_type}
+    leave_by_emp = {}  # emp_id -> {date: (duration_type, hours)}
     for lv in leaves:
         if lv.employee_id not in leave_by_emp:
             leave_by_emp[lv.employee_id] = {}
-        leave_by_emp[lv.employee_id][lv.leave_date] = lv.duration_type or "full"
+        leave_by_emp[lv.employee_id][lv.leave_date] = (lv.duration_type or "full", lv.hours)
 
     rests = (await db.execute(
         select(RestDay).where(
@@ -295,7 +294,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             if current in rest_set or current in absence_set:
                 current += timedelta(days=1)
                 continue
-            lt = leave_map.get(current, None)
+            lt_info = leave_map.get(current)
+            lt = lt_info[0] if lt_info else None
             if lt == "full":
                 current += timedelta(days=1)
                 continue
@@ -357,7 +357,9 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 current += timedelta(days=1)
                 continue
 
-            lt = leave_map.get(current, None)
+            lt_info = leave_map.get(current)
+            lt = lt_info[0] if lt_info else None
+            lv_hours = lt_info[1] if lt_info else None
             sessions = clock_by_emp_date.get((emp.id, current), [])
             sessions_sorted = sorted(sessions, key=lambda c: c.clocked_in_at or datetime.min)
             sessions_by_session = sorted(sessions, key=lambda c: c.session)
@@ -365,6 +367,23 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             n = len(session_set)
             hours = _day_hours(sessions_sorted) if n in (2, 4) else 0.0
             att, lv, ab = _attendance_of_day(session_set, lt)
+
+            # 按小时请假：工时扣掉请假小时数，请假天数记成小时/8 的小数
+            if lt == "hours" and lv_hours is not None:
+                h = float(lv_hours)
+                hours = max(hours - h, 0.0)  # 扣工时（按小时模式少拿钱）
+                lv_days = round(h / 8.0, 4)
+                if tt == "daily":
+                    # 按天模式：够半天按半天算
+                    if h >= 8.0:
+                        lv, att = 1.0, 0.0
+                    elif h >= 4.0:
+                        lv, att = 0.5, 0.5
+                    else:
+                        lv, att = 0.0, 1.0
+                else:
+                    lv = lv_days
+                    att = max(round(1.0 - lv_days, 4), 0.0)
 
             work_hours_total += hours
             attendance_days_total += att
@@ -411,9 +430,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             leave_deduction = round(daily_rate * leave_days_count, 2)
             absence_deduction = round(daily_rate * absence_days_count, 2)
             work_pay = template_amount - leave_deduction - absence_deduction
-
-        # 员工状态标签（模板类型）
-        emp_status_label = {"hourly": "按小时", "daily": "按天", "monthly": "按月"}.get(tt, emp_status)
 
         daily_wage = template_amount if tt in ("hourly", "daily") else (emp.daily_wage or 400)
         base_salary = template_amount if tt == "monthly" else (emp.base_salary or 12000)

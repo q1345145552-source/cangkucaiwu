@@ -6,6 +6,17 @@ import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { FileText, DollarSign, ChevronRight } from "lucide-react";
 
+// 薪资模板类型 → 标签（工资按模板算，不再按试用期/正式分段）
+const TEMPLATE_TYPE_LABELS: Record<string, string> = { hourly: "按小时", daily: "按天", monthly: "按月" };
+function templateTypeLabel(tt?: string): string {
+  return tt ? (TEMPLATE_TYPE_LABELS[tt] || tt) : "";
+}
+function templateTypeBadge(tt?: string): string {
+  if (tt === "monthly") return "bg-blue-50 text-blue-700";
+  if (tt === "hourly") return "bg-teal-50 text-teal-700";
+  return "bg-amber-50 text-amber-700";
+}
+
 export default function MyPayslipPage() {
   const { toast } = useToast(); const { t } = useI18n(); const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
@@ -104,10 +115,8 @@ export default function MyPayslipPage() {
             <div className="p-5 space-y-3">
               <div className="text-center pb-3 border-b">
                 <h3 className="text-lg font-bold">{selected.employee_name}</h3>
-                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
-                  selected.employee_status === "trial" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
-                }`}>
-                  {selected.employee_status === "trial" ? t("trial_status") : t("regular_status")}
+                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${templateTypeBadge(selected.detail?.salary_template_type)}`}>
+                  {templateTypeLabel(selected.detail?.salary_template_type) || (selected.employee_status === "trial" ? t("trial_status") : t("regular_status"))}
                 </span>
               </div>
 
@@ -122,15 +131,20 @@ export default function MyPayslipPage() {
               </div>
 
               <div className="space-y-2">
-                {selected.employee_status === "trial" ? (
+                {selected.detail?.salary_template_type === "hourly" ? (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">{t("daily_wage_x_attendance")}</span>
-                    <span>{selected.daily_wage} × {selected.attendance_days} = <b>{selected.base_pay}</b></span>
+                    <span className="text-gray-500">{t("hourly_rate")}</span>
+                    <span>{(selected.detail?.work_hours ?? 0)} 小时 × {(selected.detail?.hourly_rate ?? 0)} = <b>{selected.base_pay}</b></span>
                   </div>
-                ) : (
+                ) : selected.detail?.salary_template_type === "monthly" ? (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">{t("base_salary_calc")}</span>
                     <span><b>{selected.base_pay}</b></span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t("daily_wage_x_attendance")}</span>
+                    <span>{selected.daily_wage} × {selected.attendance_days} = <b>{selected.base_pay}</b></span>
                   </div>
                 )}
                 {selected.overtime_pay > 0 && (
@@ -141,6 +155,9 @@ export default function MyPayslipPage() {
                 )}
                 {selected.leave_deduction > 0 && (
                   <div className="flex justify-between text-sm text-red-500"><span>{t("leave_deduction")}</span><span>-{selected.leave_deduction}</span></div>
+                )}
+                {selected.absence_deduction > 0 && (
+                  <div className="flex justify-between text-sm text-red-500"><span>{t("absence_deduction")}</span><span>-{selected.absence_deduction}</span></div>
                 )}
                 {selected.advance_deduction > 0 && (
                   <div className="flex justify-between text-sm text-red-500"><span>{t("advance_deduction")}</span><span>-{selected.advance_deduction}</span></div>

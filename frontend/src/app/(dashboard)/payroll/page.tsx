@@ -34,6 +34,17 @@ function mergePeriods(ps: any[]): any[] {
   return out;
 }
 
+// 薪资模板类型 → 中文标签（工资按模板算，不再按试用期/正式分段）
+const TEMPLATE_TYPE_LABELS: Record<string, string> = { hourly: "按小时", daily: "按天", monthly: "按月" };
+function templateTypeLabel(tt?: string): string {
+  return tt ? (TEMPLATE_TYPE_LABELS[tt] || tt) : "";
+}
+function templateTypeBadge(tt?: string): string {
+  if (tt === "monthly") return "bg-blue-50 text-blue-700";
+  if (tt === "hourly") return "bg-teal-50 text-teal-700";
+  return "bg-amber-50 text-amber-700";
+}
+
 export default function PayrollPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
@@ -469,10 +480,8 @@ export default function PayrollPage() {
                     {r.settle_end_date && <div className="text-[11px] text-gray-400 font-normal">结算到 {r.settle_end_date.slice(5).replace("-", "月")}日</div>}
                   </td>
                   <td className="px-3 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs ${
-                      r.employee_status === "trial" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
-                    }`}>
-                      {r.employee_status === "trial" ? "试用期" : "正式"}
+                    <span className={`px-2 py-0.5 rounded text-xs ${templateTypeBadge(r.detail?.salary_template_type)}`}>
+                      {templateTypeLabel(r.detail?.salary_template_type) || (r.employee_status === "trial" ? "试用期" : "正式")}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-center">{r.attendance_days ?? 0}</td>
@@ -580,10 +589,8 @@ export default function PayrollPage() {
               <div className="text-center pb-3 border-b">
                 <h3 className="text-lg font-bold">{showPayslip.employee_name}</h3>
                 <p className="text-sm text-gray-500">{showPayslip.period} {showPayslip.half === "second_half" ? "下半月" : "上半月"} 工资单</p>
-                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
-                  showPayslip.employee_status === "trial" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
-                }`}>
-                  {showPayslip.employee_status === "trial" ? "试用期" : "正式员工"}
+                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${templateTypeBadge(psTemplateType)}`}>
+                  {templateTypeLabel(psTemplateType) || (showPayslip.employee_status === "trial" ? "试用期" : "正式员工")}
                 </span>
               </div>
 

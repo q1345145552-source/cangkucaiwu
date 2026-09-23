@@ -636,7 +636,6 @@ export default function EmployeesPage() {
                 <div className="mt-3">
                   <label className="form-label text-xs mb-1 block">转正日期</label>
                   <input type="date" className="form-input py-2 w-full" value={form.promotion_date || ""} onChange={e => setForm({...form, promotion_date: e.target.value})} />
-                  <p className="text-xs text-gray-400 mt-1">设置后，转正日之前按试用期日薪计算，之后按正式底薪计算</p>
                 </div>
               </div>
 
