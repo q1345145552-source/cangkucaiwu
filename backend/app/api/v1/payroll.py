@@ -627,7 +627,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "absence_fine": absence_fine_total,
             "absence_fine_days": absence_fine_days,
             "fixed_deduction": fixed_total,
-            "fixed_deductions": fixed_items,
+            "fixed_deductions": fixed_items if req.half == "second_half" else [],
             "temp_deduction": temp_total,
             "temp_deductions": temp_items,
             "overtime_hours": round(overtime_hours, 1),

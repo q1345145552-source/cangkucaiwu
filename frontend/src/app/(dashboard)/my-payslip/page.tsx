@@ -6,11 +6,6 @@ import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { FileText, DollarSign, ChevronRight } from "lucide-react";
 
-// 薪资模板类型 → 标签（工资按模板算，不再按试用期/正式分段）
-const TEMPLATE_TYPE_LABELS: Record<string, string> = { hourly: "按小时", daily: "按天", monthly: "按月" };
-function templateTypeLabel(tt?: string): string {
-  return tt ? (TEMPLATE_TYPE_LABELS[tt] || tt) : "";
-}
 function templateTypeBadge(tt?: string): string {
   if (tt === "monthly") return "bg-blue-50 text-blue-700";
   if (tt === "hourly") return "bg-teal-50 text-teal-700";
@@ -19,6 +14,15 @@ function templateTypeBadge(tt?: string): string {
 
 export default function MyPayslipPage() {
   const { toast } = useToast(); const { t } = useI18n(); const router = useRouter();
+  const templateTypeLabel = (tt?: string): string => {
+    if (!tt) return "";
+    const map: Record<string, string> = {
+      hourly: t("template_type_hourly"),
+      daily: t("template_type_daily"),
+      monthly: t("template_type_monthly"),
+    };
+    return map[tt] || tt;
+  };
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
@@ -134,7 +138,7 @@ export default function MyPayslipPage() {
                 {selected.detail?.salary_template_type === "hourly" ? (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">{t("hourly_rate")}</span>
-                    <span>{(selected.detail?.work_hours ?? 0)} 小时 × {(selected.detail?.hourly_rate ?? 0)} = <b>{selected.base_pay}</b></span>
+                    <span>{(selected.detail?.work_hours ?? 0)} {t("hour_unit")} × {(selected.detail?.hourly_rate ?? 0)} = <b>{selected.base_pay}</b></span>
                   </div>
                 ) : selected.detail?.salary_template_type === "monthly" ? (
                   <div className="flex justify-between text-sm">
@@ -153,6 +157,18 @@ export default function MyPayslipPage() {
                 {selected.late_penalty > 0 && (
                   <div className="flex justify-between text-sm text-red-500"><span>{t("late_penalty")}</span><span>-{selected.late_penalty}</span></div>
                 )}
+                {selected.early_penalty > 0 && (
+                  <div className="flex justify-between text-sm text-red-500"><span>{t("early_penalty")}</span><span>-{selected.early_penalty}</span></div>
+                )}
+                {selected.absence_fine > 0 && (
+                  <div className="flex justify-between text-sm text-red-500"><span>{t("absence_fine")}</span><span>-{selected.absence_fine}</span></div>
+                )}
+                {(selected.detail?.fixed_deductions || []).filter((f: any) => Number(f.amount ?? 0) > 0).map((f: any) => (
+                  <div key={f.id || f.name} className="flex justify-between text-sm text-red-500"><span>{t("fixed_deduction")} · {f.name}</span><span>-{Number(f.amount ?? 0).toLocaleString()}</span></div>
+                ))}
+                {(selected.detail?.temp_deductions || []).filter((d: any) => Number(d.amount ?? 0) > 0).map((d: any) => (
+                  <div key={d.id || (d.reason + d.date)} className="flex justify-between text-sm text-red-500"><span>{t("temp_deduction")} · {d.reason}</span><span>-{Number(d.amount ?? 0).toLocaleString()}</span></div>
+                ))}
                 {selected.leave_deduction > 0 && (
                   <div className="flex justify-between text-sm text-red-500"><span>{t("leave_deduction")}</span><span>-{selected.leave_deduction}</span></div>
                 )}

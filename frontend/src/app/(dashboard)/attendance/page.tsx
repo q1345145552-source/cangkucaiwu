@@ -505,9 +505,9 @@ export default function AttendancePage() {
                 )}
               </div>
               <div>
-                <label className="form-label text-sm mb-1 block">实际报备时间</label>
+                <label className="form-label text-sm mb-1 block">{t("att_notified_at")}</label>
                 <input type="date" className="form-input py-2.5" value={proxyNotifiedAt} onChange={e => setProxyNotifiedAt(e.target.value)} />
-                <p className="text-xs text-gray-400 mt-1">用于判断旷工，报备时间在24小时内算有效</p>
+                <p className="text-xs text-gray-400 mt-1">{t("att_notified_at_hint")}</p>
               </div>
               <div>
                 <label className="form-label text-sm mb-1 block">{t("reason")}</label>

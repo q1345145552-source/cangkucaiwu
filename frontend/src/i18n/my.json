@@ -391,5 +391,15 @@
   "overtime_pending_confirm": "ဝန်ထမ်းအတည်ပြုရန်စောင့်ဆိုင်း",
   "salary_templates": "လစာပုံစံခွက်",
   "deduction_templates": "နုတ်ယူပုံစံခွက်",
-  "employee_deductions": "ဝန်ထမ်းနုတ်ယူမှု"
+  "employee_deductions": "ဝန်ထမ်းနုတ်ယူမှု",
+  "template_type_hourly": "နာရီအလိုက်",
+  "template_type_daily": "နေ့စဉ်",
+  "template_type_monthly": "လစဉ်",
+  "hour_unit": "နာရီ",
+  "early_penalty": "အချိန်စောထွက်ဖြတ်တောက်ငွေ",
+  "absence_fine": "ပျက်ကွက်ဒဏ်ငွေ",
+  "fixed_deduction": "ပုံသေဖြတ်တောက်ငွေ",
+  "temp_deduction": "ယာယီဖြတ်တောက်ငွေ",
+  "att_notified_at": "အမှန်တကယ်အကြောင်းကြားချိန်",
+  "att_notified_at_hint": "ပျက်ကွက်မှုဆုံးဖြတ်ရန် ၂၄ နာရီအတွင်း အကြောင်းကြားပါက အကျုံးဝင်သည်"
 }
