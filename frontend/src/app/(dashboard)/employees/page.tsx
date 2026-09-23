@@ -37,6 +37,7 @@ export default function EmployeesPage() {
   const [workPermitPhotoFile, setWorkPermitPhotoFile] = useState<File | null>(null);
   const [uploadingPassportPhoto, setUploadingPassportPhoto] = useState(false);
   const [uploadingWorkPermitPhoto, setUploadingWorkPermitPhoto] = useState(false);
+  const [salaryTemplates, setSalaryTemplates] = useState<any[]>([]);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,14 +58,14 @@ export default function EmployeesPage() {
   const defaultForm: any = {
     name: "", employee_no: "", password: "", position: "仓库劳工", myanmar_id: "", address: "",
     phone: "", emergency_contact: "", hire_date: "",
-    status: "trial", daily_wage: 400, base_salary: 12000, remark: "",
+    status: "trial", daily_wage: 400, base_salary: 12000, salary_template_id: 0, remark: "",
     passport_number: "", work_permit_number: "",
     passport_expiry: "", work_permit_expiry: "",
     promotion_date: "", tags: "",
   };
   const [form, setForm] = useState({ ...defaultForm });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadLimit(); }, []);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadLimit(); loadTemplates(); }, []);
 
   async function load() {
     setLoading(true);
@@ -84,6 +85,13 @@ export default function EmployeesPage() {
     } catch {}
   }
 
+  async function loadTemplates() {
+    try {
+      const r = await api.get<any>("/salary-templates");
+      setSalaryTemplates((r.data || []).filter((t: any) => t.is_active !== false));
+    } catch {}
+  }
+
   async function loadSummary(empId: number) {
     try {
       const r = await api.get<any>(`/employees/${empId}/summary`);
@@ -94,6 +102,7 @@ export default function EmployeesPage() {
   async function handleCreate() {
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
     if (!(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
+    if (!form.salary_template_id) { toast("error", "请选择薪资模板"); return; }
     if (!editingId) {
       if (!form.password) { toast("error", "密码必填"); return; }
       if (form.password.length < 6) { toast("error", "密码至少6位"); return; }
@@ -225,6 +234,7 @@ export default function EmployeesPage() {
       phone: e.phone || "", emergency_contact: e.emergency_contact || "",
       hire_date: e.hire_date || "", status: e.status || "trial",
       daily_wage: e.daily_wage ?? 400, base_salary: e.base_salary ?? 12000,
+      salary_template_id: e.salary_template_id || 0,
       remark: e.remark || "",
       passport_number: e.passport_number || "",
       work_permit_number: e.work_permit_number || "",
@@ -379,6 +389,7 @@ export default function EmployeesPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">姓名</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">工号</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">岗位</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">薪资模板</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">状态</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">联系电话</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">入职日期</th>
@@ -415,6 +426,7 @@ export default function EmployeesPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-600 font-mono text-sm">{e.employee_no || "-"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.position || "-"}</td>
+                  <td className="px-4 py-3 text-gray-600">{e.salary_template_name || "-"}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       e.status === "trial" ? "bg-amber-50 text-amber-700" :
@@ -612,15 +624,14 @@ export default function EmployeesPage() {
               {/* Salary & Promotion */}
               <div className="border-t pt-3">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">薪资 & 转正</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="form-label text-xs mb-1 block">试用期日薪 (泰铢)</label>
-                    <input type="number" className="form-input py-2 w-full" value={form.daily_wage} onChange={e => setForm({...form, daily_wage: +e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="form-label text-xs mb-1 block">正式底薪 (泰铢/月)</label>
-                    <input type="number" className="form-input py-2 w-full" value={form.base_salary} onChange={e => setForm({...form, base_salary: +e.target.value})} />
-                  </div>
+                <div>
+                  <label className="form-label text-xs mb-1 block">薪资模板 <span className="text-red-400">*</span></label>
+                  <select className="form-input py-2 w-full" value={form.salary_template_id || ""} onChange={e => setForm({ ...form, salary_template_id: +e.target.value })}>
+                    <option value="">请选择薪资模板</option>
+                    {salaryTemplates.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name} · {t.type_label || t.type} · {t.amount}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="mt-3">
                   <label className="form-label text-xs mb-1 block">转正日期</label>
@@ -739,8 +750,13 @@ export default function EmployeesPage() {
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.hire_date || "-"}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400">试用日薪 / 正式底薪</label>
-                  <p className="text-sm text-gray-700 mt-0.5">{detailEmp.daily_wage} / {detailEmp.base_salary} 泰铢</p>
+                  <label className="text-xs text-gray-400">薪资模板</label>
+                  <p className="text-sm text-gray-700 mt-0.5">
+                    {detailEmp.salary_template_name || "-"}
+                    {detailEmp.salary_template_name && (
+                      <span className="text-gray-400"> · {detailEmp.salary_template_type === "hourly" ? "按小时" : detailEmp.salary_template_type === "daily" ? "按天" : detailEmp.salary_template_type === "monthly" ? "按月" : detailEmp.salary_template_type} · {detailEmp.salary_template_amount} · 加班半小时费 {detailEmp.salary_template_overtime_fee ?? 0}</span>
+                    )}
+                  </p>
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs text-gray-400">地址</label>

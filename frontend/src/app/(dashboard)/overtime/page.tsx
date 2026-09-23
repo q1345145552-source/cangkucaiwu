@@ -130,18 +130,14 @@ export default function OvertimePage() {
     const m = calcMinutes();
     return (m / 60).toFixed(1);
   }
-  function calcPay() {
+  function halfHours() {
     const m = calcMinutes();
-    return Math.floor(m / 60) * 75 + (m % 60 > 0 ? 37 : 0);
+    return Math.ceil(m / 30);
   }
-  function calcPayFromTimes(start: string, end: string) {
-    try {
-      const [sh, sm] = start.split(":").map(Number);
-      const [eh, em] = end.split(":").map(Number);
-      const m = (eh * 60 + em) - (sh * 60 + sm);
-      if (m <= 0) return 0;
-      return Math.floor(m / 60) * 75 + (m % 60 > 0 ? 37 : 0);
-    } catch { return 0; }
+  // 某员工的加班费 = 半小时数 × 该员工模板的「加班半小时费」
+  function empOvertimeFee(e: any) {
+    const fee = e.salary_template_overtime_fee != null ? Number(e.salary_template_overtime_fee) : 0;
+    return halfHours() * fee;
   }
 
   return (
@@ -199,7 +195,7 @@ export default function OvertimePage() {
                   <div key={task.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-gray-800">{task.date} {task.start_time}-{task.end_time}</p>
-                      <p className="text-sm text-gray-500">{t("ot_hours_pay").replace("{h}", task.hours).replace("{pay}", String(calcPayFromTimes(task.start_time, task.end_time)))}</p>
+                      <p className="text-sm text-gray-500">{t("ot_hours_pay").replace("{h}", task.hours).replace("{pay}", String(task.earned_amount ?? 0))}</p>
                     </div>
                     <button onClick={() => confirmOvertime(task.id)}
                       className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-1">
@@ -237,7 +233,7 @@ export default function OvertimePage() {
                       <td className="px-4 py-3">{task.date}</td>
                       <td className="px-4 py-3">{task.start_time} - {task.end_time}</td>
                       <td className="px-4 py-3">{task.hours}h</td>
-                      <td className="px-4 py-3">{calcPayFromTimes(task.start_time, task.end_time)} {t("baht")}</td>
+                      <td className="px-4 py-3">{task.total_amount ?? 0} {t("baht")}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {(task.assignments || []).map((a: any) => (
@@ -307,7 +303,7 @@ export default function OvertimePage() {
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <span className="text-sm text-gray-500">{t("estimated_hours")}: </span>
                 <span className="font-bold text-blue-600">{calcHours()} {t("hours")}</span>
-                <span className="text-sm text-gray-400 ml-2">{t("ot_pay_baht").replace("{pay}", String(calcPay()))}</span>
+                <span className="text-sm text-gray-400 ml-2">{t("ot_half_hours").replace("{n}", String(halfHours()))}</span>
               </div>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">{t("select_employees")}</label>
@@ -317,19 +313,28 @@ export default function OvertimePage() {
                   {employees.filter((e: any) => !empSearch || (e.employee_no || "").toLowerCase().includes(empSearch.toLowerCase()) || e.name.toLowerCase().includes(empSearch.toLowerCase())).length === 0 ? (
                     <p className="text-gray-400 text-sm text-center py-6">{t("no_matching_employee")}</p>
                   ) : (
-                    employees.filter((e: any) => !empSearch || (e.employee_no || "").toLowerCase().includes(empSearch.toLowerCase()) || e.name.toLowerCase().includes(empSearch.toLowerCase())).map((e: any) => (
-                      <label key={e.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 ${
+                    employees.filter((e: any) => !empSearch || (e.employee_no || "").toLowerCase().includes(empSearch.toLowerCase()) || e.name.toLowerCase().includes(empSearch.toLowerCase())).map((e: any) => {
+                      const hasTemplate = e.salary_template_id != null;
+                      const fee = empOvertimeFee(e);
+                      return (
+                      <label key={e.id} className={`flex items-center gap-3 px-4 py-2.5 ${hasTemplate ? "cursor-pointer hover:bg-gray-50" : "cursor-not-allowed opacity-60"} ${
                         form.employee_ids.includes(e.id) ? "bg-blue-50" : ""
                       }`}>
                         <input type="checkbox" checked={form.employee_ids.includes(e.id)}
-                          onChange={() => toggleEmployee(e.id)}
+                          onChange={() => toggleEmployee(e.id)} disabled={!hasTemplate}
                           className="w-4 h-4 text-blue-500 rounded" />
-                        <div>
+                        <div className="flex-1">
                           <p className="text-sm font-medium">{e.name}</p>
                           <p className="text-xs text-gray-400">{t("employee_no")} {e.employee_no || "-"} · {e.position || t("position_labor")}</p>
                         </div>
+                        {hasTemplate ? (
+                          <span className="text-xs text-green-600 font-medium whitespace-nowrap">{t("ot_fee_per_emp").replace("{pay}", String(fee))}</span>
+                        ) : (
+                          <span className="text-xs text-red-500 font-medium whitespace-nowrap">{t("ot_no_template")}</span>
+                        )}
                       </label>
-                    ))
+                      );
+                    })
                   )}
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{t("selected_count").replace("{n}", String(form.employee_ids.length))}</p>

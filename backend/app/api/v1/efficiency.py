@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from app.database import get_db
 from app.models.labor_efficiency import EfficiencyOrderCount, EfficiencyManualHour
 from app.models.employee import Employee
+from app.models.salary_template import SalaryTemplate
 from app.models.clock_in_records import ClockInRecord
 from app.models.overtime import OvertimeTask, OvertimeAssignment
 from app.models.user import User
@@ -92,25 +93,18 @@ def _effective_day(info: dict) -> tuple:
     return "none", None
 
 
-def _employee_status_for_rate(emp) -> str:
-    """用于时薪估算的身份：离职员工用离职前身份，其余用当前身份。"""
-    if (emp.status or "trial") == "resigned":
-        return emp.pre_resign_status or "trial"
-    return emp.status or "trial"
-
-
-def _hourly_rate(emp, month_date: date) -> float:
-    """员工时薪。试用期 = 档案日薪 / 8；正式 = 底薪/(当月天数-2) / 8。"""
-    status = _employee_status_for_rate(emp)
-    if status == "trial":
-        daily = emp.daily_wage or 400
-    else:
+def _hourly_rate(template, month_date: date) -> float:
+    """员工时薪，按薪资模板取。hourly/daily = 金额/8；monthly = 金额/当月天数/8。无模板返回 0。"""
+    if template is None:
+        return 0.0
+    amount = template.amount or 0
+    tt = template.type
+    if tt == "monthly":
         days_in_month = calendar.monthrange(month_date.year, month_date.month)[1]
-        adjusted = days_in_month - 2
-        if adjusted <= 0:
-            adjusted = days_in_month
-        daily = (emp.base_salary or 12000) / adjusted
-    return daily / 8
+        daily = amount / days_in_month if days_in_month else 0.0
+    else:  # hourly / daily
+        daily = amount
+    return daily / 8.0
 
 
 def _employee_regular_hours(uid, daily: dict, monday: date, sunday: date) -> float:
@@ -301,6 +295,13 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
         select(Employee).where(Employee.warehouse_id == wh_id, Employee.is_deleted == False)
     )).scalars().all()
 
+    # 薪资模板映射（人工成本按模板取，无模板的员工时薪按 0 计）
+    template_ids = {e.salary_template_id for e in emps if e.salary_template_id}
+    template_map = {}
+    if template_ids:
+        ts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(template_ids)))).scalars().all()
+        template_map = {t.id: t for t in ts}
+
     # user_id -> employee 映射（正式关联 + 姓名回退）
     user_emp = {}   # user_id -> Employee
     emp_user = {}   # employee_id -> user_id
@@ -394,13 +395,14 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
     order_count = await _get_period_order_count(db, wh_id, monday, sunday)
     standard = await _get_standard(db, wh_id, monday.strftime("%Y-%m"))
 
-    # 人工成本 = Σ(员工正常工时 × 时薪)
+    # 人工成本 = Σ(员工正常工时 × 时薪)，时薪按薪资模板取
     labor_cost = 0.0
     for e in included_emps:
         uid = emp_user.get(e.id)
         if not uid:
             continue
-        labor_cost += _employee_regular_hours(uid, daily, monday, sunday) * _hourly_rate(e, monday)
+        tpl = template_map.get(e.salary_template_id)
+        labor_cost += _employee_regular_hours(uid, daily, monday, sunday) * _hourly_rate(tpl, monday)
     labor_cost = round(labor_cost, 2)
 
     total_hours = round(regular_total + overtime_hours, 2)

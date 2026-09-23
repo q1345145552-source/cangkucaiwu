@@ -6,6 +6,7 @@ from app.models.employee import Employee
 from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
+from app.models.salary_template import SalaryTemplate
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.security import hash_password
 from app.services.image_utils import thumb_path_of
@@ -30,6 +31,7 @@ class EmployeeCreate(BaseModel):
     status: str = "trial"
     daily_wage: float = 400
     base_salary: float = 12000
+    salary_template_id: Optional[int] = None
     remark: Optional[str] = None
     passport_number: Optional[str] = None
     work_permit_number: Optional[str] = None
@@ -51,6 +53,7 @@ class EmployeeUpdate(BaseModel):
     status: Optional[str] = None
     daily_wage: Optional[float] = None
     base_salary: Optional[float] = None
+    salary_template_id: Optional[int] = None
     remark: Optional[str] = None
     user_id: Optional[int] = None
     passport_number: Optional[str] = None
@@ -119,6 +122,11 @@ async def list_employees(
     if uid_set:
         us = (await db.execute(select(User).where(User.id.in_(uid_set)))).scalars().all()
         username_map = {u.id: u.username for u in us}
+    st_ids = {e.salary_template_id for e in emps if e.salary_template_id}
+    st_map = {}
+    if st_ids:
+        sts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(st_ids)))).scalars().all()
+        st_map = {s.id: s for s in sts}
     
     return {
         "data": [{
@@ -129,6 +137,11 @@ async def list_employees(
             "address": e.address, "phone": e.phone, "emergency_contact": e.emergency_contact,
             "hire_date": e.hire_date.isoformat()[:10] if e.hire_date else None,
             "status": e.status, "daily_wage": e.daily_wage, "base_salary": e.base_salary,
+            "salary_template_id": e.salary_template_id,
+            "salary_template_name": st_map.get(e.salary_template_id).name if st_map.get(e.salary_template_id) else "",
+            "salary_template_type": st_map.get(e.salary_template_id).type if st_map.get(e.salary_template_id) else "",
+            "salary_template_amount": st_map.get(e.salary_template_id).amount if st_map.get(e.salary_template_id) else None,
+            "salary_template_overtime_fee": st_map.get(e.salary_template_id).overtime_half_hour_fee if st_map.get(e.salary_template_id) else None,
             "remark": e.remark,
             "photo_path": e.photo_path,
             "photo_thumb_path": thumb_path_of(e.photo_path),
@@ -184,6 +197,21 @@ async def create_employee(
     if existing_user:
         raise HTTPException(400, "该工号已被使用")
 
+    # 薪资模板必选（先校验，避免创建账号后又失败）
+    if not req.salary_template_id:
+        raise HTTPException(400, "请选择薪资模板")
+    template = (await db.execute(
+        select(SalaryTemplate).where(SalaryTemplate.id == req.salary_template_id, SalaryTemplate.warehouse_id == wh_id)
+    )).scalar_one_or_none()
+    if not template:
+        raise HTTPException(400, "薪资模板不存在")
+    daily_wage = req.daily_wage or 400
+    base_salary = req.base_salary or 12000
+    if template.type in ("hourly", "daily"):
+        daily_wage = template.amount
+    else:
+        base_salary = template.amount
+
     # 先创建登录账号（仓库劳工）
     new_user = User(
         username=employee_no,
@@ -224,7 +252,8 @@ async def create_employee(
         user_id=new_user.id,
         myanmar_id=req.myanmar_id, address=req.address, phone=req.phone,
         emergency_contact=req.emergency_contact, hire_date=hire_date,
-        status=req.status, daily_wage=req.daily_wage, base_salary=req.base_salary,
+        status=req.status, daily_wage=daily_wage, base_salary=base_salary,
+        salary_template_id=template.id,
         remark=req.remark, created_by=current_user.id,
     )
     db.add(e)
@@ -321,6 +350,21 @@ async def update_employee(
         elif df in updates and updates[df] in ("", None):
             updates[df] = None
     
+    # 薪资模板变更
+    if "salary_template_id" in updates:
+        st_id = updates.pop("salary_template_id")
+        if st_id:
+            template = (await db.execute(
+                select(SalaryTemplate).where(SalaryTemplate.id == st_id, SalaryTemplate.warehouse_id == e.warehouse_id)
+            )).scalar_one_or_none()
+            if not template:
+                raise HTTPException(400, "薪资模板不存在")
+            e.salary_template_id = template.id
+            if template.type in ("hourly", "daily"):
+                e.daily_wage = template.amount
+            else:
+                e.base_salary = template.amount
+
     for k, v in updates.items():
         setattr(e, k, v)
     await db.flush()

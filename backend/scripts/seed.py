@@ -19,6 +19,7 @@ from app.models.market import MarketItem
 from app.models.credit import CreditCustomer, CreditShipment, CreditRepayment
 from app.models.labor_efficiency import EfficiencyOrderCount
 from app.models.employee_advance import EmployeeAdvance
+from app.models.salary_template import SalaryTemplate
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
@@ -279,14 +280,17 @@ async def seed():
             await conn.execute(text("ALTER TABLE payroll_records ALTER COLUMN half TYPE VARCHAR(20)"))
             # detail 加宽为 TEXT（存逐天明细/迟到明细，VARCHAR(3000) 可能不够）
             await conn.execute(text("ALTER TABLE payroll_records ALTER COLUMN detail TYPE TEXT"))
+            # 出勤/请假/休息/缺勤加宽为 DOUBLE PRECISION（支持半天 0.5）
+            for _c in ("attendance_days", "leave_days", "rest_days", "absence_days"):
+                await conn.execute(text(f"ALTER TABLE payroll_records ALTER COLUMN {_c} TYPE DOUBLE PRECISION"))
             payroll_cols = [
                 ("settle_end_date", "DATE"),
                 ("disbursed", "BOOLEAN DEFAULT false"),
                 ("total_days_in_month", "INTEGER DEFAULT 0"),
-                ("attendance_days", "INTEGER DEFAULT 0"),
-                ("leave_days", "INTEGER DEFAULT 0"),
-                ("rest_days", "INTEGER DEFAULT 0"),
-                ("absence_days", "INTEGER DEFAULT 0"),
+                ("attendance_days", "DOUBLE PRECISION DEFAULT 0"),
+                ("leave_days", "DOUBLE PRECISION DEFAULT 0"),
+                ("rest_days", "DOUBLE PRECISION DEFAULT 0"),
+                ("absence_days", "DOUBLE PRECISION DEFAULT 0"),
                 ("employee_status", "VARCHAR(20) DEFAULT 'trial'"),
                 ("daily_wage", "DOUBLE PRECISION DEFAULT 400"),
                 ("base_salary", "DOUBLE PRECISION DEFAULT 12000"),
@@ -349,6 +353,7 @@ async def seed():
                 ("promotion_date", "DATE"),
                 ("tags", "TEXT"),
                 ("user_id", "INTEGER"),
+                ("salary_template_id", "INTEGER"),
                 ("resignation_date", "DATE"),
                 ("resignation_reason", "VARCHAR(50)"),
                 ("resignation_note", "VARCHAR(500)"),

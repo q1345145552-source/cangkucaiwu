@@ -261,9 +261,16 @@ export default function PayrollPage() {
   const psLateDetails = psDetail.late_details || [];
   const psLateHalfCount = psDetail.late_half_count ?? 0;
   const psLateOneCount = psDetail.late_one_count ?? 0;
-  const psHourlyFormula = showPayslip?.employee_status === "trial"
-    ? `日薪 ${showPayslip?.daily_wage ?? 0} ÷ 8`
-    : `底薪 ${showPayslip?.base_salary ?? 0} ÷ ${(showPayslip?.total_days_in_month ?? 30) - 2} ÷ 8`;
+  const psTemplateType = psDetail.salary_template_type || (showPayslip?.employee_status === "trial" ? "daily" : "monthly");
+  const psTemplateName = psDetail.salary_template_name || "";
+  const psAttendanceDays = psDetail.attendance_days ?? (showPayslip?.attendance_days ?? 0);
+  const psDailyWage = psDetail.daily_wage ?? showPayslip?.daily_wage ?? 0;
+  const psBaseSalary = psDetail.base_salary ?? showPayslip?.base_salary ?? 0;
+  const psLeaveDeduction = showPayslip?.leave_deduction ?? 0;
+  const psAbsenceDeduction = showPayslip?.absence_deduction ?? 0;
+  const psHourlyFormula = psTemplateType === "monthly"
+    ? `月薪 ${psBaseSalary} ÷ ${(showPayslip?.total_days_in_month ?? 30)} ÷ 8`
+    : `日薪 ${psDailyWage} ÷ 8`;
   const psLateFormula = psLateHalfCount > 0 && psLateOneCount > 0
     ? `迟到半小时${psLateHalfCount}次 + 迟到1小时${psLateOneCount}次`
     : psLateHalfCount > 0
@@ -591,20 +598,45 @@ export default function PayrollPage() {
                 </div>
               </div>
 
-              {/* Salary breakdown（按工时） */}
+              {/* Salary breakdown（按薪资模板） */}
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">上班工时</button>
-                  <span>{psWorkHours} 小时</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">时薪</span>
-                  <span>{psHourlyRate} <span className="text-gray-400 text-xs">({psHourlyFormula})</span></span>
-                </div>
+                {psTemplateName && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">薪资模板</span>
+                    <span>{psTemplateName}</span>
+                  </div>
+                )}
+                {psTemplateType === "hourly" ? (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">上班工时</button>
+                      <span>{psWorkHours} 小时</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">时薪</span>
+                      <span>{psHourlyRate} <span className="text-gray-400 text-xs">({psHourlyFormula})</span></span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between text-sm">
+                    <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">出勤天数</button>
+                    <span>{psAttendanceDays} 天 <span className="text-gray-400 text-xs">({psTemplateType === "monthly" ? `月薪 ${psBaseSalary}` : `日薪 ${psDailyWage}`})</span></span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">上班工资</span>
-                  <span><b>{psWorkPay.toLocaleString()}</b> <span className="text-gray-400 text-xs">({psWorkHours}小时 × {psHourlyRate})</span></span>
+                  <span><b>{psWorkPay.toLocaleString()}</b></span>
                 </div>
+                {psTemplateType === "monthly" && psLeaveDeduction > 0 && (
+                  <div className="flex justify-between text-sm text-red-500">
+                    <span>请假扣款</span><span>-{psLeaveDeduction.toLocaleString()}</span>
+                  </div>
+                )}
+                {psTemplateType === "monthly" && psAbsenceDeduction > 0 && (
+                  <div className="flex justify-between text-sm text-red-500">
+                    <span>缺勤扣款</span><span>-{psAbsenceDeduction.toLocaleString()}</span>
+                  </div>
+                )}
                 {psOvertimePay > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>加班费 ({psOvertimeHours}h)</span>

@@ -13,6 +13,8 @@ const STATUS_COLORS: Record<string, string> = {
   "present": "bg-green-100 text-green-700 border-green-300",
   "late": "bg-orange-100 text-orange-700 border-orange-300",
   "partial": "bg-yellow-100 text-yellow-700 border-yellow-300",
+  "half": "bg-teal-100 text-teal-700 border-teal-300",
+  "half_absence": "bg-red-500 text-white border-red-600",
   "leave": "bg-purple-100 text-purple-700 border-purple-300",
   "rest": "bg-blue-100 text-blue-700 border-blue-300",
   "absent": "bg-red-100 text-red-700 border-red-300",
@@ -212,6 +214,7 @@ export default function AttendancePage() {
 
   const statusLabels: Record<string, string> = {
     present: t("att_status_present"), late: t("att_status_late"), partial: t("att_status_partial"),
+    half: t("att_status_half"), half_absence: t("att_status_half_absence"),
     leave: t("att_status_leave"), rest: t("att_status_rest"), absent: t("att_status_absent"), missing: t("att_status_missing"),
   };
 
@@ -305,7 +308,7 @@ export default function AttendancePage() {
                     return (
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
-                          className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"}`}
+                          className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"} ${status === "half_absence" ? "font-bold" : ""}`}
                           title={(status !== "future" ? statusText + " - " : "") + t("att_click_view_photos")}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >

@@ -19,10 +19,10 @@ class PayrollRecord(Base):
 
     # Attendance breakdown
     total_days_in_month = Column(Integer, default=0)
-    attendance_days = Column(Integer, default=0)
-    leave_days = Column(Integer, default=0)
-    rest_days = Column(Integer, default=0)
-    absence_days = Column(Integer, default=0)
+    attendance_days = Column(Float, default=0)
+    leave_days = Column(Float, default=0)
+    rest_days = Column(Float, default=0)
+    absence_days = Column(Float, default=0)
 
     # Salary components
     employee_status = Column(String(20), default="trial")  # trial / regular

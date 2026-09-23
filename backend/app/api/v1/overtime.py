@@ -4,6 +4,7 @@ from sqlalchemy import select, func, and_
 from app.database import get_db
 from app.models.overtime import OvertimeTask, OvertimeAssignment
 from app.models.employee import Employee
+from app.models.salary_template import SalaryTemplate
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.messages import t, get_request_lang
@@ -11,6 +12,7 @@ from pydantic import BaseModel, field_validator
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date
 from typing import Optional, List
+import math
 
 router = APIRouter()
 
@@ -22,7 +24,6 @@ class OvertimeCreate(BaseModel):
     date: str  # YYYY-MM-DD
     start_time: str  # HH:MM
     end_time: str  # HH:MM
-    hourly_rate: float = 75
 
     @field_validator("start_time", "end_time")
     @classmethod
@@ -38,11 +39,20 @@ class OvertimeLimitSet(BaseModel):
     max_hours: float
 
 
-# 加班费固定算法：整小时部分 75泰铢/小时，不足1小时零头固定 37泰铢
-def _calc_overtime_pay(total_minutes: int) -> float:
-    full_hours = total_minutes // 60
-    remainder = total_minutes % 60
-    return full_hours * 75 + (37 if remainder > 0 else 0)
+# 加班费算法：加班分钟数换算成半小时数（不足半小时算半小时，向上取整），
+# 再乘以员工薪资模板里的「加班半小时费」。
+def _half_hour_count(total_minutes: int) -> int:
+    return math.ceil(total_minutes / 30)
+
+
+def _half_hours_from_times(start_time: str, end_time: str) -> int:
+    try:
+        start_h, start_m = map(int, start_time.split(":"))
+        end_h, end_m = map(int, end_time.split(":"))
+        minutes = (end_h * 60 + end_m) - (start_h * 60 + start_m)
+        return _half_hour_count(minutes) if minutes > 0 else 0
+    except (ValueError, TypeError):
+        return 0
 
 
 # ═══ Admin: Create Overtime ═══════════
@@ -89,6 +99,39 @@ async def create_overtime(
     if len(employees) != len(req.employee_ids):
         raise HTTPException(400, "部分员工不存在或已离职")
 
+    # 薪资模板检查：没有模板的员工先拦住
+    no_template = [e for e in employees if not e.salary_template_id]
+    if no_template:
+        names = "、".join(e.name for e in no_template)
+        raise HTTPException(400, f"以下员工还没有设置薪资模板，请先设置薪资模板：\n{names}")
+
+    template_ids = {e.salary_template_id for e in employees if e.salary_template_id}
+    template_map = {}
+    if template_ids:
+        ts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(template_ids)))).scalars().all()
+        template_map = {t.id: t for t in ts}
+    # 模板存在但被删除等异常情况
+    missing_tpl = [e for e in employees if e.salary_template_id not in template_map]
+    if missing_tpl:
+        names = "、".join(e.name for e in missing_tpl)
+        raise HTTPException(400, f"以下员工的薪资模板无效，请重新设置：\n{names}")
+
+    half_hours = _half_hour_count(total_minutes)
+
+    # 每个员工按自己的薪资模板算加班费
+    per_emp = []
+    for emp in employees:
+        tpl = template_map[emp.salary_template_id]
+        fee = tpl.overtime_half_hour_fee or 0
+        earned = round(half_hours * fee, 2)
+        per_emp.append({
+            "employee_id": emp.id,
+            "employee_name": emp.name,
+            "half_hours": half_hours,
+            "overtime_half_hour_fee": fee,
+            "earned_amount": earned,
+        })
+
     # Check monthly overtime limit（按员工档案统计，不管有没有登录账号都检查）
     limit_hours = await _get_monthly_limit(db, wh_id)
 
@@ -108,22 +151,22 @@ async def create_overtime(
         start_time=req.start_time,
         end_time=req.end_time,
         hours=hours,
-        hourly_rate=75,
+        hourly_rate=0,
         status="pending",
         created_by=current_user.id,
     )
     db.add(task)
     await db.flush()
 
-    # Create assignments
-    earned = _calc_overtime_pay(total_minutes)
-    for emp in employees:
+    # Create assignments（每人金额不同，按各自模板）
+    for item in per_emp:
+        emp = next(e for e in employees if e.id == item["employee_id"])
         linked_user = await _find_linked_user(db, emp)
         assignment = OvertimeAssignment(
             overtime_id=task.id,
             employee_id=emp.id,
             user_id=linked_user.id if linked_user else None,
-            earned_amount=earned,
+            earned_amount=item["earned_amount"],
         )
         db.add(assignment)
 
@@ -132,8 +175,10 @@ async def create_overtime(
         "message": "加班任务创建成功",
         "id": task.id,
         "hours": hours,
+        "half_hours": half_hours,
         "employee_count": len(employees),
-        "total_amount": round(earned * len(employees), 2),
+        "total_amount": round(sum(p["earned_amount"] for p in per_emp), 2),
+        "assignments": per_emp,
     }
 
 
@@ -294,12 +339,14 @@ async def list_overtimes(
             "start_time": t.start_time,
             "end_time": t.end_time,
             "hours": t.hours,
+            "half_hours": _half_hours_from_times(t.start_time, t.end_time),
             "hourly_rate": t.hourly_rate,
             "status": t.status,
             "created_by": t.created_by,
             "creator_name": creators.get(t.created_by, ""),
             "created_at": t.created_at.isoformat() if t.created_at else None,
             "assignments": assign_map.get(t.id, []),
+            "total_amount": round(sum(a["earned_amount"] for a in assign_map.get(t.id, [])), 2),
             "confirmed_count": sum(1 for a in assign_map.get(t.id, []) if a["confirmed"]),
             "total_assignments": len(assign_map.get(t.id, [])),
         } for t in tasks],
@@ -343,6 +390,18 @@ async def pending_overtimes(
         ).order_by(OvertimeTask.date.desc())
     )).scalars().all()
 
+    # 取该员工在每个任务里的加班费（金额在发起时按模板算好存于 assignment）
+    task_ids = [t.id for t in tasks]
+    amount_map = {}
+    if task_ids:
+        asns = (await db.execute(
+            select(OvertimeAssignment).where(
+                OvertimeAssignment.overtime_id.in_(task_ids),
+                OvertimeAssignment.employee_id == emp.id,
+            )
+        )).scalars().all()
+        amount_map = {a.overtime_id: a.earned_amount for a in asns}
+
     return {
         "data": [{
             "id": t.id,
@@ -350,6 +409,8 @@ async def pending_overtimes(
             "start_time": t.start_time,
             "end_time": t.end_time,
             "hours": t.hours,
+            "half_hours": _half_hours_from_times(t.start_time, t.end_time),
+            "earned_amount": amount_map.get(t.id, 0),
             "hourly_rate": t.hourly_rate,
             "created_at": t.created_at.isoformat() if t.created_at else None,
         } for t in tasks],

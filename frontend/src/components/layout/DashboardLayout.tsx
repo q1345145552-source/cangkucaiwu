@@ -73,6 +73,7 @@ const navItems: NavItem[] = [
     roles: ["warehouse_admin", "supervisor"],
     children: [
       { key: "employees", label: "employees", icon: <Users size={18} />, href: "/employees", roles: ["warehouse_admin", "supervisor"] },
+      { key: "salary_templates", label: "salary_templates", icon: <DollarSign size={18} />, href: "/salary-templates", roles: ["warehouse_admin", "supervisor"] },
       { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_admin", "supervisor"] },
       { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_admin", "supervisor"] },
       { key: "payroll", label: "payroll", icon: <DollarSign size={18} />, href: "/payroll", roles: ["warehouse_admin", "supervisor"] },

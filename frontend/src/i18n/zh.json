@@ -151,6 +151,8 @@
   "att_status_absent": "未到",
   "att_status_missing": "未打卡",
   "att_status_partial": "部分打卡",
+  "att_status_half": "半天",
+  "att_status_half_absence": "半天旷工",
   "att_click_view_photos": "点击查看打卡照片",
   "att_no_employee_data": "暂无员工数据",
   "att_leave_approve_title": "请假审批",
@@ -246,6 +248,9 @@
   "ot_limit_saved": "加班上限已设为 {h}h/月",
   "ot_save_failed": "保存失败",
   "ot_monthly_warning": "{name} 本月已加班 {h}h，接近上限 {limit}h",
+  "ot_half_hours": "半小时数 {n} 个",
+  "ot_fee_per_emp": "加班费 {pay} 铢",
+  "ot_no_template": "需先设置薪资模板",
   "no_payslip": "暂无工资单",
   "no_payslip_hint": "管理员计算工资后将在此显示",
   "payslip_label": "{period} 工资单",
@@ -282,5 +287,6 @@
   "remaining_debt": "剩余欠款",
   "my_debt": "我的欠款",
   "currency_symbol": "泰铢",
-  "overtime_pending_confirm": "待员工确认"
+  "overtime_pending_confirm": "待员工确认",
+  "salary_templates": "薪资模板"
 }

@@ -40,6 +40,9 @@ class Employee(Base):
     # Link to login user account (formal relationship, not name matching)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, unique=True, comment="关联登录账号")
 
+    # 薪资模板
+    salary_template_id = Column(Integer, ForeignKey("salary_templates.id"), nullable=True, comment="薪资模板")
+
     resignation_date = Column(Date, nullable=True)
     resignation_reason = Column(String(50), nullable=True)
     resignation_note = Column(String(500), nullable=True)
@@ -57,3 +60,4 @@ class Employee(Base):
 
     warehouse = relationship("Warehouse", backref="employees")
     user = relationship("User", foreign_keys=[user_id], backref="employee_profile")
+    salary_template = relationship("SalaryTemplate", foreign_keys=[salary_template_id], back_populates="employees")

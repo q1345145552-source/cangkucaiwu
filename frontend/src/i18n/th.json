@@ -151,6 +151,8 @@
   "att_status_absent": "ไม่มา",
   "att_status_missing": "ยังไม่ลงเวลา",
   "att_status_partial": "ลงเวลาบางส่วน",
+  "att_status_half": "ครึ่งวัน",
+  "att_status_half_absence": "ขาดงานครึ่งวัน",
   "att_click_view_photos": "คลิกเพื่อดูภาพถ่ายลงเวลา",
   "att_no_employee_data": "ไม่มีข้อมูลพนักงาน",
   "att_leave_approve_title": "อนุมัติการลา",
@@ -246,6 +248,9 @@
   "ot_limit_saved": "ตั้งค่าสูงสุดโอทีเป็น {h} ชม./เดือน",
   "ot_save_failed": "บันทึกไม่สำเร็จ",
   "ot_monthly_warning": "{name} เดือนนี้โอที {h} ชม. ใกล้ถึง上限 {limit} ชม.",
+  "ot_half_hours": "{n} ช่วงครึ่งชั่วโมง",
+  "ot_fee_per_emp": "ค่าโอที {pay} บาท",
+  "ot_no_template": "ต้องตั้งเทมเพลตเงินเดือนก่อน",
   "no_payslip": "ยังไม่มีสลิปเงินเดือน",
   "no_payslip_hint": "จะแสดงที่นี่เมื่อผู้ดูแลคำนวณเงินเดือนแล้ว",
   "payslip_label": "สลิปเงินเดือน {period}",
@@ -282,5 +287,6 @@
   "remaining_debt": "หนี้คงเหลือ",
   "my_debt": "หนี้ของฉัน",
   "currency_symbol": "บาท",
-  "overtime_pending_confirm": "รอพนักงานยืนยัน"
+  "overtime_pending_confirm": "รอพนักงานยืนยัน",
+  "salary_templates": "เทมเพลตเงินเดือน"
 }

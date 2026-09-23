@@ -240,6 +240,8 @@
   "att_status_absent": "မလာ",
   "att_status_missing": "မှတ်တမ်းမတင်ရသေး",
   "att_status_partial": "တစ်စိတ်တစ်ပိုင်းတင်ပြီး",
+  "att_status_half": "တစ်ဝက်",
+  "att_status_half_absence": "တစ်ဝက်ပျက်ကွက်",
   "att_click_view_photos": "ဓာတ်ပုံကြည့်ရန် နှိပ်ပါ",
   "att_no_employee_data": "ဝန်ထမ်းဒေတာမရှိပါ",
   "att_leave_approve_title": "ခွင့်အတည်ပြုခြင်း",
@@ -347,6 +349,9 @@
   "ot_limit_saved": "အချိန်ပိုကန့်သတ်ချက်ကို {h} နာရီ/လ သတ်မှတ်ပြီးပါပြီ",
   "ot_save_failed": "သိမ်းဆည်းမှုမအောင်မြင်ပါ",
   "ot_monthly_warning": "{name} ဤလ အချိန်ပို {h} နာရီရှိပြီး ကန့်သတ် {limit} နာရီနီးပြီ",
+  "ot_half_hours": "နာရီဝက် {n} ခု",
+  "ot_fee_per_emp": "အချိန်ပိုကြေး {pay} ဘတ်",
+  "ot_no_template": "လစာပုံစံခွက် ဦးစွာသတ်မှတ်ပါ",
   "no_payslip": "လစာစာရွက်မရှိသေးပါ",
   "no_payslip_hint": "အက်ဒမင်က လစာတွက်ပြီးမှ ဤနေရာတွင်ပြမည်",
   "payslip_label": "လစာစာရွက် {period}",
@@ -383,5 +388,6 @@
   "remaining_debt": "ကျန်ကြွေး",
   "my_debt": "ကျွန်ုပ်၏ကြွေး",
   "currency_symbol": "ဘတ်",
-  "overtime_pending_confirm": "ဝန်ထမ်းအတည်ပြုရန်စောင့်ဆိုင်း"
+  "overtime_pending_confirm": "ဝန်ထမ်းအတည်ပြုရန်စောင့်ဆိုင်း",
+  "salary_templates": "လစာပုံစံခွက်"
 }

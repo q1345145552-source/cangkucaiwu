@@ -505,6 +505,7 @@ async def get_calendar(
         )
     )).scalars().all()
     leave_set = {(l.employee_id, l.leave_date) for l in leaves}
+    leave_map = {(l.employee_id, l.leave_date): (l.duration_type or "full") for l in leaves}
 
     # Get rest days (filtered by warehouse)
     rests = (await db.execute(
@@ -564,38 +565,51 @@ async def get_calendar(
     for e in emps:
         for d in range((range_end - range_start).days + 1):
             dt = range_start + timedelta(days=d)
-            statuses = []
 
-            # Check leave/rest/absence FIRST (applies to all dates)
+            # Check rest / absence first（全天性质）
             session_count = 0
             has_late = False
-            if (e.id, dt) in leave_set:
-                statuses.append("leave")
-            elif (e.id, dt) in rest_set:
-                statuses.append("rest")
+            if (e.id, dt) in rest_set:
+                status_name_db = "rest"
             elif (e.id, dt) in absence_map:
-                statuses.append("absent")
-            # Then check clock-in
-            elif (e.id, dt) in clock_map:
-                sessions = clock_map[(e.id, dt)]
-                session_count = len(sessions)
-                has_late = any(cr.status in ("late_half", "late_one") for cr in sessions)
-                if session_count >= 4:
-                    statuses.append("late" if has_late else "present")
-                else:
-                    statuses.append("partial")
-            elif dt <= thai_today():
-                # Past date without clock-in
-                statuses.append("missing")
+                status_name_db = "absent"
             else:
-                statuses.append("future")
+                sessions = clock_map.get((e.id, dt), [])
+                session_set = {c.session for c in sessions}
+                session_count = len(session_set)
+                has_late = any(cr.status in ("late_half", "late_one") for cr in sessions)
+                lt = leave_map.get((e.id, dt))
+                morning = {1, 2}
+                afternoon = {3, 4}
+                has_morning = morning <= session_set
+                has_afternoon = afternoon <= session_set
 
-            status_name_db = statuses[0] if statuses else "future"
+                if lt == "full":
+                    status_name_db = "leave"
+                elif lt == "morning":
+                    # 上午请假 + 下午打满2次卡 → 半天；否则按请假
+                    status_name_db = "half" if has_afternoon else "leave"
+                elif lt == "afternoon":
+                    # 下午请假 + 上午打满2次卡 → 半天；否则按请假
+                    status_name_db = "half" if has_morning else "leave"
+                elif has_morning and has_afternoon:
+                    status_name_db = "late" if has_late else "present"
+                elif session_count == 2 and (has_morning or has_afternoon):
+                    # 只打满一个半天（上午或下午2次卡），另一半没请假 → 半天旷工
+                    status_name_db = "half_absence"
+                elif session_count in (1, 2, 3):
+                    status_name_db = "partial"
+                elif session_count == 0:
+                    status_name_db = "missing" if dt <= thai_today() else "future"
+                else:
+                    status_name_db = "partial"
+
             # Map DB names to Chinese
             status_cn = {
                 "present": "正常出勤", "late": "迟到", "leave": "请假",
                 "rest": "休息日", "absent": "未到", "missing": "未打卡",
-                "partial": "部分打卡", "future": "未到"
+                "partial": "部分打卡", "half": "半天", "half_absence": "半天旷工",
+                "future": "未到"
             }
             key_str = f"{dt.isoformat()}_{e.id}"
             events[key_str] = {
