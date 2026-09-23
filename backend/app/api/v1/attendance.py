@@ -528,6 +528,22 @@ async def get_calendar(
     )).scalars().all()
     absence_map = {(a.employee_id, a.absence_date): a for a in absences}
 
+    # 已删除的员工：只在范围内有考勤记录（打卡/请假/休息/缺勤）的才显示，避免空白行
+    deleted_emp_ids = {e.id for e in emps if e.is_deleted}
+    if deleted_emp_ids:
+        deleted_with_records = set()
+        for eid in deleted_emp_ids:
+            has = False
+            for d in range((range_end - range_start).days + 1):
+                dt = range_start + timedelta(days=d)
+                if (eid, dt) in clock_map or (eid, dt) in leave_set or (eid, dt) in rest_set or (eid, dt) in absence_map:
+                    has = True
+                    break
+            if has:
+                deleted_with_records.add(eid)
+        emps = [e for e in emps if not e.is_deleted or e.id in deleted_with_records]
+        emp_ids = [e.id for e in emps]
+
     # Build calendar data
     days = []
     current = range_start
