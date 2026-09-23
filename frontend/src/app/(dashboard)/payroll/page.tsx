@@ -279,6 +279,8 @@ export default function PayrollPage() {
   const psBaseSalary = psDetail.base_salary ?? showPayslip?.base_salary ?? 0;
   const psLeaveDeduction = showPayslip?.leave_deduction ?? 0;
   const psAbsenceDeduction = showPayslip?.absence_deduction ?? 0;
+  const psPeriodBase = psDetail.period_base ?? null;
+  const psPeriodDays = psDetail.period_days ?? null;
   const psHourlyFormula = psTemplateType === "monthly"
     ? `月薪 ${psBaseSalary} ÷ ${(showPayslip?.total_days_in_month ?? 30)} ÷ 8`
     : `日薪 ${psDailyWage} ÷ 8`;
@@ -624,10 +626,15 @@ export default function PayrollPage() {
                       <span>{psHourlyRate} <span className="text-gray-400 text-xs">({psHourlyFormula})</span></span>
                     </div>
                   </>
+                ) : psTemplateType === "monthly" ? (
+                  <div className="flex justify-between text-sm">
+                    <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">周期基础</button>
+                    <span>{psPeriodBase != null ? psPeriodBase.toLocaleString() : psBaseSalary.toLocaleString()} <span className="text-gray-400 text-xs">(月薪 {psBaseSalary} × {psPeriodDays ?? 0}/{showPayslip?.total_days_in_month ?? 30} 天)</span></span>
+                  </div>
                 ) : (
                   <div className="flex justify-between text-sm">
                     <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">出勤天数</button>
-                    <span>{psAttendanceDays} 天 <span className="text-gray-400 text-xs">({psTemplateType === "monthly" ? `月薪 ${psBaseSalary}` : `日薪 ${psDailyWage}`})</span></span>
+                    <span>{psAttendanceDays} 天 <span className="text-gray-400 text-xs">(日薪 {psDailyWage})</span></span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">

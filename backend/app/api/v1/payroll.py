@@ -83,6 +83,9 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     else:
         period_start = date(year, month, 16)
 
+    # 周期实际天数（含起止日）：按月模式按此折算周期基础
+    period_days = (period_end - period_start).days + 1
+
     # 已计算过的员工（同周期同半月）：跳过，不再整单拦截
     existing = (await db.execute(
         select(PayrollRecord).where(
@@ -421,15 +424,19 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         # 上班工资按模板类型
         leave_deduction = 0.0
         absence_deduction = 0.0
+        period_base = None
         if tt == "hourly":
             work_pay = work_hours_total * hourly_rate
         elif tt == "daily":
             work_pay = attendance_days_total * template_amount
         else:  # monthly
             daily_rate = template_amount / total_days
+            # 周期基础 = 月薪 × 周期天数 ÷ 当月天数（半天/单人/离职结算按实际天数折算）
+            period_base = template_amount * period_days / total_days
             leave_deduction = round(daily_rate * leave_days_count, 2)
             absence_deduction = round(daily_rate * absence_days_count, 2)
-            work_pay = template_amount - leave_deduction - absence_deduction
+            # 上班工资 = 周期基础 - 缺勤扣款 - 请假扣款，下限保护不小于 0
+            work_pay = max(period_base - leave_deduction - absence_deduction, 0.0)
 
         daily_wage = template_amount if tt in ("hourly", "daily") else (emp.daily_wage or 400)
         base_salary = template_amount if tt == "monthly" else (emp.base_salary or 12000)
@@ -514,6 +521,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "salary_template_type": tt,
             "daily_wage": round(template_amount, 2) if tt in ("hourly", "daily") else None,
             "base_salary": round(template_amount, 2) if tt == "monthly" else None,
+            "period_days": period_days,
+            "period_base": round(period_base, 2) if period_base is not None else None,
             "daily_hours": daily_list,
             "late_details": late_details,
             "advance_deduction": advance_deduction,
