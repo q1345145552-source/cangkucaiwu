@@ -212,6 +212,8 @@ async def credit_detail(credit_id: int, start_date: str = None, end_date: str = 
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "记录不存在")
+    if c.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能查看自己仓库的数据")
     cust = (await db.execute(select(Customer).where(Customer.id == c.customer_id))).scalar_one_or_none()
 
     start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None

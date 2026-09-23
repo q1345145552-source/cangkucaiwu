@@ -6,7 +6,7 @@ import os, uuid
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
-from app.core.permissions import get_current_user, get_wh_id
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids
 
 router = APIRouter()
 
@@ -52,6 +52,8 @@ async def upload_recharge_screenshot(
     result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
     rec = result.scalar_one_or_none()
     if not rec: raise HTTPException(404, "充值申报不存在")
+    if rec.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能给自己仓库的申报上传截图")
 
     ext = file.filename.split(".")[-1].lower() if file.filename else ""
     if ext not in ("png", "jpg", "jpeg", "webp"):

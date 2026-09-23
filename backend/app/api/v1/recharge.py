@@ -109,9 +109,15 @@ async def get_recharge(recharge_id: int, current_user: User = Depends(get_curren
 async def edit_recharge(recharge_id: int, req: RechargeCreate,
                         current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
     result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
+    if r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作自己仓库的数据")
     before = {
         "amount": r.amount, "currency": r.currency,
         "declare_date": r.declare_date.isoformat() if r.declare_date else None,
@@ -135,9 +141,15 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
 async def delete_recharge(recharge_id: int,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db)):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
     result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
+    if r.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作自己仓库的数据")
     wh_id = r.warehouse_id
     before = {
         "amount": r.amount, "currency": r.currency,

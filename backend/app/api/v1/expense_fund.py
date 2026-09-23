@@ -400,16 +400,23 @@ async def batch_review(
         raise HTTPException(403, "无审核权限")
 
     new_status = "approved" if req.action == "approve" else "rejected"
+    wh_ids = get_wh_ids(current_user)
+    processed = 0
 
     for item_id in req.item_ids:
         item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == item_id))).scalar_one_or_none()
         if not item: continue
+        # 校验仓库归属：只处理当前用户能管仓库的开销，其他仓库跳过
+        fund_wh = (await db.execute(select(ExpenseFund.warehouse_id).where(ExpenseFund.id == item.fund_id))).scalar_one_or_none()
+        if fund_wh is None or fund_wh not in wh_ids:
+            continue
         old_status = item.review_status
         # 幂等守卫：状态未变化则跳过，避免重复驳回导致余额被多次退回
         if old_status == new_status:
             continue
         item.review_status = new_status
         item.review_remark = req.remark
+        processed += 1
 
         # Sync with linked reimbursement（仅在状态真正发生变化时执行一次）
         if item.category == "报销":
@@ -434,7 +441,7 @@ async def batch_review(
     await db.flush()
 
     labels = {"approve": "通过", "reject": "驳回"}
-    return {"message": f"已{labels.get(req.action, req.action)}{len(req.item_ids)}条记录"}
+    return {"message": f"已{labels.get(req.action, req.action)}{processed}条记录"}
 
 
 # ==== Recharge Requests (申请-审核模式) ====

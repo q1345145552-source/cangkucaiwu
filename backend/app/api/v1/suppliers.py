@@ -145,14 +145,24 @@ async def _get_price_threshold(db: AsyncSession, wh_id: int) -> float:
         return DEFAULT_PRICE_THRESHOLD
 
 
-async def _get_approval_threshold(db: AsyncSession) -> float:
-    """采购审批金额门槛（全局，老板设置）。0 表示无需审批。"""
-    setting = (await db.execute(
-        select(SystemSetting).where(
-            SystemSetting.warehouse_id == 0,
-            SystemSetting.key == "purchase_approval_threshold",
-        )
-    )).scalar_one_or_none()
+async def _get_approval_threshold(db: AsyncSession, wh_id: int | None) -> float:
+    """采购审批金额门槛（按仓库，回退全局旧设置作为初始值）。0 表示无需审批。"""
+    setting = None
+    if wh_id is not None:
+        setting = (await db.execute(
+            select(SystemSetting).where(
+                SystemSetting.warehouse_id == wh_id,
+                SystemSetting.key == "purchase_approval_threshold",
+            )
+        )).scalar_one_or_none()
+    if setting is None:
+        # 回退全局旧设置作为初始值
+        setting = (await db.execute(
+            select(SystemSetting).where(
+                SystemSetting.warehouse_id == 0,
+                SystemSetting.key == "purchase_approval_threshold",
+            )
+        )).scalar_one_or_none()
     try:
         return float(setting.value) if setting else 0.0
     except (ValueError, TypeError):
@@ -651,7 +661,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
 
     total = round(total, 2)
     now = thai_now()
-    approval_threshold = await _get_approval_threshold(db)
+    approval_threshold = await _get_approval_threshold(db, wh_id)
     is_pending = approval_threshold > 0 and total > approval_threshold
     order_number = f"PO{now.strftime('%Y%m%d%H%M%S%f')}{supplier_id}"
     po = PurchaseOrder(
@@ -867,21 +877,25 @@ async def get_approval_threshold(current_user: User = Depends(get_current_user),
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
-    threshold = await _get_approval_threshold(db)
+    wh_id = get_wh_id(current_user)
+    threshold = await _get_approval_threshold(db, wh_id)
     return {"threshold": threshold}
 
 
 @router.put("/purchase-approval-threshold")
 async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """门槛金额只有仓库管理员能设置。"""
+    """门槛金额只有仓库管理员能设置（按当前选中仓库）。"""
     _forbid_super_admin(current_user)
     if current_user.role != Role.WAREHOUSE_ADMIN:
         raise HTTPException(403, "只有仓库管理员可以设置门槛金额")
     if req.threshold < 0:
         raise HTTPException(400, "门槛金额不能为负数")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
     setting = (await db.execute(
         select(SystemSetting).where(
-            SystemSetting.warehouse_id == 0,
+            SystemSetting.warehouse_id == wh_id,
             SystemSetting.key == "purchase_approval_threshold",
         )
     )).scalar_one_or_none()
@@ -889,7 +903,7 @@ async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User =
         setting.value = str(req.threshold)
         setting.updated_by = current_user.id
     else:
-        db.add(SystemSetting(warehouse_id=0, key="purchase_approval_threshold", value=str(req.threshold), updated_by=current_user.id))
+        db.add(SystemSetting(warehouse_id=wh_id, key="purchase_approval_threshold", value=str(req.threshold), updated_by=current_user.id))
     await db.flush()
     return {"message": f"采购审批门槛已设为 {req.threshold} 泰铢", "threshold": req.threshold}
 
@@ -900,7 +914,7 @@ async def purchase_approvals(current_user: User = Depends(get_current_user), db:
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
-    threshold = await _get_approval_threshold(db)
+    threshold = await _get_approval_threshold(db, get_wh_id(current_user))
     wh_ids = get_wh_ids(current_user)
 
     # 待审批
@@ -1277,14 +1291,23 @@ async def receipt_discrepancies(current_user: User = Depends(get_current_user), 
 DEFAULT_CONCENTRATION_THRESHOLD = 70.0
 
 
-async def _get_concentration_threshold(db: AsyncSession) -> float:
-    """集中度预警阈值（全局，老板设置）。默认 70%。"""
-    setting = (await db.execute(
-        select(SystemSetting).where(
-            SystemSetting.warehouse_id == 0,
-            SystemSetting.key == "supplier_concentration_threshold",
-        )
-    )).scalar_one_or_none()
+async def _get_concentration_threshold(db: AsyncSession, wh_id: int | None) -> float:
+    """集中度预警阈值（按仓库，回退全局旧设置作为初始值）。默认 70%。"""
+    setting = None
+    if wh_id is not None:
+        setting = (await db.execute(
+            select(SystemSetting).where(
+                SystemSetting.warehouse_id == wh_id,
+                SystemSetting.key == "supplier_concentration_threshold",
+            )
+        )).scalar_one_or_none()
+    if setting is None:
+        setting = (await db.execute(
+            select(SystemSetting).where(
+                SystemSetting.warehouse_id == 0,
+                SystemSetting.key == "supplier_concentration_threshold",
+            )
+        )).scalar_one_or_none()
     try:
         return float(setting.value) if setting else DEFAULT_CONCENTRATION_THRESHOLD
     except (ValueError, TypeError):
@@ -1355,7 +1378,8 @@ async def get_concentration_threshold(current_user: User = Depends(get_current_u
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
-    return {"threshold": await _get_concentration_threshold(db)}
+    wh_id = get_wh_id(current_user)
+    return {"threshold": await _get_concentration_threshold(db, wh_id)}
 
 
 @router.put("/concentration-threshold")
@@ -1364,16 +1388,19 @@ async def set_concentration_threshold(req: ConcentrationThresholdSet,
     _forbid_super_admin(current_user)
     if current_user.role != Role.WAREHOUSE_ADMIN:
         raise HTTPException(403, "只有仓库管理员可以设置")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
     setting = (await db.execute(
         select(SystemSetting).where(
-            SystemSetting.warehouse_id == 0,
+            SystemSetting.warehouse_id == wh_id,
             SystemSetting.key == "supplier_concentration_threshold",
         )
     )).scalar_one_or_none()
     if setting:
         setting.value = str(req.threshold)
     else:
-        db.add(SystemSetting(warehouse_id=0, key="supplier_concentration_threshold",
+        db.add(SystemSetting(warehouse_id=wh_id, key="supplier_concentration_threshold",
                              value=str(req.threshold), updated_by=current_user.id))
     await db.flush()
     return {"message": "集中度预警阈值已保存", "threshold": req.threshold}
@@ -1396,7 +1423,7 @@ async def concentration_analysis(month: str = None,
         raise HTTPException(400, "月份格式应为 YYYY-MM")
     wh_ids = get_wh_ids(current_user)
     res = await _monthly_concentration(db, wh_ids, month)
-    threshold = await _get_concentration_threshold(db)
+    threshold = await _get_concentration_threshold(db, get_wh_id(current_user))
     top = res["data"][0] if res["data"] else None
     alert = None
     if top and top["percent"] > threshold:
