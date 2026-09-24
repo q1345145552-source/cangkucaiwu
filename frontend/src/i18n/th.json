@@ -318,5 +318,6 @@
   "fixed_deduction": "หักคงที่",
   "temp_deduction": "หักชั่วคราว",
   "att_notified_at": "เวลาแจ้งจริง",
-  "att_notified_at_hint": "ใช้ตัดสินการขาดงาน แจ้งภายใน 24 ชั่วโมงถือว่ามีผล"
+  "att_notified_at_hint": "ใช้ตัดสินการขาดงาน แจ้งภายใน 24 ชั่วโมงถือว่ามีผล",
+  "expense_approval": "อนุมัติค่าใช้จ่าย"
 }

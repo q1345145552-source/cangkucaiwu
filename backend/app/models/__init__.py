@@ -22,6 +22,7 @@ from app.models.employee_advance import EmployeeAdvance
 from app.models.salary_template import SalaryTemplate
 from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
+from app.models.expense_approval import ExpenseApproval
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -40,4 +41,5 @@ __all__ = [
     "FundRechargeRequest", "EfficiencyOrderCount", "EfficiencyManualHour",
     "EmployeeAdvance", "SalaryTemplate",
     "DeductionTemplate", "EmployeeDeduction", "EmployeeFixedDeduction",
+    "ExpenseApproval",
 ]

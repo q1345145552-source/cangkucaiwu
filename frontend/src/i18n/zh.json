@@ -318,5 +318,6 @@
   "fixed_deduction": "固定扣款",
   "temp_deduction": "临时扣款",
   "att_notified_at": "实际报备时间",
-  "att_notified_at_hint": "用于判断旷工，报备时间在24小时内算有效"
+  "att_notified_at_hint": "用于判断旷工，报备时间在24小时内算有效",
+  "expense_approval": "费用审批"
 }

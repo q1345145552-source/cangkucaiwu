@@ -40,6 +40,7 @@ const navItems: NavItem[] = [
     roles: ["warehouse_admin", "staff", "supervisor"],
     children: [
       { key: "operating", label: "operating", icon: <BarChart3 size={18} />, href: "/operating", roles: ["warehouse_admin", "staff", "supervisor"] },
+      { key: "expense_approval", label: "expense_approval", icon: <Receipt size={18} />, href: "/expense-approvals", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "other_income_expense", label: "other_income_expense", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin", "supervisor"] },
       { key: "expense_fund", label: "expense_fund", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff", "supervisor"] },

@@ -22,6 +22,7 @@ from app.models.employee_advance import EmployeeAdvance
 from app.models.salary_template import SalaryTemplate
 from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
+from app.models.expense_approval import ExpenseApproval
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
