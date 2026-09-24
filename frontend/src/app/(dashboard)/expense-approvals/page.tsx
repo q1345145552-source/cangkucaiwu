@@ -153,16 +153,14 @@ export default function ExpenseApprovalsPage() {
 
   async function confirmPay() {
     if (!payId) return;
+    if (!payVoucherFile) { toast("error", "请上传付款凭证"); return; }
     try {
-      let voucher_base64: string | undefined;
-      if (payVoucherFile) {
-        voucher_base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = reject;
-          reader.readAsDataURL(payVoucherFile);
-        });
-      }
+      const voucher_base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(payVoucherFile);
+      });
       await api.post(`/expense-approvals/${payId}/pay`, { voucher_base64 });
       toast("success", "已付款");
       setPayId(null);
@@ -381,7 +379,7 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">付款凭证照片</label>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">付款凭证照片 <span className="text-red-400">*</span></label>
                 <div className="flex items-center gap-2">
                   <button onClick={() => payFileRef.current?.click()} className="border border-dashed rounded-lg px-4 py-2 text-sm text-gray-400 hover:text-green-500 hover:border-green-300">
                     选择图片
@@ -393,7 +391,8 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setPayId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmPay} className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg">确认付款</button>
+              <button onClick={confirmPay} disabled={!payVoucherFile}
+                className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">确认付款</button>
             </div>
           </div>
         </div>

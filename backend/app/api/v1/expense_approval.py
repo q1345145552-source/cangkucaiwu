@@ -467,11 +467,13 @@ async def pay_approval(
     if a.status != "approved":
         raise HTTPException(400, "只有已批准的申请可以付款")
 
-    # 付款凭证（可选）
-    if req.voucher_base64:
-        p = _save_voucher(wh_id, req.voucher_base64)
-        if p:
-            a.payment_voucher = p
+    # 付款凭证必填
+    if not req.voucher_base64:
+        raise HTTPException(400, "请上传付款凭证")
+    p = _save_voucher(wh_id, req.voucher_base64)
+    if not p:
+        raise HTTPException(400, "请上传付款凭证")
+    a.payment_voucher = p
 
     a.status = "paid"
     a.payer_id = current_user.id
