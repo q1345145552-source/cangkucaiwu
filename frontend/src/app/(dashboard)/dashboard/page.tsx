@@ -19,7 +19,7 @@ interface CockpitData {
   people: {
     attendance: { expected: number; present: number; absent: number };
     efficiency: { person_times: number; order_count: number; efficiency: number; standard: number; below_standard: boolean } | null;
-    todos: { leave_pending: number; overtime_pending: number; expense_fund_pending: number; reimbursement_pending: number; market_pending: number; group_order_pending: number };
+    todos: { leave_pending: number; overtime_pending: number; expense_fund_pending: number; reimbursement_pending: number; market_pending: number; group_order_pending: number; expense_approval_pending?: number };
   };
   todos: { type: string; description: string; link: string; id: number }[];
 }
@@ -85,6 +85,7 @@ const TODO_CONFIG: Record<string, { icon: React.ReactNode; color: string; badge:
   reimbursement: { icon: <Receipt className="h-4 w-4" />, color: "text-orange-600 bg-orange-50", badge: "报销审批" },
   market: { icon: <Tag className="h-4 w-4" />, color: "text-blue-600 bg-blue-50", badge: "商品审核" },
   group_order: { icon: <Package className="h-4 w-4" />, color: "text-teal-600 bg-teal-50", badge: "待拼单" },
+  expense_approval: { icon: <Receipt className="h-4 w-4" />, color: "text-emerald-600 bg-emerald-50", badge: "费用审批" },
 };
 
 export default function DashboardPage() {
@@ -236,6 +237,9 @@ export default function DashboardPage() {
               <div className="flex justify-between"><span className="text-gray-500">备用金审核</span><span className="font-semibold">{people.todos.expense_fund_pending}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">报销审批</span><span className="font-semibold">{people.todos.reimbursement_pending}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">商品审核</span><span className="font-semibold">{people.todos.market_pending}</span></div>
+              {user?.role === "warehouse_admin" && (
+                <div className="flex justify-between"><span className="text-gray-500">费用待审批</span><span className="font-semibold">{people.todos.expense_approval_pending ?? 0}</span></div>
+              )}
             </div>
           </div>
         </div>
@@ -348,7 +352,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {(["purchase_approval", "bill_confirm", "leave", "overtime", "expense_fund", "reimbursement", "market", "group_order"] as const).map((type) => {
+            {(["purchase_approval", "bill_confirm", "leave", "overtime", "expense_fund", "reimbursement", "market", "group_order", "expense_approval"] as const).map((type) => {
               const typeTasks = data.todos.filter((t) => t.type === type);
               if (typeTasks.length === 0) return null;
               const cfg = TODO_CONFIG[type];

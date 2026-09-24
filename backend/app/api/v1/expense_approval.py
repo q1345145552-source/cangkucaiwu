@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models.expense_approval import ExpenseApproval
 from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.customer import PaymentAccount
-from app.models.expense_fund import SystemSetting
+from app.models.expense_fund import SystemSetting, ExpenseFund, ExpenseFundItem, ReviewStatus
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today
@@ -75,13 +75,18 @@ class RejectRequest(BaseModel):
     note: Optional[str] = None
 
 
+class PayRequest(BaseModel):
+    voucher_base64: Optional[str] = None  # 付款凭证照片 base64（可选）
+
+
 def _save_voucher(wh_id, data_url: str) -> Optional[str]:
     try:
         header, b64 = (data_url.split(",", 1) if "," in data_url else ("", data_url))
         img = base64.b64decode(b64)
         from app.services.image_utils import save_image
+        upload_dir = os.environ.get("UPLOAD_DIR", "/app/uploads")
         today = thai_today().isoformat()
-        abs_subdir = os.path.join("/app/uploads", str(wh_id), today, "approvals")
+        abs_subdir = os.path.join(upload_dir, str(wh_id), today, "approvals")
         rel_subdir = f"uploads/{wh_id}/{today}/approvals"
         fname = f"{uuid.uuid4().hex}.jpg"
         result = save_image(img, abs_subdir, rel_subdir, fname)
@@ -129,6 +134,30 @@ async def _generate_operating_expense(db: AsyncSession, appr: ExpenseApproval):
         expense_date=datetime.combine(appr.expense_date, datetime.min.time()),
         voucher=appr.voucher_path,
         remark=f"[费用审批#{appr.id}] {appr.purpose}",
+    ))
+
+
+async def _link_fund(db: AsyncSession, appr: ExpenseApproval):
+    """资金来源选备用金：付款后在备用金账户记一笔开销（无需二次审核）。"""
+    if appr.fund_source != "fund":
+        return
+    fund = (await db.execute(
+        select(ExpenseFund).where(
+            ExpenseFund.warehouse_id == appr.warehouse_id,
+            ExpenseFund.status == "active",
+        ).order_by(ExpenseFund.id.asc())
+    )).scalars().first()
+    if not fund:
+        return
+    db.add(ExpenseFundItem(
+        fund_id=fund.id,
+        expense_date=thai_now().replace(tzinfo=None),
+        category="费用支出",
+        amount=appr.amount,
+        currency=appr.currency or "THB",
+        description=appr.purpose,
+        receipt=appr.voucher_path,
+        review_status=ReviewStatus.APPROVED.value,
     ))
 
 
@@ -235,6 +264,38 @@ async def list_approvals(
             "created_at": r.created_at.isoformat() if r.created_at else None,
         } for r in rows],
         "total": len(rows),
+    }
+
+
+@router.get("/summary")
+async def approval_summary(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """页面看板：待审批笔数 / 已批准待付款笔数 / 本月已付款金额按币种。"""
+    _check_submit_role(current_user)
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        return {"pending_count": 0, "approved_count": 0, "paid_by_currency": []}
+
+    pending_count = int((await db.execute(
+        select(func.count(ExpenseApproval.id)).where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "pending")
+    )).scalar() or 0)
+    approved_count = int((await db.execute(
+        select(func.count(ExpenseApproval.id)).where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "approved")
+    )).scalar() or 0)
+
+    month_start = datetime.combine(thai_today().replace(day=1), datetime.min.time())
+    paid_rows = (await db.execute(
+        select(ExpenseApproval.currency, func.sum(ExpenseApproval.amount))
+        .where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "paid", ExpenseApproval.paid_at >= month_start)
+        .group_by(ExpenseApproval.currency)
+    )).all()
+
+    return {
+        "pending_count": pending_count,
+        "approved_count": approved_count,
+        "paid_by_currency": [{"currency": c or "THB", "amount": round(a or 0, 2)} for c, a in paid_rows],
     }
 
 
@@ -390,6 +451,7 @@ async def reject_approval(
 @router.post("/{approval_id}/pay")
 async def pay_approval(
     approval_id: int,
+    req: PayRequest = PayRequest(),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -404,8 +466,20 @@ async def pay_approval(
         raise HTTPException(404, "费用申请不存在")
     if a.status != "approved":
         raise HTTPException(400, "只有已批准的申请可以付款")
+
+    # 付款凭证（可选）
+    if req.voucher_base64:
+        p = _save_voucher(wh_id, req.voucher_base64)
+        if p:
+            a.payment_voucher = p
+
     a.status = "paid"
     a.payer_id = current_user.id
     a.paid_at = thai_now()
+    await db.flush()
+
+    # 付款后自动生成运营支出 + 备用金联动
+    await _generate_operating_expense(db, a)
+    await _link_fund(db, a)
     await db.flush()
     return {"id": a.id, "message": "已付款"}

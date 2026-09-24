@@ -7,6 +7,7 @@ from app.models.recharge import IncomingFlow
 from app.models.market import MarketItem
 from app.models.group_order import GroupOrder, GroupOrderStatus
 from app.models.expense_fund import ExpenseFundItem, ExpenseFund, ReviewStatus
+from app.models.expense_approval import ExpenseApproval
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
@@ -569,6 +570,13 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
             GroupOrder.warehouse_id == wh_id, GroupOrder.status == GroupOrderStatus.OPEN.value
         )
     )).scalar() or 0
+    expense_approval_pending = 0
+    if current_user.role == Role.WAREHOUSE_ADMIN:
+        expense_approval_pending = (await db.execute(
+            select(func.count(ExpenseApproval.id)).where(
+                ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "pending"
+            )
+        )).scalar() or 0
 
     # ── 待办列表 ──
     todos = []
@@ -653,6 +661,17 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     for gid, gname in g_rows:
         todos.append({"type": "group_order", "description": f"待拼单：{gname}", "link": "/group-order", "id": gid})
 
+    # 费用待审批（仅仓库管理员可见）
+    if current_user.role == Role.WAREHOUSE_ADMIN:
+        ea_rows = (await db.execute(
+            select(ExpenseApproval.id, User.display_name)
+            .join(User, ExpenseApproval.applicant_id == User.id)
+            .where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "pending")
+            .order_by(ExpenseApproval.created_at.desc()).limit(20)
+        )).all()
+        for aid, aname in ea_rows:
+            todos.append({"type": "expense_approval", "description": f"{aname} 的费用申请待审批", "link": "/expense-approvals", "id": aid})
+
     return {
         "finance": {
             "month": {
@@ -692,6 +711,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
                 "reimbursement_pending": rb_pending,
                 "market_pending": market_pending,
                 "group_order_pending": group_pending,
+                "expense_approval_pending": expense_approval_pending,
             },
         },
         "todos": todos,
