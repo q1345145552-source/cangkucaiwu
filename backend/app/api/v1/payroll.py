@@ -610,10 +610,10 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         # 旷工额外罚 = 日薪 × 旷工倍数 × 旷工天数
         absence_fine_total = round(daily_rate * absence_extra_mult * absence_fine_days, 2)
 
-        # 固定扣款：下半月周期扣全额，上半月不扣
+        # 固定扣款：日期段覆盖到下半月（结束日 >= 16 号）就扣全额，否则不扣
         fixed_items = fixed_by_emp.get(emp.id, [])
         fixed_total = 0.0
-        if req.half == "second_half":
+        if period_end.day >= 16:
             fixed_total = round(sum(f["amount"] for f in fixed_items), 2)
 
         # 临时扣款：本周期内按扣款日期全部扣
@@ -682,7 +682,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "absence_fine": absence_fine_total,
             "absence_fine_days": absence_fine_days,
             "fixed_deduction": fixed_total,
-            "fixed_deductions": fixed_items if req.half == "second_half" else [],
+            "fixed_deductions": fixed_items if period_end.day >= 16 else [],
             "temp_deduction": temp_total,
             "temp_deductions": temp_items,
             "overtime_hours": round(overtime_hours, 1),
