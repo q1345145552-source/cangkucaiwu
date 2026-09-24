@@ -111,11 +111,19 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     if not employees:
         return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
 
-    # ── 薪资模板检查：没有模板的员工先拦住 ──
-    no_template = [e for e in employees if not e.salary_template_id]
-    if no_template:
-        names = "、".join(e.name for e in no_template)
-        raise HTTPException(400, f"以下员工还没有设置薪资模板，请先设置：\n{names}")
+    # ── 模板检查：薪资模板 + 扣款模板都通过才能算工资 ──
+    no_salary_template = [e for e in employees if not e.salary_template_id]
+    no_deduction_template = [e for e in employees if not e.deduction_template_id]
+    if no_salary_template or no_deduction_template:
+        lines = []
+        if no_salary_template:
+            names = "、".join(e.name for e in no_salary_template)
+            lines.append(f"以下员工还没有设置薪资模板，请先设置：\n{names}")
+        if no_deduction_template:
+            names = "、".join(e.name for e in no_deduction_template)
+            lines.append(f"以下员工还没有设置扣款模板，请先设置：\n{names}")
+        raise HTTPException(400, "\n".join(lines))
+
     template_ids = {e.salary_template_id for e in employees if e.salary_template_id}
     template_map = {}
     if template_ids:
