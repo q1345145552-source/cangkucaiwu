@@ -30,11 +30,11 @@ def _check_submit_role(current_user: User):
 
 
 def _check_manage_role(current_user: User):
-    """审批操作（改门槛/审批/驳回/付款）：仅仓库管理员/主管。"""
+    """审批操作（审批/驳回/付款）：仅仓库管理员。"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "无权限")
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以审批")
 
 
 async def _get_threshold(db: AsyncSession, wh_id: int) -> float:
@@ -257,8 +257,6 @@ async def set_threshold(
     db: AsyncSession = Depends(get_db),
 ):
     _check_manage_role(current_user)
-    if current_user.role != Role.WAREHOUSE_ADMIN:
-        raise HTTPException(403, "只有仓库管理员可以设置门槛")
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")

@@ -47,7 +47,7 @@ export default function ExpenseApprovalsPage() {
 
   const role = user?.role;
   const canSubmit = role === "warehouse_admin" || role === "supervisor" || role === "staff";
-  const canApprove = role === "warehouse_admin" || role === "supervisor";
+  const canApprove = role === "warehouse_admin";
   const canSetThreshold = role === "warehouse_admin";
 
   useEffect(() => { if (!getToken()) { router.push("/login"); return; } load(); loadThreshold(); }, []);
