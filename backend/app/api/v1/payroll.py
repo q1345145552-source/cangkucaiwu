@@ -27,7 +27,8 @@ class CalculateRequest(BaseModel):
     period: str  # YYYY-MM
     half: str = "first_half"  # first_half / second_half
     employee_ids: Optional[List[int]] = None  # 单人结算时指定
-    end_date: Optional[str] = None  # 结算截止日 YYYY-MM-DD（单人/离职结算用）
+    start_date: Optional[str] = None  # 自定义日期段开始日 YYYY-MM-DD
+    end_date: Optional[str] = None  # 结算截止日 YYYY-MM-DD（单人/离职结算/自定义日期段用）
     is_resignation: bool = False  # 离职结算：扣到实发0为止，剩余欠款老板认了
 
 
@@ -62,28 +63,43 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     if month < 1 or month > 12:
         raise HTTPException(400, "月份无效")
 
-    # 结算截止日：单人/离职结算用 end_date，正常周期用周期结束日
+    # 结算日期段：自定义日期段用 start_date+end_date，快捷/单人/离职用 period+half(+end_date)
     _, total_days = calendar.monthrange(year, month)
-    if req.end_date:
+    is_custom = bool(req.start_date and req.end_date)
+    if is_custom:
         try:
+            settle_start = datetime.strptime(req.start_date, "%Y-%m-%d").date()
             settle_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
         except:
-            raise HTTPException(400, "截止日期格式错误，应为 YYYY-MM-DD")
-        if settle_end.year != year or settle_end.month != month:
-            raise HTTPException(400, "截止日期必须在本周期内")
+            raise HTTPException(400, "日期格式错误，应为 YYYY-MM-DD")
+        if settle_start.year != year or settle_start.month != month or settle_end.year != year or settle_end.month != month:
+            raise HTTPException(400, "日期段不能跨月，请选择同一个月的日期")
+        if settle_start > settle_end:
+            raise HTTPException(400, "开始日期不能晚于结束日期")
+        period_start = settle_start
         period_end = settle_end
-    elif req.half == "first_half":
-        period_end = date(year, month, 15)
-        settle_end = period_end
     else:
-        period_end = date(year, month, total_days)
-        settle_end = period_end
+        if req.end_date:
+            try:
+                settle_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
+            except:
+                raise HTTPException(400, "截止日期格式错误，应为 YYYY-MM-DD")
+            if settle_end.year != year or settle_end.month != month:
+                raise HTTPException(400, "截止日期必须在本周期内")
+            period_end = settle_end
+        elif req.half == "first_half":
+            period_end = date(year, month, 15)
+            settle_end = period_end
+        else:
+            period_end = date(year, month, total_days)
+            settle_end = period_end
 
-    # 周期开始日：上半月 1 号，下半月 16 号
-    if req.half == "first_half":
-        period_start = date(year, month, 1)
-    else:
-        period_start = date(year, month, 16)
+        # 周期开始日：上半月 1 号，下半月 16 号
+        if req.half == "first_half":
+            period_start = date(year, month, 1)
+        else:
+            period_start = date(year, month, 16)
+        settle_start = period_start
 
     # 周期实际天数（含起止日）：按月模式按此折算周期基础
     period_days = (period_end - period_start).days + 1
@@ -123,6 +139,37 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             names = "、".join(e.name for e in no_deduction_template)
             lines.append(f"以下员工还没有设置扣款模板，请先设置：\n{names}")
         raise HTTPException(400, "\n".join(lines))
+
+    # ── 自定义日期段防重复：按结算起止日判断与已有工资单是否重叠 ──
+    if is_custom:
+        emp_id_set = {e.id for e in employees}
+        emp_name_map = {e.id: e.name for e in employees}
+        overlap_records = (await db.execute(
+            select(PayrollRecord).where(
+                PayrollRecord.warehouse_id == wh_id,
+                PayrollRecord.employee_id.in_(emp_id_set),
+            )
+        )).scalars().all()
+        overlap_lines = []
+        next_start = period_start
+        for r in overlap_records:
+            r_start = r.settle_start_date
+            if r_start is None:
+                try:
+                    ry, rm = r.period.split("-")
+                    r_start = date(int(ry), int(rm), 1 if r.half == "first_half" else 16)
+                except (ValueError, TypeError):
+                    r_start = None
+            r_end = r.settle_end_date
+            if r_start is None or r_end is None:
+                continue
+            if r_end >= period_start and r_start <= period_end:
+                overlap_lines.append(
+                    f"{emp_name_map.get(r.employee_id, '')} 在 {r_start.isoformat()} 到 {r_end.isoformat()} 已经算过工资了"
+                )
+                next_start = max(next_start, r_end + timedelta(days=1))
+        if overlap_lines:
+            raise HTTPException(400, "\n".join(overlap_lines) + f"\n请从 {next_start.isoformat()} 开始算")
 
     template_ids = {e.salary_template_id for e in employees if e.salary_template_id}
     template_map = {}
@@ -669,6 +716,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             half=req.half,
             employee_id=emp.id,
             period=req.period,
+            settle_start_date=settle_start,
             settle_end_date=settle_end,
             status="pending",
             total_days_in_month=total_days,
@@ -808,6 +856,7 @@ async def list_payroll(
             "employee_status": r.employee_status,
             "period": r.period,
             "half": r.half,
+            "settle_start_date": r.settle_start_date.isoformat() if r.settle_start_date else None,
             "settle_end_date": r.settle_end_date.isoformat() if r.settle_end_date else None,
             "status": r.status,
             "total_days_in_month": r.total_days_in_month,
@@ -1203,6 +1252,8 @@ async def my_payslip(
             "id": r.id,
             "period": r.period,
             "half": r.half,
+            "settle_start_date": r.settle_start_date.isoformat() if r.settle_start_date else None,
+            "settle_end_date": r.settle_end_date.isoformat() if r.settle_end_date else None,
             "status": r.status,
             "disbursed": r.disbursed,
             "disbursed_at": r.disbursed_at.isoformat() if r.disbursed_at else None,

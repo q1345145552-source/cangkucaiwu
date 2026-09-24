@@ -636,18 +636,9 @@ export default function EmployeesPage() {
                   <input className="form-input py-2 w-full" value={form.myanmar_id} onChange={e => setForm({...form, myanmar_id: e.target.value})} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="form-label text-xs mb-1 block">入职日期</label>
-                  <input type="date" className="form-input py-2 w-full" value={form.hire_date} onChange={e => setForm({...form, hire_date: e.target.value})} />
-                </div>
-                <div>
-                  <label className="form-label text-xs mb-1 block">员工状态</label>
-                  <select className="form-input py-2 w-full" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
-                    <option value="trial">试用期</option>
-                    <option value="regular">正式</option>
-                  </select>
-                </div>
+              <div>
+                <label className="form-label text-xs mb-1 block">入职日期</label>
+                <input type="date" className="form-input py-2 w-full" value={form.hire_date} onChange={e => setForm({...form, hire_date: e.target.value})} />
               </div>
               <div>
                 <label className="form-label text-xs mb-1 block">地址</label>
@@ -707,6 +698,7 @@ export default function EmployeesPage() {
                 <div className="mt-3">
                   <label className="form-label text-xs mb-1 block">转正日期</label>
                   <input type="date" className="form-input py-2 w-full" value={form.promotion_date || ""} onChange={e => setForm({...form, promotion_date: e.target.value})} />
+                  <p className="text-xs text-gray-400 mt-1">仅作记录，不影响算工资</p>
                 </div>
               </div>
 

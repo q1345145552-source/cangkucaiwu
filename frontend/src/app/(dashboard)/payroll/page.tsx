@@ -64,6 +64,9 @@ export default function PayrollPage() {
   const [singleEndDate, setSingleEndDate] = useState(new Date().toISOString().slice(0, 10));
   const [singleEmployees, setSingleEmployees] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [customMode, setCustomMode] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -119,6 +122,25 @@ export default function PayrollPage() {
     return `${period} ${half === "second_half" ? "下半月" : "上半月"}`;
   }
 
+  // 单条工资单的日期段显示：快捷周期显示「2026-09 上半月」，自定义显示「起 到 止」
+  function recordDateLabel(r: any): string {
+    const s = r.settle_start_date;
+    const e = r.settle_end_date;
+    const half = r.half;
+    if (s && e && r.period) {
+      const [y, m] = r.period.split("-").map(Number);
+      const monthEnd = new Date(y, m, 0).getDate();
+      const qs = half === "first_half" ? 1 : 16;
+      const qe = half === "first_half" ? 15 : monthEnd;
+      const p2 = (n: number) => String(n).padStart(2, "0");
+      if (s.slice(-2) === p2(qs) && e.slice(-2) === p2(qe)) {
+        return `${r.period} ${half === "second_half" ? "下半月" : "上半月"}`;
+      }
+      return `${s} 到 ${e}`;
+    }
+    return `${r.period} ${half === "second_half" ? "下半月" : "上半月"}`;
+  }
+
   async function loadRecords(periodKeyOverride?: string) {
     const key = periodKeyOverride || selectedPeriodKey;
     if (!key) return;
@@ -141,6 +163,26 @@ export default function PayrollPage() {
   }
 
   async function handleCalculate() {
+    if (customMode) {
+      // 自定义日期段
+      if (!customStartDate || !customEndDate) { toast("error", "请选择开始日期和结束日期"); return; }
+      if (customStartDate.slice(0, 7) !== customEndDate.slice(0, 7)) {
+        toast("error", "日期段不能跨月，请选择同一个月的日期"); return;
+      }
+      if (customStartDate > customEndDate) { toast("error", "开始日期不能晚于结束日期"); return; }
+      if (!confirm(`确定计算 ${customStartDate} 到 ${customEndDate} 的工资吗？`)) return;
+      setCalculating(true);
+      try {
+        const period = customStartDate.slice(0, 7);
+        const half = +customStartDate.slice(8, 10) <= 15 ? "first_half" : "second_half";
+        const r = await api.post<any>("/payroll/calculate", { period, half, start_date: customStartDate, end_date: customEndDate });
+        toast("success", `${customStartDate} 到 ${customEndDate} 工资计算完成`);
+        loadPeriods();
+        loadRecords(`${period}_${half}`);
+      } catch (err: any) { toast("error", err.message || "计算失败"); }
+      setCalculating(false);
+      return;
+    }
     if (!selectedPeriodKey) { toast("error", "请先选择周期"); return; }
     const { period, half } = periodKeyToApi(selectedPeriodKey);
     const label = periodLabel(selectedPeriodKey);
@@ -367,16 +409,36 @@ export default function PayrollPage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><Calculator size={24}/>工资管理</h1>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           {/* Period + Half selector */}
-          <select value={selectedPeriodKey} onChange={e => { const v = e.target.value; setSelectedPeriodKey(v); if (v) loadRecords(v); }}
+          <select value={customMode ? "__custom__" : selectedPeriodKey}
+            onChange={e => {
+              const v = e.target.value;
+              if (v === "__custom__") {
+                setCustomMode(true);
+              } else {
+                setCustomMode(false);
+                setSelectedPeriodKey(v);
+                if (v) loadRecords(v);
+              }
+            }}
             className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
             <option value="">选择周期</option>
             {periods.map((p: any) => {
               const key = `${p.period}_${p.half}`;
               return <option key={key} value={key}>{p.label}</option>
             })}
+            <option value="__custom__">自定义日期段</option>
           </select>
+          {customMode && (
+            <div className="flex gap-2 items-center">
+              <input type="date" className="border rounded-lg px-3 py-2 text-sm bg-white" value={customStartDate}
+                onChange={e => setCustomStartDate(e.target.value)} />
+              <span className="text-sm text-gray-400">到</span>
+              <input type="date" className="border rounded-lg px-3 py-2 text-sm bg-white" value={customEndDate}
+                onChange={e => setCustomEndDate(e.target.value)} />
+            </div>
+          )}
           {isAdmin && (
             <>
               <button onClick={handleCalculate}
@@ -488,7 +550,7 @@ export default function PayrollPage() {
                   </td>
                   <td className="px-3 py-3 font-medium">
                     {r.employee_name ?? "—"}
-                    {r.settle_end_date && <div className="text-[11px] text-gray-400 font-normal">结算到 {r.settle_end_date.slice(5).replace("-", "月")}日</div>}
+                    {<div className="text-[11px] text-gray-400 font-normal">{recordDateLabel(r)}</div>}
                   </td>
                   <td className="px-3 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs ${templateTypeBadge(r.detail?.salary_template_type)}`}>
@@ -599,7 +661,7 @@ export default function PayrollPage() {
               {/* Header */}
               <div className="text-center pb-3 border-b">
                 <h3 className="text-lg font-bold">{showPayslip.employee_name}</h3>
-                <p className="text-sm text-gray-500">{showPayslip.period} {showPayslip.half === "second_half" ? "下半月" : "上半月"} 工资单</p>
+                <p className="text-sm text-gray-500">{recordDateLabel(showPayslip)} 工资单</p>
                 <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${templateTypeBadge(psTemplateType)}`}>
                   {templateTypeLabel(psTemplateType) || (showPayslip.employee_status === "trial" ? "试用期" : "正式员工")}
                 </span>

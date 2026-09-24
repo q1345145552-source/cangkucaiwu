@@ -289,6 +289,7 @@ async def seed():
             for _c in ("attendance_days", "leave_days", "rest_days", "absence_days"):
                 await conn.execute(text(f"ALTER TABLE payroll_records ALTER COLUMN {_c} TYPE DOUBLE PRECISION"))
             payroll_cols = [
+                ("settle_start_date", "DATE"),
                 ("settle_end_date", "DATE"),
                 ("disbursed", "BOOLEAN DEFAULT false"),
                 ("total_days_in_month", "INTEGER DEFAULT 0"),
