@@ -504,6 +504,9 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                     # 报备超过24小时 → 旷工
                     att, lv, ab = 0.0, 0.0, 1.0
                     absent_fine_day = 1.0
+            elif n == 2 and lt is None:
+                # 半天旷工：上午2次无下午请假，或下午2次无上午请假（缺勤半天）
+                absent_fine_day = 0.5
 
             # 按小时请假：工时扣掉请假小时数，请假天数记成小时/8 的小数
             if lt == "hours" and lv_hours is not None:
