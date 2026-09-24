@@ -314,7 +314,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "reason": d.reason,
         })
 
-    # ── 算工资前检查待补（打卡 1 次或 3 次的天） ──
+    # ── 算工资前检查待补 ──
+    # 待补：打卡 1 次 / 3 次，或 2 次但既不构成上午半天(时段1+2)也不构成下午半天(时段3+4)
     SESSION_CN = {1: "早上上班", 2: "中午休息结束", 3: "下午上班", 4: "下午下班"}
 
     def _local_time_of(dt):
@@ -391,10 +392,18 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 current += timedelta(days=1)
                 continue
             sessions = clock_by_emp_date.get((emp.id, current), [])
-            n = len({c.session for c in sessions})
+            session_set = {c.session for c in sessions}
+            n = len(session_set)
+            morning = {1, 2}
+            afternoon = {3, 4}
+            is_pending = False
             if n in (1, 3):
-                have = {c.session for c in sessions}
-                missing = [SESSION_CN[s] for s in (1, 2, 3, 4) if s not in have]
+                is_pending = True
+            elif n == 2 and not (morning <= session_set) and not (afternoon <= session_set):
+                # 两次打卡但不是完整上午也不是完整下午 → 待补
+                is_pending = True
+            if is_pending:
+                missing = [SESSION_CN[s] for s in (1, 2, 3, 4) if s not in session_set]
                 pending_days.append({"employee": emp.name, "date": current.isoformat(), "missing": missing})
             current += timedelta(days=1)
 
