@@ -43,6 +43,9 @@ export default function EmployeesPage() {
   const [fixedForm, setFixedForm] = useState({ name: "", amount: "" });
   const [editingFixedId, setEditingFixedId] = useState<number | null>(null);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchForm, setBatchForm] = useState({ salary_template_id: 0, deduction_template_id: 0 });
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const photoUrl = (path: string) => {
@@ -405,6 +408,37 @@ export default function EmployeesPage() {
   const activeEmployees = data.filter((e: any) => e.status !== "resigned");
   const isAdmin = user?.role === "warehouse_admin" || user?.role === "supervisor";
 
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => (prev.length === activeEmployees.length && activeEmployees.length > 0) ? [] : activeEmployees.map((e: any) => e.id));
+  }
+
+  function openBatchModal() {
+    setBatchForm({ salary_template_id: 0, deduction_template_id: 0 });
+    setShowBatchModal(true);
+  }
+
+  async function handleBatchSet() {
+    if (!batchForm.salary_template_id || !batchForm.deduction_template_id) {
+      toast("error", "请选择薪资模板和扣款模板");
+      return;
+    }
+    try {
+      const r = await api.post<any>("/employees/batch-set-templates", {
+        employee_ids: selectedIds,
+        salary_template_id: batchForm.salary_template_id,
+        deduction_template_id: batchForm.deduction_template_id,
+      });
+      toast("success", r.message || `已为 ${selectedIds.length} 名员工设置模板`);
+      setShowBatchModal(false);
+      setSelectedIds([]);
+      load();
+    } catch (err: any) { toast("error", err.message || "操作失败"); }
+  }
+
   return (
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
@@ -441,11 +475,27 @@ export default function EmployeesPage() {
         )}
       </div>
 
+      {/* 批量操作栏 */}
+      {isAdmin && selectedIds.length > 0 && (
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
+          <span className="text-sm font-medium text-blue-700">已选 {selectedIds.length} 人</span>
+          <button onClick={openBatchModal} className="bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600">
+            批量设置模板
+          </button>
+        </div>
+      )}
+
       {/* Active Employees Table */}
       <div className="bg-white rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50">
+              {isAdmin && (
+                <th className="text-center px-2 py-3 w-10">
+                  <input type="checkbox" checked={activeEmployees.length > 0 && selectedIds.length === activeEmployees.length}
+                    onChange={toggleSelectAll} className="w-4 h-4 cursor-pointer align-middle" />
+                </th>
+              )}
               <th className="text-left px-4 py-3 font-medium text-gray-600">姓名</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">工号</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">岗位</th>
@@ -463,6 +513,12 @@ export default function EmployeesPage() {
               const tags = Array.isArray(e.tags) ? e.tags : (e.tags ? e.tags.split(",").filter(Boolean) : []);
               return (
                 <tr key={e.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => openDetail(e)}>
+                  {isAdmin && (
+                    <td className="px-2 py-3 text-center" onClick={ev => ev.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.includes(e.id)}
+                        onChange={() => toggleSelect(e.id)} className="w-4 h-4 cursor-pointer align-middle" />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {e.photo_path ? (
@@ -1117,6 +1173,38 @@ export default function EmployeesPage() {
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end">
               <button onClick={() => setBindResult(null)} className="bg-blue-500 text-white px-5 py-2 rounded-lg text-sm">关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 批量设置模板弹窗 */}
+      {showBatchModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowBatchModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <UserPlus size={20} /><span className="font-semibold">批量设置模板</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-gray-600">将给选中的 <b>{selectedIds.length}</b> 名员工设置以下模板：</p>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">薪资模板 <span className="text-red-400">*</span></label>
+                <select className="form-input py-2.5 w-full" value={batchForm.salary_template_id || ""} onChange={e => setBatchForm({ ...batchForm, salary_template_id: +e.target.value })}>
+                  <option value="">请选择薪资模板</option>
+                  {salaryTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name} · {t.type_label || t.type} · {t.amount}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">扣款模板 <span className="text-red-400">*</span></label>
+                <select className="form-input py-2.5 w-full" value={batchForm.deduction_template_id || ""} onChange={e => setBatchForm({ ...batchForm, deduction_template_id: +e.target.value })}>
+                  <option value="">请选择扣款模板</option>
+                  {deductionTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setShowBatchModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={handleBatchSet} className="btn-primary text-sm px-6 py-2">确定</button>
             </div>
           </div>
         </div>

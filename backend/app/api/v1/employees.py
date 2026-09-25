@@ -14,7 +14,7 @@ from app.services.image_utils import thumb_path_of
 from app.core.timezone import thai_now
 from pydantic import BaseModel
 from datetime import datetime, date, timedelta
-from typing import Optional
+from typing import Optional, List
 
 router = APIRouter()
 
@@ -604,6 +604,61 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
         )
     )).scalar_one_or_none()
     return user
+
+
+class BatchTemplateSet(BaseModel):
+    employee_ids: List[int]
+    salary_template_id: int
+    deduction_template_id: int
+
+
+@router.post("/batch-set-templates")
+async def batch_set_templates(
+    req: BatchTemplateSet,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量给员工设置薪资模板和扣款模板。仅仓库管理员/主管。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以批量设置模板")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    ids = list(dict.fromkeys(req.employee_ids or []))
+    if not ids:
+        raise HTTPException(400, "请选择员工")
+
+    salary_tpl = (await db.execute(
+        select(SalaryTemplate).where(SalaryTemplate.id == req.salary_template_id, SalaryTemplate.warehouse_id == wh_id)
+    )).scalar_one_or_none()
+    if not salary_tpl:
+        raise HTTPException(400, "薪资模板不存在")
+
+    deduction_tpl = (await db.execute(
+        select(DeductionTemplate).where(DeductionTemplate.id == req.deduction_template_id, DeductionTemplate.warehouse_id == wh_id)
+    )).scalar_one_or_none()
+    if not deduction_tpl:
+        raise HTTPException(400, "扣款模板不存在")
+
+    emps = (await db.execute(
+        select(Employee).where(Employee.id.in_(ids), Employee.warehouse_id == wh_id)
+    )).scalars().all()
+    if len(emps) != len(ids):
+        raise HTTPException(403, "包含无权操作的员工")
+
+    for e in emps:
+        e.salary_template_id = salary_tpl.id
+        e.deduction_template_id = deduction_tpl.id
+        # 按薪资模板同步日薪/底薪字段（跟单个设置一致）
+        if salary_tpl.type in ("hourly", "daily"):
+            e.daily_wage = salary_tpl.amount
+        else:
+            e.base_salary = salary_tpl.amount
+
+    await db.flush()
+    return {"message": f"已为 {len(emps)} 名员工设置模板", "count": len(emps)}
 
 
 
