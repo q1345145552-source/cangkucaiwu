@@ -313,12 +313,6 @@ export default function SuppliersPage() {
       openApprovals();
     } catch (e: any) { toast("error", e.message || "驳回失败"); }
   }
-  async function saveApprovalThreshold() {
-    try {
-      await api.put("/suppliers/purchase-approval-threshold", { threshold: approvalThreshold });
-      toast("success", "门槛金额已保存");
-    } catch (e: any) { toast("error", e.message || "保存失败"); }
-  }
   // ─── 采购收货验收 ───
   async function openReceipt() {
     setShowReceipt(true);
@@ -1264,15 +1258,11 @@ export default function SuppliersPage() {
               <button onClick={() => setShowApprovals(false)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
             </div>
             <div className="p-5 space-y-5">
-              {/* 门槛设置（仅仓库管理员） */}
-              {user?.role === "warehouse_admin" && (
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600">审批门槛（泰铢）</label>
-                  <input type="number" min={0} value={approvalThreshold} onChange={e => setApprovalThreshold(+e.target.value)}
-                    className="border rounded px-3 py-1.5 text-sm w-32" />
-                  <button onClick={saveApprovalThreshold} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">保存门槛</button>
-                </div>
-              )}
+              {/* 门槛只读（去配置中心修改） */}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>审批门槛（泰铢）：{approvalThreshold}</span>
+                <span className="text-xs text-gray-400">去配置中心修改</span>
+              </div>
 
               {/* 疑似拆单 */}
               {splitGroups.length > 0 && (

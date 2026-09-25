@@ -53,14 +53,6 @@ export default function ConcentrationPage() {
     } catch { setTrend([]); }
   }
 
-  async function saveThreshold() {
-    try {
-      await api.put("/suppliers/concentration-threshold", { threshold });
-      toast("success", "预警阈值已保存");
-      load();
-    } catch (err: any) { toast("error", err.message || "保存失败"); }
-  }
-
   const isBoss = user?.role === "warehouse_admin";
   const topSupplier = data.length > 0 ? data[0] : null;
 
@@ -79,16 +71,8 @@ export default function ConcentrationPage() {
           />
           {isBoss && (
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">预警阈值(%)</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={threshold}
-                onChange={e => setThreshold(+e.target.value)}
-                className="border rounded px-2 py-1.5 text-sm w-20"
-              />
-              <button onClick={saveThreshold} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">保存</button>
+              <span className="text-sm text-gray-600">预警阈值：{threshold}%</span>
+              <span className="text-xs text-gray-400">去配置中心修改</span>
             </div>
           )}
         </div>

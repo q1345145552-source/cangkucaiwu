@@ -4,7 +4,7 @@ import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Receipt, Plus, Settings, Edit2, XCircle, CheckCircle, Banknote, Trash2 } from "lucide-react";
+import { Receipt, Plus, Edit2, XCircle, CheckCircle, Banknote, Trash2 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "待审批", approved: "已批准", paid: "已付款", rejected: "已驳回", completed: "已完成",
@@ -32,8 +32,6 @@ export default function ExpenseApprovalsPage() {
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [threshold, setThreshold] = useState(0);
-  const [showThreshold, setShowThreshold] = useState(false);
-  const [thresholdInput, setThresholdInput] = useState("0");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({
@@ -78,19 +76,7 @@ export default function ExpenseApprovalsPage() {
     try {
       const r = await api.get<any>("/expense-approvals/threshold");
       setThreshold(r.threshold ?? 0);
-      setThresholdInput(String(r.threshold ?? 0));
     } catch {}
-  }
-
-  async function saveThreshold() {
-    const v = parseFloat(thresholdInput);
-    if (isNaN(v) || v < 0) { toast("error", "门槛不能为负数"); return; }
-    try {
-      await api.put("/expense-approvals/threshold", { threshold: v });
-      setThreshold(v);
-      setShowThreshold(false);
-      toast("success", `审批门槛已设为 ${v}`);
-    } catch (err: any) { toast("error", err.message || "保存失败"); }
   }
 
   function openCreate() {
@@ -200,15 +186,9 @@ export default function ExpenseApprovalsPage() {
         <h1 className="page-title flex items-center gap-2"><Receipt size={24}/>费用审批</h1>
         <div className="flex gap-2 items-center">
           {canSetThreshold && (
-            <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
-              <span>审批门槛: {threshold}</span>
-              <button onClick={() => { setShowThreshold(!showThreshold); }} className="p-1 hover:bg-gray-200 rounded"><Settings size={14}/></button>
-            </div>
-          )}
-          {showThreshold && canSetThreshold && (
-            <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1.5 shadow-sm">
-              <input type="number" min="0" value={thresholdInput} onChange={e => setThresholdInput(e.target.value)} className="w-20 border rounded px-2 py-0.5 text-sm" />
-              <button onClick={saveThreshold} className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">保存</button>
+            <div className="text-right">
+              <div className="text-sm text-gray-600">审批门槛：{threshold} 泰铢</div>
+              <div className="text-xs text-gray-400">去配置中心修改</div>
             </div>
           )}
           {canSubmit && (

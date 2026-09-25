@@ -17,16 +17,21 @@ const DEFAULTS = {
   overtime_limit: "50",
 };
 
+const THRESHOLD_DEFAULTS = { expense: "0", purchase: "0", concentration: "70" };
+
 export default function ConfigCenterPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [form, setForm] = useState({ ...DEFAULTS });
+  const [thresholds, setThresholds] = useState({ ...THRESHOLD_DEFAULTS });
   const [editable, setEditable] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingThresholds, setSavingThresholds] = useState(false);
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
     load();
+    loadThresholds();
   }, []);
 
   async function load() {
@@ -47,6 +52,23 @@ export default function ConfigCenterPage() {
     } catch (err: any) { toast("error", err.message || "加载配置失败"); }
   }
 
+  async function loadThresholds() {
+    const res: any = { ...THRESHOLD_DEFAULTS };
+    try {
+      const r = await api.get<any>("/expense-approvals/threshold");
+      res.expense = String(r.threshold ?? 0);
+    } catch {}
+    try {
+      const r = await api.get<any>("/suppliers/purchase-approval-threshold");
+      res.purchase = String(r.threshold ?? 0);
+    } catch {}
+    try {
+      const r = await api.get<any>("/suppliers/concentration-threshold");
+      res.concentration = String(r.threshold ?? 70);
+    } catch {}
+    setThresholds(res);
+  }
+
   async function save() {
     setSaving(true);
     try {
@@ -58,6 +80,18 @@ export default function ConfigCenterPage() {
       load();
     } catch (err: any) { toast("error", err.message || "保存失败"); }
     setSaving(false);
+  }
+
+  async function saveThresholds() {
+    setSavingThresholds(true);
+    try {
+      await api.put("/expense-approvals/threshold", { threshold: parseFloat(thresholds.expense) || 0 });
+      await api.put("/suppliers/purchase-approval-threshold", { threshold: parseFloat(thresholds.purchase) || 0 });
+      await api.put("/suppliers/concentration-threshold", { threshold: parseFloat(thresholds.concentration) || 0 });
+      toast("success", "审批门槛已保存");
+      loadThresholds();
+    } catch (err: any) { toast("error", err.message || "保存失败"); }
+    setSavingThresholds(false);
   }
 
   const timeField = (label: string, key: string) => (
@@ -104,10 +138,38 @@ export default function ConfigCenterPage() {
         )}
       </div>
 
-      {/* 第二组：审批门槛（占位） */}
+      {/* 第二组：审批门槛 */}
       <div className="bg-white rounded-xl p-5 shadow-sm">
         <h3 className="font-semibold mb-3 flex items-center gap-2"><ShieldCheck size={18} className="text-blue-500"/> 审批门槛</h3>
-        <div className="text-sm text-gray-300 py-4 text-center">待开放</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="form-label text-xs">费用审批门槛（泰铢）</label>
+            <input type="number" step="1" min="0" className="form-input text-sm" value={thresholds.expense}
+              disabled={!editable}
+              onChange={e => setThresholds({ ...thresholds, expense: e.target.value })} />
+            <p className="text-xs text-gray-400 mt-1">0 表示全部都走审批</p>
+          </div>
+          <div>
+            <label className="form-label text-xs">采购审批门槛（泰铢）</label>
+            <input type="number" step="1" min="0" className="form-input text-sm" value={thresholds.purchase}
+              disabled={!editable}
+              onChange={e => setThresholds({ ...thresholds, purchase: e.target.value })} />
+            <p className="text-xs text-gray-400 mt-1">0 表示不需要审批</p>
+          </div>
+          <div>
+            <label className="form-label text-xs">集中度预警阈值（%）</label>
+            <input type="number" step="1" min="0" max="100" className="form-input text-sm" value={thresholds.concentration}
+              disabled={!editable}
+              onChange={e => setThresholds({ ...thresholds, concentration: e.target.value })} />
+            <p className="text-xs text-gray-400 mt-1">超过这个比例会红色预警</p>
+          </div>
+        </div>
+        {!editable && <div className="text-xs text-gray-400 mt-2">仅仓库管理员可修改</div>}
+        {editable && (
+          <button onClick={saveThresholds} disabled={savingThresholds} className="btn-primary mt-4">
+            {savingThresholds ? "保存中..." : "保存审批门槛"}
+          </button>
+        )}
       </div>
     </div>
   );
