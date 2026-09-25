@@ -9,11 +9,11 @@ import { Clock, Camera, CheckCircle2, AlertTriangle, Globe, Check } from "lucide
 import { formatThaiTime } from "@/lib/thai-time";
 import SafeImage from "@/components/SafeImage";
 
-const SESSION_LABELS: Record<number, { labelKey: string; time: string; icon: string }> = {
-  1: { labelKey: "morning_shift", time: "09:00", icon: "🌅" },
-  2: { labelKey: "noon_break_end", time: "12:00", icon: "☀️" },
-  3: { labelKey: "afternoon_shift", time: "13:00", icon: "🕐" },
-  4: { labelKey: "evening_shift", time: "18:00", icon: "🌇" },
+const SESSION_LABELS: Record<number, { labelKey: string; icon: string }> = {
+  1: { labelKey: "morning_shift", icon: "🌅" },
+  2: { labelKey: "noon_break_end", icon: "☀️" },
+  3: { labelKey: "afternoon_shift", icon: "🕐" },
+  4: { labelKey: "evening_shift", icon: "🌇" },
 };
 
 const LANG_OPTIONS = [
@@ -46,6 +46,7 @@ export default function ClockInPage() {
   const { t, locale, setLocale } = useI18n();
   const router = useRouter();
   const [completed, setCompleted] = useState<Record<number, any>>({});
+  const [sessionTimes, setSessionTimes] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [currentSession, setCurrentSession] = useState<number | null>(null);
@@ -64,6 +65,9 @@ export default function ClockInPage() {
     try {
       const r = await api.get<any>("/clock-in/today");
       setCompleted(r.completed || {});
+      const tm: Record<number, string> = {};
+      (r.sessions || []).forEach((s: any) => { tm[s.session] = s.time; });
+      setSessionTimes(tm);
     } catch {}
   }
 
@@ -238,7 +242,7 @@ export default function ClockInPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-700">{t(info.labelKey)}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-mono">{info.time}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-mono">{sessionTimes[session] || "—"}</span>
                   </div>
                   {done ? (
                     <div className="mt-1 space-y-0.5">

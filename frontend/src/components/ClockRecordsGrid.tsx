@@ -39,12 +39,26 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   const [makeupForm, setMakeupForm] = useState<{ empId: number; empName: string; date: string } | null>(null);
   const [makeupSessions, setMakeupSessions] = useState<number[]>([]);
   const [makeupReason, setMakeupReason] = useState("");
+  const [scheduleTimes, setScheduleTimes] = useState<Record<number, string>>({});
 
   const dayNames = [0, 1, 2, 3, 4, 5, 6].map(i => t(`att_weekday_${i}`));
   const dateList = buildDateList(startDate, endDate, dayNames);
   const totalDays = dateList.length;
 
   useEffect(() => { load(); }, [startDate, endDate]);
+
+  useEffect(() => {
+    if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
+      api.get<any>("/settings/schedule").then(r => {
+        setScheduleTimes({
+          1: r.morning_start || "09:00",
+          2: r.noon_break_start || "12:00",
+          3: r.noon_break_end || "13:00",
+          4: r.afternoon_end || "18:00",
+        });
+      }).catch(() => {});
+    }
+  }, [user?.role]);
 
   async function load() {
     setLoading(true);
@@ -261,7 +275,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                 return (
                   <div key={s} className="bg-gray-50 rounded-xl p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm text-gray-700">{s}. {t(SESSION_KEYS[s])}</span>
+                      <span className="font-medium text-sm text-gray-700">{s}. {t(SESSION_KEYS[s])}{scheduleTimes[s] && <span className="ml-1 text-xs text-gray-400 font-mono">{scheduleTimes[s]}</span>}</span>
                       {cr ? (
                         <div className="flex items-center gap-2 flex-wrap">
                           {cr.is_makeup && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">{t("makeup")}</span>}
@@ -329,7 +343,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                   {[1,2,3,4].map(s => (
                     <button key={s} type="button" onClick={() => toggleSession(s)}
                       className={`px-3 py-1.5 rounded-lg text-xs border ${makeupSessions.includes(s) ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200"}`}>
-                      {t(SESSION_KEYS[s])}
+                      {t(SESSION_KEYS[s])}{scheduleTimes[s] && <span className="ml-1 text-gray-400 font-mono">{scheduleTimes[s]}</span>}
                     </button>
                   ))}
                 </div>

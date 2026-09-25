@@ -18,6 +18,7 @@ export default function OvertimePage() {
   const [showLimitSetting, setShowLimitSetting] = useState(false);
   const [limitInput, setLimitInput] = useState("50");
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [scheduleEnd, setScheduleEnd] = useState("18:00");
 
   const isAdmin = user?.role === "warehouse_admin";
   const isLabor = user?.role === "warehouse_labor";
@@ -48,6 +49,14 @@ export default function OvertimePage() {
       if (isAdmin) {
         const er = await api.get<any>("/employees?page_size=200");
         setEmployees((er.data || []).filter((e: any) => e.status !== "resigned"));
+        // 加班默认开始时间 = 排班的下午下班时间
+        try {
+          const sr = await api.get<any>("/settings/schedule");
+          if (sr.afternoon_end) {
+            setScheduleEnd(sr.afternoon_end);
+            setForm(f => ({ ...f, start_time: sr.afternoon_end }));
+          }
+        } catch {}
       }
       // Load limit
       const lr = await api.get<any>("/overtime/limit");
@@ -77,7 +86,7 @@ export default function OvertimePage() {
       toast("success", t("ot_create_success"));
       setShowForm(false);
       setEmpSearch("");
-      setForm({ ...defaultForm, employee_ids: [] });
+      setForm({ ...defaultForm, start_time: scheduleEnd, employee_ids: [] });
       load();
     } catch (err: any) { toast("error", err.message || t("ot_create_failed")); }
   }
@@ -160,7 +169,7 @@ export default function OvertimePage() {
                   <button onClick={saveLimit} className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">{t("confirm")}</button>
                 </div>
               )}
-              <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+              <button onClick={() => { setForm(f => ({ ...f, start_time: scheduleEnd || f.start_time })); setShowForm(true); }} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
                 <Plus size={16}/> {t("create_overtime")}
               </button>
             </>

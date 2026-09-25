@@ -10,6 +10,7 @@ from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
 from app.services.image_utils import thumb_path_of
+from app.services.schedule import get_session_times
 from datetime import datetime, date, time, timedelta
 from pydantic import BaseModel
 from typing import Optional, List
@@ -20,8 +21,8 @@ UPLOAD_DIR = "/app/uploads"
 
 SESSIONS = {
     1: {"label": "早上上班", "time": time(9, 0)},
-    2: {"label": "中午休息结束", "time": time(12, 0)},
-    3: {"label": "下午上班", "time": time(13, 0)},
+    2: {"label": "中午休息开始", "time": time(12, 0)},
+    3: {"label": "中午休息结束", "time": time(13, 0)},
     4: {"label": "下午下班", "time": time(18, 0)},
 }
 
@@ -172,10 +173,11 @@ async def get_today(
         "penalty_amount": r.penalty_amount, "photo_path": r.photo_path,
         "photo_thumb_path": thumb_path_of(r.photo_path),
     } for r in records}
+    session_times = await get_session_times(db, get_wh_id(current_user))
     return {
         "today": today.isoformat(),
-        "sessions": [{"session": s, "label": session_label(s, lang), "time": str(v["time"])}
-                      for s, v in SESSIONS.items()],
+        "sessions": [{"session": s, "label": session_label(s, lang), "time": session_times[s].strftime("%H:%M")}
+                      for s in (1, 2, 3, 4)],
         "completed": completed,
     }
 
@@ -315,6 +317,7 @@ async def makeup_clock_in(
     if not uid:
         raise HTTPException(400, "该员工没有关联打卡账号，无法补卡")
 
+    session_times = await get_session_times(db, wh_id)
     created: list[int] = []
     skipped: list[int] = []
     for s in sessions:
@@ -324,7 +327,7 @@ async def makeup_clock_in(
         if dup:
             skipped.append(s)
             continue
-        t_std = SESSIONS[s]["time"]
+        t_std = session_times[s]
         clocked = datetime.combine(target, t_std, tzinfo=THAI_TZ)
         db.add(ClockInRecord(
             user_id=uid, warehouse_id=wh_id, clock_date=target, session=s,

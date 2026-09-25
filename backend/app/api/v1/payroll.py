@@ -316,7 +316,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
     # ── 算工资前检查待补 ──
     # 待补：打卡 1 次 / 3 次，或 2 次但既不构成上午半天(时段1+2)也不构成下午半天(时段3+4)
-    SESSION_CN = {1: "早上上班", 2: "中午休息结束", 3: "下午上班", 4: "下午下班"}
+    SESSION_CN = {1: "早上上班", 2: "中午休息开始", 3: "中午休息结束", 4: "下午下班"}
 
     def _local_time_of(dt):
         if dt is None:
@@ -335,13 +335,10 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         n = len(sessions_sorted)
         times = [c.clocked_in_at for c in sessions_sorted]
         if n == 2:
+            # 两次打卡 = 上午两段(时段1+2) 或 下午两段(时段3+4)，中间均不含午休，直接相减。
             if times[0] is None or times[1] is None:
                 return 0.0
-            h = (times[1] - times[0]).total_seconds() / 3600.0
-            t0 = _local_time_of(times[0])
-            if t0 is not None and t0 < time(12, 0):
-                h -= 1.0
-            return max(h, 0.0)
+            return max((times[1] - times[0]).total_seconds() / 3600.0, 0.0)
         if n == 4:
             def _seg(a, b):
                 if a is None or b is None:

@@ -96,6 +96,7 @@ export default function AttendancePage() {
   const [absenceReason, setAbsenceReason] = useState("");
   const [photoPopup, setPhotoPopup] = useState<any>(null);
   const [photoSessions, setPhotoSessions] = useState<any[]>([]);
+  const [scheduleTimes, setScheduleTimes] = useState<Record<number, string>>({});
 
   const weekdayNames = [0, 1, 2, 3, 4, 5, 6].map(i => t(`att_weekday_${i}`));
   const dateList = buildDateList(dateRange.start_date, dateRange.end_date, weekdayNames);
@@ -109,6 +110,19 @@ export default function AttendancePage() {
   }
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadCalendar(); loadLeaves(); loadRestDays(); }, [dateRange]);
+
+  useEffect(() => {
+    if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
+      api.get<any>("/settings/schedule").then(r => {
+        setScheduleTimes({
+          1: r.morning_start || "09:00",
+          2: r.noon_break_start || "12:00",
+          3: r.noon_break_end || "13:00",
+          4: r.afternoon_end || "18:00",
+        });
+      }).catch(() => {});
+    }
+  }, [user?.role]);
 
   async function loadCalendar() {
     setLoading(true);
@@ -607,6 +621,7 @@ export default function AttendancePage() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-gray-700">
                       {s.session}. {t(SESSION_KEYS[s.session] || "morning_shift")}
+                      {scheduleTimes[s.session] && <span className="ml-1 text-xs text-gray-400 font-mono">{scheduleTimes[s.session]}</span>}
                     </span>
                     {s.clocked_in_at ? (
                       <span className="text-xs text-gray-400">

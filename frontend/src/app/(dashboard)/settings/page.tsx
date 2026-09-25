@@ -34,6 +34,10 @@ export default function SettingsPage() {
   const [warehouses, setWarehouses] = useState<any[]>([]);
   // 老板联系方式
   const [bossContact, setBossContact] = useState({ name: "", phone: "" });
+  // 仓库排班设置
+  const [schedule, setSchedule] = useState({ morning_start: "09:00", noon_break_start: "12:00", noon_break_end: "13:00", afternoon_end: "18:00" });
+  const [scheduleEditable, setScheduleEditable] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
 
   // Edit user state
   const [editUser, setEditUser] = useState<any>(null);
@@ -48,6 +52,29 @@ export default function SettingsPage() {
 
   useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); } if (tab === "rates") loadRates(); }, [tab]);
   useEffect(() => { if (user?.role === "warehouse_admin" || user?.role === "super_admin") loadBossContact(); }, [user?.role]);
+  useEffect(() => { if (user?.role === "warehouse_admin" || user?.role === "supervisor") loadSchedule(); }, [user?.role]);
+
+  async function loadSchedule() {
+    try {
+      const r = await api.get<any>("/settings/schedule");
+      setSchedule({
+        morning_start: r.morning_start || "09:00",
+        noon_break_start: r.noon_break_start || "12:00",
+        noon_break_end: r.noon_break_end || "13:00",
+        afternoon_end: r.afternoon_end || "18:00",
+      });
+      setScheduleEditable(!!r.editable);
+    } catch {}
+  }
+  async function saveSchedule() {
+    setScheduleSaving(true);
+    try {
+      await api.put("/settings/schedule", schedule);
+      toast("success", "排班设置已保存");
+      loadSchedule();
+    } catch (err: any) { toast("error", err.message || "保存失败"); }
+    setScheduleSaving(false);
+  }
 
   async function loadBossContact() {
     try { const r = await api.get<any>("/settings/boss-contact"); setBossContact({ name: r.name || "", phone: r.phone || "" }); } catch {}
@@ -212,6 +239,48 @@ export default function SettingsPage() {
                 <div><label className="form-label">老板称呼</label><input className="form-input text-sm" placeholder="如：王老板" value={bossContact.name} onChange={e=>setBossContact({...bossContact, name: e.target.value})} /></div>
                 <div><label className="form-label">电话号码</label><input className="form-input text-sm" placeholder="如：+66 812345678" value={bossContact.phone} onChange={e=>setBossContact({...bossContact, phone: e.target.value})} /></div>
                 <button onClick={saveBossContact} className="btn-primary">保存联系方式</button>
+              </div>
+            </div>
+          )}
+
+          {/* 仓库排班设置 */}
+          {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><Clock size={18} className="text-indigo-500"/> 仓库排班设置</h3>
+              <div className="text-xs text-gray-400 mb-3">每个仓库单独设置上下班时间，修改后打卡、补卡、加班默认时间同步生效</div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label text-xs">早上上班时间</label>
+                    <input type="time" className="form-input text-sm" value={schedule.morning_start}
+                      disabled={!scheduleEditable}
+                      onChange={e => setSchedule({ ...schedule, morning_start: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="form-label text-xs">中午休息开始</label>
+                    <input type="time" className="form-input text-sm" value={schedule.noon_break_start}
+                      disabled={!scheduleEditable}
+                      onChange={e => setSchedule({ ...schedule, noon_break_start: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="form-label text-xs">中午休息结束</label>
+                    <input type="time" className="form-input text-sm" value={schedule.noon_break_end}
+                      disabled={!scheduleEditable}
+                      onChange={e => setSchedule({ ...schedule, noon_break_end: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="form-label text-xs">下午下班时间</label>
+                    <input type="time" className="form-input text-sm" value={schedule.afternoon_end}
+                      disabled={!scheduleEditable}
+                      onChange={e => setSchedule({ ...schedule, afternoon_end: e.target.value })} />
+                  </div>
+                </div>
+                {!scheduleEditable && <div className="text-xs text-gray-400">仅仓库管理员可修改</div>}
+                {scheduleEditable && (
+                  <button onClick={saveSchedule} disabled={scheduleSaving} className="btn-primary">
+                    {scheduleSaving ? "保存中..." : "保存排班"}
+                  </button>
+                )}
               </div>
             </div>
           )}
