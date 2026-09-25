@@ -325,6 +325,12 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             return dt.astimezone(THAI_TZ).time()
         return dt.time()
 
+    def _parse_hhmm(s):
+        try:
+            return datetime.strptime(s, "%H:%M").time()
+        except (ValueError, TypeError):
+            return None
+
     def _day_hours(sessions_sorted):
         n = len(sessions_sorted)
         times = [c.clocked_in_at for c in sessions_sorted]
@@ -424,6 +430,13 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
         # 扣款模板（可留空 = 不扣考勤款）
         deduction_tpl = deduction_template_map.get(emp.deduction_template_id)
+        # 早退红线（从扣款模板读，默认 17:30 / 17:00）
+        early_half_time = _parse_hhmm(deduction_tpl.early_half_threshold) if deduction_tpl else time(17, 30)
+        early_one_time = _parse_hhmm(deduction_tpl.early_one_threshold) if deduction_tpl else time(17, 0)
+        if early_half_time is None:
+            early_half_time = time(17, 30)
+        if early_one_time is None:
+            early_one_time = time(17, 0)
 
         emp_status = emp.status or "trial"
         # 时薪：按小时/按天 = 日薪/8；按月 = 月薪/当月天数/8
@@ -559,15 +572,15 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                         late_one_count += 1
                         late_list.append({"day": current.day, "date": current.isoformat(), "type": "late_one"})
 
-            # 早退判定：时段4（下班）打卡时间，17:30前早退半小时，17:00前早退1小时
+            # 早退判定：时段4（下班）打卡时间，按扣款模板的红线判断
             s4 = next((c for c in sessions if c.session == 4), None)
             if s4 is not None:
                 t4 = _local_time_of(s4.clocked_in_at)
                 if t4 is not None:
-                    if t4 < time(17, 0):
+                    if t4 < early_one_time:
                         early_one_count += 1
                         early_list.append({"day": current.day, "date": current.isoformat(), "type": "early_one"})
-                    elif t4 < time(17, 30):
+                    elif t4 < early_half_time:
                         early_half_count += 1
                         early_list.append({"day": current.day, "date": current.isoformat(), "type": "early_half"})
 

@@ -15,6 +15,8 @@ class DeductionTemplate(Base):
     late_one_multiplier = Column(Float, default=1.0)    # 迟到1小时扣：时薪倍数
     early_half_multiplier = Column(Float, default=0.5)  # 早退半小时扣：时薪倍数
     early_one_multiplier = Column(Float, default=1.0)   # 早退1小时扣：时薪倍数
+    early_half_threshold = Column(String(5), default="17:30")  # 早退半小时红线
+    early_one_threshold = Column(String(5), default="17:00")   # 早退1小时红线
     absence_extra_multiplier = Column(Float, default=0.5)  # 旷工额外罚：日薪倍数
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
