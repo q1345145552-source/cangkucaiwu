@@ -13,6 +13,8 @@ class DeductionTemplate(Base):
     name = Column(String(100), nullable=False)
     late_half_multiplier = Column(Float, default=0.5)   # 迟到半小时扣：时薪倍数
     late_one_multiplier = Column(Float, default=1.0)    # 迟到1小时扣：时薪倍数
+    late_half_threshold = Column(String(5), default="09:05")  # 迟到半小时红线
+    late_one_threshold = Column(String(5), default="09:31")   # 迟到1小时红线
     early_half_multiplier = Column(Float, default=0.5)  # 早退半小时扣：时薪倍数
     early_one_multiplier = Column(Float, default=1.0)   # 早退1小时扣：时薪倍数
     early_half_threshold = Column(String(5), default="17:30")  # 早退半小时红线

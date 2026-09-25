@@ -378,9 +378,11 @@ async def seed():
             for _c, _t in emp_cols:
                 await conn.execute(text(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {_c} {_t}"))
 
-            # ── 扣款模板表 deduction_templates：早退红线时间 ──
+            # ── 扣款模板表 deduction_templates：早退/迟到红线时间 ──
             await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS early_half_threshold VARCHAR(5) DEFAULT '17:30'"))
             await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS early_one_threshold VARCHAR(5) DEFAULT '17:00'"))
+            await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS late_half_threshold VARCHAR(5) DEFAULT '09:05'"))
+            await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS late_one_threshold VARCHAR(5) DEFAULT '09:31'"))
 
             # ── 报销表 reimbursements / reimbursement_items ──
             reimb_cols = [

@@ -18,6 +18,7 @@ export default function DeductionTemplatesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: "", late_half_multiplier: "0.5", late_one_multiplier: "1",
+    late_half_threshold: "09:05", late_one_threshold: "09:31",
     early_half_multiplier: "0.5", early_one_multiplier: "1",
     early_half_threshold: "17:30", early_one_threshold: "17:00",
     absence_extra_multiplier: "0.5",
@@ -36,7 +37,7 @@ export default function DeductionTemplatesPage() {
 
   function openCreate() {
     setEditingId(null);
-    setForm({ name: "", late_half_multiplier: "0.5", late_one_multiplier: "1", early_half_multiplier: "0.5", early_one_multiplier: "1", early_half_threshold: "17:30", early_one_threshold: "17:00", absence_extra_multiplier: "0.5" });
+    setForm({ name: "", late_half_multiplier: "0.5", late_one_multiplier: "1", late_half_threshold: "09:05", late_one_threshold: "09:31", early_half_multiplier: "0.5", early_one_multiplier: "1", early_half_threshold: "17:30", early_one_threshold: "17:00", absence_extra_multiplier: "0.5" });
     setShowForm(true);
   }
 
@@ -46,6 +47,8 @@ export default function DeductionTemplatesPage() {
       name: r.name,
       late_half_multiplier: String(r.late_half_multiplier ?? 0.5),
       late_one_multiplier: String(r.late_one_multiplier ?? 1),
+      late_half_threshold: r.late_half_threshold || "09:05",
+      late_one_threshold: r.late_one_threshold || "09:31",
       early_half_multiplier: String(r.early_half_multiplier ?? 0.5),
       early_one_multiplier: String(r.early_one_multiplier ?? 1),
       early_half_threshold: r.early_half_threshold || "17:30",
@@ -57,6 +60,10 @@ export default function DeductionTemplatesPage() {
 
   async function handleSave() {
     if (!form.name.trim()) { toast("error", "请填写模板名称"); return; }
+    if (!form.late_half_threshold || !form.late_one_threshold) { toast("error", "请填写迟到红线"); return; }
+    if (form.late_half_threshold >= form.late_one_threshold) {
+      toast("error", "迟到半小时红线要早于迟到1小时红线"); return;
+    }
     if (!form.early_half_threshold || !form.early_one_threshold) { toast("error", "请填写早退红线"); return; }
     if (form.early_one_threshold >= form.early_half_threshold) {
       toast("error", "早退1小时红线要早于早退半小时红线"); return;
@@ -65,6 +72,8 @@ export default function DeductionTemplatesPage() {
       name: form.name.trim(),
       late_half_multiplier: parseFloat(form.late_half_multiplier) || 0,
       late_one_multiplier: parseFloat(form.late_one_multiplier) || 0,
+      late_half_threshold: form.late_half_threshold,
+      late_one_threshold: form.late_one_threshold,
       early_half_multiplier: parseFloat(form.early_half_multiplier) || 0,
       early_one_multiplier: parseFloat(form.early_one_multiplier) || 0,
       early_half_threshold: form.early_half_threshold,
@@ -135,7 +144,10 @@ export default function DeductionTemplatesPage() {
               {rows.map((r: any) => (
                 <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-3 py-3 font-medium">{r.name}</td>
-                  <td className="px-3 py-3">半小时{fmtMultiplier(r.late_half_multiplier)} · 1小时{fmtMultiplier(r.late_one_multiplier)}</td>
+                  <td className="px-3 py-3">
+                    <div>半小时{fmtMultiplier(r.late_half_multiplier)} · 1小时{fmtMultiplier(r.late_one_multiplier)}</div>
+                    <div className="text-xs text-gray-400">红线 {r.late_half_threshold || "09:05"} / {r.late_one_threshold || "09:31"}</div>
+                  </td>
                   <td className="px-3 py-3">
                     <div>半小时{fmtMultiplier(r.early_half_multiplier)} · 1小时{fmtMultiplier(r.early_one_multiplier)}</div>
                     <div className="text-xs text-gray-400">红线 {r.early_one_threshold || "17:00"} / {r.early_half_threshold || "17:30"}</div>
@@ -172,6 +184,22 @@ export default function DeductionTemplatesPage() {
                   {numField("迟到半小时", "late_half_multiplier")}
                   {numField("迟到1小时", "late_one_multiplier")}
                 </div>
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-2 block">迟到红线 <span className="text-red-400">*</span></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label text-xs text-gray-500 mb-1 block">迟到半小时红线</label>
+                    <input type="time" className="form-input py-2.5 w-full" value={form.late_half_threshold}
+                      onChange={e => setForm({ ...form, late_half_threshold: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="form-label text-xs text-gray-500 mb-1 block">迟到1小时红线</label>
+                    <input type="time" className="form-input py-2.5 w-full" value={form.late_one_threshold}
+                      onChange={e => setForm({ ...form, late_one_threshold: e.target.value })} />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">迟到半小时红线必须早于迟到1小时红线</p>
               </div>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-2 block">早退扣款（时薪的倍数）</label>

@@ -4,6 +4,8 @@ from sqlalchemy import select, func, or_, and_
 from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
+from app.models.employee import Employee
+from app.models.deduction_template import DeductionTemplate
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
@@ -23,17 +25,48 @@ SESSIONS = {
     4: {"label": "下午下班", "time": time(18, 0)},
 }
 
-def _get_penalty(session: int, clocked_at: datetime) -> dict:
-    """Only session 1 tracks late status. Penalty amount computed at payroll time."""
+def _parse_hhmm(s):
+    try:
+        return datetime.strptime(s, "%H:%M").time()
+    except (ValueError, TypeError):
+        return None
+
+
+def _get_penalty(session: int, clocked_at: datetime, late_half_time: time = time(9, 5), late_one_time: time = time(9, 31)) -> dict:
+    """Only session 1 tracks late status. Penalty amount computed at payroll time.
+    红线按扣款模板：不晚于半小时红线=正常；晚于半小时但不晚于1小时=迟到半小时；晚于1小时=迟到1小时。"""
     if session != 1:
         return {"status": "normal", "penalty_amount": 0}
     t = clocked_at.time()
-    if t <= time(9, 5):
+    if t <= late_half_time:
         return {"status": "normal", "penalty_amount": 0}
-    elif t <= time(9, 30):
+    elif t <= late_one_time:
         return {"status": "late_half", "penalty_amount": 0}  # amount computed at payroll
     else:
         return {"status": "late_one", "penalty_amount": 0}
+
+
+async def _get_late_thresholds(db: AsyncSession, current_user: User):
+    """读员工扣款模板的迟到红线，未绑模板用默认 09:05 / 09:31。"""
+    wh_id = get_wh_id(current_user)
+    emp = None
+    if wh_id:
+        emp = (await db.execute(
+            select(Employee).where(Employee.warehouse_id == wh_id, Employee.user_id == current_user.id, Employee.is_deleted == False)
+        )).scalar_one_or_none()
+        if not emp:
+            emp = (await db.execute(
+                select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
+            )).scalar_one_or_none()
+    if emp and emp.deduction_template_id:
+        tpl = (await db.execute(
+            select(DeductionTemplate).where(DeductionTemplate.id == emp.deduction_template_id)
+        )).scalar_one_or_none()
+        if tpl:
+            half = _parse_hhmm(tpl.late_half_threshold)
+            one = _parse_hhmm(tpl.late_one_threshold)
+            return half or time(9, 5), one or time(9, 31)
+    return time(9, 5), time(9, 31)
 
 @router.post("")
 async def clock_in(
@@ -88,7 +121,8 @@ async def clock_in(
             pass
 
     wh_id = get_wh_id(current_user)
-    penalty = _get_penalty(session, now)
+    late_half_time, late_one_time = await _get_late_thresholds(db, current_user)
+    penalty = _get_penalty(session, now, late_half_time, late_one_time)
     record = ClockInRecord(
         user_id=current_user.id,
         warehouse_id=wh_id,
