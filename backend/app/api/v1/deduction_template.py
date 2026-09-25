@@ -8,7 +8,6 @@ from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, Role
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
 
 router = APIRouter()
 
@@ -17,12 +16,8 @@ class DeductionTemplateCreate(BaseModel):
     name: str
     late_half_multiplier: float = 0.5
     late_one_multiplier: float = 1.0
-    late_half_threshold: str = "09:05"  # 迟到半小时红线
-    late_one_threshold: str = "09:31"   # 迟到1小时红线
     early_half_multiplier: float = 0.5
     early_one_multiplier: float = 1.0
-    early_half_threshold: str = "17:30"  # 早退半小时红线
-    early_one_threshold: str = "17:00"   # 早退1小时红线
     absence_extra_multiplier: float = 0.5
     is_active: bool = True
 
@@ -31,39 +26,10 @@ class DeductionTemplateUpdate(BaseModel):
     name: Optional[str] = None
     late_half_multiplier: Optional[float] = None
     late_one_multiplier: Optional[float] = None
-    late_half_threshold: Optional[str] = None
-    late_one_threshold: Optional[str] = None
     early_half_multiplier: Optional[float] = None
     early_one_multiplier: Optional[float] = None
-    early_half_threshold: Optional[str] = None
-    early_one_threshold: Optional[str] = None
     absence_extra_multiplier: Optional[float] = None
     is_active: Optional[bool] = None
-
-
-def _parse_hhmm(s: str):
-    try:
-        return datetime.strptime(s, "%H:%M").time()
-    except (ValueError, TypeError):
-        return None
-
-
-def _validate_thresholds(early_half: str, early_one: str):
-    ht = _parse_hhmm(early_half)
-    ot = _parse_hhmm(early_one)
-    if ht is None or ot is None:
-        raise HTTPException(400, "早退红线时间格式错误，应为 HH:MM")
-    if ot >= ht:
-        raise HTTPException(400, "早退1小时红线要早于早退半小时红线")
-
-
-def _validate_late_thresholds(late_half: str, late_one: str):
-    ht = _parse_hhmm(late_half)
-    ot = _parse_hhmm(late_one)
-    if ht is None or ot is None:
-        raise HTTPException(400, "迟到红线时间格式错误，应为 HH:MM")
-    if ht >= ot:
-        raise HTTPException(400, "迟到半小时红线要早于迟到1小时红线")
 
 
 def _check_role(current_user: User):
@@ -104,12 +70,8 @@ async def list_deduction_templates(
             "name": t.name,
             "late_half_multiplier": t.late_half_multiplier if t.late_half_multiplier is not None else 0.5,
             "late_one_multiplier": t.late_one_multiplier if t.late_one_multiplier is not None else 1.0,
-            "late_half_threshold": t.late_half_threshold or "09:05",
-            "late_one_threshold": t.late_one_threshold or "09:31",
             "early_half_multiplier": t.early_half_multiplier if t.early_half_multiplier is not None else 0.5,
             "early_one_multiplier": t.early_one_multiplier if t.early_one_multiplier is not None else 1.0,
-            "early_half_threshold": t.early_half_threshold or "17:30",
-            "early_one_threshold": t.early_one_threshold or "17:00",
             "absence_extra_multiplier": t.absence_extra_multiplier if t.absence_extra_multiplier is not None else 0.5,
             "is_active": t.is_active,
             "usage_count": await _get_usage_count(db, t.id),
@@ -130,20 +92,14 @@ async def create_deduction_template(
     name = (req.name or "").strip()
     if not name:
         raise HTTPException(400, "请填写模板名称")
-    _validate_thresholds(req.early_half_threshold, req.early_one_threshold)
-    _validate_late_thresholds(req.late_half_threshold, req.late_one_threshold)
 
     t = DeductionTemplate(
         warehouse_id=wh_id,
         name=name,
         late_half_multiplier=req.late_half_multiplier,
         late_one_multiplier=req.late_one_multiplier,
-        late_half_threshold=req.late_half_threshold,
-        late_one_threshold=req.late_one_threshold,
         early_half_multiplier=req.early_half_multiplier,
         early_one_multiplier=req.early_one_multiplier,
-        early_half_threshold=req.early_half_threshold,
-        early_one_threshold=req.early_one_threshold,
         absence_extra_multiplier=req.absence_extra_multiplier,
         is_active=req.is_active if req.is_active is not None else True,
         created_by=current_user.id,
@@ -179,16 +135,6 @@ async def update_deduction_template(
         v = getattr(req, f)
         if v is not None:
             setattr(t, f, v)
-    if req.early_half_threshold is not None:
-        t.early_half_threshold = req.early_half_threshold
-    if req.early_one_threshold is not None:
-        t.early_one_threshold = req.early_one_threshold
-    if req.late_half_threshold is not None:
-        t.late_half_threshold = req.late_half_threshold
-    if req.late_one_threshold is not None:
-        t.late_one_threshold = req.late_one_threshold
-    _validate_thresholds(t.early_half_threshold or "17:30", t.early_one_threshold or "17:00")
-    _validate_late_thresholds(t.late_half_threshold or "09:05", t.late_one_threshold or "09:31")
     if req.is_active is not None:
         t.is_active = req.is_active
 

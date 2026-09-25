@@ -4,6 +4,7 @@ from app.api.v1 import recharge, incoming, reconciliation, income_expense
 from app.api.v1 import expense_fund, reimbursement, payable, credit, market, group_order, reports
 from app.api.v1 import upload, settings_api, exchange_rates, employees, clock_in, attendance, overtime, payroll
 from app.api.v1 import history, efficiency
+from app.api.v1 import config_api
 from app.api.v1 import employee_advance
 from app.api.v1 import salary_template
 from app.api.v1 import deduction_template
@@ -31,6 +32,7 @@ api_router.include_router(group_order.router, prefix="/group-order", tags=["拼�
 api_router.include_router(reports.router, prefix="/reports", tags=["报表中心"])
 api_router.include_router(upload.router, prefix="/upload", tags=["文件上传"])
 api_router.include_router(settings_api.router, prefix="/settings", tags=["系统设置"])
+api_router.include_router(config_api.router, prefix="/config", tags=["配置中心"])
 api_router.include_router(exchange_rates.router, tags=["汇率管理"])
 api_router.include_router(employees.router, prefix="/employees", tags=["员工档案"])
 api_router.include_router(clock_in.router, prefix="/clock-in", tags=["打卡签到"])

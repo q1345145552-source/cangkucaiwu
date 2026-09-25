@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
   ShoppingBag, PackageOpen, BarChart3, Settings, Menu, X, ChevronLeft,
-  Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList, History, Gauge, Scale, MinusCircle,
+  Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList, History, Gauge, Scale, MinusCircle, SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import BackToTop from "@/components/ui/BackToTop";
@@ -84,6 +84,7 @@ const navItems: NavItem[] = [
       { key: "labor_efficiency", label: "labor_efficiency", icon: <Gauge size={18} />, href: "/labor-efficiency", roles: ["warehouse_admin", "supervisor"] },
     ],
   },
+  { key: "config_center", label: "config_center", icon: <SlidersHorizontal size={20} />, href: "/config-center", roles: ["warehouse_admin", "supervisor"] },
   {
     key: "settings_group", label: "settings_group", icon: <Settings size={20} />,
     roles: ["super_admin", "warehouse_admin", "staff", "warehouse_labor", "supervisor"],

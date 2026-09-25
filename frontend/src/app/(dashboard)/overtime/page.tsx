@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
-import { Clock, Plus, Settings, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Clock, Plus, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 
 export default function OvertimePage() {
   const { toast } = useToast(); const { user } = useAuth(); const { t } = useI18n(); const router = useRouter();
@@ -15,8 +15,6 @@ export default function OvertimePage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [limitHours, setLimitHours] = useState(50);
-  const [showLimitSetting, setShowLimitSetting] = useState(false);
-  const [limitInput, setLimitInput] = useState("50");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [scheduleEnd, setScheduleEnd] = useState("18:00");
 
@@ -51,7 +49,7 @@ export default function OvertimePage() {
         setEmployees((er.data || []).filter((e: any) => e.status !== "resigned"));
         // 加班默认开始时间 = 排班的下午下班时间
         try {
-          const sr = await api.get<any>("/settings/schedule");
+          const sr = await api.get<any>("/config/work-schedule");
           if (sr.afternoon_end) {
             setScheduleEnd(sr.afternoon_end);
             setForm(f => ({ ...f, start_time: sr.afternoon_end }));
@@ -108,16 +106,6 @@ export default function OvertimePage() {
     } catch (err: any) { toast("error", err.message || t("ot_delete_failed")); }
   }
 
-  async function saveLimit() {
-    try {
-      const v = parseFloat(limitInput) || 50;
-      await api.put("/overtime/limit", { max_hours: v });
-      setLimitHours(v);
-      toast("success", t("ot_limit_saved").replace("{h}", String(v)));
-      setShowLimitSetting(false);
-    } catch (err: any) { toast("error", err.message || t("ot_save_failed")); }
-  }
-
   function toggleEmployee(id: number) {
     setForm(f => ({
       ...f,
@@ -158,17 +146,7 @@ export default function OvertimePage() {
             <>
               <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
                 <span>{t("overtime_limit_hint").replace("{h}", String(limitHours))}</span>
-                <button onClick={() => { setShowLimitSetting(!showLimitSetting); load(); }}
-                  className="p-1 hover:bg-gray-200 rounded"><Settings size={14}/></button>
               </div>
-              {showLimitSetting && (
-                <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1.5 shadow-sm">
-                  <span className="text-xs text-gray-400">{t("overtime_limit_label")}</span>
-                  <input type="number" value={limitInput} onChange={e => setLimitInput(e.target.value)}
-                    className="w-16 border rounded px-2 py-0.5 text-sm text-center" step="1" />
-                  <button onClick={saveLimit} className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">{t("confirm")}</button>
-                </div>
-              )}
               <button onClick={() => { setForm(f => ({ ...f, start_time: scheduleEnd || f.start_time })); setShowForm(true); }} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
                 <Plus size={16}/> {t("create_overtime")}
               </button>

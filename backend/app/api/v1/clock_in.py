@@ -4,13 +4,11 @@ from sqlalchemy import select, func, or_, and_
 from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
-from app.models.employee import Employee
-from app.models.deduction_template import DeductionTemplate
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
 from app.services.image_utils import thumb_path_of
-from app.services.schedule import get_session_times
+from app.services.schedule import get_session_times, get_work_schedule
 from datetime import datetime, date, time, timedelta
 from pydantic import BaseModel
 from typing import Optional, List
@@ -35,7 +33,7 @@ def _parse_hhmm(s):
 
 def _get_penalty(session: int, clocked_at: datetime, late_half_time: time = time(9, 5), late_one_time: time = time(9, 31)) -> dict:
     """Only session 1 tracks late status. Penalty amount computed at payroll time.
-    红线按扣款模板：不晚于半小时红线=正常；晚于半小时但不晚于1小时=迟到半小时；晚于1小时=迟到1小时。"""
+    红线按配置中心：不晚于半小时红线=正常；晚于半小时但不晚于1小时=迟到半小时；晚于1小时=迟到1小时。"""
     if session != 1:
         return {"status": "normal", "penalty_amount": 0}
     t = clocked_at.time()
@@ -48,26 +46,12 @@ def _get_penalty(session: int, clocked_at: datetime, late_half_time: time = time
 
 
 async def _get_late_thresholds(db: AsyncSession, current_user: User):
-    """读员工扣款模板的迟到红线，未绑模板用默认 09:05 / 09:31。"""
+    """读配置中心的迟到红线，未设置用默认 09:05 / 09:31。"""
     wh_id = get_wh_id(current_user)
-    emp = None
-    if wh_id:
-        emp = (await db.execute(
-            select(Employee).where(Employee.warehouse_id == wh_id, Employee.user_id == current_user.id, Employee.is_deleted == False)
-        )).scalar_one_or_none()
-        if not emp:
-            emp = (await db.execute(
-                select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
-            )).scalar_one_or_none()
-    if emp and emp.deduction_template_id:
-        tpl = (await db.execute(
-            select(DeductionTemplate).where(DeductionTemplate.id == emp.deduction_template_id)
-        )).scalar_one_or_none()
-        if tpl:
-            half = _parse_hhmm(tpl.late_half_threshold)
-            one = _parse_hhmm(tpl.late_one_threshold)
-            return half or time(9, 5), one or time(9, 31)
-    return time(9, 5), time(9, 31)
+    sched = await get_work_schedule(db, wh_id)
+    half = _parse_hhmm(sched["late_half"]) or time(9, 5)
+    one = _parse_hhmm(sched["late_one"]) or time(9, 31)
+    return half, one
 
 @router.post("")
 async def clock_in(

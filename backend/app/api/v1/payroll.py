@@ -13,6 +13,7 @@ from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.overtime import OvertimeAssignment, OvertimeTask
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.services.schedule import get_work_schedule
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from datetime import datetime, date, timedelta, time
@@ -184,6 +185,9 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         dts = (await db.execute(select(DeductionTemplate).where(DeductionTemplate.id.in_(dt_ids)))).scalars().all()
         deduction_template_map = {t.id: t for t in dts}
 
+    # 仓库作息（配置中心）：早退红线 + 下午下班时间（旷工24小时起算点）
+    work_sched = await get_work_schedule(db, wh_id)
+
     # 已离职但本期有结算记录 → 跳过并说明
     skipped_notes = []
     resigned_settled = (await db.execute(
@@ -331,6 +335,11 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         except (ValueError, TypeError):
             return None
 
+    # 早退红线 + 下午下班时间（从配置中心读，默认 17:30 / 17:00 / 18:00）
+    early_half_time = _parse_hhmm(work_sched["early_half"]) or time(17, 30)
+    early_one_time = _parse_hhmm(work_sched["early_one"]) or time(17, 0)
+    afternoon_end_time = _parse_hhmm(work_sched["afternoon_end"]) or time(18, 0)
+
     def _day_hours(sessions_sorted):
         n = len(sessions_sorted)
         times = [c.clocked_in_at for c in sessions_sorted]
@@ -427,13 +436,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
         # 扣款模板（可留空 = 不扣考勤款）
         deduction_tpl = deduction_template_map.get(emp.deduction_template_id)
-        # 早退红线（从扣款模板读，默认 17:30 / 17:00）
-        early_half_time = _parse_hhmm(deduction_tpl.early_half_threshold) if deduction_tpl else time(17, 30)
-        early_one_time = _parse_hhmm(deduction_tpl.early_one_threshold) if deduction_tpl else time(17, 0)
-        if early_half_time is None:
-            early_half_time = time(17, 30)
-        if early_one_time is None:
-            early_one_time = time(17, 0)
 
         emp_status = emp.status or "trial"
         # 时薪：按小时/按天 = 日薪/8；按月 = 月薪/当月天数/8
@@ -488,10 +490,10 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             hours = _day_hours(sessions_sorted) if n in (2, 4) else 0.0
             att, lv, ab = _attendance_of_day(session_set, lt)
 
-            # 旷工自动判定：无打卡的天，当天18点起24小时内报备请假算有效，否则算旷工
+            # 旷工自动判定：无打卡的天，当天下班时间起24小时内报备请假算有效，否则算旷工
             absent_fine_day = 0.0
             if n == 0 and lt is None:
-                day_end = datetime.combine(current, time(18, 0), tzinfo=THAI_TZ)
+                day_end = datetime.combine(current, afternoon_end_time, tzinfo=THAI_TZ)
                 deadline = day_end + timedelta(hours=24)
                 if thai_now() > deadline:
                     # 已过24小时仍未请假 → 旷工
@@ -502,7 +504,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                     att, lv, ab = 0.0, 0.0, 0.0
                     hours = 0.0
             elif n == 0 and lt == "full":
-                day_end = datetime.combine(current, time(18, 0), tzinfo=THAI_TZ)
+                day_end = datetime.combine(current, afternoon_end_time, tzinfo=THAI_TZ)
                 deadline = day_end + timedelta(hours=24)
                 notified = notified_at
                 if notified is not None and getattr(notified, "tzinfo", None) is None:

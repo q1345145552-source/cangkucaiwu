@@ -378,11 +378,38 @@ async def seed():
             for _c, _t in emp_cols:
                 await conn.execute(text(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {_c} {_t}"))
 
-            # ── 扣款模板表 deduction_templates：早退/迟到红线时间 ──
+            # ── 扣款模板表 deduction_templates：早退/迟到红线时间（列保留，ORM 不再映射） ──
             await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS early_half_threshold VARCHAR(5) DEFAULT '17:30'"))
             await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS early_one_threshold VARCHAR(5) DEFAULT '17:00'"))
             await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS late_half_threshold VARCHAR(5) DEFAULT '09:05'"))
             await conn.execute(text("ALTER TABLE deduction_templates ADD COLUMN IF NOT EXISTS late_one_threshold VARCHAR(5) DEFAULT '09:31'"))
+
+            # ── 迁移：四个红线迁到配置中心 SystemSetting（每仓取第一个扣款模板，幂等） ──
+            try:
+                tpl_rows = await conn.execute(text("""
+                    SELECT DISTINCT ON (warehouse_id)
+                           warehouse_id, late_half_threshold, late_one_threshold,
+                           early_half_threshold, early_one_threshold
+                    FROM deduction_templates
+                    ORDER BY warehouse_id, created_at ASC, id ASC
+                """))
+                for wh_id, lh, lo, eh, eo in tpl_rows.all():
+                    for key, val in (
+                        ("schedule_late_half", lh),
+                        ("schedule_late_one", lo),
+                        ("schedule_early_half", eh),
+                        ("schedule_early_one", eo),
+                    ):
+                        if val:
+                            await conn.execute(text("""
+                                INSERT INTO system_settings (warehouse_id, key, value)
+                                SELECT CAST(:wh AS INTEGER), CAST(:key AS VARCHAR), CAST(:val AS VARCHAR)
+                                WHERE NOT EXISTS (
+                                    SELECT 1 FROM system_settings WHERE warehouse_id = CAST(:wh AS INTEGER) AND key = CAST(:key AS VARCHAR)
+                                )
+                            """), {"wh": wh_id, "key": key, "val": val})
+            except Exception:
+                pass
 
             # ── 报销表 reimbursements / reimbursement_items ──
             reimb_cols = [

@@ -58,7 +58,7 @@ def _local_time(dt) -> time:
 
 def _calc_daily_hours(records) -> tuple:
     """按打卡次数计算单日工时。返回 (hours, status)。
-    - 2 次: 第2次 - 第1次；第1次在12点前扣1小时午休
+    - 2 次: 第2次 - 第1次（上午两段或下午两段，中间均不含午休，直接相减）
     - 4 次: (第2次-第1次) + (第4次-第3次)
     - 1 或 3 次: 无法计算 → 待补
     records 需按 clocked_in_at 升序。"""
@@ -68,8 +68,6 @@ def _calc_daily_hours(records) -> tuple:
         if times[0] is None or times[1] is None:
             return None, "pending"
         hours = (times[1] - times[0]).total_seconds() / 3600.0
-        if _local_time(times[0]) < time(12, 0):
-            hours -= 1.0
         return max(hours, 0.0), "normal"
     if n == 4:
         if any(t is None for t in times):
