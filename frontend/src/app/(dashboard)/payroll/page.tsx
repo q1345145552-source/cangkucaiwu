@@ -270,9 +270,10 @@ export default function PayrollPage() {
     if (!confirm(`将删除 ${periodLabel(selectedPeriodKey)} 全部工资记录并重新计算，确定吗？`)) return;
     setCalculating(true);
     try {
-      await api.delete(`/payroll/period/${period}?half=${half}`);
-      await api.post("/payroll/calculate", { period, half });
-      toast("success", `${periodLabel(selectedPeriodKey)} 重新计算完成`);
+      const delRes = await api.delete<any>(`/payroll/period/${period}?half=${half}`);
+      const calcRes = await api.post<any>("/payroll/calculate", { period, half });
+      const msg = [delRes?.message, calcRes?.message].filter(Boolean).join("；") || `${periodLabel(selectedPeriodKey)} 重新计算完成`;
+      toast("success", msg);
       loadPeriods();
       loadRecords(selectedPeriodKey);
     } catch (err: any) {

@@ -1167,17 +1167,18 @@ async def delete_period_payroll(
         summary_q = summary_q.where(PayrollRecord.half == half)
     records = (await db.execute(summary_q)).scalars().all()
 
-    # 已离职员工的工资单不删（离职结算单，重算不会重新生成，删了就再也补不回来）
+    # 已离职/已删除员工的工资单不删（重算不会重新生成，删了就再也补不回来）
     emp_ids = {r.employee_id for r in records}
-    emp_status = {}
+    emp_flags = {}
     if emp_ids:
         emps = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
-        emp_status = {e.id: e.status for e in emps}
+        emp_flags = {e.id: (e.status, bool(e.is_deleted)) for e in emps}
 
     to_delete = []
     preserved_count = 0
     for r in records:
-        if emp_status.get(r.employee_id) == "resigned":
+        st, deleted = emp_flags.get(r.employee_id, (None, False))
+        if st == "resigned" or deleted:
             preserved_count += 1
             continue
         to_delete.append(r)
@@ -1187,7 +1188,7 @@ async def delete_period_payroll(
         await db.delete(r)
     await db.flush()
 
-    return {"message": f"已删除 {period} 的 {len(to_delete)} 条工资记录，保留 {preserved_count} 条离职员工记录未参与重算"}
+    return {"message": f"已删除 {period} 的 {len(to_delete)} 条工资记录，保留 {preserved_count} 条离职或已删除员工的记录未参与重算"}
 
 
 # ═══ Disbursement ════════════════════════════
