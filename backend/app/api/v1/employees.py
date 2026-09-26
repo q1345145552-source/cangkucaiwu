@@ -451,9 +451,13 @@ async def resign_employee(
         if r.get("record_count", 0) > 0:
             payroll_msg = f"，已生成离职结算工资单（结算到 {resign_dt.isoformat()}）"
         else:
+            # 本期已经结算过（记录数 0）：不是错误，照常办离职
             payroll_msg = f"，本期工资已结算过，跳过"
+    except HTTPException:
+        # 真正结算失败（缺薪资/扣款模板、打卡不完整等）：不标离职，原样返回原因
+        raise
     except Exception as ex:
-        payroll_msg = f"，工资结算失败: {str(ex)}"
+        raise HTTPException(400, f"离职结算失败：{str(ex)}")
 
     # Update employee
     e.status = "resigned"
