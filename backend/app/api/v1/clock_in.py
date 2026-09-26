@@ -158,11 +158,60 @@ async def get_today(
         "photo_thumb_path": thumb_path_of(r.photo_path),
     } for r in records}
     session_times = await get_session_times(db, get_wh_id(current_user))
+
+    # 迟到罚款预览：本人时薪 + 迟到半小时/1小时扣款金额（找不到档案/模板时返回空）
+    hourly_rate = None
+    late_half_amount = None
+    late_one_amount = None
+    wh_id = get_wh_id(current_user)
+    if wh_id:
+        from app.models.employee import Employee
+        from app.models.salary_template import SalaryTemplate
+        from app.models.deduction_template import DeductionTemplate
+        import calendar as _cal
+        emp = (await db.execute(
+            select(Employee).where(
+                Employee.warehouse_id == wh_id,
+                Employee.user_id == current_user.id,
+                Employee.is_deleted == False,
+            )
+        )).scalar_one_or_none()
+        if not emp:
+            emp = (await db.execute(
+                select(Employee).where(
+                    Employee.warehouse_id == wh_id,
+                    Employee.name == current_user.display_name,
+                    Employee.is_deleted == False,
+                )
+            )).scalar_one_or_none()
+        if emp and emp.salary_template_id and emp.deduction_template_id:
+            tpl = (await db.execute(
+                select(SalaryTemplate).where(SalaryTemplate.id == emp.salary_template_id)
+            )).scalar_one_or_none()
+            dtpl = (await db.execute(
+                select(DeductionTemplate).where(DeductionTemplate.id == emp.deduction_template_id)
+            )).scalar_one_or_none()
+            if tpl and dtpl:
+                amount = tpl.amount or 0
+                if tpl.type == "monthly":
+                    days = _cal.monthrange(today.year, today.month)[1]
+                    hourly_rate = amount / days / 8.0
+                else:  # hourly / daily
+                    hourly_rate = amount / 8.0
+                late_half_mult = dtpl.late_half_multiplier if dtpl.late_half_multiplier is not None else 0.5
+                late_one_mult = dtpl.late_one_multiplier if dtpl.late_one_multiplier is not None else 1.0
+                late_half_amount = round(hourly_rate * late_half_mult, 2)
+                late_one_amount = round(hourly_rate * late_one_mult, 2)
+                hourly_rate = round(hourly_rate, 2)
+
     return {
         "today": today.isoformat(),
         "sessions": [{"session": s, "label": session_label(s, lang), "time": session_times[s].strftime("%H:%M")}
                       for s in (1, 2, 3, 4)],
         "completed": completed,
+        "hourly_rate": hourly_rate,
+        "late_half_amount": late_half_amount,
+        "late_one_amount": late_one_amount,
     }
 
 @router.get("/records")

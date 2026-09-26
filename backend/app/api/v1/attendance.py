@@ -213,6 +213,7 @@ async def list_leaves(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(LeaveRequest, Employee.name).join(Employee, LeaveRequest.employee_id == Employee.id)
+    query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
     if current_user.role in (Role.WAREHOUSE_LABOR, Role.STAFF):
         wh_id = get_wh_id(current_user)
         # Use user_id link first, fallback to name matching
@@ -300,9 +301,11 @@ async def set_rest_days(
     wh_id = get_wh_id(current_user)
     if not wh_id: raise HTTPException(400, "请先选择仓库")
 
-    # Validate employee（排除已删除）
+    # Validate employee（排除已删除、离职）
     emp = (await db.execute(select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False))).scalar_one_or_none()
     if not emp: raise HTTPException(404, "员工不存在")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能设置休息日")
 
     # Check current month rest day count
     if req.rest_dates:
@@ -345,6 +348,7 @@ async def list_rest_days(
         raise HTTPException(403, "无权限")
 
     query = select(RestDay, Employee.name).join(Employee, RestDay.employee_id == Employee.id)
+    query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
     if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         active_wh = get_wh_id(current_user)
         if active_wh:
@@ -402,6 +406,8 @@ async def mark_absence(
 
     emp = (await db.execute(select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False))).scalar_one_or_none()
     if not emp: raise HTTPException(404, "员工不存在")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能标记缺勤")
 
     try:
         dt = datetime.strptime(req.absence_date, "%Y-%m-%d").date()

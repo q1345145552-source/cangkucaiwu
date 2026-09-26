@@ -450,11 +450,32 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
                 "employee_id": e.id, "name": e.name, "user_id": uid,
                 "status": e.status, "total_hours": round(emp_hours, 1), "days": days,
             })
-        # 有打卡但没有匹配到员工档案的 user_id
+        # 有打卡但没有匹配到在职员工档案的 user_id；排除属于离职/已删除员工的账号，只留真正无档案的
         unmatched_uids = [uid for uid in {k[0] for k in daily.keys()} if uid not in seen_uids]
         if unmatched_uids:
             us = (await db.execute(select(User).where(User.id.in_(unmatched_uids)))).scalars().all()
             name_map = {u.id: u.display_name for u in us}
+            # 直接绑定 user_id 的员工（含离职/已删除）
+            bound = (await db.execute(
+                select(Employee.user_id).where(
+                    Employee.warehouse_id == wh_id,
+                    Employee.user_id.in_(unmatched_uids),
+                )
+            )).scalars().all()
+            exclude_uids = {u for u in bound if u}
+            # 姓名回退：无 user_id 但姓名与账号显示名相同的离职/已删除员工
+            names = [u.display_name for u in us if u.display_name]
+            if names:
+                by_name = (await db.execute(
+                    select(Employee.name).where(
+                        Employee.warehouse_id == wh_id,
+                        Employee.name.in_(names),
+                        (Employee.status == "resigned") | (Employee.is_deleted == True),
+                    )
+                )).scalars().all()
+                excluded_names = set(by_name)
+                exclude_uids |= {uid for uid in unmatched_uids if name_map.get(uid) in excluded_names}
+            unmatched_uids = [uid for uid in unmatched_uids if uid not in exclude_uids]
             for uid in unmatched_uids:
                 employees.append({
                     "employee_id": None, "name": name_map.get(uid) or "未关联员工",
@@ -845,6 +866,8 @@ async def set_manual_hour(
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(400, "员工不存在或不属于当前仓库")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能补录工时")
 
     row = (await db.execute(
         select(EfficiencyManualHour).where(

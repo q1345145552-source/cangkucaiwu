@@ -50,7 +50,9 @@ export default function ClockInPage() {
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [currentSession, setCurrentSession] = useState<number | null>(null);
-  const [employeeInfo, setEmployeeInfo] = useState<any>(null);
+  const [penalty, setPenalty] = useState<{ hourly_rate: number | null; late_half_amount: number | null; late_one_amount: number | null }>({
+    hourly_rate: null, late_half_amount: null, late_one_amount: null,
+  });
   const [showLang, setShowLang] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const thaiTime = useThaiClock();
@@ -58,7 +60,6 @@ export default function ClockInPage() {
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
     loadToday();
-    loadEmployeeInfo();
   }, []);
 
   async function loadToday() {
@@ -68,24 +69,17 @@ export default function ClockInPage() {
       const tm: Record<number, string> = {};
       (r.sessions || []).forEach((s: any) => { tm[s.session] = s.time; });
       setSessionTimes(tm);
+      setPenalty({
+        hourly_rate: r.hourly_rate ?? null,
+        late_half_amount: r.late_half_amount ?? null,
+        late_one_amount: r.late_one_amount ?? null,
+      });
     } catch {}
   }
 
-  async function loadEmployeeInfo() {
-    try {
-      const r = await api.get<any>("/employees?page_size=100");
-      if (r.data) {
-        const me = r.data.find((e: any) => e.user_id === user?.id);
-        setEmployeeInfo(me || null);
-      }
-    } catch {}
-  }
-
-  // Get daily wage for dynamic penalty calculation
-  const dailyWage = employeeInfo?.daily_wage || 400;
-  const hourlyRate = dailyWage / 8;
-  const penaltyHalf = Math.round(hourlyRate * 0.5); // 迟到半小时
-  const penaltyOne = Math.round(hourlyRate);         // 迟到1小时
+  // 迟到罚款预览由后端 /clock-in/today 返回（无档案/无模板时为空，不显示金额）
+  const penaltyHalf = penalty.late_half_amount != null ? Math.round(penalty.late_half_amount) : null;
+  const penaltyOne = penalty.late_one_amount != null ? Math.round(penalty.late_one_amount) : null;
 
   function triggerCamera(session: number) {
     setCurrentSession(session);
@@ -252,12 +246,12 @@ export default function ClockInPage() {
                       </div>
                       {done.status === "late_half" && (
                         <div className="text-xs text-orange-500 flex items-center gap-1">
-                          <AlertTriangle size={12} /> {t("clock_late_half").replace("{amount}", String(penaltyHalf))}
+                          <AlertTriangle size={12} /> {penaltyHalf != null ? t("clock_late_half").replace("{amount}", String(penaltyHalf)) : t("att_late")}
                         </div>
                       )}
                       {done.status === "late_one" && (
                         <div className="text-xs text-red-500 flex items-center gap-1">
-                          <AlertTriangle size={12} /> {t("clock_late_one").replace("{amount}", String(penaltyOne))}
+                          <AlertTriangle size={12} /> {penaltyOne != null ? t("clock_late_one").replace("{amount}", String(penaltyOne)) : t("att_late")}
                         </div>
                       )}
                     </div>
@@ -300,8 +294,9 @@ export default function ClockInPage() {
       {/* Legend */}
       <div className="text-center text-xs text-gray-400 pb-4 space-y-1">
         <p>{t("clock_anytime_hint")}</p>
-        <p>{t("clock_late_rule").replace("{half}", String(penaltyHalf)).replace("{one}", String(penaltyOne))}</p>
-        <p className="text-gray-300">{t("clock_daily_wage_hint").replace("{daily}", String(dailyWage)).replace("{rate}", String(hourlyRate))}</p>
+        {penaltyHalf != null && penaltyOne != null && (
+          <p>{t("clock_late_rule").replace("{half}", String(penaltyHalf)).replace("{one}", String(penaltyOne))}</p>
+        )}
       </div>
     </div>
   );
