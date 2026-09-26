@@ -51,6 +51,8 @@ async def create_advance(
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能记预支")
 
     # 所属周期自动按日期算
     period = adv_dt.strftime("%Y-%m")

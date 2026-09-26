@@ -90,6 +90,7 @@ async def list_employees(
     page_size: int = Query(50, ge=1, le=200),
     status: str | None = None,
     include_deleted: bool = False,
+    active_only: bool = False,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -103,12 +104,17 @@ async def list_employees(
     count_q = select(func.count(Employee.id))
     query = query.where(Employee.warehouse_id.in_(wh_ids))
     count_q = count_q.where(Employee.warehouse_id.in_(wh_ids))
-    if not include_deleted:
-        query = query.where(Employee.is_deleted == False)
-        count_q = count_q.where(Employee.is_deleted == False)
-    if status:
-        query = query.where(Employee.status == status)
-        count_q = count_q.where(Employee.status == status)
+    if active_only:
+        # 只返回在职：is_deleted=False 且 status != resigned
+        query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
+        count_q = count_q.where(Employee.is_deleted == False, Employee.status != "resigned")
+    else:
+        if not include_deleted:
+            query = query.where(Employee.is_deleted == False)
+            count_q = count_q.where(Employee.is_deleted == False)
+        if status:
+            query = query.where(Employee.status == status)
+            count_q = count_q.where(Employee.status == status)
     
     total = (await db.execute(count_q)).scalar()
     result = await db.execute(
@@ -647,6 +653,11 @@ async def batch_set_templates(
     )).scalars().all()
     if len(emps) != len(ids):
         raise HTTPException(403, "包含无权操作的员工")
+
+    bad = [e for e in emps if e.is_deleted or e.status == "resigned"]
+    if bad:
+        names = "、".join(e.name for e in bad)
+        raise HTTPException(400, f"以下员工已离职或已删除，不能设置模板：{names}")
 
     for e in emps:
         e.salary_template_id = salary_tpl.id

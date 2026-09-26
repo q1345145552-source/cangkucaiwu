@@ -827,6 +827,16 @@ async def single_settle(
     except:
         raise HTTPException(400, "截止日期格式错误，应为 YYYY-MM-DD")
 
+    emp = (await db.execute(
+        select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id)
+    )).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(404, "员工不存在")
+    if emp.is_deleted:
+        raise HTTPException(400, f"员工 {emp.name} 已删除，不能结算")
+    if emp.status == "resigned":
+        raise HTTPException(400, f"员工 {emp.name} 已离职，不能结算")
+
     period = d.strftime("%Y-%m")
     half = "first_half" if d.day <= 15 else "second_half"
     return await calculate_payroll(

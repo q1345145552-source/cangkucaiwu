@@ -288,9 +288,9 @@ async def _compute_cross_check(db: AsyncSession, wh_id: int, monday: date) -> di
 
 async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date,
                         include_employees: bool = True) -> dict:
-    # 所有员工（含离职，排除已删除）；离职员工仅在其有工时的周计入统计
+    # 只统计在职员工（is_deleted=False 且 status != resigned）
     emps = (await db.execute(
-        select(Employee).where(Employee.warehouse_id == wh_id, Employee.is_deleted == False)
+        select(Employee).where(Employee.warehouse_id == wh_id, Employee.is_deleted == False, Employee.status != "resigned")
     )).scalars().all()
 
     # 薪资模板映射（人工成本按模板取，无模板的员工时薪按 0 计）
@@ -367,20 +367,16 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
             info["manual_hours"] = s.hours
             info["supplement_id"] = s.id
 
-    # 确定计入统计的员工：在职全算；离职仅算该周有打卡或补录的
-    clock_uids = {k[0] for k in daily.keys()}
-    supp_emp_ids = {k[0] for k in supp_map.keys()}
-    included_emps = []
-    for e in emps:
-        uid = emp_user.get(e.id)
-        has_hours = (uid in clock_uids) or (e.id in supp_emp_ids)
-        if (e.status or "") != "resigned" or has_hours:
-            included_emps.append(e)
+    # 计入统计的员工：仅在职
+    included_emps = list(emps)
 
-    # 汇总
+    # 汇总（只算在职员工名下的打卡/补录工时）
+    active_uids = set(emp_user.values())
     regular_total = 0.0
     pending_days = 0
-    for info in daily.values():
+    for (uid, _d), info in daily.items():
+        if uid not in active_uids:
+            continue
         if info["clock_status"] == "normal":
             regular_total += (info["clock_hours"] or 0.0)
         elif info["clock_status"] == "pending":

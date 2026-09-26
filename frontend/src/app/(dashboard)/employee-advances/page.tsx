@@ -47,8 +47,8 @@ export default function EmployeeAdvancePage() {
 
   async function loadRefs() {
     try {
-      const er = await api.get<any>("/employees?page_size=200");
-      setEmployees((er.data || []).filter((e: any) => e.status !== "resigned"));
+      const er = await api.get<any>("/employees?page_size=200&active_only=true");
+      setEmployees(er.data || []);
       const fr = await api.get<any>("/expense-fund/accounts");
       setFundAccounts(fr.data || []);
     } catch {}

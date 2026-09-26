@@ -161,6 +161,8 @@ async def admin_record_leave(
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能代录请假")
 
     # 实际报备时间：默认今天；支持 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM
     notified_at = thai_now()
@@ -462,8 +464,8 @@ async def get_calendar(
     wh_id = get_wh_id(current_user)
     wh_ids = get_wh_ids(current_user)
 
-    # Get employees scoped to the active warehouse（含已删除，有考勤/请假记录的仍显示）
-    emp_query = select(Employee).where(Employee.status != "resigned")
+    # Get employees scoped to the active warehouse（只在职：is_deleted=False 且 status != resigned）
+    emp_query = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
     if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         # Use active (header-selected) warehouse, not all warehouses
         active_wh_id = get_wh_id(current_user)
@@ -544,21 +546,7 @@ async def get_calendar(
     )).scalars().all()
     absence_map = {(a.employee_id, a.absence_date): a for a in absences}
 
-    # 已删除的员工：只在范围内有考勤记录（打卡/请假/休息/缺勤）的才显示，避免空白行
-    deleted_emp_ids = {e.id for e in emps if e.is_deleted}
-    if deleted_emp_ids:
-        deleted_with_records = set()
-        for eid in deleted_emp_ids:
-            has = False
-            for d in range((range_end - range_start).days + 1):
-                dt = range_start + timedelta(days=d)
-                if (eid, dt) in clock_map or (eid, dt) in leave_set or (eid, dt) in rest_set or (eid, dt) in absence_map:
-                    has = True
-                    break
-            if has:
-                deleted_with_records.add(eid)
-        emps = [e for e in emps if not e.is_deleted or e.id in deleted_with_records]
-        emp_ids = [e.id for e in emps]
+    # 已删除员工已在上面查询中排除，这里不再回填
 
     # Build calendar data
     days = []

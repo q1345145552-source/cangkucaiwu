@@ -207,8 +207,8 @@ export default function PayrollPage() {
     setShowSingleModal(true);
     setSingleEndDate(new Date().toISOString().slice(0, 10));
     try {
-      const r = await api.get<any>("/employees?page_size=200");
-      setSingleEmployees((r.data || []).filter((e: any) => e.status !== "resigned"));
+      const r = await api.get<any>("/employees?page_size=200&active_only=true");
+      setSingleEmployees(r.data || []);
     } catch (err: any) {
       toast("error", err.message || "加载员工列表失败");
     }

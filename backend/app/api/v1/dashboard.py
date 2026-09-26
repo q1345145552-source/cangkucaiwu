@@ -601,11 +601,16 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     for bid, bill_no, amount, confirmed in bill_rows:
         todos.append({"type": "bill_confirm", "description": f"账单 {bill_no} 收货有差异待确认", "link": "/payable", "id": bid})
 
-    # 请假待审批
+    # 请假待审批（只认在职员工）
     leave_rows = (await db.execute(
         select(LeaveRequest.id, Employee.name)
         .join(Employee, LeaveRequest.employee_id == Employee.id)
-        .where(LeaveRequest.warehouse_id == wh_id, LeaveRequest.status == "pending")
+        .where(
+            LeaveRequest.warehouse_id == wh_id,
+            LeaveRequest.status == "pending",
+            Employee.is_deleted == False,
+            Employee.status != "resigned",
+        )
         .order_by(LeaveRequest.created_at.desc()).limit(20)
     )).all()
     for lid, ename in leave_rows:

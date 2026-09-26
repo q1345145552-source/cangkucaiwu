@@ -43,6 +43,7 @@ async def _get_usage_count(db: AsyncSession, template_id: int) -> int:
         select(func.count(Employee.id)).where(
             Employee.salary_template_id == template_id,
             Employee.is_deleted == False,
+            Employee.status != "resigned",
         )
     )).scalar() or 0)
 

@@ -181,8 +181,8 @@ async def list_records(
     # Determine warehouse scope
     active_wh = get_wh_id(current_user)
 
-    # Get employees in scope（含已删除，有打卡记录的行仍显示）
-    emp_q = select(Employee).where(Employee.status != "resigned")
+    # Get employees in scope（只在职：is_deleted=False 且 status != resigned）
+    emp_q = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
     if current_user.role == Role.WAREHOUSE_LABOR:
         wh_id = get_wh_id(current_user)
         # 劳工：优先绑定账号，兜底按显示名+仓库匹配（只能看到自己）
@@ -295,6 +295,8 @@ async def makeup_clock_in(
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能补卡")
 
     emp_to_user, _ = await resolve_employee_user_map(db, [emp])
     uid = emp_to_user.get(emp.id)
@@ -368,9 +370,9 @@ async def export_records(
     # 导出只到当天，未来日期无数据
     range_end = min(range_end, today)
 
-    # 员工范围
+    # 员工范围（只在职）
     active_wh = get_wh_id(current_user)
-    emp_q = select(Employee).where(Employee.status != "resigned")
+    emp_q = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
     if active_wh:
         emp_q = emp_q.where(Employee.warehouse_id == active_wh)
     emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()

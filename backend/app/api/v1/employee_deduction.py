@@ -56,6 +56,8 @@ async def create_deduction(
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能记扣款")
 
     # 所属周期自动按日期算：1-15 上半月，16-月末 下半月
     period = d_dt.strftime("%Y-%m")
@@ -207,6 +209,8 @@ async def create_fixed_deduction(
     )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
+    if emp.status == "resigned":
+        raise HTTPException(400, "该员工已离职，不能记扣款")
 
     r = EmployeeFixedDeduction(warehouse_id=wh_id, employee_id=req.employee_id, name=name, amount=req.amount)
     db.add(r)
