@@ -156,6 +156,7 @@ async def list_advances(
             "id": r.id,
             "employee_id": r.employee_id,
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
+            "employee_status": emp_map.get(r.employee_id).status if emp_map.get(r.employee_id) else "",
             "amount": r.amount,
             "currency": r.currency or "THB",
             "advance_date": r.advance_date.isoformat(),

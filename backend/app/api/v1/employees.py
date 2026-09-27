@@ -473,6 +473,26 @@ async def resign_employee(
     if linked_user:
         linked_user.is_active = False
 
+    # 写修改日志：谁在什么时候给谁办离职
+    from app.services.data_history import record_history
+    await record_history(
+        db,
+        module="employee",
+        record_id=e.id,
+        operator=current_user,
+        operation_type="resign",
+        before={"status": emp_original_status, "linked_account": bool(linked_user)},
+        after={
+            "status": "resigned",
+            "resignation_date": resign_dt.isoformat(),
+            "reason": req.reason,
+            "note": req.note or "",
+            "blacklisted": bool(e.blacklisted),
+            "account_disabled": bool(linked_user),
+        },
+        warehouse_id=e.warehouse_id,
+    )
+
     await db.flush()
 
 

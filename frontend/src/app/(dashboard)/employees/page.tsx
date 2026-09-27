@@ -114,6 +114,28 @@ export default function EmployeesPage() {
     } catch { setSummary(null); }
   }
 
+  async function checkDuplicateName(name: string): Promise<boolean> {
+    try {
+      const r = await api.get<any>("/employees?page_size=200&include_deleted=true");
+      const matches = (r.data || []).filter((e: any) => (e.name || "").trim() === name);
+      if (matches.length === 0) return true;
+      const resigned = matches.find((e: any) => e.status === "resigned");
+      const active = matches.find((e: any) => !e.is_deleted && e.status !== "resigned");
+      let msg = "";
+      if (resigned) {
+        const d = resigned.resignation_date ? String(resigned.resignation_date).slice(0, 10) : "";
+        msg = `系统里已经有一个叫「${name}」的人\n他在 ${d || "之前"} 办的离职\n如果是同一个人返聘，请重新建档案并重新开一个登录账号\n确认无误再继续`;
+      } else if (active) {
+        msg = `现在还有一个叫「${name}」的人在职，请确认是不是重名`;
+      } else {
+        msg = `系统里已经有一个叫「${name}」的人（已删除），请确认无误再继续`;
+      }
+      return confirm(msg);
+    } catch {
+      return true; // 查询失败不阻止创建
+    }
+  }
+
   async function handleCreate() {
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
     if (!(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
@@ -121,6 +143,8 @@ export default function EmployeesPage() {
     if (!editingId) {
       if (!form.password) { toast("error", "密码必填"); return; }
       if (form.password.length < 6) { toast("error", "密码至少6位"); return; }
+      const ok = await checkDuplicateName(form.name.trim());
+      if (!ok) return;
     } else if (form.password && form.password.length < 6) {
       toast("error", "密码至少6位"); return;
     }

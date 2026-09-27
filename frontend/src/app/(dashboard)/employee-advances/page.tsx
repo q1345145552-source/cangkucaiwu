@@ -151,7 +151,7 @@ export default function EmployeeAdvancePage() {
             <tbody>
               {rows.map((r: any) => (
                 <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-3 py-3 font-medium">{r.employee_name}</td>
+                  <td className="px-3 py-3 font-medium">{r.employee_name}{r.employee_status === "resigned" && <span className="ml-1 text-xs text-red-500">已离职</span>}</td>
                   <td className="px-3 py-3 text-right font-bold">{r.amount?.toLocaleString()} {r.currency}</td>
                   <td className="px-3 py-3">{r.advance_date}</td>
                   <td className="px-3 py-3">{fmtPeriod(r.period, r.half)}</td>

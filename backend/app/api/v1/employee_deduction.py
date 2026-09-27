@@ -104,7 +104,7 @@ async def list_deductions(
     op_map = {}
     if emp_ids:
         es = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
-        emp_map = {e.id: e.name for e in es}
+        emp_map = {e.id: e for e in es}
     if op_ids:
         us = (await db.execute(select(User).where(User.id.in_(op_ids)))).scalars().all()
         op_map = {u.id: u.display_name for u in us}
@@ -113,7 +113,8 @@ async def list_deductions(
         "data": [{
             "id": r.id,
             "employee_id": r.employee_id,
-            "employee_name": emp_map.get(r.employee_id, ""),
+            "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
+            "employee_status": emp_map.get(r.employee_id).status if emp_map.get(r.employee_id) else "",
             "amount": r.amount,
             "deduction_date": r.deduction_date.isoformat(),
             "period": r.period,

@@ -9,12 +9,14 @@ const MODULE_LABELS: Record<string, string> = {
   reimbursement: "报销",
   expense: "运营支出",
   user: "用户账号",
+  employee: "员工档案",
 };
-const OP_LABELS: Record<string, string> = { create: "新建", edit: "编辑", delete: "删除" };
+const OP_LABELS: Record<string, string> = { create: "新建", edit: "编辑", delete: "删除", resign: "离职" };
 const OP_COLORS: Record<string, string> = {
   create: "bg-green-100 text-green-700",
   edit: "bg-blue-100 text-blue-700",
   delete: "bg-red-100 text-red-700",
+  resign: "bg-orange-100 text-orange-700",
 };
 const FIELD_LABELS: Record<string, string> = {
   amount: "金额", currency: "币种", declare_date: "申报日期", expense_date: "支出日期",
@@ -23,10 +25,18 @@ const FIELD_LABELS: Record<string, string> = {
   items: "明细", status: "状态", supplier_id: "供应商",
   username: "用户名", display_name: "显示名", role: "角色",
   warehouse_ids: "所属仓库", password: "密码", is_active: "启用状态",
+  linked_account: "绑定账号", resignation_date: "离职日期", reason: "离职原因",
+  note: "备注", blacklisted: "拉黑", account_disabled: "账号禁用",
 };
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "系统总管理员", warehouse_admin: "仓库管理员", supervisor: "仓库主管",
   staff: "仓库财务", warehouse_labor: "仓库劳工",
+};
+const STATUS_LABELS: Record<string, string> = {
+  trial: "试用", regular: "正式", resigned: "离职",
+};
+const RESIGN_REASON_LABELS: Record<string, string> = {
+  voluntary: "正常离职", absconded: "自离", fired: "被辞退", contract_end: "合同到期", other: "其他",
 };
 
 function diffSummary(before: any, after: any): string {
@@ -47,6 +57,9 @@ function renderVal(v: any): string {
 
 function renderFieldVal(k: string, v: any): string {
   if (k === "role") return ROLE_LABELS[v] || String(v);
+  if (k === "status") return STATUS_LABELS[v] || String(v);
+  if (k === "reason") return RESIGN_REASON_LABELS[v] || String(v);
+  if (k === "linked_account" || k === "blacklisted" || k === "account_disabled" || k === "is_active") return v ? "是" : "否";
   if (k === "warehouse_ids" && Array.isArray(v)) return v.length ? v.join(", ") : "-";
   return renderVal(v);
 }
@@ -117,6 +130,7 @@ export default function ModificationLogsPage() {
               <option value="reimbursement">报销</option>
               <option value="expense">运营支出</option>
               <option value="user">用户账号</option>
+              <option value="employee">员工档案</option>
             </select>
           </div>
           <div className="w-[160px]">
@@ -170,7 +184,7 @@ export default function ModificationLogsPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${OP_COLORS[h.operation_type] || ""}`}>{OP_LABELS[h.operation_type] || h.operation_type}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {h.operation_type === "edit" ? (diffSummary(h.before_data, h.after_data) || "更新") : h.operation_type === "delete" ? "删除记录" : "新建记录"}
+                      {h.operation_type === "resign" ? "离职" : h.operation_type === "edit" ? (diffSummary(h.before_data, h.after_data) || "更新") : h.operation_type === "delete" ? "删除记录" : "新建记录"}
                     </td>
                   </tr>
                 ))}
