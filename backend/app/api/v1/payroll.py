@@ -272,7 +272,8 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         base["emp_start"] = emp_start
         base["skipped_notes"] = skipped_notes
         base["no_hire_names"] = no_hire_names
-        if skipped_notes:
+        if not no_hire_names:
+            # 没有缺入职日期的，才走「全都已结清」；否则交给算工资那边先报缺入职日期
             if req.employee_ids and len(req.employee_ids) == 1:
                 msg = "；".join(skipped_notes)
             else:
