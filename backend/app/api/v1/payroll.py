@@ -25,7 +25,7 @@ router = APIRouter()
 
 
 class CalculateRequest(BaseModel):
-    period: str  # YYYY-MM
+    period: Optional[str] = None  # YYYY-MM（旧参数，兼容用；新方式只传 end_date）
     half: str = "first_half"  # first_half / second_half
     employee_ids: Optional[List[int]] = None  # 单人结算时指定
     start_date: Optional[str] = None  # 自定义日期段开始日 YYYY-MM-DD
@@ -55,67 +55,37 @@ async def calculate_payroll(
 
 async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest):
     """核心工资计算（周期/单人/离职共用）。wh_id 已由调用方校验。"""
-    try:
-        y, m = req.period.split("-")
-        year, month = int(y), int(m)
-    except:
-        raise HTTPException(400, "月份格式错误，应为 YYYY-MM")
+    today = thai_today()
 
-    if month < 1 or month > 12:
-        raise HTTPException(400, "月份无效")
-
-    # 结算日期段：自定义日期段用 start_date+end_date，快捷/单人/离职用 period+half(+end_date)
-    _, total_days = calendar.monthrange(year, month)
-    is_custom = bool(req.start_date and req.end_date)
-    if is_custom:
+    # ── 1. 确定结算结束日：新 end_date 优先；旧 period+half 兼容换算 ──
+    if req.end_date:
         try:
-            settle_start = datetime.strptime(req.start_date, "%Y-%m-%d").date()
-            settle_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
-        except:
-            raise HTTPException(400, "日期格式错误，应为 YYYY-MM-DD")
-        if settle_start.year != year or settle_start.month != month or settle_end.year != year or settle_end.month != month:
-            raise HTTPException(400, "日期段不能跨月，请选择同一个月的日期")
-        if settle_start > settle_end:
-            raise HTTPException(400, "开始日期不能晚于结束日期")
-        period_start = settle_start
-        period_end = settle_end
+            batch_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            raise HTTPException(400, "结束日格式错误，应为 YYYY-MM-DD")
     else:
-        if req.end_date:
-            try:
-                settle_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
-            except:
-                raise HTTPException(400, "截止日期格式错误，应为 YYYY-MM-DD")
-            if settle_end.year != year or settle_end.month != month:
-                raise HTTPException(400, "截止日期必须在本周期内")
-            period_end = settle_end
-        elif req.half == "first_half":
-            period_end = date(year, month, 15)
-            settle_end = period_end
-        else:
-            period_end = date(year, month, total_days)
-            settle_end = period_end
+        try:
+            y, m = req.period.split("-")
+            year, month = int(y), int(m)
+        except (ValueError, TypeError, AttributeError):
+            raise HTTPException(400, "月份格式错误，应为 YYYY-MM")
+        if month < 1 or month > 12:
+            raise HTTPException(400, "月份无效")
+        _, _td = calendar.monthrange(year, month)
+        batch_end = date(year, month, 15 if req.half == "first_half" else _td)
+        if batch_end > today:
+            batch_end = today
 
-        # 周期开始日：上半月 1 号，下半月 16 号
-        if req.half == "first_half":
-            period_start = date(year, month, 1)
-        else:
-            period_start = date(year, month, 16)
-        settle_start = period_start
+    if batch_end > today:
+        raise HTTPException(400, "结束日不能选未来")
 
-    # 周期实际天数（含起止日）：按月模式按此折算周期基础
-    period_days = (period_end - period_start).days + 1
+    year, month = batch_end.year, batch_end.month
+    _, total_days = calendar.monthrange(year, month)
+    # 工资单过渡字段：周期=结束月，半月按结束日号
+    period = batch_end.strftime("%Y-%m")
+    half = "first_half" if batch_end.day <= 15 else "second_half"
 
-    # 已计算过的员工（同周期同半月）：跳过，不再整单拦截
-    existing = (await db.execute(
-        select(PayrollRecord).where(
-            PayrollRecord.warehouse_id == wh_id,
-            PayrollRecord.period == req.period,
-            PayrollRecord.half == req.half,
-        )
-    )).scalars().all()
-    already_calc_emp_ids = {r.employee_id for r in existing}
-
-    # 在职员工（排除已删除），单人结算时可限定
+    # ── 2. 在职员工（排除已删除/离职），单人可限定 ──
     emp_q = select(Employee).where(
         Employee.warehouse_id == wh_id,
         Employee.status != "resigned",
@@ -128,7 +98,63 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     if not employees:
         return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
 
-    # ── 模板检查：薪资模板 + 扣款模板都通过才能算工资 ──
+    # ── 3. 水位线 = 该员工已结算结束日的最大值 ──
+    emp_ids = [e.id for e in employees]
+    water_line = {}
+    if emp_ids:
+        emp_records = (await db.execute(
+            select(PayrollRecord).where(
+                PayrollRecord.warehouse_id == wh_id,
+                PayrollRecord.employee_id.in_(emp_ids),
+            )
+        )).scalars().all()
+        for r in emp_records:
+            wl = r.settle_end_date
+            if wl is None:
+                try:
+                    ry, rm = r.period.split("-")
+                    wl = date(int(ry), int(rm), 15 if r.half == "first_half" else calendar.monthrange(int(ry), int(rm))[1])
+                except (ValueError, TypeError, AttributeError):
+                    wl = None
+            if wl and (water_line.get(r.employee_id) is None or wl > water_line[r.employee_id]):
+                water_line[r.employee_id] = wl
+
+    # ── 4. 每个员工的起点 = 水位线+1 或 入职日期 ──
+    emp_start = {}
+    no_hire_names = []
+    skipped_notes = []
+    for emp in employees:
+        wl = water_line.get(emp.id)
+        if wl:
+            start = wl + timedelta(days=1)
+        else:
+            hd = emp.hire_date
+            if not hd:
+                no_hire_names.append(emp.name)
+                continue
+            start = hd.date() if isinstance(hd, datetime) else hd
+        if start > batch_end:
+            skipped_notes.append(f"{emp.name} 已结算到 {wl.isoformat()}，没有需要结算的区间")
+            continue
+        if start.year != batch_end.year or start.month != batch_end.month:
+            raise HTTPException(400, "区间跨月暂不支持，请先把上一个周期结清")
+        emp_start[emp.id] = start
+
+    if no_hire_names:
+        raise HTTPException(400, "以下员工没有入职日期，请先补充后再计算：\n" + "、".join(no_hire_names))
+
+    # 只保留有起点的员工
+    employees = [e for e in employees if e.id in emp_start]
+    if not employees:
+        if skipped_notes:
+            if req.employee_ids and len(req.employee_ids) == 1:
+                msg = "；".join(skipped_notes)
+            else:
+                msg = "所有员工都已经结算到这个日期了"
+            return {"message": msg, "records": [], "skipped": skipped_notes, "record_count": 0}
+        return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
+
+    # ── 5. 模板检查：薪资模板 + 扣款模板都通过才能算工资 ──
     no_salary_template = [e for e in employees if not e.salary_template_id]
     no_deduction_template = [e for e in employees if not e.deduction_template_id]
     if no_salary_template or no_deduction_template:
@@ -140,37 +166,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             names = "、".join(e.name for e in no_deduction_template)
             lines.append(f"以下员工还没有设置扣款模板，请先设置：\n{names}")
         raise HTTPException(400, "\n".join(lines))
-
-    # ── 自定义日期段防重复：按结算起止日判断与已有工资单是否重叠 ──
-    if is_custom:
-        emp_id_set = {e.id for e in employees}
-        emp_name_map = {e.id: e.name for e in employees}
-        overlap_records = (await db.execute(
-            select(PayrollRecord).where(
-                PayrollRecord.warehouse_id == wh_id,
-                PayrollRecord.employee_id.in_(emp_id_set),
-            )
-        )).scalars().all()
-        overlap_lines = []
-        next_start = period_start
-        for r in overlap_records:
-            r_start = r.settle_start_date
-            if r_start is None:
-                try:
-                    ry, rm = r.period.split("-")
-                    r_start = date(int(ry), int(rm), 1 if r.half == "first_half" else 16)
-                except (ValueError, TypeError):
-                    r_start = None
-            r_end = r.settle_end_date
-            if r_start is None or r_end is None:
-                continue
-            if r_end >= period_start and r_start <= period_end:
-                overlap_lines.append(
-                    f"{emp_name_map.get(r.employee_id, '')} 在 {r_start.isoformat()} 到 {r_end.isoformat()} 已经算过工资了"
-                )
-                next_start = max(next_start, r_end + timedelta(days=1))
-        if overlap_lines:
-            raise HTTPException(400, "\n".join(overlap_lines) + f"\n请从 {next_start.isoformat()} 开始算")
 
     template_ids = {e.salary_template_id for e in employees if e.salary_template_id}
     template_map = {}
@@ -188,23 +183,9 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     # 仓库作息（配置中心）：早退红线 + 下午下班时间（旷工24小时起算点）
     work_sched = await get_work_schedule(db, wh_id)
 
-    # 已离职但本期有结算记录 → 跳过并说明
-    skipped_notes = []
-    resigned_settled = (await db.execute(
-        select(PayrollRecord.employee_id, Employee.name)
-        .join(Employee, Employee.id == PayrollRecord.employee_id)
-        .where(
-            PayrollRecord.warehouse_id == wh_id,
-            PayrollRecord.period == req.period,
-            PayrollRecord.half == req.half,
-            Employee.status == "resigned",
-        )
-    )).all()
-    for eid, ename in resigned_settled:
-        skipped_notes.append(f"{ename} 已离职结算，跳过")
-
-    month_start = date(year, month, 1)
-    month_end = date(year, month, total_days)
+    # ── 6. 批量取数用最宽区间（每个员工起点不同） ──
+    period_start = min(emp_start.values())
+    period_end = batch_end
 
     # Build employee_id -> user_id mapping（绑定账号 + 手机号/姓名兜底，未绑定也能结算）
     from app.services.employee_match import resolve_employee_user_map
@@ -391,7 +372,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         rest_set = rest_by_emp.get(emp.id, set())
         absence_set = absence_by_emp.get(emp.id, set())
         leave_map = leave_by_emp.get(emp.id, {})
-        current = period_start
+        current = emp_start[emp.id]
         while current <= period_end:
             if current >= today:
                 break  # 今天还没过完、未来日子不检查打卡完整性
@@ -428,11 +409,12 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     # ── 按员工薪资模板计算 ──
     records = []
     for emp in employees:
-        if emp.id in already_calc_emp_ids:
-            continue  # 本期已算过，跳过
         template = template_map.get(emp.salary_template_id)
         tt = template.type if template else "daily"
         template_amount = template.amount or 0
+        # 本员工实际区间（起点按水位线，结束日统一）
+        emp_start_date = emp_start[emp.id]
+        emp_period_days = (period_end - emp_start_date).days + 1
 
         # 扣款模板（可留空 = 不扣考勤款）
         deduction_tpl = deduction_template_map.get(emp.deduction_template_id)
@@ -465,7 +447,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         late_list = []   # 迟到明细（金额在算出时薪后补齐）
         early_list = []  # 早退明细
 
-        current = period_start
+        current = emp_start_date
         while current <= period_end:
             if current in rest_set:
                 rest_days_count += 1
@@ -596,7 +578,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         else:  # monthly
             daily_rate = template_amount / total_days
             # 周期基础 = 月薪 × 周期天数 ÷ 当月天数（半天/单人/离职结算按实际天数折算）
-            period_base = template_amount * period_days / total_days
+            period_base = template_amount * emp_period_days / total_days
             leave_deduction = round(daily_rate * leave_days_count, 2)
             absence_deduction = round(daily_rate * absence_days_count, 2)
             # 上班工资 = 周期基础 - 缺勤扣款 - 请假扣款，下限保护不小于 0
@@ -725,7 +707,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "deduction_template_name": deduction_tpl.name if deduction_tpl else "",
             "daily_wage": round(template_amount, 2) if tt in ("hourly", "daily") else None,
             "base_salary": round(template_amount, 2) if tt == "monthly" else None,
-            "period_days": period_days,
+            "period_days": emp_period_days,
             "period_base": round(period_base, 2) if period_base is not None else None,
             "daily_hours": daily_list,
             "late_details": late_details,
@@ -737,11 +719,11 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
         record = PayrollRecord(
             warehouse_id=wh_id,
-            half=req.half,
+            half=half,
             employee_id=emp.id,
-            period=req.period,
-            settle_start_date=settle_start,
-            settle_end_date=settle_end,
+            period=period,
+            settle_start_date=emp_start_date,
+            settle_end_date=batch_end,
             status="pending",
             total_days_in_month=total_days,
             attendance_days=round(attendance_days_total, 2),
@@ -772,12 +754,12 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         records.append(record)
 
     await db.flush()
-    msg = f"已为 {len(records)} 名员工计算 {req.period} 工资"
+    msg = f"已为 {len(records)} 名员工计算 {period} 工资"
     if skipped_notes:
         msg += "；" + "；".join(skipped_notes)
     return {
         "message": msg,
-        "period": req.period,
+        "period": period,
         "record_count": len(records),
         "skipped": skipped_notes,
     }
