@@ -1006,22 +1006,34 @@ async def single_settle(
 async def list_payroll(
     period: str = None,
     half: str = None,
+    settle_month: str = None,
     status: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
     if wh_id is None:
-        return {"data": [], "periods": []}
+        return {"data": [], "periods": [], "months": []}
     query = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
     count_q = select(func.count(PayrollRecord.id)).where(PayrollRecord.warehouse_id == wh_id)
 
-    if period:
-        query = query.where(PayrollRecord.period == period)
-        count_q = count_q.where(PayrollRecord.period == period)
-    if half:
-        query = query.where(PayrollRecord.half == half)
-        count_q = count_q.where(PayrollRecord.half == half)
+    if settle_month:
+        # 按结算结束日所在月筛（settle_end_date 的年月 == settle_month）
+        try:
+            sy, sm = settle_month.split("-")
+            month_start = date(int(sy), int(sm), 1)
+        except (ValueError, TypeError):
+            raise HTTPException(400, "结算月份格式错误，应为 YYYY-MM")
+        month_end = date(month_start.year + 1, 1, 1) if month_start.month == 12 else date(month_start.year, month_start.month + 1, 1)
+        query = query.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
+        count_q = count_q.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
+    else:
+        if period:
+            query = query.where(PayrollRecord.period == period)
+            count_q = count_q.where(PayrollRecord.period == period)
+        if half:
+            query = query.where(PayrollRecord.half == half)
+            count_q = count_q.where(PayrollRecord.half == half)
     if status:
         query = query.where(PayrollRecord.status == status)
         count_q = count_q.where(PayrollRecord.status == status)
@@ -1078,25 +1090,36 @@ async def list_payroll(
             "created_at": r.created_at.isoformat() if r.created_at else None,
         } for r in records],
         "periods": await _get_available_periods(db, [wh_id]),
+        "months": await _get_available_months(db, [wh_id]),
     }
 
 
 @router.get("/summary")
 async def payroll_summary(
-    period: str = Query(...),
+    period: str = None,
     half: str = None,
+    settle_month: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
     if wh_id is None:
-        return {"period": period, "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
-    summary_q = select(PayrollRecord).where(
-        PayrollRecord.warehouse_id == wh_id,
-        PayrollRecord.period == period,
-    )
-    if half:
-        summary_q = summary_q.where(PayrollRecord.half == half)
+        return {"period": period or "", "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
+    summary_q = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
+
+    if settle_month:
+        try:
+            sy, sm = settle_month.split("-")
+            month_start = date(int(sy), int(sm), 1)
+        except (ValueError, TypeError):
+            raise HTTPException(400, "结算月份格式错误，应为 YYYY-MM")
+        month_end = date(month_start.year + 1, 1, 1) if month_start.month == 12 else date(month_start.year, month_start.month + 1, 1)
+        summary_q = summary_q.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
+    else:
+        if period:
+            summary_q = summary_q.where(PayrollRecord.period == period)
+        if half:
+            summary_q = summary_q.where(PayrollRecord.half == half)
     records = (await db.execute(summary_q)).scalars().all()
 
     confirmed = sum(1 for r in records if r.status == "confirmed")
@@ -1106,7 +1129,7 @@ async def payroll_summary(
     total_penalties = sum(r.late_penalty for r in records)
 
     return {
-        "period": period,
+        "period": period or (settle_month or ""),
         "employee_count": len(records),
         "confirmed_count": confirmed,
         "pending_count": len(records) - confirmed,
@@ -1503,3 +1526,54 @@ async def _get_available_periods(db: AsyncSession, wh_ids: list) -> list:
         .order_by(PayrollRecord.period.desc(), PayrollRecord.half.desc())
     )
     return [{"period": r[0], "half": r[1], "label": f"{r[0]} {'上半月' if r[1] == 'first_half' else '下半月'}"} for r in result.all()]
+
+
+async def _get_available_months(db: AsyncSession, wh_ids: list) -> list:
+    """有工资单的月份（按 settle_end_date 分组，倒序，最近的在前）。"""
+    rows = (await db.execute(
+        select(PayrollRecord.settle_end_date)
+        .where(PayrollRecord.warehouse_id.in_(wh_ids), PayrollRecord.settle_end_date.isnot(None))
+    )).scalars().all()
+    return sorted({d.strftime("%Y-%m") for d in rows}, reverse=True)
+
+
+@router.get("/settlement-progress")
+async def settlement_progress(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """结算进度：所有在职员工各自已结算到哪天（没有工资单=从未结算），最落后的在前。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员可以查看结算进度")
+    wh_ids = get_wh_ids(current_user)
+    if not wh_ids:
+        return {"data": []}
+
+    emps = (await db.execute(
+        select(Employee).where(
+            Employee.warehouse_id.in_(wh_ids),
+            Employee.is_deleted == False,
+            Employee.status != "resigned",
+        ).order_by(Employee.name)
+    )).scalars().all()
+    emp_ids = [e.id for e in emps]
+
+    water_line = {}
+    if emp_ids:
+        records = (await db.execute(
+            select(PayrollRecord).where(
+                PayrollRecord.warehouse_id.in_(wh_ids),
+                PayrollRecord.employee_id.in_(emp_ids),
+            )
+        )).scalars().all()
+        for r in records:
+            if r.settle_end_date and (water_line.get(r.employee_id) is None or r.settle_end_date > water_line[r.employee_id]):
+                water_line[r.employee_id] = r.settle_end_date
+
+    data = [{
+        "employee_id": e.id,
+        "name": e.name,
+        "settle_end_date": water_line[e.id].isoformat() if water_line.get(e.id) else None,
+    } for e in emps]
+    data.sort(key=lambda x: x["settle_end_date"] or "")
+    return {"data": data}

@@ -7,33 +7,6 @@ import { useRouter } from "next/navigation";
 import { thaiNow } from "@/lib/thai-time";
 import { Calculator, CheckCircle, Trash2, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User } from "lucide-react";
 
-// 合并周期：后端已有周期 + 当前月上下半月（去重，最近的在前）
-function mergePeriods(ps: any[]): any[] {
-  const t = thaiNow();
-  const cur = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
-  const list = [...(ps || [])];
-  for (const half of ["first_half", "second_half"]) {
-    list.push({
-      period: cur,
-      half,
-      label: `${cur} ${half === "second_half" ? "下半月" : "上半月"}`,
-    });
-  }
-  const seen = new Set<string>();
-  const out: any[] = [];
-  for (const p of list) {
-    const key = `${p.period}_${p.half}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(p);
-  }
-  out.sort((a, b) => {
-    if (a.period !== b.period) return a.period < b.period ? 1 : -1;
-    return a.half < b.half ? 1 : -1;
-  });
-  return out;
-}
-
 // 泰国时间的今天/昨天/过去15号/过去月末（用于结算日期输入）
 function thaiDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -74,11 +47,11 @@ export default function PayrollPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
-  const [periods, setPeriods] = useState<any[]>([]);
-  const [periodsLoading, setPeriodsLoading] = useState(true);
+  const [months, setMonths] = useState<string[]>([]);
+  const [monthsLoading, setMonthsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedPeriodKey, setSelectedPeriodKey] = useState("");
   const [showPayslip, setShowPayslip] = useState<any>(null);
   const [dailyDetailOpen, setDailyDetailOpen] = useState(false);
@@ -92,54 +65,57 @@ export default function PayrollPage() {
   const [calcEndDate, setCalcEndDate] = useState("");
   const [previewData, setPreviewData] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [progressData, setProgressData] = useState<any[]>([]);
+  const [showProgress, setShowProgress] = useState(false);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
-    // Default to current month
-    const now = new Date().toISOString().slice(0, 7);
-    setSelectedPeriod(now);
     setCalcEndDate(thaiYesterdayStr());
     initPage();
+    loadProgress();
   }, []);
 
-  // 首次进入：拉周期下拉 + 自动选中第一个周期并加载
-  async function initPage() {
-    setPeriodsLoading(true);
+  async function loadProgress() {
     try {
-      const r = await api.get<any>("/payroll");
-      const ps = mergePeriods(r.periods || []);
-      setPeriods(ps);
-      if (ps.length > 0) {
-        const first = ps[0];
-        const key = `${first.period}_${first.half}`;
-        setSelectedPeriodKey(key);
-        setSelectedPeriod(first.period);
-        loadRecords(key);
-      }
-    } catch (err: any) {
-      toast("error", err.message || "加载工资周期失败");
-    }
-    setPeriodsLoading(false);
+      const r = await api.get<any>("/payroll/settlement-progress");
+      setProgressData(r.data || []);
+    } catch {}
   }
 
-  // 刷新周期下拉（计算/删除后调用）
-  async function loadPeriods() {
+  // 首次进入：拉月份下拉 + 自动选中最近月份并加载
+  async function initPage() {
+    setMonthsLoading(true);
     try {
       const r = await api.get<any>("/payroll");
-      setPeriods(mergePeriods(r.periods || []));
+      const ms = r.months || [];
+      setMonths(ms);
+      if (ms.length > 0) {
+        setSelectedMonth(ms[0]);
+        loadRecordsByMonth(ms[0]);
+      }
     } catch (err: any) {
-      toast("error", err.message || "加载工资周期失败");
+      toast("error", err.message || "加载工资月份失败");
+    }
+    setMonthsLoading(false);
+  }
+
+  // 刷新月份下拉（计算/删除后调用）
+  async function loadMonths() {
+    try {
+      const r = await api.get<any>("/payroll");
+      setMonths(r.months || []);
+    } catch (err: any) {
+      toast("error", err.message || "加载工资月份失败");
     }
   }
 
   function periodKeyToApi(periodKey: string) {
-    // 键格式: "2026-09_first_half" → 用第一个下划线拆开，后半段整体作为半月
     const idx = periodKey.indexOf("_");
     if (idx === -1) return { period: periodKey, half: "first_half" };
     return { period: periodKey.slice(0, idx), half: periodKey.slice(idx + 1) || "first_half" };
   }
-  
+
   function periodLabel(periodKey: string) {
     const idx = periodKey.indexOf("_");
     if (idx === -1) return periodKey;
@@ -148,34 +124,29 @@ export default function PayrollPage() {
     return `${period} ${half === "second_half" ? "下半月" : "上半月"}`;
   }
 
-  // 单条工资单的日期段显示：快捷周期显示「2026-09 上半月」，自定义显示「起 到 止」
+  // 单条工资单的结算区间显示：「X月X日 到 X月X日」
   function recordDateLabel(r: any): string {
     const s = r.settle_start_date;
     const e = r.settle_end_date;
-    const half = r.half;
-    if (s && e && r.period) {
-      const [y, m] = r.period.split("-").map(Number);
-      const monthEnd = new Date(y, m, 0).getDate();
-      const qs = half === "first_half" ? 1 : 16;
-      const qe = half === "first_half" ? 15 : monthEnd;
-      const p2 = (n: number) => String(n).padStart(2, "0");
-      if (s.slice(-2) === p2(qs) && e.slice(-2) === p2(qe)) {
-        return `${r.period} ${half === "second_half" ? "下半月" : "上半月"}`;
-      }
-      return `${s} 到 ${e}`;
+    if (s && e) {
+      const fmt = (d: string) => {
+        const [y, m, dd] = d.split("-").map(Number);
+        return `${m}月${dd}日`;
+      };
+      return `${fmt(s)} 到 ${fmt(e)}`;
     }
-    return `${r.period} ${half === "second_half" ? "下半月" : "上半月"}`;
+    return `${r.period} ${r.half === "second_half" ? "下半月" : "上半月"}`;
   }
 
-  async function loadRecords(periodKeyOverride?: string) {
-    const key = periodKeyOverride || selectedPeriodKey;
-    if (!key) return;
-    const { period, half } = periodKeyToApi(key);
-    setSelectedPeriod(period);
+  async function loadRecordsByMonth(month?: string) {
+    const m = month || selectedMonth;
+    if (!m) return;
+    setSelectedMonth(m);
+    setSelectedPeriodKey(`${m}_second_half`);
     setLoading(true);
-    setSelectedIds([]);  // 重新加载/切换周期时清空勾选
+    setSelectedIds([]);
     try {
-      const params = `period=${period}&half=${half}`;
+      const params = `settle_month=${m}`;
       const [recR, sumR] = await Promise.all([
         api.get<any>(`/payroll?${params}`),
         api.get<any>(`/payroll/summary?${params}`),
@@ -208,11 +179,10 @@ export default function PayrollPage() {
     try {
       const r = await api.post<any>("/payroll/calculate", { end_date: calcEndDate });
       toast("success", r.message || "计算完成");
-      loadPeriods();
-      const d = new Date(calcEndDate);
-      const newKey = `${calcEndDate.slice(0, 7)}_${d.getDate() <= 15 ? "first_half" : "second_half"}`;
-      setSelectedPeriodKey(newKey);
-      loadRecords(newKey);
+      loadMonths();
+      const m = calcEndDate.slice(0, 7);
+      setSelectedMonth(m);
+      loadRecordsByMonth(m);
     } catch (err: any) {
       toast("error", err.message || "计算失败");
     }
@@ -238,11 +208,10 @@ export default function PayrollPage() {
       const r = await api.post<any>("/payroll/single-settle", { employee_id: singleEmpId, end_date: singleEndDate });
       toast("success", r.message || "结算完成");
       setShowSingleModal(false);
-      const d = new Date(singleEndDate);
-      const newKey = `${singleEndDate.slice(0, 7)}_${d.getDate() <= 15 ? "first_half" : "second_half"}`;
-      setSelectedPeriodKey(newKey);
-      loadPeriods();
-      loadRecords(newKey);
+      const m = singleEndDate.slice(0, 7);
+      setSelectedMonth(m);
+      loadMonths();
+      loadRecordsByMonth(m);
     } catch (err: any) { toast("error", err.message || "结算失败"); }
     setCalculating(false);
   }
@@ -251,7 +220,7 @@ export default function PayrollPage() {
     try {
       await api.post(`/payroll/${recordId}/confirm`);
       toast("success", "工资单已确认");
-      loadRecords();
+      loadRecordsByMonth();
     } catch (err: any) {
       toast("error", err.message || "确认失败");
     }
@@ -263,7 +232,7 @@ export default function PayrollPage() {
     try {
       const r = await api.post(`/payroll/confirm-all?period=${period}&half=${half}`);
       toast("success", r.message || "全部确认成功");
-      loadRecords();
+      loadRecordsByMonth();
     } catch (err: any) {
       toast("error", err.message || "确认失败");
     }
@@ -274,8 +243,8 @@ export default function PayrollPage() {
     try {
       await api.delete(`/payroll/${recordId}`);
       toast("success", "已删除");
-      loadRecords();
-      loadPeriods();
+      loadRecordsByMonth();
+      loadMonths();
     } catch (err: any) {
       toast("error", err.message || "删除失败");
     }
@@ -290,8 +259,8 @@ export default function PayrollPage() {
       const calcRes = await api.post<any>("/payroll/calculate", { period, half });
       const msg = [delRes?.message, calcRes?.message].filter(Boolean).join("；") || `${periodLabel(selectedPeriodKey)} 重新计算完成`;
       toast("success", msg);
-      loadPeriods();
-      loadRecords(selectedPeriodKey);
+      loadMonths();
+      loadRecordsByMonth(selectedMonth);
     } catch (err: any) {
       toast("error", err.message || "操作失败");
     }
@@ -303,7 +272,7 @@ export default function PayrollPage() {
     try {
       const r = await api.post(`/payroll/${recordId}/disburse`, {});
       toast("success", r.message || "发放成功");
-      loadRecords();
+      loadRecordsByMonth();
     } catch (err: any) {
       toast("error", err.message || "发放失败");
     }
@@ -393,7 +362,7 @@ export default function PayrollPage() {
     try {
       const r = await api.post<any>("/payroll/batch-confirm", { record_ids: selectedIds });
       toast("success", r.message || `已确认 ${r.count} 条`);
-      loadRecords();
+      loadRecordsByMonth();
     } catch (err: any) { toast("error", err.message || "批量确认失败"); }
     setCalculating(false);
   }
@@ -404,7 +373,7 @@ export default function PayrollPage() {
     try {
       const r = await api.post<any>("/payroll/batch-disburse", { record_ids: selectedIds });
       toast("success", r.message || `已发放 ${r.count} 条`);
-      loadRecords();
+      loadRecordsByMonth();
     } catch (err: any) { toast("error", err.message || "批量发放失败"); }
     setCalculating(false);
   }
@@ -416,8 +385,8 @@ export default function PayrollPage() {
     try {
       const r = await api.post<any>("/payroll/batch-delete", { record_ids: selectedIds });
       toast("success", r.message || `已删除 ${r.count} 条`);
-      loadRecords();
-      loadPeriods();
+      loadRecordsByMonth();
+      loadMonths();
     } catch (err: any) { toast("error", err.message || "批量删除失败"); }
     setCalculating(false);
   }
@@ -450,19 +419,18 @@ export default function PayrollPage() {
 
           {/* 第二组：看列表用 */}
           <div className="flex gap-2 items-center flex-wrap">
-            <label className="text-sm text-gray-500">查看周期</label>
-            <select value={selectedPeriodKey}
+            <label className="text-sm text-gray-500">查看月份</label>
+            <select value={selectedMonth}
               onChange={e => {
                 const v = e.target.value;
-                setSelectedPeriodKey(v);
-                if (v) loadRecords(v);
+                setSelectedMonth(v);
+                if (v) loadRecordsByMonth(v);
               }}
               className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
-              <option value="">选择周期</option>
-              {periods.map((p: any) => {
-                const key = `${p.period}_${p.half}`;
-                return <option key={key} value={key}>{p.label}</option>
-              })}
+              <option value="">选择月份</option>
+              {months.map((m: string) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
             </select>
             {isAdmin && records.length > 0 && (
               <>
@@ -501,6 +469,29 @@ export default function PayrollPage() {
         </div>
       </div>
 
+      {/* 结算进度 */}
+      <div className="bg-white rounded-xl border mb-3">
+        <button onClick={() => setShowProgress(!showProgress)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <span className="flex items-center gap-2"><TrendingUp size={16} className="text-blue-500"/> 结算进度（{progressData.length} 人）</span>
+          <span className="text-gray-400">{showProgress ? "收起" : "展开"}</span>
+        </button>
+        {showProgress && (
+          <div className="border-t px-4 py-2 max-h-72 overflow-y-auto">
+            {progressData.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-sm">暂无在职员工</div>
+            ) : progressData.map((p: any) => (
+              <div key={p.employee_id} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-50">
+                <span className="text-gray-700">{p.name}</span>
+                <span className={p.settle_end_date ? "text-gray-500" : "text-red-500"}>
+                  已结算到 {p.settle_end_date ? p.settle_end_date : "从未结算"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Batch action bar */}
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
@@ -517,9 +508,9 @@ export default function PayrollPage() {
       )}
 
       {/* Records Table */}
-      {loading || periodsLoading ? (
+      {loading || monthsLoading ? (
         <div className="text-center py-12 text-gray-400">加载中...</div>
-      ) : periods.length === 0 ? (
+      ) : months.length === 0 ? (
         <div className="text-center py-12 text-gray-400 bg-white rounded-xl border">
           <Calculator size={40} className="mx-auto mb-3 text-gray-300"/>
           <p>该仓库还没有计算过工资</p>
