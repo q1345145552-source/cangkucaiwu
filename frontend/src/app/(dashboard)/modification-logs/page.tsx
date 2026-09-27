@@ -10,13 +10,15 @@ const MODULE_LABELS: Record<string, string> = {
   expense: "运营支出",
   user: "用户账号",
   employee: "员工档案",
+  payroll: "工资",
 };
-const OP_LABELS: Record<string, string> = { create: "新建", edit: "编辑", delete: "删除", resign: "离职" };
+const OP_LABELS: Record<string, string> = { create: "新建", edit: "编辑", delete: "删除", resign: "离职", void: "作废" };
 const OP_COLORS: Record<string, string> = {
   create: "bg-green-100 text-green-700",
   edit: "bg-blue-100 text-blue-700",
   delete: "bg-red-100 text-red-700",
   resign: "bg-orange-100 text-orange-700",
+  void: "bg-gray-200 text-gray-600",
 };
 const FIELD_LABELS: Record<string, string> = {
   amount: "金额", currency: "币种", declare_date: "申报日期", expense_date: "支出日期",
@@ -27,6 +29,7 @@ const FIELD_LABELS: Record<string, string> = {
   warehouse_ids: "所属仓库", password: "密码", is_active: "启用状态",
   linked_account: "绑定账号", resignation_date: "离职日期", reason: "离职原因",
   note: "备注", blacklisted: "拉黑", account_disabled: "账号禁用",
+  employee_name: "员工姓名", range: "区间", void_reason: "作废原因", new_record_id: "新工资单编号",
 };
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "系统总管理员", warehouse_admin: "仓库管理员", supervisor: "仓库主管",
@@ -131,6 +134,7 @@ export default function ModificationLogsPage() {
               <option value="expense">运营支出</option>
               <option value="user">用户账号</option>
               <option value="employee">员工档案</option>
+              <option value="payroll">工资</option>
             </select>
           </div>
           <div className="w-[160px]">
@@ -184,7 +188,7 @@ export default function ModificationLogsPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${OP_COLORS[h.operation_type] || ""}`}>{OP_LABELS[h.operation_type] || h.operation_type}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {h.operation_type === "resign" ? "离职" : h.operation_type === "edit" ? (diffSummary(h.before_data, h.after_data) || "更新") : h.operation_type === "delete" ? "删除记录" : "新建记录"}
+                      {h.operation_type === "resign" ? "离职" : h.operation_type === "void" ? (h.before_data?.void_reason || "作废") : h.operation_type === "edit" ? (diffSummary(h.before_data, h.after_data) || "更新") : h.operation_type === "delete" ? "删除记录" : "新建记录"}
                     </td>
                   </tr>
                 ))}

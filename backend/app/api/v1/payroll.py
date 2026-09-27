@@ -14,6 +14,7 @@ from app.models.overtime import OvertimeAssignment, OvertimeTask
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.services.schedule import get_work_schedule
+from app.services.data_history import record_history
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from datetime import datetime, date, timedelta, time
@@ -31,6 +32,8 @@ class CalculateRequest(BaseModel):
     start_date: Optional[str] = None  # 自定义日期段开始日 YYYY-MM-DD
     end_date: Optional[str] = None  # 结算截止日 YYYY-MM-DD（单人/离职结算/自定义日期段用）
     is_resignation: bool = False  # 离职结算：扣到实发0为止，剩余欠款老板认了
+    recalc_employee_id: Optional[int] = None  # 重算模式：只算这个员工（含离职/已删除），不走水位线
+    recalc_start_date: Optional[str] = None  # 重算模式：写死的开始日 YYYY-MM-DD
 
 
 class SingleSettleRequest(BaseModel):
@@ -207,15 +210,27 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         "no_hire_names": [], "no_salary_template": [], "no_deduction_template": [], "pending_days": [],
     }
 
-    # ── 2. 在职员工（排除已删除/离职），单人可限定 ──
-    emp_q = select(Employee).where(
-        Employee.warehouse_id == wh_id,
-        Employee.status != "resigned",
-        Employee.is_deleted == False,
-    )
-    if req.employee_ids:
-        emp_q = emp_q.where(Employee.id.in_(req.employee_ids))
-    employees = (await db.execute(emp_q)).scalars().all()
+    # ── 2. 在职员工（排除已删除/离职），单人可限定；重算模式取指定员工（含离职/已删除）──
+    recalc_mode = req.recalc_employee_id is not None
+    if recalc_mode:
+        emp = (await db.execute(
+            select(Employee).where(
+                Employee.id == req.recalc_employee_id,
+                Employee.warehouse_id == wh_id,
+            )
+        )).scalar_one_or_none()
+        if not emp:
+            raise HTTPException(404, "员工不存在")
+        employees = [emp]
+    else:
+        emp_q = select(Employee).where(
+            Employee.warehouse_id == wh_id,
+            Employee.status != "resigned",
+            Employee.is_deleted == False,
+        )
+        if req.employee_ids:
+            emp_q = emp_q.where(Employee.id.in_(req.employee_ids))
+        employees = (await db.execute(emp_q)).scalars().all()
 
     if not employees:
         msg = "该仓库没有可结算的在职员工"
@@ -224,14 +239,15 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         base["early_return"] = {"message": msg, "records": [], "skipped": []}
         return base
 
-    # ── 3. 水位线 = 该员工已结算结束日的最大值 ──
+    # ── 3. 水位线 = 该员工已结算结束日的最大值（排除已作废；重算模式不走水位线）──
     emp_ids = [e.id for e in employees]
     water_line = {}
-    if emp_ids:
+    if emp_ids and not recalc_mode:
         emp_records = (await db.execute(
             select(PayrollRecord).where(
                 PayrollRecord.warehouse_id == wh_id,
                 PayrollRecord.employee_id.in_(emp_ids),
+                PayrollRecord.voided == False,
             )
         )).scalars().all()
         for r in emp_records:
@@ -245,21 +261,33 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             if wl and (water_line.get(r.employee_id) is None or wl > water_line[r.employee_id]):
                 water_line[r.employee_id] = wl
 
-    # ── 4. 每个员工的起点 = 水位线+1 或 入职日期 ──
+    # ── 4. 每个员工的起点 = 水位线+1 或 入职日期（重算模式用写死起点）──
     emp_start = {}
     no_hire_names = []
     skipped_notes = []
+    if recalc_mode:
+        try:
+            recalc_start = datetime.strptime(req.recalc_start_date, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            raise HTTPException(400, "开始日格式错误，应为 YYYY-MM-DD")
+    else:
+        recalc_start = None
     for emp in employees:
-        wl = water_line.get(emp.id)
-        if wl:
-            start = wl + timedelta(days=1)
+        if recalc_mode:
+            start = recalc_start
         else:
-            hd = emp.hire_date
-            if not hd:
-                no_hire_names.append(emp.name)
-                continue
-            start = hd.date() if isinstance(hd, datetime) else hd
+            wl = water_line.get(emp.id)
+            if wl:
+                start = wl + timedelta(days=1)
+            else:
+                hd = emp.hire_date
+                if not hd:
+                    no_hire_names.append(emp.name)
+                    continue
+                start = hd.date() if isinstance(hd, datetime) else hd
         if start > batch_end:
+            if recalc_mode:
+                raise HTTPException(400, "结算开始日晚于结束日，无法重算")
             if wl:
                 skipped_notes.append(f"{emp.name} 已结算到 {wl.isoformat()}，没有需要结算的区间")
             else:
@@ -466,30 +494,8 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
     return base
 
 
-async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest):
-    """核心工资计算（周期/单人/离职共用）。wh_id 已由调用方校验。"""
-    prep = await _prepare_payroll(db, current_user, wh_id, req)
-    if prep.get("early_return") is not None:
-        return prep["early_return"]
-
-    # 问题按原顺序报错（跟抽取前完全一致）
-    if prep["no_hire_names"]:
-        raise HTTPException(400, "以下员工没有入职日期，请先补充后再计算：\n" + "、".join(prep["no_hire_names"]))
-    if prep["no_salary_template"] or prep["no_deduction_template"]:
-        lines = []
-        if prep["no_salary_template"]:
-            names = "、".join(e.name for e in prep["no_salary_template"])
-            lines.append(f"以下员工还没有设置薪资模板，请先设置：\n{names}")
-        if prep["no_deduction_template"]:
-            names = "、".join(e.name for e in prep["no_deduction_template"])
-            lines.append(f"以下员工还没有设置扣款模板，请先设置：\n{names}")
-        raise HTTPException(400, "\n".join(lines))
-    if prep["pending_days"]:
-        lines = [f"{p['employee']} {p['date']}（缺 {'、'.join(p['missing'])}）" for p in prep["pending_days"][:30]]
-        more = f" 等共 {len(prep['pending_days'])} 天" if len(prep['pending_days']) > 30 else ""
-        detail = f"本周期有 {len(prep['pending_days'])} 天打卡不完整，无法计算，请先补卡再计算：\n" + "\n".join(lines) + more
-        raise HTTPException(400, detail=detail)
-
+async def _compute_employee_records(db: AsyncSession, wh_id: int, req: CalculateRequest, prep: dict):
+    """按 prep 数据为每个员工计算工资单（只 add，不 flush），返回 PayrollRecord 列表。"""
     employees = prep["employees"]
     emp_start = prep["emp_start"]
     period_end = prep["period_end"]
@@ -509,8 +515,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     early_half_time = prep["early_half_time"]
     early_one_time = prep["early_one_time"]
     afternoon_end_time = prep["afternoon_end_time"]
-    cap_note = prep["cap_note"]
-    skipped_notes = prep["skipped_notes"]
 
     # ── 按员工薪资模板计算 ──
     records = []
@@ -927,6 +931,43 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         db.add(record)
         records.append(record)
 
+    return records
+
+
+def _validate_prep(prep: dict):
+    """算工资前置校验：缺入职日期 / 缺模板 / 打卡不完整，按原顺序报错。"""
+    if prep["no_hire_names"]:
+        raise HTTPException(400, "以下员工没有入职日期，请先补充后再计算：\n" + "、".join(prep["no_hire_names"]))
+    if prep["no_salary_template"] or prep["no_deduction_template"]:
+        lines = []
+        if prep["no_salary_template"]:
+            names = "、".join(e.name for e in prep["no_salary_template"])
+            lines.append(f"以下员工还没有设置薪资模板，请先设置：\n{names}")
+        if prep["no_deduction_template"]:
+            names = "、".join(e.name for e in prep["no_deduction_template"])
+            lines.append(f"以下员工还没有设置扣款模板，请先设置：\n{names}")
+        raise HTTPException(400, "\n".join(lines))
+    if prep["pending_days"]:
+        lines = [f"{p['employee']} {p['date']}（缺 {'、'.join(p['missing'])}）" for p in prep["pending_days"][:30]]
+        more = f" 等共 {len(prep['pending_days'])} 天" if len(prep['pending_days']) > 30 else ""
+        detail = f"本周期有 {len(prep['pending_days'])} 天打卡不完整，无法计算，请先补卡再计算：\n" + "\n".join(lines) + more
+        raise HTTPException(400, detail=detail)
+
+
+async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest):
+    """核心工资计算（周期/单人/离职共用）。wh_id 已由调用方校验。"""
+    prep = await _prepare_payroll(db, current_user, wh_id, req)
+    if prep.get("early_return") is not None:
+        return prep["early_return"]
+
+    _validate_prep(prep)
+
+    period = prep["period"]
+    cap_note = prep["cap_note"]
+    skipped_notes = prep["skipped_notes"]
+
+    records = await _compute_employee_records(db, wh_id, req, prep)
+
     await db.flush()
     msg = f"已为 {len(records)} 名员工计算 {period} 工资"
     if cap_note:
@@ -1008,6 +1049,7 @@ async def list_payroll(
     half: str = None,
     settle_month: str = None,
     status: str = None,
+    voided_filter: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1016,6 +1058,16 @@ async def list_payroll(
         return {"data": [], "periods": [], "months": []}
     query = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
     count_q = select(func.count(PayrollRecord.id)).where(PayrollRecord.warehouse_id == wh_id)
+
+    # 作废筛选：valid=只看有效(默认) / voided=只看已作废 / all=全部
+    if voided_filter == "voided":
+        query = query.where(PayrollRecord.voided == True)
+        count_q = count_q.where(PayrollRecord.voided == True)
+    elif voided_filter == "all":
+        pass
+    else:
+        query = query.where(PayrollRecord.voided == False)
+        count_q = count_q.where(PayrollRecord.voided == False)
 
     if settle_month:
         # 按结算结束日所在月筛（settle_end_date 的年月 == settle_month）
@@ -1050,12 +1102,38 @@ async def list_payroll(
         emps = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
         emp_map = {e.id: e for e in emps}
 
+    # 作废信息：作废人姓名 + 重算成了哪张单（新单 recalc_from_id == 本单 id）
+    voided_by_ids = {r.voided_by for r in records if r.voided_by}
+    user_map = {}
+    if voided_by_ids:
+        users = (await db.execute(select(User).where(User.id.in_(voided_by_ids)))).scalars().all()
+        user_map = {u.id: u for u in users}
+    record_ids = {r.id for r in records}
+    recalc_to_map = {}
+    if record_ids:
+        children = (await db.execute(
+            select(PayrollRecord).where(
+                PayrollRecord.warehouse_id == wh_id,
+                PayrollRecord.recalc_from_id.in_(record_ids),
+            )
+        )).scalars().all()
+        for c in children:
+            if c.recalc_from_id:
+                recalc_to_map[c.recalc_from_id] = c.id
+
     return {
         "data": [{
             "id": r.id,
             "employee_id": r.employee_id,
             "disbursed": r.disbursed,
             "disbursed_at": r.disbursed_at.isoformat() if r.disbursed_at else None,
+            "voided": r.voided,
+            "voided_by": r.voided_by,
+            "voided_by_name": user_map.get(r.voided_by).display_name if r.voided_by and user_map.get(r.voided_by) else None,
+            "voided_at": r.voided_at.isoformat() if r.voided_at else None,
+            "void_reason": r.void_reason,
+            "recalc_from_id": r.recalc_from_id,
+            "recalc_to_id": recalc_to_map.get(r.id),
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
             "employee_status": r.employee_status,
             "period": r.period,
@@ -1105,7 +1183,10 @@ async def payroll_summary(
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         return {"period": period or "", "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
-    summary_q = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
+    summary_q = select(PayrollRecord).where(
+        PayrollRecord.warehouse_id == wh_id,
+        PayrollRecord.voided == False,
+    )
 
     if settle_month:
         try:
@@ -1191,6 +1272,7 @@ async def confirm_all_payroll(
     conf_q = select(PayrollRecord).where(
         PayrollRecord.warehouse_id == wh_id,
         PayrollRecord.status == "pending",
+        PayrollRecord.voided == False,
     )
     scope = period
     if settle_month:
@@ -1263,6 +1345,8 @@ async def batch_confirm_payroll(
     now = thai_now()
     cnt = 0
     for r in records:
+        if r.voided:
+            continue
         if r.status != "confirmed":
             r.status = "confirmed"
             r.confirmed_by = current_user.id
@@ -1287,6 +1371,8 @@ async def batch_disburse_payroll(
     now = thai_now()
     cnt = 0
     for r in records:
+        if r.voided:
+            continue
         # 只发放已确认的；已发放的跳过不重复处理
         if r.status == "confirmed" and not r.disbursed:
             r.disbursed = True
@@ -1314,6 +1400,155 @@ async def batch_delete_payroll(
         await db.delete(r)
     await db.flush()
     return {"message": f"已删除 {len(records)} 条", "count": len(records)}
+
+
+class RecalcRequest(BaseModel):
+    void_reason: str
+
+
+class BatchRecalcRequest(BaseModel):
+    record_ids: List[int]
+    void_reason: str
+
+
+async def _recalc_one(db: AsyncSession, current_user: User, wh_id: int, record_id: int, void_reason: str):
+    """重算单张工资单：作废旧的、用旧区间重新生成一张新单。
+    返回结果 dict；失败抛 HTTPException（事务由调用方负责，失败则整体回滚）。"""
+    if not void_reason or not str(void_reason).strip():
+        raise HTTPException(400, "请填写作废原因")
+
+    r = (await db.execute(
+        select(PayrollRecord).where(
+            PayrollRecord.id == record_id,
+            PayrollRecord.warehouse_id == wh_id,
+        )
+    )).scalar_one_or_none()
+    if not r:
+        raise HTTPException(404, "工资记录不存在")
+    if r.voided:
+        raise HTTPException(400, "这张单已经作废过了")
+    if r.disbursed:
+        raise HTTPException(400, "已发放的工资单不能重算，先把发放撤了再说")
+
+    was_confirmed = r.status == "confirmed"
+    if not r.settle_start_date or not r.settle_end_date:
+        raise HTTPException(400, "这张单没有结算区间，无法重算")
+
+    # 回退旧单已扣的预支（作废后新单会重新扣，避免重复扣）
+    await _rollback_advance_deductions(db, r)
+
+    req = CalculateRequest(
+        end_date=r.settle_end_date.isoformat(),
+        employee_ids=[r.employee_id],
+        recalc_employee_id=r.employee_id,
+        recalc_start_date=r.settle_start_date.isoformat(),
+        is_resignation=False,
+    )
+    prep = await _prepare_payroll(db, current_user, wh_id, req)
+    if prep.get("early_return") is not None:
+        raise HTTPException(400, prep["early_return"]["message"])
+    _validate_prep(prep)
+
+    new_records = await _compute_employee_records(db, wh_id, req, prep)
+    if not new_records:
+        raise HTTPException(400, "重算失败：没有生成新工资单")
+    new_record = new_records[0]
+    await db.flush()
+
+    now = thai_now()
+    r.voided = True
+    r.voided_by = current_user.id
+    r.voided_at = now
+    r.void_reason = str(void_reason).strip()
+    new_record.recalc_from_id = r.id
+
+    emp = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
+    emp_name = emp.name if emp else ""
+    await record_history(
+        db,
+        module="工资",
+        record_id=r.id,
+        operator=current_user,
+        operation_type="void",
+        before={
+            "employee_name": emp_name,
+            "range": f"{r.settle_start_date.isoformat()} 到 {r.settle_end_date.isoformat()}",
+            "void_reason": str(void_reason).strip(),
+        },
+        after={"new_record_id": new_record.id},
+        warehouse_id=wh_id,
+    )
+    await db.flush()
+
+    note = "这张单之前已经确认过" if was_confirmed else None
+    return {
+        "message": "重算成功",
+        "record_id": r.id,
+        "new_record_id": new_record.id,
+        "employee_name": emp_name,
+        "note": note,
+    }
+
+
+@router.post("/{record_id}/recalc")
+async def recalc_payroll(
+    record_id: int,
+    req: RecalcRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """单张重算：作废旧单 + 用旧区间生成新单。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以重算工资")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    return await _recalc_one(db, current_user, wh_id, record_id, req.void_reason)
+
+
+@router.post("/batch-recalc")
+async def batch_recalc_payroll(
+    req: BatchRecalcRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量重算：逐张处理，能算的作废重算，不能算的跳过并说明原因。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以重算工资")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    if not req.void_reason or not str(req.void_reason).strip():
+        raise HTTPException(400, "请填写作废原因")
+    records = await _batch_fetch(db, wh_id, req.record_ids)
+
+    emp_ids = {r.employee_id for r in records}
+    emp_map = {}
+    if emp_ids:
+        emps = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
+        emp_map = {e.id: e for e in emps}
+
+    success = []
+    skipped = []
+    for r in records:
+        name = emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else ""
+        try:
+            async with db.begin_nested():
+                result = await _recalc_one(db, current_user, wh_id, r.id, req.void_reason)
+            success.append({"record_id": r.id, "name": name, "new_record_id": result["new_record_id"]})
+        except HTTPException as e:
+            skipped.append({"record_id": r.id, "name": name, "reason": str(e.detail)})
+        except Exception as e:
+            skipped.append({"record_id": r.id, "name": name, "reason": str(e) or "重算失败"})
+
+    await db.flush()
+    return {
+        "message": f"成功 {len(success)} 条，跳过 {len(skipped)} 条",
+        "success_count": len(success),
+        "skipped_count": len(skipped),
+        "success": success,
+        "skipped": skipped,
+    }
 
 
 @router.delete("/{record_id}")
@@ -1581,6 +1816,7 @@ async def settlement_progress(
             select(PayrollRecord).where(
                 PayrollRecord.warehouse_id.in_(wh_ids),
                 PayrollRecord.employee_id.in_(emp_ids),
+                PayrollRecord.voided == False,
             )
         )).scalars().all()
         for r in records:

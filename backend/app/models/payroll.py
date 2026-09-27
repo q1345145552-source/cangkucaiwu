@@ -18,6 +18,13 @@ class PayrollRecord(Base):
     status = Column(String(20), nullable=False, default="pending")  # pending / confirmed
     disbursed = Column(Boolean, default=False)  # 已发放
 
+    # 作废 / 重算
+    voided = Column(Boolean, default=False)  # 是否已作废
+    voided_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # 作废操作人
+    voided_at = Column(DateTime(timezone=True), nullable=True)  # 作废时间
+    void_reason = Column(String(500), nullable=True)  # 作废原因
+    recalc_from_id = Column(Integer, nullable=True)  # 从哪张单重算来的
+
     # Attendance breakdown
     total_days_in_month = Column(Integer, default=0)
     attendance_days = Column(Float, default=0)

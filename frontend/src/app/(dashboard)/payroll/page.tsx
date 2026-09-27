@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { thaiNow } from "@/lib/thai-time";
-import { Calculator, CheckCircle, Trash2, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User } from "lucide-react";
+import { Calculator, CheckCircle, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User } from "lucide-react";
 
 // 泰国时间的今天/昨天/过去15号/过去月末（用于结算日期输入）
 function thaiDateStr(d: Date): string {
@@ -52,7 +52,7 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState("");
-  const [selectedPeriodKey, setSelectedPeriodKey] = useState("");
+  const [voidFilter, setVoidFilter] = useState("valid");
   const [showPayslip, setShowPayslip] = useState<any>(null);
   const [dailyDetailOpen, setDailyDetailOpen] = useState(false);
   const [lateDetailOpen, setLateDetailOpen] = useState(false);
@@ -110,20 +110,6 @@ export default function PayrollPage() {
     }
   }
 
-  function periodKeyToApi(periodKey: string) {
-    const idx = periodKey.indexOf("_");
-    if (idx === -1) return { period: periodKey, half: "first_half" };
-    return { period: periodKey.slice(0, idx), half: periodKey.slice(idx + 1) || "first_half" };
-  }
-
-  function periodLabel(periodKey: string) {
-    const idx = periodKey.indexOf("_");
-    if (idx === -1) return periodKey;
-    const period = periodKey.slice(0, idx);
-    const half = periodKey.slice(idx + 1);
-    return `${period} ${half === "second_half" ? "下半月" : "上半月"}`;
-  }
-
   // 单条工资单的结算区间显示：「X月X日 到 X月X日」
   function recordDateLabel(r: any): string {
     const s = r.settle_start_date;
@@ -138,18 +124,18 @@ export default function PayrollPage() {
     return `${r.period} ${r.half === "second_half" ? "下半月" : "上半月"}`;
   }
 
-  async function loadRecordsByMonth(month?: string) {
+  async function loadRecordsByMonth(month?: string, vf?: string) {
     const m = month || selectedMonth;
     if (!m) return;
+    const f = vf || voidFilter;
     setSelectedMonth(m);
-    setSelectedPeriodKey(`${m}_second_half`);
     setLoading(true);
     setSelectedIds([]);
     try {
-      const params = `settle_month=${m}`;
+      const params = `settle_month=${m}&voided_filter=${f}`;
       const [recR, sumR] = await Promise.all([
         api.get<any>(`/payroll?${params}`),
-        api.get<any>(`/payroll/summary?${params}`),
+        api.get<any>(`/payroll/summary?settle_month=${m}`),
       ]);
       setRecords(recR.data || []);
       setSummary(sumR);
@@ -239,32 +225,20 @@ export default function PayrollPage() {
     }
   }
 
-  async function handleDelete(recordId: number) {
-    if (!confirm("确定删除该工资记录吗？")) return;
+  async function handleRecalcOne(recordId: number) {
+    const reason = prompt("请填写作废原因：");
+    if (reason === null) return;
+    if (!reason.trim()) { toast("error", "请填写作废原因"); return; }
+    setCalculating(true);
     try {
-      await api.delete(`/payroll/${recordId}`);
-      toast("success", "已删除");
+      const r = await api.post<any>(`/payroll/${recordId}/recalc`, { void_reason: reason });
+      const msg = r.note ? `${r.message || "重算成功"}；${r.note}` : (r.message || "重算成功");
+      toast("success", msg);
       loadRecordsByMonth();
       loadMonths();
       loadProgress();
     } catch (err: any) {
-      toast("error", err.message || "删除失败");
-    }
-  }
-
-  async function handleRecalculate() {
-    const { period, half } = periodKeyToApi(selectedPeriodKey);
-    if (!confirm(`将删除 ${periodLabel(selectedPeriodKey)} 全部工资记录并重新计算，确定吗？`)) return;
-    setCalculating(true);
-    try {
-      const delRes = await api.delete<any>(`/payroll/period/${period}?half=${half}`);
-      const calcRes = await api.post<any>("/payroll/calculate", { period, half });
-      const msg = [delRes?.message, calcRes?.message].filter(Boolean).join("；") || `${periodLabel(selectedPeriodKey)} 重新计算完成`;
-      toast("success", msg);
-      loadMonths();
-      loadRecordsByMonth(selectedMonth);
-    } catch (err: any) {
-      toast("error", err.message || "操作失败");
+      toast("error", err.message || "重算失败");
     }
     setCalculating(false);
   }
@@ -355,7 +329,8 @@ export default function PayrollPage() {
   }
 
   function toggleSelectAll() {
-    setSelectedIds(prev => (prev.length === records.length && records.length > 0) ? [] : records.map(r => r.id));
+    const selectable = records.filter(r => !r.voided).map(r => r.id);
+    setSelectedIds(prev => (prev.length === selectable.length && selectable.length > 0) ? [] : selectable);
   }
 
   async function handleBatchConfirm() {
@@ -382,17 +357,21 @@ export default function PayrollPage() {
     setCalculating(false);
   }
 
-  async function handleBatchDelete() {
+  async function handleBatchRecalc() {
     if (!selectedIds.length) return;
-    if (!confirm(`确定删除选中的 ${selectedIds.length} 条工资单吗？删除后可以重新计算`)) return;
+    const reason = prompt("请填写作废原因（对选中的所有工资单统一生效）：");
+    if (reason === null) return;
+    if (!reason.trim()) { toast("error", "请填写作废原因"); return; }
     setCalculating(true);
     try {
-      const r = await api.post<any>("/payroll/batch-delete", { record_ids: selectedIds });
-      toast("success", r.message || `已删除 ${r.count} 条`);
+      const r = await api.post<any>("/payroll/batch-recalc", { record_ids: selectedIds, void_reason: reason });
+      const skippedText = (r.skipped || []).map((s: any) => `${s.name}：${s.reason}`).join("；");
+      const msg = r.message || "批量重算完成";
+      toast("success", skippedText ? `${msg}；跳过：${skippedText}` : msg);
       loadRecordsByMonth();
       loadMonths();
       loadProgress();
-    } catch (err: any) { toast("error", err.message || "批量删除失败"); }
+    } catch (err: any) { toast("error", err.message || "批量重算失败"); }
     setCalculating(false);
   }
 
@@ -437,17 +416,21 @@ export default function PayrollPage() {
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
+            <select value={voidFilter}
+              onChange={e => {
+                setVoidFilter(e.target.value);
+                loadRecordsByMonth(selectedMonth, e.target.value);
+              }}
+              className="border rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="valid">只看有效</option>
+              <option value="voided">只看已作废</option>
+              <option value="all">全部</option>
+            </select>
             {isAdmin && records.length > 0 && (
-              <>
-                <button onClick={handleConfirmAll}
-                  className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">
-                  <CheckCircle size={16}/> 全部确认
-                </button>
-                <button onClick={handleRecalculate}
-                  className="bg-amber-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-amber-600">
-                  <AlertTriangle size={16}/> 重新计算
-                </button>
-              </>
+              <button onClick={handleConfirmAll}
+                className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">
+                <CheckCircle size={16}/> 全部确认
+              </button>
             )}
           </div>
         </div>
@@ -506,8 +489,8 @@ export default function PayrollPage() {
               className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 disabled:opacity-50">批量确认</button>
             <button onClick={handleBatchDisburse} disabled={calculating}
               className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 disabled:opacity-50">批量发放</button>
-            <button onClick={handleBatchDelete} disabled={calculating}
-              className="bg-red-500 text-white px-3 py-1.5 rounded text-sm hover:bg-red-600 disabled:opacity-50">批量删除</button>
+            <button onClick={handleBatchRecalc} disabled={calculating}
+              className="bg-amber-500 text-white px-3 py-1.5 rounded text-sm hover:bg-amber-600 disabled:opacity-50">批量重算</button>
           </div>
         </div>
       )}
@@ -533,7 +516,7 @@ export default function PayrollPage() {
             <thead>
               <tr className="border-b bg-gray-50">
                 <th className="text-center px-2 py-3 w-10">
-                  <input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length}
+                  <input type="checkbox" checked={records.length > 0 && selectedIds.length === records.filter(r => !r.voided).length && records.filter(r => !r.voided).length > 0}
                     onChange={toggleSelectAll} className="w-4 h-4 cursor-pointer align-middle" />
                 </th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">员工</th>
@@ -553,14 +536,17 @@ export default function PayrollPage() {
             </thead>
             <tbody>
               {records.map((r: any) => (
-                <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                <tr key={r.id} className={`border-b ${r.voided ? "bg-gray-50 text-gray-400" : "border-gray-50 hover:bg-gray-50"}`}>
                   <td className="px-2 py-3 text-center">
-                    <input type="checkbox" checked={selectedIds.includes(r.id)}
-                      onChange={() => toggleSelect(r.id)} className="w-4 h-4 cursor-pointer align-middle" />
+                    <input type="checkbox" disabled={r.voided} checked={selectedIds.includes(r.id)}
+                      onChange={() => toggleSelect(r.id)} className="w-4 h-4 cursor-pointer align-middle disabled:cursor-not-allowed" />
                   </td>
                   <td className="px-3 py-3 font-medium">
-                    {r.employee_name ?? "—"}
-                    {<div className="text-[11px] text-gray-400 font-normal">{recordDateLabel(r)}</div>}
+                    <span className={r.voided ? "text-gray-400" : ""}>{r.employee_name ?? "—"}</span>
+                    {r.voided && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 text-[10px] font-medium">已作废</span>
+                    )}
+                    <div className="text-[11px] text-gray-400 font-normal">{recordDateLabel(r)}</div>
                   </td>
                   <td className="px-3 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs ${templateTypeBadge(r.detail?.salary_template_type)}`}>
@@ -576,14 +562,20 @@ export default function PayrollPage() {
                   <td className="px-3 py-3 text-right text-red-500">{(r.total_deductions ?? 0) > 0 ? (r.total_deductions ?? 0).toLocaleString() : "-"}</td>
                   <td className="px-3 py-3 text-right font-bold">{(r.net_pay ?? 0).toLocaleString()}</td>
                   <td className="px-3 py-3 text-center">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      r.status === "confirmed" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
-                    }`}>
-                      {r.status === "confirmed" ? "已确认" : "待确认"}
-                    </span>
+                    {r.voided ? (
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-500">已作废</span>
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        r.status === "confirmed" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
+                      }`}>
+                        {r.status === "confirmed" ? "已确认" : "待确认"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-center">
-                    {r.disbursed ? (
+                    {r.voided ? (
+                      <span className="text-gray-400 text-xs">—</span>
+                    ) : r.disbursed ? (
                       <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
                         已发放
                       </span>
@@ -593,14 +585,14 @@ export default function PayrollPage() {
                   </td>
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      {r.status !== "confirmed" && isAdmin && (
+                      {!r.voided && r.status !== "confirmed" && isAdmin && (
                         <button onClick={() => handleConfirm(r.id)}
                           className="text-green-600 hover:text-green-800 text-xs font-medium"
                           title="确认">
                           <CheckCircle size={16}/>
                         </button>
                       )}
-                      {r.status === "confirmed" && !r.disbursed && isAdmin && (
+                      {!r.voided && r.status === "confirmed" && !r.disbursed && isAdmin && (
                         <button onClick={() => handleDisburse(r.id)} disabled={disbursing === r.id}
                           className="text-blue-600 hover:text-blue-800 text-xs font-medium"
                           title="发放">
@@ -612,11 +604,11 @@ export default function PayrollPage() {
                         title="查看工资单">
                         <Eye size={14}/>
                       </button>
-                      {isAdmin && (
-                        <button onClick={() => handleDelete(r.id)}
-                          className="text-red-400 hover:text-red-600 text-xs"
-                          title="删除">
-                          <Trash2 size={14}/>
+                      {!r.voided && isAdmin && (
+                        <button onClick={() => handleRecalcOne(r.id)}
+                          className="text-amber-500 hover:text-amber-700 text-xs font-medium"
+                          title="重算">
+                          <AlertTriangle size={14}/>
                         </button>
                       )}
                     </div>
@@ -731,6 +723,9 @@ export default function PayrollPage() {
                 <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${templateTypeBadge(psTemplateType)}`}>
                   {templateTypeLabel(psTemplateType) || (showPayslip.employee_status === "trial" ? "试用期" : "正式员工")}
                 </span>
+                {showPayslip.voided && (
+                  <span className="inline-block ml-1 mt-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-600">已作废</span>
+                )}
               </div>
 
               {/* Attendance */}
@@ -856,13 +851,15 @@ export default function PayrollPage() {
               <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">确认状态</span>
-                  <span className={showPayslip.status === "confirmed" ? "text-green-600 font-medium" : "text-amber-600"}>
-                    {showPayslip.status === "confirmed" ? "已确认" : "待确认"}
+                  <span className={showPayslip.voided ? "text-gray-400 font-medium" : showPayslip.status === "confirmed" ? "text-green-600 font-medium" : "text-amber-600"}>
+                    {showPayslip.voided ? "已作废" : showPayslip.status === "confirmed" ? "已确认" : "待确认"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">发放状态</span>
-                  {showPayslip.disbursed ? (
+                  {showPayslip.voided ? (
+                    <span className="text-gray-400">—</span>
+                  ) : showPayslip.disbursed ? (
                     <span className="text-blue-600 font-medium">
                       已发放 {showPayslip.disbursed_at ? new Date(showPayslip.disbursed_at).toLocaleDateString("zh-CN") : ""}
                     </span>
@@ -871,6 +868,41 @@ export default function PayrollPage() {
                   )}
                 </div>
               </div>
+
+              {/* 作废信息 */}
+              {(showPayslip.voided || showPayslip.recalc_from_id || showPayslip.recalc_to_id) && (
+                <div className="border border-gray-200 rounded-lg p-3 space-y-1 text-sm">
+                  <div className="text-xs text-gray-400 font-medium mb-1">作废 / 重算信息</div>
+                  {showPayslip.voided && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">作废人</span>
+                        <span className="text-gray-700">{showPayslip.voided_by_name || "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">作废时间</span>
+                        <span className="text-gray-700">{showPayslip.voided_at ? new Date(showPayslip.voided_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">作废原因</span>
+                        <span className="text-gray-700">{showPayslip.void_reason || "—"}</span>
+                      </div>
+                      {showPayslip.recalc_to_id && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">重算成了</span>
+                          <span className="text-gray-700">工资单 #{showPayslip.recalc_to_id}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {showPayslip.recalc_from_id && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">从哪张单重算</span>
+                      <span className="text-gray-700">工资单 #{showPayslip.recalc_from_id}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Disburse action */}
               {showPayslip.status === "confirmed" && !showPayslip.disbursed && isAdmin && (

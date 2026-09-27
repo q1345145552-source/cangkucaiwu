@@ -324,6 +324,11 @@ async def seed():
                 ("signature_path", "VARCHAR(500)"),
                 ("created_at", "TIMESTAMPTZ DEFAULT now()"),
                 ("updated_at", "TIMESTAMPTZ"),
+                ("voided", "BOOLEAN DEFAULT false"),
+                ("voided_by", "INTEGER"),
+                ("voided_at", "TIMESTAMPTZ"),
+                ("void_reason", "VARCHAR(500)"),
+                ("recalc_from_id", "INTEGER"),
             ]
             for _c, _t in payroll_cols:
                 await conn.execute(text(f"ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS {_c} {_t}"))
