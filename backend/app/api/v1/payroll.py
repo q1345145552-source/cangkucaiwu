@@ -463,6 +463,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         early_half_count = 0
         early_one_count = 0
         absence_fine_days = 0.0
+        absence_fine_list = []
         rest_days_count = 0
         leave_days_count = 0.0
         absence_days_count = 0.0
@@ -556,6 +557,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             leave_days_count += lv
             absence_days_count += ab
             absence_fine_days += absent_fine_day
+            if absent_fine_day > 0:
+                absence_fine_list.append({"date": current.isoformat(), "days": absent_fine_day})
             # 按月模板：请假/缺勤按当天所在月的日薪逐天扣（跨月时各月日薪不同）
             if tt == "monthly":
                 day_rate = template_amount / calendar.monthrange(current.year, current.month)[1]
@@ -656,20 +659,43 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         else:
             late_half_mult = late_one_mult = early_half_mult = early_one_mult = absence_extra_mult = 0.0
 
-        late_penalty_total = round(late_half_count * hourly_rate * late_half_mult + late_one_count * hourly_rate * late_one_mult, 2)
+        # 迟到/早退/旷工罚款：按每一条发生那天的时薪/日薪算（跨月时各月不同）
+        def _event_hourly_rate(d_str):
+            d = datetime.strptime(d_str, "%Y-%m-%d").date()
+            if tt == "monthly":
+                return template_amount / calendar.monthrange(d.year, d.month)[1] / 8.0
+            return hourly_rate  # hourly/daily 固定时薪
+
+        def _event_daily_rate(d_str):
+            d = datetime.strptime(d_str, "%Y-%m-%d").date()
+            if tt == "monthly":
+                return template_amount / calendar.monthrange(d.year, d.month)[1]
+            return daily_rate  # hourly/daily 固定日薪
+
+        late_penalty_total = 0.0
         late_details = []
         for l in late_list:
-            amt = round(hourly_rate * late_half_mult, 2) if l["type"] == "late_half" else round(hourly_rate * late_one_mult, 2)
+            mult = late_half_mult if l["type"] == "late_half" else late_one_mult
+            amt = round(_event_hourly_rate(l["date"]) * mult, 2)
+            late_penalty_total += amt
             late_details.append({"day": l["day"], "date": l["date"], "type": l["type"], "amount": amt})
+        late_penalty_total = round(late_penalty_total, 2)
 
-        early_penalty_total = round(early_half_count * hourly_rate * early_half_mult + early_one_count * hourly_rate * early_one_mult, 2)
+        early_penalty_total = 0.0
         early_details = []
         for l in early_list:
-            amt = round(hourly_rate * early_half_mult, 2) if l["type"] == "early_half" else round(hourly_rate * early_one_mult, 2)
+            mult = early_half_mult if l["type"] == "early_half" else early_one_mult
+            amt = round(_event_hourly_rate(l["date"]) * mult, 2)
+            early_penalty_total += amt
             early_details.append({"day": l["day"], "date": l["date"], "type": l["type"], "amount": amt})
+        early_penalty_total = round(early_penalty_total, 2)
 
-        # 旷工额外罚 = 日薪 × 旷工倍数 × 旷工天数
-        absence_fine_total = round(daily_rate * absence_extra_mult * absence_fine_days, 2)
+        # 旷工额外罚 = 每天各自的日薪 × 旷工倍数 × 该天旷工天数
+        absence_fine_total = 0.0
+        for a in absence_fine_list:
+            amt = round(_event_daily_rate(a["date"]) * absence_extra_mult * a["days"], 2)
+            absence_fine_total += amt
+        absence_fine_total = round(absence_fine_total, 2)
 
         # 固定扣款：日期段覆盖到下半月（结束日 >= 16 号）就扣全额，否则不扣
         fixed_items = fixed_by_emp.get(emp.id, [])
