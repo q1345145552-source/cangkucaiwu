@@ -1172,8 +1172,9 @@ async def confirm_payroll(
 
 @router.post("/confirm-all")
 async def confirm_all_payroll(
-    period: str = Query(...),
+    period: str = Query(None),
     half: str = None,
+    settle_month: str = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1183,17 +1184,33 @@ async def confirm_all_payroll(
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         raise HTTPException(400, "请先选择仓库")
+
+    if not settle_month and not period:
+        raise HTTPException(400, "请提供结算月份或周期")
+
     conf_q = select(PayrollRecord).where(
         PayrollRecord.warehouse_id == wh_id,
-        PayrollRecord.period == period,
         PayrollRecord.status == "pending",
     )
-    if half:
-        conf_q = conf_q.where(PayrollRecord.half == half)
+    scope = period
+    if settle_month:
+        # 按结算结束日所在月确认该月所有待确认工资单
+        try:
+            sy, sm = settle_month.split("-")
+            month_start = date(int(sy), int(sm), 1)
+        except (ValueError, TypeError):
+            raise HTTPException(400, "结算月份格式错误，应为 YYYY-MM")
+        month_end = date(month_start.year + 1, 1, 1) if month_start.month == 12 else date(month_start.year, month_start.month + 1, 1)
+        conf_q = conf_q.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
+        scope = settle_month
+    else:
+        conf_q = conf_q.where(PayrollRecord.period == period)
+        if half:
+            conf_q = conf_q.where(PayrollRecord.half == half)
     records = (await db.execute(conf_q)).scalars().all()
 
     if not records:
-        raise HTTPException(404, f"{period} 没有待确认的工资单")
+        raise HTTPException(404, f"{scope} 没有待确认的工资单")
 
     now = thai_now()
     total_net = 0

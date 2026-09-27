@@ -180,6 +180,7 @@ export default function PayrollPage() {
       const r = await api.post<any>("/payroll/calculate", { end_date: calcEndDate });
       toast("success", r.message || "计算完成");
       loadMonths();
+      loadProgress();
       const m = calcEndDate.slice(0, 7);
       setSelectedMonth(m);
       loadRecordsByMonth(m);
@@ -227,10 +228,10 @@ export default function PayrollPage() {
   }
 
   async function handleConfirmAll() {
-    const { period, half } = periodKeyToApi(selectedPeriodKey);
-    if (!confirm(`确定将 ${periodLabel(selectedPeriodKey)} 所有待确认工资单全部确认吗？`)) return;
+    if (!selectedMonth) { toast("error", "请先选择月份"); return; }
+    if (!confirm(`确定将 ${selectedMonth} 月 所有待确认工资单全部确认吗`)) return;
     try {
-      const r = await api.post(`/payroll/confirm-all?period=${period}&half=${half}`);
+      const r = await api.post(`/payroll/confirm-all?settle_month=${selectedMonth}`);
       toast("success", r.message || "全部确认成功");
       loadRecordsByMonth();
     } catch (err: any) {
@@ -245,6 +246,7 @@ export default function PayrollPage() {
       toast("success", "已删除");
       loadRecordsByMonth();
       loadMonths();
+      loadProgress();
     } catch (err: any) {
       toast("error", err.message || "删除失败");
     }
@@ -363,6 +365,7 @@ export default function PayrollPage() {
       const r = await api.post<any>("/payroll/batch-confirm", { record_ids: selectedIds });
       toast("success", r.message || `已确认 ${r.count} 条`);
       loadRecordsByMonth();
+      loadProgress();
     } catch (err: any) { toast("error", err.message || "批量确认失败"); }
     setCalculating(false);
   }
@@ -374,6 +377,7 @@ export default function PayrollPage() {
       const r = await api.post<any>("/payroll/batch-disburse", { record_ids: selectedIds });
       toast("success", r.message || `已发放 ${r.count} 条`);
       loadRecordsByMonth();
+      loadProgress();
     } catch (err: any) { toast("error", err.message || "批量发放失败"); }
     setCalculating(false);
   }
@@ -387,6 +391,7 @@ export default function PayrollPage() {
       toast("success", r.message || `已删除 ${r.count} 条`);
       loadRecordsByMonth();
       loadMonths();
+      loadProgress();
     } catch (err: any) { toast("error", err.message || "批量删除失败"); }
     setCalculating(false);
   }
