@@ -98,6 +98,7 @@ async def preview_payroll(
         "employees": employees,
         "skipped": prep["skipped_notes"],
         "problems": problems,
+        "grace_days": prep.get("grace_days") or [],
     }
 
 
@@ -208,6 +209,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         "batch_end": batch_end, "cap_note": cap_note, "period": period, "half": half, "total_days": total_days,
         "employees": [], "emp_start": {}, "skipped_notes": [],
         "no_hire_names": [], "no_salary_template": [], "no_deduction_template": [], "pending_days": [],
+        "grace_days": [],
     }
 
     # ── 2. 在职员工（排除已删除/离职），单人可限定；重算模式取指定员工（含离职/已删除）──
@@ -448,8 +450,9 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             "reason": d.reason,
         })
 
-    # ── 7. 待补打卡检查 ──
+    # ── 7. 待补打卡检查 + 宽限期统计 ──
     pending_days = []
+    grace_days = []
     for emp in employees:
         rest_set = rest_by_emp.get(emp.id, set())
         absence_set = absence_by_emp.get(emp.id, set())
@@ -479,12 +482,19 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             if is_pending:
                 missing = [SESSION_CN[s] for s in (1, 2, 3, 4) if s not in session_set]
                 pending_days.append({"employee": emp.name, "date": current.isoformat(), "missing": missing})
+            # 宽限期内：没打卡、没请假、还没过当天下午下班的24小时 → 提示（不算旷工不发钱）
+            if n == 0 and lt is None:
+                day_end = datetime.combine(current, afternoon_end_time, tzinfo=THAI_TZ)
+                deadline = day_end + timedelta(hours=24)
+                if thai_now() <= deadline:
+                    grace_days.append({"employee": emp.name, "date": current.isoformat()})
             current += timedelta(days=1)
 
     base.update({
         "early_return": None,
         "employees": employees, "emp_start": emp_start, "skipped_notes": skipped_notes,
         "no_hire_names": no_hire_names, "no_salary_template": no_salary_template, "no_deduction_template": no_deduction_template, "pending_days": pending_days,
+        "grace_days": grace_days,
         "template_map": template_map, "deduction_template_map": deduction_template_map,
         "clock_by_emp_date": clock_by_emp_date, "leave_by_emp": leave_by_emp, "rest_by_emp": rest_by_emp, "absence_by_emp": absence_by_emp,
         "overtime_map": overtime_map, "fixed_by_emp": fixed_by_emp, "temp_by_emp": temp_by_emp,
@@ -965,6 +975,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     period = prep["period"]
     cap_note = prep["cap_note"]
     skipped_notes = prep["skipped_notes"]
+    grace_days = prep.get("grace_days") or []
 
     records = await _compute_employee_records(db, wh_id, req, prep)
 
@@ -974,6 +985,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         msg += "；" + cap_note
     if skipped_notes:
         msg += "；" + "；".join(skipped_notes)
+    if grace_days:
+        msg += f"；本次有 {len(grace_days)} 天还在24小时宽限期内，没有判旷工，也没有发钱；如果后来确认是旷工，请对这张单点重算"
     return {
         "message": msg,
         "period": period,
@@ -1207,7 +1220,7 @@ async def payroll_summary(
     total_net = sum(r.net_pay for r in records)
     total_gross = sum(r.gross_pay for r in records)
     total_ot = sum(r.overtime_pay for r in records)
-    total_penalties = sum(r.late_penalty for r in records)
+    total_penalties = sum((r.late_penalty or 0) + (r.early_penalty or 0) + (r.absence_fine or 0) for r in records)
 
     return {
         "period": period or (settle_month or ""),

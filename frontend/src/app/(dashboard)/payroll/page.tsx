@@ -675,6 +675,18 @@ export default function PayrollPage() {
                 ))}
               </div>
 
+              {(previewData.grace_days || []).length > 0 && (
+                <div className="border border-amber-300 bg-amber-50 rounded-lg p-3">
+                  <div className="text-sm font-medium text-amber-700 mb-2">宽限期内 暂未判旷工</div>
+                  {(previewData.grace_days || []).map((g: any, i: number) => (
+                    <div key={i} className="text-sm text-amber-800 py-1 border-b border-amber-100 last:border-0">
+                      {g.employee} {g.date}
+                    </div>
+                  ))}
+                  <div className="text-xs text-amber-600 mt-2">如果后来确认是旷工 请对这张单点重算</div>
+                </div>
+              )}
+
               {(previewData.skipped || []).length > 0 && (
                 <div>
                   <div className="text-sm font-medium mb-2">已结清 跳过</div>

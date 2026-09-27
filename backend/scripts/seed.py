@@ -334,39 +334,41 @@ async def seed():
                 await conn.execute(text(f"ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS {_c} {_t}"))
 
             # Migration: 补齐老数据——结算开始日/结束日为空时按周期+半月反推（幂等，只补空的那一侧）
+            # 包在保存点（嵌套事务）里：SQL 出错只回滚这一段，不影响前面的建表和加字段
             try:
                 import calendar as _cal
-                rows = (await conn.execute(text(
-                    "SELECT id, period, half, settle_start_date, settle_end_date "
-                    "FROM payroll_records WHERE settle_start_date IS NULL OR settle_end_date IS NULL"
-                ))).all()
-                backfilled = 0
-                for _id, _period, _half, _sd, _ed in rows:
-                    try:
-                        _y, _m = str(_period).split("-")
-                        _year, _month = int(_y), int(_m)
-                        _last = _cal.monthrange(_year, _month)[1]
-                    except (ValueError, TypeError, AttributeError):
-                        continue  # 周期格式不对，跳过
-                    if _half == "second_half":
-                        _start = date(_year, _month, 16)
-                        _end = date(_year, _month, _last)
-                    else:
-                        _start = date(_year, _month, 1)
-                        _end = date(_year, _month, 15)
-                    _sets, _params = [], {}
-                    if _sd is None:
-                        _sets.append("settle_start_date = :sd")
-                        _params["sd"] = _start
-                    if _ed is None:
-                        _sets.append("settle_end_date = :ed")
-                        _params["ed"] = _end
-                    if _sets:
-                        await conn.execute(
-                            text(f"UPDATE payroll_records SET {', '.join(_sets)} WHERE id = :id"),
-                            {**_params, "id": _id},
-                        )
-                        backfilled += 1
+                async with conn.begin_nested():
+                    rows = (await conn.execute(text(
+                        "SELECT id, period, half, settle_start_date, settle_end_date "
+                        "FROM payroll_records WHERE settle_start_date IS NULL OR settle_end_date IS NULL"
+                    ))).all()
+                    backfilled = 0
+                    for _id, _period, _half, _sd, _ed in rows:
+                        try:
+                            _y, _m = str(_period).split("-")
+                            _year, _month = int(_y), int(_m)
+                            _last = _cal.monthrange(_year, _month)[1]
+                        except (ValueError, TypeError, AttributeError):
+                            continue  # 周期格式不对，跳过
+                        if _half == "second_half":
+                            _start = date(_year, _month, 16)
+                            _end = date(_year, _month, _last)
+                        else:
+                            _start = date(_year, _month, 1)
+                            _end = date(_year, _month, 15)
+                        _sets, _params = [], {}
+                        if _sd is None:
+                            _sets.append("settle_start_date = :sd")
+                            _params["sd"] = _start
+                        if _ed is None:
+                            _sets.append("settle_end_date = :ed")
+                            _params["ed"] = _end
+                        if _sets:
+                            await conn.execute(
+                                text(f"UPDATE payroll_records SET {', '.join(_sets)} WHERE id = :id"),
+                                {**_params, "id": _id},
+                            )
+                            backfilled += 1
                 print(f"工资单补齐老数据：补了 {backfilled} 条")
             except Exception as _e:
                 print(f"工资单补齐老数据：跳过（{_e}）")
