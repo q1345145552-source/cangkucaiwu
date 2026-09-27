@@ -697,11 +697,25 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             absence_fine_total += amt
         absence_fine_total = round(absence_fine_total, 2)
 
-        # 固定扣款：日期段覆盖到下半月（结束日 >= 16 号）就扣全额，否则不扣
+        # 固定扣款：按天折算，每个自然月分别折算再相加（与薪资模板类型无关）
         fixed_items = fixed_by_emp.get(emp.id, [])
         fixed_total = 0.0
-        if period_end.day >= 16:
-            fixed_total = round(sum(f["amount"] for f in fixed_items), 2)
+        fixed_details = []
+        for f in fixed_items:
+            amt = f["amount"] or 0
+            prorated = 0.0
+            seg_start = emp_start_date
+            while seg_start <= period_end:
+                seg_month_end = date(seg_start.year, seg_start.month, calendar.monthrange(seg_start.year, seg_start.month)[1])
+                seg_end = min(period_end, seg_month_end)
+                seg_days = (seg_end - seg_start).days + 1
+                seg_month_days = calendar.monthrange(seg_start.year, seg_start.month)[1]
+                prorated += amt * seg_days / seg_month_days
+                seg_start = seg_end + timedelta(days=1)
+            prorated = round(prorated, 2)
+            fixed_total += prorated
+            fixed_details.append({"id": f["id"], "name": f["name"], "amount": f["amount"], "deducted": prorated})
+        fixed_total = round(fixed_total, 2)
 
         # 临时扣款：本周期内按扣款日期全部扣
         temp_items = temp_by_emp.get(emp.id, [])
@@ -769,7 +783,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "absence_fine": absence_fine_total,
             "absence_fine_days": absence_fine_days,
             "fixed_deduction": fixed_total,
-            "fixed_deductions": fixed_items if period_end.day >= 16 else [],
+            "fixed_deductions": fixed_details,
             "temp_deduction": temp_total,
             "temp_deductions": temp_items,
             "overtime_hours": round(overtime_hours, 1),
