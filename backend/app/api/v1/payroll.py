@@ -56,13 +56,21 @@ async def calculate_payroll(
 async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest):
     """核心工资计算（周期/单人/离职共用）。wh_id 已由调用方校验。"""
     today = thai_today()
+    yesterday = today - timedelta(days=1)
+    cap_note = ""
 
     # ── 1. 确定结算结束日：新 end_date 优先；旧 period+half 兼容换算 ──
+    # 结束日上限取「昨天」：今天还没过完，避免今天被漏算/多算
     if req.end_date:
         try:
             batch_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
         except (ValueError, TypeError):
             raise HTTPException(400, "结束日格式错误，应为 YYYY-MM-DD")
+        if batch_end > today:
+            raise HTTPException(400, "离职日不能选未来" if req.is_resignation else "结束日不能选未来")
+        if batch_end == today:
+            batch_end = yesterday
+            cap_note = f"今天还没过完，本次算到 {batch_end.isoformat()}"
     else:
         try:
             y, m = req.period.split("-")
@@ -72,12 +80,12 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         if month < 1 or month > 12:
             raise HTTPException(400, "月份无效")
         _, _td = calendar.monthrange(year, month)
-        batch_end = date(year, month, 15 if req.half == "first_half" else _td)
-        if batch_end > today:
-            batch_end = today
-
-    if batch_end > today:
-        raise HTTPException(400, "结束日不能选未来")
+        computed_end = date(year, month, 15 if req.half == "first_half" else _td)
+        if computed_end > yesterday:
+            batch_end = yesterday
+            cap_note = f"今天还没过完，本次算到 {batch_end.isoformat()}"
+        else:
+            batch_end = computed_end
 
     year, month = batch_end.year, batch_end.month
     _, total_days = calendar.monthrange(year, month)
@@ -134,7 +142,10 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 continue
             start = hd.date() if isinstance(hd, datetime) else hd
         if start > batch_end:
-            skipped_notes.append(f"{emp.name} 已结算到 {wl.isoformat()}，没有需要结算的区间")
+            if wl:
+                skipped_notes.append(f"{emp.name} 已结算到 {wl.isoformat()}，没有需要结算的区间")
+            else:
+                skipped_notes.append(f"{emp.name} 入职日期 {start.isoformat()} 晚于结束日，没有需要结算的区间")
             continue
         if start.year != batch_end.year or start.month != batch_end.month:
             raise HTTPException(400, "区间跨月暂不支持，请先把上一个周期结清")
@@ -151,6 +162,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 msg = "；".join(skipped_notes)
             else:
                 msg = "所有员工都已经结算到这个日期了"
+            if cap_note:
+                msg += "；" + cap_note
             return {"message": msg, "records": [], "skipped": skipped_notes, "record_count": 0}
         return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
 
@@ -256,12 +269,13 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             absence_by_emp[a.employee_id] = set()
         absence_by_emp[a.employee_id].add(a.absence_date)
 
-    # Batch fetch overtime earnings
-    overtime_query = (
+    # Batch fetch overtime earnings（按各自区间过滤，避免重复算）
+    overtime_rows = (await db.execute(
         select(
             OvertimeAssignment.employee_id,
-            func.sum(OvertimeAssignment.earned_amount).label("total"),
-            func.sum(OvertimeTask.hours).label("hours"),
+            OvertimeTask.date,
+            OvertimeAssignment.earned_amount,
+            OvertimeTask.hours,
         )
         .join(OvertimeTask, OvertimeTask.id == OvertimeAssignment.overtime_id)
         .where(
@@ -270,10 +284,14 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             OvertimeTask.date >= period_start,
             OvertimeTask.date <= period_end,
         )
-        .group_by(OvertimeAssignment.employee_id)
-    )
-    overtime_rows = (await db.execute(overtime_query)).all()
-    overtime_map = {r.employee_id: {"amount": r.total or 0, "hours": r.hours or 0} for r in overtime_rows}
+    )).all()
+    overtime_map = {}
+    for eid, od, amount, hours in overtime_rows:
+        if od < emp_start[eid] or od > period_end:
+            continue
+        m = overtime_map.setdefault(eid, {"amount": 0.0, "hours": 0.0})
+        m["amount"] = round((m["amount"] or 0) + (amount or 0), 2)
+        m["hours"] = round((m["hours"] or 0) + (hours or 0), 1)
 
     # 固定扣款（每月固定，下半月周期扣全额）
     fixed_rows = (await db.execute(
@@ -293,6 +311,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     )).scalars().all()
     temp_by_emp = {}
     for d in temp_rows:
+        if d.deduction_date < emp_start[d.employee_id] or d.deduction_date > period_end:
+            continue  # 不在该员工区间内，跳过
         temp_by_emp.setdefault(d.employee_id, []).append({
             "id": d.id, "amount": d.amount or 0,
             "date": d.deduction_date.isoformat() if d.deduction_date else None,
@@ -755,6 +775,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
     await db.flush()
     msg = f"已为 {len(records)} 名员工计算 {period} 工资"
+    if cap_note:
+        msg += "；" + cap_note
     if skipped_notes:
         msg += "；" + "；".join(skipped_notes)
     return {
