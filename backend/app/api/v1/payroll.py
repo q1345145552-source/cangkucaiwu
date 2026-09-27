@@ -53,14 +53,117 @@ async def calculate_payroll(
     return await _calc_payroll(db, current_user, wh_id, req)
 
 
-async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest):
-    """核心工资计算（周期/单人/离职共用）。wh_id 已由调用方校验。"""
+@router.post("/preview")
+async def preview_payroll(
+    req: CalculateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """算工资预览：做跟算工资一样的检查，但不写任何数据，返回检查结果。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员可以计算工资")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    prep = await _prepare_payroll(db, current_user, wh_id, req)
+
+    employees = []
+    if prep.get("early_return") is None:
+        for e in prep["employees"]:
+            employees.append({
+                "name": e.name,
+                "start": prep["emp_start"][e.id].isoformat(),
+                "end": prep["batch_end"].isoformat(),
+            })
+
+    problems = []
+    for name in prep["no_hire_names"]:
+        problems.append({"name": name, "type": "no_hire", "reason": "没有入职日期"})
+    for e in prep["no_salary_template"]:
+        problems.append({"name": e.name, "type": "no_salary_template", "reason": "没有绑定薪资模板"})
+    for e in prep["no_deduction_template"]:
+        problems.append({"name": e.name, "type": "no_deduction_template", "reason": "没有绑定扣款模板"})
+    for p in prep["pending_days"]:
+        problems.append({"name": p["employee"], "type": "pending", "reason": f"{p['date']} 缺 {'、'.join(p['missing'])}"})
+
+    return {
+        "batch_end": prep["batch_end"].isoformat(),
+        "cap_note": prep["cap_note"],
+        "total_count": len(employees),
+        "employees": employees,
+        "skipped": prep["skipped_notes"],
+        "problems": problems,
+    }
+
+
+SESSION_CN = {1: "早上上班", 2: "中午休息开始", 3: "中午休息结束", 4: "下午下班"}
+
+
+def _local_time_of(dt):
+    if dt is None:
+        return None
+    if getattr(dt, "tzinfo", None) is not None:
+        return dt.astimezone(THAI_TZ).time()
+    return dt.time()
+
+
+def _parse_hhmm(s):
+    try:
+        return datetime.strptime(s, "%H:%M").time()
+    except (ValueError, TypeError):
+        return None
+
+
+def _day_hours(sessions_sorted):
+    n = len(sessions_sorted)
+    times = [c.clocked_in_at for c in sessions_sorted]
+    if n == 2:
+        if times[0] is None or times[1] is None:
+            return 0.0
+        return max((times[1] - times[0]).total_seconds() / 3600.0, 0.0)
+    if n == 4:
+        def _seg(a, b):
+            if a is None or b is None:
+                return 0.0
+            return max((b - a).total_seconds() / 3600.0, 0.0)
+        return _seg(times[0], times[1]) + _seg(times[2], times[3])
+    return 0.0
+
+
+def _attendance_of_day(session_set, lt):
+    morning = {1, 2}
+    afternoon = {3, 4}
+    has_morning = morning <= session_set
+    has_afternoon = afternoon <= session_set
+    if lt == "full":
+        return 0.0, 1.0, 0.0
+    if lt == "morning":
+        if has_afternoon:
+            return 0.5, 0.5, 0.0
+        return 0.0, 1.0, 0.0
+    if lt == "afternoon":
+        if has_morning:
+            return 0.5, 0.5, 0.0
+        return 0.0, 1.0, 0.0
+    if has_morning and has_afternoon:
+        return 1.0, 0.0, 0.0
+    if has_morning:
+        return 0.5, 0.0, 0.5
+    if has_afternoon:
+        return 0.5, 0.0, 0.5
+    return 0.0, 0.0, 1.0
+
+
+async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest) -> dict:
+    """准备阶段（不写任何数据）：确定结束日、查员工、算水位线/起点、校验、查待补打卡。
+    返回计算所需的所有数据 + 检查结果，供 _calc_payroll 和预览接口共用。"""
     today = thai_today()
     yesterday = today - timedelta(days=1)
     cap_note = ""
 
     # ── 1. 确定结算结束日：新 end_date 优先；旧 period+half 兼容换算 ──
-    # 结束日上限取「昨天」：今天还没过完，避免今天被漏算/多算
     if req.end_date:
         try:
             batch_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
@@ -95,9 +198,14 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
 
     year, month = batch_end.year, batch_end.month
     _, total_days = calendar.monthrange(year, month)
-    # 工资单过渡字段：周期=结束月，半月按结束日号
     period = batch_end.strftime("%Y-%m")
     half = "first_half" if batch_end.day <= 15 else "second_half"
+
+    base = {
+        "batch_end": batch_end, "cap_note": cap_note, "period": period, "half": half, "total_days": total_days,
+        "employees": [], "emp_start": {}, "skipped_notes": [],
+        "no_hire_names": [], "no_salary_template": [], "no_deduction_template": [], "pending_days": [],
+    }
 
     # ── 2. 在职员工（排除已删除/离职），单人可限定 ──
     emp_q = select(Employee).where(
@@ -110,9 +218,11 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     employees = (await db.execute(emp_q)).scalars().all()
 
     if not employees:
+        msg = "该仓库没有可结算的在职员工"
         if cap_note:
-            return {"message": f"该仓库没有可结算的在职员工；{cap_note}", "records": [], "skipped": []}
-        return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
+            msg += "；" + cap_note
+        base["early_return"] = {"message": msg, "records": [], "skipped": []}
+        return base
 
     # ── 3. 水位线 = 该员工已结算结束日的最大值 ──
     emp_ids = [e.id for e in employees]
@@ -157,12 +267,11 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             continue
         emp_start[emp.id] = start
 
-    if no_hire_names:
-        raise HTTPException(400, "以下员工没有入职日期，请先补充后再计算：\n" + "、".join(no_hire_names))
-
-    # 只保留有起点的员工
     employees = [e for e in employees if e.id in emp_start]
     if not employees:
+        base["emp_start"] = emp_start
+        base["skipped_notes"] = skipped_notes
+        base["no_hire_names"] = no_hire_names
         if skipped_notes:
             if req.employee_ids and len(req.employee_ids) == 1:
                 msg = "；".join(skipped_notes)
@@ -170,23 +279,12 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 msg = "所有员工都已经结算到这个日期了"
             if cap_note:
                 msg += "；" + cap_note
-            return {"message": msg, "records": [], "skipped": skipped_notes, "record_count": 0}
-        if cap_note:
-            return {"message": f"该仓库没有可结算的在职员工；{cap_note}", "records": [], "skipped": []}
-        return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
+            base["early_return"] = {"message": msg, "records": [], "skipped": skipped_notes, "record_count": 0}
+        return base
 
-    # ── 5. 模板检查：薪资模板 + 扣款模板都通过才能算工资 ──
+    # ── 5. 模板检查 ──
     no_salary_template = [e for e in employees if not e.salary_template_id]
     no_deduction_template = [e for e in employees if not e.deduction_template_id]
-    if no_salary_template or no_deduction_template:
-        lines = []
-        if no_salary_template:
-            names = "、".join(e.name for e in no_salary_template)
-            lines.append(f"以下员工还没有设置薪资模板，请先设置：\n{names}")
-        if no_deduction_template:
-            names = "、".join(e.name for e in no_deduction_template)
-            lines.append(f"以下员工还没有设置扣款模板，请先设置：\n{names}")
-        raise HTTPException(400, "\n".join(lines))
 
     template_ids = {e.salary_template_id for e in employees if e.salary_template_id}
     template_map = {}
@@ -194,27 +292,26 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         ts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(template_ids)))).scalars().all()
         template_map = {t.id: t for t in ts}
 
-    # 扣款模板（考勤扣款规则，可留空 = 不扣考勤款）
     dt_ids = {e.deduction_template_id for e in employees if e.deduction_template_id}
     deduction_template_map = {}
     if dt_ids:
         dts = (await db.execute(select(DeductionTemplate).where(DeductionTemplate.id.in_(dt_ids)))).scalars().all()
         deduction_template_map = {t.id: t for t in dts}
 
-    # 仓库作息（配置中心）：早退红线 + 下午下班时间（旷工24小时起算点）
     work_sched = await get_work_schedule(db, wh_id)
+    early_half_time = _parse_hhmm(work_sched["early_half"]) or time(17, 30)
+    early_one_time = _parse_hhmm(work_sched["early_one"]) or time(17, 0)
+    afternoon_end_time = _parse_hhmm(work_sched["afternoon_end"]) or time(18, 0)
 
-    # ── 6. 批量取数用最宽区间（每个员工起点不同） ──
+    # ── 6. 批量取数用最宽区间 ──
     period_start = min(emp_start.values())
     period_end = batch_end
 
-    # Build employee_id -> user_id mapping（绑定账号 + 手机号/姓名兜底，未绑定也能结算）
     from app.services.employee_match import resolve_employee_user_map
     emp_user_map, user_emp_map = await resolve_employee_user_map(db, employees)
     emp_id_set = {e.id for e in employees}
     all_user_ids = list(user_emp_map.keys())
 
-    # Batch fetch all clock-in records for this half-month period
     clock_records = []
     if all_user_ids:
         clock_records = (await db.execute(
@@ -225,7 +322,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             ).order_by(ClockInRecord.clock_date, ClockInRecord.session)
         )).scalars().all()
 
-    # Group clock-ins by (employee_id, date)
     clock_by_emp_date = {}
     for cr in clock_records:
         eid = user_emp_map.get(cr.user_id)
@@ -236,7 +332,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             clock_by_emp_date[key] = []
         clock_by_emp_date[key].append(cr)
 
-    # Batch fetch leave/rest/absence for this half-month
     leaves = (await db.execute(
         select(LeaveRequest).where(
             LeaveRequest.employee_id.in_(emp_id_set),
@@ -245,7 +340,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             LeaveRequest.status == "approved",
         )
     )).scalars().all()
-    leave_by_emp = {}  # emp_id -> {date: (duration_type, hours, notified_at)}
+    leave_by_emp = {}
     for lv in leaves:
         if lv.employee_id not in leave_by_emp:
             leave_by_emp[lv.employee_id] = {}
@@ -277,7 +372,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             absence_by_emp[a.employee_id] = set()
         absence_by_emp[a.employee_id].add(a.absence_date)
 
-    # Batch fetch overtime earnings（按各自区间过滤，避免重复算）
     overtime_rows = (await db.execute(
         select(
             OvertimeAssignment.employee_id,
@@ -301,7 +395,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         m["amount"] = round((m["amount"] or 0) + (amount or 0), 2)
         m["hours"] = round((m["hours"] or 0) + (hours or 0), 1)
 
-    # 固定扣款（每月固定，下半月周期扣全额）
     fixed_rows = (await db.execute(
         select(EmployeeFixedDeduction).where(EmployeeFixedDeduction.employee_id.in_(emp_id_set))
     )).scalars().all()
@@ -309,7 +402,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     for f in fixed_rows:
         fixed_by_emp.setdefault(f.employee_id, []).append({"id": f.id, "name": f.name, "amount": f.amount or 0})
 
-    # 临时扣款（按扣款日期落入本周期）
     temp_rows = (await db.execute(
         select(EmployeeDeduction).where(
             EmployeeDeduction.employee_id.in_(emp_id_set),
@@ -320,82 +412,15 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     temp_by_emp = {}
     for d in temp_rows:
         if d.deduction_date < emp_start[d.employee_id] or d.deduction_date > period_end:
-            continue  # 不在该员工区间内，跳过
+            continue
         temp_by_emp.setdefault(d.employee_id, []).append({
             "id": d.id, "amount": d.amount or 0,
             "date": d.deduction_date.isoformat() if d.deduction_date else None,
             "reason": d.reason,
         })
 
-    # ── 算工资前检查待补 ──
-    # 待补：打卡 1 次 / 3 次，或 2 次但既不构成上午半天(时段1+2)也不构成下午半天(时段3+4)
-    SESSION_CN = {1: "早上上班", 2: "中午休息开始", 3: "中午休息结束", 4: "下午下班"}
-
-    def _local_time_of(dt):
-        if dt is None:
-            return None
-        if getattr(dt, "tzinfo", None) is not None:
-            return dt.astimezone(THAI_TZ).time()
-        return dt.time()
-
-    def _parse_hhmm(s):
-        try:
-            return datetime.strptime(s, "%H:%M").time()
-        except (ValueError, TypeError):
-            return None
-
-    # 早退红线 + 下午下班时间（从配置中心读，默认 17:30 / 17:00 / 18:00）
-    early_half_time = _parse_hhmm(work_sched["early_half"]) or time(17, 30)
-    early_one_time = _parse_hhmm(work_sched["early_one"]) or time(17, 0)
-    afternoon_end_time = _parse_hhmm(work_sched["afternoon_end"]) or time(18, 0)
-
-    def _day_hours(sessions_sorted):
-        n = len(sessions_sorted)
-        times = [c.clocked_in_at for c in sessions_sorted]
-        if n == 2:
-            # 两次打卡 = 上午两段(时段1+2) 或 下午两段(时段3+4)，中间均不含午休，直接相减。
-            if times[0] is None or times[1] is None:
-                return 0.0
-            return max((times[1] - times[0]).total_seconds() / 3600.0, 0.0)
-        if n == 4:
-            def _seg(a, b):
-                if a is None or b is None:
-                    return 0.0
-                return max((b - a).total_seconds() / 3600.0, 0.0)
-            return _seg(times[0], times[1]) + _seg(times[2], times[3])
-        return 0.0
-
-    def _attendance_of_day(session_set, lt):
-        """按打卡时段和请假计算某天的 (出勤, 请假, 缺勤) 天数，各 0/0.5/1。
-        lt 为 leave duration_type：full/morning/afternoon/hours 或 None。
-        上午=时段1+2，下午=时段3+4。
-        """
-        morning = {1, 2}
-        afternoon = {3, 4}
-        has_morning = morning <= session_set
-        has_afternoon = afternoon <= session_set
-
-        if lt == "full":
-            return 0.0, 1.0, 0.0
-        if lt == "morning":
-            if has_afternoon:
-                return 0.5, 0.5, 0.0
-            return 0.0, 1.0, 0.0
-        if lt == "afternoon":
-            if has_morning:
-                return 0.5, 0.5, 0.0
-            return 0.0, 1.0, 0.0
-        # hours 请假 / 无请假：按打卡时段判断
-        if has_morning and has_afternoon:
-            return 1.0, 0.0, 0.0
-        if has_morning:
-            return 0.5, 0.0, 0.5  # 上午2次无下午请假 → 出勤半天 + 旷工半天
-        if has_afternoon:
-            return 0.5, 0.0, 0.5  # 下午2次无上午请假 → 出勤半天 + 旷工半天
-        return 0.0, 0.0, 1.0  # 无打卡 → 缺勤1天
-
+    # ── 7. 待补打卡检查 ──
     pending_days = []
-    today = thai_today()
     for emp in employees:
         rest_set = rest_by_emp.get(emp.id, set())
         absence_set = absence_by_emp.get(emp.id, set())
@@ -403,7 +428,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         current = emp_start[emp.id]
         while current <= period_end:
             if current >= today:
-                break  # 今天还没过完、未来日子不检查打卡完整性
+                break
             if current in rest_set or current in absence_set:
                 current += timedelta(days=1)
                 continue
@@ -421,18 +446,70 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             if n in (1, 3):
                 is_pending = True
             elif n == 2 and not (morning <= session_set) and not (afternoon <= session_set):
-                # 两次打卡但不是完整上午也不是完整下午 → 待补
                 is_pending = True
             if is_pending:
                 missing = [SESSION_CN[s] for s in (1, 2, 3, 4) if s not in session_set]
                 pending_days.append({"employee": emp.name, "date": current.isoformat(), "missing": missing})
             current += timedelta(days=1)
 
-    if pending_days:
-        lines = [f"{p['employee']} {p['date']}（缺 {'、'.join(p['missing'])}）" for p in pending_days[:30]]
-        more = f" 等共 {len(pending_days)} 天" if len(pending_days) > 30 else ""
-        detail = f"本周期有 {len(pending_days)} 天打卡不完整，无法计算，请先补卡再计算：\n" + "\n".join(lines) + more
+    base.update({
+        "early_return": None,
+        "employees": employees, "emp_start": emp_start, "skipped_notes": skipped_notes,
+        "no_hire_names": no_hire_names, "no_salary_template": no_salary_template, "no_deduction_template": no_deduction_template, "pending_days": pending_days,
+        "template_map": template_map, "deduction_template_map": deduction_template_map,
+        "clock_by_emp_date": clock_by_emp_date, "leave_by_emp": leave_by_emp, "rest_by_emp": rest_by_emp, "absence_by_emp": absence_by_emp,
+        "overtime_map": overtime_map, "fixed_by_emp": fixed_by_emp, "temp_by_emp": temp_by_emp,
+        "early_half_time": early_half_time, "early_one_time": early_one_time, "afternoon_end_time": afternoon_end_time,
+        "period_end": period_end,
+    })
+    return base
+
+
+async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest):
+    """核心工资计算（周期/单人/离职共用）。wh_id 已由调用方校验。"""
+    prep = await _prepare_payroll(db, current_user, wh_id, req)
+    if prep.get("early_return") is not None:
+        return prep["early_return"]
+
+    # 问题按原顺序报错（跟抽取前完全一致）
+    if prep["no_hire_names"]:
+        raise HTTPException(400, "以下员工没有入职日期，请先补充后再计算：\n" + "、".join(prep["no_hire_names"]))
+    if prep["no_salary_template"] or prep["no_deduction_template"]:
+        lines = []
+        if prep["no_salary_template"]:
+            names = "、".join(e.name for e in prep["no_salary_template"])
+            lines.append(f"以下员工还没有设置薪资模板，请先设置：\n{names}")
+        if prep["no_deduction_template"]:
+            names = "、".join(e.name for e in prep["no_deduction_template"])
+            lines.append(f"以下员工还没有设置扣款模板，请先设置：\n{names}")
+        raise HTTPException(400, "\n".join(lines))
+    if prep["pending_days"]:
+        lines = [f"{p['employee']} {p['date']}（缺 {'、'.join(p['missing'])}）" for p in prep["pending_days"][:30]]
+        more = f" 等共 {len(prep['pending_days'])} 天" if len(prep['pending_days']) > 30 else ""
+        detail = f"本周期有 {len(prep['pending_days'])} 天打卡不完整，无法计算，请先补卡再计算：\n" + "\n".join(lines) + more
         raise HTTPException(400, detail=detail)
+
+    employees = prep["employees"]
+    emp_start = prep["emp_start"]
+    period_end = prep["period_end"]
+    batch_end = prep["batch_end"]
+    total_days = prep["total_days"]
+    period = prep["period"]
+    half = prep["half"]
+    template_map = prep["template_map"]
+    deduction_template_map = prep["deduction_template_map"]
+    clock_by_emp_date = prep["clock_by_emp_date"]
+    leave_by_emp = prep["leave_by_emp"]
+    rest_by_emp = prep["rest_by_emp"]
+    absence_by_emp = prep["absence_by_emp"]
+    overtime_map = prep["overtime_map"]
+    fixed_by_emp = prep["fixed_by_emp"]
+    temp_by_emp = prep["temp_by_emp"]
+    early_half_time = prep["early_half_time"]
+    early_one_time = prep["early_one_time"]
+    afternoon_end_time = prep["afternoon_end_time"]
+    cap_note = prep["cap_note"]
+    skipped_notes = prep["skipped_notes"]
 
     # ── 按员工薪资模板计算 ──
     records = []
