@@ -750,7 +750,7 @@ export default function PayrollPage() {
                 {psFixedItems.map((f: any) => (
                   <div key={f.id || f.name} className="flex justify-between text-sm text-red-500">
                     <span>固定扣款 · {f.name}</span>
-                    <span>-{Number(f.amount ?? 0).toLocaleString()}</span>
+                    <span>-{Number(f.deducted ?? f.amount ?? 0).toLocaleString()}</span>
                   </div>
                 ))}
                 {psTempItems.map((t: any) => (

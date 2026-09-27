@@ -163,8 +163,8 @@ export default function MyPayslipPage() {
                 {selected.absence_fine > 0 && (
                   <div className="flex justify-between text-sm text-red-500"><span>{t("absence_fine")}</span><span>-{selected.absence_fine}</span></div>
                 )}
-                {(selected.detail?.fixed_deductions || []).filter((f: any) => Number(f.amount ?? 0) > 0).map((f: any) => (
-                  <div key={f.id || f.name} className="flex justify-between text-sm text-red-500"><span>{t("fixed_deduction")} · {f.name}</span><span>-{Number(f.amount ?? 0).toLocaleString()}</span></div>
+                {(selected.detail?.fixed_deductions || []).filter((f: any) => Number(f.deducted ?? f.amount ?? 0) > 0).map((f: any) => (
+                  <div key={f.id || f.name} className="flex justify-between text-sm text-red-500"><span>{t("fixed_deduction")} · {f.name}</span><span>-{Number(f.deducted ?? f.amount ?? 0).toLocaleString()}</span></div>
                 ))}
                 {(selected.detail?.temp_deductions || []).filter((d: any) => Number(d.amount ?? 0) > 0).map((d: any) => (
                   <div key={d.id || (d.reason + d.date)} className="flex justify-between text-sm text-red-500"><span>{t("temp_deduction")} · {d.reason}</span><span>-{Number(d.amount ?? 0).toLocaleString()}</span></div>
