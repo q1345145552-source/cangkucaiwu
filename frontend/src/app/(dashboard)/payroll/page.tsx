@@ -34,6 +34,31 @@ function mergePeriods(ps: any[]): any[] {
   return out;
 }
 
+// 泰国时间的今天/昨天/过去15号/过去月末（用于结算日期输入）
+function thaiDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function thaiTodayStr(): string {
+  return thaiDateStr(thaiNow());
+}
+function thaiYesterdayStr(): string {
+  const t = thaiNow();
+  return thaiDateStr(new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1));
+}
+function past15thStr(): string {
+  const t = thaiNow();
+  if (t.getDate() > 15) {
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-15`;
+  }
+  const prev = new Date(t.getFullYear(), t.getMonth() - 1, 15);
+  return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-15`;
+}
+function pastMonthEndStr(): string {
+  const t = thaiNow();
+  const lastDay = new Date(t.getFullYear(), t.getMonth(), 0);
+  return thaiDateStr(lastDay);
+}
+
 // 薪资模板类型 → 中文标签（工资按模板算，不再按试用期/正式分段）
 const TEMPLATE_TYPE_LABELS: Record<string, string> = { hourly: "按小时", daily: "按天", monthly: "按月" };
 function templateTypeLabel(tt?: string): string {
@@ -64,9 +89,9 @@ export default function PayrollPage() {
   const [singleEndDate, setSingleEndDate] = useState(new Date().toISOString().slice(0, 10));
   const [singleEmployees, setSingleEmployees] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [customMode, setCustomMode] = useState(false);
-  const [customStartDate, setCustomStartDate] = useState("");
-  const [customEndDate, setCustomEndDate] = useState("");
+  const [calcEndDate, setCalcEndDate] = useState("");
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -74,6 +99,7 @@ export default function PayrollPage() {
     // Default to current month
     const now = new Date().toISOString().slice(0, 7);
     setSelectedPeriod(now);
+    setCalcEndDate(thaiYesterdayStr());
     initPage();
   }, []);
 
@@ -163,40 +189,30 @@ export default function PayrollPage() {
   }
 
   async function handleCalculate() {
-    if (customMode) {
-      // 自定义日期段
-      if (!customStartDate || !customEndDate) { toast("error", "请选择开始日期和结束日期"); return; }
-      if (customStartDate.slice(0, 7) !== customEndDate.slice(0, 7)) {
-        toast("error", "日期段不能跨月，请选择同一个月的日期"); return;
-      }
-      if (customStartDate > customEndDate) { toast("error", "开始日期不能晚于结束日期"); return; }
-      if (!confirm(`确定计算 ${customStartDate} 到 ${customEndDate} 的工资吗？`)) return;
-      setCalculating(true);
-      try {
-        const period = customStartDate.slice(0, 7);
-        const half = +customStartDate.slice(8, 10) <= 15 ? "first_half" : "second_half";
-        const r = await api.post<any>("/payroll/calculate", { period, half, start_date: customStartDate, end_date: customEndDate });
-        toast("success", `${customStartDate} 到 ${customEndDate} 工资计算完成`);
-        loadPeriods();
-        loadRecords(`${period}_${half}`);
-      } catch (err: any) { toast("error", err.message || "计算失败"); }
-      setCalculating(false);
-      return;
-    }
-    if (!selectedPeriodKey) { toast("error", "请先选择周期"); return; }
-    const { period, half } = periodKeyToApi(selectedPeriodKey);
-    const label = periodLabel(selectedPeriodKey);
-    if (!confirm(`确定计算 ${label} 的工资吗？`)) return;
+    if (!calcEndDate) { toast("error", "请选择结算日期"); return; }
     setCalculating(true);
     try {
-      const r = await api.post<any>("/payroll/calculate", { period, half });
-      if (r.record_count > 0) {
-        toast("success", `${label} 工资计算完成`);
-      } else {
-        toast("error", `${label} 已计算过，未新增工资单`);
-      }
+      const r = await api.post<any>("/payroll/preview", { end_date: calcEndDate });
+      setPreviewData(r);
+      setShowPreview(true);
+    } catch (err: any) {
+      toast("error", err.message || "预览失败");
+    }
+    setCalculating(false);
+  }
+
+  async function confirmCalculate() {
+    if (!calcEndDate) return;
+    setShowPreview(false);
+    setCalculating(true);
+    try {
+      const r = await api.post<any>("/payroll/calculate", { end_date: calcEndDate });
+      toast("success", r.message || "计算完成");
       loadPeriods();
-      loadRecords(selectedPeriodKey);
+      const d = new Date(calcEndDate);
+      const newKey = `${calcEndDate.slice(0, 7)}_${d.getDate() <= 15 ? "first_half" : "second_half"}`;
+      setSelectedPeriodKey(newKey);
+      loadRecords(newKey);
     } catch (err: any) {
       toast("error", err.message || "计算失败");
     }
@@ -410,38 +426,17 @@ export default function PayrollPage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><Calculator size={24}/>工资管理</h1>
-        <div className="flex gap-2 items-center flex-wrap">
-          {/* Period + Half selector */}
-          <select value={customMode ? "__custom__" : selectedPeriodKey}
-            onChange={e => {
-              const v = e.target.value;
-              if (v === "__custom__") {
-                setCustomMode(true);
-              } else {
-                setCustomMode(false);
-                setSelectedPeriodKey(v);
-                if (v) loadRecords(v);
-              }
-            }}
-            className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
-            <option value="">选择周期</option>
-            {periods.map((p: any) => {
-              const key = `${p.period}_${p.half}`;
-              return <option key={key} value={key}>{p.label}</option>
-            })}
-            <option value="__custom__">自定义日期段</option>
-          </select>
-          {customMode && (
-            <div className="flex gap-2 items-center">
-              <input type="date" className="border rounded-lg px-3 py-2 text-sm bg-white" value={customStartDate}
-                onChange={e => setCustomStartDate(e.target.value)} />
-              <span className="text-sm text-gray-400">到</span>
-              <input type="date" className="border rounded-lg px-3 py-2 text-sm bg-white" value={customEndDate}
-                onChange={e => setCustomEndDate(e.target.value)} />
-            </div>
-          )}
+        <div className="flex flex-col gap-2 items-end">
+          {/* 第一组：算工资用 */}
           {isAdmin && (
-            <>
+            <div className="flex gap-2 items-center flex-wrap">
+              <label className="text-sm text-gray-500">结算到哪天</label>
+              <input type="date" className="border rounded-lg px-3 py-2 text-sm bg-white" value={calcEndDate}
+                onChange={e => setCalcEndDate(e.target.value)} />
+              <button onClick={() => setCalcEndDate(past15thStr())}
+                className="border border-gray-300 text-gray-600 text-sm px-3 py-2 rounded-lg hover:bg-gray-50">15号</button>
+              <button onClick={() => setCalcEndDate(pastMonthEndStr())}
+                className="border border-gray-300 text-gray-600 text-sm px-3 py-2 rounded-lg hover:bg-gray-50">月末</button>
               <button onClick={handleCalculate}
                 className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
                 <Calculator size={16}/> 计算工资
@@ -450,20 +445,38 @@ export default function PayrollPage() {
                 className="border border-blue-300 text-blue-600 flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-blue-50">
                 <User size={16}/> 单人结算
               </button>
-              {records.length > 0 && (
-                <>
-                  <button onClick={handleConfirmAll}
-                    className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">
-                    <CheckCircle size={16}/> 全部确认
-                  </button>
-                  <button onClick={handleRecalculate}
-                    className="bg-amber-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-amber-600">
-                    <AlertTriangle size={16}/> 重新计算
-                  </button>
-                </>
-              )}
-            </>
+            </div>
           )}
+
+          {/* 第二组：看列表用 */}
+          <div className="flex gap-2 items-center flex-wrap">
+            <label className="text-sm text-gray-500">查看周期</label>
+            <select value={selectedPeriodKey}
+              onChange={e => {
+                const v = e.target.value;
+                setSelectedPeriodKey(v);
+                if (v) loadRecords(v);
+              }}
+              className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
+              <option value="">选择周期</option>
+              {periods.map((p: any) => {
+                const key = `${p.period}_${p.half}`;
+                return <option key={key} value={key}>{p.label}</option>
+              })}
+            </select>
+            {isAdmin && records.length > 0 && (
+              <>
+                <button onClick={handleConfirmAll}
+                  className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">
+                  <CheckCircle size={16}/> 全部确认
+                </button>
+                <button onClick={handleRecalculate}
+                  className="bg-amber-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-amber-600">
+                  <AlertTriangle size={16}/> 重新计算
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -637,7 +650,7 @@ export default function PayrollPage() {
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">截止日期</label>
                 <input type="date" className="form-input text-base py-2.5" value={singleEndDate} onChange={e => setSingleEndDate(e.target.value)} />
-                <p className="text-xs text-gray-400 mt-1">从当前半月周期开始算到截止日（1-15 上半月，16-月末 下半月）。</p>
+                <p className="text-xs text-gray-400 mt-1">从他上次结算的第二天开始算到截止日。</p>
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
@@ -645,6 +658,62 @@ export default function PayrollPage() {
               <button onClick={handleSingleSettle} disabled={calculating} className="btn-primary text-sm px-6 py-2">
                 {calculating ? "结算中..." : "结算"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 算工资预览 Modal */}
+      {showPreview && previewData && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowPreview(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
+              <Calculator size={20} /><span className="font-semibold">算工资预览</span>
+              <button onClick={() => setShowPreview(false)} className="ml-auto text-2xl text-white/80 hover:text-white">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <div className="text-sm text-gray-700">本次结算到 <b>{previewData.batch_end}</b></div>
+                {previewData.cap_note && <div className="text-xs text-amber-600 mt-1">{previewData.cap_note}</div>}
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">一共会给 <b>{previewData.total_count}</b> 个人算</div>
+                {(previewData.employees || []).map((e: any) => (
+                  <div key={e.name} className="text-sm text-gray-700 py-1 border-b border-gray-50 flex justify-between">
+                    <span>{e.name}</span>
+                    <span className="text-gray-500">{e.start} 到 {e.end}</span>
+                  </div>
+                ))}
+              </div>
+
+              {(previewData.skipped || []).length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-2">已结清 跳过</div>
+                  {(previewData.skipped || []).map((s: string, i: number) => (
+                    <div key={i} className="text-sm text-gray-600 py-1 border-b border-gray-50">{s}</div>
+                  ))}
+                </div>
+              )}
+
+              {(previewData.problems || []).length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-2 text-red-600">有问题 不能计算</div>
+                  {(previewData.problems || []).map((p: any, i: number) => (
+                    <div key={i} className="text-sm text-red-600 py-1 border-b border-gray-50">{p.name} · {p.reason}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              {(previewData.problems || []).length > 0 ? (
+                <button onClick={() => setShowPreview(false)} className="btn-primary text-sm px-6 py-2">知道了</button>
+              ) : (
+                <>
+                  <button onClick={() => setShowPreview(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+                  <button onClick={confirmCalculate} disabled={calculating} className="btn-primary text-sm px-6 py-2">确认计算</button>
+                </>
+              )}
             </div>
           </div>
         </div>
