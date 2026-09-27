@@ -66,11 +66,17 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             batch_end = datetime.strptime(req.end_date, "%Y-%m-%d").date()
         except (ValueError, TypeError):
             raise HTTPException(400, "结束日格式错误，应为 YYYY-MM-DD")
-        if batch_end > today:
-            raise HTTPException(400, "离职日不能选未来" if req.is_resignation else "结束日不能选未来")
-        if batch_end == today:
-            batch_end = yesterday
-            cap_note = f"今天还没过完，本次算到 {batch_end.isoformat()}"
+        if req.is_resignation:
+            if batch_end > today:
+                raise HTTPException(400, "离职日不能选未来")
+            if batch_end == today:
+                raise HTTPException(400, "离职日不能是今天，今天还没过完，请让员工第二天来办离职，给仓库一天缓冲期把账算清")
+        else:
+            if batch_end > today:
+                raise HTTPException(400, "结束日不能选未来")
+            if batch_end == today:
+                batch_end = yesterday
+                cap_note = f"今天还没过完，本次算到 {batch_end.isoformat()}"
     else:
         try:
             y, m = req.period.split("-")
@@ -104,6 +110,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     employees = (await db.execute(emp_q)).scalars().all()
 
     if not employees:
+        if cap_note:
+            return {"message": f"该仓库没有可结算的在职员工；{cap_note}", "records": [], "skipped": []}
         return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
 
     # ── 3. 水位线 = 该员工已结算结束日的最大值 ──
@@ -131,6 +139,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     emp_start = {}
     no_hire_names = []
     skipped_notes = []
+    cross_month_lines = []
     for emp in employees:
         wl = water_line.get(emp.id)
         if wl:
@@ -148,8 +157,12 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 skipped_notes.append(f"{emp.name} 入职日期 {start.isoformat()} 晚于结束日，没有需要结算的区间")
             continue
         if start.year != batch_end.year or start.month != batch_end.month:
-            raise HTTPException(400, "区间跨月暂不支持，请先把上一个周期结清")
+            cross_month_lines.append(f"{emp.name} {start.isoformat()} 到 {batch_end.isoformat()}")
+            continue
         emp_start[emp.id] = start
+
+    if cross_month_lines:
+        raise HTTPException(400, "以下员工区间跨月，暂不支持，请先把上一个周期结清：\n" + "\n".join(cross_month_lines))
 
     if no_hire_names:
         raise HTTPException(400, "以下员工没有入职日期，请先补充后再计算：\n" + "、".join(no_hire_names))
@@ -165,6 +178,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             if cap_note:
                 msg += "；" + cap_note
             return {"message": msg, "records": [], "skipped": skipped_notes, "record_count": 0}
+        if cap_note:
+            return {"message": f"该仓库没有可结算的在职员工；{cap_note}", "records": [], "skipped": []}
         return {"message": "该仓库没有可结算的在职员工", "records": [], "skipped": []}
 
     # ── 5. 模板检查：薪资模板 + 扣款模板都通过才能算工资 ──
