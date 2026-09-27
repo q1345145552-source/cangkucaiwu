@@ -139,7 +139,6 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
     emp_start = {}
     no_hire_names = []
     skipped_notes = []
-    cross_month_lines = []
     for emp in employees:
         wl = water_line.get(emp.id)
         if wl:
@@ -156,13 +155,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             else:
                 skipped_notes.append(f"{emp.name} 入职日期 {start.isoformat()} 晚于结束日，没有需要结算的区间")
             continue
-        if start.year != batch_end.year or start.month != batch_end.month:
-            cross_month_lines.append(f"{emp.name} {start.isoformat()} 到 {batch_end.isoformat()}")
-            continue
         emp_start[emp.id] = start
-
-    if cross_month_lines:
-        raise HTTPException(400, "以下员工区间跨月，暂不支持，请先把上一个周期结清：\n" + "\n".join(cross_month_lines))
 
     if no_hire_names:
         raise HTTPException(400, "以下员工没有入职日期，请先补充后再计算：\n" + "、".join(no_hire_names))
@@ -473,6 +466,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         rest_days_count = 0
         leave_days_count = 0.0
         absence_days_count = 0.0
+        monthly_leave_deduction = 0.0
+        monthly_absence_deduction = 0.0
 
         rest_set = rest_by_emp.get(emp.id, set())
         absence_set = absence_by_emp.get(emp.id, set())
@@ -491,6 +486,8 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
                 continue
             if current in absence_set:
                 absence_days_count += 1.0
+                if tt == "monthly":
+                    monthly_absence_deduction += template_amount / calendar.monthrange(current.year, current.month)[1]
                 daily_list.append({"day": current.day, "date": current.isoformat(), "status": "absence", "attendance": 0.0, "hours": 0.0, "times": []})
                 current += timedelta(days=1)
                 continue
@@ -559,6 +556,11 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             leave_days_count += lv
             absence_days_count += ab
             absence_fine_days += absent_fine_day
+            # 按月模板：请假/缺勤按当天所在月的日薪逐天扣（跨月时各月日薪不同）
+            if tt == "monthly":
+                day_rate = template_amount / calendar.monthrange(current.year, current.month)[1]
+                monthly_leave_deduction += lv * day_rate
+                monthly_absence_deduction += ab * day_rate
 
             # 该天打卡时间（按时段 1-4 顺序，HH:MM）
             times = []
@@ -606,16 +608,34 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
         leave_deduction = 0.0
         absence_deduction = 0.0
         period_base = None
+        monthly_breakdown = []
         if tt == "hourly":
             work_pay = work_hours_total * hourly_rate
         elif tt == "daily":
             work_pay = attendance_days_total * template_amount
         else:  # monthly
             daily_rate = template_amount / total_days
-            # 周期基础 = 月薪 × 周期天数 ÷ 当月天数（半天/单人/离职结算按实际天数折算）
-            period_base = template_amount * emp_period_days / total_days
-            leave_deduction = round(daily_rate * leave_days_count, 2)
-            absence_deduction = round(daily_rate * absence_days_count, 2)
+            # 按月拆分：每段 = 月薪 × 段天数 ÷ 该段所在自然月天数，再相加
+            period_base = 0.0
+            seg_start = emp_start_date
+            while seg_start <= period_end:
+                seg_month_end = date(seg_start.year, seg_start.month, calendar.monthrange(seg_start.year, seg_start.month)[1])
+                seg_end = min(period_end, seg_month_end)
+                seg_days = (seg_end - seg_start).days + 1
+                seg_month_days = calendar.monthrange(seg_start.year, seg_start.month)[1]
+                seg_amount = template_amount * seg_days / seg_month_days
+                period_base += seg_amount
+                monthly_breakdown.append({
+                    "start": seg_start.isoformat(),
+                    "end": seg_end.isoformat(),
+                    "days": seg_days,
+                    "month_days": seg_month_days,
+                    "amount": round(seg_amount, 2),
+                })
+                seg_start = seg_end + timedelta(days=1)
+            period_base = round(period_base, 2)
+            leave_deduction = round(monthly_leave_deduction, 2)
+            absence_deduction = round(monthly_absence_deduction, 2)
             # 上班工资 = 周期基础 - 缺勤扣款 - 请假扣款，下限保护不小于 0
             work_pay = max(period_base - leave_deduction - absence_deduction, 0.0)
 
@@ -733,6 +753,7 @@ async def _calc_payroll(db: AsyncSession, current_user: User, wh_id: int, req: C
             "absence_days": round(absence_days_count, 2),
             "leave_deduction": leave_deduction,
             "absence_deduction": absence_deduction,
+            "monthly_breakdown": monthly_breakdown,
             "late_half_count": late_half_count,
             "late_one_count": late_one_count,
             "early_half_count": early_half_count,
