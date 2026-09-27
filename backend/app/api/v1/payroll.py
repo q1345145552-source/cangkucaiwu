@@ -1241,6 +1241,8 @@ async def confirm_payroll(
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
+    if r.voided:
+        raise HTTPException(400, "这张工资单已作废 不能操作")
     if r.status == "confirmed":
         raise HTTPException(400, "该工资单已确认")
 
@@ -1395,11 +1397,15 @@ async def batch_delete_payroll(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
     records = await _batch_fetch(db, wh_id, req.record_ids)
+    deleted = 0
     for r in records:
+        if r.voided:
+            continue
         await _rollback_advance_deductions(db, r)
         await db.delete(r)
+        deleted += 1
     await db.flush()
-    return {"message": f"已删除 {len(records)} 条", "count": len(records)}
+    return {"message": f"已删除 {deleted} 条", "count": deleted}
 
 
 class RecalcRequest(BaseModel):
@@ -1466,7 +1472,7 @@ async def _recalc_one(db: AsyncSession, current_user: User, wh_id: int, record_i
     emp_name = emp.name if emp else ""
     await record_history(
         db,
-        module="工资",
+        module="payroll",
         record_id=r.id,
         operator=current_user,
         operation_type="void",
@@ -1571,6 +1577,8 @@ async def delete_payroll(
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
+    if r.voided:
+        raise HTTPException(400, "这张工资单已作废 不能操作")
 
     await _rollback_advance_deductions(db, r)
     await db.delete(r)
@@ -1595,6 +1603,7 @@ async def delete_period_payroll(
     summary_q = select(PayrollRecord).where(
         PayrollRecord.warehouse_id == wh_id,
         PayrollRecord.period == period,
+        PayrollRecord.voided == False,
     )
     if half:
         summary_q = summary_q.where(PayrollRecord.half == half)
@@ -1651,6 +1660,8 @@ async def disburse_payroll(
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
+    if r.voided:
+        raise HTTPException(400, "这张工资单已作废 不能操作")
     if r.status != "confirmed":
         raise HTTPException(400, "请先确认工资单再发放")
     if r.disbursed:
@@ -1723,6 +1734,7 @@ async def my_payslip(
     query = select(PayrollRecord).where(
         PayrollRecord.warehouse_id == wh_id,
         PayrollRecord.employee_id == emp.id,
+        PayrollRecord.voided == False,
     )
     if period:
         query = query.where(PayrollRecord.period == period)
