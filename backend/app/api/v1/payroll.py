@@ -1536,11 +1536,13 @@ async def batch_delete_payroll(
 
 class RecalcRequest(BaseModel):
     void_reason: str
+    mode: str = "recalc"  # recalc=作废并重算(默认) / void=只作废
 
 
 class BatchRecalcRequest(BaseModel):
     record_ids: List[int]
     void_reason: str
+    mode: str = "recalc"  # recalc=作废并重算(默认) / void=只作废
 
 
 async def _recalc_one(db: AsyncSession, current_user: User, wh_id: int, record_id: int, void_reason: str):
@@ -1622,6 +1624,57 @@ async def _recalc_one(db: AsyncSession, current_user: User, wh_id: int, record_i
     }
 
 
+async def _void_one(db: AsyncSession, current_user: User, wh_id: int, record_id: int, void_reason: str):
+    """只作废（不重算）：回退预支、标作废、写日志。返回结果 dict；失败抛 HTTPException（事务由调用方负责）。"""
+    if not void_reason or not str(void_reason).strip():
+        raise HTTPException(400, "请填写作废原因")
+
+    r = (await db.execute(
+        select(PayrollRecord).where(
+            PayrollRecord.id == record_id,
+            PayrollRecord.warehouse_id == wh_id,
+        )
+    )).scalar_one_or_none()
+    if not r:
+        raise HTTPException(404, "工资记录不存在")
+    if r.voided:
+        raise HTTPException(400, "这张单已经作废过了")
+    if r.disbursed:
+        raise HTTPException(400, "已发放的工资单不能作废，先把发放撤了再说")
+
+    was_confirmed = r.status == "confirmed"
+
+    # 回退旧单已扣的预支（作废后这段没结算了，扣款没依据，留给下次重新扣）
+    await _rollback_advance_deductions(db, r)
+
+    now = thai_now()
+    r.voided = True
+    r.voided_by = current_user.id
+    r.voided_at = now
+    r.void_reason = str(void_reason).strip()
+
+    emp = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
+    emp_name = emp.name if emp else ""
+    await record_history(
+        db,
+        module="payroll",
+        record_id=r.id,
+        operator=current_user,
+        operation_type="void",
+        before={
+            "employee_name": emp_name,
+            "range": f"{r.settle_start_date.isoformat()} 到 {r.settle_end_date.isoformat()}" if r.settle_start_date and r.settle_end_date else "",
+            "void_reason": str(void_reason).strip(),
+        },
+        after={"void_only": True},
+        warehouse_id=wh_id,
+    )
+    await db.flush()
+
+    note = "这张单之前已经确认过" if was_confirmed else None
+    return {"message": "已作废", "record_id": r.id, "employee_name": emp_name, "note": note}
+
+
 @router.post("/{record_id}/recalc")
 async def recalc_payroll(
     record_id: int,
@@ -1635,6 +1688,8 @@ async def recalc_payroll(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+    if req.mode == "void":
+        return await _void_one(db, current_user, wh_id, record_id, req.void_reason)
     return await _recalc_one(db, current_user, wh_id, record_id, req.void_reason)
 
 
@@ -1666,12 +1721,18 @@ async def batch_recalc_payroll(
         name = emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else ""
         try:
             async with db.begin_nested():
-                result = await _recalc_one(db, current_user, wh_id, r.id, req.void_reason)
-            success.append({"record_id": r.id, "name": name, "new_record_id": result["new_record_id"]})
+                if req.mode == "void":
+                    result = await _void_one(db, current_user, wh_id, r.id, req.void_reason)
+                else:
+                    result = await _recalc_one(db, current_user, wh_id, r.id, req.void_reason)
+            if req.mode == "void":
+                success.append({"record_id": r.id, "name": name})
+            else:
+                success.append({"record_id": r.id, "name": name, "new_record_id": result["new_record_id"]})
         except HTTPException as e:
             skipped.append({"record_id": r.id, "name": name, "reason": str(e.detail)})
         except Exception as e:
-            skipped.append({"record_id": r.id, "name": name, "reason": str(e) or "重算失败"})
+            skipped.append({"record_id": r.id, "name": name, "reason": str(e) or "操作失败"})
 
     await db.flush()
     return {

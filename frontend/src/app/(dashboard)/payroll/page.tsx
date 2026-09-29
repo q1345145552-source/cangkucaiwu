@@ -69,6 +69,9 @@ export default function PayrollPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [progressData, setProgressData] = useState<any[]>([]);
   const [showProgress, setShowProgress] = useState(false);
+  const [recalcModal, setRecalcModal] = useState<{ action: "single" | "batch"; id?: number } | null>(null);
+  const [recalcReason, setRecalcReason] = useState("");
+  const [recalcModeOpt, setRecalcModeOpt] = useState<"recalc" | "void">("recalc");
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -257,20 +260,34 @@ export default function PayrollPage() {
     }
   }
 
-  async function handleRecalcOne(recordId: number) {
-    const reason = prompt("请填写作废原因：");
-    if (reason === null) return;
-    if (!reason.trim()) { toast("error", "请填写作废原因"); return; }
+  function openRecalcOne(recordId: number) {
+    setRecalcModal({ action: "single", id: recordId });
+    setRecalcReason("");
+    setRecalcModeOpt("recalc");
+  }
+
+  async function confirmRecalc() {
+    if (!recalcModal) return;
+    const reason = recalcReason.trim();
+    if (!reason) { toast("error", "请填写作废原因"); return; }
     setCalculating(true);
     try {
-      const r = await api.post<any>(`/payroll/${recordId}/recalc`, { void_reason: reason });
-      const msg = r.note ? `${r.message || "重算成功"}；${r.note}` : (r.message || "重算成功");
-      toast("success", msg);
+      if (recalcModal.action === "single") {
+        const r = await api.post<any>(`/payroll/${recalcModal.id}/recalc`, { void_reason: reason, mode: recalcModeOpt });
+        const msg = r.note ? `${r.message || "完成"}；${r.note}` : (r.message || "完成");
+        toast("success", msg);
+      } else {
+        const r = await api.post<any>("/payroll/batch-recalc", { record_ids: selectedIds, void_reason: reason, mode: recalcModeOpt });
+        const skippedText = (r.skipped || []).map((s: any) => `${s.name}：${s.reason}`).join("；");
+        const msg = r.message || "批量作废重算完成";
+        toast("success", skippedText ? `${msg}；跳过：${skippedText}` : msg);
+      }
+      setRecalcModal(null);
       loadRecordsByMonth();
       loadMonths();
       loadProgress();
     } catch (err: any) {
-      toast("error", err.message || "重算失败");
+      toast("error", err.message || "操作失败");
     }
     setCalculating(false);
   }
@@ -389,22 +406,11 @@ export default function PayrollPage() {
     setCalculating(false);
   }
 
-  async function handleBatchRecalc() {
+  function openBatchRecalc() {
     if (!selectedIds.length) return;
-    const reason = prompt("请填写作废原因（对选中的所有工资单统一生效）：");
-    if (reason === null) return;
-    if (!reason.trim()) { toast("error", "请填写作废原因"); return; }
-    setCalculating(true);
-    try {
-      const r = await api.post<any>("/payroll/batch-recalc", { record_ids: selectedIds, void_reason: reason });
-      const skippedText = (r.skipped || []).map((s: any) => `${s.name}：${s.reason}`).join("；");
-      const msg = r.message || "批量重算完成";
-      toast("success", skippedText ? `${msg}；跳过：${skippedText}` : msg);
-      loadRecordsByMonth();
-      loadMonths();
-      loadProgress();
-    } catch (err: any) { toast("error", err.message || "批量重算失败"); }
-    setCalculating(false);
+    setRecalcModal({ action: "batch" });
+    setRecalcReason("");
+    setRecalcModeOpt("recalc");
   }
 
   return (
@@ -542,8 +548,8 @@ export default function PayrollPage() {
               className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 disabled:opacity-50">批量确认</button>
             <button onClick={handleBatchDisburse} disabled={calculating}
               className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 disabled:opacity-50">批量发放</button>
-            <button onClick={handleBatchRecalc} disabled={calculating}
-              className="bg-amber-500 text-white px-3 py-1.5 rounded text-sm hover:bg-amber-600 disabled:opacity-50">批量重算</button>
+            <button onClick={openBatchRecalc} disabled={calculating}
+              className="bg-amber-500 text-white px-3 py-1.5 rounded text-sm hover:bg-amber-600 disabled:opacity-50">批量作废重算</button>
           </div>
         </div>
       )}
@@ -661,9 +667,9 @@ export default function PayrollPage() {
                         <Eye size={14}/>
                       </button>
                       {!r.voided && isAdmin && (
-                        <button onClick={() => handleRecalcOne(r.id)}
+                        <button onClick={() => openRecalcOne(r.id)}
                           className="text-amber-500 hover:text-amber-700 text-xs font-medium"
-                          title="重算">
+                          title="作废重算">
                           <AlertTriangle size={14}/>
                         </button>
                       )}
@@ -770,6 +776,44 @@ export default function PayrollPage() {
                   <button onClick={confirmCalculate} disabled={calculating} className="btn-primary text-sm px-6 py-2">确认计算</button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 作废重算 Modal */}
+      {recalcModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRecalcModal(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-amber-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <AlertTriangle size={20} /><span className="font-semibold">{recalcModal.action === "single" ? "作废重算" : "批量作废重算"}</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">作废原因（必填）</label>
+                <textarea className="form-input text-base py-2.5 w-full" rows={2} value={recalcReason}
+                  onChange={e => setRecalcReason(e.target.value)} placeholder="请填写作废原因" />
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="recalcMode" checked={recalcModeOpt === "recalc"} onChange={() => setRecalcModeOpt("recalc")} className="mt-1" />
+                  <span>
+                    <span className="text-sm font-medium text-gray-700">作废并重算</span>
+                    <span className="block text-xs text-gray-400">会用原来的区间重新算一张新的，旧的标为已作废</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="recalcMode" checked={recalcModeOpt === "void"} onChange={() => setRecalcModeOpt("void")} className="mt-1" />
+                  <span>
+                    <span className="text-sm font-medium text-gray-700">只作废</span>
+                    <span className="block text-xs text-gray-400">这段工资退回未结算状态，下次算工资会重新算这一段</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setRecalcModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={confirmRecalc} disabled={calculating} className="btn-primary text-sm px-6 py-2">确定</button>
             </div>
           </div>
         </div>
