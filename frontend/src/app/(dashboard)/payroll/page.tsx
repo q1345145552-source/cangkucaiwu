@@ -448,7 +448,7 @@ export default function PayrollPage() {
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
-            <input type="text" placeholder="搜索员工姓名" value={nameFilter}
+            <input type="text" placeholder="搜索姓名或工号" value={nameFilter}
               onChange={e => {
                 setNameFilter(e.target.value);
                 loadRecordsByMonth(selectedMonth, { name: e.target.value });
@@ -598,6 +598,9 @@ export default function PayrollPage() {
                     <span className={r.voided ? "text-gray-400" : ""}>{r.employee_name ?? "—"}</span>
                     {r.voided && (
                       <span className="ml-1 px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 text-[10px] font-medium">已作废</span>
+                    )}
+                    {r.employee_no && (
+                      <div className="text-[11px] text-gray-400 font-normal">{r.employee_no}</div>
                     )}
                     <div className="text-[11px] text-gray-400 font-normal">{recordDateLabel(r)}</div>
                   </td>

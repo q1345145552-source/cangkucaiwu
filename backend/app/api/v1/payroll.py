@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from app.database import get_db
 from app.models.payroll import PayrollRecord
 from app.models.employee import Employee
@@ -1076,7 +1076,14 @@ def _apply_payroll_filters(query, settle_month=None, voided_filter=None, name=No
 
     if name and name.strip():
         kw = name.strip()
-        query = query.where(PayrollRecord.employee_id.in_(select(Employee.id).where(Employee.name.ilike(f"%{kw}%"))))
+        like = f"%{kw}%"
+        # 姓名模糊匹配 或 工号（绑定登录账号的用户名）模糊匹配
+        query = query.where(PayrollRecord.employee_id.in_(
+            select(Employee.id).where(or_(
+                Employee.name.ilike(like),
+                Employee.user_id.in_(select(User.id).where(User.username.ilike(like))),
+            ))
+        ))
 
     if status == "pending":
         query = query.where(PayrollRecord.status == "pending")
@@ -1126,6 +1133,14 @@ async def list_payroll(
         emps = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
         emp_map = {e.id: e for e in emps}
 
+    # 工号 = 员工绑定的登录账号用户名
+    emp_no_map = {}
+    user_ids = {e.user_id for e in emp_map.values() if e.user_id}
+    if user_ids:
+        emp_users = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+        username_map = {u.id: u.username for u in emp_users}
+        emp_no_map = {e.id: username_map[e.user_id] for e in emp_map.values() if e.user_id and e.user_id in username_map}
+
     # 作废信息：作废人姓名 + 重算成了哪张单（新单 recalc_from_id == 本单 id）
     voided_by_ids = {r.voided_by for r in records if r.voided_by}
     user_map = {}
@@ -1159,6 +1174,7 @@ async def list_payroll(
             "recalc_from_id": r.recalc_from_id,
             "recalc_to_id": recalc_to_map.get(r.id),
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
+            "employee_no": emp_no_map.get(r.employee_id),
             "employee_status": r.employee_status,
             "period": r.period,
             "half": r.half,
@@ -1271,6 +1287,14 @@ async def export_payroll(
         emps = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
         emp_map = {e.id: e for e in emps}
 
+    # 工号 = 员工绑定的登录账号用户名
+    emp_no_map = {}
+    user_ids = {e.user_id for e in emp_map.values() if e.user_id}
+    if user_ids:
+        emp_users = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+        username_map = {u.id: u.username for u in emp_users}
+        emp_no_map = {e.id: username_map[e.user_id] for e in emp_map.values() if e.user_id and e.user_id in username_map}
+
     from io import BytesIO
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
@@ -1279,7 +1303,7 @@ async def export_payroll(
     wb = Workbook()
     ws = wb.active
     ws.title = "工资单"
-    headers = ["员工姓名", "结算开始日", "结算结束日", "试用还是正式", "出勤天数", "请假天数", "休息天数", "缺勤天数", "基本工资", "加班费", "扣款合计", "预支扣款", "实发", "状态", "是否发放", "剩余欠款", "是否作废"]
+    headers = ["员工姓名", "工号", "结算开始日", "结算结束日", "试用还是正式", "出勤天数", "请假天数", "休息天数", "缺勤天数", "基本工资", "加班费", "扣款合计", "预支扣款", "实发", "状态", "是否发放", "剩余欠款", "是否作废"]
     ws.append(headers)
     hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
@@ -1292,6 +1316,7 @@ async def export_payroll(
         emp = emp_map.get(r.employee_id)
         ws.append([
             emp.name if emp else "",
+            emp_no_map.get(r.employee_id) or "",
             r.settle_start_date.isoformat() if r.settle_start_date else "",
             r.settle_end_date.isoformat() if r.settle_end_date else "",
             "试用" if r.employee_status == "trial" else "正式",
