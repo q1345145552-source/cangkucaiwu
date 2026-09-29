@@ -909,6 +909,9 @@ async def employee_summary(
             "disbursed": pr.disbursed,
             "net_pay": pr.net_pay,
         })
+    # 一张有效的单都没有 → 合计返回空(None)，前端据此显示横杠而不是 0
+    if not payroll_records:
+        payroll_total = None
 
     # 保留原单条字段，取最后一张（按结算结束日），防止别处还在用
     payroll_data = None
