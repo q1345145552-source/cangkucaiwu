@@ -1141,6 +1141,20 @@ async def list_payroll(
         username_map = {u.id: u.username for u in emp_users}
         emp_no_map = {e.id: username_map[e.user_id] for e in emp_map.values() if e.user_id and e.user_id in username_map}
 
+    # 每个员工「最后一张」：名下所有有效单(不限月份)中结束日最大的那张
+    last_end_map = {}
+    if emp_ids:
+        all_valid = (await db.execute(
+            select(PayrollRecord).where(
+                PayrollRecord.warehouse_id == wh_id,
+                PayrollRecord.employee_id.in_(emp_ids),
+                PayrollRecord.voided == False,
+            )
+        )).scalars().all()
+        for rr in all_valid:
+            if rr.settle_end_date and (last_end_map.get(rr.employee_id) is None or rr.settle_end_date > last_end_map[rr.employee_id]):
+                last_end_map[rr.employee_id] = rr.settle_end_date
+
     # 作废信息：作废人姓名 + 重算成了哪张单（新单 recalc_from_id == 本单 id）
     voided_by_ids = {r.voided_by for r in records if r.voided_by}
     user_map = {}
@@ -1175,6 +1189,7 @@ async def list_payroll(
             "recalc_to_id": recalc_to_map.get(r.id),
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
             "employee_no": emp_no_map.get(r.employee_id),
+            "is_last_record": bool(r.settle_end_date is not None and last_end_map.get(r.employee_id) is not None and r.settle_end_date == last_end_map[r.employee_id]),
             "employee_status": r.employee_status,
             "period": r.period,
             "half": r.half,

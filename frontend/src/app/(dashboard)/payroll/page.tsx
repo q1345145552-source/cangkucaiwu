@@ -72,6 +72,7 @@ export default function PayrollPage() {
   const [recalcModal, setRecalcModal] = useState<{ action: "single" | "batch"; id?: number } | null>(null);
   const [recalcReason, setRecalcReason] = useState("");
   const [recalcModeOpt, setRecalcModeOpt] = useState<"recalc" | "void">("recalc");
+  const [recalcWarning, setRecalcWarning] = useState(false);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -260,10 +261,11 @@ export default function PayrollPage() {
     }
   }
 
-  function openRecalcOne(recordId: number) {
+  function openRecalcOne(recordId: number, isLast: boolean) {
     setRecalcModal({ action: "single", id: recordId });
     setRecalcReason("");
     setRecalcModeOpt("recalc");
+    setRecalcWarning(!isLast);
   }
 
   async function confirmRecalc() {
@@ -408,9 +410,11 @@ export default function PayrollPage() {
 
   function openBatchRecalc() {
     if (!selectedIds.length) return;
+    const hasNotLast = records.some(r => selectedIds.includes(r.id) && !r.is_last_record);
     setRecalcModal({ action: "batch" });
     setRecalcReason("");
     setRecalcModeOpt("recalc");
+    setRecalcWarning(hasNotLast);
   }
 
   return (
@@ -667,7 +671,7 @@ export default function PayrollPage() {
                         <Eye size={14}/>查看工资单
                       </button>
                       {!r.voided && isAdmin && (
-                        <button onClick={() => openRecalcOne(r.id)}
+                        <button onClick={() => openRecalcOne(r.id, !!r.is_last_record)}
                           className="text-amber-500 hover:text-amber-700 text-xs font-medium inline-flex items-center gap-1"
                           title="作废重算">
                           <AlertTriangle size={14}/>作废重算
@@ -807,6 +811,9 @@ export default function PayrollPage() {
                   <span>
                     <span className="text-sm font-medium text-gray-700">只作废</span>
                     <span className="block text-xs text-gray-400">这段工资退回未结算状态，下次算工资会重新算这一段</span>
+                    {recalcWarning && (
+                      <span className="block text-xs text-red-600 mt-1">这张单后面还有别的单 作废后这段会变成空档 不会再自动补算 要改金额请选 作废并重算</span>
+                    )}
                   </span>
                 </label>
               </div>
