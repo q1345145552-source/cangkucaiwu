@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { thaiNow } from "@/lib/thai-time";
-import { Calculator, CheckCircle, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User } from "lucide-react";
+import { Calculator, CheckCircle, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User, Download } from "lucide-react";
 
 // 泰国时间的今天/昨天/过去15号/过去月末（用于结算日期输入）
 function thaiDateStr(d: Date): string {
@@ -53,6 +53,8 @@ export default function PayrollPage() {
   const [calculating, setCalculating] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState("");
   const [voidFilter, setVoidFilter] = useState("valid");
+  const [nameFilter, setNameFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showPayslip, setShowPayslip] = useState<any>(null);
   const [dailyDetailOpen, setDailyDetailOpen] = useState(false);
   const [lateDetailOpen, setLateDetailOpen] = useState(false);
@@ -124,18 +126,23 @@ export default function PayrollPage() {
     return `${r.period} ${r.half === "second_half" ? "下半月" : "上半月"}`;
   }
 
-  async function loadRecordsByMonth(month?: string, vf?: string) {
+  async function loadRecordsByMonth(month?: string, opts?: { vf?: string; name?: string; status?: string }) {
     const m = month || selectedMonth;
     if (!m) return;
-    const f = vf || voidFilter;
+    const vf = opts?.vf ?? voidFilter;
+    const nm = opts?.name ?? nameFilter;
+    const st = opts?.status ?? statusFilter;
     setSelectedMonth(m);
     setLoading(true);
     setSelectedIds([]);
     try {
-      const params = `settle_month=${m}&voided_filter=${f}`;
+      const params = new URLSearchParams({ settle_month: m, voided_filter: vf });
+      if (nm) params.set("name", nm);
+      if (st && st !== "all") params.set("status", st);
+      const qs = params.toString();
       const [recR, sumR] = await Promise.all([
-        api.get<any>(`/payroll?${params}`),
-        api.get<any>(`/payroll/summary?settle_month=${m}`),
+        api.get<any>(`/payroll?${qs}`),
+        api.get<any>(`/payroll/summary?${qs}`),
       ]);
       setRecords(recR.data || []);
       setSummary(sumR);
@@ -143,6 +150,31 @@ export default function PayrollPage() {
       toast("error", err.message || "加载工资数据失败");
     }
     setLoading(false);
+  }
+
+  async function handleExport() {
+    if (!selectedMonth) { toast("error", "请先选择月份"); return; }
+    const params = new URLSearchParams({ settle_month: selectedMonth, voided_filter: voidFilter });
+    if (nameFilter) params.set("name", nameFilter);
+    if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+    const token = getToken();
+    const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+    try {
+      const res = await fetch(`${base}/payroll/export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("导出失败");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payroll_${selectedMonth}.xlsx`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("导出失败:", err);
+      toast("error", "导出失败 请稍后再试");
+    }
   }
 
   async function handleCalculate() {
@@ -416,16 +448,37 @@ export default function PayrollPage() {
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
+            <input type="text" placeholder="搜索员工姓名" value={nameFilter}
+              onChange={e => {
+                setNameFilter(e.target.value);
+                loadRecordsByMonth(selectedMonth, { name: e.target.value });
+              }}
+              className="border rounded-lg px-3 py-2 text-sm bg-white w-[160px]" />
+            <select value={statusFilter}
+              onChange={e => {
+                setStatusFilter(e.target.value);
+                loadRecordsByMonth(selectedMonth, { status: e.target.value });
+              }}
+              className="border rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="all">全部状态</option>
+              <option value="pending">待确认</option>
+              <option value="confirmed">已确认</option>
+              <option value="disbursed">已发放</option>
+            </select>
             <select value={voidFilter}
               onChange={e => {
                 setVoidFilter(e.target.value);
-                loadRecordsByMonth(selectedMonth, e.target.value);
+                loadRecordsByMonth(selectedMonth, { vf: e.target.value });
               }}
               className="border rounded-lg px-3 py-2 text-sm bg-white">
               <option value="valid">只看有效</option>
               <option value="voided">只看已作废</option>
               <option value="all">全部</option>
             </select>
+            <button onClick={handleExport}
+              className="border border-blue-300 text-blue-600 flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-blue-50">
+              <Download size={16}/> 导出Excel
+            </button>
             {isAdmin && records.length > 0 && (
               <button onClick={handleConfirmAll}
                 className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">

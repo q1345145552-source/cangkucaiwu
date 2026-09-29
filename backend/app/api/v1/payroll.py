@@ -1056,12 +1056,45 @@ async def single_settle(
         current_user, db,
     )
 
+def _apply_payroll_filters(query, settle_month=None, voided_filter=None, name=None, status=None):
+    """工资单公共筛选：作废、结算月份、姓名模糊、状态。返回加了 where 的 query。"""
+    if voided_filter == "voided":
+        query = query.where(PayrollRecord.voided == True)
+    elif voided_filter == "all":
+        pass
+    else:
+        query = query.where(PayrollRecord.voided == False)
+
+    if settle_month:
+        try:
+            sy, sm = settle_month.split("-")
+            month_start = date(int(sy), int(sm), 1)
+        except (ValueError, TypeError):
+            raise HTTPException(400, "结算月份格式错误，应为 YYYY-MM")
+        month_end = date(month_start.year + 1, 1, 1) if month_start.month == 12 else date(month_start.year, month_start.month + 1, 1)
+        query = query.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
+
+    if name and name.strip():
+        kw = name.strip()
+        query = query.where(PayrollRecord.employee_id.in_(select(Employee.id).where(Employee.name.ilike(f"%{kw}%"))))
+
+    if status == "pending":
+        query = query.where(PayrollRecord.status == "pending")
+    elif status == "confirmed":
+        query = query.where(PayrollRecord.status == "confirmed", PayrollRecord.disbursed == False)
+    elif status == "disbursed":
+        query = query.where(PayrollRecord.disbursed == True)
+
+    return query
+
+
 @router.get("")
 async def list_payroll(
     period: str = None,
     half: str = None,
     settle_month: str = None,
     status: str = None,
+    name: str = None,
     voided_filter: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -1070,38 +1103,16 @@ async def list_payroll(
     if wh_id is None:
         return {"data": [], "periods": [], "months": []}
     query = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
-    count_q = select(func.count(PayrollRecord.id)).where(PayrollRecord.warehouse_id == wh_id)
 
-    # 作废筛选：valid=只看有效(默认) / voided=只看已作废 / all=全部
-    if voided_filter == "voided":
-        query = query.where(PayrollRecord.voided == True)
-        count_q = count_q.where(PayrollRecord.voided == True)
-    elif voided_filter == "all":
-        pass
-    else:
-        query = query.where(PayrollRecord.voided == False)
-        count_q = count_q.where(PayrollRecord.voided == False)
+    # 公共筛选：作废、结算月份、姓名模糊、状态
+    query = _apply_payroll_filters(query, settle_month=settle_month, voided_filter=voided_filter, name=name, status=status)
 
-    if settle_month:
-        # 按结算结束日所在月筛（settle_end_date 的年月 == settle_month）
-        try:
-            sy, sm = settle_month.split("-")
-            month_start = date(int(sy), int(sm), 1)
-        except (ValueError, TypeError):
-            raise HTTPException(400, "结算月份格式错误，应为 YYYY-MM")
-        month_end = date(month_start.year + 1, 1, 1) if month_start.month == 12 else date(month_start.year, month_start.month + 1, 1)
-        query = query.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
-        count_q = count_q.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
-    else:
+    # 旧周期参数（无 settle_month 时才用，兼容保留）
+    if not settle_month:
         if period:
             query = query.where(PayrollRecord.period == period)
-            count_q = count_q.where(PayrollRecord.period == period)
         if half:
             query = query.where(PayrollRecord.half == half)
-            count_q = count_q.where(PayrollRecord.half == half)
-    if status:
-        query = query.where(PayrollRecord.status == status)
-        count_q = count_q.where(PayrollRecord.status == status)
 
     result = await db.execute(
         query.order_by(PayrollRecord.employee_id, PayrollRecord.period.desc())
@@ -1190,26 +1201,22 @@ async def payroll_summary(
     period: str = None,
     half: str = None,
     settle_month: str = None,
+    status: str = None,
+    name: str = None,
+    voided_filter: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         return {"period": period or "", "employee_count": 0, "record_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
-    summary_q = select(PayrollRecord).where(
-        PayrollRecord.warehouse_id == wh_id,
-        PayrollRecord.voided == False,
-    )
+    summary_q = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
 
-    if settle_month:
-        try:
-            sy, sm = settle_month.split("-")
-            month_start = date(int(sy), int(sm), 1)
-        except (ValueError, TypeError):
-            raise HTTPException(400, "结算月份格式错误，应为 YYYY-MM")
-        month_end = date(month_start.year + 1, 1, 1) if month_start.month == 12 else date(month_start.year, month_start.month + 1, 1)
-        summary_q = summary_q.where(PayrollRecord.settle_end_date >= month_start, PayrollRecord.settle_end_date < month_end)
-    else:
+    # 公共筛选：作废、结算月份、姓名模糊、状态
+    summary_q = _apply_payroll_filters(summary_q, settle_month=settle_month, voided_filter=voided_filter, name=name, status=status)
+
+    # 旧周期参数（无 settle_month 时才用，兼容保留）
+    if not settle_month:
         if period:
             summary_q = summary_q.where(PayrollRecord.period == period)
         if half:
@@ -1234,6 +1241,85 @@ async def payroll_summary(
         "total_penalties": round(total_penalties, 2),
         "total_net": round(total_net, 2),
     }
+
+
+@router.get("/export")
+async def export_payroll(
+    settle_month: str = None,
+    status: str = None,
+    name: str = None,
+    voided_filter: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出当前筛选出的工资单为 Excel（参数与列表一致）。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以导出工资")
+
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        raise HTTPException(400, "请先选择仓库")
+
+    query = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
+    query = _apply_payroll_filters(query, settle_month=settle_month, voided_filter=voided_filter, name=name, status=status)
+    query = query.order_by(PayrollRecord.settle_end_date.asc(), PayrollRecord.id.asc())
+    records = (await db.execute(query)).scalars().all()
+
+    emp_ids = {r.employee_id for r in records}
+    emp_map = {}
+    if emp_ids:
+        emps = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
+        emp_map = {e.id: e for e in emps}
+
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    from fastapi.responses import StreamingResponse
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "工资单"
+    headers = ["员工姓名", "结算开始日", "结算结束日", "试用还是正式", "出勤天数", "请假天数", "休息天数", "缺勤天数", "基本工资", "加班费", "扣款合计", "预支扣款", "实发", "状态", "是否发放", "剩余欠款", "是否作废"]
+    ws.append(headers)
+    hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+    hfont = Font(bold=True, color="FFFFFF")
+    for c in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=c)
+        cell.fill = hf
+        cell.font = hfont
+
+    for r in records:
+        emp = emp_map.get(r.employee_id)
+        ws.append([
+            emp.name if emp else "",
+            r.settle_start_date.isoformat() if r.settle_start_date else "",
+            r.settle_end_date.isoformat() if r.settle_end_date else "",
+            "试用" if r.employee_status == "trial" else "正式",
+            r.attendance_days if r.attendance_days is not None else 0,
+            r.leave_days if r.leave_days is not None else 0,
+            r.rest_days if r.rest_days is not None else 0,
+            r.absence_days if r.absence_days is not None else 0,
+            r.base_pay if r.base_pay is not None else 0,
+            r.overtime_pay if r.overtime_pay is not None else 0,
+            r.total_deductions if r.total_deductions is not None else 0,
+            r.advance_deduction if r.advance_deduction is not None else 0,
+            r.net_pay if r.net_pay is not None else 0,
+            "已确认" if r.status == "confirmed" else "待确认",
+            "已发放" if r.disbursed else "未发放",
+            r.remaining_debt if r.remaining_debt is not None else 0,
+            "是" if r.voided else "",
+        ])
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"payroll_{settle_month or 'all'}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 @router.post("/{record_id}/confirm")
