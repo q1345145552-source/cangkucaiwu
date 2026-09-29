@@ -888,24 +888,39 @@ async def employee_summary(
         )).scalar()
         ot_hours = round(ot_result or 0, 1)
 
-    # Payroll record
-    payroll = (await db.execute(
+    # Payroll records：排除作废，取该月所有有效单，按结算结束日排序
+    payroll_records = (await db.execute(
         select(PayrollRecord).where(
             PayrollRecord.employee_id == employee_id,
             PayrollRecord.period == month,
-        )
-    )).scalar_one_or_none()
+            PayrollRecord.voided == False,
+        ).order_by(PayrollRecord.settle_end_date.asc(), PayrollRecord.id.asc())
+    )).scalars().all()
 
+    payroll_total = 0.0
+    payroll_details = []
+    for pr in payroll_records:
+        payroll_total = round(payroll_total + (pr.net_pay or 0), 2)
+        payroll_details.append({
+            "id": pr.id,
+            "settle_start_date": pr.settle_start_date.isoformat() if pr.settle_start_date else None,
+            "settle_end_date": pr.settle_end_date.isoformat() if pr.settle_end_date else None,
+            "status": pr.status,
+            "net_pay": pr.net_pay,
+        })
+
+    # 保留原单条字段，取最后一张（按结算结束日），防止别处还在用
     payroll_data = None
-    if payroll:
+    if payroll_records:
+        last = payroll_records[-1]
         payroll_data = {
-            "id": payroll.id,
-            "status": payroll.status,
-            "disbursed": payroll.disbursed,
-            "net_pay": payroll.net_pay,
-            "base_pay": payroll.base_pay,
-            "overtime_pay": payroll.overtime_pay,
-            "late_penalty": payroll.late_penalty,
+            "id": last.id,
+            "status": last.status,
+            "disbursed": last.disbursed,
+            "net_pay": last.net_pay,
+            "base_pay": last.base_pay,
+            "overtime_pay": last.overtime_pay,
+            "late_penalty": last.late_penalty,
         }
 
     return {
@@ -916,6 +931,8 @@ async def employee_summary(
         "late_count": late_count,
         "overtime_hours": ot_hours,
         "payroll": payroll_data,
+        "payroll_total": payroll_total,
+        "payroll_details": payroll_details,
     }
 
 @router.get("/max-limit")

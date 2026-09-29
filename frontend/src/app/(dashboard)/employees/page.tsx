@@ -869,11 +869,31 @@ export default function EmployeesPage() {
                     <div><div className="text-2xl font-bold text-green-600">{summary.overtime_hours}h</div><div className="text-xs text-green-500">加班小时</div></div>
                     <div>
                       <div className="text-2xl font-bold text-blue-700">
-                        {summary.payroll ? `${(summary.payroll.net_pay || 0).toLocaleString()}` : '-'}
+                        {summary.payroll_total != null ? summary.payroll_total.toLocaleString() : '-'}
                       </div>
                       <div className="text-xs text-blue-500">本月工资</div>
+                      {summary.payroll_details?.length > 0 && (
+                        <div className="text-[11px] text-blue-400 mt-0.5">共 {summary.payroll_details.length} 张单</div>
+                      )}
                     </div>
                   </div>
+                  {summary.payroll_details?.length > 1 && (
+                    <div className="mt-3 text-xs text-blue-700 space-y-1 border-t border-blue-100 pt-2">
+                      {summary.payroll_details.map((d: any) => {
+                        const fmt = (s: string) => {
+                          if (!s) return "";
+                          const [y, m, dd] = s.split("-").map(Number);
+                          return `${m}月${dd}日`;
+                        };
+                        return (
+                          <div key={d.id} className="flex justify-between">
+                            <span>{fmt(d.settle_start_date)}到{fmt(d.settle_end_date)}</span>
+                            <span>{(d.net_pay || 0).toLocaleString()}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
