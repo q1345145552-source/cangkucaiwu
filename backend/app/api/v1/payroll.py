@@ -1195,7 +1195,7 @@ async def payroll_summary(
 ):
     wh_id = get_wh_id(current_user)
     if wh_id is None:
-        return {"period": period or "", "employee_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
+        return {"period": period or "", "employee_count": 0, "record_count": 0, "confirmed_count": 0, "pending_count": 0, "total_gross": 0, "total_overtime": 0, "total_penalties": 0, "total_net": 0}
     summary_q = select(PayrollRecord).where(
         PayrollRecord.warehouse_id == wh_id,
         PayrollRecord.voided == False,
@@ -1217,6 +1217,7 @@ async def payroll_summary(
     records = (await db.execute(summary_q)).scalars().all()
 
     confirmed = sum(1 for r in records if r.status == "confirmed")
+    distinct_employees = len({r.employee_id for r in records})
     total_net = sum(r.net_pay for r in records)
     total_gross = sum(r.gross_pay for r in records)
     total_ot = sum(r.overtime_pay for r in records)
@@ -1224,7 +1225,8 @@ async def payroll_summary(
 
     return {
         "period": period or (settle_month or ""),
-        "employee_count": len(records),
+        "employee_count": distinct_employees,
+        "record_count": len(records),
         "confirmed_count": confirmed,
         "pending_count": len(records) - confirmed,
         "total_gross": round(total_gross, 2),

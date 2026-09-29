@@ -439,9 +439,9 @@ export default function PayrollPage() {
       {/* Summary Card */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-400">总人数</p>
+          <p className="text-xs text-gray-400">结算人数</p>
           <p className="text-2xl font-bold text-gray-800">{summary?.employee_count ?? 0}</p>
-          <p className="text-xs text-gray-400">{summary?.confirmed_count ?? 0}已确认 / {summary?.pending_count ?? 0}待确认</p>
+          <p className="text-xs text-gray-400">共 {summary?.record_count ?? 0} 张工资单 · {summary?.confirmed_count ?? 0} 已确认 / {summary?.pending_count ?? 0} 待确认</p>
         </div>
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-400">应发总额</p>
