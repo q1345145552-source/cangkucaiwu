@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, DollarSign, Search, Download, RotateCcw, ArrowUp, ArrowDown, Minus } from "lucide-react";
 
@@ -23,6 +24,7 @@ const TYPE_OPTIONS = [
 ];
 
 export default function LedgerPage() {
+  const { toast } = useToast();
   const router = useRouter();
   const today = new Date();
   const curMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -91,10 +93,13 @@ export default function LedgerPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ledger_${dateRange.start_date}_${dateRange.end_date}.xlsx`;
+      a.download = `ledger_${dateRange.start_date || 'all'}_${dateRange.end_date || 'all'}.xlsx`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
-    } catch (err) { console.error("导出失败:", err); }
+    } catch (err) {
+      console.error("导出失败:", err);
+      toast("error", "导出失败 请稍后再试");
+    }
   }
 
   function handleReset() {

@@ -730,7 +730,7 @@ async def ledger_export(
         for c, v in enumerate(vals, 1):
             ws.cell(row=i, column=c, value=str(v) if v is not None else "")
     output = __import__('io').BytesIO(); wb.save(output); output.seek(0)
-    filename = f"ledger_{month or 'all'}.xlsx"
+    filename = f"ledger_{start_date or 'all'}_{end_date or 'all'}.xlsx"
     return __import__('fastapi').responses.StreamingResponse(
         output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"},

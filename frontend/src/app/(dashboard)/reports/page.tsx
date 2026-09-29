@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, FileText, PiggyBank, Receipt, CreditCard, Clock, AlertTriangle, Download } from "lucide-react";
 
@@ -56,6 +57,7 @@ function statusColor(s: string): string {
 }
 
 export default function ReportsPage() {
+  const { toast } = useToast();
   const router = useRouter();
   const today = new Date();
   const curMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -101,7 +103,10 @@ export default function ReportsPage() {
       a.download = `report_${key}_${dateRange.start_date}_${dateRange.end_date}.xlsx`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
-    } catch (err) { console.error("导出失败:", err); }
+    } catch (err) {
+      console.error("导出失败:", err);
+      toast("error", "导出失败 请稍后再试");
+    }
   }
 
   function formatPreview(key: string, p: any): string {
