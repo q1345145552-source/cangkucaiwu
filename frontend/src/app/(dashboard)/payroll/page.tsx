@@ -646,31 +646,31 @@ export default function PayrollPage() {
                     )}
                   </td>
                   <td className="px-3 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-x-2 gap-y-1 flex-wrap">
                       {!r.voided && r.status !== "confirmed" && isAdmin && (
                         <button onClick={() => handleConfirm(r.id)}
-                          className="text-green-600 hover:text-green-800 text-xs font-medium"
+                          className="text-green-600 hover:text-green-800 text-xs font-medium inline-flex items-center gap-1"
                           title="确认">
-                          <CheckCircle size={16}/>
+                          <CheckCircle size={14}/>确认
                         </button>
                       )}
                       {!r.voided && r.status === "confirmed" && !r.disbursed && isAdmin && (
                         <button onClick={() => handleDisburse(r.id)} disabled={disbursing === r.id}
-                          className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                          className="text-blue-600 hover:text-blue-800 text-xs font-medium inline-flex items-center gap-1"
                           title="发放">
-                          <Banknote size={16}/>
+                          <Banknote size={14}/>发放
                         </button>
                       )}
                       <button onClick={() => viewPayslip(r)}
-                        className="text-gray-400 hover:text-gray-600 text-xs"
+                        className="text-gray-400 hover:text-gray-600 text-xs inline-flex items-center gap-1"
                         title="查看工资单">
-                        <Eye size={14}/>
+                        <Eye size={14}/>查看工资单
                       </button>
                       {!r.voided && isAdmin && (
                         <button onClick={() => openRecalcOne(r.id)}
-                          className="text-amber-500 hover:text-amber-700 text-xs font-medium"
+                          className="text-amber-500 hover:text-amber-700 text-xs font-medium inline-flex items-center gap-1"
                           title="作废重算">
-                          <AlertTriangle size={14}/>
+                          <AlertTriangle size={14}/>作废重算
                         </button>
                       )}
                     </div>
