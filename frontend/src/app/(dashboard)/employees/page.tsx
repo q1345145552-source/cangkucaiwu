@@ -872,8 +872,8 @@ export default function EmployeesPage() {
                         {summary.payroll_total != null ? summary.payroll_total.toLocaleString() : '-'}
                       </div>
                       <div className="text-xs text-blue-500">本月工资</div>
-                      {summary.payroll_details?.length > 0 && (
-                        <div className="text-[11px] text-blue-400 mt-0.5">共 {summary.payroll_details.length} 张单</div>
+                      {summary.payroll_details?.length === 1 && (
+                        <div className="text-[11px] text-blue-400 mt-0.5">共1张工资单</div>
                       )}
                     </div>
                   </div>

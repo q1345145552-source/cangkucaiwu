@@ -906,6 +906,7 @@ async def employee_summary(
             "settle_start_date": pr.settle_start_date.isoformat() if pr.settle_start_date else None,
             "settle_end_date": pr.settle_end_date.isoformat() if pr.settle_end_date else None,
             "status": pr.status,
+            "disbursed": pr.disbursed,
             "net_pay": pr.net_pay,
         })
 
