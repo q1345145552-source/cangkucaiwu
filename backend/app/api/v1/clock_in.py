@@ -123,7 +123,9 @@ async def clock_in(
     db.add(record)
     await db.flush()
 
-    if penalty["status"] != "normal":
+    if penalty["status"] == "late_one":
+        msg = t("clock_in_success_late", lang, label=label) + t("clock_in_forgot_hint", lang)
+    elif penalty["status"] != "normal":
         msg = t("clock_in_success_late", lang, label=label)
     else:
         msg = t("clock_in_success", lang, label=label)
