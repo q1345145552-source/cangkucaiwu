@@ -271,15 +271,31 @@ async def create_employee(
             hire_date = datetime.fromisoformat(req.hire_date)
         except:
             pass
+
+    # 转正日期解析
+    promotion_date = None
+    if req.promotion_date:
+        try:
+            promotion_date = datetime.strptime(req.promotion_date, "%Y-%m-%d").date()
+        except:
+            promotion_date = None
+
+    # 兜底：填了转正日期但状态是试用 → 按正式存；状态正式但没填转正日期 → 400
+    status = req.status or "trial"
+    if promotion_date and status == "trial":
+        status = "regular"
+    if status == "regular" and not promotion_date:
+        raise HTTPException(400, "选了正式必须填转正日期")
     
     e = Employee(
         warehouse_id=wh_id, name=req.name, position=req.position,
         user_id=new_user.id,
         myanmar_id=req.myanmar_id, address=req.address, phone=req.phone,
         emergency_contact=req.emergency_contact, hire_date=hire_date,
-        status=req.status, daily_wage=daily_wage, base_salary=base_salary,
+        status=status, daily_wage=daily_wage, base_salary=base_salary,
         salary_template_id=template.id,
         deduction_template_id=deduction_template_id,
+        promotion_date=promotion_date,
         remark=req.remark, created_by=current_user.id,
     )
     db.add(e)
@@ -365,16 +381,28 @@ async def update_employee(
         except:
             del updates["hire_date"]
     
-    # Handle date fields
+    # Handle date fields（空字符串=清空；合法日期=转date；非法=忽略不改）
     date_fields = ["passport_expiry", "work_permit_expiry", "promotion_date"]
     for df in date_fields:
-        if df in updates and updates[df] is not None:
+        if df not in updates:
+            continue
+        if updates[df] in ("", None):
+            updates[df] = None
+        else:
             try:
                 updates[df] = datetime.strptime(updates[df], "%Y-%m-%d").date()
             except:
                 del updates[df]
-        elif df in updates and updates[df] in ("", None):
-            updates[df] = None
+
+    # 兜底（仅当状态/转正日期被显式传入时）：填了转正日期但状态试用 → 按正式存；状态正式但没转正日期 → 400
+    if "status" in updates or "promotion_date" in updates:
+        final_status = updates.get("status", e.status)
+        final_promotion_date = updates.get("promotion_date", e.promotion_date)
+        if final_promotion_date and final_status == "trial":
+            final_status = "regular"
+            updates["status"] = "regular"
+        if final_status == "regular" and not final_promotion_date:
+            raise HTTPException(400, "选了正式必须填转正日期")
     
     # 薪资模板变更
     if "salary_template_id" in updates:

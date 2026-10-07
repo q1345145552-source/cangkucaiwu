@@ -140,6 +140,7 @@ export default function EmployeesPage() {
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
     if (!(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
     if (!form.salary_template_id) { toast("error", "请选择薪资模板"); return; }
+    if (form.status === "regular" && !form.promotion_date) { toast("error", "请选择转正日期"); return; }
     if (!editingId) {
       if (!form.password) { toast("error", "密码必填"); return; }
       if (form.password.length < 6) { toast("error", "密码至少6位"); return; }
@@ -716,9 +717,18 @@ export default function EmployeesPage() {
                   <input className="form-input py-2 w-full" value={form.myanmar_id} onChange={e => setForm({...form, myanmar_id: e.target.value})} />
                 </div>
               </div>
-              <div>
-                <label className="form-label text-xs mb-1 block">入职日期</label>
-                <input type="date" className="form-input py-2 w-full" value={form.hire_date} onChange={e => setForm({...form, hire_date: e.target.value})} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label text-xs mb-1 block">入职日期</label>
+                  <input type="date" className="form-input py-2 w-full" value={form.hire_date} onChange={e => setForm({...form, hire_date: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label text-xs mb-1 block">状态</label>
+                  <select className="form-input py-2 w-full" value={form.status} onChange={e => setForm({ ...form, status: e.target.value, promotion_date: e.target.value === "trial" ? "" : form.promotion_date })}>
+                    <option value="trial">试用期</option>
+                    <option value="regular">正式</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="form-label text-xs mb-1 block">地址</label>
@@ -776,9 +786,11 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div className="mt-3">
-                  <label className="form-label text-xs mb-1 block">转正日期</label>
+                  <label className="form-label text-xs mb-1 block">转正日期 {form.status === "regular" && <span className="text-red-400">*</span>}</label>
                   <input type="date" className="form-input py-2 w-full" value={form.promotion_date || ""} onChange={e => setForm({...form, promotion_date: e.target.value})} />
-                  <p className="text-xs text-gray-400 mt-1">仅作记录，不影响算工资</p>
+                  {form.status === "regular"
+                    ? <p className="text-xs text-red-400 mt-1">正式员工必填转正日期</p>
+                    : <p className="text-xs text-gray-400 mt-1">选填，填了会自动按正式存</p>}
                 </div>
               </div>
 
