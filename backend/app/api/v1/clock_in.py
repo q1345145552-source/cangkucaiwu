@@ -24,6 +24,8 @@ SESSIONS = {
     4: {"label": "下午下班", "time": time(18, 0)},
 }
 
+LATE_STATUS_CN = {"late_half": "迟到半小时", "late_one": "迟到1小时"}
+
 def _parse_hhmm(s):
     try:
         return datetime.strptime(s, "%H:%M").time()
@@ -354,15 +356,28 @@ async def makeup_clock_in(
 
     session_times = await get_session_times(db, wh_id)
     created: list[int] = []
-    skipped: list[int] = []
+    overwritten: list[dict] = []
+    skipped: list[dict] = []
     for s in sessions:
         dup = (await db.execute(
             select(ClockInRecord).where(ClockInRecord.user_id == uid, ClockInRecord.clock_date == target, ClockInRecord.session == s)
         )).scalar_one_or_none()
-        if dup:
-            skipped.append(s)
-            continue
         t_std = session_times[s]
+        if dup:
+            if dup.status in ("late_half", "late_one"):
+                # 覆盖迟到记录：时间改成标准时间、状态改成正常、标记补卡
+                old_status = dup.status
+                dup.clocked_in_at = datetime.combine(target, t_std, tzinfo=THAI_TZ)
+                dup.status = "normal"
+                dup.penalty_amount = 0
+                dup.is_makeup = True
+                dup.makeup_by = current_user.id
+                dup.makeup_at = thai_now()
+                dup.makeup_reason = reason
+                overwritten.append({"session": s, "old_status": old_status, "old_status_label": LATE_STATUS_CN.get(old_status, old_status)})
+            else:
+                skipped.append({"session": s, "reason": "该时段已有正常记录"})
+            continue
         clocked = datetime.combine(target, t_std, tzinfo=THAI_TZ)
         db.add(ClockInRecord(
             user_id=uid, warehouse_id=wh_id, clock_date=target, session=s,
@@ -372,9 +387,24 @@ async def makeup_clock_in(
         created.append(s)
 
     await db.flush()
+    parts = []
+    if created:
+        parts.append(f"新增 {len(created)} 段")
+    if overwritten:
+        ov = "、".join(f"{SESSIONS[o['session']]['label']}（原{o['old_status_label']}）" for o in overwritten)
+        parts.append(f"覆盖 {len(overwritten)} 段：{ov}")
     if skipped:
-        return {"message": f"补卡完成：新增 {len(created)} 段，跳过 {len(skipped)} 段（该时段已有记录）", "created": created, "skipped": skipped}
-    return {"message": f"补卡完成：新增 {len(created)} 段", "created": created, "skipped": skipped}
+        sk = "、".join(f"{SESSIONS[x['session']]['label']}（{x['reason']}）" for x in skipped)
+        parts.append(f"跳过 {len(skipped)} 段：{sk}")
+    return {
+        "message": "补卡完成：" + "；".join(parts),
+        "created": created,
+        "created_count": len(created),
+        "overwritten": overwritten,
+        "overwritten_count": len(overwritten),
+        "skipped": skipped,
+        "skipped_count": len(skipped),
+    }
 
 @router.get("/records/export")
 async def export_records(
