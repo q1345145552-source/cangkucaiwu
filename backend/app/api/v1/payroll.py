@@ -451,6 +451,21 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         })
 
     # ── 7. 待补打卡检查 + 宽限期统计 ──
+    # 员工补卡次数（按天去重）：判断待补天是否因次数用完而不再拦
+    emp_makeup_dates = {}
+    if all_user_ids:
+        makeup_records = (await db.execute(
+            select(ClockInRecord).where(
+                ClockInRecord.user_id.in_(all_user_ids),
+                ClockInRecord.warehouse_id == wh_id,
+                ClockInRecord.is_makeup == True,
+            )
+        )).scalars().all()
+        for mr in makeup_records:
+            eid = user_emp_map.get(mr.user_id)
+            if eid:
+                emp_makeup_dates.setdefault(eid, set()).add(mr.clock_date)
+
     pending_days = []
     grace_days = []
     for emp in employees:
@@ -480,8 +495,12 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             elif n == 2 and not (morning <= session_set) and not (afternoon <= session_set):
                 is_pending = True
             if is_pending:
-                missing = [SESSION_CN[s] for s in (1, 2, 3, 4) if s not in session_set]
-                pending_days.append({"employee": emp.name, "date": current.isoformat(), "missing": missing})
+                # 该员工当月补卡次数已用完(满2天)的，不再拦，那天按0工时算（不发钱）
+                month_str = current.strftime("%Y-%m")
+                used_in_month = sum(1 for d in emp_makeup_dates.get(emp.id, set()) if d.strftime("%Y-%m") == month_str)
+                if used_in_month < 2:
+                    missing = [SESSION_CN[s] for s in (1, 2, 3, 4) if s not in session_set]
+                    pending_days.append({"employee": emp.name, "date": current.isoformat(), "missing": missing})
             # 宽限期内：没打卡、没请假、还没过当天下午下班的24小时 → 提示（不算旷工不发钱）
             if n == 0 and lt is None:
                 day_end = datetime.combine(current, afternoon_end_time, tzinfo=THAI_TZ)
