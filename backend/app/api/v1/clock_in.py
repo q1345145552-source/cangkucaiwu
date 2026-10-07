@@ -302,6 +302,25 @@ class MakeupCreate(BaseModel):
     sessions: List[int]  # 1-4
     reason: str
 
+
+async def _count_makeup_days(db: AsyncSession, uid: int, wh_id: int, target: date) -> int:
+    """数某员工在某个自然月里已补卡的天数（按天去重，同一天补多段只算一天）。"""
+    month_start = date(target.year, target.month, 1)
+    if target.month == 12:
+        month_end = date(target.year + 1, 1, 1)
+    else:
+        month_end = date(target.year, target.month + 1, 1)
+    return (await db.execute(
+        select(func.count(func.distinct(ClockInRecord.clock_date))).where(
+            ClockInRecord.user_id == uid,
+            ClockInRecord.warehouse_id == wh_id,
+            ClockInRecord.is_makeup == True,
+            ClockInRecord.clock_date >= month_start,
+            ClockInRecord.clock_date < month_end,
+        )
+    )).scalar() or 0
+
+
 @router.post("/makeup")
 async def makeup_clock_in(
     req: MakeupCreate,
@@ -354,6 +373,10 @@ async def makeup_clock_in(
     if not uid:
         raise HTTPException(400, "该员工没有关联打卡账号，无法补卡")
 
+    used_days = await _count_makeup_days(db, uid, wh_id, target)
+    if used_days >= 2:
+        raise HTTPException(400, "该员工本月补卡次数已用完，不能再补")
+
     session_times = await get_session_times(db, wh_id)
     created: list[int] = []
     overwritten: list[dict] = []
@@ -387,6 +410,8 @@ async def makeup_clock_in(
         created.append(s)
 
     await db.flush()
+    used_days = await _count_makeup_days(db, uid, wh_id, target)
+    remaining = max(2 - used_days, 0)
     parts = []
     if created:
         parts.append(f"新增 {len(created)} 段")
@@ -404,7 +429,47 @@ async def makeup_clock_in(
         "overwritten_count": len(overwritten),
         "skipped": skipped,
         "skipped_count": len(skipped),
+        "used_days": used_days,
+        "remaining": remaining,
     }
+
+
+@router.get("/makeup-count")
+async def makeup_count(
+    employee_id: int = Query(...),
+    date: str = Query(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询某员工在某自然月里已补卡天数 / 剩余次数。"""
+    from app.models.employee import Employee
+    from app.services.employee_match import resolve_employee_user_map
+
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有管理员或主管可以查看")
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+
+    try:
+        target = datetime.strptime(date, "%Y-%m-%d").date()
+    except:
+        raise HTTPException(400, "日期格式错误")
+
+    emp = (await db.execute(
+        select(Employee).where(Employee.id == employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
+    )).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(404, "员工不存在")
+
+    emp_to_user, _ = await resolve_employee_user_map(db, [emp])
+    uid = emp_to_user.get(emp.id)
+    if not uid:
+        return {"used_days": 0, "remaining": 2}
+    used_days = await _count_makeup_days(db, uid, wh_id, target)
+    return {"used_days": used_days, "remaining": max(2 - used_days, 0)}
+
 
 @router.get("/records/export")
 async def export_records(

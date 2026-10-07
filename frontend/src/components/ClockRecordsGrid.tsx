@@ -39,6 +39,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   const [makeupForm, setMakeupForm] = useState<{ empId: number; empName: string; date: string } | null>(null);
   const [makeupSessions, setMakeupSessions] = useState<number[]>([]);
   const [makeupReason, setMakeupReason] = useState("");
+  const [makeupUsage, setMakeupUsage] = useState<{ used_days: number; remaining: number } | null>(null);
   const [scheduleTimes, setScheduleTimes] = useState<Record<number, string>>({});
 
   const dayNames = [0, 1, 2, 3, 4, 5, 6].map(i => t(`att_weekday_${i}`));
@@ -75,6 +76,10 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
     setMakeupForm({ empId: detailPopup.empId, empName: detailPopup.empName, date: detailPopup.date });
     setMakeupSessions([]);
     setMakeupReason("");
+    setMakeupUsage(null);
+    api.get<any>(`/clock-in/makeup-count?employee_id=${detailPopup.empId}&date=${detailPopup.date}`)
+      .then(r => setMakeupUsage({ used_days: r.used_days ?? 0, remaining: r.remaining ?? 2 }))
+      .catch(() => setMakeupUsage({ used_days: 0, remaining: 2 }));
   }
 
   function toggleSession(s: number) {
@@ -83,6 +88,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
 
   async function submitMakeup() {
     if (!makeupForm) return;
+    if (makeupUsage && makeupUsage.remaining <= 0) { toast("error", t("mk_limit_used_up")); return; }
     if (makeupSessions.length === 0) { toast("error", t("mk_please_select_sessions")); return; }
     if (!makeupReason.trim()) { toast("error", t("mk_please_enter_reason")); return; }
     try {
@@ -93,6 +99,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
         reason: makeupReason,
       });
       toast("success", r.message || t("mk_success"));
+      setMakeupUsage({ used_days: r.used_days ?? 0, remaining: r.remaining ?? 0 });
       setMakeupForm(null);
       setMakeupSessions([]);
       setMakeupReason("");
@@ -333,6 +340,12 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                 <label className="form-label text-xs mb-1 block">{t("date")}</label>
                 <div className="form-input py-2 bg-gray-50 text-gray-700">{makeupForm.date}</div>
               </div>
+              {makeupUsage && (
+                <div className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+                  <div>{t("mk_used_days")} {makeupUsage.used_days} 次</div>
+                  <div>{t("mk_remaining")} {makeupUsage.remaining} 次</div>
+                </div>
+              )}
               <div>
                 <label className="form-label text-xs mb-1 block">{t("sessions")} <span className="text-red-400">*</span></label>
                 <div className="flex flex-wrap gap-2">
@@ -355,7 +368,10 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setMakeupForm(null)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
-              <button onClick={submitMakeup} className="bg-purple-600 text-white px-5 py-2 rounded-lg text-sm">{t("submit_makeup")}</button>
+              <button onClick={submitMakeup}
+                className={`px-5 py-2 rounded-lg text-sm ${makeupUsage && makeupUsage.remaining <= 0 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-purple-600 text-white"}`}>
+                {t("submit_makeup")}
+              </button>
             </div>
           </div>
         </div>
