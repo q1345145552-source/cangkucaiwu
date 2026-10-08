@@ -73,6 +73,8 @@ export default function PayrollPage() {
   const [recalcReason, setRecalcReason] = useState("");
   const [recalcModeOpt, setRecalcModeOpt] = useState<"recalc" | "void">("recalc");
   const [recalcWarning, setRecalcWarning] = useState(false);
+  const [disburseModal, setDisburseModal] = useState<any>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -300,6 +302,41 @@ export default function PayrollPage() {
       const r = await api.post(`/payroll/${recordId}/disburse`, {});
       toast("success", r.message || "发放成功");
       loadRecordsByMonth();
+    } catch (err: any) {
+      toast("error", err.message || "发放失败");
+    }
+    setDisbursing(null);
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function openDisburseModal(record: any) {
+    setDisburseModal(record);
+    setSignatureFile(null);
+  }
+
+  async function confirmDisburse() {
+    if (!disburseModal) return;
+    const recordId = disburseModal.id;
+    setDisbursing(recordId);
+    try {
+      let signature_base64 = null;
+      if (signatureFile) {
+        signature_base64 = await fileToBase64(signatureFile);
+      }
+      const r = await api.post(`/payroll/${recordId}/disburse`, { signature_base64 });
+      toast("success", r.message || "发放成功");
+      setDisburseModal(null);
+      setSignatureFile(null);
+      loadRecordsByMonth();
+      loadProgress();
     } catch (err: any) {
       toast("error", err.message || "发放失败");
     }
@@ -659,7 +696,7 @@ export default function PayrollPage() {
                         </button>
                       )}
                       {!r.voided && r.status === "confirmed" && !r.disbursed && isAdmin && (
-                        <button onClick={() => handleDisburse(r.id)} disabled={disbursing === r.id}
+                        <button onClick={() => openDisburseModal(r)} disabled={disbursing === r.id}
                           className="text-blue-600 hover:text-blue-800 text-xs font-medium inline-flex items-center gap-1"
                           title="发放">
                           <Banknote size={14}/>发放
@@ -821,6 +858,44 @@ export default function PayrollPage() {
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setRecalcModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
               <button onClick={confirmRecalc} disabled={calculating} className="btn-primary text-sm px-6 py-2">确定</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 发放工资 Modal（可传签字照片） */}
+      {disburseModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setDisburseModal(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <Banknote size={20} /><span className="font-semibold">发放工资</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">员工</span>
+                <span className="font-medium">{disburseModal.employee_name || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">实发金额</span>
+                <span className="font-bold text-blue-600">{(disburseModal.net_pay ?? 0).toLocaleString()} 泰铢</span>
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">签字照片</label>
+                <div className="flex items-center gap-2">
+                  <label className="border border-dashed rounded-lg px-4 py-2 text-sm text-gray-500 hover:text-blue-500 hover:border-blue-300 cursor-pointer">
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={e => setSignatureFile(e.target.files?.[0] || null)} />
+                    {signatureFile ? "更换照片" : "选择照片"}
+                  </label>
+                  {signatureFile && <span className="text-xs text-gray-500 max-w-40 truncate">{signatureFile.name}</span>}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">签字照片可以留空 不传也能发放</p>
+              </div>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setDisburseModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={confirmDisburse} disabled={disbursing === disburseModal.id}
+                className="btn-primary text-sm px-6 py-2">{disbursing === disburseModal.id ? "发放中..." : "确认发放"}</button>
             </div>
           </div>
         </div>
