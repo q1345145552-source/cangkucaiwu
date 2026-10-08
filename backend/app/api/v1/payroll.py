@@ -1609,12 +1609,16 @@ async def _recalc_one(db: AsyncSession, current_user: User, wh_id: int, record_i
     # 回退旧单已扣的预支（作废后新单会重新扣，避免重复扣）
     await _rollback_advance_deductions(db, r)
 
+    # 看员工现在的状态：离职或已删除 → 按离职结算模式处理预支欠款（剩余欠款老板认了）
+    emp_now = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
+    is_resignation_mode = bool(emp_now and (emp_now.is_deleted or emp_now.status == "resigned"))
+
     req = CalculateRequest(
         end_date=r.settle_end_date.isoformat(),
         employee_ids=[r.employee_id],
         recalc_employee_id=r.employee_id,
         recalc_start_date=r.settle_start_date.isoformat(),
-        is_resignation=False,
+        is_resignation=is_resignation_mode,
     )
     prep = await _prepare_payroll(db, current_user, wh_id, req)
     if prep.get("early_return") is not None:
@@ -1634,8 +1638,7 @@ async def _recalc_one(db: AsyncSession, current_user: User, wh_id: int, record_i
     r.void_reason = str(void_reason).strip()
     new_record.recalc_from_id = r.id
 
-    emp = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
-    emp_name = emp.name if emp else ""
+    emp_name = emp_now.name if emp_now else ""
     await record_history(
         db,
         module="payroll",
