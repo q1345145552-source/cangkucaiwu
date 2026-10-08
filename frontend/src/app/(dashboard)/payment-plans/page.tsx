@@ -18,6 +18,8 @@ export default function PaymentPlansPage() {
   const [form, setForm] = useState({ plan_name: "", planned_date: "", bill_ids: [] as number[], remark: "", save_as_template: false, template_name: "" });
   const [selectedBills, setSelectedBills] = useState<number[]>([]);
   const [showDetail, setShowDetail] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadBills(); loadTemplates(); loadTimeline(); }, []);
 
@@ -85,6 +87,31 @@ export default function PaymentPlansPage() {
     } catch { toast("error", "加载详情失败"); }
   }
 
+  async function handleUploadAttachment(planId: number, file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/payable/plans/${planId}/upload-attachment`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: fd,
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || "上传失败"); }
+      toast("success", "附件上传成功");
+      load();
+    } catch (err: any) { toast("error", err.message || "上传失败"); }
+  }
+
+  function handleViewAttachment(path: string) {
+    const url = `/${path}`;
+    if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path)) {
+      setPreviewImage(url);
+      setPreviewError(false);
+    } else {
+      window.open(url, "_blank");
+    }
+  }
+
   const timelineColors = ["bg-blue-500", "bg-indigo-500", "bg-purple-500", "bg-gray-500"];
 
   return (
@@ -138,6 +165,20 @@ export default function PaymentPlansPage() {
           return <span className={`px-2 py-1 rounded text-xs font-medium ${colors[v] || ""}`}>{map[v] || v}</span>;
         }},
         { key: "bill_ids", label: "账单数", render: (v: any) => (v || []).length },
+        { key: "bill_attachment", label: "附件", render: (v: any, row: any) => (
+          <div className="flex items-center gap-1.5">
+            {v ? (
+              <button onClick={() => handleViewAttachment(v)} className="text-blue-600 hover:text-blue-800 text-sm">查看</button>
+            ) : (
+              <span className="text-gray-400">-</span>
+            )}
+            <label className="text-blue-500 hover:text-blue-700 text-xs cursor-pointer" title={v ? "更换附件" : "上传附件"}>
+              <input type="file" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadAttachment(row.id, f); }} />
+              {v ? "换" : "上传"}
+            </label>
+          </div>
+        )},
         { key: "id", label: "操作", render: (_: any, row: any) => (
           <div className="flex items-center gap-1">
             {row.status === "pending" && <button onClick={() => handleExecute(row)} className="btn-primary btn-xs flex items-center gap-0.5"><Play size={12} />执行</button>}
@@ -256,6 +297,19 @@ export default function PaymentPlansPage() {
                 </table>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 附件大图预览 */}
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onClick={() => { setPreviewImage(null); setPreviewError(false); }}>
+          <div onClick={e => e.stopPropagation()}>
+            {previewError ? (
+              <div className="text-white text-lg px-6 py-4">图片打不开</div>
+            ) : (
+              <img src={previewImage} alt="附件" className="max-w-full max-h-[90vh] rounded-lg object-contain" onError={() => setPreviewError(true)} />
+            )}
           </div>
         </div>
       )}

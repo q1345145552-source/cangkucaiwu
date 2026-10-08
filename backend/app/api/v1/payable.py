@@ -433,7 +433,7 @@ async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSe
         await db.flush()
     except: pass
 
-    return {"data": [{"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_ids": p.bill_ids, "remark": p.remark} for p in plans]}
+    return {"data": [{"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_ids": p.bill_ids, "bill_attachment": p.bill_attachment, "remark": p.remark} for p in plans]}
 
 @router.post("/plans")
 async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_user),
@@ -659,10 +659,33 @@ async def plan_detail(plan_id: int, current_user: User = Depends(get_current_use
             "status": b.status, "paid_amount": b.paid_amount,
         } for b in bills]
     return {
-        "plan": {"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "remark": p.remark},
+        "plan": {"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_attachment": p.bill_attachment, "remark": p.remark},
         "bills": bills_data,
         "bill_count": len(bills_data),
     }
+
+
+@router.post("/plans/{plan_id}/upload-attachment")
+async def upload_plan_attachment(plan_id: int, file: UploadFile = File(...),
+                                 current_user: User = Depends(get_current_user),
+                                 db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "无权限")
+    p = (await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id))).scalar_one_or_none()
+    if not p:
+        raise HTTPException(404, "付款计划不存在")
+    if current_user.role != Role.SUPER_ADMIN and p.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "无权操作其他仓库的付款计划")
+    import uuid
+    from app.services.image_utils import save_image
+    ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "bin"
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    content = await file.read()
+    result = save_image(content, "/app/uploads/plan_attachments", "/uploads/plan_attachments", fname)
+    p.bill_attachment = result["path"]
+    await db.flush()
+    return {"message": "附件上传成功", "path": p.bill_attachment}
+
 
 # === Export Plan ===
 @router.get("/plans/export")
