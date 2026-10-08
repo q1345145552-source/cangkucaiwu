@@ -600,6 +600,9 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 absence_days_count += 1.0
                 if tt == "monthly":
                     monthly_absence_deduction += template_amount / calendar.monthrange(current.year, current.month)[1]
+                # 手动缺勤也按旷工罚款：旷工倍数 × 当天日薪 × 1天（跟自动判旷工算法一致）
+                absence_fine_days += 1.0
+                absence_fine_list.append({"date": current.isoformat(), "days": 1.0})
                 daily_list.append({"day": current.day, "date": current.isoformat(), "status": "absence", "attendance": 0.0, "hours": 0.0, "times": []})
                 current += timedelta(days=1)
                 continue
