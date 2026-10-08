@@ -1003,7 +1003,7 @@ export default function EmployeesPage() {
                 {/* Passport Photo */}
                 <div className="mt-3">
                   <label className="text-xs text-gray-400">护照照片</label>
-                  <div className="mt-1">
+                  <div className="mt-1 flex items-start gap-3">
                     {detailEmp.passport_photo_path ? (
                       <SafeImage
                         src={photoUrl(detailEmp.passport_photo_thumb_path || detailEmp.passport_photo_path)}
@@ -1016,12 +1016,17 @@ export default function EmployeesPage() {
                     ) : (
                       <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
                     )}
+                    <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer shrink-0">
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) setPassportPhotoFile(f); }} />
+                      {detailEmp.passport_photo_path ? "更换护照照片" : "上传护照照片"}
+                    </label>
                   </div>
                 </div>
                 {/* Work Permit Photo */}
                 <div className="mt-3">
                   <label className="text-xs text-gray-400">工作证照片</label>
-                  <div className="mt-1">
+                  <div className="mt-1 flex items-start gap-3">
                     {detailEmp.work_permit_photo_path ? (
                       <SafeImage
                         src={photoUrl(detailEmp.work_permit_photo_thumb_path || detailEmp.work_permit_photo_path)}
@@ -1034,6 +1039,11 @@ export default function EmployeesPage() {
                     ) : (
                       <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
                     )}
+                    <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer shrink-0">
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) setWorkPermitPhotoFile(f); }} />
+                      {detailEmp.work_permit_photo_path ? "更换工作证照片" : "上传工作证照片"}
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1137,6 +1147,40 @@ export default function EmployeesPage() {
               <button onClick={() => uploadPhoto(detailEmp.id)} disabled={uploadingPhoto}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
                 {uploadingPhoto ? "上传中..." : "确认上传"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload passport photo */}
+      {passportPhotoFile && detailEmp && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl p-6 text-center max-w-xs">
+            <Camera size={32} className="mx-auto mb-3 text-blue-500" />
+            <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的护照照片？</p>
+            <div className="flex gap-2 justify-center">
+              <button onClick={() => setPassportPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
+              <button onClick={() => uploadPassportPhoto(detailEmp.id)} disabled={uploadingPassportPhoto}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
+                {uploadingPassportPhoto ? "上传中..." : "确认上传"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload work permit photo */}
+      {workPermitPhotoFile && detailEmp && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl p-6 text-center max-w-xs">
+            <Camera size={32} className="mx-auto mb-3 text-blue-500" />
+            <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的工作证照片？</p>
+            <div className="flex gap-2 justify-center">
+              <button onClick={() => setWorkPermitPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
+              <button onClick={() => uploadWorkPermitPhoto(detailEmp.id)} disabled={uploadingWorkPermitPhoto}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
+                {uploadingWorkPermitPhoto ? "上传中..." : "确认上传"}
               </button>
             </div>
           </div>
