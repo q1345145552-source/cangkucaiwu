@@ -1077,6 +1077,9 @@ async def single_settle(
 
 def _apply_payroll_filters(query, settle_month=None, voided_filter=None, name=None, status=None):
     """工资单公共筛选：作废、结算月份、姓名模糊、状态。返回加了 where 的 query。"""
+    # 已删除员工（软删除）的工资单不显示；离职员工的单仍显示
+    query = query.where(~PayrollRecord.employee_id.in_(select(Employee.id).where(Employee.is_deleted == True)))
+
     if voided_filter == "voided":
         query = query.where(PayrollRecord.voided == True)
     elif voided_filter == "all":
