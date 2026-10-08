@@ -78,7 +78,7 @@ export default function PayrollPage() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [zoomedSignature, setZoomedSignature] = useState<string | null>(null);
   const [revokeModal, setRevokeModal] = useState<any>(null);
-  const isAdmin = user?.role === "warehouse_admin";
+  const canOperate = user?.role === "warehouse_admin" || user?.role === "supervisor";
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
@@ -483,7 +483,7 @@ export default function PayrollPage() {
         <h1 className="page-title flex items-center gap-2"><Calculator size={24}/>工资管理</h1>
         <div className="flex flex-col gap-2 items-end">
           {/* 第一组：算工资用 */}
-          {isAdmin && (
+          {canOperate && (
             <div className="flex gap-2 items-center flex-wrap">
               <label className="text-sm text-gray-500">结算到哪天</label>
               <input type="date" className="border rounded-lg px-3 py-2 text-sm bg-white" value={calcEndDate}
@@ -549,7 +549,7 @@ export default function PayrollPage() {
               className="border border-blue-300 text-blue-600 flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-blue-50">
               <Download size={16}/> 导出Excel
             </button>
-            {isAdmin && records.length > 0 && (
+            {canOperate && records.length > 0 && (
               <button onClick={handleConfirmAll}
                 className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">
                 <CheckCircle size={16}/> 全部确认
@@ -604,7 +604,7 @@ export default function PayrollPage() {
       </div>
 
       {/* Batch action bar */}
-      {selectedIds.length > 0 && (
+      {canOperate && selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
           <span className="text-sm font-medium text-blue-700">已选 {selectedIds.length} 条</span>
           <div className="flex gap-2">
@@ -625,13 +625,13 @@ export default function PayrollPage() {
         <div className="text-center py-12 text-gray-400 bg-white rounded-xl border">
           <Calculator size={40} className="mx-auto mb-3 text-gray-300"/>
           <p>该仓库还没有计算过工资</p>
-          {isAdmin && <p className="text-sm mt-1">点击右上角「计算工资」开始</p>}
+          {canOperate && <p className="text-sm mt-1">点击右上角「计算工资」开始</p>}
         </div>
       ) : records.length === 0 ? (
         <div className="text-center py-12 text-gray-400 bg-white rounded-xl border">
           <Calculator size={40} className="mx-auto mb-3 text-gray-300"/>
           <p>该月份暂无工资记录</p>
-          {isAdmin && <p className="text-sm mt-1">点击右上角「计算工资」开始</p>}
+          {canOperate && <p className="text-sm mt-1">点击右上角「计算工资」开始</p>}
         </div>
       ) : (
         <div className="bg-white rounded-xl border overflow-x-auto">
@@ -711,21 +711,21 @@ export default function PayrollPage() {
                   </td>
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-x-2 gap-y-1 flex-wrap">
-                      {!r.voided && r.status !== "confirmed" && isAdmin && (
+                      {!r.voided && r.status !== "confirmed" && canOperate && (
                         <button onClick={() => handleConfirm(r.id)}
                           className="text-green-600 hover:text-green-800 text-xs font-medium inline-flex items-center gap-1"
                           title="确认">
                           <CheckCircle size={14}/>确认
                         </button>
                       )}
-                      {!r.voided && r.status === "confirmed" && !r.disbursed && isAdmin && (
+                      {!r.voided && r.status === "confirmed" && !r.disbursed && canOperate && (
                         <button onClick={() => openDisburseModal(r)} disabled={disbursing === r.id}
                           className="text-blue-600 hover:text-blue-800 text-xs font-medium inline-flex items-center gap-1"
                           title="发放">
                           <Banknote size={14}/>发放
                         </button>
                       )}
-                      {!r.voided && r.disbursed && isAdmin && (
+                      {!r.voided && r.disbursed && canOperate && (
                         <button onClick={() => openRevokeModal(r)} disabled={disbursing === r.id}
                           className="text-orange-500 hover:text-orange-700 text-xs font-medium inline-flex items-center gap-1"
                           title="撤销发放">
@@ -737,7 +737,7 @@ export default function PayrollPage() {
                         title="查看工资单">
                         <Eye size={14}/>查看工资单
                       </button>
-                      {!r.voided && isAdmin && (
+                      {!r.voided && canOperate && (
                         <button onClick={() => openRecalcOne(r.id, !!r.is_last_record)}
                           className="text-amber-500 hover:text-amber-700 text-xs font-medium inline-flex items-center gap-1"
                           title="作废重算">
@@ -1179,7 +1179,7 @@ export default function PayrollPage() {
               )}
 
               {/* Disburse action */}
-              {showPayslip.status === "confirmed" && !showPayslip.disbursed && isAdmin && (
+              {showPayslip.status === "confirmed" && !showPayslip.disbursed && canOperate && (
                 <button onClick={() => { handleDisburse(showPayslip.id); setShowPayslip(null); }}
                   className="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 font-medium">
                   <Banknote size={18} /> 现金发放 {(showPayslip.net_pay ?? 0).toLocaleString()} 泰铢
