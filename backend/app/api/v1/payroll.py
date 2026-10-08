@@ -1199,6 +1199,7 @@ async def list_payroll(
             "employee_id": r.employee_id,
             "disbursed": r.disbursed,
             "disbursed_at": r.disbursed_at.isoformat() if r.disbursed_at else None,
+            "signature_path": r.signature_path,
             "voided": r.voided,
             "voided_by": r.voided_by,
             "voided_by_name": user_map.get(r.voided_by).display_name if r.voided_by and user_map.get(r.voided_by) else None,

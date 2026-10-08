@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { api, getToken } from "@/lib/api";
+import SafeImage from "@/components/SafeImage";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -75,6 +76,7 @@ export default function PayrollPage() {
   const [recalcWarning, setRecalcWarning] = useState(false);
   const [disburseModal, setDisburseModal] = useState<any>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [zoomedSignature, setZoomedSignature] = useState<string | null>(null);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -1063,6 +1065,25 @@ export default function PayrollPage() {
                 </div>
               </div>
 
+              {/* 签字照片 */}
+              <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <div className="text-xs text-gray-400 font-medium mb-1">签字照片</div>
+                {showPayslip.signature_path ? (
+                  <div className="flex items-center gap-3">
+                    <SafeImage
+                      src={`/${showPayslip.signature_path}`}
+                      alt="签字照片"
+                      className="w-24 h-16 object-cover border rounded cursor-pointer"
+                      onClick={() => setZoomedSignature(`/${showPayslip.signature_path}`)}
+                      fallback={<div className="w-24 h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">图片打不开</div>}
+                    />
+                    <span className="text-xs text-gray-400">点击查看大图</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400">未上传签字</span>
+                )}
+              </div>
+
               {/* 作废信息 */}
               {(showPayslip.voided || showPayslip.recalc_from_id || showPayslip.recalc_to_id) && (
                 <div className="border border-gray-200 rounded-lg p-3 space-y-1 text-sm">
@@ -1109,6 +1130,20 @@ export default function PayrollPage() {
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
               <button onClick={() => setShowPayslip(null)} className="text-sm text-gray-400">关闭</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 签字照片放大 */}
+      {zoomedSignature && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onClick={() => setZoomedSignature(null)}>
+          <div onClick={e => e.stopPropagation()}>
+            <SafeImage
+              src={zoomedSignature}
+              alt="签字照片"
+              className="max-w-full max-h-[90vh] rounded-lg object-contain"
+              fallback={<div className="text-white text-lg px-6 py-4">图片打不开</div>}
+            />
           </div>
         </div>
       )}
