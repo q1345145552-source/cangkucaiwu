@@ -1924,6 +1924,59 @@ async def disburse_payroll(
     }
 
 
+@router.post("/{record_id}/revoke-disbursement")
+async def revoke_disbursement(
+    record_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """撤销发放：把已发放的工资单退回「已确认未发放」状态。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员/主管可以撤销发放")
+
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        raise HTTPException(400, "请先选择仓库")
+
+    r = (await db.execute(select(PayrollRecord).where(PayrollRecord.id == record_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(404, "工资记录不存在")
+    if r.warehouse_id != wh_id:
+        raise HTTPException(403, "无权操作其他仓库的工资单")
+    if r.voided:
+        raise HTTPException(400, "这张单已作废 不能撤销发放")
+    if not r.disbursed:
+        raise HTTPException(400, "这张单还没发放 不用撤销")
+
+    emp = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
+    emp_name = emp.name if emp else ""
+    old_net = r.net_pay
+    range_str = f"{r.settle_start_date.isoformat()} 到 {r.settle_end_date.isoformat()}" if r.settle_start_date and r.settle_end_date else ""
+
+    # 退回未发放，状态保持已确认
+    r.disbursed = False
+    r.disbursed_at = None
+    r.disbursed_by = None
+
+    await record_history(
+        db,
+        module="payroll",
+        record_id=r.id,
+        operator=current_user,
+        operation_type="undisburse",
+        before={
+            "employee_name": emp_name,
+            "range": range_str,
+            "net_pay": old_net,
+        },
+        after={"disbursed": False},
+        warehouse_id=wh_id,
+    )
+    await db.flush()
+
+    return {"message": "已撤销发放", "id": r.id}
+
+
 # ═══ Employee Self-View Payslip ═══════════════
 
 @router.get("/my-payslip")
