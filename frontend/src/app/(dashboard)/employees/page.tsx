@@ -158,6 +158,10 @@ export default function EmployeesPage() {
       if (editingId) {
         await api.put(`/employees/${editingId}`, payload);
         toast("success", "员工信息已更新");
+        // 编辑也上传选中的照片（判断方式同新建）
+        if (photoFile) await uploadPhoto();
+        if (passportPhotoFile) await uploadPassportPhoto();
+        if (workPermitPhotoFile) await uploadWorkPermitPhoto();
         // Close detail modal if we were editing from there
         if (detailEmp && detailEmp.id === editingId) {
           await reloadDetail(editingId);
@@ -182,6 +186,8 @@ export default function EmployeesPage() {
         setEditingId(null);
       }
       setPhotoFile(null);
+      setPassportPhotoFile(null);
+      setWorkPermitPhotoFile(null);
       load();
       loadLimit();
     } catch (err: any) { toast("error", err.message || "操作失败"); }
@@ -267,6 +273,9 @@ export default function EmployeesPage() {
 
   function editEmployee(e: any) {
     setEditingId(e.id);
+    setPhotoFile(null);
+    setPassportPhotoFile(null);
+    setWorkPermitPhotoFile(null);
     setForm({
       name: e.name || "", employee_no: e.employee_no || "", password: "",
       position: e.position || "仓库劳工",
@@ -486,14 +495,14 @@ export default function EmployeesPage() {
               className="border border-blue-300 text-blue-600 px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-50 disabled:opacity-50">
               <Link2 size={16}/>{binding ? "绑定中..." : "绑定已有账号"}
             </button>
-            <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setShowForm(true); }}
+            <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}
               className="bg-primary text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1">
               <UserPlus size={16}/>新建员工
             </button>
           </div>
         )}
         {user?.role === "super_admin" && (
-          <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setShowForm(true); }}
+          <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}
             className="bg-primary text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1">
             <UserPlus size={16}/>新建员工
           </button>
@@ -760,6 +769,30 @@ export default function EmployeesPage() {
                   <div>
                     <label className="form-label text-xs mb-1 block">工作证有效期</label>
                     <input type="date" className="form-input py-2 w-full" value={form.work_permit_expiry || ""} onChange={e => setForm({...form, work_permit_expiry: e.target.value})} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="form-label text-xs mb-1 block">护照照片</label>
+                    <div className="flex items-center gap-2">
+                      <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={e => { const f = e.target.files?.[0]; if (f) setPassportPhotoFile(f); }} />
+                        {passportPhotoFile ? "更换护照照片" : "上传护照照片"}
+                      </label>
+                      {passportPhotoFile && <img src={URL.createObjectURL(passportPhotoFile)} className="w-14 h-10 object-cover rounded border" alt="护照照片" />}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="form-label text-xs mb-1 block">工作证照片</label>
+                    <div className="flex items-center gap-2">
+                      <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={e => { const f = e.target.files?.[0]; if (f) setWorkPermitPhotoFile(f); }} />
+                        {workPermitPhotoFile ? "更换工作证照片" : "上传工作证照片"}
+                      </label>
+                      {workPermitPhotoFile && <img src={URL.createObjectURL(workPermitPhotoFile)} className="w-14 h-10 object-cover rounded border" alt="工作证照片" />}
+                    </div>
                   </div>
                 </div>
               </div>
