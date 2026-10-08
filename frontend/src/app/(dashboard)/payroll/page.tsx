@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { thaiNow } from "@/lib/thai-time";
-import { Calculator, CheckCircle, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User, Download } from "lucide-react";
+import { Calculator, CheckCircle, FileText, TrendingUp, TrendingDown, DollarSign, AlertTriangle, Banknote, Eye, User, Download, Undo2 } from "lucide-react";
 
 // 泰国时间的今天/昨天/过去15号/过去月末（用于结算日期输入）
 function thaiDateStr(d: Date): string {
@@ -77,6 +77,7 @@ export default function PayrollPage() {
   const [disburseModal, setDisburseModal] = useState<any>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [zoomedSignature, setZoomedSignature] = useState<string | null>(null);
+  const [revokeModal, setRevokeModal] = useState<any>(null);
   const isAdmin = user?.role === "warehouse_admin";
 
   useEffect(() => {
@@ -341,6 +342,26 @@ export default function PayrollPage() {
       loadProgress();
     } catch (err: any) {
       toast("error", err.message || "发放失败");
+    }
+    setDisbursing(null);
+  }
+
+  function openRevokeModal(record: any) {
+    setRevokeModal(record);
+  }
+
+  async function confirmRevoke() {
+    if (!revokeModal) return;
+    const recordId = revokeModal.id;
+    setDisbursing(recordId);
+    try {
+      const r = await api.post(`/payroll/${recordId}/revoke-disbursement`, {});
+      toast("success", r.message || "撤销发放成功");
+      setRevokeModal(null);
+      loadRecordsByMonth();
+      loadProgress();
+    } catch (err: any) {
+      toast("error", err.message || "撤销发放失败");
     }
     setDisbursing(null);
   }
@@ -704,6 +725,13 @@ export default function PayrollPage() {
                           <Banknote size={14}/>发放
                         </button>
                       )}
+                      {!r.voided && r.disbursed && isAdmin && (
+                        <button onClick={() => openRevokeModal(r)} disabled={disbursing === r.id}
+                          className="text-orange-500 hover:text-orange-700 text-xs font-medium inline-flex items-center gap-1"
+                          title="撤销发放">
+                          <Undo2 size={14}/>撤销发放
+                        </button>
+                      )}
                       <button onClick={() => viewPayslip(r)}
                         className="text-gray-400 hover:text-gray-600 text-xs inline-flex items-center gap-1"
                         title="查看工资单">
@@ -898,6 +926,37 @@ export default function PayrollPage() {
               <button onClick={() => setDisburseModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
               <button onClick={confirmDisburse} disabled={disbursing === disburseModal.id}
                 className="btn-primary text-sm px-6 py-2">{disbursing === disburseModal.id ? "发放中..." : "确认发放"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 撤销发放 Modal */}
+      {revokeModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRevokeModal(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <Undo2 size={20} /><span className="font-semibold">撤销发放</span>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">员工</span>
+                <span className="font-medium">{revokeModal.employee_name || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">结算区间</span>
+                <span className="text-gray-700">{recordDateLabel(revokeModal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">实发金额</span>
+                <span className="font-bold text-blue-600">{(revokeModal.net_pay ?? 0).toLocaleString()} 泰铢</span>
+              </div>
+              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">撤销之后这张单会回到已确认未发放的状态 可以重新算或者作废</p>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setRevokeModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={confirmRevoke} disabled={disbursing === revokeModal.id}
+                className="bg-orange-500 text-white text-sm px-6 py-2 rounded-lg">{disbursing === revokeModal.id ? "撤销中..." : "确定撤销"}</button>
             </div>
           </div>
         </div>

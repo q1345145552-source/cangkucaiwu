@@ -77,12 +77,13 @@ export default function ModificationLogsPage() {
   const [operatorId, setOperatorId] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [opType, setOpType] = useState("");
   const [operators, setOperators] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<any>(null);
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadOperators(); }, []);
-  useEffect(() => { load(); }, [page, module, operatorId, startDate, endDate]);
+  useEffect(() => { load(); }, [page, module, operatorId, startDate, endDate, opType]);
 
   async function loadOperators() {
     try {
@@ -100,6 +101,7 @@ export default function ModificationLogsPage() {
       if (operatorId) params.set("operator_id", String(operatorId));
       if (startDate) params.set("start_date", startDate);
       if (endDate) params.set("end_date", endDate);
+      if (opType) params.set("operation_type", opType);
       const r = await api.get<any>(`/history?${params.toString()}`);
       setData(r.data || []);
       setTotal(r.total || 0);
@@ -108,7 +110,7 @@ export default function ModificationLogsPage() {
   }
 
   function resetFilters() {
-    setModule(""); setOperatorId(0); setStartDate(""); setEndDate(""); setPage(1);
+    setModule(""); setOperatorId(0); setStartDate(""); setEndDate(""); setOpType(""); setPage(1);
   }
 
   return (
@@ -136,6 +138,18 @@ export default function ModificationLogsPage() {
               <option value="user">用户账号</option>
               <option value="employee">员工档案</option>
               <option value="payroll">工资</option>
+            </select>
+          </div>
+          <div className="w-[140px]">
+            <label className="form-label text-xs">操作类型</label>
+            <select className="form-input text-sm" value={opType} onChange={e => { setOpType(e.target.value); setPage(1); }}>
+              <option value="">全部类型</option>
+              <option value="create">新建</option>
+              <option value="edit">编辑</option>
+              <option value="delete">删除</option>
+              <option value="resign">离职</option>
+              <option value="void">作废</option>
+              <option value="undisburse">撤销发放</option>
             </select>
           </div>
           <div className="w-[160px]">
