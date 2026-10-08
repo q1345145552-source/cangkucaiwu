@@ -46,6 +46,13 @@ export default function ExpenseApprovalsPage() {
   const [payVoucherFile, setPayVoucherFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const payFileRef = useRef<HTMLInputElement>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
+
+  function openPreview(path: string) {
+    setPreviewImage(`/${path}`);
+    setPreviewError(false);
+  }
 
   const role = user?.role;
   const canSubmit = role === "warehouse_admin" || role === "supervisor" || role === "staff";
@@ -227,6 +234,8 @@ export default function ExpenseApprovalsPage() {
                 <th className="text-left px-3 py-3 font-medium text-gray-500">日期</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">状态</th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">审批人</th>
+                <th className="text-center px-3 py-3 font-medium text-gray-500">申请凭证</th>
+                <th className="text-center px-3 py-3 font-medium text-gray-500">付款凭证</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">操作</th>
               </tr>
             </thead>
@@ -243,6 +252,16 @@ export default function ExpenseApprovalsPage() {
                     </span>
                   </td>
                   <td className="px-3 py-3">{r.approver_name || "-"}</td>
+                  <td className="px-3 py-3 text-center">
+                    {r.voucher_path ? (
+                      <button onClick={() => openPreview(r.voucher_path)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">查看</button>
+                    ) : "-"}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    {r.payment_voucher ? (
+                      <button onClick={() => openPreview(r.payment_voucher)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">查看</button>
+                    ) : "-"}
+                  </td>
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       {(r.status === "pending" || r.status === "rejected") && (r.applicant_id === (user as any)?.id || canApprove) && (
@@ -374,6 +393,19 @@ export default function ExpenseApprovalsPage() {
               <button onClick={confirmPay} disabled={!payVoucherFile}
                 className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">确认付款</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 凭证大图预览 */}
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onClick={() => { setPreviewImage(null); setPreviewError(false); }}>
+          <div className="max-w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            {previewError ? (
+              <div className="text-white text-lg px-6 py-4">图片打不开</div>
+            ) : (
+              <img src={previewImage} alt="凭证" className="max-w-full max-h-[90vh] rounded-lg object-contain" onError={() => setPreviewError(true)} />
+            )}
           </div>
         </div>
       )}
