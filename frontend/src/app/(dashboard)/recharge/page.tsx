@@ -179,7 +179,8 @@ export default function RechargePage() {
   }
 
   const columns = [
-    { key: "customer_name", label: "客户" },
+    { key: "customer_name", label: "客户", cellClassName: "max-w-[110px] md:max-w-[180px]",
+      render: (v: string) => <div className="line-clamp-2 break-all leading-snug">{v}</div> },
     { key: "declare_date", label: "申报日期", render: (v: string) => v?.slice(0, 10) },
     { key: "amount", label: "金额", align: "right" as const, render: (v: number) => v?.toLocaleString() },
     { key: "currency", label: "币种", hideOnMobile: true },

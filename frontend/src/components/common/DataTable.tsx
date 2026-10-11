@@ -11,6 +11,8 @@ interface Column {
   hideOnMobile?: boolean;
   /** Always visible even on mobile */
   sticky?: boolean;
+  /** 附加到该列 th 和 td 上的类名（用于给单列设宽度等） */
+  cellClassName?: string;
 }
 
 export default function DataTable({ columns, data, total, page, pageSize, onPageChange, onRowClick }: {
@@ -31,7 +33,7 @@ export default function DataTable({ columns, data, total, page, pageSize, onPage
           <thead>
             <tr>
               {columns.map(c => (
-                <th key={c.key} className={`${c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : ""} ${c.hideOnMobile ? "hidden sm:table-cell" : ""}`}>
+                <th key={c.key} className={`${c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : ""} ${c.hideOnMobile ? "hidden sm:table-cell" : ""} ${c.cellClassName || ""}`}>
                   {c.headerRender ? c.headerRender() : c.label}
                 </th>
               ))}
@@ -50,7 +52,7 @@ export default function DataTable({ columns, data, total, page, pageSize, onPage
             ) : data.map((row, i) => (
               <tr key={row.id || i} className={onRowClick ? "cursor-pointer" : ""} onClick={() => onRowClick?.(row)}>
                 {columns.map(c => (
-                  <td key={c.key} className={`${c.align === "right" ? "text-right font-medium tabular-nums" : c.align === "center" ? "text-center" : ""} ${c.hideOnMobile ? "hidden sm:table-cell" : ""}`}>
+                  <td key={c.key} className={`${c.align === "right" ? "text-right font-medium tabular-nums" : c.align === "center" ? "text-center" : ""} ${c.hideOnMobile ? "hidden sm:table-cell" : ""} ${c.cellClassName || ""}`}>
                     {c.render ? c.render(row[c.key], row) : (row[c.key] ?? "-")}
                   </td>
                 ))}
