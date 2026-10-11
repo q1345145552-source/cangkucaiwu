@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api, getToken } from "@/lib/api";
 import SafeImage from "@/components/SafeImage";
 import { useToast } from "@/components/ui/Toast";
@@ -56,6 +56,8 @@ export default function PayrollPage() {
   const [voidFilter, setVoidFilter] = useState("valid");
   const [nameFilter, setNameFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadSeqRef = useRef(0);
   const [showPayslip, setShowPayslip] = useState<any>(null);
   const [dailyDetailOpen, setDailyDetailOpen] = useState(false);
   const [lateDetailOpen, setLateDetailOpen] = useState(false);
@@ -85,6 +87,13 @@ export default function PayrollPage() {
     setCalcEndDate(thaiYesterdayStr());
     initPage();
     loadProgress();
+  }, []);
+
+  // 组件卸载时清理搜索防抖定时器
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
   }, []);
 
   async function loadProgress() {
@@ -141,6 +150,7 @@ export default function PayrollPage() {
     const vf = opts?.vf ?? voidFilter;
     const nm = opts?.name ?? nameFilter;
     const st = opts?.status ?? statusFilter;
+    const seq = ++loadSeqRef.current; // 给本次请求编号，防止先后错乱
     setSelectedMonth(m);
     setLoading(true);
     setSelectedIds([]);
@@ -153,12 +163,14 @@ export default function PayrollPage() {
         api.get<any>(`/payroll?${qs}`),
         api.get<any>(`/payroll/summary?${qs}`),
       ]);
+      if (seq !== loadSeqRef.current) return; // 旧请求：结果丢弃，不写界面
       setRecords(recR.data || []);
       setSummary(sumR);
     } catch (err: any) {
+      if (seq !== loadSeqRef.current) return; // 旧请求出错：不弹错
       toast("error", err.message || "加载工资数据失败");
     }
-    setLoading(false);
+    if (seq === loadSeqRef.current) setLoading(false);
   }
 
   async function handleExport() {
@@ -520,8 +532,13 @@ export default function PayrollPage() {
             </select>
             <input type="text" placeholder="搜索姓名或工号" value={nameFilter}
               onChange={e => {
-                setNameFilter(e.target.value);
-                loadRecordsByMonth(selectedMonth, { name: e.target.value });
+                const val = e.target.value;
+                setNameFilter(val);
+                // 搜索框防抖：停止输入 300ms 后才发请求
+                if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                searchTimerRef.current = setTimeout(() => {
+                  loadRecordsByMonth(selectedMonth, { name: val });
+                }, 300);
               }}
               className="border rounded-lg px-3 py-2 text-sm bg-white w-[160px]" />
             <select value={statusFilter}
