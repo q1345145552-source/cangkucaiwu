@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from app.database import get_db
 from app.models.overtime import OvertimeTask, OvertimeAssignment
 from app.models.employee import Employee
@@ -326,6 +326,14 @@ async def confirm_overtime(
     if not assignment:
         raise HTTPException(400, t("overtime_not_assigned", lang))
 
+    # 需要核实的任务，实际小时数还没填 → 拦住
+    if task.needs_verification and assignment.actual_hours is None:
+        raise HTTPException(400, "管理员还没有核实实际加班时长，请等管理员核实后再确认")
+
+    # 已提过异议 → 拦住，等管理员改完再确认
+    if assignment.has_dispute:
+        raise HTTPException(400, "你已经提过异议了，请等管理员修改后再确认")
+
     if assignment.confirmed:
         raise HTTPException(400, t("overtime_already_confirmed", lang))
 
@@ -349,6 +357,85 @@ async def confirm_overtime(
         "earned_amount": assignment.earned_amount,
         "confirmed_at": assignment.confirmed_at.isoformat(),
     }
+
+
+# ═══ Employee: Dispute Actual Overtime Hours ═══════════
+
+@router.post("/{task_id}/dispute")
+async def dispute_overtime(
+    task_id: int,
+    reason: str = Form(None),
+    file: UploadFile = File(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role != Role.WAREHOUSE_LABOR:
+        raise HTTPException(403, "只有员工可以提异议")
+
+    wh_id = get_wh_id(current_user)
+
+    # 一：任务不存在
+    task = (await db.execute(
+        select(OvertimeTask).where(
+            OvertimeTask.id == task_id,
+            OvertimeTask.warehouse_id == wh_id,
+        )
+    )).scalar_one_or_none()
+    if not task:
+        raise HTTPException(404, "加班任务不存在")
+
+    # 二：找不到登录用户的员工档案
+    emp = await _find_employee_for_user(db, wh_id, current_user)
+    if not emp:
+        raise HTTPException(400, "找不到你的员工档案，请联系管理员")
+
+    # 三：找不到他在这个任务里的分配记录
+    assignment = (await db.execute(
+        select(OvertimeAssignment).where(
+            OvertimeAssignment.overtime_id == task_id,
+            OvertimeAssignment.employee_id == emp.id,
+        )
+    )).scalar_one_or_none()
+    if not assignment:
+        raise HTTPException(400, "这个加班没有你")
+
+    # 四：需要核实但实际小时数还是空的
+    if task.needs_verification and assignment.actual_hours is None:
+        raise HTTPException(400, "管理员还没有核实，请等管理员核实后再提异议")
+
+    # 五：已经确认过，不能提异议
+    if assignment.confirmed:
+        raise HTTPException(400, "你已经确认过了，不能提异议")
+
+    # 六：原因不能为空
+    if not reason or not reason.strip():
+        raise HTTPException(400, "请填写异议原因")
+
+    # 七：照片不能为空
+    if file is None or not file.filename:
+        raise HTTPException(400, "请上传照片")
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "请上传照片")
+
+    # 保存照片（走系统统一压缩 + 缩略图那套）
+    import os, uuid
+    from app.services.image_utils import save_image
+    ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
+    today_str = thai_today().strftime("%Y-%m-%d")
+    abs_subdir = os.path.join("/app/uploads", str(wh_id), today_str, "overtime_disputes")
+    rel_subdir = f"uploads/{wh_id}/{today_str}/overtime_disputes"
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    result = save_image(content, abs_subdir, rel_subdir, fname)
+
+    # 标成有异议，存原因/照片/时间（重复提异议覆盖旧的）
+    assignment.has_dispute = True
+    assignment.dispute_reason = reason.strip()[:500]
+    assignment.dispute_photo = result["path"]
+    assignment.dispute_time = thai_now()
+    await db.flush()
+
+    return {"message": "异议已提交", "dispute_time": assignment.dispute_time.isoformat()}
 
 
 # ═══ List Overtime Tasks ═══════════
@@ -435,6 +522,7 @@ async def list_overtimes(
                 "earned_amount": a.earned_amount,
                 "actual_hours": a.actual_hours,
                 "has_dispute": a.has_dispute,
+                "dispute_reason": a.dispute_reason,
             })
 
     return {
@@ -481,12 +569,15 @@ async def pending_overtimes(
     if not emp:
         return {"data": [], "pending_count": 0}
 
-    # Find tasks where this employee has unconfirmed assignments
+    # Find tasks where this employee has unconfirmed OR disputed assignments
     sub = (
         select(OvertimeAssignment.overtime_id)
         .where(
             OvertimeAssignment.employee_id == emp.id,
-            OvertimeAssignment.confirmed == False,
+            or_(
+                OvertimeAssignment.confirmed == False,
+                OvertimeAssignment.has_dispute == True,
+            ),
         )
         .subquery()
     )
@@ -497,9 +588,9 @@ async def pending_overtimes(
         ).order_by(OvertimeTask.date.desc())
     )).scalars().all()
 
-    # 取该员工在每个任务里的加班费（金额在发起时按模板算好存于 assignment）
+    # 取该员工在每个任务里的分配记录（金额 / 实际小时数 / 异议标记）
     task_ids = [t.id for t in tasks]
-    amount_map = {}
+    assign_map = {}
     if task_ids:
         asns = (await db.execute(
             select(OvertimeAssignment).where(
@@ -507,7 +598,7 @@ async def pending_overtimes(
                 OvertimeAssignment.employee_id == emp.id,
             )
         )).scalars().all()
-        amount_map = {a.overtime_id: a.earned_amount for a in asns}
+        assign_map = {a.overtime_id: a for a in asns}
 
     return {
         "data": [{
@@ -517,7 +608,9 @@ async def pending_overtimes(
             "end_time": t.end_time,
             "hours": t.hours,
             "half_hours": _half_hours_from_times(t.start_time, t.end_time),
-            "earned_amount": amount_map.get(t.id, 0),
+            "earned_amount": assign_map[t.id].earned_amount if t.id in assign_map else 0,
+            "actual_hours": assign_map[t.id].actual_hours if t.id in assign_map else None,
+            "has_dispute": assign_map[t.id].has_dispute if t.id in assign_map else False,
             "hourly_rate": t.hourly_rate,
             "created_at": t.created_at.isoformat() if t.created_at else None,
         } for t in tasks],
