@@ -507,9 +507,16 @@ async def list_overtimes(
         )).scalars().all()
         emp_ids = {a.employee_id for a in assigns}
         emps = {}
+        emp_tpl = {}
+        tpl_fee_map = {}
         if emp_ids:
             es = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
             emps = {e.id: e.name for e in es}
+            emp_tpl = {e.id: e.salary_template_id for e in es}
+            tpl_ids = {e.salary_template_id for e in es if e.salary_template_id}
+            if tpl_ids:
+                ts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(tpl_ids)))).scalars().all()
+                tpl_fee_map = {t.id: (t.overtime_half_hour_fee or 0) for t in ts}
         for a in assigns:
             if a.overtime_id not in assign_map:
                 assign_map[a.overtime_id] = []
@@ -523,6 +530,7 @@ async def list_overtimes(
                 "actual_hours": a.actual_hours,
                 "has_dispute": a.has_dispute,
                 "dispute_reason": a.dispute_reason,
+                "overtime_half_hour_fee": tpl_fee_map.get(emp_tpl.get(a.employee_id), 0) or 0,
             })
 
     return {

@@ -17,9 +17,12 @@ export default function OvertimePage() {
   const [limitHours, setLimitHours] = useState(50);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [scheduleEnd, setScheduleEnd] = useState("18:00");
+  const [verifyTask, setVerifyTask] = useState<any>(null);
+  const [verifyHours, setVerifyHours] = useState<Record<number, string>>({});
 
   const isAdmin = user?.role === "warehouse_admin";
   const isLabor = user?.role === "warehouse_labor";
+  const canVerify = user?.role === "warehouse_admin" || user?.role === "supervisor";
 
   const defaultForm = {
     employee_ids: [] as number[],
@@ -136,6 +139,46 @@ export default function OvertimePage() {
     const fee = e.salary_template_overtime_fee != null ? Number(e.salary_template_overtime_fee) : 0;
     return halfHours() * fee;
   }
+  // ── 核实加班 ──
+  function verifiedCount(task: any) {
+    return (task.assignments || []).filter((a: any) => a.actual_hours != null).length;
+  }
+  function openVerify(task: any) {
+    const hours: Record<number, string> = {};
+    for (const a of task.assignments || []) {
+      hours[a.id] = a.actual_hours != null ? String(a.actual_hours) : String(task.hours ?? "");
+    }
+    setVerifyHours(hours);
+    setVerifyTask(task);
+  }
+  // 弹框里给老板看的金额：半小时数 = 实际小时数 × 2 向上取整，加班费 = 半小时数 × 加班半小时费
+  function verifyFee(a: any) {
+    const raw = verifyHours[a.id];
+    if (raw == null || raw.trim() === "") return 0;
+    const h = Number(raw);
+    if (isNaN(h) || h < 0) return 0;
+    const half = Math.ceil(h * 2);
+    const fee = Number(a.overtime_half_hour_fee ?? 0);
+    return half * fee;
+  }
+  async function handleVerify() {
+    if (!verifyTask) return;
+    const assignments = verifyTask.assignments || [];
+    for (const a of assignments) {
+      const raw = (verifyHours[a.id] ?? "").trim();
+      if (raw === "") { toast("error", t("ot_verify_fill_all")); return; }
+      const n = Number(raw);
+      if (isNaN(n)) { toast("error", t("ot_verify_fill_all")); return; }
+      if (n < 0) { toast("error", t("ot_verify_no_negative")); return; }
+    }
+    const payload = assignments.map((a: any) => ({ assignment_id: a.id, actual_hours: Number(verifyHours[a.id]) }));
+    try {
+      const r = await api.post(`/overtime/${verifyTask.id}/verify`, { assignments: payload });
+      toast("success", t("ot_verify_success").replace("{amount}", String(r.total_amount ?? 0)));
+      setVerifyTask(null);
+      load();
+    } catch (err: any) { toast("error", err.message || t("ot_save_failed")); }
+  }
 
   return (
     <div>
@@ -222,35 +265,58 @@ export default function OvertimePage() {
                       <td className="px-4 py-3">{task.hours}h</td>
                       <td className="px-4 py-3">{task.total_amount ?? 0} {t("baht")}</td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {(task.assignments || []).map((a: any) => (
-                            <span key={a.id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
-                              a.confirmed ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                            }`}>
-                              {a.confirmed ? <CheckCircle size={12}/> : <Clock size={12}/>}
-                              {a.employee_name} {a.earned_amount?.toFixed(0)}{t("baht")}
-                            </span>
-                          ))}
+                        <div className="space-y-1">
+                          {(task.assignments || []).map((a: any) => {
+                            const stLabel = a.has_dispute ? t("ot_has_dispute") : a.confirmed ? t("confirmed") : t("pending_confirm");
+                            const stColor = a.has_dispute ? "text-orange-600" : a.confirmed ? "text-green-600" : "text-gray-500";
+                            return (
+                              <div key={a.id} className="text-xs leading-5">
+                                <span className="font-medium text-gray-800">{a.employee_name}</span>
+                                <span className="text-gray-500"> {t("ot_planned")}{task.hours}h · {t("ot_actual")}{a.actual_hours != null ? `${a.actual_hours}h` : t("ot_not_verified")} · {t("ot_amount")}{a.earned_amount?.toFixed(0)}{t("baht")}</span>
+                                <span className={`ml-1 ${stColor}`}>{stLabel}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                          task.status === "completed" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"
-                        }`}>
-                          {task.status === "completed" ? <CheckCircle size={12}/> : <Clock size={12}/>}
-                          {task.status === "completed" ? t("completed_status") : t("overtime_pending_confirm")}
-                          {task.status !== "completed" && ` (${task.confirmed_count || 0}/${task.total_assignments || 0})`}
-                        </span>
+                        {(() => {
+                          if (task.status === "completed") {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                                <CheckCircle size={12}/> {t("completed_status")}
+                              </span>
+                            );
+                          }
+                          if (task.needs_verification && (task.assignments || []).some((a: any) => a.actual_hours == null)) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-600">
+                                <Clock size={12}/> {t("ot_status_pending_verify")} {t("ot_progress_verified").replace("{n}", String(verifiedCount(task))).replace("{total}", String(task.total_assignments || 0))}
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                              <Clock size={12}/> {t("overtime_pending_confirm")} {t("ot_progress_confirmed").replace("{n}", String(task.confirmed_count || 0)).replace("{total}", String(task.total_assignments || 0))}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
-                        {isLabor && !task.assignments?.find((a: any) => a.confirmed) && (
-                          <button onClick={() => confirmOvertime(task.id)}
-                            className="text-green-600 hover:text-green-800 text-xs font-medium">{t("confirm")}</button>
-                        )}
-                        {isAdmin && (
-                          <button onClick={() => deleteTask(task.id)}
-                            className="text-red-500 hover:text-red-700 text-xs font-medium">{t("delete")}</button>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {isLabor && !task.assignments?.find((a: any) => a.confirmed) && (
+                            <button onClick={() => confirmOvertime(task.id)}
+                              className="text-green-600 hover:text-green-800 text-xs font-medium">{t("confirm")}</button>
+                          )}
+                          {canVerify && task.needs_verification && task.status !== "completed" && (
+                            <button onClick={() => openVerify(task)}
+                              className="text-blue-600 hover:text-blue-800 text-xs font-medium">{t("ot_go_verify")}</button>
+                          )}
+                          {isAdmin && (
+                            <button onClick={() => deleteTask(task.id)}
+                              className="text-red-500 hover:text-red-700 text-xs font-medium">{t("delete")}</button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -259,6 +325,39 @@ export default function OvertimePage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Verify overtime modal */}
+      {verifyTask && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setVerifyTask(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <Clock size={20} />
+              <span className="font-semibold">{t("verify_overtime_title")}</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="text-sm text-gray-600">
+                {verifyTask.date} {verifyTask.start_time}-{verifyTask.end_time} {t("ot_planned")}{verifyTask.hours}h
+              </div>
+              <div className="space-y-3">
+                {(verifyTask.assignments || []).map((a: any) => (
+                  <div key={a.id} className="flex items-center gap-3">
+                    <span className="w-20 font-medium text-sm shrink-0">{a.employee_name}</span>
+                    <input type="number" step="0.1" className="form-input flex-1 text-base py-2"
+                      value={verifyHours[a.id] ?? ""}
+                      onChange={e => setVerifyHours(h => ({ ...h, [a.id]: e.target.value }))} />
+                    <span className="w-24 text-right text-sm text-green-600 font-medium shrink-0">{verifyFee(a)}{t("baht")}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400">{t("ot_round_up_note")}</p>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setVerifyTask(null)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
+              <button onClick={handleVerify} className="btn-primary text-sm px-6 py-2">{t("save_verify")}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Create overtime modal */}
