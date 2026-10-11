@@ -538,6 +538,7 @@ async def list_overtimes(
                 "actual_hours": a.actual_hours,
                 "has_dispute": a.has_dispute,
                 "dispute_reason": a.dispute_reason,
+                "dispute_photo": a.dispute_photo,
                 "overtime_half_hour_fee": tpl_fee_map.get(emp_tpl.get(a.employee_id), 0) or 0,
             })
 

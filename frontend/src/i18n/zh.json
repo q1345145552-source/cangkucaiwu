@@ -356,5 +356,8 @@
   "ot_dispute_reason_required": "请填写异议原因",
   "ot_dispute_photo_required": "请上传照片",
   "ot_dispute_success": "异议已提交",
-  "ot_dispute_failed": "提交异议失败"
+  "ot_dispute_failed": "提交异议失败",
+  "ot_view_photo": "查看照片",
+  "ot_verify_dispute_hint": "本次有 {n} 个人提了异议，请先看他们的说明和照片。改完之后，他们会重新确认",
+  "ot_verify_dispute_notified": "有异议的员工已通知重新确认"
 }

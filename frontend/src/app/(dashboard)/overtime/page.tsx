@@ -23,6 +23,7 @@ export default function OvertimePage() {
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeFile, setDisputeFile] = useState<File | null>(null);
   const [disputePreview, setDisputePreview] = useState("");
+  const [viewPhoto, setViewPhoto] = useState<string | null>(null);
 
   const isAdmin = user?.role === "warehouse_admin";
   const isLabor = user?.role === "warehouse_labor";
@@ -176,9 +177,12 @@ export default function OvertimePage() {
       if (n < 0) { toast("error", t("ot_verify_no_negative")); return; }
     }
     const payload = assignments.map((a: any) => ({ assignment_id: a.id, actual_hours: Number(verifyHours[a.id]) }));
+    const hadDispute = assignments.some((a: any) => a.has_dispute);
     try {
       const r = await api.post(`/overtime/${verifyTask.id}/verify`, { assignments: payload });
-      toast("success", t("ot_verify_success").replace("{amount}", String(r.total_amount ?? 0)));
+      let msg = t("ot_verify_success").replace("{amount}", String(r.total_amount ?? 0));
+      if (hadDispute) msg += "，" + t("ot_verify_dispute_notified");
+      toast("success", msg);
       setVerifyTask(null);
       load();
     } catch (err: any) { toast("error", err.message || t("ot_save_failed")); }
@@ -442,14 +446,36 @@ export default function OvertimePage() {
               <div className="text-sm text-gray-600">
                 {verifyTask.date} {verifyTask.start_time}-{verifyTask.end_time} {t("ot_planned")}{verifyTask.hours}h
               </div>
+              {(verifyTask.assignments || []).some((a: any) => a.has_dispute) && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-sm text-orange-600">
+                  <AlertTriangle size={14} className="inline mr-1"/>
+                  {t("ot_verify_dispute_hint").replace("{n}", String((verifyTask.assignments || []).filter((a: any) => a.has_dispute).length))}
+                </div>
+              )}
               <div className="space-y-3">
                 {(verifyTask.assignments || []).map((a: any) => (
-                  <div key={a.id} className="flex items-center gap-3">
-                    <span className="w-20 font-medium text-sm shrink-0">{a.employee_name}</span>
-                    <input type="number" step="0.1" className="form-input flex-1 text-base py-2"
-                      value={verifyHours[a.id] ?? ""}
-                      onChange={e => setVerifyHours(h => ({ ...h, [a.id]: e.target.value }))} />
-                    <span className="w-24 text-right text-sm text-green-600 font-medium shrink-0">{verifyFee(a)}{t("baht")}</span>
+                  <div key={a.id} className={a.has_dispute ? "border border-orange-200 rounded-lg p-2" : ""}>
+                    <div className="flex items-center gap-3">
+                      <span className="w-20 font-medium text-sm shrink-0 flex items-center gap-1 flex-wrap">
+                        {a.employee_name}
+                        {a.has_dispute && (
+                          <span className="bg-orange-500 text-white text-[10px] px-1 py-0.5 rounded leading-none">{t("ot_has_dispute")}</span>
+                        )}
+                      </span>
+                      <input type="number" step="0.1" className="form-input flex-1 text-base py-2"
+                        value={verifyHours[a.id] ?? ""}
+                        onChange={e => setVerifyHours(h => ({ ...h, [a.id]: e.target.value }))} />
+                      <span className="w-24 text-right text-sm text-green-600 font-medium shrink-0">{verifyFee(a)}{t("baht")}</span>
+                    </div>
+                    {a.has_dispute && (
+                      <div className="mt-1 pl-[92px] space-y-1">
+                        {a.dispute_reason && <p className="text-xs text-orange-600">{a.dispute_reason}</p>}
+                        {a.dispute_photo && (
+                          <button onClick={() => setViewPhoto(a.dispute_photo)}
+                            className="text-blue-600 hover:text-blue-800 text-xs font-medium">{t("ot_view_photo")}</button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -460,6 +486,13 @@ export default function OvertimePage() {
               <button onClick={handleVerify} className="btn-primary text-sm px-6 py-2">{t("save_verify")}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Zoomed dispute photo */}
+      {viewPhoto && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4" onClick={() => setViewPhoto(null)}>
+          <img src={`/${viewPhoto}`} alt="" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
 
