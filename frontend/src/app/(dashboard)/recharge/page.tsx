@@ -234,7 +234,7 @@ export default function RechargePage() {
         <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-600">
           <Plus size={18} className="text-blue-600" /> 新建充值申报
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
           <div>
             <label className="form-label">客户</label>
             <SearchableSelect value={form.customer_id} options={customerOptions} onChange={(v) => handleCustomerChange(Number(v))} placeholder="选择客户（可搜索）" />
@@ -266,9 +266,9 @@ export default function RechargePage() {
           </div>
           <div>
             <label className="form-label">截图 <span className="text-gray-400 font-normal text-xs">非必填</span></label>
-            <div className="flex items-center gap-2 h-[42px]">
+            <div className="flex items-center gap-2 min-h-[44px] sm:min-h-[42px]">
               <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700" />
+                className="text-xs text-gray-500 w-full min-w-0 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700" />
             </div>
           </div>
         </div>
