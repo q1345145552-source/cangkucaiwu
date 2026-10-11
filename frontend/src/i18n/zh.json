@@ -338,5 +338,11 @@
   "temp_deduction": "临时扣款",
   "att_notified_at": "实际报备时间",
   "att_notified_at_hint": "用于判断旷工，报备时间在24小时内算有效",
-  "expense_approval": "费用审批"
+  "expense_approval": "费用审批",
+  "overtime_title": "加班管理",
+  "create_overtime": "发起加班",
+  "overtime_date": "加班日期",
+  "start_time": "开始时间",
+  "end_time": "结束时间",
+  "select_employees": "选择员工"
 }

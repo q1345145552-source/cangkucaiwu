@@ -198,11 +198,13 @@ async def create_overtime(
 async def verify_overtime(
     task_id: int,
     req: OvertimeVerify,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = get_request_lang(request)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "只有仓库管理员可以核实加班")
+        raise HTTPException(403, t("overtime_verify_only_admin", lang))
 
     wh_ids = get_wh_ids(current_user)
     task = (await db.execute(
@@ -212,18 +214,18 @@ async def verify_overtime(
         )
     )).scalar_one_or_none()
     if not task:
-        raise HTTPException(404, "加班任务不存在")
+        raise HTTPException(404, t("overtime_task_not_found", lang))
 
     if task.status == "completed":
-        raise HTTPException(400, "这个加班已经完成了 不能再核实")
+        raise HTTPException(400, t("overtime_verify_completed", lang))
 
     if not task.needs_verification:
-        raise HTTPException(400, "这个任务不需要核实")
+        raise HTTPException(400, t("overtime_verify_not_needed", lang))
 
     # 校验实际小时数：必须填写且不能为负
     for item in req.assignments:
         if item.actual_hours is None or item.actual_hours < 0:
-            raise HTTPException(400, "请填写实际小时数")
+            raise HTTPException(400, t("overtime_verify_hours_required", lang))
 
     # 加载该任务的全部分配记录
     assignments = (await db.execute(
@@ -247,7 +249,7 @@ async def verify_overtime(
     for item in req.assignments:
         a = assign_map.get(item.assignment_id)
         if not a:
-            raise HTTPException(400, f"分配记录不存在: {item.assignment_id}")
+            raise HTTPException(400, t("overtime_verify_assignment_not_found", lang, id=item.assignment_id))
         a.actual_hours = item.actual_hours
         # 按实际小时数重算加班费：半小时向上取整 × 员工薪资模板加班半小时费
         emp = emp_map.get(a.employee_id)
@@ -279,7 +281,7 @@ async def verify_overtime(
     total_amount = round(sum(a.earned_amount or 0 for a in assignments), 2)
 
     return {
-        "message": "加班核实完成",
+        "message": t("overtime_verify_success", lang),
         "verified_count": verified_count,
         "total_amount": total_amount,
         "status": task.status,
@@ -328,11 +330,11 @@ async def confirm_overtime(
 
     # 需要核实的任务，实际小时数还没填 → 拦住
     if task.needs_verification and assignment.actual_hours is None:
-        raise HTTPException(400, "管理员还没有核实实际加班时长，请等管理员核实后再确认")
+        raise HTTPException(400, t("overtime_not_verified_confirm", lang))
 
     # 已提过异议 → 拦住，等管理员改完再确认
     if assignment.has_dispute:
-        raise HTTPException(400, "你已经提过异议了，请等管理员修改后再确认")
+        raise HTTPException(400, t("overtime_has_dispute_confirm", lang))
 
     if assignment.confirmed:
         raise HTTPException(400, t("overtime_already_confirmed", lang))
@@ -364,13 +366,15 @@ async def confirm_overtime(
 @router.post("/{task_id}/dispute")
 async def dispute_overtime(
     task_id: int,
+    request: Request,
     reason: str = Form(None),
     file: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = get_request_lang(request)
     if current_user.role != Role.WAREHOUSE_LABOR:
-        raise HTTPException(403, "只有员工可以提异议")
+        raise HTTPException(403, t("overtime_dispute_only_labor", lang))
 
     wh_id = get_wh_id(current_user)
 
@@ -382,12 +386,12 @@ async def dispute_overtime(
         )
     )).scalar_one_or_none()
     if not task:
-        raise HTTPException(404, "加班任务不存在")
+        raise HTTPException(404, t("overtime_task_not_found", lang))
 
     # 二：找不到登录用户的员工档案
     emp = await _find_employee_for_user(db, wh_id, current_user)
     if not emp:
-        raise HTTPException(400, "找不到你的员工档案，请联系管理员")
+        raise HTTPException(400, t("employee_not_found_contact_admin", lang))
 
     # 三：找不到他在这个任务里的分配记录
     assignment = (await db.execute(
@@ -397,26 +401,26 @@ async def dispute_overtime(
         )
     )).scalar_one_or_none()
     if not assignment:
-        raise HTTPException(400, "这个加班没有你")
+        raise HTTPException(400, t("overtime_dispute_not_yours", lang))
 
     # 四：需要核实但实际小时数还是空的
     if task.needs_verification and assignment.actual_hours is None:
-        raise HTTPException(400, "管理员还没有核实，请等管理员核实后再提异议")
+        raise HTTPException(400, t("overtime_not_verified_dispute", lang))
 
     # 五：已经确认过，不能提异议
     if assignment.confirmed:
-        raise HTTPException(400, "你已经确认过了，不能提异议")
+        raise HTTPException(400, t("overtime_confirmed_cant_dispute", lang))
 
     # 六：原因不能为空
     if not reason or not reason.strip():
-        raise HTTPException(400, "请填写异议原因")
+        raise HTTPException(400, t("overtime_dispute_reason_required", lang))
 
     # 七：照片不能为空
     if file is None or not file.filename:
-        raise HTTPException(400, "请上传照片")
+        raise HTTPException(400, t("overtime_dispute_photo_required", lang))
     content = await file.read()
     if not content:
-        raise HTTPException(400, "请上传照片")
+        raise HTTPException(400, t("overtime_dispute_photo_required", lang))
 
     # 保存照片（走系统统一压缩 + 缩略图那套）
     import os, uuid
@@ -435,7 +439,7 @@ async def dispute_overtime(
     assignment.dispute_time = thai_now()
     await db.flush()
 
-    return {"message": "异议已提交", "dispute_time": assignment.dispute_time.isoformat()}
+    return {"message": t("overtime_dispute_success", lang), "dispute_time": assignment.dispute_time.isoformat()}
 
 
 # ═══ List Overtime Tasks ═══════════

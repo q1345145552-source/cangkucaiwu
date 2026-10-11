@@ -406,5 +406,20 @@
   "temp_deduction": "ယာယီဖြတ်တောက်ငွေ",
   "att_notified_at": "အမှန်တကယ်အကြောင်းကြားချိန်",
   "att_notified_at_hint": "ပျက်ကွက်မှုဆုံးဖြတ်ရန် ၂၄ နာရီအတွင်း အကြောင်းကြားပါက အကျုံးဝင်သည်",
-  "expense_approval": "ကုန်ကျစရိတ်အတည်ပြုချက်"
+  "expense_approval": "ကုန်ကျစရိတ်အတည်ပြုချက်",
+  "ot_verify_fill_all": "လူတိုင်း၏ အမှန်နာရီကို ဖြည့်ပါ",
+  "ot_verify_no_negative": "အမှန်နာရီသည် အနုတ်မဖြစ်ရပါ",
+  "ot_verify_success": "စစ်ဆေးပြီးပါပြီ၊ စုစုပေါင်း {amount} ဘတ်",
+  "ot_has_dispute": "အငြင်းပွားမှုရှိသည်",
+  "ot_planned": "စီစဉ်ထားသည်",
+  "ot_actual": "အမှန်",
+  "ot_not_verified": "မစစ်ဆေးရသေး",
+  "ot_amount": "ပမာဏ",
+  "ot_status_pending_verify": "စစ်ဆေးရန်စောင့်ဆိုင်း",
+  "ot_progress_verified": "စစ်ဆေးပြီး {n}/{total}",
+  "ot_progress_confirmed": "အတည်ပြုပြီး {n}/{total}",
+  "ot_go_verify": "စစ်ဆေးရန်",
+  "verify_overtime_title": "အချိန်ပိုစစ်ဆေးခြင်း",
+  "ot_round_up_note": "နာရီဝက်မပြည့်လျှင် နာရီဝက်ဟုသတ်မှတ်သည်၊ အချိန်ပိုမလုပ်သူကို 0 ဖြည့်ပါ",
+  "save_verify": "စစ်ဆေးမှုသိမ်းဆည်းရန်"
 }
