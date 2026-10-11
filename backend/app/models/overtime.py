@@ -14,7 +14,8 @@ class OvertimeTask(Base):
     end_time = Column(String(5), nullable=False)  # HH:MM
     hours = Column(Float, nullable=False, default=0)
     hourly_rate = Column(Float, nullable=False, default=75)
-    status = Column(String(20), nullable=False, default="pending")  # pending / completed
+    status = Column(String(20), nullable=False, default="pending")  # pending / completed / 待核实 / 已核实
+    needs_verification = Column(Boolean, default=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -33,6 +34,11 @@ class OvertimeAssignment(Base):
     confirmed = Column(Boolean, default=False)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
     earned_amount = Column(Float, default=0)
+    actual_hours = Column(Float, nullable=True)
+    has_dispute = Column(Boolean, default=False)
+    dispute_reason = Column(String(500))
+    dispute_photo = Column(String(500))
+    dispute_time = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     overtime_task = relationship("OvertimeTask", back_populates="assignments")

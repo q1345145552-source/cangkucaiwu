@@ -556,6 +556,23 @@ async def seed():
             ]
             for _c, _t in plan_cols:
                 await conn.execute(text(f"ALTER TABLE payable_plans ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            # ── 加班任务/分配表（管理员核实环节）──
+            overtime_task_cols = [
+                ("needs_verification", "BOOLEAN DEFAULT false"),
+            ]
+            for _c, _t in overtime_task_cols:
+                await conn.execute(text(f"ALTER TABLE overtime_tasks ADD COLUMN IF NOT EXISTS {_c} {_t}"))
+
+            overtime_assign_cols = [
+                ("actual_hours", "DOUBLE PRECISION"),
+                ("has_dispute", "BOOLEAN DEFAULT false"),
+                ("dispute_reason", "VARCHAR(500)"),
+                ("dispute_photo", "VARCHAR(500)"),
+                ("dispute_time", "TIMESTAMPTZ"),
+            ]
+            for _c, _t in overtime_assign_cols:
+                await conn.execute(text(f"ALTER TABLE overtime_assignments ADD COLUMN IF NOT EXISTS {_c} {_t}"))
         except Exception:
             pass
 

@@ -39,6 +39,15 @@ class OvertimeLimitSet(BaseModel):
     max_hours: float
 
 
+class OvertimeVerifyItem(BaseModel):
+    assignment_id: int
+    actual_hours: Optional[float] = None
+
+
+class OvertimeVerify(BaseModel):
+    assignments: List[OvertimeVerifyItem]
+
+
 # 加班费算法：加班分钟数换算成半小时数（不足半小时算半小时，向上取整），
 # 再乘以员工薪资模板里的「加班半小时费」。
 def _half_hour_count(total_minutes: int) -> int:
@@ -153,6 +162,7 @@ async def create_overtime(
         hours=hours,
         hourly_rate=0,
         status="pending",
+        needs_verification=True,
         created_by=current_user.id,
     )
     db.add(task)
@@ -179,6 +189,100 @@ async def create_overtime(
         "employee_count": len(employees),
         "total_amount": round(sum(p["earned_amount"] for p in per_emp), 2),
         "assignments": per_emp,
+    }
+
+
+# ═══ Admin: Verify Actual Overtime Hours ═══════════
+
+@router.post("/{task_id}/verify")
+async def verify_overtime(
+    task_id: int,
+    req: OvertimeVerify,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员可以核实加班")
+
+    wh_ids = get_wh_ids(current_user)
+    task = (await db.execute(
+        select(OvertimeTask).where(
+            OvertimeTask.id == task_id,
+            OvertimeTask.warehouse_id.in_(wh_ids),
+        )
+    )).scalar_one_or_none()
+    if not task:
+        raise HTTPException(404, "加班任务不存在")
+
+    if task.status == "completed":
+        raise HTTPException(400, "这个加班已经完成了 不能再核实")
+
+    if not task.needs_verification:
+        raise HTTPException(400, "这个任务不需要核实")
+
+    # 校验实际小时数：必须填写且不能为负
+    for item in req.assignments:
+        if item.actual_hours is None or item.actual_hours < 0:
+            raise HTTPException(400, "请填写实际小时数")
+
+    # 加载该任务的全部分配记录
+    assignments = (await db.execute(
+        select(OvertimeAssignment).where(OvertimeAssignment.overtime_id == task_id)
+    )).scalars().all()
+    assign_map = {a.id: a for a in assignments}
+
+    # 加载员工薪资模板（加班半小时费）
+    emp_ids = {a.employee_id for a in assignments}
+    emp_map = {}
+    if emp_ids:
+        es = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
+        emp_map = {e.id: e for e in es}
+    tpl_ids = {e.salary_template_id for e in emp_map.values() if e.salary_template_id}
+    tpl_map = {}
+    if tpl_ids:
+        ts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(tpl_ids)))).scalars().all()
+        tpl_map = {t.id: t for t in ts}
+
+    verified_count = 0
+    for item in req.assignments:
+        a = assign_map.get(item.assignment_id)
+        if not a:
+            raise HTTPException(400, f"分配记录不存在: {item.assignment_id}")
+        a.actual_hours = item.actual_hours
+        # 按实际小时数重算加班费：半小时向上取整 × 员工薪资模板加班半小时费
+        emp = emp_map.get(a.employee_id)
+        fee = 0
+        if emp and emp.salary_template_id:
+            tpl = tpl_map.get(emp.salary_template_id)
+            fee = (tpl.overtime_half_hour_fee or 0) if tpl else 0
+        half_hours = math.ceil(item.actual_hours * 2)
+        a.earned_amount = round(half_hours * fee, 2)
+        # 有争议的，核实后清掉争议标记
+        if a.has_dispute:
+            a.has_dispute = False
+            a.dispute_reason = None
+            a.dispute_photo = None
+            a.dispute_time = None
+        verified_count += 1
+
+    # 还有分配记录未填实际小时数 → 待核实，否则已核实
+    remaining = (await db.execute(
+        select(func.count(OvertimeAssignment.id)).where(
+            OvertimeAssignment.overtime_id == task_id,
+            OvertimeAssignment.actual_hours.is_(None),
+        )
+    )).scalar()
+    task.status = "待核实" if (remaining and remaining > 0) else "已核实"
+
+    await db.flush()
+
+    total_amount = round(sum(a.earned_amount or 0 for a in assignments), 2)
+
+    return {
+        "message": "加班核实完成",
+        "verified_count": verified_count,
+        "total_amount": total_amount,
+        "status": task.status,
     }
 
 
@@ -329,6 +433,8 @@ async def list_overtimes(
                 "confirmed": a.confirmed,
                 "confirmed_at": a.confirmed_at.isoformat() if a.confirmed_at else None,
                 "earned_amount": a.earned_amount,
+                "actual_hours": a.actual_hours,
+                "has_dispute": a.has_dispute,
             })
 
     return {
@@ -342,6 +448,7 @@ async def list_overtimes(
             "half_hours": _half_hours_from_times(t.start_time, t.end_time),
             "hourly_rate": t.hourly_rate,
             "status": t.status,
+            "needs_verification": t.needs_verification,
             "created_by": t.created_by,
             "creator_name": creators.get(t.created_by, ""),
             "created_at": t.created_at.isoformat() if t.created_at else None,
