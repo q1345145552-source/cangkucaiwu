@@ -316,7 +316,8 @@ export default function OvertimePage() {
             </div>
           ) : (
             <div className="bg-white rounded-xl border overflow-hidden">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <th className="text-left px-4 py-3 font-medium text-gray-500">{t("date")}</th>
@@ -393,6 +394,7 @@ export default function OvertimePage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </>
