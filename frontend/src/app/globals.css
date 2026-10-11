@@ -179,3 +179,39 @@ body {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
+
+/* ── 首屏加载画面（PWA 启动白屏过渡） ── */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: linear-gradient(180deg, #2563eb 0%, #3b82f6 100%);
+  color: #fff;
+  transition: opacity 0.35s ease;
+  /* 兜底：JS 没跑起来时，约 2.8 秒后自动淡出隐藏，不会一直卡住 */
+  animation: appSplashAutoHide 0.4s ease 2.8s forwards;
+}
+.app-splash-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.app-splash-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: appSplashSpin 0.8s linear infinite;
+}
+@keyframes appSplashSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes appSplashAutoHide {
+  to { opacity: 0; visibility: hidden; }
+}
