@@ -344,5 +344,17 @@
   "overtime_date": "加班日期",
   "start_time": "开始时间",
   "end_time": "结束时间",
-  "select_employees": "选择员工"
+  "select_employees": "选择员工",
+  "ot_wait_verify": "待管理员核实",
+  "ot_disputed": "已提异议，等管理员修改",
+  "ot_dispute_title": "提异议",
+  "ot_dispute_reason_label": "原因",
+  "ot_pay_label": "加班费",
+  "ot_select_photo": "选择照片",
+  "ot_dispute_hint": "请说明你认为哪里不对，并上传一张照片作为依据",
+  "ot_submit_dispute": "提交异议",
+  "ot_dispute_reason_required": "请填写异议原因",
+  "ot_dispute_photo_required": "请上传照片",
+  "ot_dispute_success": "异议已提交",
+  "ot_dispute_failed": "提交异议失败"
 }

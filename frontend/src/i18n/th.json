@@ -344,5 +344,17 @@
   "ot_go_verify": "ไปตรวจสอบ",
   "verify_overtime_title": "ตรวจสอบโอที",
   "ot_round_up_note": "ไม่ถึงครึ่งชั่วโมงคิดเป็นครึ่งชั่วโมง ผู้ไม่ทำโอทีใส่ 0",
-  "save_verify": "บันทึกการตรวจสอบ"
+  "save_verify": "บันทึกการตรวจสอบ",
+  "ot_wait_verify": "รอผู้ดูแลตรวจสอบ",
+  "ot_disputed": "ยื่นข้อโต้แย้งแล้ว รอผู้ดูแลแก้ไข",
+  "ot_dispute_title": "ยื่นข้อโต้แย้ง",
+  "ot_dispute_reason_label": "เหตุผล",
+  "ot_pay_label": "ค่าโอที",
+  "ot_select_photo": "เลือกรูปถ่าย",
+  "ot_dispute_hint": "กรุณาระบุว่าคิดว่าส่วนไหนไม่ถูกต้อง และอัปโหลดรูปถ่ายหนึ่งรูปเป็นหลักฐาน",
+  "ot_submit_dispute": "ส่งข้อโต้แย้ง",
+  "ot_dispute_reason_required": "กรุณากรอกเหตุผลการโต้แย้ง",
+  "ot_dispute_photo_required": "กรุณาอัปโหลดรูปถ่าย",
+  "ot_dispute_success": "ยื่นข้อโต้แย้งแล้ว",
+  "ot_dispute_failed": "ส่งข้อโต้แย้งไม่สำเร็จ"
 }

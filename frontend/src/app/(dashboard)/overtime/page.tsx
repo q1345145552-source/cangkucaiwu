@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
-import { Clock, Plus, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Clock, Plus, CheckCircle, XCircle, AlertTriangle, Upload } from "lucide-react";
 
 export default function OvertimePage() {
   const { toast } = useToast(); const { user } = useAuth(); const { t } = useI18n(); const router = useRouter();
@@ -19,6 +19,10 @@ export default function OvertimePage() {
   const [scheduleEnd, setScheduleEnd] = useState("18:00");
   const [verifyTask, setVerifyTask] = useState<any>(null);
   const [verifyHours, setVerifyHours] = useState<Record<number, string>>({});
+  const [disputeTask, setDisputeTask] = useState<any>(null);
+  const [disputeReason, setDisputeReason] = useState("");
+  const [disputeFile, setDisputeFile] = useState<File | null>(null);
+  const [disputePreview, setDisputePreview] = useState("");
 
   const isAdmin = user?.role === "warehouse_admin";
   const isLabor = user?.role === "warehouse_labor";
@@ -179,6 +183,45 @@ export default function OvertimePage() {
       load();
     } catch (err: any) { toast("error", err.message || t("ot_save_failed")); }
   }
+  // ── 提异议 ──
+  function openDispute(task: any) {
+    setDisputeTask(task);
+    setDisputeReason("");
+    setDisputeFile(null);
+    setDisputePreview("");
+  }
+  function onDisputeFile(e: any) {
+    const f = e.target.files?.[0] || null;
+    setDisputeFile(f);
+    setDisputePreview(f ? URL.createObjectURL(f) : "");
+  }
+  async function handleDispute() {
+    if (!disputeTask) return;
+    if (!disputeReason.trim()) { toast("error", t("ot_dispute_reason_required")); return; }
+    if (!disputeFile) { toast("error", t("ot_dispute_photo_required")); return; }
+    const fd = new FormData();
+    fd.append("reason", disputeReason.trim());
+    fd.append("file", disputeFile);
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      headers["X-Language"] = localStorage.getItem("locale") || "zh";
+      const whId = getActiveWarehouseId();
+      if (whId) headers["X-Warehouse-ID"] = whId;
+      const res = await fetch(`/api/v1/overtime/${disputeTask.id}/dispute`, { method: "POST", headers, body: fd });
+      if (res.ok) {
+        const r = await res.json();
+        toast("success", r.message || t("ot_dispute_success"));
+        setDisputeTask(null);
+        setDisputeFile(null);
+        setDisputePreview("");
+        load();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast("error", err.detail || t("ot_dispute_failed"));
+      }
+    } catch (err: any) { toast("error", err.message || t("ot_dispute_failed")); }
+  }
 
   return (
     <div>
@@ -221,18 +264,42 @@ export default function OvertimePage() {
                 <Clock size={16} /> {t("pending_overtime")} ({pendingTasks.length})
               </h2>
               <div className="grid gap-3">
-                {pendingTasks.map((task: any) => (
-                  <div key={task.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
-                    <div>
+                {pendingTasks.map((task: any) => {
+                  const notVerified = task.needs_verification && task.actual_hours == null;
+                  const disputed = task.has_dispute;
+                  if (disputed) {
+                    return (
+                      <div key={task.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                        <p className="font-medium text-orange-700">{task.date} {task.start_time}-{task.end_time} · {t("ot_disputed")}</p>
+                        <p className="text-sm text-orange-600 mt-1">{t("ot_dispute_reason_label")}: {task.dispute_reason}</p>
+                      </div>
+                    );
+                  }
+                  if (notVerified) {
+                    return (
+                      <div key={task.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                        <p className="font-medium text-gray-700">{task.date} {task.start_time}-{task.end_time}</p>
+                        <p className="text-sm text-gray-500 mt-1">{t("ot_planned")}{task.hours}h · {t("ot_actual")}{t("ot_wait_verify")}</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={task.id} className="bg-white border border-gray-200 rounded-xl p-4">
                       <p className="font-medium text-gray-800">{task.date} {task.start_time}-{task.end_time}</p>
-                      <p className="text-sm text-gray-500">{t("ot_hours_pay").replace("{h}", task.hours).replace("{pay}", String(task.earned_amount ?? 0))}</p>
+                      <p className="text-sm text-gray-500 mt-1">{t("ot_planned")}{task.hours}h{task.actual_hours != null ? <> · {t("ot_actual")}{task.actual_hours}h</> : null} · {t("ot_pay_label")}{task.earned_amount}{t("baht")}</p>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => confirmOvertime(task.id)}
+                          className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-1">
+                          <CheckCircle size={16}/> {t("confirm")}
+                        </button>
+                        <button onClick={() => openDispute(task)}
+                          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-600 flex items-center gap-1">
+                          <AlertTriangle size={16}/> {t("ot_has_dispute")}
+                        </button>
+                      </div>
                     </div>
-                    <button onClick={() => confirmOvertime(task.id)}
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-1">
-                      <CheckCircle size={16}/> {t("ot_confirm_btn")}
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -304,10 +371,6 @@ export default function OvertimePage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          {isLabor && !task.assignments?.find((a: any) => a.confirmed) && (
-                            <button onClick={() => confirmOvertime(task.id)}
-                              className="text-green-600 hover:text-green-800 text-xs font-medium">{t("confirm")}</button>
-                          )}
                           {canVerify && task.needs_verification && task.status !== "completed" && (
                             <button onClick={() => openVerify(task)}
                               className="text-blue-600 hover:text-blue-800 text-xs font-medium">{t("ot_go_verify")}</button>
@@ -325,6 +388,46 @@ export default function OvertimePage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Dispute overtime modal */}
+      {disputeTask && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setDisputeTask(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+              <AlertTriangle size={20} />
+              <span className="font-semibold">{t("ot_dispute_title")}</span>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="text-sm text-gray-600">
+                {disputeTask.date} {disputeTask.start_time}-{disputeTask.end_time} · {t("ot_planned")}{disputeTask.hours}h · {t("ot_actual")}{disputeTask.actual_hours}h · {t("ot_pay_label")}{disputeTask.earned_amount}{t("baht")}
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">{t("ot_dispute_reason_label")}</label>
+                <textarea className="form-input w-full text-base py-2" rows={4} value={disputeReason}
+                  onChange={e => setDisputeReason(e.target.value)} placeholder={t("ot_dispute_reason_required")} />
+              </div>
+              <div>
+                <button onClick={() => document.getElementById("dispute-file-input")?.click()}
+                  className="btn-secondary text-sm px-4 py-2 flex items-center gap-2">
+                  <Upload size={16}/> {t("ot_select_photo")}
+                </button>
+                <input id="dispute-file-input" type="file" accept="image/*" className="hidden" onChange={onDisputeFile} />
+                {disputeFile && (
+                  <div className="mt-2 flex items-center gap-2">
+                    {disputePreview && <img src={disputePreview} alt="" className="w-16 h-16 object-cover rounded-lg border"/>}
+                    <span className="text-sm text-gray-600">{disputeFile.name}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-400">{t("ot_dispute_hint")}</p>
+            </div>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setDisputeTask(null)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
+              <button onClick={handleDispute} className="bg-orange-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-orange-600">{t("ot_submit_dispute")}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Verify overtime modal */}

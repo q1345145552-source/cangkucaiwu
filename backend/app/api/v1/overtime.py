@@ -453,11 +453,13 @@ async def list_overtimes(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    labor_emp_id = None
     if current_user.role == Role.WAREHOUSE_LABOR:
         # Employees see their assigned tasks（按员工档案匹配，账号换绑也能看到）
         emp = await _find_employee_for_user(db, get_wh_id(current_user), current_user)
         if not emp:
             return {"data": [], "total": 0, "page": page, "page_size": page_size}
+        labor_emp_id = emp.id
         query = (
             select(OvertimeTask)
             .join(OvertimeAssignment, OvertimeAssignment.overtime_id == OvertimeTask.id)
@@ -506,9 +508,11 @@ async def list_overtimes(
     task_ids = [t.id for t in tasks]
     assign_map = {}
     if task_ids:
-        assigns = (await db.execute(
-            select(OvertimeAssignment).where(OvertimeAssignment.overtime_id.in_(task_ids))
-        )).scalars().all()
+        assign_q = select(OvertimeAssignment).where(OvertimeAssignment.overtime_id.in_(task_ids))
+        # 劳工只看得到自己那一条分配记录，管理员/主管看全部
+        if labor_emp_id is not None:
+            assign_q = assign_q.where(OvertimeAssignment.employee_id == labor_emp_id)
+        assigns = (await db.execute(assign_q)).scalars().all()
         emp_ids = {a.employee_id for a in assigns}
         emps = {}
         emp_tpl = {}
@@ -620,9 +624,11 @@ async def pending_overtimes(
             "end_time": t.end_time,
             "hours": t.hours,
             "half_hours": _half_hours_from_times(t.start_time, t.end_time),
+            "needs_verification": t.needs_verification,
             "earned_amount": assign_map[t.id].earned_amount if t.id in assign_map else 0,
             "actual_hours": assign_map[t.id].actual_hours if t.id in assign_map else None,
             "has_dispute": assign_map[t.id].has_dispute if t.id in assign_map else False,
+            "dispute_reason": assign_map[t.id].dispute_reason if t.id in assign_map else None,
             "hourly_rate": t.hourly_rate,
             "created_at": t.created_at.isoformat() if t.created_at else None,
         } for t in tasks],
