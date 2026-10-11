@@ -41,7 +41,7 @@ export default function SearchableSelect(props: {
         onClick={() => setOpen(o => !o)}
         className="form-input flex items-center justify-between text-left w-full"
       >
-        <span className={selected ? "text-gray-800 truncate" : "text-gray-400"}>
+        <span className={`min-w-0 flex-1 ${selected ? "text-gray-800 line-clamp-2 break-words" : "text-gray-400"}`}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown size={14} className="text-gray-400 shrink-0" />
