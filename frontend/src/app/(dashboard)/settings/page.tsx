@@ -162,7 +162,7 @@ export default function SettingsPage() {
         extra_permissions: editPerms,
       };
       if (editPassword) payload.password = editPassword;
-      if (editUser.role === "supervisor") {
+      if (editUser.role === "supervisor" || editUser.role === "warehouse_admin") {
         payload.warehouse_ids = editWarehouseIds;
       } else if (editWarehouseId) {
         payload.warehouse_id = +editWarehouseId;
@@ -289,6 +289,7 @@ export default function SettingsPage() {
                     {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
                   </select>
                 )}
+                <p className="text-xs text-gray-400 mt-1">勾上哪个仓库 这个人就能看到那个仓库全部的钱和人 请谨慎勾选</p>
               </div>
               <button onClick={createUser} className="btn-primary">创建用户</button>
             </div>
@@ -345,9 +346,9 @@ export default function SettingsPage() {
                   <div><label className="form-label text-xs">用户名</label><input className="form-input text-sm" value={editUsername} onChange={e => setEditUsername(e.target.value)} /></div>
                   <div><label className="form-label text-xs">显示名</label><input className="form-input text-sm" value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} /></div>
                   <div><label className="form-label text-xs">重置密码（留空表示不改）</label><input type="password" className="form-input text-sm" value={editPassword} onChange={e => setEditPassword(e.target.value)} autoComplete="new-password" placeholder="留空不修改密码" /></div>
-                  {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
+                  {(user?.role === "super_admin" || user?.role === "warehouse_admin" || user?.role === "supervisor") && (
                     <div><label className="form-label text-xs">所属仓库</label>
-                      {editUser.role === "supervisor" ? (
+                      {(editUser.role === "supervisor" || editUser.role === "warehouse_admin") ? (
                         <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">
                           {warehouses.map((w: any) => (
                             <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">
@@ -363,6 +364,7 @@ export default function SettingsPage() {
                           {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
                         </select>
                       )}
+                      <p className="text-xs text-gray-400 mt-1">勾上哪个仓库 这个人就能看到那个仓库全部的钱和人 请谨慎勾选</p>
                     </div>
                   )}
                 </div>
