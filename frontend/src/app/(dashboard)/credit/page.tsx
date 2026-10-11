@@ -158,7 +158,7 @@ export default function CreditPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[900px]">
               <thead>
                 <tr className="border-b bg-gray-50">
                   <th className="text-left px-4 py-3 font-medium text-gray-500">评级</th>
@@ -273,7 +273,8 @@ export default function CreditPage() {
             </div>
 
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><TrendingUp size={14} className="text-gray-400" />还款记录</h3>
-            <table className="w-full text-sm mb-4">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm mb-4 min-w-[700px]">
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-1.5 px-2 text-gray-500">日期</th><th className="text-right py-1.5 px-2 text-gray-500">金额</th><th className="text-left py-1.5 px-2 text-gray-500">备注</th></tr></thead>
               <tbody>
                 {detail.repayments?.length > 0 ? detail.repayments.map((r: any) => (
@@ -281,9 +282,11 @@ export default function CreditPage() {
                 )) : <tr><td colSpan={3} className="py-2 text-center text-gray-400 text-xs">暂无还款记录</td></tr>}
               </tbody>
             </table>
+            </div>
 
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><TrendingDown size={14} className="text-gray-400" />发货记录</h3>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[700px]">
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-1.5 px-2 text-gray-500">日期</th><th className="text-right py-1.5 px-2 text-gray-500">金额</th><th className="text-left py-1.5 px-2 text-gray-500">订单号</th><th className="text-left py-1.5 px-2 text-gray-500">备注</th></tr></thead>
               <tbody>
                 {detail.shipments?.length > 0 ? detail.shipments.map((s: any) => (
@@ -291,6 +294,7 @@ export default function CreditPage() {
                 )) : <tr><td colSpan={4} className="py-2 text-center text-gray-400 text-xs">暂无发货记录</td></tr>}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
