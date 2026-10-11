@@ -986,7 +986,7 @@ export default function PayrollPage() {
               {/* Attendance */}
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-400 mb-2">出勤统计 ({(showPayslip.total_days_in_month ?? 0)}天/月)</p>
-                <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
                   <div><p className="text-lg font-bold text-green-600">{showPayslip.attendance_days ?? 0}</p><p className="text-xs text-gray-400">出勤</p></div>
                   <div><p className="text-lg font-bold text-amber-600">{showPayslip.leave_days ?? 0}</p><p className="text-xs text-gray-400">请假</p></div>
                   <div><p className="text-lg font-bold text-blue-600">{showPayslip.rest_days ?? 0}</p><p className="text-xs text-gray-400">休息</p></div>

@@ -126,7 +126,7 @@ export default function MyPayslipPage() {
 
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-400 mb-2">{t("attendance_title")} ({t("days_per_month").replace("{d}", String(selected.total_days_in_month))})</p>
-                <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
                   <div><p className="text-lg font-bold text-green-600">{selected.attendance_days}</p><p className="text-xs text-gray-400">{t("attendance_days")}</p></div>
                   <div><p className="text-lg font-bold text-amber-600">{selected.leave_days}</p><p className="text-xs text-gray-400">{t("leave_days")}</p></div>
                   <div><p className="text-lg font-bold text-blue-600">{selected.rest_days}</p><p className="text-xs text-gray-400">{t("rest_days")}</p></div>

@@ -912,7 +912,7 @@ export default function EmployeesPage() {
                   <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-1">
                     <TrendingUp size={16}/> 本月出勤 & 工资摘要
                   </h4>
-                  <div className="grid grid-cols-4 gap-3 text-center">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                     <div><div className="text-2xl font-bold text-blue-700">{summary.attendance_days}</div><div className="text-xs text-blue-500">出勤天数</div></div>
                     <div><div className="text-2xl font-bold text-amber-600">{summary.late_count}</div><div className="text-xs text-amber-500">迟到次数</div></div>
                     <div><div className="text-2xl font-bold text-green-600">{summary.overtime_hours}h</div><div className="text-xs text-green-500">加班小时</div></div>
