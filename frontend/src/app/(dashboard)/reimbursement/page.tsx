@@ -382,7 +382,7 @@ export default function ReimbursementPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[900px]">
                   <thead>
                     <tr className="border-b bg-gray-50">
                       <th className="text-left px-4 py-3 font-medium text-gray-500">报销人</th>
@@ -498,7 +498,8 @@ export default function ReimbursementPage() {
                     {/* Expanded items */}
                     {isExpanded && (
                       <div className="border-t px-5 py-3 bg-gray-50/30">
-                        <table className="w-full text-xs">
+                        <div className="overflow-x-auto">
+                        <table className="w-full text-xs min-w-[900px]">
                           <thead>
                             <tr className="border-b bg-gray-100/50">
                               <th className="text-left py-1.5 px-2 text-gray-500">类别</th>
@@ -531,6 +532,7 @@ export default function ReimbursementPage() {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                         <div className="mt-2 flex items-center gap-2">
                           <input className="form-input text-xs py-1 flex-1" placeholder="审批备注" value={reviewRemark} onChange={e => setReviewRemark(e.target.value)} />
                         </div>
@@ -574,7 +576,8 @@ export default function ReimbursementPage() {
                 <div className="text-purple-600 text-xs flex items-center gap-1 mt-1"><Info size={12} />此报销已关联备用金扣款</div>
               )}
             </div>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[900px]">
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-2 px-2 text-gray-500">类别</th><th className="text-right py-2 px-2 text-gray-500">金额</th><th className="text-left py-2 px-2 text-gray-500">说明</th><th className="text-center py-2 px-2 text-gray-500">凭证</th><th className="text-center py-2 px-2 text-gray-500">审核</th></tr></thead>
               <tbody>{detail.items?.map((i: any) => (
                 <tr key={i.id} className="border-b">
@@ -590,6 +593,7 @@ export default function ReimbursementPage() {
                 </tr>
               ))}</tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

@@ -329,7 +329,8 @@ export default function ExpenseFundPage() {
                 {isAdmin && <button onClick={() => setShowCreate(true)} className="btn-primary mt-4 text-sm"><Plus size={14} className="mr-1" />新建备用金</button>}
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <th className="w-8"></th>
@@ -383,7 +384,8 @@ export default function ExpenseFundPage() {
                               ) : accItems.length === 0 ? (
                                 <div className="text-center py-4 text-xs text-gray-400">暂无开销记录</div>
                               ) : (
-                                <table className="w-full text-xs">
+                                <div className="overflow-x-auto">
+                                <table className="w-full text-xs min-w-[900px]">
                                   <thead>
                                     <tr className="border-b bg-gray-100/50">
                                       <th className="text-left px-2 py-1.5 text-gray-500">日期</th>
@@ -411,6 +413,7 @@ export default function ExpenseFundPage() {
                                     ))}
                                   </tbody>
                                 </table>
+                                </div>
                               )}
                               {/* Recharge history */}
                               <div className="border-t border-gray-200 mt-3 pt-3">
@@ -454,6 +457,7 @@ export default function ExpenseFundPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 
@@ -606,7 +610,7 @@ export default function ExpenseFundPage() {
               <div className="flex flex-col items-center justify-center py-16 text-gray-400"><FileText size={44} className="text-gray-200 mb-3" /><span className="text-sm">暂无待审核记录</span></div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[900px]">
                   <thead>
                     <tr className="border-b bg-gray-50">
                       <th className="text-left px-2 py-3 w-10"><input type="checkbox" checked={selectedIds.size === reviewData.length && reviewData.length > 0} onChange={toggleAllReview} className="rounded" /></th>
@@ -674,7 +678,7 @@ export default function ExpenseFundPage() {
                   <div className="text-center py-12 text-gray-400 text-sm">暂无待审核的充值申请</div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm min-w-[900px]">
                       <thead>
                         <tr className="border-b bg-gray-50">
                           <th className="text-left px-3 py-3 font-medium text-gray-500">申请人</th>
