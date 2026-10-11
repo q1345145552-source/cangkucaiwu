@@ -215,7 +215,7 @@ export default function RechargePage() {
       const labels: any = { matched: "已匹配", unmatched: "未匹配" };
       return <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[v]||""}`}>{labels[v]||v}</span>;
     }},
-    { key: "declarer_name", label: "申报人" },
+    { key: "declarer_name", label: "申报人", hideOnMobile: true },
     { key: "id", label: "操作", render: (_: any, row: any) => (
       <div className="flex items-center gap-2">
         <button onClick={() => openEdit(row)} className="text-blue-600 hover:underline text-xs">编辑</button>
