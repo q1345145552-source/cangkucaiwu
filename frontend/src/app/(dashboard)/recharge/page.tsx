@@ -182,8 +182,8 @@ export default function RechargePage() {
     { key: "customer_name", label: "客户" },
     { key: "declare_date", label: "申报日期", render: (v: string) => v?.slice(0, 10) },
     { key: "amount", label: "金额", align: "right" as const, render: (v: number) => v?.toLocaleString() },
-    { key: "currency", label: "币种" },
-    { key: "payment_method", label: "付款方式", render: (v: string) => {
+    { key: "currency", label: "币种", hideOnMobile: true },
+    { key: "payment_method", label: "付款方式", hideOnMobile: true, render: (v: string) => {
       const map: Record<string, string> = { alipay: "支付宝", wechat: "微信", bank_transfer: "银行转账", company_account: "公户" };
       return map[v] || v || "-";
     }},
@@ -210,7 +210,7 @@ export default function RechargePage() {
         }} className="text-blue-600 text-xs hover:underline">补传</button>
       </div>
     ) },
-    { key: "match_status", label: "匹配状态", render: (v: string) => {
+    { key: "match_status", label: "匹配状态", hideOnMobile: true, render: (v: string) => {
       const colors: any = { matched: "bg-green-100 text-green-700", unmatched: "bg-orange-100 text-orange-600" };
       const labels: any = { matched: "已匹配", unmatched: "未匹配" };
       return <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[v]||""}`}>{labels[v]||v}</span>;
