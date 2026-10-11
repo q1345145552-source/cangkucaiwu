@@ -340,7 +340,7 @@ export default function GroupOrderPage() {
                           {h.participants?.length > 0 && (
                             <div>
                               <h4 className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1"><Users size={12} />参与仓库明细</h4>
-                              <div className="overflow-x-auto">
+                              <div className="overflow-x-auto touch-pan-x">
                               <table className="w-full text-sm min-w-[700px]">
                                 <thead>
                                   <tr className="border-b bg-gray-50 text-xs text-gray-400">
@@ -542,7 +542,7 @@ export default function GroupOrderPage() {
                 <div>
                   <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5"><Users size={14} />参与仓库</h4>
                   {detail.participants?.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto touch-pan-x">
                     <table className="w-full text-sm min-w-[700px]">
                       <thead><tr className="bg-gray-50 text-xs text-gray-400"><th className="text-left py-2.5 px-3">仓库</th><th className="text-right py-2.5 px-3">数量</th><th className="text-left py-2.5 px-3">收货地址</th></tr></thead>
                       <tbody>

@@ -657,7 +657,7 @@ export default function SuppliersPage() {
                 {products.length === 0 ? (
                   <div className="text-center py-12 text-gray-400 text-sm">暂无产品，请在上方添加</div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto touch-pan-x">
                     <table className="w-full text-sm min-w-[900px]">
                       <thead>
                         <tr className="border-b bg-gray-50">
@@ -726,7 +726,7 @@ export default function SuppliersPage() {
               <button onClick={()=>setShowOrder(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none">&times;</button>
             </div>
             <div className="p-5">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto touch-pan-x">
               <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b bg-gray-50">
@@ -848,7 +848,7 @@ export default function SuppliersPage() {
               <button onClick={addLogisticsPrice} disabled={!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim()} className={`rounded px-2 py-1.5 text-sm self-end ${!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim() ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button>
             </div>
             {logisticsPrices.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无报价</div> : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto touch-pan-x">
               <table className="w-full text-sm min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">运输方式</th><th>货物类型</th><th>发货仓库</th><th>单价(元/方)</th><th>时效</th><th></th></tr></thead>
                 <tbody>{logisticsPrices.map((p:any)=><tr key={p.id} className="border-t"><td className="p-2">{p.transport_method}</td><td>{p.cargo_type}</td><td>{p.origin_warehouse}</td><td>{p.price_per_cbm}</td><td>{p.estimated_days||"-"}</td>
                   <td><button onClick={()=>deleteLogisticsPrice(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></td></tr>)}</tbody></table>
@@ -899,7 +899,7 @@ export default function SuppliersPage() {
             {compareData.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">请填写查询条件</div> : (
               <>
                 {compareMode === "product" ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto touch-pan-x">
                   <table className="w-full text-sm mb-4 min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>类别</th><th>产品</th><th>规格</th><th>规格报价</th><th>单价</th></tr></thead>
                     <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
                       <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.category_name||"-"}</td><td>{r.product_name}</td><td>{r.spec||"-"}</td>
@@ -907,7 +907,7 @@ export default function SuppliersPage() {
                       <td className="font-semibold text-green-700">{r.unit_price}{r.unit}</td></tr>)}</tbody></table>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto touch-pan-x">
                   <table className="w-full text-sm mb-4 min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>运输</th><th>货物</th><th>发货仓</th><th>单价(元/方)</th><th>最低消费</th><th>时效</th><th>备注</th></tr></thead>
                     <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
                       <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.transport_method}</td><td>{r.cargo_type}</td>
@@ -990,7 +990,7 @@ export default function SuppliersPage() {
                   {(!detail.products || detail.products.length === 0) ? (
                     <div className="text-gray-400 text-sm py-3 text-center">暂无产品</div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto touch-pan-x">
                     <table className="w-full text-sm min-w-[700px]">
                       <thead><tr className="border-b text-gray-500 text-xs"><th className="text-left pb-2 font-medium">产品名</th><th className="text-left pb-2 font-medium">产品规格</th><th className="text-right pb-2 font-medium">规格报价</th><th className="text-right pb-2 font-medium">单价</th></tr></thead>
                       <tbody>{detail.products.map((p:any)=><tr key={p.id} className="border-b border-gray-100">
@@ -1011,7 +1011,7 @@ export default function SuppliersPage() {
                   {(!detail.logistics_prices || detail.logistics_prices.length === 0) ? (
                     <div className="text-gray-400 text-sm py-3 text-center">暂无报价</div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto touch-pan-x">
                     <table className="w-full text-sm min-w-[700px]">
                       <thead><tr className="border-b text-gray-500 text-xs"><th className="text-left pb-2 font-medium">运输方式</th><th className="text-left pb-2 font-medium">货物类型</th><th className="text-left pb-2 font-medium">发货仓库</th><th className="text-right pb-2 font-medium">单价(元/方)</th><th className="text-right pb-2 font-medium">时效</th></tr></thead>
                       <tbody>{detail.logistics_prices.map((p:any)=><tr key={p.id} className="border-b border-gray-100">
@@ -1140,7 +1140,7 @@ export default function SuppliersPage() {
                 {priceAnomalies.length === 0 ? (
                   <div className="text-gray-400 text-sm py-4 text-center">暂无价格异常</div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto touch-pan-x">
                     <table className="w-full text-sm min-w-[900px]">
                       <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                         <th className="px-3 py-2 font-medium">产品</th><th className="px-3 py-2 font-medium text-right">采购价</th>
@@ -1177,7 +1177,7 @@ export default function SuppliersPage() {
                 {nonLowestRecords.length === 0 ? (
                   <div className="text-gray-400 text-sm py-4 text-center">暂无非最低价采购</div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto touch-pan-x">
                     <table className="w-full text-sm min-w-[900px]">
                       <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                         <th className="px-3 py-2 font-medium">产品</th><th className="px-3 py-2 font-medium">所选供应商/价格</th>
@@ -1208,7 +1208,7 @@ export default function SuppliersPage() {
                 {priceStats.length === 0 ? (
                   <div className="text-gray-400 text-sm py-4 text-center">暂无采购记录</div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto touch-pan-x">
                     <table className="w-full text-sm min-w-[700px]">
                       <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                         <th className="px-3 py-2 font-medium">产品</th><th className="px-3 py-2 font-medium text-right">历史最低</th>
@@ -1422,7 +1422,7 @@ export default function SuppliersPage() {
               {receiptOrders.length === 0 ? (
                 <div className="text-gray-400 text-sm py-8 text-center">暂无采购单</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto touch-pan-x">
                 <table className="w-full text-sm min-w-[900px]">
                   <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                     <th className="px-3 py-2 font-medium">单号</th>
@@ -1481,7 +1481,7 @@ export default function SuppliersPage() {
             </div>
             <div className="p-5 space-y-4">
               <div className="text-sm text-gray-600">供应商：{receiveTarget.supplier_name || "-"} · 金额：{receiveTarget.total_amount}</div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto touch-pan-x">
               <table className="w-full text-sm min-w-[700px]">
                 <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                   <th className="px-3 py-2 font-medium">产品</th>
@@ -1544,7 +1544,7 @@ export default function SuppliersPage() {
               {discrepancies.length === 0 ? (
                 <div className="text-gray-400 text-sm py-8 text-center">暂无收货差异</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto touch-pan-x">
                 <table className="w-full text-sm min-w-[900px]">
                   <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                     <th className="px-3 py-2 font-medium">单号</th>
@@ -1594,7 +1594,7 @@ export default function SuppliersPage() {
               {poList.length === 0 ? (
                 <div className="text-gray-400 text-sm py-8 text-center">暂无采购单</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto touch-pan-x">
                 <table className="w-full text-sm min-w-[900px]">
                   <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                     <th className="px-3 py-2 font-medium">单号</th>
@@ -1688,7 +1688,7 @@ export default function SuppliersPage() {
                 </div>
               )}
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto touch-pan-x">
               <table className="w-full text-sm min-w-[700px]">
                 <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
                   <th className="px-3 py-2 font-medium">产品名称</th>

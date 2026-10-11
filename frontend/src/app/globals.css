@@ -167,8 +167,6 @@ body {
   select.form-input, select.form-select { min-height: 44px; }
   .card { padding: 0.75rem; }
   .card-title { font-size: 0.875rem; }
-  /* 筛选栏 item 全宽 */
-  .filters-row > * { width: 100%; }
 }
 
 @media (min-width: 640px) and (max-width: 1023px) {

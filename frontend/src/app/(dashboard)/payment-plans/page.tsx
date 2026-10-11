@@ -275,7 +275,7 @@ export default function PaymentPlansPage() {
               {showDetail.bills.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">暂无关联账单</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto touch-pan-x">
                 <table className="w-full text-sm min-w-[800px]">
                   <thead><tr className="bg-gray-50">
                     <th className="text-left p-2">供应商</th><th className="text-left p-2">账单编号</th><th className="text-right p-2">金额</th><th className="text-left p-2">到期日</th><th className="text-left p-2">状态</th>

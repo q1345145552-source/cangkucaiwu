@@ -290,7 +290,7 @@ export default function SettingsPage() {
 
           {/* User list */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto touch-pan-x">
             <table className="w-full text-sm min-w-[900px]">
               <thead className="bg-gray-50 border-b"><tr><th className="text-left px-4 py-2">用户名</th><th>显示名</th><th>角色</th><th>仓库</th><th>扩展权限</th><th>状态</th><th>操作</th></tr></thead>
               <tbody>{users.map((u:any)=>(
@@ -432,7 +432,7 @@ export default function SettingsPage() {
             ) : rates.length === 0 ? (
               <div className="text-center py-8 text-gray-400 text-sm">暂无汇率记录</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto touch-pan-x">
                 <table className="w-full text-sm min-w-[700px]">
                   <thead>
                     <tr className="border-b bg-gray-50">

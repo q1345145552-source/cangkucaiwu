@@ -381,7 +381,7 @@ export default function ReimbursementPage() {
                 <Receipt size={44} className="text-gray-200 mb-3" /><span className="text-sm">暂无报销记录</span>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto touch-pan-x">
                 <table className="w-full text-sm min-w-[900px]">
                   <thead>
                     <tr className="border-b bg-gray-50">
@@ -498,7 +498,7 @@ export default function ReimbursementPage() {
                     {/* Expanded items */}
                     {isExpanded && (
                       <div className="border-t px-5 py-3 bg-gray-50/30">
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto touch-pan-x">
                         <table className="w-full text-xs min-w-[900px]">
                           <thead>
                             <tr className="border-b bg-gray-100/50">
@@ -576,7 +576,7 @@ export default function ReimbursementPage() {
                 <div className="text-purple-600 text-xs flex items-center gap-1 mt-1"><Info size={12} />此报销已关联备用金扣款</div>
               )}
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto touch-pan-x">
             <table className="w-full text-sm min-w-[900px]">
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-2 px-2 text-gray-500">类别</th><th className="text-right py-2 px-2 text-gray-500">金额</th><th className="text-left py-2 px-2 text-gray-500">说明</th><th className="text-center py-2 px-2 text-gray-500">凭证</th><th className="text-center py-2 px-2 text-gray-500">审核</th></tr></thead>
               <tbody>{detail.items?.map((i: any) => (

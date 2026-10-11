@@ -316,7 +316,7 @@ export default function OvertimePage() {
             </div>
           ) : (
             <div className="bg-white rounded-xl border overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto touch-pan-x">
               <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b bg-gray-50">

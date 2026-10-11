@@ -157,7 +157,7 @@ export default function CreditPage() {
             <Clock size={44} className="text-gray-200 mb-3" /><span className="text-sm">暂无账期客户</span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto touch-pan-x">
             <table className="w-full text-sm min-w-[900px]">
               <thead>
                 <tr className="border-b bg-gray-50">
@@ -273,7 +273,7 @@ export default function CreditPage() {
             </div>
 
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><TrendingUp size={14} className="text-gray-400" />还款记录</h3>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto touch-pan-x">
             <table className="w-full text-sm mb-4 min-w-[700px]">
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-1.5 px-2 text-gray-500">日期</th><th className="text-right py-1.5 px-2 text-gray-500">金额</th><th className="text-left py-1.5 px-2 text-gray-500">备注</th></tr></thead>
               <tbody>
@@ -285,7 +285,7 @@ export default function CreditPage() {
             </div>
 
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><TrendingDown size={14} className="text-gray-400" />发货记录</h3>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto touch-pan-x">
             <table className="w-full text-sm min-w-[700px]">
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-1.5 px-2 text-gray-500">日期</th><th className="text-right py-1.5 px-2 text-gray-500">金额</th><th className="text-left py-1.5 px-2 text-gray-500">订单号</th><th className="text-left py-1.5 px-2 text-gray-500">备注</th></tr></thead>
               <tbody>

@@ -521,7 +521,7 @@ export default function EmployeesPage() {
 
       {/* Active Employees Table */}
       <div className="bg-white rounded-xl border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto touch-pan-x">
         <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="border-b bg-gray-50">
@@ -631,7 +631,7 @@ export default function EmployeesPage() {
         <details className="mt-3 text-sm text-gray-400">
           <summary className="cursor-pointer">已离职员工 ({data.filter((e: any) => e.status === "resigned").length}人)</summary>
           <div className="mt-2 bg-white rounded-xl border overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto touch-pan-x">
             <table className="w-full text-sm opacity-60 min-w-[900px]">
               <thead>
                 <tr className="border-b bg-gray-50">
