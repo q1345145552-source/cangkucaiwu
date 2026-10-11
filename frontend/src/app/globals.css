@@ -144,6 +144,10 @@ body {
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
   }
+  /* 手机端所有输入框/下拉框/文本域统一 16px，防止 iOS 点选自动放大 */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
   .form-label { font-size: 0.75rem; }
   .modal-overlay > div {
     width: 90vw !important;
@@ -178,6 +182,13 @@ body {
 .touch-pan-x {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  /* 允许横向和纵向手势穿透：横滑表格 + 纵滑翻页都正常 */
+  touch-action: pan-x pan-y;
+}
+
+/* 页面根元素禁止横向滚动，防止手机上左右拖动页面 */
+html, body {
+  overflow-x: hidden;
 }
 
 /* ── 首屏加载画面（PWA 启动白屏过渡） ── */
