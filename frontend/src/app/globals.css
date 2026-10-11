@@ -175,7 +175,7 @@ body {
 
 @media (min-width: 640px) and (max-width: 1023px) {
   .modal-overlay > div { max-width: 85vw !important; }
-  .table-card table { min-width: 700px; }
+  .table-card table { min-width: fit-content; }
 }
 
 /* 触摸滚动 */
