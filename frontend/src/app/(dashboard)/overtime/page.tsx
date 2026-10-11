@@ -344,7 +344,7 @@ export default function OvertimePage() {
                             return (
                               <div key={a.id} className="text-xs leading-5">
                                 <span className="font-medium text-gray-800">{a.employee_name}</span>
-                                <span className="text-gray-500"> {t("ot_planned")}{task.hours}h · {t("ot_actual")}{a.actual_hours != null ? `${a.actual_hours}h` : t("ot_not_verified")} · {t("ot_amount")}{a.earned_amount?.toFixed(0)}{t("baht")}</span>
+                                <span className="text-gray-500"> {t("ot_planned")}{task.hours}h · {t("ot_actual")}{a.actual_hours != null ? `${a.actual_hours}h` : (task.needs_verification ? t("ot_not_verified") : "—")} · {t("ot_amount")}{a.earned_amount?.toFixed(0)}{t("baht")}</span>
                                 <span className={`ml-1 ${stColor}`}>{stLabel}</span>
                               </div>
                             );
