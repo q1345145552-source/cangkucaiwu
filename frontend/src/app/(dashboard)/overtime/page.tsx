@@ -168,7 +168,7 @@ export default function OvertimePage() {
   }
   async function handleVerify() {
     if (!verifyTask) return;
-    const assignments = verifyTask.assignments || [];
+    const assignments = (verifyTask.assignments || []).filter((a: any) => !a.confirmed);
     for (const a of assignments) {
       const raw = (verifyHours[a.id] ?? "").trim();
       if (raw === "") { toast("error", t("ot_verify_fill_all")); return; }
@@ -359,16 +359,20 @@ export default function OvertimePage() {
                               </span>
                             );
                           }
+                          const disputeCount = (task.assignments || []).filter((a: any) => a.has_dispute).length;
+                          const disputeSuffix = disputeCount > 0 ? (
+                            <span className="text-orange-500 font-medium ml-1">{t("ot_status_dispute_suffix").replace("{n}", String(disputeCount))}</span>
+                          ) : null;
                           if (task.needs_verification && (task.assignments || []).some((a: any) => a.actual_hours == null)) {
                             return (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-600">
-                                <Clock size={12}/> {t("ot_status_pending_verify")} {t("ot_progress_verified").replace("{n}", String(verifiedCount(task))).replace("{total}", String(task.total_assignments || 0))}
+                                <Clock size={12}/> {t("ot_status_pending_verify")} {t("ot_progress_verified").replace("{n}", String(verifiedCount(task))).replace("{total}", String(task.total_assignments || 0))}{disputeSuffix}
                               </span>
                             );
                           }
                           return (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
-                              <Clock size={12}/> {t("overtime_pending_confirm")} {t("ot_progress_confirmed").replace("{n}", String(task.confirmed_count || 0)).replace("{total}", String(task.total_assignments || 0))}
+                              <Clock size={12}/> {t("overtime_pending_confirm")} {t("ot_progress_confirmed").replace("{n}", String(task.confirmed_count || 0)).replace("{total}", String(task.total_assignments || 0))}{disputeSuffix}
                             </span>
                           );
                         })()}
@@ -452,6 +456,12 @@ export default function OvertimePage() {
                   {t("ot_verify_dispute_hint").replace("{n}", String((verifyTask.assignments || []).filter((a: any) => a.has_dispute).length))}
                 </div>
               )}
+              {(verifyTask.assignments || []).some((a: any) => a.confirmed) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-600">
+                  <CheckCircle size={14} className="inline mr-1"/>
+                  {t("ot_verify_confirmed_hint").replace("{n}", String((verifyTask.assignments || []).filter((a: any) => a.confirmed).length))}
+                </div>
+              )}
               <div className="space-y-3">
                 {(verifyTask.assignments || []).map((a: any) => (
                   <div key={a.id} className={a.has_dispute ? "border border-orange-200 rounded-lg p-2" : ""}>
@@ -462,11 +472,16 @@ export default function OvertimePage() {
                           <span className="bg-orange-500 text-white text-[10px] px-1 py-0.5 rounded leading-none">{t("ot_has_dispute")}</span>
                         )}
                       </span>
-                      <input type="number" step="0.1" className="form-input flex-1 text-base py-2"
+                      <input type="number" step="0.1"
+                        className={`form-input flex-1 text-base py-2 ${a.confirmed ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
                         value={verifyHours[a.id] ?? ""}
+                        disabled={a.confirmed}
                         onChange={e => setVerifyHours(h => ({ ...h, [a.id]: e.target.value }))} />
-                      <span className="w-24 text-right text-sm text-green-600 font-medium shrink-0">{verifyFee(a)}{t("baht")}</span>
+                      <span className={`w-24 text-right text-sm shrink-0 ${a.confirmed ? "text-gray-500" : "text-green-600 font-medium"}`}>{a.confirmed ? a.earned_amount : verifyFee(a)}{t("baht")}</span>
                     </div>
+                    {a.confirmed && (
+                      <div className="mt-1 pl-[92px] text-xs text-gray-400">{t("ot_verify_confirmed_note")}</div>
+                    )}
                     {a.has_dispute && (
                       <div className="mt-1 pl-[92px] space-y-1">
                         {a.dispute_reason && <p className="text-xs text-orange-600">{a.dispute_reason}</p>}

@@ -94,6 +94,7 @@ MESSAGES = {
     "overtime_verify_not_needed": {"zh": "这个任务不需要核实", "th": "งานนี้ไม่ต้องตรวจสอบ", "my": "ဤလုပ်ငန်းစစ်ဆေးရန်မလိုပါ"},
     "overtime_verify_hours_required": {"zh": "请填写实际小时数", "th": "กรุณากรอกชั่วโมงจริง", "my": "အမှန်နာရီဖြည့်ပါ"},
     "overtime_verify_assignment_not_found": {"zh": "分配记录不存在: {id}", "th": "ไม่พบรายการมอบหมาย: {id}", "my": "တာဝန်မှတ်တမ်းမရှိပါ: {id}"},
+    "overtime_verify_limit_exceeded": {"zh": "员工 {name} 本月已加班 {monthly}h，加上本次将变成 {after}h，超过上限 {limit}h", "th": "พนักงาน {name} เดือนนี้ทำโอทีไปแล้ว {monthly} ชม. รวมครั้งนี้จะกลายเป็น {after} ชม. เกินขีดจำกัด {limit} ชม.", "my": "ဝန်ထမ်း {name} ယခုလ အချိန်ပို {monthly} နာရီလုပ်ပြီး၊ ယခုတစ်ကြိမ်ထည့်လျှင် {after} နာရီဖြစ်၍ ကန့်သတ် {limit} နာရီကျော်ပါသည်"},
     "overtime_verify_success": {"zh": "加班核实完成", "th": "ตรวจสอบโอทีเสร็จสิ้น", "my": "အချိန်ပိုစစ်ဆေးပြီးပါပြီ"},
 }
 

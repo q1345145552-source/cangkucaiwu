@@ -245,11 +245,32 @@ async def verify_overtime(
         ts = (await db.execute(select(SalaryTemplate).where(SalaryTemplate.id.in_(tpl_ids)))).scalars().all()
         tpl_map = {t.id: t for t in ts}
 
-    verified_count = 0
+    # 找出要核实的记录：已确认过的跳过，不碰他的数据
+    to_verify = []
+    skipped = []
     for item in req.assignments:
         a = assign_map.get(item.assignment_id)
         if not a:
             raise HTTPException(400, t("overtime_verify_assignment_not_found", lang, id=item.assignment_id))
+        if a.confirmed:
+            skipped.append(a)
+        else:
+            to_verify.append((item, a))
+
+    # 月度上限校验（整批，保存前）：本月已核实用实际、未核实用计划、本次用新填的实际
+    limit_hours = await _get_monthly_limit(db, task.warehouse_id)
+    for item, a in to_verify:
+        monthly = await _get_monthly_overtime_for_verify(db, a.employee_id, task.date, task.id)
+        after = monthly + item.actual_hours
+        if after > limit_hours:
+            name = emp_map.get(a.employee_id).name if emp_map.get(a.employee_id) else f"员工{a.employee_id}"
+            raise HTTPException(
+                400,
+                t("overtime_verify_limit_exceeded", lang, name=name, monthly=f"{monthly:.1f}", after=f"{after:.1f}", limit=f"{limit_hours:.0f}"),
+            )
+
+    verified_count = 0
+    for item, a in to_verify:
         a.actual_hours = item.actual_hours
         # 按实际小时数重算加班费：半小时向上取整 × 员工薪资模板加班半小时费
         emp = emp_map.get(a.employee_id)
@@ -283,6 +304,8 @@ async def verify_overtime(
     return {
         "message": t("overtime_verify_success", lang),
         "verified_count": verified_count,
+        "skipped_count": len(skipped),
+        "skipped_names": [emp_map.get(a.employee_id).name if emp_map.get(a.employee_id) else "" for a in skipped],
         "total_amount": total_amount,
         "status": task.status,
     }
@@ -860,6 +883,31 @@ async def _get_monthly_overtime_hours_by_employee(db: AsyncSession, employee_id:
         )
     )).scalar()
     return float(result or 0)
+
+
+async def _get_monthly_overtime_for_verify(db: AsyncSession, employee_id: int, month_date, exclude_task_id: int) -> float:
+    """核实时的月度累计：已核实的任务用实际小时数，没核实的用计划小时数，排除指定任务。"""
+    d = month_date if not isinstance(month_date, str) else datetime.strptime(month_date, "%Y-%m-%d").date()
+    month_start = d.replace(day=1)
+    if month_start.month == 12:
+        month_end = month_start.replace(year=month_start.year + 1, month=1, day=1)
+    else:
+        month_end = month_start.replace(month=month_start.month + 1, day=1)
+
+    rows = (await db.execute(
+        select(OvertimeTask.id, OvertimeTask.hours, OvertimeAssignment.actual_hours)
+        .join(OvertimeAssignment, OvertimeAssignment.overtime_id == OvertimeTask.id)
+        .where(
+            OvertimeAssignment.employee_id == employee_id,
+            OvertimeTask.date >= month_start,
+            OvertimeTask.date < month_end,
+            OvertimeTask.id != exclude_task_id,
+        )
+    )).all()
+    total = 0.0
+    for _tid, planned, actual in rows:
+        total += (actual if actual is not None else planned)
+    return total
 
 
 async def _get_monthly_limit(db: AsyncSession, warehouse_id: int) -> float:
