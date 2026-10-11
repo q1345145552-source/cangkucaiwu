@@ -491,7 +491,7 @@ export default function PayablePage() {
             </div>
 
             <div className="p-6 space-y-5">
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
                   <div className="text-xs text-blue-500 mb-1">应付总额</div>
                   <div className="font-bold text-lg text-blue-700">{fmtMoney(payingRow.amount, payingRow.currency)}</div>

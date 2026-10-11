@@ -458,7 +458,7 @@ export default function LaborEfficiencyPage() {
             </div>
           </div>
           <p className="text-xs text-gray-400 mb-3">点击某天录入/修改当天订单数，未录入的天按 0 计算。</p>
-          <div className="grid grid-cols-7 gap-1 text-center text-xs">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1 text-center text-xs">
             {["日", "一", "二", "三", "四", "五", "六"].map((w, i) => (
               <div key={i} className="text-gray-400 py-1">{w}</div>
             ))}
