@@ -114,33 +114,31 @@ async def create_user(
         raise HTTPException(status_code=400, detail="用户名已存在")
 
     # 确定分配到的仓库列表：多仓 warehouse_ids 优先，其次单仓 warehouse_id
-    if req.role == Role.WAREHOUSE_ADMIN:
-        warehouse_ids: list[int] = []
+    # 所有角色走同一套逻辑：传了仓库列表就按传的来，没传就是空
+    if req.warehouse_ids:
+        warehouse_ids = list(req.warehouse_ids)
+    elif req.warehouse_id is not None:
+        warehouse_ids = [req.warehouse_id]
     else:
-        if req.warehouse_ids:
-            warehouse_ids = list(req.warehouse_ids)
-        elif req.warehouse_id is not None:
-            warehouse_ids = [req.warehouse_id]
-        else:
-            warehouse_ids = []
+        warehouse_ids = []
 
-        # 非超管：校验每个仓库都在自己管理范围内
-        if current_user.role != Role.SUPER_ADMIN:
-            managed = (await db.execute(
-                select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == current_user.id)
-            )).scalars().all()
-            managed = list(managed) if managed else []
-            for wid in warehouse_ids:
-                if wid not in managed:
-                    raise HTTPException(status_code=403, detail="无权限将用户分配到该仓库")
-            if not warehouse_ids:
-                fallback = current_user.warehouse_id or (managed[0] if managed else None)
-                if fallback:
-                    warehouse_ids = [fallback]
+    # 非超管：校验每个仓库都在自己管理范围内
+    if current_user.role != Role.SUPER_ADMIN:
+        managed = (await db.execute(
+            select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == current_user.id)
+        )).scalars().all()
+        managed = list(managed) if managed else []
+        for wid in warehouse_ids:
+            if wid not in managed:
+                raise HTTPException(status_code=403, detail="无权限将用户分配到该仓库")
+        if not warehouse_ids:
+            fallback = current_user.warehouse_id or (managed[0] if managed else None)
+            if fallback:
+                warehouse_ids = [fallback]
 
-        # staff / supervisor MUST have at least one warehouse
-        if req.role in (Role.STAFF, Role.SUPERVISOR) and not warehouse_ids:
-            raise HTTPException(status_code=400, detail="创建该角色用户时必须指定所属仓库")
+    # staff / supervisor MUST have at least one warehouse
+    if req.role in (Role.STAFF, Role.SUPERVISOR) and not warehouse_ids:
+        raise HTTPException(status_code=400, detail="创建该角色用户时必须指定所属仓库")
 
     primary_wh = warehouse_ids[0] if warehouse_ids else None
     req.warehouse_id = primary_wh

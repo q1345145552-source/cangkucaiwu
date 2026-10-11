@@ -119,9 +119,9 @@ export default function SettingsPage() {
         password: newUser.password,
         role: newUser.role,
       };
-      if (newUser.role === "supervisor") {
+      if (newUser.role === "supervisor" || newUser.role === "warehouse_admin") {
         payload.warehouse_ids = newUser.warehouse_ids;
-      } else if (newUser.role !== "warehouse_admin") {
+      } else {
         payload.warehouse_id = +newUser.warehouse_id;
       }
       await api.post("/users", payload);
@@ -259,9 +259,16 @@ export default function SettingsPage() {
                   <option value="warehouse_labor">仓库劳工</option>
                 </>)}
               </select></div>
-              {newUser.role !== "warehouse_admin" && (
-                <div><label className="form-label">所属仓库 <span className="text-red-400">*</span></label>
-                {newUser.role === "supervisor" ? (
+              <div>
+                <label className="form-label">
+                  所属仓库
+                  {newUser.role === "warehouse_admin" ? (
+                    <span className="text-gray-400 text-xs font-normal">（选填，留空的话这个人可以自己建仓库）</span>
+                  ) : (
+                    <span className="text-red-400">*</span>
+                  )}
+                </label>
+                {newUser.role === "supervisor" || newUser.role === "warehouse_admin" ? (
                   <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">
                     {warehouses.map((w:any) => (
                       <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">
@@ -282,8 +289,7 @@ export default function SettingsPage() {
                     {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
                   </select>
                 )}
-                </div>
-              )}
+              </div>
               <button onClick={createUser} className="btn-primary">创建用户</button>
             </div>
           </div>
