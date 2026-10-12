@@ -773,7 +773,7 @@ export default function PayrollPage() {
       {/* 单人结算 Modal */}
       {showSingleModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowSingleModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <User size={20} /><span className="font-semibold">单人结算</span>
             </div>
@@ -872,7 +872,7 @@ export default function PayrollPage() {
       {/* 作废重算 Modal */}
       {recalcModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRecalcModal(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-amber-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <AlertTriangle size={20} /><span className="font-semibold">{recalcModal.action === "single" ? "作废重算" : "批量作废重算"}</span>
             </div>
@@ -913,7 +913,7 @@ export default function PayrollPage() {
       {/* 发放工资 Modal（可传签字照片） */}
       {disburseModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setDisburseModal(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Banknote size={20} /><span className="font-semibold">发放工资</span>
             </div>
@@ -951,7 +951,7 @@ export default function PayrollPage() {
       {/* 撤销发放 Modal */}
       {revokeModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRevokeModal(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Undo2 size={20} /><span className="font-semibold">撤销发放</span>
             </div>

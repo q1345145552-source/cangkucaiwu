@@ -635,7 +635,7 @@ export default function ReimbursementPage() {
       {/* 删除确认 */}
       {deletingRow && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingRow(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除报销</h3>
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这条报销吗？{deletingRow.is_fund_linked === "1" ? "该报销已关联备用金，删除后将恢复备用金余额。" : ""}删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">

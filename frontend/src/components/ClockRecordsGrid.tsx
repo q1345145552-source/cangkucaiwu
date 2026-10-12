@@ -326,7 +326,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
       )}
       {makeupForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setMakeupForm(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-purple-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <CalendarClock size={18} /><span className="font-semibold">{t("makeup")}</span>
               <button onClick={() => setMakeupForm(null)} className="ml-auto text-2xl text-purple-200 hover:text-white">&times;</button>

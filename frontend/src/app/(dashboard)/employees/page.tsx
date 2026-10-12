@@ -1143,7 +1143,7 @@ export default function EmployeesPage() {
       {/* Upload photo (triggered after file selection in detail modal) */}
       {photoFile && detailEmp && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl p-6 text-center max-w-xs">
+          <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的照片？</p>
             <div className="flex gap-2 justify-center">
@@ -1160,7 +1160,7 @@ export default function EmployeesPage() {
       {/* Upload passport photo */}
       {passportPhotoFile && detailEmp && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl p-6 text-center max-w-xs">
+          <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的护照照片？</p>
             <div className="flex gap-2 justify-center">
@@ -1177,7 +1177,7 @@ export default function EmployeesPage() {
       {/* Upload work permit photo */}
       {workPermitPhotoFile && detailEmp && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl p-6 text-center max-w-xs">
+          <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的工作证照片？</p>
             <div className="flex gap-2 justify-center">
@@ -1204,7 +1204,7 @@ export default function EmployeesPage() {
       {/* Resign Modal */}
       {resigningId && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setResigningId(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <UserX size={20} />
               <span className="font-semibold">标记离职</span>
@@ -1263,7 +1263,7 @@ export default function EmployeesPage() {
       {/* 删除员工确认框 */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setDeleteTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Trash2 size={18} className="text-red-500"/> 删除员工档案</h3>
             <p className="text-sm text-gray-600 mb-1">确定要删除员工「{deleteTarget.name}」吗？</p>
             <p className="text-xs text-gray-400 mb-4">删除后该员工从列表隐藏，关联的打卡记录、工资单、加班记录都会保留；绑定登录账号将被禁用。</p>
@@ -1281,7 +1281,7 @@ export default function EmployeesPage() {
       {/* 绑定已有账号结果弹窗 */}
       {bindResult && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setBindResult(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Link2 size={18} /><span className="font-semibold">绑定已有账号</span>
               <button onClick={() => setBindResult(null)} className="ml-auto text-2xl text-blue-200 hover:text-white">&times;</button>
@@ -1318,7 +1318,7 @@ export default function EmployeesPage() {
       {/* 批量设置模板弹窗 */}
       {showBatchModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowBatchModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <UserPlus size={20} /><span className="font-semibold">批量设置模板</span>
             </div>

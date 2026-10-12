@@ -560,7 +560,7 @@ export default function OperatingPage() {
       {/* 删除凭证确认 */}
       {confirmDeleteVoucher && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setConfirmDeleteVoucher(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除凭证</h3>
             <p className="text-sm text-gray-500 mb-5">确定要删除这张凭证图片吗？删除后不可恢复。</p>
             <div className="flex justify-end gap-3">
@@ -596,7 +596,7 @@ export default function OperatingPage() {
       {/* 删除记录确认 */}
       {deletingExpense && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingExpense(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除支出</h3>
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这笔支出吗？删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">

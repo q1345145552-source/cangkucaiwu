@@ -670,7 +670,7 @@ export default function LaborEfficiencyPage() {
       {/* 订单数录入弹窗 */}
       {orderModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setOrderModal(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <TrendingUp size={20} />
               <h3 className="font-semibold text-lg">录入订单数</h3>
@@ -706,7 +706,7 @@ export default function LaborEfficiencyPage() {
       {/* 补录工时弹窗 */}
       {suppModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSuppModal(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-amber-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Clock size={20} />
               <h3 className="font-semibold text-lg">补录工时</h3>

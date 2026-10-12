@@ -184,7 +184,7 @@ export default function ClockInPage() {
       {/* Photo Preview Modal */}
       {previewPhoto && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={cancelPhoto}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Camera size={20} />
               <h3 className="font-semibold text-lg">{t("clock_photo_confirm")}</h3>

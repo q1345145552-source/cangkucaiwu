@@ -403,12 +403,12 @@ export default function OvertimePage() {
       {/* Dispute overtime modal */}
       {disputeTask && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setDisputeTask(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
               <AlertTriangle size={20} />
               <span className="font-semibold">{t("ot_dispute_title")}</span>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto">
               <div className="text-sm text-gray-600">
                 {disputeTask.date} {disputeTask.start_time}-{disputeTask.end_time} · {t("ot_planned")}{disputeTask.hours}h · {t("ot_actual")}{disputeTask.actual_hours}h · {t("ot_pay_label")}{disputeTask.earned_amount}{t("baht")}
               </div>
@@ -432,7 +432,7 @@ export default function OvertimePage() {
               </div>
               <p className="text-xs text-gray-400">{t("ot_dispute_hint")}</p>
             </div>
-            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setDisputeTask(null)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
               <button onClick={handleDispute} className="bg-orange-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-orange-600">{t("ot_submit_dispute")}</button>
             </div>
@@ -443,12 +443,12 @@ export default function OvertimePage() {
       {/* Verify overtime modal */}
       {verifyTask && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setVerifyTask(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
               <Clock size={20} />
               <span className="font-semibold">{t("verify_overtime_title")}</span>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto">
               <div className="text-sm text-gray-600">
                 {verifyTask.date} {verifyTask.start_time}-{verifyTask.end_time} {t("ot_planned")}{verifyTask.hours}h
               </div>
@@ -498,7 +498,7 @@ export default function OvertimePage() {
               </div>
               <p className="text-xs text-gray-400">{t("ot_round_up_note")}</p>
             </div>
-            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setVerifyTask(null)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
               <button onClick={handleVerify} className="btn-primary text-sm px-6 py-2">{t("save_verify")}</button>
             </div>
@@ -516,12 +516,12 @@ export default function OvertimePage() {
       {/* Create overtime modal */}
       {showForm && isAdmin && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
               <Clock size={20} />
               <span className="font-semibold">{t("create_overtime_task")}</span>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto">
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">{t("overtime_date")}</label>
                 <input type="date" className="form-input text-base py-2.5 w-full" value={form.date}
@@ -579,7 +579,7 @@ export default function OvertimePage() {
                 <p className="text-xs text-gray-400 mt-1">{t("selected_count").replace("{n}", String(form.employee_ids.length))}</p>
               </div>
             </div>
-            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
               <button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">{t("create_overtime")}</button>
             </div>

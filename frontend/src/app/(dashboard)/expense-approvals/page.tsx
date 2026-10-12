@@ -351,7 +351,7 @@ export default function ExpenseApprovalsPage() {
       {/* 驳回弹窗 */}
       {rejectId && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRejectId(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <XCircle size={20} /><span className="font-semibold">驳回费用申请</span>
             </div>
@@ -372,7 +372,7 @@ export default function ExpenseApprovalsPage() {
       {/* 付款弹窗（上传付款凭证） */}
       {payId && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setPayId(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-green-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Banknote size={20} /><span className="font-semibold">确认付款</span>
             </div>

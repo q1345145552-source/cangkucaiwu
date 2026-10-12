@@ -66,6 +66,9 @@ body {
   .modal-overlay {
     @apply fixed inset-0 bg-black/40 z-50 flex items-center justify-center;
   }
+  .modal-overlay > div {
+    @apply max-h-[85vh] overflow-y-auto;
+  }
   .modal-sm {
     @apply bg-white rounded-xl w-full max-w-sm max-h-[85vh] overflow-auto;
   }
