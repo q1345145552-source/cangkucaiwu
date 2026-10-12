@@ -180,18 +180,18 @@ body {
 
 /* 触摸滚动 */
 .touch-pan-x {
-  -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  /* 允许横向和纵向手势穿透：横滑表格 + 纵滑翻页都正常 */
+  /* 表格层单独放开：横滑 + 纵滑都允许（页面层已限制为仅纵向） */
   touch-action: pan-x pan-y;
   /* 横向滚动不外溢：横滑到边界时不带动整页 */
   overscroll-behavior-x: contain;
 }
 
-/* 页面根元素禁止横向滚动，防止手机上左右拖动页面 */
+/* 页面根元素禁止横向滚动/横向手势，防止手机(尤其苹果)左右拖动页面 */
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
+  touch-action: pan-y;
 }
 
 /* ── 首屏加载画面（PWA 启动白屏过渡） ── */
