@@ -119,14 +119,14 @@ export default function ReportsPage() {
 
   return (
     <>
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
-          <FileText size={20} className="text-blue-600" />
-        </div>
-        <div className="flex-1">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <div className="flex items-center gap-3 flex-1 min-w-[160px]">
+          <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+            <FileText size={20} className="text-blue-600" />
+          </div>
           <h1 className="page-title">报表中心</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end">
           <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
           <span className="text-gray-400 text-xs">至</span>
           <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />

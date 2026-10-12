@@ -147,8 +147,7 @@ export default function FundReviewPage() {
               {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
           </div>
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs text-gray-500 whitespace-nowrap">日期</label>
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
             <input type="date" className="form-input text-sm py-1.5 w-36" value={startDate} onChange={e => setStartDate(e.target.value)} />
             <span className="text-gray-300 text-xs">至</span>
             <input type="date" className="form-input text-sm py-1.5 w-36" value={endDate} onChange={e => setEndDate(e.target.value)} />

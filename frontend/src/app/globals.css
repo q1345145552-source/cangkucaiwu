@@ -151,6 +151,17 @@ body {
   input, select, textarea {
     font-size: 16px !important;
   }
+  /* 手机端：所有日期输入框统一宽度/高度/字号/圆角/边框色，宽度给足显示完整日期，并禁止被 flex 挤压 */
+  input[type="date"] {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    height: 44px;
+    min-height: 44px;
+    border-radius: 0.5rem;
+    border-color: #d1d5db;
+    flex-shrink: 0;
+  }
   .form-label { font-size: 0.75rem; }
   .modal-overlay > div {
     width: 90vw !important;
@@ -165,7 +176,8 @@ body {
   .modal-header { padding-left: 1rem; padding-right: 1rem; }
   .modal-footer { padding-left: 1rem; padding-right: 1rem; }
   .modal-footer button { min-height: 44px; }
-  .table-card table { min-width: fit-content; }
+  /* 表格最小宽度=内容宽度(max-content)：窄表铺满不留白，宽表按内容撑开可横滑、列不被挤压 */
+  .table-card table { min-width: max-content; }
   .table-card thead th { padding-left: 0.5rem; padding-right: 0.5rem; font-size: 11px; }
   .table-card tbody td { padding-left: 0.5rem; padding-right: 0.5rem; font-size: 0.75rem; }
   .page-title { font-size: 1.125rem; }
@@ -178,7 +190,8 @@ body {
 
 @media (min-width: 640px) and (max-width: 1023px) {
   .modal-overlay > div { max-width: 85vw !important; }
-  .table-card table { min-width: fit-content; }
+  /* 表格最小宽度=内容宽度(max-content)：窄表铺满不留白，宽表按内容撑开可横滑、列不被挤压 */
+  .table-card table { min-width: max-content; }
 }
 
 /* 触摸滚动 */
