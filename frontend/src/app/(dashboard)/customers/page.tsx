@@ -105,8 +105,8 @@ export default function CustomersPage() {
     { key: "contact_person", label: "联系人", hideOnMobile: true },
     { key: "line_id", label: "微信账号", hideOnMobile: true, render: (v: string) => v || "-" },
     { key: "cargo_type", label: "常用货品", hideOnMobile: true, render: (v: string) => cargoTypeLabel(v) },
-    { key: "total_shipments", label: "累计发货", hideOnMobile: true, align: "right" as const },
-    { key: "total_shipping_cost", label: "累计运费", hideOnMobile: true, align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.default_currency) : "-" },
+    { key: "total_shipments", label: "累计发货", align: "right" as const },
+    { key: "total_shipping_cost", label: "累计运费", align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.default_currency) : "-" },
     { key: "credit_status", label: "账期客户", render: (v: boolean) => v ? <span className="text-green-600 text-xs font-medium">是</span> : <span className="text-gray-400 text-xs">否</span> },
     { key: "debt_amount", label: "欠款", align: "right" as const, render: (v: number, row: any) => v ? <span className="text-red-500 font-medium">{fmtMoney(v, row.default_currency)}</span> : "-" },
     { key: "id", label: "操作", render: (_: any, row: any) => (
