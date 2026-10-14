@@ -7,7 +7,7 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.models.warehouse import Warehouse
 from app.core.security import hash_password
-from app.core.permissions import get_current_user, require_role, Role, STAFF_PERMISSIONS
+from app.core.permissions import get_current_user, require_role, Role, STAFF_PERMISSIONS, ROLE_HIERARCHY
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.data_history import record_history
 
@@ -178,21 +178,23 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    # Permission check: super_admin can edit anyone, warehouse_admin/supervisor can only edit own managed warehouse users
-    if current_user.role != Role.SUPER_ADMIN:
-        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-            raise HTTPException(status_code=403, detail="无权限编辑用户")
-        # Check if user is in a warehouse managed by current_user
+    # 权限：只能编辑比自己级别低的角色
+    # - 超管：可编辑除超管外的所有角色
+    # - 管理员：可编辑主管/财务/劳工（限自己仓库），不能改角色
+    # - 主管/财务/劳工：无编辑权限
+    if current_user.role in (Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPERVISOR):
+        raise HTTPException(status_code=403, detail="无权限编辑用户")
+    if ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY.get(current_user.role, 0):
+        raise HTTPException(status_code=403, detail="只能编辑比自己级别低的角色")
+    if current_user.role == Role.WAREHOUSE_ADMIN:
+        # 只能编辑自己仓库的用户
         managed_wh_ids = (await db.execute(
             select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == current_user.id)
         )).scalars().all()
         managed_wh_ids = [w for w in managed_wh_ids] if managed_wh_ids else []
         if not managed_wh_ids or user.warehouse_id not in managed_wh_ids:
             raise HTTPException(status_code=403, detail="只能编辑自己仓库的用户")
-        # warehouse_admin can edit staff and warehouse_labor, but not other admins
-        if user.role not in (Role.STAFF.value, Role.WAREHOUSE_LABOR.value):
-            raise HTTPException(status_code=403, detail="只能编辑财务/劳工账号")
-        # warehouse_admin cannot change role
+        # 角色不能改
         if req.role is not None and req.role != user.role:
             raise HTTPException(status_code=403, detail="无权修改用户角色")
 

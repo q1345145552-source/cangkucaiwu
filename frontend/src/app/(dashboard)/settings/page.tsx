@@ -43,6 +43,7 @@ export default function SettingsPage() {
   const [editPassword, setEditPassword] = useState("");
   const [editWarehouseId, setEditWarehouseId] = useState<number | string>("");
   const [editWarehouseIds, setEditWarehouseIds] = useState<number[]>([]);
+  const [editActive, setEditActive] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -139,6 +140,7 @@ export default function SettingsPage() {
     setEditPassword("");
     setEditWarehouseId(u.warehouse_id || "");
     setEditWarehouseIds(u.warehouse_ids || []);
+    setEditActive(u.is_active !== false);
   }
 
   function toggleWarehouseId(wid: number) {
@@ -160,6 +162,7 @@ export default function SettingsPage() {
         username: editUsername,
         display_name: editDisplayName,
         extra_permissions: editPerms,
+        is_active: editActive,
       };
       if (editPassword) payload.password = editPassword;
       if (editUser.role === "supervisor" || editUser.role === "warehouse_admin") {
@@ -313,15 +316,15 @@ export default function SettingsPage() {
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
                   <td>
                     <div className="flex items-center gap-2">
+                      {user?.role === "warehouse_admin" && (u.role === "supervisor" || u.role === "staff" || u.role === "warehouse_labor") && (
+                        <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
+                          <Pencil size={12} /> 编辑
+                        </button>
+                      )}
                       {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (u.role === "staff" || u.role === "warehouse_labor") && (
-                        <>
-                          <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">
-                            <Pencil size={12} /> 编辑
-                          </button>
-                          <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
-                            <Trash2 size={12} /> 删除
-                          </button>
-                        </>
+                        <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
+                          <Trash2 size={12} /> 删除
+                        </button>
                       )}
                       {user?.role === "super_admin" && u.role === "warehouse_admin" && (
                         <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
@@ -367,23 +370,29 @@ export default function SettingsPage() {
                       <p className="text-xs text-gray-400 mt-1">勾上哪个仓库 这个人就能看到那个仓库全部的钱和人 请谨慎勾选</p>
                     </div>
                   )}
-                </div>
-                <div className="mb-4">
-                  <div className="text-sm font-medium mb-2">扩展权限</div>
-                  <div className="space-y-1">
-                    {Object.entries(PERM_LABELS).map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
-                        <input
-                          type="checkbox"
-                          checked={editPerms.includes(key)}
-                          onChange={() => togglePerm(key)}
-                          className="rounded"
-                        />
-                        <span className="text-sm">{label}</span>
-                      </label>
-                    ))}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="edit-active" checked={editActive} onChange={e => setEditActive(e.target.checked)} className="rounded" />
+                    <label htmlFor="edit-active" className="text-sm">启用账号（停用后此人无法登录）</label>
                   </div>
                 </div>
+                {editUser.role === "staff" && (
+                  <div className="mb-4">
+                    <div className="text-sm font-medium mb-2">扩展权限</div>
+                    <div className="space-y-1">
+                      {Object.entries(PERM_LABELS).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
+                          <input
+                            type="checkbox"
+                            checked={editPerms.includes(key)}
+                            onChange={() => togglePerm(key)}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-end gap-3">
                   <button onClick={() => setEditUser(null)} className="btn-secondary">取消</button>
                   <button onClick={saveEdit} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
