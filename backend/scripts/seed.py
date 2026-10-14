@@ -251,6 +251,17 @@ async def seed():
                 ))
         except Exception as _e:
             print(f"迁移 采购单号唯一约束 失败：{_e}")
+        # Migration: 操作日志仓库归属（仓库隔离用，历史日志为空）
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(
+                    "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS warehouse_id INTEGER"
+                ))
+                await conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_audit_logs_warehouse_id ON audit_logs (warehouse_id)"
+                ))
+        except Exception as _e:
+            print(f"迁移 操作日志仓库归属 失败：{_e}")
         # Migration: 供应商默认币种 + 产品币种 + 币种值统一
         try:
             async with conn.begin_nested():

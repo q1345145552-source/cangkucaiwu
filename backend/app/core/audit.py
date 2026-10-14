@@ -48,6 +48,16 @@ def _parse_path(path: str):
     return module, target_id
 
 
+def _extract_warehouse_id(header_value: str):
+    """从 X-Warehouse-ID 头解析仓库ID（尽力而为，'all' 或非法值返回 None）。"""
+    if not header_value or header_value == "all":
+        return None
+    try:
+        return int(header_value)
+    except (ValueError, TypeError):
+        return None
+
+
 class AuditMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -60,6 +70,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 and not any(s in path for s in _SKIP)
             ):
                 user_id = _extract_user_id(request.headers.get("Authorization", ""))
+                warehouse_id = _extract_warehouse_id(request.headers.get("X-Warehouse-ID", ""))
                 module, target_id = _parse_path(path)
                 action = {"POST": "create", "PUT": "edit", "PATCH": "edit", "DELETE": "delete"}.get(method, method.lower())
                 client_ip = request.client.host if request.client else None
@@ -71,6 +82,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 async with factory() as session:
                     session.add(AuditLog(
                         user_id=user_id,
+                        warehouse_id=warehouse_id,
                         action_type=action,
                         module=module or "unknown",
                         target_id=target_id,

@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models.audit_log import AuditLog
 from app.models.expense_fund import SystemSetting
 from app.models.user import User
-from app.core.permissions import get_current_user, Role
+from app.core.permissions import get_current_user, get_wh_ids, Role, check_staff_permission
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -62,10 +62,16 @@ async def operation_logs(
     user_id: int = None, action_type: str = None, date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("操作日志")),
 ):
-    if current_user.role != Role.SUPER_ADMIN:
+    # 超管看全量；财务（有「操作日志」权限）看本仓库；其余角色照旧（仅超管可见）
+    if current_user.role not in (Role.SUPER_ADMIN, Role.STAFF):
         return {"data": [], "total": 0, "message": "仅超级管理员可查看操作日志"}
     query = select(AuditLog); count_q = select(func.count(AuditLog.id))
+    if current_user.role != Role.SUPER_ADMIN:
+        wh_ids = get_wh_ids(current_user)
+        query = query.where(AuditLog.warehouse_id.in_(wh_ids))
+        count_q = count_q.where(AuditLog.warehouse_id.in_(wh_ids))
     if user_id: query = query.where(AuditLog.user_id == user_id); count_q = count_q.where(AuditLog.user_id == user_id)
     if action_type: query = query.where(AuditLog.action_type == action_type); count_q = count_q.where(AuditLog.action_type == action_type)
     if date: query = query.where(func.date(AuditLog.created_at) == date); count_q = count_q.where(func.date(AuditLog.created_at) == date)

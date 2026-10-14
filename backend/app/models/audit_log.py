@@ -8,6 +8,7 @@ class AuditLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=True, index=True, comment="操作所属仓库（历史日志可能为空）")
     action_type = Column(String(50), nullable=False, comment="create/edit/delete/login/export")
     module = Column(String(50), nullable=False)
     target_id = Column(Integer, nullable=True)

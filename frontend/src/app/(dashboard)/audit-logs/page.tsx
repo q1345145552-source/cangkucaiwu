@@ -4,10 +4,12 @@ import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { Download } from "lucide-react";
 
 export default function AuditLogsPage() {
   const { t } = useI18n(); const router = useRouter();
+  const { user } = useAuth();
   const [logs, setLogs] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1); const [date, setDate] = useState("");
 
@@ -27,7 +29,9 @@ export default function AuditLogsPage() {
     <>
       <div className="page-header">
         <h1 className="page-title">操作日志 & 数据备份</h1>
-        <button onClick={backup} className="flex items-center gap-1 bg-green-500 text-white px-4 py-2 rounded text-sm"><Download size={14}/> 备份全部数据</button>
+        {user?.role === "super_admin" && (
+          <button onClick={backup} className="flex items-center gap-1 bg-green-500 text-white px-4 py-2 rounded text-sm"><Download size={14}/> 备份全部数据</button>
+        )}
       </div>
       <div className="mb-4"><input type="date" value={date} onChange={e=>{setDate(e.target.value);setPage(1);}} className="border rounded px-3 py-2 text-sm" /></div>
       <DataTable columns={[
