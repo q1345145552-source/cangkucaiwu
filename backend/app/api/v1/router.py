@@ -22,7 +22,7 @@ api_router.include_router(suppliers.router, prefix="/suppliers", tags=["供应�
 api_router.include_router(recharge.router, prefix="/recharge", tags=["充值申报"])
 api_router.include_router(incoming.router, prefix="/incoming", tags=["到账流水"])
 api_router.include_router(reconciliation.router, prefix="/reconciliation", tags=["对账中心"])
-api_router.include_router(income_expense.router, prefix="/income-expense", tags=["收付款管理"])
+api_router.include_router(income_expense.router, prefix="/income-expense", tags=["运营收支"])
 api_router.include_router(expense_fund.router, prefix="/expense-fund", tags=["备用金"])
 api_router.include_router(reimbursement.router, prefix="/reimbursement", tags=["报销"])
 api_router.include_router(payable.router, prefix="/payable", tags=["应付账款"])

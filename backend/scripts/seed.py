@@ -262,6 +262,20 @@ async def seed():
                 ))
         except Exception as _e:
             print(f"迁移 操作日志仓库归属 失败：{_e}")
+        # Migration: 权限名「收付款管理」→「运营收支」（幂等，一次性数据迁移）
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text("""
+                    UPDATE users
+                    SET extra_permissions = (
+                        SELECT COALESCE(json_agg(CASE WHEN elem = '收付款管理' THEN '运营收支' ELSE elem END), '[]'::json)
+                        FROM json_array_elements_text(COALESCE(extra_permissions, '[]'::json)) AS elem
+                    )
+                    WHERE extra_permissions IS NOT NULL
+                      AND extra_permissions::text LIKE '%收付款管理%'
+                """))
+        except Exception as _e:
+            print(f"迁移 权限名收付款管理→运营收支 失败：{_e}")
         # Migration: 供应商默认币种 + 产品币种 + 币种值统一
         try:
             async with conn.begin_nested():

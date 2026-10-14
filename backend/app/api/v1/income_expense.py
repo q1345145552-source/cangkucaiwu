@@ -22,7 +22,7 @@ router = APIRouter()
 @router.get("/categories")
 async def list_categories(type: str = None, category_group: str = None, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
-                          _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
+                          _perm=Depends(check_staff_permission_any("运营收支", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomeExpenseCategory)
@@ -40,7 +40,7 @@ async def list_categories(type: str = None, category_group: str = None, current_
 @router.post("/categories")
 async def create_category(req: CategoryCreate, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
-                          _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
+                          _perm=Depends(check_staff_permission_any("运营收支", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -62,7 +62,7 @@ async def list_income(
     currency: str = None,
     search: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission_any("收付款管理", "其他收支")),
+    _perm=Depends(check_staff_permission_any("运营收支", "其他收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -120,7 +120,7 @@ async def list_income(
 @router.post("/income")
 async def create_income(req: IncomeRecordCreate, current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db),
-                        _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
+                        _perm=Depends(check_staff_permission_any("运营收支", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -180,7 +180,7 @@ async def list_expense(
     category_group: str = None,
     currency: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("收付款管理")),
+    _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -253,7 +253,7 @@ async def create_expense(
     files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("收付款管理")),
+    _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -319,7 +319,7 @@ async def update_expense(
     files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("收付款管理")),
+    _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -426,7 +426,7 @@ async def delete_expense(
     expense_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("收付款管理")),
+    _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -462,7 +462,7 @@ async def ledger(
     flow_type: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("收付款管理")),
+    _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -714,7 +714,7 @@ async def ledger_export(
     start_date: str = None, end_date: str = None, source: str = None, flow_type: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("收付款管理")),
+    _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -820,7 +820,7 @@ async def export_income(
 async def monthly_summary(start_date: str = None, end_date: str = None, category_group: str = None,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
-                          _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
+                          _perm=Depends(check_staff_permission_any("运营收支", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     iq = select(func.sum(IncomeRecord.amount))
@@ -869,7 +869,7 @@ async def operating_dashboard(
     end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("收付款管理")),
+    _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
