@@ -305,7 +305,15 @@ async def confirm_bill(bill_id: int, current_user: User = Depends(get_current_us
     return {"message": "已确认，可以付款"}
 
 class BillUpdate(BaseModel):
+    supplier_id: Optional[int] = None
+    bill_number: Optional[str] = None
+    currency: Optional[str] = None
+    purchase_order_number: Optional[str] = None
+    bill_date: Optional[str] = None
+    due_date: Optional[str] = None
+    amount: Optional[float] = None
     confirmed_amount: Optional[float] = None
+    payment_commitment_days: Optional[int] = None
     detail: Optional[str] = None
     remark: Optional[str] = None
     diff_note: Optional[str] = None
@@ -323,8 +331,81 @@ async def update_bill(bill_id: int, req: BillUpdate,
     if not b: raise HTTPException(404, "账单不存在")
     if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能编辑自己仓库的账单")
+
+    # 已付款账单只允许改 备注 和 差异处理说明
+    provided = req.model_dump(exclude_none=True)
+    if b.status == PayableStatus.PAID.value:
+        disallowed = [k for k in provided.keys() if k not in ("remark", "diff_note")]
+        if disallowed:
+            raise HTTPException(400, "已付款的账单只能修改备注")
+
+    # 金额不能为 0 或负数
+    if req.amount is not None and req.amount <= 0:
+        raise HTTPException(400, "金额必须大于0")
+
+    # 日期格式校验
+    bill_date_obj = None
+    due_date_obj = None
+    if req.bill_date is not None:
+        try:
+            bill_date_obj = datetime.fromisoformat(req.bill_date)
+        except Exception:
+            raise HTTPException(400, "账单日期格式不正确")
+    if req.due_date is not None:
+        try:
+            due_date_obj = datetime.fromisoformat(req.due_date)
+        except Exception:
+            raise HTTPException(400, "到期日期格式不正确")
+
+    # 关联采购单号
+    if req.purchase_order_number is not None:
+        po_num = req.purchase_order_number.strip()
+        if po_num:
+            po = (await db.execute(
+                select(PurchaseOrder).where(PurchaseOrder.order_number == po_num)
+            )).scalar_one_or_none()
+            if not po:
+                raise HTTPException(400, f"采购单 {po_num} 不存在")
+            if po.payable_bill_id and po.payable_bill_id != b.id:
+                raise HTTPException(400, "该采购单已生成账单，不能重复生成")
+            # 更换采购单时，先解除旧采购单回写
+            if b.purchase_order_id and b.purchase_order_id != po.id:
+                old_po = (await db.execute(
+                    select(PurchaseOrder).where(PurchaseOrder.id == b.purchase_order_id)
+                )).scalar_one_or_none()
+                if old_po and old_po.payable_bill_id == b.id:
+                    old_po.payable_bill_id = None
+            b.purchase_order_id = po.id
+            b.source = "purchase_order"
+            po.payable_bill_id = b.id
+        else:
+            # 清空关联
+            if b.purchase_order_id:
+                old_po = (await db.execute(
+                    select(PurchaseOrder).where(PurchaseOrder.id == b.purchase_order_id)
+                )).scalar_one_or_none()
+                if old_po and old_po.payable_bill_id == b.id:
+                    old_po.payable_bill_id = None
+            b.purchase_order_id = None
+            b.source = "manual"
+
+    # 应用其余字段
+    if req.supplier_id is not None:
+        b.supplier_id = req.supplier_id
+    if req.bill_number is not None:
+        b.bill_number = req.bill_number
+    if req.currency is not None:
+        b.currency = req.currency
+    if bill_date_obj is not None:
+        b.bill_date = bill_date_obj
+    if due_date_obj is not None:
+        b.due_date = due_date_obj
+    if req.amount is not None:
+        b.amount = req.amount
     if req.confirmed_amount is not None:
         b.confirmed_amount = req.confirmed_amount
+    if req.payment_commitment_days is not None:
+        b.payment_commitment_days = req.payment_commitment_days
     if req.detail is not None:
         b.detail = req.detail
     if req.remark is not None:
