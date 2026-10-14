@@ -14,11 +14,10 @@ router = APIRouter()
 async def list_incoming(
     page: int = 1, page_size: int = 20, month: str = None, status: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("到账流水")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "到账流水" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无录入到账流水权限")
     query = select(IncomingFlow); count_q = select(func.count(IncomingFlow.id))
     query = query.where(IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)))
     count_q = count_q.where(IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)))
@@ -48,11 +47,10 @@ async def list_incoming(
 
 @router.post("")
 async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "仅仓库管理员可操作")
-    if current_user.role == Role.STAFF and "到账流水" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无录入到账流水权限")
+                          db: AsyncSession = Depends(get_db),
+                          _perm=Depends(check_staff_permission("到账流水"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "无法确定仓库")
@@ -67,9 +65,10 @@ async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_
 
 @router.post("/batch-import")
 async def batch_import(req: IncomingBatchImport, current_user: User = Depends(get_current_user),
-                       db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "仅仓库管理员可操作")
+                       db: AsyncSession = Depends(get_db),
+                       _perm=Depends(check_staff_permission("到账流水"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
     imported = 0
     for rec in req.records:
         r = IncomingFlow(
@@ -83,7 +82,8 @@ async def batch_import(req: IncomingBatchImport, current_user: User = Depends(ge
     await db.flush(); return {"imported": imported, "message": f"成功导入{imported}条记录"}
 
 @router.get("/template")
-async def download_template(current_user: User = Depends(get_current_user)):
+async def download_template(current_user: User = Depends(get_current_user),
+                            _perm=Depends(check_staff_permission("到账流水"))):
     """下载到账流水导入模板"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

@@ -74,6 +74,7 @@ async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
 async def list_credit_customers(
     page: int = 1, page_size: int = 20,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("账期管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -154,10 +155,11 @@ async def list_credit_customers(
 
 @router.post("")
 async def create_credit(req: CreditCreate, current_user: User = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_db)):
+                        db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     if req.credit_limit is not None and req.credit_limit < 0:
         raise HTTPException(400, "信用额度不能为负")
@@ -185,13 +187,14 @@ async def create_credit(req: CreditCreate, current_user: User = Depends(get_curr
 @router.put("/{credit_id}")
 async def update_credit(credit_id: int, req: CreditUpdate,
                         current_user: User = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_db)):
+                        db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission("账期管理"))):
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "记录不存在")
     if current_user.role == Role.SUPER_ADMIN:
         pass
-    elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         if c.warehouse_id not in get_wh_ids(current_user):
             raise HTTPException(403, "只能修改自己仓库的账期客户")
     else:
@@ -206,7 +209,8 @@ async def update_credit(credit_id: int, req: CreditUpdate,
 @router.get("/{credit_id}/detail")
 async def credit_detail(credit_id: int, start_date: str = None, end_date: str = None,
                         current_user: User = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_db)):
+                        db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
@@ -262,13 +266,12 @@ async def credit_detail(credit_id: int, start_date: str = None, end_date: str = 
 @router.post("/{credit_id}/shipment")
 async def create_shipment(credit_id: int, req: ShipmentCreate,
                           current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+                          _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) and current_user.role != Role.STAFF:
         raise HTTPException(403, "无权限")
-    if current_user.role == Role.STAFF and "账期管理" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无管理账期权限")
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "账期客户不存在")
@@ -303,11 +306,10 @@ async def create_shipment(credit_id: int, req: ShipmentCreate,
 @router.post("/{credit_id}/payment")
 async def record_repayment(credit_id: int, req: RepaymentCreate,
                            current_user: User = Depends(get_current_user),
-                           db: AsyncSession = Depends(get_db)):
+                           db: AsyncSession = Depends(get_db),
+                           _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "账期管理" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无管理账期权限")
     result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "记录不存在")
@@ -331,7 +333,8 @@ async def record_repayment(credit_id: int, req: RepaymentCreate,
 
 @router.get("/dashboard")
 async def credit_dashboard(current_user: User = Depends(get_current_user),
-                           db: AsyncSession = Depends(get_db)):
+                           db: AsyncSession = Depends(get_db),
+                           _perm=Depends(check_staff_permission("账期管理"))):
     # 全局统计
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -508,6 +511,7 @@ async def _compute_assessment(
 @router.get("/assessment")
 async def credit_assessment(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("账期管理")),
 ):
     """返回所有账期客户的评级和评估数据"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -520,6 +524,7 @@ async def credit_assessment(
 @router.get("/assessment/export")
 async def export_assessment(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("账期管理")),
 ):
     """导出账期客户评估报告"""
     from fastapi.responses import StreamingResponse
@@ -558,7 +563,8 @@ async def export_assessment(
 
 @router.get("/alerts")
 async def credit_alerts(level: str = None, current_user: User = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_db)):
+                        db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # 拉取本仓库所有活跃账期客户，批量实时计算欠款/逾期（避免 N+1，且口径与列表页一致）
