@@ -9,6 +9,7 @@ from app.models.payable import PayableBill, PayablePlan, PlanTemplate, PayableSt
 from app.models.supplier import Supplier, SupplierCategory, PurchaseOrder
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.services.data_history import record_history
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -357,6 +358,29 @@ async def update_bill(bill_id: int, req: BillUpdate,
         except Exception:
             raise HTTPException(400, "到期日期格式不正确")
 
+    # 修改前快照（用于写修改日志，只记真正变化的字段）
+    def _d(dt):
+        return dt.strftime("%Y-%m-%d") if dt else None
+    old_po = None
+    if b.purchase_order_id:
+        old_po = (await db.execute(
+            select(PurchaseOrder).where(PurchaseOrder.id == b.purchase_order_id)
+        )).scalar_one_or_none()
+    before_map = {
+        "supplier_id": b.supplier_id,
+        "bill_number": b.bill_number,
+        "currency": b.currency,
+        "purchase_order_number": old_po.order_number if old_po else None,
+        "bill_date": _d(b.bill_date),
+        "due_date": _d(b.due_date),
+        "amount": b.amount,
+        "confirmed_amount": b.confirmed_amount,
+        "payment_commitment_days": b.payment_commitment_days,
+        "detail": b.detail,
+        "remark": b.remark,
+        "diff_note": b.diff_note,
+    }
+
     # 关联采购单号
     if req.purchase_order_number is not None:
         po_num = req.purchase_order_number.strip()
@@ -412,7 +436,39 @@ async def update_bill(bill_id: int, req: BillUpdate,
         b.remark = req.remark
     if req.diff_note is not None:
         b.diff_note = req.diff_note
+
+    # 修改后快照 + 只记真正变化的字段
+    new_po = None
+    if b.purchase_order_id:
+        new_po = (await db.execute(
+            select(PurchaseOrder).where(PurchaseOrder.id == b.purchase_order_id)
+        )).scalar_one_or_none()
+    after_map = {
+        "supplier_id": b.supplier_id,
+        "bill_number": b.bill_number,
+        "currency": b.currency,
+        "purchase_order_number": new_po.order_number if new_po else None,
+        "bill_date": _d(b.bill_date),
+        "due_date": _d(b.due_date),
+        "amount": b.amount,
+        "confirmed_amount": b.confirmed_amount,
+        "payment_commitment_days": b.payment_commitment_days,
+        "detail": b.detail,
+        "remark": b.remark,
+        "diff_note": b.diff_note,
+    }
+    changed_before = {}
+    changed_after = {}
+    for k in before_map:
+        if before_map[k] != after_map[k]:
+            changed_before[k] = before_map[k]
+            changed_after[k] = after_map[k]
     await db.flush()
+    # 与账单更新同事务写修改日志；没有字段变化则不写
+    if changed_before:
+        await record_history(db, module="payable", record_id=b.id, operator=current_user,
+                             operation_type="edit", before=changed_before, after=changed_after,
+                             warehouse_id=b.warehouse_id)
     return {"message": "账单更新成功", "has_diff": b.confirmed_amount is not None and b.confirmed_amount != b.amount}
 
 # === Stats Dashboard ===
