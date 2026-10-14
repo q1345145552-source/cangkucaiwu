@@ -246,14 +246,19 @@ async def update_user(
 
         primary_wh = new_wh_ids[0] if new_wh_ids else None
         user.warehouse_id = primary_wh
-        # 同步更新 user_warehouses 关联
+        # 同步更新 user_warehouses 关联：只删该删的、只加该加的，避免先插后删触发唯一键冲突
+        new_wh_ids = list(dict.fromkeys(new_wh_ids))  # 去重保持顺序
         existing_uw = (await db.execute(
             select(UserWarehouse).where(UserWarehouse.user_id == user_id)
         )).scalars().all()
+        old_ids = {uw.warehouse_id for uw in existing_uw}
+        new_ids = set(new_wh_ids)
         for uw in existing_uw:
-            await db.delete(uw)
+            if uw.warehouse_id not in new_ids:
+                await db.delete(uw)
         for wid in new_wh_ids:
-            db.add(UserWarehouse(user_id=user_id, warehouse_id=wid))
+            if wid not in old_ids:
+                db.add(UserWarehouse(user_id=user_id, warehouse_id=wid))
     if req.is_active is not None:
         user.is_active = req.is_active
     if req.line_user_id is not None:
