@@ -291,8 +291,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </button>
             )}
             
-            {/* Warehouse Switcher */}
-            {whList.length > 0 && (
+            {/* Warehouse Switcher（超管不显示，其余角色照旧） */}
+            {whList.length > 0 && user?.role !== "super_admin" && (
               <div className="relative">
                 <button
                   onClick={() => setShowWhSwitcher(!showWhSwitcher)}
