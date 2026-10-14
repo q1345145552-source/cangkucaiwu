@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
       { key: "warehouses", label: "warehouses", icon: <Warehouse size={18} />, href: "/warehouses", roles: ["warehouse_admin"] },
       { key: "accounts", label: "accounts", icon: <CreditCard size={18} />, href: "/accounts", roles: ["warehouse_admin", "supervisor"] },
       { key: "recharge", label: "recharge", icon: <ArrowDownUp size={18} />, href: "/recharge", roles: ["warehouse_admin", "staff", "supervisor"] },
-      { key: "incoming", label: "incoming", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin", "supervisor"] },
+      { key: "incoming", label: "incoming", icon: <TrendingUp size={18} />, href: "/incoming", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "reconciliation", label: "reconciliation", icon: <CheckCircle size={18} />, href: "/reconciliation", roles: ["warehouse_admin", "supervisor"] },
     ],
   },
@@ -41,10 +41,10 @@ const navItems: NavItem[] = [
     children: [
       { key: "operating", label: "operating", icon: <BarChart3 size={18} />, href: "/operating", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "expense_approval", label: "expense_approval", icon: <Receipt size={18} />, href: "/expense-approvals", roles: ["warehouse_admin", "staff", "supervisor"] },
-      { key: "other_income_expense", label: "other_income_expense", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin", "supervisor"] },
+      { key: "other_income_expense", label: "other_income_expense", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "expense_fund", label: "expense_fund", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff", "supervisor"] },
-      { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin", "supervisor"] },
+      { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "reports", label: "reports", icon: <BarChart3 size={18} />, href: "/reports", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "ledger", label: "ledger", icon: <FileText size={18} />, href: "/ledger", roles: ["warehouse_admin", "supervisor"] },
     ],
@@ -53,7 +53,7 @@ const navItems: NavItem[] = [
     key: "supplier_group", label: "supplier_group", icon: <Truck size={20} />,
     roles: ["warehouse_admin", "staff", "supervisor"],
     children: [
-      { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin", "supervisor"] },
+      { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin", "supervisor"] },
       { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin", "supervisor"] },
       { key: "concentration", label: "supplier_purchase_analysis", icon: <BarChart3 size={18} />, href: "/concentration", roles: ["warehouse_admin", "supervisor"] },
@@ -90,7 +90,7 @@ const navItems: NavItem[] = [
     roles: ["super_admin", "warehouse_admin", "staff", "warehouse_labor", "supervisor"],
     children: [
       { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff", "supervisor"] },
-      { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin"] },
+      { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin", "staff"] },
       { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_labor"] },
       { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_labor"] },
       { key: "clock_in", label: "clock_in", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },
@@ -99,16 +99,16 @@ const navItems: NavItem[] = [
 ];
 
 const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
-  incoming: "incoming",
-  expense_fund: "expense_fund",
-  reimbursement: "reimbursement",
-  income_expense: "income_expense",
-  credit: "credit",
-  suppliers: "suppliers",
-  payable: "suppliers",
-  payment_plans: "suppliers",
-  audit_logs: "audit_logs",
-  other_income_expense: "other_income_expense",
+  incoming: "到账流水",
+  expense_fund: "备用金管理",
+  reimbursement: "报销管理",
+  income_expense: "收付款管理",
+  credit: "账期管理",
+  suppliers: "供应商管理",
+  payable: "供应商管理",
+  payment_plans: "供应商管理",
+  audit_logs: "操作日志",
+  other_income_expense: "其他收支",
 };
 
 function hasAccess(item: NavItem, user: any): boolean {
