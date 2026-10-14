@@ -210,6 +210,14 @@ html, body {
   overscroll-behavior-x: contain;
 }
 
+/* 禁用的表单控件统一显示为灰色（不可编辑） */
+input:disabled, select:disabled, textarea:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 /* ── 首屏加载画面（PWA 启动白屏过渡） ── */
 .app-splash {
   position: fixed;

@@ -29,7 +29,7 @@ export default function PayablePage() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ confirmed_amount: "", detail: "", remark: "", diff_note: "" });
+  const [editForm, setEditForm] = useState({ supplier_id: 0, bill_number: "", currency: "THB", purchase_order_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", detail: "", remark: "", diff_note: "" });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLabel, setPreviewLabel] = useState("");
@@ -155,7 +155,15 @@ export default function PayablePage() {
   function openEditModal(row: any) {
     setEditingBill(row);
     setEditForm({
+      supplier_id: row.supplier_id || 0,
+      bill_number: row.bill_number || "",
+      currency: row.currency || "THB",
+      purchase_order_number: row.purchase_order_number || "",
+      bill_date: row.bill_date ? row.bill_date.slice(0, 10) : "",
+      due_date: row.due_date ? row.due_date.slice(0, 10) : "",
+      amount: row.amount != null ? String(row.amount) : "",
       confirmed_amount: row.confirmed_amount != null ? String(row.confirmed_amount) : "",
+      payment_commitment_days: row.payment_commitment_days != null ? String(row.payment_commitment_days) : "",
       detail: row.detail || "",
       remark: row.remark || "",
       diff_note: row.diff_note || "",
@@ -174,12 +182,27 @@ export default function PayablePage() {
 
   async function handleEdit() {
     try {
-      await api.put<any>(`/payable/${editingBill.id}`, {
-        confirmed_amount: editForm.confirmed_amount === "" ? null : +editForm.confirmed_amount,
-        detail: editForm.detail,
-        remark: editForm.remark,
-        diff_note: editForm.diff_note,
-      });
+      const isPaid = editingBill.status === "paid";
+      const payload: any = {};
+      if (isPaid) {
+        // 已付款：只发备注和差异说明，避免后端按“有其他字段”拒绝
+        payload.remark = editForm.remark;
+        payload.diff_note = editForm.diff_note;
+      } else {
+        payload.supplier_id = editForm.supplier_id || undefined;
+        payload.bill_number = editForm.bill_number;
+        payload.currency = editForm.currency;
+        payload.purchase_order_number = editForm.purchase_order_number;
+        payload.bill_date = editForm.bill_date;
+        payload.due_date = editForm.due_date;
+        payload.amount = editForm.amount === "" ? undefined : +editForm.amount;
+        payload.confirmed_amount = editForm.confirmed_amount === "" ? undefined : +editForm.confirmed_amount;
+        payload.payment_commitment_days = editForm.payment_commitment_days === "" ? undefined : +editForm.payment_commitment_days;
+        payload.detail = editForm.detail;
+        payload.remark = editForm.remark;
+        payload.diff_note = editForm.diff_note;
+      }
+      await api.put<any>(`/payable/${editingBill.id}`, payload);
       toast("success", "账单更新成功");
       setShowEditModal(false); load(); loadStats();
     } catch (err: any) { toast("error", err.message || "更新失败"); }
@@ -429,8 +452,8 @@ export default function PayablePage() {
       {/* 编辑弹窗 */}
       {showEditModal && editingBill && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="bg-orange-500 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
+          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-orange-500 text-white px-6 py-4 rounded-t-xl flex items-center gap-3 shrink-0">
               <Edit size={22} />
               <div className="flex-1">
                 <h2 className="text-lg font-semibold">编辑账单</h2>
@@ -438,41 +461,58 @@ export default function PayablePage() {
               </div>
               <button onClick={() => setShowEditModal(false)} className="text-orange-200 hover:text-white"><span className="text-xl leading-none">&times;</span></button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">原金额</label>
-                  <div className="form-input bg-gray-50 text-gray-600 flex items-center">{fmtMoney(editingBill.amount, editingBill.currency)}</div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">确认金额</label>
-                  <input type="number" className="form-input" value={editForm.confirmed_amount} onChange={e => setEditForm({ ...editForm, confirmed_amount: e.target.value })} placeholder="确认后的实际金额" />
-                </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+              {editingBill.status === "paid" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">已付款的账单只能修改备注</div>
+              )}
+
+              {/* 基本信息 */}
+              <div className="text-sm font-semibold text-gray-400 pb-1 border-b">基本信息</div>
+              <div className="form-group">
+                <label className="form-label">供应商</label>
+                <select className="form-input" value={editForm.supplier_id} onChange={e => setEditForm({ ...editForm, supplier_id: +e.target.value })} disabled={editingBill.status === "paid"}>
+                  <option value={0}>选择供应商</option>
+                  {suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
               </div>
-              {editForm.confirmed_amount !== "" && +editForm.confirmed_amount !== editingBill.amount && (
+              <div className="form-grid">
+                <div className="form-group"><label className="form-label">账单编号</label><input className="form-input" value={editForm.bill_number} onChange={e => setEditForm({ ...editForm, bill_number: e.target.value })} disabled={editingBill.status === "paid"} /></div>
+                <div className="form-group"><label className="form-label">币种</label><select className="form-input" value={editForm.currency} onChange={e => setEditForm({ ...editForm, currency: e.target.value })} disabled={editingBill.status === "paid"}><option>THB</option><option>CNY</option><option>USD</option></select></div>
+              </div>
+              <div className="form-group"><label className="form-label">关联采购单号（可选）</label><input className="form-input" value={editForm.purchase_order_number} onChange={e => setEditForm({ ...editForm, purchase_order_number: e.target.value })} placeholder="如 PO2026..." disabled={editingBill.status === "paid"} /></div>
+              <div className="form-grid">
+                <div className="form-group"><label className="form-label">账单日期</label><input type="date" className="form-input" value={editForm.bill_date} onChange={e => setEditForm({ ...editForm, bill_date: e.target.value })} disabled={editingBill.status === "paid"} /></div>
+                <div className="form-group"><label className="form-label">到期日期</label><input type="date" className="form-input" value={editForm.due_date} onChange={e => setEditForm({ ...editForm, due_date: e.target.value })} disabled={editingBill.status === "paid"} /></div>
+              </div>
+
+              {/* 金额信息 */}
+              <div className="text-sm font-semibold text-gray-400 pb-1 border-b">金额信息</div>
+              <div className="form-grid">
+                <div className="form-group"><label className="form-label">金额</label><input type="number" className="form-input" value={editForm.amount || ""} onChange={e => setEditForm({ ...editForm, amount: e.target.value === "" ? "" : +e.target.value })} disabled={editingBill.status === "paid"} /></div>
+                <div className="form-group"><label className="form-label">供应商确认金额</label><input type="number" className="form-input" value={editForm.confirmed_amount || ""} onChange={e => setEditForm({ ...editForm, confirmed_amount: e.target.value === "" ? "" : +e.target.value })} disabled={editingBill.status === "paid"} /></div>
+              </div>
+              {editForm.confirmed_amount !== "" && +editForm.confirmed_amount !== (editForm.amount !== "" ? +editForm.amount : editingBill.amount) && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700 flex items-center gap-2">
                   <AlertTriangle size={16} />
-                  确认金额与原金额不一致，差额 {fmtMoney(Math.abs(editingBill.amount - +editForm.confirmed_amount), editingBill.currency)}
+                  确认金额与金额不一致，差额 {fmtMoney(Math.abs((editForm.amount !== "" ? +editForm.amount : editingBill.amount) - +editForm.confirmed_amount), editForm.currency || editingBill.currency)}
                 </div>
               )}
-              <div className="form-group">
-                <label className="form-label">差异处理说明</label>
-                <textarea className="form-input" rows={2} value={editForm.diff_note} onChange={e => setEditForm({ ...editForm, diff_note: e.target.value })} placeholder="填写差异原因和处理结果，如：已与供应商协商少付100元" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">费用明细</label>
-                <textarea className="form-input" rows={3} value={editForm.detail} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} placeholder="费用明细描述" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">备注</label>
-                <input className="form-input" value={editForm.remark} onChange={e => setEditForm({ ...editForm, remark: e.target.value })} placeholder="其他备注" />
-              </div>
+              <div className="form-group"><label className="form-label">付款承诺天数</label><input type="number" className="form-input" value={editForm.payment_commitment_days || ""} onChange={e => setEditForm({ ...editForm, payment_commitment_days: e.target.value === "" ? "" : +e.target.value })} disabled={editingBill.status === "paid"} /></div>
+
+              {/* 补充信息 */}
+              <div className="text-sm font-semibold text-gray-400 pb-1 border-b">补充信息</div>
+              <div className="form-group"><label className="form-label">费用明细</label><textarea className="form-input" rows={3} value={editForm.detail} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} placeholder="费用明细描述" disabled={editingBill.status === "paid"} /></div>
+              <div className="form-group"><label className="form-label">差异处理说明</label><textarea className="form-input" rows={2} value={editForm.diff_note} onChange={e => setEditForm({ ...editForm, diff_note: e.target.value })} placeholder="填写差异原因和处理结果" /></div>
+              <div className="form-group"><label className="form-label">备注</label><input className="form-input" value={editForm.remark} onChange={e => setEditForm({ ...editForm, remark: e.target.value })} placeholder="其他备注" /></div>
             </div>
-            <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+
+            <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowEditModal(false)} className="btn-secondary min-w-[80px]">取消</button>
               <button onClick={handleEdit} className="btn-primary min-w-[80px]">保存修改</button>
             </div>
-          </div></div>
+          </div>
+        </div>
       )}
 
       {/* 付款弹窗 */}
