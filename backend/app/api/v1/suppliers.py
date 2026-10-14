@@ -7,7 +7,7 @@ from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, Sup
 from app.models.user import User
 from app.models.payable import PayableBill
 from app.models.expense_fund import SystemSetting
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from pydantic import BaseModel
 from typing import Optional, List
 from app.core.timezone import thai_now, thai_today, THAI_TZ
@@ -312,13 +312,15 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
 
 # ═══ Category CRUD ═══════════════════════════════
 @router.get("/categories")
-async def list_categories(current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_categories(current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     cats = (await db.execute(select(SupplierCategory).where(SupplierCategory.is_active == "true").order_by(SupplierCategory.sort_order))).scalars().all()
     return {"data": [{"id": c.id, "name": c.name} for c in cats]}
 
 @router.post("/categories")
-async def create_category(name: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+async def create_category(name: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     c = SupplierCategory(name=name)
     db.add(c); await db.flush()
@@ -326,7 +328,8 @@ async def create_category(name: str, current_user: User = Depends(get_current_us
 
 # ═══ Import Templates ════════════════════════════
 @router.get("/import-template/products")
-async def download_products_template(current_user: User = Depends(get_current_user)):
+async def download_products_template(current_user: User = Depends(get_current_user),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """下载耗材产品导入模板"""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
@@ -344,7 +347,8 @@ async def download_products_template(current_user: User = Depends(get_current_us
                             headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"})
 
 @router.get("/import-template/logistics")
-async def download_logistics_template(current_user: User = Depends(get_current_user)):
+async def download_logistics_template(current_user: User = Depends(get_current_user),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """下载跨境物流价格导入模板"""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
@@ -364,9 +368,10 @@ async def download_logistics_template(current_user: User = Depends(get_current_u
 # ═══ Import ══════════════════════════════════════
 @router.post("/import/products")
 async def import_products(file: UploadFile = File(...), current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """批量导入耗材产品 Excel"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     from openpyxl import load_workbook
     content = await file.read()
@@ -397,9 +402,10 @@ async def import_products(file: UploadFile = File(...), current_user: User = Dep
 
 @router.post("/import/logistics")
 async def import_logistics(file: UploadFile = File(...), current_user: User = Depends(get_current_user),
-                            db: AsyncSession = Depends(get_db)):
+                            db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """批量导入跨境物流价格 Excel"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     from openpyxl import load_workbook
     data = await file.read()
@@ -433,8 +439,9 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
 @router.post("/{supplier_id}/import/products")
 async def import_products_for_supplier(supplier_id: int, file: UploadFile = File(...),
                                         current_user: User = Depends(get_current_user),
-                                        db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+                                        db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
     from openpyxl import load_workbook
@@ -462,8 +469,9 @@ async def import_products_for_supplier(supplier_id: int, file: UploadFile = File
 @router.post("/{supplier_id}/import/logistics")
 async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = File(...),
                                          current_user: User = Depends(get_current_user),
-                                         db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+                                         db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
     from openpyxl import load_workbook
@@ -492,7 +500,8 @@ async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = Fil
 
 # ═══ Product CRUD ════════════════════════════════
 @router.get("/{supplier_id}/products")
-async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     await _require_supplier_owned(db, current_user, supplier_id)
     prods = (await db.execute(select(SupplierProduct).where(SupplierProduct.supplier_id == supplier_id).order_by(SupplierProduct.created_at.desc()))).scalars().all()
     # Price comparison: find lowest price for each product across all suppliers
@@ -541,8 +550,9 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
         result.append(item)
     return {'data': result}
 @router.post("/{supplier_id}/products")
-async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
     supplier = (await db.execute(select(Supplier).where(Supplier.id == supplier_id))).scalar_one_or_none()
@@ -554,8 +564,9 @@ async def add_product(supplier_id: int, req: SupplierProductCreate, current_user
     return {"id": p.id, "message": "添加成功"}
 
 @router.delete("/{supplier_id}/products/{product_id}")
-async def delete_product(supplier_id: int, product_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+async def delete_product(supplier_id: int, product_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
     p = (await db.execute(select(SupplierProduct).where(SupplierProduct.id == product_id, SupplierProduct.supplier_id == supplier_id))).scalar_one_or_none()
@@ -566,7 +577,8 @@ async def delete_product(supplier_id: int, product_id: int, current_user: User =
 @router.post("/{supplier_id}/purchase-order")
 async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
                                  current_user: User = Depends(get_current_user),
-                                 db: AsyncSession = Depends(get_db)):
+                                 db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
@@ -713,7 +725,8 @@ class PriceThresholdSet(BaseModel):
 
 
 @router.get("/price-threshold")
-async def get_price_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_price_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
@@ -723,9 +736,10 @@ async def get_price_threshold(current_user: User = Depends(get_current_user), db
 
 
 @router.put("/price-threshold")
-async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -748,10 +762,11 @@ async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depen
 
 
 @router.get("/price-stats")
-async def price_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def price_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """每个产品(名+规格)的历史最低价/均价/最近采购价"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_ids = get_wh_ids(current_user)
     rows = (await db.execute(
@@ -778,10 +793,11 @@ async def price_stats(current_user: User = Depends(get_current_user), db: AsyncS
 
 @router.get("/price-trend")
 async def price_trend(product_name: str, spec: str = None,
-                      current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                      current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """某产品的价格变化趋势（按时间）"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_ids = get_wh_ids(current_user)
     rows = (await db.execute(
@@ -799,10 +815,11 @@ async def price_trend(product_name: str, spec: str = None,
 
 @router.get("/price-anomalies")
 async def price_anomalies(page: int = 1, page_size: int = 20,
-                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """价格异常列表（管理员/主管可见）"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     query = select(ProcurementPriceAnomaly)
     count_q = select(func.count(ProcurementPriceAnomaly.id))
@@ -822,10 +839,11 @@ async def price_anomalies(page: int = 1, page_size: int = 20,
 
 @router.get("/non-lowest-records")
 async def non_lowest_records(page: int = 1, page_size: int = 50,
-                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """非最低价采购列表（按差价从大到小）"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     query = select(ProcurementNonLowestRecord)
     count_q = select(func.count(ProcurementNonLowestRecord.id))
@@ -848,10 +866,11 @@ async def non_lowest_records(page: int = 1, page_size: int = 50,
 
 
 @router.get("/non-lowest-summary")
-async def non_lowest_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def non_lowest_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """非最低价采购汇总：本期多花的钱合计"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     query = select(ProcurementNonLowestRecord)
     query = query.where(ProcurementNonLowestRecord.warehouse_id.in_(get_wh_ids(current_user)))
@@ -909,10 +928,11 @@ async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User =
 
 
 @router.get("/purchase-approvals")
-async def purchase_approvals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def purchase_approvals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """待审批采购单 + 疑似拆单提示。仓库管理员和主管可见。"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     threshold = await _get_approval_threshold(db, get_wh_id(current_user))
     wh_ids = get_wh_ids(current_user)
@@ -977,10 +997,11 @@ async def purchase_approvals(current_user: User = Depends(get_current_user), db:
 
 
 @router.put("/purchase-approvals/{po_id}/approve")
-async def approve_purchase(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def approve_purchase(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """审批通过：采购单生效，生成应付账单，并写入价格历史/异常/非最低价。"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
@@ -1016,10 +1037,11 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
 
 
 @router.put("/purchase-approvals/{po_id}/reject")
-async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """审批驳回：采购单作废，需填原因。"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
@@ -1039,7 +1061,8 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
 # ═══ 采购收货验收 ════════════════════════════
 @router.get("/purchase-orders")
 async def list_purchase_orders(page: int = 1, page_size: int = 50,
-                               current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                               current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """采购单列表（含收货状态），供收货录入使用。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -1084,7 +1107,8 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
 
 @router.post("/purchase-orders/{po_id}/receive")
 async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile = File(...),
-                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """收货验收：逐个产品填实收数量 + 上传到货照片。"""
     import json
     _forbid_super_admin(current_user)
@@ -1159,7 +1183,8 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
 
 
 @router.post("/purchase-orders/{po_id}/mark-sent")
-async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """标记采购单已发送给供应商（记录发送时间/发送人）。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -1177,7 +1202,8 @@ async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_curren
 
 @router.post("/purchase-orders/{po_id}/receipt")
 async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
-                                  current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                                  current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """上传供应商签字/盖章回执，流程状态变为「供应商已确认」。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -1203,7 +1229,8 @@ async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
 
 
 @router.post("/purchase-orders/{po_id}/mark-shipped")
-async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """标记供应商已发货，流程状态变为「已发货」。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -1221,7 +1248,8 @@ async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_cur
 
 
 @router.get("/purchase-orders/{po_id}/pdf")
-async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """下载采购单 PDF（含单号/供应商/产品明细/总价/日期/仓库/老板联系方式）。"""
     from app.models.warehouse import Warehouse
     from urllib.parse import quote
@@ -1245,10 +1273,11 @@ async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(g
 
 
 @router.get("/purchase-receipt-discrepancies")
-async def receipt_discrepancies(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def receipt_discrepancies(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """收货差异列表：所有数量不符的采购。"""
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     query = select(PurchaseOrder).where(PurchaseOrder.receipt_status == "partially_received")
     query = query.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
@@ -1469,7 +1498,8 @@ async def concentration_trend(months: int = 6,
 
 # ═══ Logistics Price CRUD ════════════════════════
 @router.get("/{supplier_id}/logistics-prices")
-async def list_logistics_prices(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_logistics_prices(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     await _require_supplier_owned(db, current_user, supplier_id)
     prices = (await db.execute(select(SupplierCrossBorderPrice).where(SupplierCrossBorderPrice.supplier_id == supplier_id).order_by(SupplierCrossBorderPrice.transport_method, SupplierCrossBorderPrice.origin_warehouse))).scalars().all()
     return {"data": [{"id": p.id, "transport_method": p.transport_method, "cargo_type": p.cargo_type,
@@ -1477,9 +1507,10 @@ async def list_logistics_prices(supplier_id: int, current_user = Depends(get_cur
                       "estimated_days": p.estimated_days, "currency": p.currency} for p in prices]}
 
 @router.post("/{supplier_id}/logistics-prices")
-async def add_logistics_price(supplier_id: int, req: dict, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def add_logistics_price(supplier_id: int, req: dict, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
     p = SupplierCrossBorderPrice(supplier_id=supplier_id, **req)
@@ -1487,9 +1518,10 @@ async def add_logistics_price(supplier_id: int, req: dict, current_user: User = 
     return {"id": p.id, "message": "添加成功"}
 
 @router.delete("/{supplier_id}/logistics-prices/{price_id}")
-async def delete_logistics_price(supplier_id: int, price_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def delete_logistics_price(supplier_id: int, price_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
     p = (await db.execute(select(SupplierCrossBorderPrice).where(SupplierCrossBorderPrice.id == price_id, SupplierCrossBorderPrice.supplier_id == supplier_id))).scalar_one_or_none()
@@ -1500,7 +1532,8 @@ async def delete_logistics_price(supplier_id: int, price_id: int, current_user: 
 # ═══ Price Comparison ════════════════════════════
 @router.get("/compare-prices")
 async def compare_prices(product_name: str = None, spec: str = None, category_id: int = None,
-                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """耗材比价：按产品名称/规格对比同类别供应商报价"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -1541,7 +1574,8 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
 @router.get("/compare-logistics")
 async def compare_logistics(transport_method: str = None, cargo_type: str = None, origin_warehouse: str = None,
                              category_id: int = None,
-                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     """跨境物流比价：运输方式×货物类型×发货仓库，含义乌加价和最低消费"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -1635,9 +1669,10 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
 
 # ═══ AI Price Analysis ═══════════════════════════
 @router.post("/ai-compare")
-async def ai_compare(data: dict, current_user: User = Depends(get_current_user)):
+async def ai_compare(data: dict, current_user: User = Depends(get_current_user),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     from app.config import get_settings
     settings = get_settings()
@@ -1709,10 +1744,11 @@ async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
 
 @router.post("")
 async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     d = req.model_dump()
     d["default_currency"] = (d.get("default_currency") or "THB")
@@ -1722,7 +1758,8 @@ async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_
 @router.put("/{supplier_id}")
 async def update_supplier(supplier_id: int, req: SupplierUpdate,
                           current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
@@ -1736,7 +1773,8 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
 
 @router.delete("/{supplier_id}")
 async def delete_supplier(supplier_id: int, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
@@ -1749,9 +1787,10 @@ async def delete_supplier(supplier_id: int, current_user: User = Depends(get_cur
 
 @router.get("/procurement-summary")
 async def procurement_summary(current_user: User = Depends(get_current_user),
-                               db: AsyncSession = Depends(get_db)):
+                               db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     from app.models.payable import PayableBill
     from app.models.warehouse import Warehouse
@@ -1895,7 +1934,8 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     }
 
 @router.get("/{supplier_id}")
-async def get_supplier(supplier_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_supplier(supplier_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
@@ -1917,7 +1957,8 @@ async def get_supplier(supplier_id: int, current_user: User = Depends(get_curren
 
 @router.get("/{supplier_id}/ai-evaluation")
 async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current_user),
-                      db: AsyncSession = Depends(get_db)):
+                      db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role != Role.SUPER_ADMIN:
         raise HTTPException(403, "仅超级管理员可用")
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
