@@ -31,6 +31,7 @@ export default function SettingsPage() {
   const [rateLoading, setRateLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "", warehouse_ids: [] as number[] });
+  const [newPerms, setNewPerms] = useState<string[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   // 老板联系方式
   const [bossContact, setBossContact] = useState({ name: "", phone: "" });
@@ -120,6 +121,9 @@ export default function SettingsPage() {
         password: newUser.password,
         role: newUser.role,
       };
+      if (newUser.role === "supervisor" || newUser.role === "staff") {
+        payload.extra_permissions = newPerms;
+      }
       if (newUser.role === "supervisor" || newUser.role === "warehouse_admin") {
         payload.warehouse_ids = newUser.warehouse_ids;
       } else {
@@ -128,6 +132,7 @@ export default function SettingsPage() {
       await api.post("/users", payload);
       toast("success", "创建成功");
       setNewUser({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "staff", warehouse_id: "", warehouse_ids: [] });
+      setNewPerms([]);
       loadUsers();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
@@ -294,6 +299,20 @@ export default function SettingsPage() {
                 )}
                 <p className="text-xs text-gray-400 mt-1">勾上哪个仓库 这个人就能看到那个仓库全部的钱和人 请谨慎勾选</p>
               </div>
+              {(newUser.role === "supervisor" || newUser.role === "staff") && (
+                <div>
+                  <label className="form-label">扩展权限</label>
+                  <div className="border rounded p-2 space-y-1">
+                    {Object.entries(PERM_LABELS).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
+                        <input type="checkbox" checked={newPerms.includes(key)}
+                          onChange={(e) => setNewPerms(prev => e.target.checked ? [...prev, key] : prev.filter(p => p !== key))} />
+                        <span className="text-sm">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <button onClick={createUser} className="btn-primary">创建用户</button>
             </div>
           </div>

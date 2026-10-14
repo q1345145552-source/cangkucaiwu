@@ -11,6 +11,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
+    extra_permissions: list[str] | None = None  # 扩展权限（主管/财务）
 
 class UserUpdate(BaseModel):
     display_name: str | None = None

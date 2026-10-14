@@ -150,6 +150,7 @@ async def create_user(
         role=req.role,
         warehouse_id=primary_wh,
         created_by=current_user.id,
+        extra_permissions=req.extra_permissions or [],
     )
     db.add(user)
     await db.flush()

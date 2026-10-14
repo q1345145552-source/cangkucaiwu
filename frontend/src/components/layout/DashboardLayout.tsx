@@ -90,7 +90,7 @@ const navItems: NavItem[] = [
     roles: ["super_admin", "warehouse_admin", "staff", "warehouse_labor", "supervisor"],
     children: [
       { key: "settings", label: "settings", icon: <Settings size={18} />, href: "/settings", roles: ["super_admin", "warehouse_admin", "staff", "supervisor"] },
-      { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin", "staff"] },
+      { key: "audit_logs", label: "audit_logs", icon: <FileText size={18} />, href: "/audit-logs", roles: ["super_admin", "staff", "supervisor"] },
       { key: "attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/attendance", roles: ["warehouse_labor"] },
       { key: "overtime", label: "overtime", icon: <Clock size={18} />, href: "/overtime", roles: ["warehouse_labor"] },
       { key: "clock_in", label: "clock_in", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["warehouse_labor"] },
@@ -114,7 +114,7 @@ const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
 
 function hasAccess(item: NavItem, user: any): boolean {
   if (!user || !item.roles.includes(user.role)) return false;
-  if (user.role === "staff") {
+  if (user.role === "staff" || user.role === "supervisor") {
     const perms = user.extra_permissions || [];
     const required = STAFF_EXTRA_MAP[item.key];
     if (required) {
