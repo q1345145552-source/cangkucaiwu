@@ -7,7 +7,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, FileText, Receipt, Download, Edit, TrendingUp, Package } from "lucide-react";
+import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, FileText, Receipt, Download, Edit, TrendingUp, Package, Trash2 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
@@ -30,6 +30,9 @@ export default function PayablePage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
   const [editForm, setEditForm] = useState({ supplier_id: 0, bill_number: "", currency: "THB", purchase_order_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", detail: "", remark: "", diff_note: "" });
+  const [showVoidModal, setShowVoidModal] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<any>(null);
+  const [voidReason, setVoidReason] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLabel, setPreviewLabel] = useState("");
@@ -206,6 +209,24 @@ export default function PayablePage() {
       toast("success", "账单更新成功");
       setShowEditModal(false); load(); loadStats();
     } catch (err: any) { toast("error", err.message || "更新失败"); }
+  }
+
+  function openVoidModal(row: any) {
+    setVoidTarget(row);
+    setVoidReason("");
+    setShowVoidModal(true);
+  }
+
+  async function handleVoid() {
+    if (!voidReason.trim()) {
+      toast("error", "请填写作废原因");
+      return;
+    }
+    try {
+      await api.put<any>(`/payable/${voidTarget.id}/void?void_reason=${encodeURIComponent(voidReason.trim())}`);
+      toast("success", "已作废");
+      setShowVoidModal(false); load(); loadStats();
+    } catch (err: any) { toast("error", err.message || "作废失败"); }
   }
 
   function toggleSelectAll() {
@@ -390,7 +411,7 @@ export default function PayablePage() {
         { key: "detail", label: "明细", render: (v: any) => v ? <span className="text-xs text-gray-500 max-w-32 truncate block" title={v}>{v.length > 12 ? v.slice(0, 12) + "..." : v}</span> : "-" },
         { key: "bill_attachment", label: "附件", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "账单附件")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
         { key: "payment_voucher", label: "凭证", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "付款凭证")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
-        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{row.need_boss_confirm === "true" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{row.status !== "paid" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}<button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button></div> },
+        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{row.need_boss_confirm === "true" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{row.status !== "paid" && row.status !== "voided" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}<button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>{row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} />}
 
       {/* 新建账单弹窗 */}
@@ -510,6 +531,35 @@ export default function PayablePage() {
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowEditModal(false)} className="btn-secondary min-w-[80px]">取消</button>
               <button onClick={handleEdit} className="btn-primary min-w-[80px]">保存修改</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 作废弹窗 */}
+      {showVoidModal && voidTarget && (
+        <div className="modal-overlay" onClick={() => setShowVoidModal(false)}>
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-red-500 text-white px-6 py-4 rounded-t-xl flex items-center gap-3 shrink-0">
+              <Trash2 size={22} />
+              <div className="flex-1"><h2 className="text-lg font-semibold">作废账单</h2></div>
+              <button onClick={() => setShowVoidModal(false)} className="text-red-200 hover:text-white"><span className="text-xl leading-none">&times;</span></button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+              <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1.5">
+                <div className="flex justify-between"><span className="text-gray-500">供应商</span><span className="text-gray-800">{voidTarget.supplier_name || "-"}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">账单编号</span><span className="text-gray-800">{voidTarget.bill_number}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">金额</span><span className="text-gray-800 font-medium">{fmtMoney(voidTarget.amount, voidTarget.currency)}</span></div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">作废原因 <span className="text-red-400">*</span></label>
+                <textarea className="form-input" rows={3} value={voidReason} onChange={e => setVoidReason(e.target.value)} placeholder="请填写作废原因" />
+              </div>
+              <div className="text-xs text-gray-400">作废后这条账单会从应付里去掉，但记录会保留</div>
+            </div>
+            <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
+              <button onClick={() => setShowVoidModal(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={handleVoid} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 min-w-[100px]">确认作废</button>
             </div>
           </div>
         </div>
