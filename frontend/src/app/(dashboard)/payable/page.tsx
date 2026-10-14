@@ -268,9 +268,10 @@ export default function PayablePage() {
     paid: "px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700",
     partially_paid: "px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700",
     overdue: "px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700",
+    voided: "px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-500",
   };
   const statusLabels: Record<string, string> = {
-    pending: "待付", paid: "已付", partially_paid: "部分付款", overdue: "逾期",
+    pending: "待付", paid: "已付", partially_paid: "部分付款", overdue: "逾期", voided: "已作废",
   };
 
   return (
@@ -411,8 +412,8 @@ export default function PayablePage() {
         { key: "detail", label: "明细", render: (v: any) => v ? <span className="text-xs text-gray-500 max-w-32 truncate block" title={v}>{v.length > 12 ? v.slice(0, 12) + "..." : v}</span> : "-" },
         { key: "bill_attachment", label: "附件", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "账单附件")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
         { key: "payment_voucher", label: "凭证", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "付款凭证")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
-        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{row.need_boss_confirm === "true" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{row.status !== "paid" && row.status !== "voided" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}<button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>{row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
-      ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} />}
+        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{row.need_boss_confirm === "true" && row.status !== "voided" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{row.status !== "paid" && row.status !== "voided" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}{row.status !== "voided" && <button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>}{row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
+      ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} rowClassName={(row) => row.status === "voided" ? "opacity-50" : ""} />}
 
       {/* 新建账单弹窗 */}
       {showForm && (

@@ -1764,7 +1764,8 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     last_month_end = this_month_start - timedelta(days=1)
 
     def wh_filter(q):
-        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
+        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
+                       PayableBill.status != "voided")
 
     def _by_currency(rows):
         out: dict = {}

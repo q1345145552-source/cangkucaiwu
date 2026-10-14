@@ -45,10 +45,10 @@ def fund_available(remaining_balance, spent_regular) -> float:
 # —— 应付账款 ——
 def should_settle_bill(bill_warehouse_id, bill_status, paid_amount, amount, wh_ids, paid_value: str = "paid") -> bool:
     """付款计划执行时，判断某张账单是否应被结算：
-    必须属于当前用户仓库、且尚未付清。"""
+    必须属于当前用户仓库、且尚未付清、且未作废。"""
     if bill_warehouse_id not in wh_ids:
         return False
-    if bill_status == paid_value:
+    if bill_status in (paid_value, "voided"):
         return False
     if (paid_amount or 0) >= (amount or 0):
         return False

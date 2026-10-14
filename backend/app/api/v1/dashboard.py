@@ -270,6 +270,7 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
     bill_month_rows = (await db.execute(
         select(PayableBill.currency, PayableBill.bill_date, PayableBill.amount)
         .where(PayableBill.warehouse_id == wh_id,
+               PayableBill.status != "voided",
                PayableBill.bill_date >= datetime.combine(min_month, datetime.min.time()),
                PayableBill.bill_date < datetime.combine(max_month_end, datetime.min.time()))
     )).all()
@@ -343,6 +344,7 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
         select(PayableBill.currency, PayableBill.amount, Supplier.name)
         .join(Supplier, PayableBill.supplier_id == Supplier.id)
         .where(PayableBill.warehouse_id == wh_id,
+               PayableBill.status != "voided",
                PayableBill.bill_date >= datetime.combine(month_start, datetime.min.time()),
                PayableBill.bill_date < datetime.combine(next_month, datetime.min.time()))
     )).all()
@@ -433,6 +435,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     proc_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount), 0))
         .where(PayableBill.warehouse_id == wh_id,
+               PayableBill.status != "voided",
                PayableBill.bill_date >= month_start,
                PayableBill.bill_date < next_month)
         .group_by(PayableBill.currency)
@@ -459,7 +462,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 待付（应付未付 = amount - paid_amount）
     payable_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
-        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid")
+        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided")
         .group_by(PayableBill.currency)
     )).all()
     payable = _merge_currency(payable_rows)
@@ -467,7 +470,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 逾期未付
     overdue_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
-        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", func.date(PayableBill.due_date) < today)
+        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided", func.date(PayableBill.due_date) < today)
         .group_by(PayableBill.currency)
     )).all()
     overdue_payable = _merge_currency(overdue_rows)
@@ -595,6 +598,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     bill_rows = (await db.execute(
         select(PayableBill.id, PayableBill.bill_number, PayableBill.amount, PayableBill.confirmed_amount)
         .where(PayableBill.warehouse_id == wh_id,
+               PayableBill.status != "voided",
                ((PayableBill.need_boss_confirm == "true") | ((PayableBill.confirmed_amount.isnot(None)) & (PayableBill.confirmed_amount != PayableBill.amount))))
         .order_by(PayableBill.created_at.desc()).limit(20)
     )).all()

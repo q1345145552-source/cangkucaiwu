@@ -516,7 +516,9 @@ async def payable_stats(start_date: str = None, end_date: str = None,
     today = thai_today()
 
     def wh(q):
-        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
+        # 统计口径：排除已作废账单，不算进钱里
+        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
+                       PayableBill.status != PayableStatus.VOIDED.value)
 
     # 日期范围条件（默认当月1号到当天）
     if start_date:
@@ -621,7 +623,7 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_
         for b in bills:
             if b.warehouse_id not in wh_ids:
                 raise HTTPException(403, "计划中包含非本仓库的账单")
-        total = sum(b.amount - b.paid_amount for b in bills)
+        total = sum(b.amount - b.paid_amount for b in bills if b.status != PayableStatus.VOIDED.value)
     p = PayablePlan(
         warehouse_id=get_wh_id(current_user), plan_name=req.plan_name,
         planned_date=datetime.fromisoformat(req.planned_date),
@@ -712,6 +714,7 @@ async def supplier_statement(supplier_id: int = None, current_user: User = Depen
     if supplier_id: query = query.where(PayableBill.supplier_id == supplier_id)
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(PayableBill.status != PayableStatus.VOIDED.value)
     result = await db.execute(query.order_by(PayableBill.due_date))
     bills = result.scalars().all()
     sids={b.supplier_id for b in bills}
@@ -976,6 +979,7 @@ async def payable_trend(
         m_end = datetime.fromisoformat(f"{month}-{last_day:02d}") + timedelta(days=1) - timedelta(microseconds=1)
         q = select(func.coalesce(func.sum(PayableBill.amount), 0)).where(
             PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
+            PayableBill.status != PayableStatus.VOIDED.value,
             PayableBill.bill_date >= m_start,
             PayableBill.bill_date <= m_end,
         )

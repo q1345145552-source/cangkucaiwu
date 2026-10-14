@@ -15,7 +15,7 @@ interface Column {
   cellClassName?: string;
 }
 
-export default function DataTable({ columns, data, total, page, pageSize, onPageChange, onRowClick }: {
+export default function DataTable({ columns, data, total, page, pageSize, onPageChange, onRowClick, rowClassName }: {
   columns: Column[];
   data: any[];
   total: number;
@@ -23,6 +23,8 @@ export default function DataTable({ columns, data, total, page, pageSize, onPage
   pageSize: number;
   onPageChange: (p: number) => void;
   onRowClick?: (row: any) => void;
+  /** 按行数据返回附加到 tr 上的类名（用于整行置灰等） */
+  rowClassName?: (row: any) => string;
 }) {
   const totalPages = Math.ceil(total / pageSize);
 
@@ -50,7 +52,7 @@ export default function DataTable({ columns, data, total, page, pageSize, onPage
                 </td>
               </tr>
             ) : data.map((row, i) => (
-              <tr key={row.id || i} className={onRowClick ? "cursor-pointer" : ""} onClick={() => onRowClick?.(row)}>
+              <tr key={row.id || i} className={`${onRowClick ? "cursor-pointer" : ""} ${rowClassName ? rowClassName(row) : ""}`} onClick={() => onRowClick?.(row)}>
                 {columns.map(c => (
                   <td key={c.key} className={`${c.align === "right" ? "text-right font-medium tabular-nums" : c.align === "center" ? "text-center" : ""} ${c.hideOnMobile ? "hidden sm:table-cell" : ""} ${c.cellClassName || ""}`}>
                     {c.render ? c.render(row[c.key], row) : (row[c.key] ?? "-")}
