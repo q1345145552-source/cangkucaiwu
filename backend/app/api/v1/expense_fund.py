@@ -8,7 +8,7 @@ from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, Re
 from app.models.user import User
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -78,11 +78,12 @@ async def create_account(
     req: CreateAccountReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """手动为指定员工创建备用金账户"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     # 验证员工属于本仓库
@@ -113,6 +114,7 @@ async def create_account(
 async def list_employees(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """列出本仓库所有非超管员工"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -135,6 +137,7 @@ async def list_employees(
 async def list_accounts(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """列出本仓库所有员工的备用金账户（含余额）"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -186,11 +189,12 @@ async def topup_account(
     account_id: int, req: TopUpReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """给备用金账户充值，余额不能超过上限"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
     account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
@@ -225,6 +229,7 @@ async def list_items(
     account_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """列出一个账户下所有开销"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -252,6 +257,7 @@ async def add_item(
     account_id: int, req: FundItemCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """添加开销记录"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -297,6 +303,7 @@ async def upload_receipt(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
     if not account:
@@ -327,6 +334,7 @@ async def list_pending_reviews(
     currency: str = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -391,11 +399,10 @@ async def batch_review(
     req: BatchReviewReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "备用金管理" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无审批备用金权限")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无审核权限")
 
@@ -450,6 +457,7 @@ async def submit_recharge_request(
     req: RechargeRequestCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """财务提交充值申请"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -483,6 +491,7 @@ async def list_recharge_requests(
     applicant_id: int = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """列出充值申请列表 - 管理员看本仓库所有，财务看自己的"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -538,12 +547,13 @@ async def review_recharge_request(
     req: RechargeRequestReview,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     """管理员审核充值申请"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "只有仓库管理员/主管可以审核充值申请")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无审核权限")
 
     rr = (await db.execute(select(FundRechargeRequest).where(FundRechargeRequest.id == req.request_id))).scalar_one_or_none()
     if not rr:
@@ -587,6 +597,7 @@ async def review_recharge_request(
 async def fund_settings(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -600,10 +611,11 @@ async def update_settings(
     req: SettingsUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     existing = (await db.execute(select(SystemSetting).where(
@@ -624,6 +636,7 @@ async def update_settings(
 async def balance_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     return await list_accounts(current_user=current_user, db=db)
 
@@ -631,6 +644,7 @@ async def balance_summary(
 async def alert_list(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

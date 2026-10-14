@@ -35,6 +35,7 @@ async def list_reimbursements(
     start_date: str = None, end_date: str = None,
     employee_id: int = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("报销管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -77,7 +78,8 @@ async def list_reimbursements(
 
 @router.post("")
 async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(get_current_user),
-                                db: AsyncSession = Depends(get_db)):
+                                db: AsyncSession = Depends(get_db),
+                                _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
@@ -143,6 +145,7 @@ async def export_reimbursements(
     start_date: str = Query(None), end_date: str = Query(None),
     employee_id: int = Query(None),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("报销管理")),
 ):
     """导出报销单为 Excel"""
     from fastapi.responses import StreamingResponse
@@ -203,7 +206,8 @@ DEFAULT_REIMB_CATEGORIES = ["交通费", "餐饮费", "办公用品", "通讯费
 
 @router.get("/categories")
 async def list_reimb_categories(current_user: User = Depends(get_current_user),
-                                db: AsyncSession = Depends(get_db)):
+                                db: AsyncSession = Depends(get_db),
+                                _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
@@ -227,7 +231,8 @@ async def list_reimb_categories(current_user: User = Depends(get_current_user),
 
 @router.get("/{reimb_id}")
 async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_current_user),
-                           db: AsyncSession = Depends(get_db)):
+                           db: AsyncSession = Depends(get_db),
+                           _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
@@ -249,7 +254,8 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
 
 @router.put("/{reimb_id}")
 async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depends(get_current_user),
-                     db: AsyncSession = Depends(get_db)):
+                     db: AsyncSession = Depends(get_db),
+                     _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
@@ -281,10 +287,11 @@ async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depen
 
 @router.delete("/{reimb_id}")
 async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
-                       db: AsyncSession = Depends(get_db)):
+                       db: AsyncSession = Depends(get_db),
+                       _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
@@ -327,7 +334,8 @@ async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_u
 
 @router.post("/{reimb_id}/submit")
 async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
-                       db: AsyncSession = Depends(get_db)):
+                       db: AsyncSession = Depends(get_db),
+                       _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
@@ -340,11 +348,10 @@ async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_u
 
 @router.post("/{reimb_id}/review")
 async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Depends(get_current_user),
-                       db: AsyncSession = Depends(get_db)):
+                       db: AsyncSession = Depends(get_db),
+                       _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "报销管理" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无审批报销权限")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无审批权限")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
@@ -393,10 +400,11 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
 
 @router.post("/{reimb_id}/pay")
 async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
-                    db: AsyncSession = Depends(get_db)):
+                    db: AsyncSession = Depends(get_db),
+                    _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
     r = result.scalar_one_or_none()
@@ -412,10 +420,11 @@ async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user
 # === Reimbursement Categories ===
 @router.post("/categories")
 async def create_reimb_category(req: CategoryReq, current_user: User = Depends(get_current_user),
-                                db: AsyncSession = Depends(get_db)):
+                                db: AsyncSession = Depends(get_db),
+                                _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     if not wh_id:
