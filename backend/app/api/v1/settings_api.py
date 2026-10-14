@@ -64,9 +64,9 @@ async def operation_logs(
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("操作日志")),
 ):
-    # 超管看全量；财务（有「操作日志」权限）看本仓库；其余角色照旧（仅超管可见）
-    if current_user.role not in (Role.SUPER_ADMIN, Role.STAFF):
-        return {"data": [], "total": 0, "message": "仅超级管理员可查看操作日志"}
+    # 超管看全量；管理员直接放行看本仓库；主管/财务需勾「操作日志」权限看本仓库；劳工等其余角色无权限
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        return {"data": [], "total": 0, "message": "无权限查看操作日志"}
     query = select(AuditLog); count_q = select(func.count(AuditLog.id))
     if current_user.role != Role.SUPER_ADMIN:
         wh_ids = get_wh_ids(current_user)
