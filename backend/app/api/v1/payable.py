@@ -305,6 +305,40 @@ async def confirm_bill(bill_id: int, current_user: User = Depends(get_current_us
     await db.flush()
     return {"message": "已确认，可以付款"}
 
+@router.put("/{bill_id}/void")
+async def void_bill(bill_id: int, void_reason: str = None,
+                    current_user: User = Depends(get_current_user),
+                    db: AsyncSession = Depends(get_db)):
+    """作废账单（留痕，不真删）。仅仓库管理员/主管可操作。"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "无权限")
+    b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id))).scalar_one_or_none()
+    if not b:
+        raise HTTPException(404, "账单不存在")
+    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作自己仓库的账单")
+    if not void_reason or not str(void_reason).strip():
+        raise HTTPException(400, "请填写作废原因")
+    if b.status == PayableStatus.PAID.value:
+        raise HTTPException(400, "已付款的账单不能作废")
+    if b.status == PayableStatus.VOIDED.value:
+        raise HTTPException(400, "该账单已作废")
+    old_status = b.status
+    reason = str(void_reason).strip()
+    b.status = PayableStatus.VOIDED.value
+    b.void_reason = reason
+    b.voided_by = current_user.id
+    b.voided_at = thai_now()
+    await db.flush()
+    await record_history(db, module="payable", record_id=b.id, operator=current_user,
+                         operation_type="void",
+                         before={"status": old_status},
+                         after={"status": PayableStatus.VOIDED.value, "void_reason": reason},
+                         warehouse_id=b.warehouse_id)
+    return {"message": "账单已作废"}
+
 class BillUpdate(BaseModel):
     supplier_id: Optional[int] = None
     bill_number: Optional[str] = None

@@ -9,6 +9,7 @@ class PayableStatus(str, enum.Enum):
     PAID = "paid"
     PARTIALLY_PAID = "partially_paid"
     OVERDUE = "overdue"
+    VOIDED = "voided"
 
 class PlanStatus(str, enum.Enum):
     PENDING = "pending"
@@ -43,6 +44,9 @@ class PayableBill(Base):
     voucher = Column(String(500), nullable=True)
     diff_note = Column(String(1000), nullable=True, comment="差异处理说明")
     paid_at = Column(DateTime(timezone=True), nullable=True)
+    void_reason = Column(String(500), nullable=True, comment="作废原因")
+    voided_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="作废人")
+    voided_at = Column(DateTime(timezone=True), nullable=True, comment="作废时间")
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

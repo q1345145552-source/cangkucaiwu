@@ -183,6 +183,20 @@ async def seed():
                 ))
         except Exception as _e:
             print(f"迁移 应付账单来源+关联采购单 失败：{_e}")
+        # Migration: 应付账单作废字段
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(
+                    "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS void_reason VARCHAR(500)"
+                ))
+                await conn.execute(text(
+                    "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS voided_by INTEGER"
+                ))
+                await conn.execute(text(
+                    "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ"
+                ))
+        except Exception as _e:
+            print(f"迁移 应付账单作废字段 失败：{_e}")
         # Migration: 采购收货验收字段
         try:
             async with conn.begin_nested():
