@@ -276,6 +276,31 @@ async def seed():
                 """))
         except Exception as _e:
             print(f"迁移 权限名收付款管理→运营收支 失败：{_e}")
+        # Migration: 主管扩展权限一次性补全（8 个全补，幂等；全局标记确保只跑一次）
+        try:
+            async with conn.begin_nested():
+                migrated = (await conn.execute(text(
+                    "SELECT 1 FROM system_settings WHERE key = 'supervisor_perms_backfilled_v1'"
+                ))).first()
+                if not migrated:
+                    await conn.execute(text("""
+                        UPDATE users
+                        SET extra_permissions = (
+                            SELECT COALESCE(json_agg(DISTINCT elem), '[]'::json)
+                            FROM (
+                                SELECT elem FROM json_array_elements_text(COALESCE(extra_permissions, '[]'::json)) AS elem
+                                UNION
+                                SELECT unnest(ARRAY['到账流水','备用金管理','报销管理','运营收支','账期管理','操作日志','供应商管理','其他收支']) AS elem
+                            ) t
+                        )
+                        WHERE role = 'supervisor'
+                    """))
+                    await conn.execute(text("""
+                        INSERT INTO system_settings (warehouse_id, key, value)
+                        SELECT MIN(id), 'supervisor_perms_backfilled_v1', 'true' FROM warehouses
+                    """))
+        except Exception as _e:
+            print(f"迁移 主管扩展权限补全 失败：{_e}")
         # Migration: 供应商默认币种 + 产品币种 + 币种值统一
         try:
             async with conn.begin_nested():

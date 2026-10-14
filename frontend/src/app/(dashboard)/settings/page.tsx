@@ -375,7 +375,7 @@ export default function SettingsPage() {
                     <label htmlFor="edit-active" className="text-sm">启用账号（停用后此人无法登录）</label>
                   </div>
                 </div>
-                {editUser.role === "staff" && (
+                {(editUser.role === "staff" || editUser.role === "supervisor") && (
                   <div className="mb-4">
                     <div className="text-sm font-medium mb-2">扩展权限</div>
                     <div className="space-y-1">

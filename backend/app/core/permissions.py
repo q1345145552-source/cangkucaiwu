@@ -37,7 +37,7 @@ STAFF_PERMISSIONS = {
 
 def check_staff_permission(perm_key: str):
     async def dependency(current_user = Depends(get_current_user)):
-        if current_user.role == Role.STAFF:
+        if current_user.role in (Role.STAFF, Role.SUPERVISOR):
             perms = current_user.extra_permissions or []
             if perm_key not in perms:
                 raise HTTPException(
@@ -49,9 +49,9 @@ def check_staff_permission(perm_key: str):
 
 
 def check_staff_permission_any(*perm_keys: str):
-    """财务拥有任意一个权限即放行；非财务直接放行。用于多个页面共用的接口。"""
+    """财务/主管拥有任意一个权限即放行；超管/管理员直接放行；劳工不受此约束。用于多个页面共用的接口。"""
     async def dependency(current_user = Depends(get_current_user)):
-        if current_user.role == Role.STAFF:
+        if current_user.role in (Role.STAFF, Role.SUPERVISOR):
             perms = current_user.extra_permissions or []
             if not any(k in perms for k in perm_keys):
                 names = " / ".join(STAFF_PERMISSIONS.get(k, k) for k in perm_keys)
