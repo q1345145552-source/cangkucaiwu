@@ -47,6 +47,21 @@ def check_staff_permission(perm_key: str):
         return current_user
     return dependency
 
+
+def check_staff_permission_any(*perm_keys: str):
+    """财务拥有任意一个权限即放行；非财务直接放行。用于多个页面共用的接口。"""
+    async def dependency(current_user = Depends(get_current_user)):
+        if current_user.role == Role.STAFF:
+            perms = current_user.extra_permissions or []
+            if not any(k in perms for k in perm_keys):
+                names = " / ".join(STAFF_PERMISSIONS.get(k, k) for k in perm_keys)
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"无此操作权限，需要: {names}"
+                )
+        return current_user
+    return dependency
+
 async def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),

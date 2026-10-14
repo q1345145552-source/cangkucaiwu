@@ -9,7 +9,7 @@ from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpense
 from app.models.customer import Customer, PaymentAccount
 from app.models.supplier import Supplier
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
 from app.services.data_history import record_history
 
@@ -21,7 +21,8 @@ router = APIRouter()
 # ==== Categories ====
 @router.get("/categories")
 async def list_categories(type: str = None, category_group: str = None, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+                          _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomeExpenseCategory)
@@ -38,10 +39,11 @@ async def list_categories(type: str = None, category_group: str = None, current_
 
 @router.post("/categories")
 async def create_category(req: CategoryCreate, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+                          _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     # 自动归类：运营类 vs 其他
     from app.api.v1.income_expense import OPERATING_NAMES
@@ -60,6 +62,7 @@ async def list_income(
     currency: str = None,
     search: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission_any("收付款管理", "其他收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -116,12 +119,11 @@ async def list_income(
 
 @router.post("/income")
 async def create_income(req: IncomeRecordCreate, current_user: User = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_db)):
+                        db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "收付款管理" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无确认入账权限")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     r = IncomeRecord(
         warehouse_id=get_wh_id(current_user), category_id=req.category_id,
@@ -135,7 +137,8 @@ async def create_income(req: IncomeRecordCreate, current_user: User = Depends(ge
 # ==== Income Edit / Delete ====
 @router.put("/income/{income_id}")
 async def update_income(income_id: int, req: IncomeRecordCreate, current_user: User = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_db)):
+                        db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission("其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     r = (await db.execute(select(IncomeRecord).where(IncomeRecord.id == income_id))).scalar_one_or_none()
@@ -154,7 +157,8 @@ async def update_income(income_id: int, req: IncomeRecordCreate, current_user: U
 
 @router.delete("/income/{income_id}")
 async def delete_income(income_id: int, current_user: User = Depends(get_current_user),
-                        db: AsyncSession = Depends(get_db)):
+                        db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission("其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     r = (await db.execute(select(IncomeRecord).where(IncomeRecord.id == income_id))).scalar_one_or_none()
@@ -176,6 +180,7 @@ async def list_expense(
     category_group: str = None,
     currency: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("收付款管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -248,12 +253,11 @@ async def create_expense(
     files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("收付款管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role == Role.STAFF and "收付款管理" not in (current_user.extra_permissions or []):
-        raise HTTPException(403, "无确认出账权限")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
     wh_id = get_wh_id(current_user)
@@ -315,10 +319,11 @@ async def update_expense(
     files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("收付款管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
     r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()
@@ -421,10 +426,11 @@ async def delete_expense(
     expense_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("收付款管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
     r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()
@@ -456,6 +462,7 @@ async def ledger(
     flow_type: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("收付款管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -707,6 +714,7 @@ async def ledger_export(
     start_date: str = None, end_date: str = None, source: str = None, flow_type: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("收付款管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -749,6 +757,7 @@ async def export_income(
     end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("其他收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -810,7 +819,8 @@ async def export_income(
 @router.get("/monthly-summary")
 async def monthly_summary(start_date: str = None, end_date: str = None, category_group: str = None,
                           current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db),
+                          _perm=Depends(check_staff_permission_any("收付款管理", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     iq = select(func.sum(IncomeRecord.amount))
@@ -859,6 +869,7 @@ async def operating_dashboard(
     end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("收付款管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
