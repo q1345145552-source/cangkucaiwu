@@ -1806,6 +1806,11 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
                        PayableBill.status != "voided")
 
+    def bill_filter(q):
+        # 采购金额口径：排除已作废账单，且只统计已生效(confirmed)采购单对应的账单（手动账单无采购单，保留）
+        return (q.outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
+                 .where((PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed")))
+
     def _by_currency(rows):
         out: dict = {}
         for r in rows:
@@ -1813,22 +1818,22 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         return out
 
     # --- 本月支出按币种 ---
-    month_q = wh_filter(select(PayableBill.currency, func.sum(PayableBill.amount).label("total"))
+    month_q = wh_filter(bill_filter(select(PayableBill.currency, func.sum(PayableBill.amount).label("total"))
         .where(extract("year", PayableBill.bill_date) == today.year, extract("month", PayableBill.bill_date) == today.month)
-        .group_by(PayableBill.currency))
+        .group_by(PayableBill.currency)))
     month_total_by_currency = _by_currency((await db.execute(month_q)).all())
 
     # --- 上月支出按币种 ---
-    last_q = wh_filter(select(PayableBill.currency, func.sum(PayableBill.amount).label("total"))
+    last_q = wh_filter(bill_filter(select(PayableBill.currency, func.sum(PayableBill.amount).label("total"))
         .where(extract("year", PayableBill.bill_date) == last_month_start.year, extract("month", PayableBill.bill_date) == last_month_start.month)
-        .group_by(PayableBill.currency))
+        .group_by(PayableBill.currency)))
     last_month_total_by_currency = _by_currency((await db.execute(last_q)).all())
 
     # --- 本月分类支出按币种 ---
-    cat_month_q = wh_filter(select(Supplier.category_id, PayableBill.currency, func.sum(PayableBill.amount).label("total"))
+    cat_month_q = wh_filter(bill_filter(select(Supplier.category_id, PayableBill.currency, func.sum(PayableBill.amount).label("total"))
         .join(Supplier, PayableBill.supplier_id == Supplier.id)
         .where(extract("year", PayableBill.bill_date) == today.year, extract("month", PayableBill.bill_date) == today.month)
-        .group_by(Supplier.category_id, PayableBill.currency))
+        .group_by(Supplier.category_id, PayableBill.currency)))
     cat_rows = (await db.execute(cat_month_q)).all()
     cat_map = {}
     cat_ids = [r.category_id for r in cat_rows if r.category_id]
@@ -1841,12 +1846,12 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         cat_spending.setdefault(name, {})[r.currency or "THB"] = float(r.total or 0)
 
     # --- 供应商排名按币种 ---
-    sup_q = wh_filter(select(PayableBill.supplier_id, PayableBill.currency, func.sum(PayableBill.amount).label("total"), func.max(PayableBill.bill_date).label("last_date"))
-        .group_by(PayableBill.supplier_id, PayableBill.currency))
+    sup_q = wh_filter(bill_filter(select(PayableBill.supplier_id, PayableBill.currency, func.sum(PayableBill.amount).label("total"), func.max(PayableBill.bill_date).label("last_date"))
+        .group_by(PayableBill.supplier_id, PayableBill.currency)))
     sup_rows = (await db.execute(sup_q)).all()
-    sup_month_q = wh_filter(select(PayableBill.supplier_id, PayableBill.currency, func.sum(PayableBill.amount).label("total"))
+    sup_month_q = wh_filter(bill_filter(select(PayableBill.supplier_id, PayableBill.currency, func.sum(PayableBill.amount).label("total"))
         .where(extract("year", PayableBill.bill_date) == today.year, extract("month", PayableBill.bill_date) == today.month)
-        .group_by(PayableBill.supplier_id, PayableBill.currency))
+        .group_by(PayableBill.supplier_id, PayableBill.currency)))
     sup_month_rows = (await db.execute(sup_month_q)).all()
 
     sids = list({r.supplier_id for r in sup_rows})

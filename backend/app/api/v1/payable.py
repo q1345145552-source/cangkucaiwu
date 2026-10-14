@@ -516,9 +516,11 @@ async def payable_stats(start_date: str = None, end_date: str = None,
     today = thai_today()
 
     def wh(q):
-        # 统计口径：排除已作废账单，不算进钱里
-        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
-                       PayableBill.status != PayableStatus.VOIDED.value)
+        # 统计口径：排除已作废账单，且只统计已生效(confirmed)采购单对应的账单（手动账单无采购单，保留）
+        return q.outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id).where(
+            PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
+            PayableBill.status != PayableStatus.VOIDED.value,
+            (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
 
     # 日期范围条件（默认当月1号到当天）
     if start_date:
@@ -623,7 +625,17 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_
         for b in bills:
             if b.warehouse_id not in wh_ids:
                 raise HTTPException(403, "计划中包含非本仓库的账单")
-        total = sum(b.amount - b.paid_amount for b in bills if b.status != PayableStatus.VOIDED.value)
+        # 统计口径：排除已作废账单，且排除未生效(待审批/已驳回)采购单对应的账单
+        po_ids = {b.purchase_order_id for b in bills if b.purchase_order_id}
+        non_confirmed_po_ids = set()
+        if po_ids:
+            non_confirmed_po_ids = {
+                r[0] for r in (await db.execute(
+                    select(PurchaseOrder.id).where(PurchaseOrder.id.in_(po_ids), PurchaseOrder.status != "confirmed")
+                )).all()
+            }
+        total = sum((b.amount or 0) - (b.paid_amount or 0) for b in bills
+                    if b.status != PayableStatus.VOIDED.value and b.purchase_order_id not in non_confirmed_po_ids)
     p = PayablePlan(
         warehouse_id=get_wh_id(current_user), plan_name=req.plan_name,
         planned_date=datetime.fromisoformat(req.planned_date),
@@ -649,7 +661,9 @@ async def cashflow_prediction(current_user: User = Depends(get_current_user),
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(func.coalesce(func.sum(PayableBill.amount - PayableBill.paid_amount), 0))
-    query = query.where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
+    query = query.outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
+    query = query.where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]),
+                        (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     total_pending = (await db.execute(query)).scalar() or 0
@@ -977,11 +991,14 @@ async def payable_trend(
         m_start = datetime.fromisoformat(f"{month}-01")
         last_day = calendar.monthrange(int(month[:4]), int(month[5:]))[1]
         m_end = datetime.fromisoformat(f"{month}-{last_day:02d}") + timedelta(days=1) - timedelta(microseconds=1)
-        q = select(func.coalesce(func.sum(PayableBill.amount), 0)).where(
+        q = select(func.coalesce(func.sum(PayableBill.amount), 0)).outerjoin(
+            PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id
+        ).where(
             PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
             PayableBill.status != PayableStatus.VOIDED.value,
             PayableBill.bill_date >= m_start,
             PayableBill.bill_date <= m_end,
+            (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"),
         )
         if con_supplier_ids:
             q = q.where(PayableBill.supplier_id.in_(con_supplier_ids))

@@ -269,10 +269,12 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
     )).all()
     bill_month_rows = (await db.execute(
         select(PayableBill.currency, PayableBill.bill_date, PayableBill.amount)
+        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
         .where(PayableBill.warehouse_id == wh_id,
                PayableBill.status != "voided",
                PayableBill.bill_date >= datetime.combine(min_month, datetime.min.time()),
-               PayableBill.bill_date < datetime.combine(max_month_end, datetime.min.time()))
+               PayableBill.bill_date < datetime.combine(max_month_end, datetime.min.time()),
+               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
     )).all()
 
     def _ie_series(cur):
@@ -343,10 +345,12 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
     sup_rows = (await db.execute(
         select(PayableBill.currency, PayableBill.amount, Supplier.name)
         .join(Supplier, PayableBill.supplier_id == Supplier.id)
+        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
         .where(PayableBill.warehouse_id == wh_id,
                PayableBill.status != "voided",
                PayableBill.bill_date >= datetime.combine(month_start, datetime.min.time()),
-               PayableBill.bill_date < datetime.combine(next_month, datetime.min.time()))
+               PayableBill.bill_date < datetime.combine(next_month, datetime.min.time()),
+               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
     )).all()
 
     def _group_by_name(rows, cur):
@@ -434,10 +438,12 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 采购支出（应付账单本月）
     proc_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount), 0))
+        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
         .where(PayableBill.warehouse_id == wh_id,
                PayableBill.status != "voided",
                PayableBill.bill_date >= month_start,
-               PayableBill.bill_date < next_month)
+               PayableBill.bill_date < next_month,
+               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
         .group_by(PayableBill.currency)
     )).all()
 
@@ -462,7 +468,9 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 待付（应付未付 = amount - paid_amount）
     payable_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
-        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided")
+        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
+        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided",
+               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
         .group_by(PayableBill.currency)
     )).all()
     payable = _merge_currency(payable_rows)
@@ -470,7 +478,9 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 逾期未付
     overdue_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
-        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided", func.date(PayableBill.due_date) < today)
+        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
+        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided", func.date(PayableBill.due_date) < today,
+               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
         .group_by(PayableBill.currency)
     )).all()
     overdue_payable = _merge_currency(overdue_rows)

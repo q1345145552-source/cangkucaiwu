@@ -10,6 +10,7 @@ from app.models.income_expense import IncomeRecord, ExpenseRecord
 from app.models.expense_fund import ExpenseFund
 from app.models.reimbursement import Reimbursement
 from app.models.payable import PayableBill
+from app.models.supplier import PurchaseOrder
 from app.models.credit import CreditCustomer
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
@@ -128,7 +129,9 @@ async def report_previews(
 
     # 4. 应付报表
     q = select(func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0), func.count(PayableBill.id))
-    q = q.where(PayableBill.warehouse_id.in_(wh_ids), PayableBill.status != "voided")
+    q = q.outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
+    q = q.where(PayableBill.warehouse_id.in_(wh_ids), PayableBill.status != "voided",
+                (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
     q = _apply_date(q, PayableBill.due_date, start_date, end_date)
     pending, count = (await db.execute(q)).first()
     previews["payable"] = {"preview": float(pending or 0), "count": count or 0}
@@ -258,7 +261,9 @@ async def payable_report(start_date: str = None, end_date: str = None, warehouse
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
     wh_ids = get_wh_ids(current_user)
-    query = query.where(PayableBill.warehouse_id.in_(wh_ids), PayableBill.status != "voided")
+    query = query.outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
+    query = query.where(PayableBill.warehouse_id.in_(wh_ids), PayableBill.status != "voided",
+                        (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
     query = _apply_date(query, PayableBill.due_date, start_date, end_date)
     if warehouse_id: query = query.where(PayableBill.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(PayableBill.due_date))
