@@ -12,7 +12,7 @@ from app.models.clock_in_records import ClockInRecord
 from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.overtime import OvertimeAssignment, OvertimeTask
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
 from app.services.schedule import get_work_schedule
 from app.services.data_history import record_history
 from pydantic import BaseModel
@@ -21,6 +21,10 @@ from datetime import datetime, date, timedelta, time
 from typing import Optional, List
 import calendar
 import json
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PERMISSION = MENU_PERMISSIONS_BY_KEY["payroll"].label
 
 router = APIRouter()
 
@@ -44,7 +48,7 @@ class SingleSettleRequest(BaseModel):
 @router.post("/calculate")
 async def calculate_payroll(
     req: CalculateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -59,7 +63,7 @@ async def calculate_payroll(
 @router.post("/preview")
 async def preview_payroll(
     req: CalculateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """算工资预览：做跟算工资一样的检查，但不写任何数据，返回检查结果。"""
@@ -1096,7 +1100,7 @@ async def _rollback_advance_deductions(db: AsyncSession, record: PayrollRecord):
 @router.post("/single-settle")
 async def single_settle(
     req: SingleSettleRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """单人结算：选员工 + 截止日期，从当前周期开始算到截止日。"""
@@ -1179,7 +1183,7 @@ async def list_payroll(
     status: str = None,
     name: str = None,
     voided_filter: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
@@ -1312,7 +1316,7 @@ async def payroll_summary(
     status: str = None,
     name: str = None,
     voided_filter: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
@@ -1357,7 +1361,7 @@ async def export_payroll(
     status: str = None,
     name: str = None,
     voided_filter: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """导出当前筛选出的工资单为 Excel（参数与列表一致）。"""
@@ -1442,7 +1446,7 @@ async def export_payroll(
 @router.post("/{record_id}/confirm")
 async def confirm_payroll(
     record_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1476,7 +1480,7 @@ async def confirm_all_payroll(
     period: str = Query(None),
     half: str = None,
     settle_month: str = Query(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1553,7 +1557,7 @@ async def _batch_fetch(db: AsyncSession, wh_id: int, record_ids: List[int]):
 @router.post("/batch-confirm")
 async def batch_confirm_payroll(
     req: BatchIdsRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1579,7 +1583,7 @@ async def batch_confirm_payroll(
 @router.post("/batch-disburse")
 async def batch_disburse_payroll(
     req: BatchIdsRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1606,7 +1610,7 @@ async def batch_disburse_payroll(
 @router.post("/batch-delete")
 async def batch_delete_payroll(
     req: BatchIdsRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1774,7 +1778,7 @@ async def _void_one(db: AsyncSession, current_user: User, wh_id: int, record_id:
 async def recalc_payroll(
     record_id: int,
     req: RecalcRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """单张重算：作废旧单 + 用旧区间生成新单。"""
@@ -1791,7 +1795,7 @@ async def recalc_payroll(
 @router.post("/batch-recalc")
 async def batch_recalc_payroll(
     req: BatchRecalcRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """批量重算：逐张处理，能算的作废重算，不能算的跳过并说明原因。"""
@@ -1842,7 +1846,7 @@ async def batch_recalc_payroll(
 @router.delete("/{record_id}")
 async def delete_payroll(
     record_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1872,7 +1876,7 @@ async def delete_payroll(
 async def delete_period_payroll(
     period: str,
     half: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete all payroll records for a period (to allow recalculation)"""
@@ -1925,7 +1929,7 @@ class DisburseRequest(BaseModel):
 async def disburse_payroll(
     record_id: int,
     req: DisburseRequest = DisburseRequest(),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1987,7 +1991,7 @@ async def disburse_payroll(
 @router.post("/{record_id}/revoke-disbursement")
 async def revoke_disbursement(
     record_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """撤销发放：把已发放的工资单退回「已确认未发放」状态。"""
@@ -2042,7 +2046,7 @@ async def revoke_disbursement(
 @router.get("/my-payslip")
 async def my_payslip(
     period: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """Employee views their own payslip. Matches by display_name to employee name."""
@@ -2138,7 +2142,7 @@ async def _get_available_months(db: AsyncSession, wh_ids: list) -> list:
 
 @router.get("/settlement-progress")
 async def settlement_progress(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """结算进度：所有在职员工各自已结算到哪天（没有工资单=从未结算），最落后的在前。"""

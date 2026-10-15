@@ -838,10 +838,10 @@ async def initialize():
     # seed() 可能在发现已有管理员时提前返回；补权限必须放在返回之后，
     # 同时覆盖已有数据库和首次初始化生成的账号。
     await seed()
-    from app.services.permission_migrations import backfill_round2_permissions
+    from app.services.permission_migrations import run_permission_migrations
     async with _get_engine().begin() as conn:
-        changed = await backfill_round2_permissions(conn)
-    print(f"第二轮菜单权限迁移完成，更新 {changed} 个主管/财务账号")
+        changed = await run_permission_migrations(conn)
+    print(f"菜单权限迁移完成，更新主管/财务账号数：{changed}")
 
 
 if __name__ == "__main__":

@@ -8,13 +8,17 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.models.salary_template import SalaryTemplate
 from app.models.deduction_template import DeductionTemplate
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from app.core.security import hash_password
 from app.services.image_utils import thumb_path_of
 from app.core.timezone import thai_now
 from pydantic import BaseModel
 from datetime import datetime, date, timedelta
 from typing import Optional, List
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PERMISSION = MENU_PERMISSIONS_BY_KEY["employees"].label
 
 router = APIRouter()
 
@@ -91,7 +95,13 @@ async def list_employees(
     status: str | None = None,
     include_deleted: bool = False,
     active_only: bool = False,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(
+        MENU_PERMISSIONS_BY_KEY["employees"].label,
+        MENU_PERMISSIONS_BY_KEY["payroll"].label,
+        MENU_PERMISSIONS_BY_KEY["overtime"].label,
+        MENU_PERMISSIONS_BY_KEY["employee_deductions"].label,
+        MENU_PERMISSIONS_BY_KEY["employee_advances"].label,
+    )),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -187,7 +197,7 @@ async def list_employees(
 @router.post("")
 async def create_employee(
     req: EmployeeCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -306,7 +316,7 @@ async def create_employee(
 async def update_employee(
     employee_id: int,
     req: EmployeeUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -441,8 +451,9 @@ async def update_employee(
 async def resign_employee(
     employee_id: int,
     req: ResignRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
+    _payroll_permission: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["payroll"].label)),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有仓库管理员可以操作")
@@ -539,7 +550,7 @@ async def resign_employee(
 @router.delete("/{employee_id}")
 async def delete_employee(
     employee_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """软删除员工档案：打删除标记，保留打卡/工资/加班等关联数据，并禁用关联登录账号。"""
@@ -569,7 +580,7 @@ async def delete_employee(
 
 @router.post("/bind-existing-accounts")
 async def bind_existing_accounts(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """批量绑定已有账号：扫描当前仓库未绑定账号的在职员工，按 手机号=用户名 / 姓名=显示名 自动绑定仓库劳工账号。"""
@@ -673,7 +684,7 @@ class BatchTemplateSet(BaseModel):
 @router.post("/batch-set-templates")
 async def batch_set_templates(
     req: BatchTemplateSet,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """批量给员工设置薪资模板和扣款模板。仅仓库管理员/主管。"""
@@ -731,7 +742,7 @@ async def batch_set_templates(
 async def upload_employee_photo(
     employee_id: int,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -769,7 +780,7 @@ async def upload_employee_photo(
 async def upload_passport_photo(
     employee_id: int,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -804,7 +815,7 @@ async def upload_passport_photo(
 async def upload_work_permit_photo(
     employee_id: int,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -843,7 +854,7 @@ async def upload_work_permit_photo(
 async def employee_summary(
     employee_id: int,
     month: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """Return attendance & salary summary for an employee"""
@@ -969,7 +980,7 @@ async def employee_summary(
 
 @router.get("/max-limit")
 async def get_max_limit(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -989,7 +1000,7 @@ async def get_max_limit(
 @router.put("/max-limit")
 async def set_max_limit(
     max_employees: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):

@@ -5,9 +5,13 @@ from app.database import get_db
 from app.models.salary_template import SalaryTemplate
 from app.models.employee import Employee
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from pydantic import BaseModel
 from typing import Optional
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PERMISSION = MENU_PERMISSIONS_BY_KEY["salary_templates"].label
 
 router = APIRouter()
 
@@ -50,7 +54,10 @@ async def _get_usage_count(db: AsyncSession, template_id: int) -> int:
 
 @router.get("")
 async def list_salary_templates(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(
+        MENU_PERMISSIONS_BY_KEY["salary_templates"].label,
+        MENU_PERMISSIONS_BY_KEY["employees"].label,
+    )),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -80,7 +87,7 @@ async def list_salary_templates(
 @router.post("")
 async def create_salary_template(
     req: SalaryTemplateCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -113,7 +120,7 @@ async def create_salary_template(
 async def update_salary_template(
     template_id: int,
     req: SalaryTemplateUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -151,7 +158,7 @@ async def update_salary_template(
 @router.delete("/{template_id}")
 async def delete_salary_template(
     template_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
