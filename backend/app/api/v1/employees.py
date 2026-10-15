@@ -104,9 +104,7 @@ async def list_employees(
     )),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     
     wh_ids = get_wh_ids(current_user)
@@ -200,7 +198,7 @@ async def create_employee(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以创建员工")
     
     wh_id = get_wh_id(current_user)
@@ -319,7 +317,7 @@ async def update_employee(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以编辑员工")
     
     e = (await db.execute(select(Employee).where(Employee.id == employee_id))).scalar_one_or_none()
@@ -455,7 +453,7 @@ async def resign_employee(
     db: AsyncSession = Depends(get_db),
     _payroll_permission: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["payroll"].label)),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以操作")
     
     e = (await db.execute(select(Employee).where(Employee.id == employee_id))).scalar_one_or_none()
@@ -554,7 +552,7 @@ async def delete_employee(
     db: AsyncSession = Depends(get_db),
 ):
     """软删除员工档案：打删除标记，保留打卡/工资/加班等关联数据，并禁用关联登录账号。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员/主管可以删除员工")
     e = (await db.execute(select(Employee).where(Employee.id == employee_id))).scalar_one_or_none()
     if not e:
@@ -584,7 +582,7 @@ async def bind_existing_accounts(
     db: AsyncSession = Depends(get_db),
 ):
     """批量绑定已有账号：扫描当前仓库未绑定账号的在职员工，按 手机号=用户名 / 姓名=显示名 自动绑定仓库劳工账号。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员/主管可以操作")
 
     wh_id = get_wh_id(current_user)
@@ -688,7 +686,7 @@ async def batch_set_templates(
     db: AsyncSession = Depends(get_db),
 ):
     """批量给员工设置薪资模板和扣款模板。仅仓库管理员/主管。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员/主管可以批量设置模板")
 
     wh_id = get_wh_id(current_user)
@@ -745,7 +743,7 @@ async def upload_employee_photo(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以上传照片")
 
     wh_id = get_wh_id(current_user)
@@ -783,7 +781,7 @@ async def upload_passport_photo(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以上传照片")
 
     wh_id = get_wh_id(current_user)
@@ -818,7 +816,7 @@ async def upload_work_permit_photo(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以上传照片")
 
     wh_id = get_wh_id(current_user)
@@ -858,9 +856,7 @@ async def employee_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """Return attendance & salary summary for an employee"""
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
     wh_ids = get_wh_ids(current_user)
@@ -983,7 +979,7 @@ async def get_max_limit(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -1003,7 +999,7 @@ async def set_max_limit(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     if not wh_id:

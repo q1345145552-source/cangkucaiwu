@@ -36,9 +36,7 @@ class SalaryTemplateUpdate(BaseModel):
 
 
 def _check_role(current_user: User):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
 

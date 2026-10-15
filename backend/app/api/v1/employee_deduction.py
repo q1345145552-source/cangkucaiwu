@@ -5,7 +5,8 @@ from app.database import get_db
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.employee import Employee
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
@@ -14,9 +15,7 @@ router = APIRouter()
 
 
 def _check_role(current_user: User):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
 
@@ -32,7 +31,7 @@ class DeductionCreate(BaseModel):
 @router.post("")
 async def create_deduction(
     req: DeductionCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_deductions"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -82,7 +81,7 @@ async def create_deduction(
 async def list_deductions(
     employee_id: Optional[int] = None,
     period: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_deductions"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -130,7 +129,7 @@ async def list_deductions(
 @router.delete("/{deduction_id}")
 async def delete_deduction(
     deduction_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_deductions"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -165,7 +164,7 @@ class FixedDeductionUpdate(BaseModel):
 @router.get("/fixed")
 async def list_fixed_deductions(
     employee_id: int = Query(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["employee_deductions"].label, MENU_PERMISSIONS_BY_KEY["employees"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -191,7 +190,7 @@ async def list_fixed_deductions(
 @router.post("/fixed")
 async def create_fixed_deduction(
     req: FixedDeductionCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["employee_deductions"].label, MENU_PERMISSIONS_BY_KEY["employees"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -223,7 +222,7 @@ async def create_fixed_deduction(
 async def update_fixed_deduction(
     deduction_id: int,
     req: FixedDeductionUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["employee_deductions"].label, MENU_PERMISSIONS_BY_KEY["employees"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)
@@ -254,7 +253,7 @@ async def update_fixed_deduction(
 @router.delete("/fixed/{deduction_id}")
 async def delete_fixed_deduction(
     deduction_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["employee_deductions"].label, MENU_PERMISSIONS_BY_KEY["employees"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_role(current_user)

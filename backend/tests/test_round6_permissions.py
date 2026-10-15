@@ -50,13 +50,14 @@ def expected(uid,method,path):
  path=path.split('?')[0]
  if path.startswith('/settings/boss-contact'):return 200 if uid in (1,2) else 403
  if path=='/settings/backup':return 200
+ if path=='/suppliers/concentration-threshold' and method=='GET':return 200
  if path in ('/config/work-schedule','/suppliers/purchase-approval-threshold','/suppliers/concentration-threshold'):
   if uid==2:return 403
   if method=='PUT':return 200 if uid==1 else 403
   return 403 if uid==3 else 200
  if path=='/expense-approvals/threshold':return 403 if uid==2 or (method=='PUT' and uid!=1) else 200
  if path.startswith('/rates'):return 403 if uid==2 or (method=='POST' and uid!=1) else 200
- if path.startswith('/efficiency'):return 403 if uid==3 else 200
+ if path.startswith('/efficiency'):return 200
  if path=='/users':return 200
  if path=='/users/5':
   if method=='DELETE':return 200 if uid in (1,4) else (400 if uid==2 else 403)
@@ -154,7 +155,7 @@ def test_shared_reads_and_cockpit_unchanged(tmp_path,monkeypatch,uid):
    # Other consuming pages work with their own permission and without config/settings.
    for label,path in [('费用审批','/expense-approvals/threshold'),('供应商管理','/suppliers/purchase-approval-threshold'),('采购分析','/suppliers/concentration-threshold')]:
     await set_perms(factory,uid,[label]);r=await client.get('/api/v1'+path,headers=auth(uid))
-    assert r.status_code==(403 if uid==3 and label!='费用审批' else 200),r.text
+    assert r.status_code==(403 if uid==3 and label=='供应商管理' else 200),r.text
    r=await client.get('/api/v1/rates/query',headers=auth(uid));assert r.status_code==404 and '汇率' in r.json()['detail']
  asyncio.run(run())
 
@@ -169,7 +170,7 @@ def test_warehouse_boundaries(tmp_path,monkeypatch,uid):
    r=await client.post('/api/v1/reconciliation/manual-match?declaration_id=1&flow_id=2',headers=auth(uid));assert r.status_code==403,r.text
    for path in ('/reports/incoming-summary?warehouse_id=2','/reports/reconciliation-diff?warehouse_id=2'):
     r=await client.get('/api/v1'+path,headers=auth(uid));assert r.status_code==200 and r.json()['data']==[],r.text
-   r=await client.put('/api/v1/efficiency/manual-hour',headers=auth(uid),json={'employee_id':2,'date':'2026-10-10','hours':8});assert r.status_code==(403 if uid==3 else 400),r.text
+   r=await client.put('/api/v1/efficiency/manual-hour',headers=auth(uid),json={'employee_id':2,'date':'2026-10-10','hours':8});assert r.status_code==400,r.text
    # Forged warehouse selection must not move reads or writes to foreign warehouse.
    h={**auth(uid),'X-Warehouse-ID':'2'}
    if uid!=3:

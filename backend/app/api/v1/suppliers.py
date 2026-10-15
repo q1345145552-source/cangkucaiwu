@@ -1408,8 +1408,7 @@ class ConcentrationThresholdSet(BaseModel):
 
 @router.get("/concentration-threshold")
 async def get_concentration_threshold(current_user: User = Depends(check_staff_permission_any(_CONCENTRATION_PERMISSION, MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
-    _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     return {"threshold": await _get_concentration_threshold(db, wh_id)}
@@ -1443,8 +1442,7 @@ async def set_concentration_threshold(req: ConcentrationThresholdSet,
 async def concentration_analysis(month: str = None,
                                  current_user: User = Depends(check_staff_permission(_CONCENTRATION_PERMISSION)), db: AsyncSession = Depends(get_db)):
     """供应商采购集中度：按月统计各供应商采购金额/占比/订单数。"""
-    _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     if not month:
         month = thai_today().strftime("%Y-%m")
@@ -1474,8 +1472,7 @@ async def concentration_analysis(month: str = None,
 async def concentration_trend(months: int = 6,
                               current_user: User = Depends(check_staff_permission(_CONCENTRATION_PERMISSION)), db: AsyncSession = Depends(get_db)):
     """集中度趋势：最近 N 个月最高供应商占比变化。"""
-    _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     try:
         months = max(1, min(int(months), 24))

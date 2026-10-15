@@ -113,6 +113,7 @@ async def call(client,method,path,body,uid):
 
 def expected_status(uid,method,path):
     path=path.split('?')[0]
+    if method=='GET' and path.startswith('/suppliers/concentration'):return 200
     if path=='/group-order/participant/1/ban':return 200 if uid==2 else 403
     if uid==2:
         return 200 if path in ('/payable/plan-templates/1','/payable/plans/1/detail','/group-order/1/participants',
@@ -188,8 +189,7 @@ def test_shared_lists_and_config_threshold(tmp_path,monkeypatch,uid):
             for permission in ('采购分析','配置中心'):
                 await set_perms(factory,uid,[permission])
                 response=await client.get('/api/v1/suppliers/concentration-threshold',headers=auth(uid))
-                assert response.status_code==(200 if uid==4 else 403),response.text
-                if uid==3:assert not response.json()['detail'].startswith('无此操作权限')
+                assert response.status_code==200,response.text
             await set_perms(factory,uid,['配置中心'])
             response=await client.get('/api/v1/suppliers/concentration?month=2026-10',headers=auth(uid))
             assert response.status_code==403 and response.json()['detail'].startswith('无此操作权限')

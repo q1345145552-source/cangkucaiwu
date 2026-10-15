@@ -116,6 +116,8 @@ def business_status(uid, path):
     if path.startswith('/employees/max-limit?'):
         # 原有静态 PUT 路由被先注册的 /{employee_id} 遮挡；本轮只加校验，不改路由。
         return 422
+    if path.startswith(('/employees', '/salary-templates', '/deduction-templates')):
+        return 200
     if path == '/payroll/my-payslip':
         return 403  # 原有劳工本人专用限制
     if uid in (2,3) and path not in ('/payroll','/payroll/summary'):
@@ -160,8 +162,8 @@ def test_shared_hr_reads(tmp_path,monkeypatch,uid):
             for key in ('employees','payroll','overtime','employee_deductions','employee_advances'):
                 await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY[key].label])
                 result=await client.get('/api/v1/employees?active_only=true',headers=auth(uid))
-                assert result.status_code==(200 if uid==4 else 403),result.text
-                if uid==4:
+                assert result.status_code==200,result.text
+                if uid in (3,4):
                     assert {e['warehouse_id'] for e in result.json()['data']}=={1}
                 if key!='employees':
                     result=await client.put('/api/v1/employees/1',headers=auth(uid),json={'remark':'越权'})
@@ -169,7 +171,7 @@ def test_shared_hr_reads(tmp_path,monkeypatch,uid):
             await set_perms(factory,uid,['员工档案'])
             for path in ('/salary-templates','/deduction-templates'):
                 result=await client.get('/api/v1'+path,headers=auth(uid))
-                assert result.status_code==(200 if uid==4 else 403),result.text
+                assert result.status_code==200,result.text
                 result=await client.put('/api/v1'+path+'/1',headers=auth(uid),json={'name':'越权'})
                 assert result.status_code==403 and result.json()['detail'].startswith('无此操作权限')
             # 即使有员工档案权限，缺工资权限也不能借离职入口算工资。
