@@ -11,7 +11,7 @@ from app.models.payable import PayableBill, PayablePlan, PlanTemplate, MonthlyOr
 from app.models.group_order import GroupOrder, GroupOrderParticipant
 from app.core.timezone import THAI_TZ
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
-from app.services.permission_migrations import ROUND2_PERMISSION_MARKER, ROUND3_PERMISSION_MARKER, ROUND4_PERMISSION_MARKER, ROUND5_PERMISSION_MARKER, ROUND6_PERMISSION_MARKER, ROUND5_PERMISSIONS, backfill_round5_permissions, run_permission_migrations
+from app.services.permission_migrations import ROUND2_PERMISSION_MARKER, ROUND3_PERMISSION_MARKER, ROUND4_PERMISSION_MARKER, ROUND5_PERMISSION_MARKER, ROUND6_PERMISSION_MARKER, ROUND9_SUPERVISOR_PERMISSION_MARKER, ROUND5_PERMISSIONS, backfill_round5_permissions, run_permission_migrations
 from tests.test_round2_permissions import environment, auth, set_perms, png
 
 CASES=[
@@ -330,7 +330,7 @@ def test_round5_migration_database_idempotence_and_rollback(tmp_path,monkeypatch
             async with factory() as db:
                 db.add(User(id=5,username='inactive-staff',display_name='停用财务',role='staff',is_active=False,password_hash='unused',extra_permissions=['旧权限']))
                 db.add(User(id=6,username='labor-test',display_name='劳工',role='warehouse_labor',password_hash='unused',extra_permissions=[]))
-                db.add_all([SystemSetting(warehouse_id=1,key=marker,value='true') for marker in (ROUND6_PERMISSION_MARKER,ROUND2_PERMISSION_MARKER,ROUND3_PERMISSION_MARKER,ROUND4_PERMISSION_MARKER)])
+                db.add_all([SystemSetting(warehouse_id=1,key=marker,value='true') for marker in (ROUND9_SUPERVISOR_PERMISSION_MARKER,ROUND6_PERMISSION_MARKER,ROUND2_PERMISSION_MARKER,ROUND3_PERMISSION_MARKER,ROUND4_PERMISSION_MARKER)])
                 await db.commit()
             before=await finance_snapshot(factory)
             with pytest.raises(RuntimeError):
@@ -341,7 +341,7 @@ def test_round5_migration_database_idempotence_and_rollback(tmp_path,monkeypatch
                 assert (await db.get(User,3)).extra_permissions is None
                 assert (await db.execute(select(SystemSetting.id).where(SystemSetting.key==ROUND5_PERMISSION_MARKER))).first() is None
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':3,'round6':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':3,'round6':0,'round9':0}
             assert await finance_snapshot(factory)==before
             async with factory() as db:
                 values=dict((await db.execute(select(User.id,User.extra_permissions))).all())
@@ -352,7 +352,7 @@ def test_round5_migration_database_idempotence_and_rollback(tmp_path,monkeypatch
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(SystemSetting.key==ROUND5_PERMISSION_MARKER))).scalar_one()==1
             await set_perms(factory,3,[])
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':0,'round9':0}
             async with factory() as db:assert (await db.get(User,3)).extra_permissions==[]
             assert await finance_snapshot(factory)==before
     asyncio.run(run())

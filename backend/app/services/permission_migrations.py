@@ -2,7 +2,7 @@
 from sqlalchemy import func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+from app.core.menu_registry import MENU_PERMISSIONS, MENU_PERMISSIONS_BY_KEY
 from app.core.permissions import Role
 from app.models.expense_fund import SystemSetting
 from app.models.user import User
@@ -34,7 +34,14 @@ ROUND6_PERMISSIONS = tuple(
 )
 
 
-async def _backfill_permissions(conn: AsyncConnection, marker: str, permissions_to_add: tuple[str, ...]) -> int:
+ROUND9_SUPERVISOR_PERMISSION_MARKER = "menu_perms_round9_supervisors_all_selectable_backfilled_v1"
+ROUND9_SUPERVISOR_PERMISSIONS = tuple(item.label for item in MENU_PERMISSIONS if item.selectable)
+
+
+async def _backfill_permissions(
+    conn: AsyncConnection, marker: str, permissions_to_add: tuple[str, ...],
+    *, roles: tuple[str, ...] = (Role.SUPERVISOR.value, Role.STAFF.value),
+) -> int:
     """由调用方管理事务；失败向上抛出，阻止未补权限就启动服务。
 
     PostgreSQL 事务锁防止多个启动进程同时执行。标记存在就完全跳过，
@@ -54,7 +61,7 @@ async def _backfill_permissions(conn: AsyncConnection, marker: str, permissions_
     if warehouse_id is None:
         return 0
     users = (await conn.execute(select(User.id, User.extra_permissions).where(
-        User.role.in_((Role.SUPERVISOR.value, Role.STAFF.value))
+        User.role.in_(roles)
     ).with_for_update())).all()
     changed = 0
     for user_id, permissions in users:
@@ -89,6 +96,14 @@ async def backfill_round6_permissions(conn: AsyncConnection) -> int:
     return await _backfill_permissions(conn, ROUND6_PERMISSION_MARKER, ROUND6_PERMISSIONS)
 
 
+async def backfill_round9_supervisor_permissions(conn: AsyncConnection) -> int:
+    """仅上线时已有主管一次性勾满；标记存在后撤权、重启或新建账号都不再补。"""
+    return await _backfill_permissions(
+        conn, ROUND9_SUPERVISOR_PERMISSION_MARKER, ROUND9_SUPERVISOR_PERMISSIONS,
+        roles=(Role.SUPERVISOR.value,),
+    )
+
+
 async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
     """启动只调用此入口，后续轮次继续在本文件登记；不触碰工资业务数据。"""
     return {
@@ -97,4 +112,5 @@ async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
         "round4": await backfill_round4_permissions(conn),
         "round5": await backfill_round5_permissions(conn),
         "round6": await backfill_round6_permissions(conn),
+        "round9": await backfill_round9_supervisor_permissions(conn),
     }
