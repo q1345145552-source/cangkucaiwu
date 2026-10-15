@@ -160,6 +160,40 @@ def _attendance_of_day(session_set, lt):
     return 0.0, 0.0, 1.0
 
 
+def _standard_daily_hours(sched: dict) -> float:
+    """当天应有工时 = 上午(午休开始-早上上班) + 下午(下午下班-午休结束)；异常回退 8 小时。
+    与考勤日历 /attendance/calendar 用的口径一致。"""
+    def _m(hhmm):
+        try:
+            h, m = str(hhmm).split(":")
+            return int(h) * 60 + int(m)
+        except (ValueError, TypeError):
+            return None
+    ms = _m(sched.get("morning_start"))
+    nb = _m(sched.get("noon_break_start"))
+    ne = _m(sched.get("noon_break_end"))
+    ae = _m(sched.get("afternoon_end"))
+    morning = (nb - ms) if (ms is not None and nb is not None and nb > ms) else 0
+    afternoon = (ae - ne) if (ne is not None and ae is not None and ae > ne) else 0
+    total_min = morning + afternoon
+    return total_min / 60.0 if total_min > 0 else 8.0
+
+
+def _leave_summary(info) -> str | None:
+    """汇总当天的有效假类型（full > morning > afternoon > hours），无假返回 None。"""
+    if not info:
+        return None
+    if info.get("full"):
+        return "full"
+    if info.get("morning"):
+        return "morning"
+    if info.get("afternoon"):
+        return "afternoon"
+    if info.get("hours_has"):
+        return "hours"
+    return None
+
+
 async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest) -> dict:
     """准备阶段（不写任何数据）：确定结束日、查员工、算水位线/起点、校验、查待补打卡。
     返回计算所需的所有数据 + 检查结果，供 _calc_payroll 和预览接口共用。"""
@@ -333,6 +367,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
     early_half_time = _parse_hhmm(work_sched["early_half"]) or time(17, 30)
     early_one_time = _parse_hhmm(work_sched["early_one"]) or time(17, 0)
     afternoon_end_time = _parse_hhmm(work_sched["afternoon_end"]) or time(18, 0)
+    standard_hours = _standard_daily_hours(work_sched)
 
     # ── 6. 批量取数用最宽区间 ──
     period_start = min(emp_start.values())
@@ -375,7 +410,25 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
     for lv in leaves:
         if lv.employee_id not in leave_by_emp:
             leave_by_emp[lv.employee_id] = {}
-        leave_by_emp[lv.employee_id][lv.leave_date] = (lv.duration_type or "full", lv.hours, lv.notified_at)
+        info = leave_by_emp[lv.employee_id].setdefault(
+            lv.leave_date,
+            {"full": False, "morning": False, "afternoon": False, "hours": 0.0, "hours_has": False, "notified_at": None},
+        )
+        dt = lv.duration_type or "full"
+        if dt == "full":
+            info["full"] = True
+        elif dt == "morning":
+            info["morning"] = True
+        elif dt == "afternoon":
+            info["afternoon"] = True
+        elif dt == "hours":
+            if lv.hours is None:
+                info["full"] = True  # 小时数为空 → 按全天假处理，不报错
+            else:
+                info["hours"] += float(lv.hours)  # 一天多条按小时请假相加
+                info["hours_has"] = True
+        if lv.notified_at is not None and (info["notified_at"] is None or lv.notified_at < info["notified_at"]):
+            info["notified_at"] = lv.notified_at
 
     rests = (await db.execute(
         select(RestDay).where(
@@ -480,7 +533,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
                 current += timedelta(days=1)
                 continue
             lt_info = leave_map.get(current)
-            lt = lt_info[0] if lt_info else None
+            lt = _leave_summary(lt_info)
             if lt == "full":
                 current += timedelta(days=1)
                 continue
@@ -518,6 +571,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         "clock_by_emp_date": clock_by_emp_date, "leave_by_emp": leave_by_emp, "rest_by_emp": rest_by_emp, "absence_by_emp": absence_by_emp,
         "overtime_map": overtime_map, "fixed_by_emp": fixed_by_emp, "temp_by_emp": temp_by_emp,
         "early_half_time": early_half_time, "early_one_time": early_one_time, "afternoon_end_time": afternoon_end_time,
+        "standard_hours": standard_hours,
         "period_end": period_end,
     })
     return base
@@ -544,6 +598,7 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
     early_half_time = prep["early_half_time"]
     early_one_time = prep["early_one_time"]
     afternoon_end_time = prep["afternoon_end_time"]
+    standard_hours = prep["standard_hours"]
 
     # ── 按员工薪资模板计算 ──
     records = []
@@ -608,9 +663,9 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 continue
 
             lt_info = leave_map.get(current)
-            lt = lt_info[0] if lt_info else None
-            lv_hours = lt_info[1] if lt_info else None
-            notified_at = lt_info[2] if lt_info else None
+            lt = _leave_summary(lt_info)
+            lv_hours = lt_info["hours"] if (lt_info and lt_info.get("hours_has")) else None
+            notified_at = lt_info.get("notified_at") if lt_info else None
             sessions = clock_by_emp_date.get((emp.id, current), [])
             sessions_sorted = sorted(sessions, key=lambda c: c.clocked_in_at or datetime.min)
             sessions_by_session = sorted(sessions, key=lambda c: c.session)
@@ -649,22 +704,18 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 # 半天旷工：上午2次无下午请假，或下午2次无上午请假（缺勤半天）
                 absent_fine_day = 0.5
 
-            # 按小时请假：工时扣掉请假小时数，请假天数记成小时/8 的小数
+            # 按小时请假：工时 = 打卡工时 - 请假小时（与考勤日历 /attendance/calendar 口径一致）
             if lt == "hours" and lv_hours is not None:
                 h = float(lv_hours)
-                hours = max(hours - h, 0.0)  # 扣工时（按小时模式少拿钱）
-                lv_days = round(h / 8.0, 4)
-                if tt == "daily":
-                    # 按天模式：够半天按半天算
-                    if h >= 8.0:
-                        lv, att = 1.0, 0.0
-                    elif h >= 4.0:
-                        lv, att = 0.5, 0.5
-                    else:
-                        lv, att = 0.0, 1.0
+                hours = round(max(hours - h, 0.0), 2)  # 扣工时，不为负，最多两位小数
+                lv_days = round(h / standard_hours, 4)
+                if h >= standard_hours:
+                    # 请假小时数 >= 当天应有工时 → 按整天请假算，工时记 0
+                    hours = 0.0
+                    lv, att = 1.0, 0.0
                 else:
                     lv = lv_days
-                    att = max(round(1.0 - lv_days, 4), 0.0)
+                    att = max(round(att - lv_days, 4), 0.0)
 
             work_hours_total += hours
             attendance_days_total += att
