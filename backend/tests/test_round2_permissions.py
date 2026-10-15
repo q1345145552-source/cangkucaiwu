@@ -255,7 +255,7 @@ def test_route_inventory_has_no_missing_endpoint():
 
 def test_startup_runs_backfill_after_seed_returns(tmp_path, monkeypatch):
     import scripts.seed as startup
-    from app.services.permission_migrations import ROUND3_PERMISSIONS, ROUND4_PERMISSIONS
+    from app.services.permission_migrations import ROUND3_PERMISSIONS, ROUND4_PERMISSIONS, ROUND5_PERMISSIONS
 
     async def run():
         async with environment(tmp_path, monkeypatch) as (engine, factory, _):
@@ -269,7 +269,7 @@ def test_startup_runs_backfill_after_seed_returns(tmp_path, monkeypatch):
             await startup.initialize()
             assert calls == ['seed-returned', 'seed-returned']
             async with factory() as db:
-                assert (await db.execute(select(User.extra_permissions).where(User.id == 3))).scalar_one() == [*ROUND2_PERMISSIONS, *ROUND3_PERMISSIONS, *ROUND4_PERMISSIONS]
+                assert (await db.execute(select(User.extra_permissions).where(User.id == 3))).scalar_one() == [*ROUND2_PERMISSIONS, *ROUND3_PERMISSIONS, *ROUND4_PERMISSIONS, *ROUND5_PERMISSIONS]
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(
                     SystemSetting.key == ROUND2_PERMISSION_MARKER))).scalar_one() == 1
     asyncio.run(run())

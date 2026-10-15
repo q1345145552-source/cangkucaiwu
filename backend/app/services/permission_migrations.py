@@ -21,6 +21,11 @@ ROUND4_PERMISSION_MARKER = "menu_perms_round4_attendance_leave_overtime_backfill
 ROUND4_PERMISSIONS = tuple(
     MENU_PERMISSIONS_BY_KEY[key].label for key in ("attendance", "leave", "overtime")
 )
+ROUND5_PERMISSION_MARKER = "menu_perms_round5_payable_plans_concentration_group_order_backfilled_v1"
+ROUND5_PERMISSIONS = tuple(
+    MENU_PERMISSIONS_BY_KEY[key].label
+    for key in ("payable", "payment_plans", "concentration", "group_order")
+)
 
 
 async def _backfill_permissions(conn: AsyncConnection, marker: str, permissions_to_add: tuple[str, ...]) -> int:
@@ -70,10 +75,15 @@ async def backfill_round4_permissions(conn: AsyncConnection) -> int:
     return await _backfill_permissions(conn, ROUND4_PERMISSION_MARKER, ROUND4_PERMISSIONS)
 
 
+async def backfill_round5_permissions(conn: AsyncConnection) -> int:
+    return await _backfill_permissions(conn, ROUND5_PERMISSION_MARKER, ROUND5_PERMISSIONS)
+
+
 async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
     """启动只调用此入口，后续轮次继续在本文件登记；不触碰工资业务数据。"""
     return {
         "round2": await backfill_round2_permissions(conn),
         "round3": await backfill_round3_permissions(conn),
         "round4": await backfill_round4_permissions(conn),
+        "round5": await backfill_round5_permissions(conn),
     }

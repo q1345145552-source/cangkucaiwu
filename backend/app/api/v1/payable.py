@@ -8,10 +8,15 @@ from app.database import get_db
 from app.models.payable import PayableBill, PayablePlan, PlanTemplate, PayableStatus, PlanStatus, MonthlyOrderVolume
 from app.models.supplier import Supplier, SupplierCategory, PurchaseOrder
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from app.services.data_history import record_history
 from pydantic import BaseModel
 from typing import Optional, List
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PAYABLE_PERMISSION = MENU_PERMISSIONS_BY_KEY["payable"].label
+_PLAN_PERMISSION = MENU_PERMISSIONS_BY_KEY["payment_plans"].label
 
 router = APIRouter()
 
@@ -32,7 +37,7 @@ async def list_bills(
     page: int = 1, page_size: int = 20, supplier_id: int = None,
     status: str = None, month: str = None, start_date: str = None, end_date: str = None,
     source: str = None, purchase_order_number: str = None,
-    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_staff_permission_any(_PAYABLE_PERMISSION, _PLAN_PERMISSION)), db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -92,6 +97,8 @@ async def list_bills(
         .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
         .values(status=PayableStatus.OVERDUE.value)
     )
+    if current_user.role != Role.SUPER_ADMIN:
+        expire_sql = expire_sql.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     try:
         await db.execute(expire_sql)
         await db.flush()
@@ -133,7 +140,7 @@ async def create_bill(
     is_fund_linked: str = Form(None),
     purchase_order_number: str = Form(None),
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -214,7 +221,7 @@ async def create_bill(
 
 @router.post("/{bill_id}/upload-voucher")
 async def upload_voucher(bill_id: int, file: UploadFile = File(...),
-                         current_user: User = Depends(get_current_user),
+                         current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
@@ -235,7 +242,7 @@ async def upload_voucher(bill_id: int, file: UploadFile = File(...),
 
 @router.post("/{bill_id}/upload-attachment")
 async def upload_bill_attachment(bill_id: int, file: UploadFile = File(...),
-                                 current_user: User = Depends(get_current_user),
+                                 current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                                  db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
@@ -256,7 +263,7 @@ async def upload_bill_attachment(bill_id: int, file: UploadFile = File(...),
 
 @router.put("/{bill_id}/pay")
 async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str = None,
-                   current_user: User = Depends(get_current_user),
+                   current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                    db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -290,7 +297,7 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     await db.flush(); return {"message": "付款记录成功"}
 
 @router.put("/{bill_id}/confirm")
-async def confirm_bill(bill_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def confirm_bill(bill_id: int, current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     """仓库管理员确认收货差异账单，确认后才能付款。"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -307,7 +314,7 @@ async def confirm_bill(bill_id: int, current_user: User = Depends(get_current_us
 
 @router.put("/{bill_id}/void")
 async def void_bill(bill_id: int, void_reason: str = None,
-                    current_user: User = Depends(get_current_user),
+                    current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                     db: AsyncSession = Depends(get_db)):
     """作废账单（留痕，不真删）。仅仓库管理员/主管可操作。"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -355,7 +362,7 @@ class BillUpdate(BaseModel):
 
 @router.put("/{bill_id}")
 async def update_bill(bill_id: int, req: BillUpdate,
-                      current_user: User = Depends(get_current_user),
+                      current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -508,7 +515,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
 # === Stats Dashboard ===
 @router.get("/stats")
 async def payable_stats(start_date: str = None, end_date: str = None,
-                        current_user: User = Depends(get_current_user),
+                        current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                         db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -586,7 +593,7 @@ async def payable_stats(start_date: str = None, end_date: str = None,
 
 # === Plans ===
 @router.get("/plans")
-async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_plans(current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayablePlan)
@@ -603,6 +610,8 @@ async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSe
         .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
         .values(status=PayableStatus.OVERDUE.value)
     )
+    if current_user.role != Role.SUPER_ADMIN:
+        expire_sql = expire_sql.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     try:
         await db.execute(expire_sql)
         await db.flush()
@@ -611,7 +620,7 @@ async def list_plans(current_user: User = Depends(get_current_user), db: AsyncSe
     return {"data": [{"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_ids": p.bill_ids, "bill_attachment": p.bill_attachment, "remark": p.remark} for p in plans]}
 
 @router.post("/plans")
-async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_user),
+async def create_plan(req: PlanCreate, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)),
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -656,7 +665,7 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(get_current_
 
 # === Cashflow ===
 @router.get("/cashflow-prediction")
-async def cashflow_prediction(current_user: User = Depends(get_current_user),
+async def cashflow_prediction(current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)),
                               db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -673,7 +682,7 @@ async def cashflow_prediction(current_user: User = Depends(get_current_user),
 @router.get("/batch-export")
 async def batch_export(supplier_id: int = None, start_date: str = None, end_date: str = None,
                        status: str = None, bill_ids: str = None,
-                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                       current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
@@ -711,6 +720,8 @@ async def batch_export(supplier_id: int = None, start_date: str = None, end_date
         .where(PayableBill.status.in_([PayableStatus.PENDING.value, PayableStatus.PARTIALLY_PAID.value]))
         .values(status=PayableStatus.OVERDUE.value)
     )
+    if current_user.role != Role.SUPER_ADMIN:
+        expire_sql = expire_sql.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)))
     try:
         await db.execute(expire_sql)
         await db.flush()
@@ -719,7 +730,7 @@ async def batch_export(supplier_id: int = None, start_date: str = None, end_date
     return {"data": [{"bill_id": b.id, "supplier": smap.get(b.supplier_id, {}).get("name", ""), "amount": b.amount, "paid_amount": b.paid_amount, "unpaid": b.amount - b.paid_amount, "currency": b.currency, "due_date": str(b.due_date), "bill_number": b.bill_number, "status": b.status} for b in bills]}
 
 @router.get("/supplier-statement")
-async def supplier_statement(supplier_id: int = None, current_user: User = Depends(get_current_user),
+async def supplier_statement(supplier_id: int = None, current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                               db: AsyncSession = Depends(get_db)):
     """生成供应商对账单"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -752,7 +763,7 @@ async def supplier_statement(supplier_id: int = None, current_user: User = Depen
 
 # === Plan Templates ===
 @router.get("/plan-templates")
-async def list_templates(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_templates(current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PlanTemplate)
@@ -762,7 +773,7 @@ async def list_templates(current_user: User = Depends(get_current_user), db: Asy
     return {"data": [{"id": t.id, "name": t.name, "bill_ids": t.bill_ids} for t in result.scalars().all()]}
 
 @router.delete("/plan-templates/{template_id}")
-async def delete_template(template_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def delete_template(template_id: int, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PlanTemplate).where(PlanTemplate.id == template_id))
     t = result.scalar_one_or_none()
     if not t: raise HTTPException(404, "模板不存在")
@@ -773,7 +784,7 @@ async def delete_template(template_id: int, current_user: User = Depends(get_cur
 
 # === Timeline ===
 @router.get("/timeline")
-async def payable_timeline(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def payable_timeline(current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from datetime import date, timedelta
@@ -796,7 +807,7 @@ async def payable_timeline(current_user: User = Depends(get_current_user), db: A
 
 # === Execute Plan ===
 @router.put("/plans/{plan_id}/execute")
-async def execute_plan(plan_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def execute_plan(plan_id: int, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id))
@@ -826,7 +837,7 @@ async def execute_plan(plan_id: int, current_user: User = Depends(get_current_us
 
 # === Plan Detail ===
 @router.get("/plans/{plan_id}/detail")
-async def plan_detail(plan_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def plan_detail(plan_id: int, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id))
     p = result.scalar_one_or_none()
     if not p: raise HTTPException(404, "计划不存在")
@@ -855,7 +866,7 @@ async def plan_detail(plan_id: int, current_user: User = Depends(get_current_use
 
 @router.post("/plans/{plan_id}/upload-attachment")
 async def upload_plan_attachment(plan_id: int, file: UploadFile = File(...),
-                                 current_user: User = Depends(get_current_user),
+                                 current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)),
                                  db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
@@ -877,7 +888,7 @@ async def upload_plan_attachment(plan_id: int, file: UploadFile = File(...),
 
 # === Export Plan ===
 @router.get("/plans/export")
-async def export_plans(plan_id: int = None, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def export_plans(plan_id: int = None, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from openpyxl import Workbook
@@ -909,7 +920,7 @@ class MonthOrderReq(BaseModel):
 @router.get("/monthly-order")
 async def get_monthly_order(
     start_month: str = None, end_month: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -924,7 +935,7 @@ async def get_monthly_order(
 
 @router.post("/monthly-order")
 async def save_monthly_order(
-    req: MonthOrderReq, current_user: User = Depends(get_current_user),
+    req: MonthOrderReq, current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -954,7 +965,7 @@ async def save_monthly_order(
 @router.get("/trend")
 async def payable_trend(
     months: int = 6,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:

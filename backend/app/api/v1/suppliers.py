@@ -7,13 +7,17 @@ from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, Sup
 from app.models.user import User
 from app.models.payable import PayableBill
 from app.models.expense_fund import SystemSetting
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any
 from pydantic import BaseModel
 from typing import Optional, List
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from datetime import datetime, timedelta
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
 import io
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_CONCENTRATION_PERMISSION = MENU_PERMISSIONS_BY_KEY["concentration"].label
 
 router = APIRouter()
 
@@ -1403,7 +1407,7 @@ class ConcentrationThresholdSet(BaseModel):
 
 
 @router.get("/concentration-threshold")
-async def get_concentration_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_concentration_threshold(current_user: User = Depends(check_staff_permission_any(_CONCENTRATION_PERMISSION, MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
@@ -1413,7 +1417,7 @@ async def get_concentration_threshold(current_user: User = Depends(get_current_u
 
 @router.put("/concentration-threshold")
 async def set_concentration_threshold(req: ConcentrationThresholdSet,
-                                      current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                                      current_user: User = Depends(check_staff_permission_any(_CONCENTRATION_PERMISSION, MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     _forbid_super_admin(current_user)
     if current_user.role != Role.WAREHOUSE_ADMIN:
         raise HTTPException(403, "只有仓库管理员可以设置")
@@ -1437,7 +1441,7 @@ async def set_concentration_threshold(req: ConcentrationThresholdSet,
 
 @router.get("/concentration")
 async def concentration_analysis(month: str = None,
-                                 current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                                 current_user: User = Depends(check_staff_permission(_CONCENTRATION_PERMISSION)), db: AsyncSession = Depends(get_db)):
     """供应商采购集中度：按月统计各供应商采购金额/占比/订单数。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -1468,7 +1472,7 @@ async def concentration_analysis(month: str = None,
 
 @router.get("/concentration-trend")
 async def concentration_trend(months: int = 6,
-                              current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                              current_user: User = Depends(check_staff_permission(_CONCENTRATION_PERMISSION)), db: AsyncSession = Depends(get_db)):
     """集中度趋势：最近 N 个月最高供应商占比变化。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):

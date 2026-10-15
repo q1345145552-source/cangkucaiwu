@@ -5,10 +5,14 @@ from app.database import get_db
 from app.models.group_order import GroupOrder, GroupOrderParticipant, GroupOrderStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_role
+from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role, require_role
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_GROUP_ORDER_PERMISSION = MENU_PERMISSIONS_BY_KEY["group_order"].label
 
 router = APIRouter()
 
@@ -53,7 +57,7 @@ async def _get_participant_details(db: AsyncSession, go_id: int):
 @router.get("")
 async def list_group_orders(
     page: int = 1, page_size: int = 20, status: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """所有开放的拼单对所有仓库可见，浏览阶段不限制"""
@@ -111,7 +115,7 @@ async def list_group_orders(
 
 
 @router.post("")
-async def create_group_order(req: GOCreate, current_user: User = Depends(get_current_user),
+async def create_group_order(req: GOCreate, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                               db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -127,7 +131,7 @@ async def create_group_order(req: GOCreate, current_user: User = Depends(get_cur
 
 
 @router.post("/{go_id}/join")
-async def join_group_order(go_id: int, req: JoinRequest, current_user: User = Depends(get_current_user),
+async def join_group_order(go_id: int, req: JoinRequest, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                             db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -165,7 +169,7 @@ async def join_group_order(go_id: int, req: JoinRequest, current_user: User = De
 
 
 @router.get("/{go_id}/participants")
-async def list_participants(go_id: int, current_user: User = Depends(get_current_user),
+async def list_participants(go_id: int, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                             db: AsyncSession = Depends(get_db)):
     go = (await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))).scalar_one_or_none()
     if not go:
@@ -180,7 +184,7 @@ async def list_participants(go_id: int, current_user: User = Depends(get_current
 @router.get("/history")
 async def history(
     page: int = 1, page_size: int = 50,
-    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(GroupOrder).where(
@@ -227,7 +231,7 @@ async def history(
 
 
 @router.get("/{go_id}")
-async def get_order_detail(go_id: int, current_user: User = Depends(get_current_user),
+async def get_order_detail(go_id: int, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                             db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
@@ -251,7 +255,7 @@ async def get_order_detail(go_id: int, current_user: User = Depends(get_current_
 
 
 @router.put("/{go_id}/close")
-async def close_order(go_id: int, current_user: User = Depends(get_current_user),
+async def close_order(go_id: int, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                       db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
@@ -282,7 +286,7 @@ async def close_order(go_id: int, current_user: User = Depends(get_current_user)
 
 @router.put("/{go_id}/complete")
 async def complete_order(go_id: int, req: CompleteRequest,
-                         current_user: User = Depends(get_current_user),
+                         current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
@@ -301,7 +305,7 @@ async def complete_order(go_id: int, req: CompleteRequest,
 
 @router.put("/{go_id}/cancel")
 async def cancel_order(go_id: int, req: CancelRequest,
-                        current_user: User = Depends(get_current_user),
+                        current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                         db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
@@ -319,7 +323,9 @@ async def cancel_order(go_id: int, req: CancelRequest,
 
 
 @router.put("/participant/{participant_id}/ban")
-async def ban_participant(participant_id: int, current_user: User = Depends(require_role(Role.SUPER_ADMIN)),
+async def ban_participant(participant_id: int,
+                          _permission: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
+                          current_user: User = Depends(require_role(Role.SUPER_ADMIN)),
                           db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(GroupOrderParticipant).where(GroupOrderParticipant.id == participant_id))
     p = result.scalar_one_or_none()
