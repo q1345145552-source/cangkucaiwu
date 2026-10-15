@@ -8,16 +8,46 @@ import { useRouter } from "next/navigation";
 import { Key, UserPlus, MessageCircle, Pencil, Trash2, DollarSign, Clock, History, Phone } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
-const PERM_LABELS: Record<string, string> = {
-  "到账流水": "到账流水",
-  "备用金管理": "备用金管理",
-  "报销管理": "报销管理",
-  "运营收支": "运营收支",
-  "账期管理": "账期管理",
-  "操作日志": "操作日志",
-  "供应商管理": "供应商管理",
-  "其他收支": "其他收支",
-};
+interface MenuPermission {
+  key: string;
+  menu_key: string;
+  label: string;
+  selectable: boolean;
+}
+
+function PermissionCheckboxes({ permissions, selected, onToggle, loading, error, onRetry }: {
+  permissions: MenuPermission[];
+  selected: string[];
+  onToggle: (label: string) => void;
+  loading: boolean;
+  error: string;
+  onRetry: () => void;
+}) {
+  const selectable = permissions.filter(permission => permission.selectable);
+  // 后端原八项兼容中文 key；其余项使用英文 menu_key，不再维护第二份权限名单。
+  const groups = [
+    { label: "财务类", items: selectable.filter(permission => permission.key !== permission.menu_key) },
+    { label: "业务类", items: selectable.filter(permission => permission.key === permission.menu_key) },
+  ];
+  if (loading) return <p className="text-sm text-gray-500" role="status">权限清单加载中...</p>;
+  if (error) return <div className="text-sm text-red-600" role="alert">{error} <button type="button" onClick={onRetry} className="underline">重试</button></div>;
+  return (
+    <div className="border rounded p-2 space-y-3 max-h-72 overflow-y-auto overscroll-contain" aria-label="扩展权限勾选项">
+      {groups.map(group => (
+        <fieldset key={group.label}>
+          <legend className="text-sm font-medium mb-1">{group.label}</legend>
+          {group.items.map(permission => (
+            <label key={permission.menu_key} className="flex items-center gap-2 cursor-pointer py-2 min-h-[44px]">
+              <input type="checkbox" checked={selected.includes(permission.label)}
+                onChange={() => onToggle(permission.label)} className="rounded" />
+              <span className="text-sm">{permission.label}</span>
+            </label>
+          ))}
+        </fieldset>
+      ))}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -32,6 +62,9 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "", warehouse_ids: [] as number[] });
   const [newPerms, setNewPerms] = useState<string[]>([]);
+  const [menuPermissions, setMenuPermissions] = useState<MenuPermission[]>([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
+  const [permissionsError, setPermissionsError] = useState("");
   const [warehouses, setWarehouses] = useState<any[]>([]);
   // 老板联系方式
   const [bossContact, setBossContact] = useState({ name: "", phone: "" });
@@ -48,7 +81,7 @@ export default function SettingsPage() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); } if (tab === "rates") loadRates(); }, [tab]);
+  useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); loadPermissions(); } if (tab === "rates") loadRates(); }, [tab]);
   useEffect(() => { if (user?.role === "warehouse_admin" || user?.role === "super_admin") loadBossContact(); }, [user?.role]);
 
   async function loadBossContact() {
@@ -67,6 +100,18 @@ export default function SettingsPage() {
       setNewUser(prev => ({ ...prev, role: "warehouse_admin" }));
     }
   }, [user?.role]);
+
+  async function loadPermissions() {
+    setPermissionsLoading(true);
+    setPermissionsError("");
+    try {
+      setMenuPermissions(await api.get<MenuPermission[]>("/users/permissions"));
+    } catch {
+      setPermissionsError("权限清单加载失败，请重试");
+    } finally {
+      setPermissionsLoading(false);
+    }
+  }
 
   async function loadWarehouses() {
     try { const r = await api.get<any>("/warehouses?page=1&page_size=100"); setWarehouses(r.data || []); } catch {}
@@ -255,7 +300,7 @@ export default function SettingsPage() {
               <div><label className="form-label">用户名</label><input className="form-input text-sm" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">显示名称</label><input className="form-input text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
-              <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value})}>
+              <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>{setNewUser({...newUser,role:e.target.value}); setNewPerms([]);}}>
                 {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
                 {user?.role === "warehouse_admin" && (<>
                   <option value="supervisor">仓库主管</option>
@@ -302,18 +347,12 @@ export default function SettingsPage() {
               {(newUser.role === "supervisor" || newUser.role === "staff") && (
                 <div>
                   <label className="form-label">扩展权限</label>
-                  <div className="border rounded p-2 space-y-1">
-                    {Object.entries(PERM_LABELS).map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
-                        <input type="checkbox" checked={newPerms.includes(key)}
-                          onChange={(e) => setNewPerms(prev => e.target.checked ? [...prev, key] : prev.filter(p => p !== key))} />
-                        <span className="text-sm">{label}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <PermissionCheckboxes permissions={menuPermissions} selected={newPerms}
+                    onToggle={label => setNewPerms(prev => prev.includes(label) ? prev.filter(p => p !== label) : [...prev, label])}
+                    loading={permissionsLoading} error={permissionsError} onRetry={loadPermissions} />
                 </div>
               )}
-              <button onClick={createUser} className="btn-primary">创建用户</button>
+              <button onClick={createUser} disabled={(newUser.role === "supervisor" || newUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="btn-primary">创建用户</button>
             </div>
           </div>
 
@@ -329,7 +368,7 @@ export default function SettingsPage() {
                   <td>{u.warehouse_ids && u.warehouse_ids.length > 1 ? `${u.warehouse_ids.length} 个仓库` : (u.warehouse_name || "-")}</td>
                   <td className="text-xs text-gray-500">
                     {u.extra_permissions && u.extra_permissions.length > 0
-                      ? u.extra_permissions.map((p: string) => PERM_LABELS[p] || p).join(", ")
+                      ? u.extra_permissions.join(", ")
                       : "-"}
                   </td>
                   <td><span className={u.is_active ? "text-green-600" : "text-red-600"}>{u.is_active ? "启用" : "禁用"}</span></td>
@@ -397,24 +436,13 @@ export default function SettingsPage() {
                 {(editUser.role === "staff" || editUser.role === "supervisor") && (
                   <div className="mb-4">
                     <div className="text-sm font-medium mb-2">扩展权限</div>
-                    <div className="space-y-1">
-                      {Object.entries(PERM_LABELS).map(([key, label]) => (
-                        <label key={key} className="flex items-center gap-2 cursor-pointer py-1">
-                          <input
-                            type="checkbox"
-                            checked={editPerms.includes(key)}
-                            onChange={() => togglePerm(key)}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{label}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <PermissionCheckboxes permissions={menuPermissions} selected={editPerms}
+                      onToggle={togglePerm} loading={permissionsLoading} error={permissionsError} onRetry={loadPermissions} />
                   </div>
                 )}
                 <div className="flex justify-end gap-3">
                   <button onClick={() => setEditUser(null)} className="btn-secondary">取消</button>
-                  <button onClick={saveEdit} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
+                  <button onClick={saveEdit} disabled={(editUser.role === "supervisor" || editUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
                 </div>
               </div>
             </div>

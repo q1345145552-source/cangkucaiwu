@@ -38,8 +38,9 @@ def test_menu_coverage_and_legacy_compatibility():
     assert actual["incoming"].as_dict()["default_roles"] == ["warehouse_admin"]
     assert actual["payable"].as_dict()["default_roles"] == ["warehouse_admin"]
     settings = (ROOT / "frontend/src/app/(dashboard)/settings/page.tsx").read_text()
-    block = settings.split("const PERM_LABELS:", 1)[1].split("};", 1)[0]
-    assert re.findall(r'"([^"]+)":', block) == LEGACY_NAMES
+    assert "PERM_LABELS" not in settings
+    assert 'api.get<MenuPermission[]>("/users/permissions")' in settings
+    assert "permission.selectable" in settings
     for item in MENU_PERMISSIONS:
         assert (ROOT / "frontend/src/app/(dashboard)" / item.path.lstrip("/") / "page.tsx").is_file()
 
