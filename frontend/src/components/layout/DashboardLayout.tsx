@@ -98,32 +98,40 @@ const navItems: NavItem[] = [
   },
 ];
 
-const STAFF_EXTRA_MAP: Record<string, string | string[]> = {
-  incoming: "到账流水",
-  expense_fund: "备用金管理",
-  reimbursement: "报销管理",
-  income_expense: "运营收支",
-  operating: "运营收支",
-  credit: "账期管理",
-  suppliers: "供应商管理",
-  payable: "供应商管理",
-  payment_plans: "供应商管理",
-  audit_logs: "操作日志",
-  other_income_expense: "其他收支",
-};
+interface MenuPermission {
+  menu_key: string;
+  label: string;
+  path: string;
+  roles: string[];
+  selectable: boolean;
+}
 
-function hasAccess(item: NavItem, user: any): boolean {
-  if (!user || !item.roles.includes(user.role)) return false;
-  if (user.role === "staff" || user.role === "supervisor") {
-    const perms = user.extra_permissions || [];
-    const required = STAFF_EXTRA_MAP[item.key];
-    if (required) {
-      if (Array.isArray(required)) return required.some(p => perms.includes(p));
-      return perms.includes(required);
-    }
-    return true;
+function hasAccess(item: NavItem, user: any, permissions: MenuPermission[]): boolean {
+  if (!user) return false;
+  // 管理员、超管和劳工保留原菜单；勾选权限不扩大他们的角色范围。
+  if (user.role !== "staff" && user.role !== "supervisor") {
+    return item.roles.includes(user.role);
   }
-  return true;
+  // 劳工自助入口仍只属于劳工，不混入管理端。
+  if (item.roles.every(role => role === "warehouse_labor")) return false;
+  const permission = permissions.find(p => p.menu_key === item.key);
+  if (!permission) return false;
+  if (!permission.selectable) return item.roles.includes(user.role);
+  // 请假与考勤共用原有入口；不新增菜单、不改变地址。
+  return permissions.some(p => p.selectable && p.path === permission.path
+    && (user.extra_permissions || []).includes(p.label));
+}
+
+function filterNavItems(items: NavItem[], user: any, permissions: MenuPermission[]): NavItem[] {
+  return items.flatMap(item => {
+    if (item.children) {
+      const children = filterNavItems(item.children, user, permissions);
+      const permissionBased = user?.role === "staff" || user?.role === "supervisor";
+      if (!children.length || (!permissionBased && !hasAccess(item, user, permissions))) return [];
+      return [{ ...item, children }];
+    }
+    return hasAccess(item, user, permissions) ? [item] : [];
+  });
 }
 
 interface WarehouseInfo {
@@ -147,6 +155,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [isAllWarehouses, setIsAllWarehouses] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [menuPermissions, setMenuPermissions] = useState<MenuPermission[]>([]);
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
@@ -163,11 +172,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     // Try stored user first
     const stored = localStorage.getItem("user");
     if (stored) {
-      try { setUser(JSON.parse(stored)); } catch {}
+      try {
+        const savedUser = JSON.parse(stored);
+        // 管理端权限以本次 /me 返回为准，避免撤权后短暂显示旧菜单。
+        if (savedUser.role !== "staff" && savedUser.role !== "supervisor") setUser(savedUser);
+      } catch {}
     }
 
     // Fetch /me for warehouse list
-    api.get<any>("/auth/me").then(me => {
+    api.get<any>("/auth/me").then(async me => {
+      if (me.role === "staff" || me.role === "supervisor") {
+        const permissions = await api.get<MenuPermission[]>("/users/permissions");
+        setMenuPermissions(permissions);
+      }
       setUser(me);
       localStorage.setItem("user", JSON.stringify(me));
       if (me.warehouses && me.warehouses.length > 0) {
@@ -217,7 +234,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     router.push("/login");
   };
 
-  const filteredNav = navItems.filter(item => hasAccess(item, user));
+  const filteredNav = filterNavItems(navItems, user, menuPermissions);
+  const settingsItem = navItems.find(item => item.key === "settings_group")?.children?.find(item => item.key === "settings");
+  const showUsersManagement = user?.role === "warehouse_labor" || (settingsItem && hasAccess(settingsItem, user, menuPermissions));
   
   // Sidebar content
   const sidebarContent = (
@@ -247,7 +266,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </button>
                 {expandedMenu === item.key && (sidebarOpen || isMobile) && (
                   <div className="bg-slate-800">
-                    {item.children.filter(c => hasAccess(c, user)).map(child => (
+                    {item.children.map(child => (
                       <Link key={child.key} href={child.href || "#"} className="flex items-center gap-3 pl-10 pr-4 py-3 text-sm hover:bg-slate-700 min-h-[44px]">
                         {child.icon}<span>{t(child.label)}</span>
                       </Link>
@@ -395,9 +414,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <Link href="/settings" className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
                     <Key size={16} /> {t("change_password")}
                   </Link>
-                  <Link href="/settings" className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
-                    <UserCog size={16} /> {t("users_management")}
-                  </Link>
+                  {showUsersManagement && (
+                    <Link href="/settings" className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 min-h-[44px]">
+                      <UserCog size={16} /> {t("users_management")}
+                    </Link>
+                  )}
                   <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 text-red-500 min-h-[44px]">
                     <LogOut size={16} /> {t("logout")}
                   </button>
