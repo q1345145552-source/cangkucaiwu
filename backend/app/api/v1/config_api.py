@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
 from app.models.expense_fund import SystemSetting
-from app.core.permissions import get_current_user, get_wh_id, Role
+from app.core.permissions import get_current_user, get_wh_id, Role, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.core.timezone import thai_now
 from app.services.schedule import (
     get_work_schedule, parse_hhmm, WORK_TIME_FIELDS, ORDER_FIELDS, OVERTIME_LIMIT_KEY,
@@ -51,7 +52,7 @@ async def get_work_schedule_settings(current_user: User = Depends(get_current_us
 
 
 @router.put("/work-schedule")
-async def set_work_schedule_settings(req: WorkScheduleSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def set_work_schedule_settings(req: WorkScheduleSet, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     """保存仓库作息（仅仓库管理员）。校验时间顺序：上班 < 迟到半小时 < 迟到1小时 < 午休开始 < 午休结束 < 早退1小时 < 早退半小时 < 下班。"""
     if current_user.role != Role.WAREHOUSE_ADMIN:
         raise HTTPException(403, "只有仓库管理员可以修改作息")

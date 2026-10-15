@@ -11,6 +11,7 @@ from app.models.audit_log import AuditLog
 from app.models.expense_fund import SystemSetting
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_ids, Role, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -24,7 +25,7 @@ class BossContactSet(BaseModel):
 
 
 @router.get("/boss-contact")
-async def get_boss_contact(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_boss_contact(current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)), db: AsyncSession = Depends(get_db)):
     """读取老板联系方式（称呼 + 电话），用于采购单 PDF。"""
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
@@ -39,7 +40,7 @@ async def get_boss_contact(current_user: User = Depends(get_current_user), db: A
 
 
 @router.put("/boss-contact")
-async def set_boss_contact(req: BossContactSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def set_boss_contact(req: BossContactSet, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)), db: AsyncSession = Depends(get_db)):
     """保存老板联系方式（称呼 + 电话）。"""
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN):
         raise HTTPException(403, "无权限")
@@ -90,7 +91,7 @@ async def operation_logs(
     } for l in logs], "total": total, "page": page, "page_size": page_size}
 
 @router.post("/backup")
-async def backup_all_data(current_user: User = Depends(get_current_user),
+async def backup_all_data(current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role != Role.SUPER_ADMIN:
         return {"error": "仅超级管理员可操作"}

@@ -5,7 +5,8 @@ from datetime import datetime
 from app.database import get_db
 from app.models.recharge import ExchangeRate
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.schemas.business import ExchangeRateCreate
 
 router = APIRouter()
@@ -14,7 +15,7 @@ router = APIRouter()
 
 @router.get("/rates")
 async def list_rates(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     """列出当前仓库的汇率变更记录（最新在前）"""
@@ -48,7 +49,7 @@ async def list_rates(
 @router.post("/rates")
 async def create_rate(
     req: ExchangeRateCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     """新增一条汇率记录。每次都新增，不覆盖旧记录。"""

@@ -27,6 +27,12 @@ ROUND5_PERMISSIONS = tuple(
     for key in ("payable", "payment_plans", "concentration", "group_order")
 )
 
+ROUND6_PERMISSION_MARKER = "menu_perms_round6_config_settings_efficiency_reports_ledger_reconciliation_backfilled_v1"
+ROUND6_PERMISSIONS = tuple(
+    MENU_PERMISSIONS_BY_KEY[key].label
+    for key in ("config_center", "settings", "labor_efficiency", "reports", "ledger", "reconciliation")
+)
+
 
 async def _backfill_permissions(conn: AsyncConnection, marker: str, permissions_to_add: tuple[str, ...]) -> int:
     """由调用方管理事务；失败向上抛出，阻止未补权限就启动服务。
@@ -79,6 +85,10 @@ async def backfill_round5_permissions(conn: AsyncConnection) -> int:
     return await _backfill_permissions(conn, ROUND5_PERMISSION_MARKER, ROUND5_PERMISSIONS)
 
 
+async def backfill_round6_permissions(conn: AsyncConnection) -> int:
+    return await _backfill_permissions(conn, ROUND6_PERMISSION_MARKER, ROUND6_PERMISSIONS)
+
+
 async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
     """启动只调用此入口，后续轮次继续在本文件登记；不触碰工资业务数据。"""
     return {
@@ -86,4 +96,5 @@ async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
         "round3": await backfill_round3_permissions(conn),
         "round4": await backfill_round4_permissions(conn),
         "round5": await backfill_round5_permissions(conn),
+        "round6": await backfill_round6_permissions(conn),
     }

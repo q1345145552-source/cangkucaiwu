@@ -10,6 +10,7 @@ from app.models.customer import Customer, PaymentAccount
 from app.models.supplier import Supplier
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
 from app.services.data_history import record_history
 
@@ -462,7 +463,7 @@ async def ledger(
     flow_type: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("运营收支")),
+    _perm=Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["ledger"].label)),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -714,7 +715,7 @@ async def ledger_export(
     start_date: str = None, end_date: str = None, source: str = None, flow_type: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("运营收支")),
+    _perm=Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["ledger"].label)),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

@@ -8,7 +8,8 @@ from app.database import get_db
 from app.models.recharge import RechargeDeclaration, IncomingFlow, ReconciliationResult, ReconMatchStatus, MatchStatus
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ router = APIRouter()
 async def get_unmatched(
     start_date: str = None, end_date: str = None,
     warehouse_id: int = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -72,7 +73,7 @@ async def get_unmatched(
 async def manual_match(
     declaration_id: int = Query(...), flow_id: int = Query(...),
     handling_note: str = Query(""),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -105,7 +106,7 @@ async def manual_match(
 @router.post("/unmatch")
 async def unmatch_record(
     record_id: int = Query(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -128,7 +129,7 @@ async def list_results(
     warehouse_id: int = None,
     search: str = None, search_code: str = None,
     page: int = 1, page_size: int = 50,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -218,7 +219,7 @@ async def export_reconciliation(
     start_date: str = None, end_date: str = None,
     warehouse_id: int = None,
     search: str = None, search_code: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:

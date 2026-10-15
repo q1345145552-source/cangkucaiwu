@@ -7,8 +7,8 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.models.warehouse import Warehouse
 from app.core.security import hash_password
-from app.core.permissions import get_current_user, require_role, Role, ROLE_HIERARCHY
-from app.core.menu_registry import MENU_PERMISSIONS
+from app.core.permissions import get_current_user, require_role, Role, ROLE_HIERARCHY, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS, MENU_PERMISSIONS_BY_KEY
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.data_history import record_history
 
@@ -20,7 +20,7 @@ async def list_users(
     page_size: int = Query(20, ge=1, le=100),
     role: str | None = None,
     warehouse_id: int | None = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(User).options(selectinload(User.warehouse))
@@ -101,7 +101,7 @@ async def list_available_permissions(current_user: User = Depends(get_current_us
 @router.post("")
 async def create_user(
     req: UserCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     # Role hierarchy check: can only create users with lower role
@@ -172,7 +172,7 @@ async def create_user(
 async def update_user(
     user_id: int,
     req: UserUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(User).where(User.id == user_id))
@@ -312,7 +312,7 @@ async def _delete_staff_or_labor(db: AsyncSession, user_id: int, username: str):
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     """删除用户：仓库管理员可删除自己仓库的财务/劳工；超级管理员删除仓库管理员（级联）。"""

@@ -896,7 +896,7 @@ class ApprovalThresholdSet(BaseModel):
 
 
 @router.get("/purchase-approval-threshold")
-async def get_approval_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_approval_threshold(current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["config_center"].label, MENU_PERMISSIONS_BY_KEY["suppliers"].label)), db: AsyncSession = Depends(get_db)):
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
@@ -906,7 +906,7 @@ async def get_approval_threshold(current_user: User = Depends(get_current_user),
 
 
 @router.put("/purchase-approval-threshold")
-async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     """门槛金额只有仓库管理员能设置（按当前选中仓库）。"""
     _forbid_super_admin(current_user)
     if current_user.role != Role.WAREHOUSE_ADMIN:

@@ -7,7 +7,8 @@ from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.customer import PaymentAccount
 from app.models.expense_fund import SystemSetting, ExpenseFund, ExpenseFundItem, ReviewStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission_any, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.core.timezone import thai_now, thai_today
 from pydantic import BaseModel, Field
 from datetime import datetime, date
@@ -301,7 +302,7 @@ async def approval_summary(
 
 @router.get("/threshold")
 async def get_threshold(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["config_center"].label, MENU_PERMISSIONS_BY_KEY["expense_approval"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_submit_role(current_user)
@@ -314,7 +315,7 @@ async def get_threshold(
 @router.put("/threshold")
 async def set_threshold(
     req: ThresholdSet,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     _check_manage_role(current_user)

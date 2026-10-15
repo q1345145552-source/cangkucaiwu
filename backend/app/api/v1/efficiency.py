@@ -11,7 +11,8 @@ from app.models.user import User
 from app.models.expense_fund import SystemSetting
 from app.models.recharge import RechargeDeclaration
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.core.timezone import thai_today, THAI_TZ
 from pydantic import BaseModel
 from datetime import datetime, date, time, timedelta
@@ -552,7 +553,7 @@ async def get_summary(
     view: str = Query("week"),
     week_start: str = None,
     month: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -615,7 +616,7 @@ def _week_label(monday: date, sunday: date) -> str:
 @router.get("/trend")
 async def get_trend(
     weeks: int = Query(12, ge=1, le=52),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -647,7 +648,7 @@ async def get_compare(
     view: str = Query("week"),
     week_start: str = None,
     month: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -702,7 +703,7 @@ async def get_compare(
 @router.get("/daily-orders")
 async def get_daily_orders(
     month: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -720,7 +721,7 @@ async def get_daily_orders(
 @router.put("/order-count")
 async def set_order_count(
     req: OrderCountSet,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -758,7 +759,7 @@ async def set_order_count(
 @router.get("/standard")
 async def get_standard(
     month: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -770,7 +771,7 @@ async def get_standard(
 
 @router.get("/standards")
 async def get_standards(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -798,7 +799,7 @@ async def get_standards(
 @router.put("/standard")
 async def set_standard(
     req: StandardSet,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -845,7 +846,7 @@ async def set_standard(
 @router.put("/manual-hour")
 async def set_manual_hour(
     req: ManualHourSet,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
@@ -897,7 +898,7 @@ async def set_manual_hour(
 async def delete_manual_hour(
     employee_id: int = Query(...),
     date: str = Query(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):

@@ -13,7 +13,8 @@ from app.models.payable import PayableBill
 from app.models.supplier import PurchaseOrder
 from app.models.credit import CreditCustomer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
@@ -89,7 +90,7 @@ def to_excel(headers, rows, sheet_name="Sheet1"):
 async def report_previews(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -169,7 +170,7 @@ async def report_previews(
 # ===== 1. 充值汇总 =====
 @router.get("/recharge-summary")
 async def recharge_summary(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
-                            current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                            current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(RechargeDeclaration)
@@ -187,7 +188,7 @@ async def recharge_summary(start_date: str = None, end_date: str = None, warehou
 # ===== 2. 到账汇总 =====
 @router.get("/incoming-summary")
 async def incoming_summary(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
-                            current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                            current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(IncomingFlow)
@@ -205,7 +206,7 @@ async def incoming_summary(start_date: str = None, end_date: str = None, warehou
 # ===== 3. 收支报表 =====
 @router.get("/income-expense")
 async def income_expense_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
-                                 current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                                 current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_ids = get_wh_ids(current_user)
@@ -256,7 +257,7 @@ async def income_expense_report(start_date: str = None, end_date: str = None, wa
 # ===== 4. 应付报表 =====
 @router.get("/payable")
 async def payable_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
-                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                          current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PayableBill)
@@ -283,7 +284,7 @@ async def payable_report(start_date: str = None, end_date: str = None, warehouse
 # ===== 5. 备用金报表（当前状态，不按时间） =====
 @router.get("/expense-fund")
 async def expense_fund_report(warehouse_id: int = None, format: str = "json",
-                               current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                               current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(ExpenseFund)
@@ -305,7 +306,7 @@ async def expense_fund_report(warehouse_id: int = None, format: str = "json",
 # ===== 6. 报销报表 =====
 @router.get("/reimbursement")
 async def reimbursement_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
-                                current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                                current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Reimbursement)
@@ -324,7 +325,7 @@ async def reimbursement_report(start_date: str = None, end_date: str = None, war
 # ===== 7. 账期报表（当前状态，不按时间） =====
 @router.get("/credit")
 async def credit_report(warehouse_id: int = None, format: str = "json",
-                         current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                         current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(CreditCustomer)
@@ -344,7 +345,7 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
 # ===== 8. 对账差异 =====
 @router.get("/reconciliation-diff")
 async def reconciliation_diff_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
-                                      current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+                                      current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_ids = get_wh_ids(current_user)
