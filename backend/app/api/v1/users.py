@@ -7,7 +7,8 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.models.warehouse import Warehouse
 from app.core.security import hash_password
-from app.core.permissions import get_current_user, require_role, Role, STAFF_PERMISSIONS, ROLE_HIERARCHY
+from app.core.permissions import get_current_user, require_role, Role, ROLE_HIERARCHY
+from app.core.menu_registry import MENU_PERMISSIONS
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.data_history import record_history
 
@@ -94,8 +95,8 @@ async def list_users(
 
 @router.get("/permissions")
 async def list_available_permissions(current_user: User = Depends(get_current_user)):
-    """Return all available staff extra permissions."""
-    return [{"key": k, "label": v} for k, v in STAFF_PERMISSIONS.items()]
+    """完整菜单权限清单；原八项 key/label 保持中文值以兼容老账号。"""
+    return [item.as_dict() for item in MENU_PERMISSIONS]
 
 @router.post("")
 async def create_user(

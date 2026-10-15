@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.core.security import decode_token
+from app.core.menu_registry import STAFF_PERMISSIONS
 
 security_scheme = HTTPBearer()
 
@@ -22,17 +23,6 @@ ROLE_HIERARCHY = {
     Role.SUPERVISOR: 2,
     Role.STAFF: 1,
     Role.WAREHOUSE_LABOR: 0,
-}
-
-STAFF_PERMISSIONS = {
-    "到账流水": "到账流水",
-    "备用金管理": "备用金管理",
-    "报销管理": "报销管理",
-    "运营收支": "运营收支",
-    "账期管理": "账期管理",
-    "操作日志": "操作日志",
-    "供应商管理": "供应商管理",
-    "其他收支": "其他收支",
 }
 
 def check_staff_permission(perm_key: str):
