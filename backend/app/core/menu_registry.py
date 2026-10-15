@@ -46,9 +46,9 @@ _ADMIN_OFFICE = ("super_admin", *_OFFICE)
 _ATTENDANCE = (*_MANAGERS, "warehouse_labor")
 
 MENU_PERMISSIONS: tuple[MenuPermission, ...] = (
-    MenuPermission("recharge", "充值申报", "/recharge", _OFFICE),
-    MenuPermission("customers", "客户档案", "/customers", _OFFICE),
-    MenuPermission("accounts", "收款账户", "/accounts", _MANAGERS),
+    MenuPermission("recharge", "充值申报", "/recharge", _OFFICE, permission_menu_key="recharge"),
+    MenuPermission("customers", "客户档案", "/customers", _OFFICE, permission_menu_key="customers"),
+    MenuPermission("accounts", "收款账户", "/accounts", _MANAGERS, permission_menu_key="accounts"),
     MenuPermission("employees", "员工档案", "/employees", _MANAGERS),
     MenuPermission("payroll", "工资", "/payroll", _MANAGERS),
     MenuPermission("salary_templates", "薪资模板", "/salary-templates", _MANAGERS),

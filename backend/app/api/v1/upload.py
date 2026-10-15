@@ -6,7 +6,8 @@ import os, uuid
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, check_staff_permission_any
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
 router = APIRouter()
 
@@ -44,7 +45,10 @@ async def upload_file(
 async def upload_recharge_screenshot(
     recharge_id: int = Form(...),
     file: UploadFile = File(...),
-    current_user = Depends(get_current_user),
+    current_user = Depends(check_staff_permission_any(
+        MENU_PERMISSIONS_BY_KEY["recharge"].label,
+        MENU_PERMISSIONS_BY_KEY["incoming"].label,
+    )),
     db: AsyncSession = Depends(get_db),
 ):
     """上传充值申报截图并关联到申报记录"""

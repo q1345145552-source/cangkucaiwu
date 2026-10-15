@@ -7,17 +7,32 @@ from app.models.recharge import RechargeDeclaration, CurrencyEnum, MatchStatus
 from app.models.customer import Customer
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
 from app.schemas.business import RechargeCreate
 from app.services.data_history import record_history
 
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PERMISSION = MENU_PERMISSIONS_BY_KEY["recharge"].label
+
 router = APIRouter()
+
+
+async def _check_customer_warehouse(db: AsyncSession, customer_id: int, warehouse_id: int):
+    customer_wh = (await db.execute(
+        select(Customer.warehouse_id).where(Customer.id == customer_id)
+    )).scalar_one_or_none()
+    if customer_wh is None:
+        raise HTTPException(400, "客户不存在")
+    if customer_wh != warehouse_id:
+        raise HTTPException(403, "只能使用申报所属仓库的客户")
+
 
 @router.get("")
 async def list_recharges(
     page: int = 1, page_size: int = 20, month: str = None,
     customer_id: int = None, status: str = None, search: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -65,7 +80,7 @@ async def list_recharges(
     } for r in records], "total": total, "page": page, "page_size": page_size}
 
 @router.post("")
-async def create_recharge(req: RechargeCreate, current_user: User = Depends(get_current_user),
+async def create_recharge(req: RechargeCreate, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -75,6 +90,7 @@ async def create_recharge(req: RechargeCreate, current_user: User = Depends(get_
         if not cust: raise HTTPException(400, "客户不存在")
         wh_id = cust.warehouse_id
     if not wh_id: raise HTTPException(400, "无法确定仓库")
+    await _check_customer_warehouse(db, req.customer_id, wh_id)
 
     r = RechargeDeclaration(
         warehouse_id=wh_id, customer_id=req.customer_id,
@@ -97,7 +113,7 @@ async def create_recharge(req: RechargeCreate, current_user: User = Depends(get_
 
 
 @router.get("/{recharge_id}")
-async def get_recharge(recharge_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_recharge(recharge_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
@@ -107,7 +123,7 @@ async def get_recharge(recharge_id: int, current_user: User = Depends(get_curren
 
 @router.put("/{recharge_id}")
 async def edit_recharge(recharge_id: int, req: RechargeCreate,
-                        current_user: User = Depends(get_current_user),
+                        current_user: User = Depends(check_staff_permission(_PERMISSION)),
                         db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -118,6 +134,8 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
     if not r: raise HTTPException(404, "不存在")
     if r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作自己仓库的数据")
+    if req.customer_id:
+        await _check_customer_warehouse(db, req.customer_id, r.warehouse_id)
     before = {
         "amount": r.amount, "currency": r.currency,
         "declare_date": r.declare_date.isoformat() if r.declare_date else None,
@@ -139,7 +157,7 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
 
 @router.delete("/{recharge_id}")
 async def delete_recharge(recharge_id: int,
-                          current_user: User = Depends(get_current_user),
+                          current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

@@ -4,8 +4,12 @@ from sqlalchemy import select, func, or_
 from app.database import get_db
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from app.schemas.business import CustomerCreate, CustomerUpdate
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PERMISSION = MENU_PERMISSIONS_BY_KEY["customers"].label
 
 router = APIRouter()
 
@@ -13,7 +17,12 @@ router = APIRouter()
 async def list_customers(
     page: int = 1, page_size: int = 20, search: str = None,
     credit_status: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(
+        _PERMISSION,
+        MENU_PERMISSIONS_BY_KEY["recharge"].label,
+        MENU_PERMISSIONS_BY_KEY["incoming"].label,
+        MENU_PERMISSIONS_BY_KEY["credit"].label,
+    )),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -47,7 +56,7 @@ async def list_customers(
     }
 
 @router.post("")
-async def create_customer(req: CustomerCreate, current_user: User = Depends(get_current_user),
+async def create_customer(req: CustomerCreate, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -62,7 +71,7 @@ async def create_customer(req: CustomerCreate, current_user: User = Depends(get_
     db.add(c); await db.flush(); return {"id": c.id, "message": "创建成功"}
 
 @router.get("/{customer_id}")
-async def get_customer(customer_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_customer(customer_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "客户不存在")
@@ -75,7 +84,7 @@ async def get_customer(customer_id: int, current_user: User = Depends(get_curren
 
 @router.put("/{customer_id}")
 async def update_customer(customer_id: int, req: CustomerUpdate,
-                          current_user: User = Depends(get_current_user),
+                          current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -89,7 +98,7 @@ async def update_customer(customer_id: int, req: CustomerUpdate,
     await db.flush(); return {"message": "更新成功"}
 
 @router.delete("/{customer_id}")
-async def delete_customer(customer_id: int, current_user: User = Depends(get_current_user),
+async def delete_customer(customer_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

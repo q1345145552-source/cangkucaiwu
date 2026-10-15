@@ -4,13 +4,21 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.customer import PaymentAccount
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from app.schemas.business import PaymentAccountCreate
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PERMISSION = MENU_PERMISSIONS_BY_KEY["accounts"].label
 
 router = APIRouter()
 
 @router.get("")
-async def list_accounts(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_accounts(current_user: User = Depends(check_staff_permission_any(
+        _PERMISSION,
+        MENU_PERMISSIONS_BY_KEY["operating"].label,
+        MENU_PERMISSIONS_BY_KEY["other_income_expense"].label,
+    )), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(PaymentAccount)
@@ -25,7 +33,7 @@ async def list_accounts(current_user: User = Depends(get_current_user), db: Asyn
                       "remark": a.remark} for a in accs]}
 
 @router.post("")
-async def create_account(req: PaymentAccountCreate, current_user: User = Depends(get_current_user),
+async def create_account(req: PaymentAccountCreate, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -39,7 +47,7 @@ async def create_account(req: PaymentAccountCreate, current_user: User = Depends
 
 @router.put("/{account_id}")
 async def update_account(account_id: int, req: PaymentAccountCreate,
-                         current_user: User = Depends(get_current_user),
+                         current_user: User = Depends(check_staff_permission(_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -53,7 +61,7 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
     await db.flush(); return {"message": "更新成功"}
 
 @router.put("/{account_id}/toggle-status")
-async def toggle_account_status(account_id: int, current_user: User = Depends(get_current_user),
+async def toggle_account_status(account_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                                 db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -66,7 +74,7 @@ async def toggle_account_status(account_id: int, current_user: User = Depends(ge
     await db.flush(); return {"message": "状态已切换", "status": a.status}
 
 @router.delete("/{account_id}")
-async def delete_account(account_id: int, current_user: User = Depends(get_current_user),
+async def delete_account(account_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

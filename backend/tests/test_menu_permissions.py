@@ -34,7 +34,7 @@ def test_menu_coverage_and_legacy_compatibility():
         assert actual[key].path == item["path"]
         assert set(actual[key].roles) == item["roles"]
     assert actual["leave"].path == "/attendance"
-    assert actual["recharge"].as_dict()["default_roles"] == list(actual["recharge"].roles)
+    assert actual["recharge"].as_dict()["default_roles"] == ["warehouse_admin"]
     assert actual["incoming"].as_dict()["default_roles"] == ["warehouse_admin"]
     assert actual["payable"].as_dict()["default_roles"] == ["warehouse_admin"]
     settings = (ROOT / "frontend/src/app/(dashboard)/settings/page.tsx").read_text()
