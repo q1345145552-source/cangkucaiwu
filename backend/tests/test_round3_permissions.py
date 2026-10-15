@@ -14,6 +14,7 @@ from app.models.payroll import PayrollRecord
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.services.permission_migrations import (
     ROUND2_PERMISSIONS, ROUND2_PERMISSION_MARKER, ROUND3_PERMISSIONS, ROUND3_PERMISSION_MARKER,
+    ROUND4_PERMISSIONS, ROUND4_PERMISSION_MARKER,
     backfill_round3_permissions, run_permission_migrations,
 )
 from tests.test_round2_permissions import environment, auth, set_perms, png
@@ -215,11 +216,12 @@ def test_round3_migration_preserves_payroll_and_revocations(tmp_path,monkeypatch
                 db.add(User(id=7,username='inactive-staff',display_name='停用财务',role='staff',
                             is_active=False,password_hash='unused',extra_permissions=['自定义旧权限']))
                 db.add(SystemSetting(warehouse_id=1,key=ROUND2_PERMISSION_MARKER,value='true'))
+                db.add(SystemSetting(warehouse_id=1,key=ROUND4_PERMISSION_MARKER,value='true'))
                 await db.commit()
             before=await snapshot(factory)
             async with engine.begin() as conn:
                 counts=await run_permission_migrations(conn)
-                assert counts=={'round2':0,'round3':3}
+                assert counts=={'round2':0,'round3':3,'round4':0}
             assert await snapshot(factory)==before
             async with factory() as db:
                 values=dict((await db.execute(select(User.id,User.extra_permissions))).all())
@@ -237,7 +239,7 @@ def test_round3_migration_preserves_payroll_and_revocations(tmp_path,monkeypatch
             assert await snapshot(factory)==before
             await set_perms(factory,3,[])
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0}
             async with factory() as db:
                 assert (await db.get(User,3)).extra_permissions==[]
             assert await snapshot(factory)==before
@@ -380,7 +382,8 @@ def test_labor_payslip_and_attendance_unchanged(tmp_path,monkeypatch):
                 response=await client.get('/api/v1/payroll/my-payslip',headers=auth(uid))
                 assert response.status_code==200,response.text
                 assert {r['id'] for r in response.json()['data']}==expected_ids
-            # 考勤本身不依赖员工权限；这一轮不改考勤的默认行为。
+            # 考勤不依赖员工档案权限；第四轮后独立授予考勤/请假权限。
+            await set_perms(factory,4,list(ROUND4_PERMISSIONS))
             for path in ('/attendance/leaves','/attendance/rest-days','/attendance/calendar?month=2026-10'):
                 response=await client.get('/api/v1'+path,headers=auth(4))
                 assert response.status_code==200,response.text

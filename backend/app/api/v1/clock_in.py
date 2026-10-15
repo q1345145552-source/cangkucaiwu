@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_, and_
 from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
 from app.services.image_utils import thumb_path_of
@@ -13,6 +13,11 @@ from datetime import datetime, date, time, timedelta
 from pydantic import BaseModel
 from typing import Optional, List
 import os, uuid, base64
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_ATTENDANCE_PERMISSION = MENU_PERMISSIONS_BY_KEY["attendance"].label
+_LEAVE_PERMISSION = MENU_PERMISSIONS_BY_KEY["leave"].label
 
 router = APIRouter()
 UPLOAD_DIR = "/app/uploads"
@@ -60,7 +65,7 @@ async def clock_in(
     request: Request,
     session: int = Form(...),
     photo_base64: str = Form(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
@@ -142,7 +147,7 @@ async def clock_in(
 @router.get("/today")
 async def get_today(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
@@ -222,7 +227,7 @@ async def get_today(
 async def list_records(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.employee import Employee
@@ -326,7 +331,7 @@ async def _count_makeup_days(db: AsyncSession, uid: int, wh_id: int, target: dat
 @router.post("/makeup")
 async def makeup_clock_in(
     req: MakeupCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """管理员/主管补卡：按标准时段时间生成打卡记录，单独标记为补卡，不参与迟到判定。"""
@@ -440,7 +445,7 @@ async def makeup_clock_in(
 async def makeup_count(
     employee_id: int = Query(...),
     date: str = Query(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """查询某员工在某自然月里已补卡天数 / 剩余次数。"""
@@ -477,7 +482,7 @@ async def makeup_count(
 async def export_records(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """导出当前时间段内的全部打卡记录（一个员工一天一行），生成 Excel。"""
@@ -634,7 +639,7 @@ async def export_records(
 async def get_photos(
     employee_id: int = Query(...),
     date: str = Query(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """Admin: get all clock-in photos for a specific employee on a specific date"""

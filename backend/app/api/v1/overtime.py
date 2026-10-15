@@ -6,13 +6,17 @@ from app.models.overtime import OvertimeTask, OvertimeAssignment
 from app.models.employee import Employee
 from app.models.salary_template import SalaryTemplate
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
 from app.core.messages import t, get_request_lang
 from pydantic import BaseModel, field_validator
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date
 from typing import Optional, List
 import math
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_PERMISSION = MENU_PERMISSIONS_BY_KEY["overtime"].label
 
 router = APIRouter()
 
@@ -69,7 +73,7 @@ def _half_hours_from_times(start_time: str, end_time: str) -> int:
 @router.post("")
 async def create_overtime(
     req: OvertimeCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -199,7 +203,7 @@ async def verify_overtime(
     task_id: int,
     req: OvertimeVerify,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
@@ -317,7 +321,7 @@ async def verify_overtime(
 async def confirm_overtime(
     overtime_id: int,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
@@ -392,7 +396,7 @@ async def dispute_overtime(
     request: Request,
     reason: str = Form(None),
     file: UploadFile = File(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
@@ -473,7 +477,7 @@ async def list_overtimes(
     page_size: int = Query(50, ge=1, le=200),
     status: str = None,
     month: str = None,  # YYYY-MM
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     labor_emp_id = None
@@ -594,7 +598,7 @@ async def list_overtimes(
 
 @router.get("/pending")
 async def pending_overtimes(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_LABOR,):
@@ -665,7 +669,7 @@ async def pending_overtimes(
 @router.get("/monthly-hours")
 async def monthly_hours(
     month: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if month is None:
@@ -725,7 +729,7 @@ async def monthly_hours(
 
 @router.get("/limit")
 async def get_overtime_limit(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
@@ -738,7 +742,7 @@ async def get_overtime_limit(
 @router.put("/limit")
 async def set_overtime_limit(
     req: OvertimeLimitSet,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -778,7 +782,7 @@ async def set_overtime_limit(
 @router.delete("/{overtime_id}")
 async def delete_overtime(
     overtime_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):

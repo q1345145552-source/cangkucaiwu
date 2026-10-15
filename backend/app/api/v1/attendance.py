@@ -8,7 +8,7 @@ from app.models.clock_in_records import ClockInRecord
 from app.models.user import User
 from app.models.warehouse import Warehouse
 
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from app.core.messages import t, get_request_lang
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
@@ -16,6 +16,11 @@ from app.services.schedule import get_work_schedule
 from datetime import datetime, date, timedelta
 from typing import Optional, List
 import os, uuid
+
+from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+
+_ATTENDANCE_PERMISSION = MENU_PERMISSIONS_BY_KEY["attendance"].label
+_LEAVE_PERMISSION = MENU_PERMISSIONS_BY_KEY["leave"].label
 
 router = APIRouter()
 
@@ -85,7 +90,7 @@ async def create_leave(
     duration_type: str = Form("full"),
     hours: str = Form(None),
     file: UploadFile = File(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
@@ -179,7 +184,7 @@ class LeaveBatchCreate(BaseModel):
 @router.post("/leaves/admin-record")
 async def admin_record_leave(
     req: LeaveBatchCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """仓库管理员/主管代员工录请假：选日期范围，每天生成一条，直接生效(已通过)，不走审批。"""
@@ -258,7 +263,7 @@ async def list_leaves(
     start_date: str = None,
     end_date: str = None,
     status: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -308,7 +313,7 @@ async def list_leaves(
     } for r, name in rows]}
 
 @router.put("/leaves/{leave_id}/approve")
-async def approve_leave(leave_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def approve_leave(leave_id: int, current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以审批")
     lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id))).scalar_one_or_none()
@@ -322,7 +327,7 @@ async def approve_leave(leave_id: int, current_user: User = Depends(get_current_
     return {"message": "已批准"}
 
 @router.put("/leaves/{leave_id}/reject")
-async def reject_leave(leave_id: int, reason: str = Form(None), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def reject_leave(leave_id: int, reason: str = Form(None), current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以审批")
     lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id))).scalar_one_or_none()
@@ -344,7 +349,7 @@ class RestDayCreate(BaseModel):
 @router.post("/rest-days")
 async def set_rest_days(
     req: RestDayCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -390,7 +395,7 @@ async def set_rest_days(
 async def list_rest_days(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -427,7 +432,7 @@ async def list_rest_days(
     } for r, name in rows]}
 
 @router.delete("/rest-days/{rest_day_id}")
-async def delete_rest_day(rest_day_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def delete_rest_day(rest_day_id: int, current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以操作")
     rd = (await db.execute(select(RestDay).where(RestDay.id == rest_day_id))).scalar_one_or_none()
@@ -447,7 +452,7 @@ class AbsenceCreate(BaseModel):
 @router.post("/absences")
 async def mark_absence(
     req: AbsenceCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -476,7 +481,7 @@ async def mark_absence(
     return {"message": "已标记未到", "id": a.id}
 
 @router.delete("/absences/{absence_id}")
-async def remove_absence(absence_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def remove_absence(absence_id: int, current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     a = (await db.execute(select(Absence).where(Absence.id == absence_id))).scalar_one_or_none()
@@ -492,7 +497,7 @@ async def remove_absence(absence_id: int, current_user: User = Depends(get_curre
 async def get_calendar(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
