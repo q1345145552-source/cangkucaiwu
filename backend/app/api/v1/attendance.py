@@ -12,6 +12,7 @@ from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.messages import t, get_request_lang
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
+from app.services.schedule import get_work_schedule
 from datetime import datetime, date, timedelta
 from typing import Optional, List
 import os, uuid
@@ -19,6 +20,56 @@ import os, uuid
 router = APIRouter()
 
 UPLOAD_DIR = "/app/uploads"
+
+
+def _clock_hours_of_day(records) -> float:
+    """按打卡记录计算单日打卡工时（与工资端 _day_hours 口径一致）：
+    - 4 条：(第2-第1) + (第4-第3)
+    - 2 条：第2-第1
+    records 需按 clocked_in_at 升序。"""
+    n = len(records)
+    times = [r.clocked_in_at for r in records]
+    if n == 4:
+        total = 0.0
+        for a, b in ((0, 1), (2, 3)):
+            if times[a] is not None and times[b] is not None:
+                total += max((times[b] - times[a]).total_seconds() / 3600.0, 0.0)
+        return total
+    if n == 2:
+        if times[0] is not None and times[1] is not None:
+            return max((times[1] - times[0]).total_seconds() / 3600.0, 0.0)
+        return 0.0
+    return 0.0
+
+
+def _hhmm_minutes(hhmm):
+    try:
+        h, m = str(hhmm).split(":")
+        return int(h) * 60 + int(m)
+    except (ValueError, TypeError):
+        return None
+
+
+def _standard_daily_hours(sched: dict) -> float:
+    """当天应有工时 = 上午(午休开始-早上上班) + 下午(下午下班-午休结束)；异常回退 8 小时。"""
+    ms = _hhmm_minutes(sched.get("morning_start"))
+    nb = _hhmm_minutes(sched.get("noon_break_start"))
+    ne = _hhmm_minutes(sched.get("noon_break_end"))
+    ae = _hhmm_minutes(sched.get("afternoon_end"))
+    morning = (nb - ms) if (ms is not None and nb is not None and nb > ms) else 0
+    afternoon = (ae - ne) if (ne is not None and ae is not None and ae > ne) else 0
+    total_min = morning + afternoon
+    return total_min / 60.0 if total_min > 0 else 8.0
+
+
+def _fmt_hours(h: float) -> str:
+    """小时数格式化为字符串：整数不留小数，最多保留 2 位小数。"""
+    if h is None:
+        return ""
+    h2 = round(float(h), 2)
+    if h2 == int(h2):
+        return str(int(h2))
+    return f"{h2:.2f}".rstrip("0").rstrip(".")
 
 # ═══ Leave Request ════════════════════════════
 class LeaveCreate(BaseModel):
@@ -528,7 +579,25 @@ async def get_calendar(
         )
     )).scalars().all()
     leave_set = {(l.employee_id, l.leave_date) for l in leaves}
-    leave_map = {(l.employee_id, l.leave_date): (l.duration_type or "full") for l in leaves}
+    # 汇总同一天所有已通过请假：full/morning/afternoon 取标记，hours 累加小时数（一天多条要相加）
+    leave_map = {}
+    for l in leaves:
+        key = (l.employee_id, l.leave_date)
+        info = leave_map.setdefault(key, {"full": False, "morning": False, "afternoon": False, "hours": 0.0, "hours_has": False})
+        dt = l.duration_type or "full"
+        if dt == "full":
+            info["full"] = True
+        elif dt == "morning":
+            info["morning"] = True
+        elif dt == "afternoon":
+            info["afternoon"] = True
+        elif dt == "hours":
+            if l.hours is None:
+                # 小时数为空 → 按原来的全天假处理，不报错
+                info["full"] = True
+            else:
+                info["hours"] += float(l.hours)
+                info["hours_has"] = True
 
     # Get rest days (filtered by warehouse)
     rests = (await db.execute(
@@ -551,6 +620,10 @@ async def get_calendar(
         )
     )).scalars().all()
     absence_map = {(a.employee_id, a.absence_date): a for a in absences}
+
+    # 当天应有工时（用于判断按小时请假是否够整天）
+    work_sched = await get_work_schedule(db, wh_id)
+    standard_hours = _standard_daily_hours(work_sched)
 
     # 已删除员工已在上面查询中排除，这里不再回填
 
@@ -578,6 +651,8 @@ async def get_calendar(
             # Check rest / absence first（全天性质）
             session_count = 0
             has_late = False
+            clock_hours = 0.0
+            leave_hours_val = 0.0
             if (e.id, dt) in rest_set:
                 status_name_db = "rest"
             elif (e.id, dt) in absence_map:
@@ -587,48 +662,72 @@ async def get_calendar(
                 session_set = {c.session for c in sessions}
                 session_count = len(session_set)
                 has_late = any(cr.status in ("late_half", "late_one") for cr in sessions)
-                lt = leave_map.get((e.id, dt))
+                leave_info = leave_map.get((e.id, dt))
                 morning = {1, 2}
                 afternoon = {3, 4}
                 has_morning = morning <= session_set
                 has_afternoon = afternoon <= session_set
 
-                if lt == "full":
+                # 当天打卡工时（与工资端口径一致），按小时请假时用于扣减
+                sessions_by_time = sorted(sessions, key=lambda c: c.clocked_in_at or datetime.min)
+                clock_hours = _clock_hours_of_day(sessions_by_time)
+
+                status_name_db = None
+                if leave_info is None:
+                    pass
+                elif leave_info["full"]:
                     status_name_db = "leave"
-                elif lt == "morning":
+                elif leave_info["morning"]:
                     # 上午请假 + 下午打满2次卡 → 半天；否则按请假
                     status_name_db = "half" if has_afternoon else "leave"
-                elif lt == "afternoon":
+                elif leave_info["afternoon"]:
                     # 下午请假 + 上午打满2次卡 → 半天；否则按请假
                     status_name_db = "half" if has_morning else "leave"
-                elif has_morning and has_afternoon:
-                    status_name_db = "late" if has_late else "present"
-                elif session_count == 2 and (has_morning or has_afternoon):
-                    # 只打满一个半天（上午或下午2次卡），另一半没请假 → 半天旷工
-                    status_name_db = "half_absence"
-                elif session_count in (1, 2, 3):
-                    status_name_db = "partial"
-                elif session_count == 0:
-                    status_name_db = "missing" if dt <= thai_today() else "future"
-                else:
-                    status_name_db = "partial"
+                elif leave_info["hours_has"]:
+                    # 按小时请假：落到当天，显示「请假X小时」，工时扣减
+                    leave_hours_val = round(leave_info["hours"], 2)
+                    if leave_hours_val >= standard_hours:
+                        status_name_db = "leave"  # 够整天按请假算
+                    else:
+                        status_name_db = "hours_leave"
+
+                if status_name_db is None:
+                    if has_morning and has_afternoon:
+                        status_name_db = "late" if has_late else "present"
+                    elif session_count == 2 and (has_morning or has_afternoon):
+                        # 只打满一个半天（上午或下午2次卡），另一半没请假 → 半天旷工
+                        status_name_db = "half_absence"
+                    elif session_count in (1, 2, 3):
+                        status_name_db = "partial"
+                    elif session_count == 0:
+                        status_name_db = "missing" if dt <= thai_today() else "future"
+                    else:
+                        status_name_db = "partial"
 
             # Map DB names to Chinese
             status_cn = {
                 "present": "正常出勤", "late": "迟到", "leave": "请假",
                 "rest": "休息日", "absent": "未到", "missing": "未打卡",
                 "partial": "部分打卡", "half": "半天", "half_absence": "半天旷工",
+                "hours_leave": "按小时请假",
                 "future": "未到"
             }
+            if status_name_db == "hours_leave":
+                status_label = f"请假{_fmt_hours(leave_hours_val)}小时"
+            else:
+                status_label = status_cn.get(status_name_db, status_name_db)
             key_str = f"{dt.isoformat()}_{e.id}"
             events[key_str] = {
                 "date": dt.isoformat(),
                 "employee_id": e.id,
                 "employee_name": e.name,
                 "status": status_name_db,
-                "status_label": status_cn.get(status_name_db, status_name_db),
+                "status_label": status_label,
                 "session_count": session_count,
                 "has_late": has_late,
+                "leave_hours": leave_hours_val if status_name_db == "hours_leave" else None,
+                "clock_hours": round(clock_hours, 2),
+                "work_hours": round(max(clock_hours - leave_hours_val, 0.0), 2),
                 "detail": "",
             }
             if (e.id, dt) in absence_map:

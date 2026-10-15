@@ -16,6 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
   "half": "bg-teal-100 text-teal-700 border-teal-300",
   "half_absence": "bg-red-500 text-white border-red-600",
   "leave": "bg-purple-100 text-purple-700 border-purple-300",
+  "hours_leave": "bg-purple-100 text-purple-700 border-purple-300",
   "rest": "bg-blue-100 text-blue-700 border-blue-300",
   "absent": "bg-red-100 text-red-700 border-red-300",
   "missing": "bg-gray-100 text-gray-600 border-gray-300",
@@ -38,6 +39,12 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
     list.push({ date: `${y}-${m}-${dd}`, day: d.getDate(), weekday: dayNames[d.getDay()] });
   }
   return list;
+}
+
+function fmtHours(h: number): string {
+  if (h == null || isNaN(h)) return "0";
+  const r = Math.round(h * 100) / 100;
+  return String(r);
 }
 
 export default function AttendancePage() {
@@ -321,15 +328,32 @@ export default function AttendancePage() {
                     const isToday = dt === today;
                     const showCount = status === "present" || status === "late" || status === "partial";
                     const statusText = statusLabels[status] || "";
-                    const cellText = showCount ? `${sessionCount}/4` : (status === "future" ? "" : statusText);
+                    let cellText: string;
+                    let subText: string | null = null;
+                    if (status === "hours_leave") {
+                      cellText = `${t("att_status_leave")}${fmtHours(evt?.leave_hours ?? 0)}${t("hour_unit")}`;
+                      subText = `${t("hours")}${fmtHours(evt?.work_hours ?? 0)}h`;
+                    } else if (showCount) {
+                      cellText = `${sessionCount}/4`;
+                    } else if (status === "future") {
+                      cellText = "";
+                    } else {
+                      cellText = statusText;
+                    }
+                    const tooltip = status === "future"
+                      ? t("att_click_view_photos")
+                      : (status === "hours_leave"
+                          ? `${cellText} · ${t("hours")}${fmtHours(evt?.work_hours ?? 0)}h`
+                          : statusText) + " - " + t("att_click_view_photos");
                     return (
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
                           className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"} ${status === "half_absence" ? "font-bold" : ""}`}
-                          title={(status !== "future" ? statusText + " - " : "") + t("att_click_view_photos")}
+                          title={tooltip}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
-                          {cellText}
+                          <div>{cellText}</div>
+                          {subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
                         </div>
                       </td>
                     );
