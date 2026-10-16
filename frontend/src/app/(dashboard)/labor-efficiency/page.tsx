@@ -1,4 +1,5 @@
 "use client";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState, useCallback } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -148,12 +149,13 @@ function TrendChart({ data }: { data: any[] }) {
   );
 }
 
-function MonthStdCell({ label, value, onSave }: { label: string; value: number; onSave: (v: number) => void }) {
+function MonthStdCell({ label, value, onSave, canWrite }: { label: string; value: number; onSave: (v: number) => void; canWrite: boolean }) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => { setDraft(String(value)); }, [value]);
   return (
     <div className="border rounded-lg p-2">
       <div className="text-xs text-gray-500">{label}</div>
+      {canWrite ? (
       <input
         type="number" min={0} step="any" value={draft}
         onChange={e => setDraft(e.target.value)}
@@ -164,11 +166,13 @@ function MonthStdCell({ label, value, onSave }: { label: string; value: number; 
         onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
         className="w-full border rounded px-2 py-1 text-sm mt-1"
       />
+      ) : <div className="text-sm mt-1">{value}</div>}
     </div>
   );
 }
 
 export default function LaborEfficiencyPage() {
+  const canWrite = useMenuPermission("labor_efficiency");
   const { toast } = useToast();
   const router = useRouter();
   const [view, setView] = useState<"week" | "month">("week");
@@ -464,6 +468,7 @@ export default function LaborEfficiencyPage() {
             ))}
             {buildMonthDays(orderCalMonth).map((cell, i) => (
               cell.date ? (
+                canWrite ? (
                 <button key={i} onClick={() => openOrderModal(cell.date!)}
                   className="min-h-[52px] border rounded-lg p-1 flex flex-col items-center justify-center hover:border-blue-300 hover:bg-blue-50/40 bg-white">
                   <span className="text-gray-600">{cell.day}</span>
@@ -473,6 +478,17 @@ export default function LaborEfficiencyPage() {
                     <span className="text-gray-300 text-[10px] mt-0.5">-</span>
                   )}
                 </button>
+                ) : (
+                <div key={i}
+                  className="min-h-[52px] border rounded-lg p-1 flex flex-col items-center justify-center hover:border-blue-300 hover:bg-blue-50/40 bg-white">
+                  <span className="text-gray-600">{cell.day}</span>
+                  {dailyOrders[cell.date!] != null ? (
+                    <span className="text-blue-600 font-semibold text-xs mt-0.5">{dailyOrders[cell.date!]}</span>
+                  ) : (
+                    <span className="text-gray-300 text-[10px] mt-0.5">-</span>
+                  )}
+                </div>
+                )
               ) : (
                 <div key={i} className="min-h-[52px]"></div>
               )
@@ -482,6 +498,7 @@ export default function LaborEfficiencyPage() {
         <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 text-gray-700 font-medium"><Gauge size={16} className="text-amber-500" /> 当前标准（{stdMonth || "默认"}）</div>
           <p className="text-xs text-gray-400 mt-1">设置 {stdMonth || "默认"} 的人效标准，低于该值显示红色，达标显示绿色。</p>
+          {canWrite && (
           <div className="flex gap-2 mt-3">
             <input
               type="number"
@@ -500,6 +517,7 @@ export default function LaborEfficiencyPage() {
               <Save size={16} /> {stdSaving ? "保存中" : "保存"}
             </button>
           </div>
+          )}
         </div>
       </div>
 
@@ -576,7 +594,7 @@ export default function LaborEfficiencyPage() {
           </div>
         </div>
         <div className="mt-3 mb-2">
-          <MonthStdCell label="默认值（未设置月份用）" value={standards.default} onSave={saveDefaultStd} />
+          <MonthStdCell canWrite={canWrite} label="默认值（未设置月份用）" value={standards.default} onSave={saveDefaultStd} />
         </div>
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
           {Array.from({ length: 12 }, (_, i) => {
@@ -585,7 +603,7 @@ export default function LaborEfficiencyPage() {
             const custom = standards.monthly[monthKey] != null;
             return (
               <div key={monthKey} className="relative">
-                <MonthStdCell label={`${i + 1}月${custom ? " ·已设" : ""}`} value={val} onSave={(v) => saveMonthStd(monthKey, v)} />
+                <MonthStdCell canWrite={canWrite} label={`${i + 1}月${custom ? " ·已设" : ""}`} value={val} onSave={(v) => saveMonthStd(monthKey, v)} />
               </div>
             );
           })}
@@ -629,7 +647,7 @@ export default function LaborEfficiencyPage() {
                       </td>
                       {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d) => {
                         const info = dayMap.get(d);
-                        const canEdit = emp.employee_id != null;
+                        const canEdit = canWrite && emp.employee_id != null;
                         return (
                           <td key={d} className="px-2 py-2 text-center">
                             {info?.source === "pending" ? (
@@ -668,7 +686,7 @@ export default function LaborEfficiencyPage() {
       )}
 
       {/* 订单数录入弹窗 */}
-      {orderModal && (
+      {canWrite && orderModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setOrderModal(null)}>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
@@ -704,7 +722,7 @@ export default function LaborEfficiencyPage() {
       )}
 
       {/* 补录工时弹窗 */}
-      {suppModal && (
+      {canWrite && suppModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSuppModal(null)}>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-amber-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">

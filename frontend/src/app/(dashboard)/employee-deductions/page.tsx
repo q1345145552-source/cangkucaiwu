@@ -1,4 +1,5 @@
 "use client";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -11,6 +12,7 @@ function todayStr(): string {
 }
 
 export default function EmployeeDeductionsPage() {
+  const canWrite = useMenuPermission("employee_deductions");
   const { toast } = useToast(); const router = useRouter();
   const [rows, setRows] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -71,9 +73,9 @@ export default function EmployeeDeductionsPage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><MinusCircle size={24}/>员工扣款</h1>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+        {canWrite && (<button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
           <Plus size={16}/> 记一笔扣款
-        </button>
+        </button>)}
       </div>
 
       {/* 筛选 */}
@@ -122,9 +124,9 @@ export default function EmployeeDeductionsPage() {
                   <td className="px-3 py-3 text-gray-500 max-w-48 truncate" title={r.reason}>{r.reason}</td>
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-center">
-                    <button onClick={() => handleDelete(r.id)} className="text-red-400 hover:text-red-600" title="删除">
+                    {canWrite && (<button onClick={() => handleDelete(r.id)} className="text-red-400 hover:text-red-600" title="删除">
                       <Trash2 size={16}/>
-                    </button>
+                    </button>)}
                   </td>
                 </tr>
               ))}
@@ -133,7 +135,7 @@ export default function EmployeeDeductionsPage() {
         </div>
       )}
 
-      {showForm && (
+      {canWrite && showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">

@@ -1,4 +1,5 @@
 "use client";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -8,6 +9,7 @@ import { DollarSign, Plus, Edit2, Trash2 } from "lucide-react";
 const TYPE_LABELS: Record<string, string> = { hourly: "按小时", daily: "按天", monthly: "按月" };
 
 export default function SalaryTemplatesPage() {
+  const canWrite = useMenuPermission("salary_templates");
   const { toast } = useToast(); const router = useRouter();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,9 +72,9 @@ export default function SalaryTemplatesPage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><DollarSign size={24}/>薪资模板</h1>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+        {canWrite && (<button onClick={openCreate} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
           <Plus size={16}/> 新建模板
-        </button>
+        </button>)}
       </div>
 
       {loading ? (
@@ -105,8 +107,8 @@ export default function SalaryTemplatesPage() {
                   <td className="px-3 py-3 text-center">{r.usage_count ?? 0}</td>
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-3">
-                      <button onClick={() => openEdit(r)} className="text-blue-500 hover:text-blue-700" title="编辑"><Edit2 size={16}/></button>
-                      <button onClick={() => handleDelete(r)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={16}/></button>
+                      {canWrite && (<button onClick={() => openEdit(r)} className="text-blue-500 hover:text-blue-700" title="编辑"><Edit2 size={16}/></button>)}
+                      {canWrite && (<button onClick={() => handleDelete(r)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={16}/></button>)}
                     </div>
                   </td>
                 </tr>
@@ -116,7 +118,7 @@ export default function SalaryTemplatesPage() {
         </div>
       )}
 
-      {showForm && (
+      {canWrite && showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">

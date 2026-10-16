@@ -1,4 +1,5 @@
 "use client";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -8,6 +9,7 @@ import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp, Ban, C
 import SafeImage from "@/components/SafeImage";
 
 export default function EmployeesPage() {
+  const canWrite = useMenuPermission("employees");
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -440,7 +442,6 @@ export default function EmployeesPage() {
   }
 
   const activeEmployees = data.filter((e: any) => e.status !== "resigned");
-  const isAdmin = user?.role === "warehouse_admin" || user?.role === "supervisor";
 
   function toggleSelect(id: number) {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -477,7 +478,7 @@ export default function EmployeesPage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><Users size={24}/>员工档案</h1>
-        {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
+        {canWrite && (
           <div className="flex gap-2 items-center">
             <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
               <span>{currentCount}/{maxLimit}人</span>
@@ -501,16 +502,11 @@ export default function EmployeesPage() {
             </button>
           </div>
         )}
-        {user?.role === "super_admin" && (
-          <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}
-            className="bg-primary text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1">
-            <UserPlus size={16}/>新建员工
-          </button>
-        )}
+
       </div>
 
       {/* 批量操作栏 */}
-      {isAdmin && selectedIds.length > 0 && (
+      {canWrite && selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
           <span className="text-sm font-medium text-blue-700">已选 {selectedIds.length} 人</span>
           <button onClick={openBatchModal} className="bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600">
@@ -525,7 +521,7 @@ export default function EmployeesPage() {
         <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="border-b bg-gray-50">
-              {isAdmin && (
+              {canWrite && (
                 <th className="text-center px-2 py-3 w-10">
                   <input type="checkbox" checked={activeEmployees.length > 0 && selectedIds.length === activeEmployees.length}
                     onChange={toggleSelectAll} className="w-4 h-4 cursor-pointer align-middle" />
@@ -548,7 +544,7 @@ export default function EmployeesPage() {
               const tags = Array.isArray(e.tags) ? e.tags : (e.tags ? e.tags.split(",").filter(Boolean) : []);
               return (
                 <tr key={e.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => openDetail(e)}>
-                  {isAdmin && (
+                  {canWrite && (
                     <td className="px-2 py-3 text-center" onClick={ev => ev.stopPropagation()}>
                       <input type="checkbox" checked={selectedIds.includes(e.id)}
                         onChange={() => toggleSelect(e.id)} className="w-4 h-4 cursor-pointer align-middle" />
@@ -599,7 +595,7 @@ export default function EmployeesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                    {isAdmin && (
+                    {canWrite && (
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => editEmployee(e)} className="p-1.5 hover:bg-gray-100 rounded min-w-[32px]" title="编辑">
                           <Edit2 size={14} className="text-gray-400" />
@@ -658,7 +654,7 @@ export default function EmployeesPage() {
       )}
 
       {/* Create/Edit Form Modal */}
-      {showForm && (
+      {canWrite && showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { setShowForm(false); setPhotoFile(null); }}>
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-primary text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
@@ -686,11 +682,11 @@ export default function EmployeesPage() {
                       <Camera size={24} />
                     </div>
                   )}
-                  <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
+                  {canWrite && (<label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
                     <input type="file" accept="image/*" className="hidden"
                       onChange={e => { const f = e.target.files?.[0]; if (f) setPhotoFile(f); }} />
                     {photoFile ? "更换照片" : "上传照片"}
-                  </label>
+                  </label>)}
                 </div>
               </div>
 
@@ -779,22 +775,22 @@ export default function EmployeesPage() {
                   <div>
                     <label className="form-label text-xs mb-1 block">护照照片</label>
                     <div className="flex items-center gap-2">
-                      <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
+                      {canWrite && (<label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
                         <input type="file" accept="image/*" className="hidden"
                           onChange={e => { const f = e.target.files?.[0]; if (f) setPassportPhotoFile(f); }} />
                         {passportPhotoFile ? "更换护照照片" : "上传护照照片"}
-                      </label>
+                      </label>)}
                       {passportPhotoFile && <img src={URL.createObjectURL(passportPhotoFile)} className="w-14 h-10 object-cover rounded border" alt="护照照片" />}
                     </div>
                   </div>
                   <div>
                     <label className="form-label text-xs mb-1 block">工作证照片</label>
                     <div className="flex items-center gap-2">
-                      <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
+                      {canWrite && (<label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer">
                         <input type="file" accept="image/*" className="hidden"
                           onChange={e => { const f = e.target.files?.[0]; if (f) setWorkPermitPhotoFile(f); }} />
                         {workPermitPhotoFile ? "更换工作证照片" : "上传工作证照片"}
-                      </label>
+                      </label>)}
                       {workPermitPhotoFile && <img src={URL.createObjectURL(workPermitPhotoFile)} className="w-14 h-10 object-cover rounded border" alt="工作证照片" />}
                     </div>
                   </div>
@@ -875,11 +871,11 @@ export default function EmployeesPage() {
                       {detailEmp.name?.[0] || "?"}
                     </div>
                   )}
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition">
+                  {canWrite && (<label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition">
                     <Camera size={18} className="text-white" />
                     <input type="file" accept="image/*" className="hidden"
                       onChange={e => { const f = e.target.files?.[0]; if (f) { setPhotoFile(f); setEditingId(detailEmp.id); } }} />
-                  </label>
+                  </label>)}
                 </div>
                 <div className="pb-2">
                   <h2 className="text-xl font-bold text-white">{detailEmp.name}{detailEmp.is_deleted && <span className="ml-2 text-xs font-normal bg-red-500 text-white px-2 py-0.5 rounded-full align-middle">已删除</span>}</h2>
@@ -1020,11 +1016,11 @@ export default function EmployeesPage() {
                     ) : (
                       <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
                     )}
-                    <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer shrink-0">
+                    {canWrite && (<label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer shrink-0">
                       <input type="file" accept="image/*" className="hidden"
                         onChange={e => { const f = e.target.files?.[0]; if (f) setPassportPhotoFile(f); }} />
                       {detailEmp.passport_photo_path ? "更换护照照片" : "上传护照照片"}
-                    </label>
+                    </label>)}
                   </div>
                 </div>
                 {/* Work Permit Photo */}
@@ -1043,11 +1039,11 @@ export default function EmployeesPage() {
                     ) : (
                       <div className="w-40 h-28 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">未上传</div>
                     )}
-                    <label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer shrink-0">
+                    {canWrite && (<label className="bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm cursor-pointer shrink-0">
                       <input type="file" accept="image/*" className="hidden"
                         onChange={e => { const f = e.target.files?.[0]; if (f) setWorkPermitPhotoFile(f); }} />
                       {detailEmp.work_permit_photo_path ? "更换工作证照片" : "上传工作证照片"}
-                    </label>
+                    </label>)}
                   </div>
                 </div>
               </div>
@@ -1059,15 +1055,15 @@ export default function EmployeesPage() {
                   {(Array.isArray(detailEmp.tags) ? detailEmp.tags : (detailEmp.tags || "").split(",").filter(Boolean)).map((t: string) => (
                     <span key={t} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs flex items-center gap-1">
                       {t}
-                      <button onClick={() => removeTag(t)} className="text-blue-400 hover:text-red-500"><XIcon size={12}/></button>
+                      {canWrite && (<button onClick={() => removeTag(t)} className="text-blue-400 hover:text-red-500"><XIcon size={12}/></button>)}
                     </span>
                   ))}
                 </div>
-                <div className="flex gap-2">
+                {canWrite && (<div className="flex gap-2">
                   <input className="form-input py-1.5 text-sm flex-1" placeholder="添加标签..." value={newTag}
                     onChange={e => setNewTag(e.target.value)} onKeyDown={e => e.key === "Enter" && addTag()} />
                   <button onClick={addTag} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">添加</button>
-                </div>
+                </div>)}
               </div>
 
               {/* Fixed Deductions 固定扣款 */}
@@ -1083,14 +1079,14 @@ export default function EmployeesPage() {
                         <span className="text-sm text-gray-700">{f.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-red-600">{f.amount?.toLocaleString()}</span>
-                          <button onClick={() => openFixedEdit(f)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={14}/></button>
-                          <button onClick={() => deleteFixedDeduction(f.id)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={14}/></button>
+                          {canWrite && (<button onClick={() => openFixedEdit(f)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={14}/></button>)}
+                          {canWrite && (<button onClick={() => deleteFixedDeduction(f.id)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={14}/></button>)}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-                <div className="flex gap-2">
+                {canWrite && (<div className="flex gap-2">
                   <input className="form-input py-1.5 text-sm flex-1" placeholder="项目名称（如 宿舍费）" value={fixedForm.name}
                     onChange={e => setFixedForm({ ...fixedForm, name: e.target.value })} />
                   <input className="form-input py-1.5 text-sm w-28" type="number" step="0.01" placeholder="金额" value={fixedForm.amount}
@@ -1102,7 +1098,7 @@ export default function EmployeesPage() {
                     <button onClick={() => { setEditingFixedId(null); setFixedForm({ name: "", amount: "" }); }}
                       className="text-gray-500 text-sm px-2">取消</button>
                   )}
-                </div>
+                </div>)}
               </div>
 
               {/* Remark */}
@@ -1122,7 +1118,7 @@ export default function EmployeesPage() {
 
             {/* Action buttons */}
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              {detailEmp.status !== "resigned" && (
+              {canWrite && detailEmp.status !== "resigned" && (
                 <>
                   <button onClick={() => { editEmployee(detailEmp); setDetailEmp(null); }}
                     className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm flex items-center gap-1">
@@ -1141,7 +1137,7 @@ export default function EmployeesPage() {
       )}
 
       {/* Upload photo (triggered after file selection in detail modal) */}
-      {photoFile && detailEmp && (
+      {canWrite && photoFile && detailEmp && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
@@ -1158,7 +1154,7 @@ export default function EmployeesPage() {
       )}
 
       {/* Upload passport photo */}
-      {passportPhotoFile && detailEmp && (
+      {canWrite && passportPhotoFile && detailEmp && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
@@ -1175,7 +1171,7 @@ export default function EmployeesPage() {
       )}
 
       {/* Upload work permit photo */}
-      {workPermitPhotoFile && detailEmp && (
+      {canWrite && workPermitPhotoFile && detailEmp && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
@@ -1202,7 +1198,7 @@ export default function EmployeesPage() {
       )}
 
       {/* Resign Modal */}
-      {resigningId && (
+      {canWrite && resigningId && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setResigningId(null)}>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
@@ -1261,7 +1257,7 @@ export default function EmployeesPage() {
       )}
 
       {/* 删除员工确认框 */}
-      {deleteTarget && (
+      {canWrite && deleteTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setDeleteTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Trash2 size={18} className="text-red-500"/> 删除员工档案</h3>
@@ -1316,7 +1312,7 @@ export default function EmployeesPage() {
       )}
 
       {/* 批量设置模板弹窗 */}
-      {showBatchModal && (
+      {canWrite && showBatchModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowBatchModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
