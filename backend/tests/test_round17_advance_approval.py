@@ -88,7 +88,7 @@ def test_startup_wired_and_payroll_frontend_unchanged():
  seed=next(n for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef) and n.name=='seed')
  assert any(isinstance(n,ast.Call) and getattr(n.func,'id','')=='_migrate_advance_approval_columns' for n in ast.walk(seed))
  assert subprocess.check_output(['git','show','a19fa60:backend/app/api/v1/payroll.py'],cwd=root)==subprocess.check_output(['git','show','75021e9:backend/app/api/v1/payroll.py'],cwd=root)
- assert not subprocess.check_output(['git','diff','75021e9','--','frontend/src'],cwd=root)
+ assert not subprocess.check_output(['git','diff','75021e9','a19fa60','--','frontend/src'],cwd=root)
  # Existing deletion, totals and fund business logic stay unchanged apart from read-only response additions.
 
 

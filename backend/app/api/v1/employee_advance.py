@@ -12,6 +12,7 @@ from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.core.timezone import thai_now, thai_today
 from app.services.flow_rules import fund_available
+from app.services.data_history import record_history
 from pydantic import BaseModel
 from datetime import datetime, date
 from typing import Optional, List, Literal
@@ -296,3 +297,60 @@ async def delete_advance(
     await db.delete(r)
     await db.flush()
     return {"message": "预支记录已删除"}
+
+
+class AdvanceRejectRequest(BaseModel):
+    reject_reason: Optional[str] = None
+
+
+async def _advance_approver(current_user: User = Depends(get_current_user)):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以审批预支")
+    return current_user
+
+
+async def _review_advance(db, advance_id, current_user, action, reason=None):
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    advance = (await db.execute(select(EmployeeAdvance).where(
+        EmployeeAdvance.id == advance_id, EmployeeAdvance.warehouse_id == wh_id,
+    ).with_for_update())).scalar_one_or_none()
+    if advance is None:
+        raise HTTPException(404, "预支记录不存在")
+    if action == "reject":
+        reason = (reason or "").strip()
+        if not reason:
+            raise HTTPException(400, "请填写驳回原因")
+        if len(reason) > 500:
+            raise HTTPException(400, "驳回原因不能超过500字")
+    if advance.approval_status == AdvanceApprovalStatus.APPROVED.value:
+        raise HTTPException(400, "该预支已通过" if action == "approve" else "该预支已通过，不能驳回")
+    if advance.approval_status == AdvanceApprovalStatus.REJECTED.value:
+        raise HTTPException(400, "该预支已驳回，不能审批通过" if action == "approve" else "该预支已驳回")
+    if advance.approval_status != AdvanceApprovalStatus.PENDING.value:
+        raise HTTPException(400, "只有待审批的预支可以审批")
+    before = {"amount": advance.amount, **_approval_fields(advance)}
+    advance.approval_status = (AdvanceApprovalStatus.APPROVED.value if action == "approve"
+                               else AdvanceApprovalStatus.REJECTED.value)
+    advance.reviewer_id = current_user.id
+    advance.reviewed_at = thai_now()
+    advance.reject_reason = reason if action == "reject" else None
+    await record_history(db, module="employee_advances", record_id=advance.id,
+        operator=current_user, operation_type=action, before=before,
+        after={"amount": advance.amount, **_approval_fields(advance)}, warehouse_id=wh_id)
+    await db.flush()
+    return {"message": "预支已通过" if action == "approve" else "预支已驳回",
+            "id": advance.id, "amount": advance.amount, **_approval_fields(advance)}
+
+
+@router.post("/{advance_id}/approve")
+async def approve_advance(advance_id: int,
+    current_user: User = Depends(_advance_approver), db: AsyncSession = Depends(get_db)):
+    return await _review_advance(db, advance_id, current_user, "approve")
+
+
+@router.post("/{advance_id}/reject")
+async def reject_advance(advance_id: int, req: AdvanceRejectRequest = AdvanceRejectRequest(),
+    current_user: User = Depends(_advance_approver), db: AsyncSession = Depends(get_db)):
+    return await _review_advance(db, advance_id, current_user, "reject", req.reject_reason)

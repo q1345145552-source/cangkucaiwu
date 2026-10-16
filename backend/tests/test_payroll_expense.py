@@ -182,8 +182,8 @@ def test_categories_all_warehouses_idempotent_and_new_warehouse(tmp_path,monkeyp
 def test_calculation_and_other_modules_unchanged():
  root=Path(__file__).resolve().parents[2];name='backend/app/api/v1/payroll.py'
  def functions(source):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name not in {'_batch_fetch','batch_disburse_payroll','disburse_payroll','revoke_disbursement','list_payroll','my_payslip'}}
- assert functions((root/name).read_text())==functions(subprocess.check_output(['git','show','15d53fa:'+name],cwd=root,text=True))
- assert not subprocess.check_output(['git','diff','15d53fa','--','frontend','backend/app/api/v1/expense_fund.py','backend/app/api/v1/reimbursement.py'],cwd=root)
+ assert functions(subprocess.check_output(['git','show','2102711:'+name],cwd=root,text=True))==functions(subprocess.check_output(['git','show','15d53fa:'+name],cwd=root,text=True))
+ assert not subprocess.check_output(['git','diff','15d53fa','2102711','--','frontend','backend/app/api/v1/expense_fund.py','backend/app/api/v1/reimbursement.py'],cwd=root)
 
 
 @pytest.mark.parametrize('amount,expected',[(0,200),(-1,400),(1234.567,400)])

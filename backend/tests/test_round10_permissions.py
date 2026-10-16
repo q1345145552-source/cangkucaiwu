@@ -120,7 +120,7 @@ def test_business_bodies_and_config_exceptions_unchanged():
   old=ast.parse(subprocess.check_output(['git','show','8629b2f:'+name],text=True))
   new=ast.parse((root/'app/api/v1'/f'{file}.py').read_text())
   def bodies(tree):
-   return {n.name:ast.dump(RemoveRoleChecks().visit(ast.Module(body=n.body,type_ignores=[])),include_attributes=False) for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name not in {"my_debt", "_compute_week", "_compute_overtime_hours", "_approval_fields", "create_advance", "list_advances"}}
+   return {n.name:ast.dump(RemoveRoleChecks().visit(ast.Module(body=n.body,type_ignores=[])),include_attributes=False) for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name not in {"my_debt", "_compute_week", "_compute_overtime_hours", "_approval_fields", "create_advance", "list_advances", "_advance_approver", "_review_advance", "approve_advance", "reject_advance"}}
   assert bodies(old)==bodies(new),file
  for file in ('config_api','history'):
   name=f'backend/app/api/v1/{file}.py'
@@ -190,4 +190,4 @@ def test_route_inventory():
     if file=='suppliers' and (not route.startswith('/concentration') or d.func.attr!='get'):continue
     seen.add((d.func.attr.upper(),'/'+prefix+route))
  def normalize(p):return __import__('re').sub(r'/[123](?=/|$)','/{}',__import__('re').sub(r'\{[^}]+\}','{}',p.split('?')[0]))
- assert {(m,normalize(p)) for m,p in seen}=={(m,normalize(p)) for m,p,_,_ in CASES}
+ assert {(m,normalize(p)) for m,p in seen}==({(m,normalize(p)) for m,p,_,_ in CASES} | {("POST","/employee-advances/{}/approve"),("POST","/employee-advances/{}/reject")})

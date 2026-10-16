@@ -10,7 +10,7 @@ from sqlalchemy import select, func, and_, or_
 from app.database import get_db
 from app.models.payroll import PayrollRecord
 from app.models.employee import Employee
-from app.models.employee_advance import EmployeeAdvance
+from app.models.employee_advance import EmployeeAdvance, AdvanceApprovalStatus
 from app.models.salary_template import SalaryTemplate
 from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
@@ -924,6 +924,7 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
             select(EmployeeAdvance).where(
                 EmployeeAdvance.employee_id == emp.id,
                 EmployeeAdvance.status != "deducted",
+                EmployeeAdvance.approval_status == AdvanceApprovalStatus.APPROVED.value,
             ).order_by(EmployeeAdvance.advance_date.asc(), EmployeeAdvance.id.asc())
         )).scalars().all()
 
