@@ -9,6 +9,7 @@ from app.models.salary_template import SalaryTemplate
 from app.models.user import User
 from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
 from app.core.messages import t, get_request_lang
+from app.services.data_history import record_history
 from pydantic import BaseModel, field_validator
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date
@@ -208,7 +209,7 @@ async def verify_overtime(
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPER_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, t("overtime_verify_only_admin", lang))
 
     wh_ids = get_wh_ids(current_user)
@@ -262,6 +263,15 @@ async def verify_overtime(
         else:
             to_verify.append((item, a))
 
+    # 按本次实际要写入的逐人分配记录判断本人，不使用姓名或整单发起人。
+    if current_user.role == Role.SUPERVISOR:
+        for _, a in to_verify:
+            emp = emp_map.get(a.employee_id)
+            if (a.user_id == current_user.id
+                    or (emp is not None and emp.user_id == current_user.id)
+                    or a.employee_id == current_user.attendance_employee_id):
+                raise HTTPException(403, "本人不能核实自己的加班")
+
     # 月度上限校验（整批，保存前）：本月已核实用实际、未核实用计划、本次用新填的实际
     limit_hours = await _get_monthly_limit(db, task.warehouse_id)
     for item, a in to_verify:
@@ -274,8 +284,11 @@ async def verify_overtime(
                 t("overtime_verify_limit_exceeded", lang, name=name, monthly=f"{monthly:.1f}", after=f"{after:.1f}", limit=f"{limit_hours:.0f}"),
             )
 
+    verified_at = thai_now().isoformat()
     verified_count = 0
     for item, a in to_verify:
+        audit_before = {"task_id": task.id, "employee_id": a.employee_id, "user_id": a.user_id,
+                        "actual_hours": a.actual_hours, "earned_amount": a.earned_amount}
         a.actual_hours = item.actual_hours
         # 按实际小时数重算加班费：半小时向上取整 × 员工薪资模板加班半小时费
         emp = emp_map.get(a.employee_id)
@@ -291,6 +304,12 @@ async def verify_overtime(
             a.dispute_reason = None
             a.dispute_photo = None
             a.dispute_time = None
+        await record_history(db, module="overtime", record_id=a.id, operator=current_user,
+            operation_type="verify", before=audit_before,
+            after={"task_id": task.id, "employee_id": a.employee_id, "user_id": a.user_id,
+                   "actual_hours": a.actual_hours, "earned_amount": a.earned_amount,
+                   "verified_by": current_user.id, "verified_at": verified_at},
+            warehouse_id=task.warehouse_id)
         verified_count += 1
 
     # 还有分配记录未填实际小时数 → 待核实，否则已核实

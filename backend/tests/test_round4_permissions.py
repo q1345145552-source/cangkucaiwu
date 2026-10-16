@@ -90,6 +90,7 @@ def expected_status(uid,method,path):
     labor_only=path in ('/clock-in','/clock-in/today','/overtime/1/confirm','/overtime/2/dispute','/overtime/pending')
     if uid==5:return 200 if path in LABOR_PATHS and (method=='GET' or path in ('/clock-in','/attendance/leaves','/overtime/1/confirm','/overtime/2/dispute')) else 403
     if labor_only:return 403
+    if uid==2 and method=='POST' and path=='/overtime/3/verify':return 200
     if uid==2:return 200 if method=='GET' and path in ('/overtime','/overtime/monthly-hours','/overtime/limit') else 403
     if uid==3:return 200 if (method=='GET' and path in ('/attendance/calendar','/attendance/rest-days','/attendance/leaves','/overtime','/overtime/monthly-hours','/overtime/limit')) or (method=='POST' and path=='/attendance/leaves') else 403
     if method=='POST' and path=='/attendance/leaves':return 403
