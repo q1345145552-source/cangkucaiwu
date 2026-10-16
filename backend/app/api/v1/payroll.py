@@ -1,3 +1,4 @@
+from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.services.attendance_population import employee_account_roles
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
@@ -772,7 +773,7 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
 
             # 早退判定：时段4（下班）打卡时间，按扣款模板的红线判断
             s4 = next((c for c in sessions if c.session == 4), None)
-            if s4 is not None:
+            if s4 is not None and not leave_covers_early_departure(lt_info, s4.clocked_in_at, current, prep["work_sched"]):
                 t4 = _local_time_of(s4.clocked_in_at)
                 if t4 is not None:
                     if t4 < early_one_time:

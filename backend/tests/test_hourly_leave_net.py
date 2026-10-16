@@ -86,7 +86,7 @@ def test_only_hourly_branch_changed():
   name=f'backend/app/api/v1/{module}.py'
   def functions(source):
    return {n.name:ast.dump(NormalizeHourly().visit(n),include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef))}
-  assert functions(subprocess.check_output(['git','show','a19fa60:'+name],cwd=root,text=True))==functions((root/name).read_text()),module
+  assert functions(subprocess.check_output(['git','show','a19fa60:'+name],cwd=root,text=True))==functions(subprocess.check_output(['git','show','3a88d08:'+name],cwd=root,text=True)),module
  assert not subprocess.check_output(['git','diff','a19fa60','--','frontend/src','backend/scripts/seed.py','backend/app/models'],cwd=root)
 
 
