@@ -1,7 +1,21 @@
+from enum import Enum
 from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+
+
+class AdvanceApprovalStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+ADVANCE_APPROVAL_LABELS = {
+    AdvanceApprovalStatus.PENDING.value: "待审批",
+    AdvanceApprovalStatus.APPROVED.value: "已通过",
+    AdvanceApprovalStatus.REJECTED.value: "已驳回",
+}
 
 
 class EmployeeAdvance(Base):
@@ -22,6 +36,10 @@ class EmployeeAdvance(Base):
     operator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     deducted_amount = Column(Float, default=0)
     status = Column(String(20), default="unpaid")  # unpaid / partial / deducted
+    approval_status = Column(String(20), nullable=False, default=AdvanceApprovalStatus.APPROVED.value, server_default="approved")
+    reviewer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reject_reason = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     employee = relationship("Employee", foreign_keys=[employee_id])

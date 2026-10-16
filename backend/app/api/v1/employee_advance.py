@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
-from app.models.employee_advance import EmployeeAdvance
+from app.models.employee_advance import EmployeeAdvance, AdvanceApprovalStatus, ADVANCE_APPROVAL_LABELS
+from app.services.attendance_population import employee_account_roles
 from app.models.employee import Employee
 from app.models.user import User
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, ReviewStatus
@@ -13,9 +14,19 @@ from app.core.timezone import thai_now, thai_today
 from app.services.flow_rules import fund_available
 from pydantic import BaseModel
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 router = APIRouter()
+
+
+def _approval_fields(advance):
+    return {
+        "approval_status": advance.approval_status,
+        "approval_status_label": ADVANCE_APPROVAL_LABELS.get(advance.approval_status, advance.approval_status),
+        "reviewer_id": advance.reviewer_id,
+        "reviewed_at": advance.reviewed_at.isoformat() if advance.reviewed_at else None,
+        "reject_reason": advance.reject_reason,
+    }
 
 
 class AdvanceCreate(BaseModel):
@@ -74,6 +85,13 @@ async def create_advance(
     elif req.source not in ("supervisor", "fund"):
         raise HTTPException(400, "预支来源无效")
 
+    approval_status = AdvanceApprovalStatus.APPROVED.value
+    if current_user.role == Role.SUPERVISOR:
+        owners, _ = await employee_account_roles(db, [emp])
+        owner = owners.get(emp.id)
+        if emp.user_id == current_user.id or emp.id == current_user.attendance_employee_id or (owner and owner.id == current_user.id):
+            approval_status = AdvanceApprovalStatus.PENDING.value
+
     adv = EmployeeAdvance(
         warehouse_id=wh_id,
         employee_id=req.employee_id,
@@ -88,6 +106,7 @@ async def create_advance(
         operator_id=current_user.id,
         deducted_amount=0,
         status="unpaid",
+        approval_status=approval_status,
     )
     db.add(adv)
     await db.flush()
@@ -115,13 +134,14 @@ async def create_advance(
         ))
         await db.flush()
 
-    return {"message": "预支记录已创建", "id": adv.id}
+    return {"message": "预支记录已创建", "id": adv.id, **_approval_fields(adv)}
 
 
 @router.get("")
 async def list_advances(
     employee_id: Optional[int] = None,
     period: Optional[str] = None,
+    approval_status: Optional[Literal["pending", "approved", "rejected", "待审批", "已通过", "已驳回"]] = None,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -133,6 +153,9 @@ async def list_advances(
         return {"data": [], "total": 0}
 
     q = select(EmployeeAdvance).where(EmployeeAdvance.warehouse_id.in_(wh_ids))
+    if approval_status is not None:
+        normalized = {label: value for value, label in ADVANCE_APPROVAL_LABELS.items()}.get(approval_status, approval_status)
+        q = q.where(EmployeeAdvance.approval_status == normalized)
     if employee_id:
         q = q.where(EmployeeAdvance.employee_id == employee_id)
     if period:
@@ -154,6 +177,7 @@ async def list_advances(
     return {
         "data": [{
             "id": r.id,
+            **_approval_fields(r),
             "employee_id": r.employee_id,
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
             "employee_status": emp_map.get(r.employee_id).status if emp_map.get(r.employee_id) else "",
@@ -216,7 +240,7 @@ async def my_debt(
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
-        return {"total_by_currency": []}
+        return {"total_by_currency": [], "data": []}
 
     emp = (await db.execute(
         select(Employee).where(Employee.warehouse_id == wh_id, Employee.user_id == current_user.id, Employee.is_deleted == False)
@@ -228,7 +252,7 @@ async def my_debt(
             select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
         )).scalar_one_or_none()
     if not emp:
-        return {"total_by_currency": []}
+        return {"total_by_currency": [], "data": []}
 
     advances = (await db.execute(
         select(EmployeeAdvance).where(EmployeeAdvance.employee_id == emp.id, EmployeeAdvance.status != "deducted")
@@ -241,7 +265,13 @@ async def my_debt(
             cur = a.currency or "THB"
             by_currency[cur] = round(by_currency.get(cur, 0) + rem, 2)
 
-    return {"total_by_currency": [{"currency": k, "total": v} for k, v in sorted(by_currency.items())]}
+    return {
+        "total_by_currency": [{"currency": k, "total": v} for k, v in sorted(by_currency.items())],
+        "data": [{"id": a.id, "employee_id": a.employee_id, "amount": a.amount,
+                  "currency": a.currency or "THB", "advance_date": a.advance_date.isoformat(),
+                  "deducted_amount": a.deducted_amount or 0, "status": a.status,
+                  **_approval_fields(a)} for a in advances],
+    }
 
 
 @router.delete("/{advance_id}")

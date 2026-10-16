@@ -42,11 +42,30 @@ async def _migrate_user_attendance_columns(conn):
             print(f"迁移 账号纳入考勤字段 {name} 失败：{exc}")
 
 
+async def _migrate_advance_approval_columns(conn):
+    """Old advances remain effective; never reset a pending/rejected row on restart."""
+    from sqlalchemy import text
+    statements = (
+        ("approval_status", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) NOT NULL DEFAULT 'approved'"),
+        ("reviewer_id", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS reviewer_id INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+        ("reviewed_at", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ"),
+        ("reject_reason", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS reject_reason VARCHAR(500)"),
+        ("backfill", "UPDATE employee_advances SET approval_status = 'approved' WHERE approval_status IS NULL"),
+    )
+    for name, statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 预支审批字段 {name} 失败：{exc}")
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_user_attendance_columns(conn)
+        await _migrate_advance_approval_columns(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

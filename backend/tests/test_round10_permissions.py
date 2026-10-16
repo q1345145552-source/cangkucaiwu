@@ -120,7 +120,7 @@ def test_business_bodies_and_config_exceptions_unchanged():
   old=ast.parse(subprocess.check_output(['git','show','8629b2f:'+name],text=True))
   new=ast.parse((root/'app/api/v1'/f'{file}.py').read_text())
   def bodies(tree):
-   return {n.name:ast.dump(RemoveRoleChecks().visit(ast.Module(body=n.body,type_ignores=[])),include_attributes=False) for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name not in {"my_debt", "_compute_week", "_compute_overtime_hours"}}
+   return {n.name:ast.dump(RemoveRoleChecks().visit(ast.Module(body=n.body,type_ignores=[])),include_attributes=False) for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name not in {"my_debt", "_compute_week", "_compute_overtime_hours", "_approval_fields", "create_advance", "list_advances"}}
   assert bodies(old)==bodies(new),file
  for file in ('config_api','history'):
   name=f'backend/app/api/v1/{file}.py'
