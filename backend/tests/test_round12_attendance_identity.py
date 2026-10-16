@@ -23,7 +23,7 @@ def state(user):
 
 
 @pytest.mark.parametrize('uid', [3, 4], ids=['staff', 'supervisor'])
-def test_toggle_roundtrip_and_no_auto_employee(tmp_path, monkeypatch, uid):
+def test_toggle_roundtrip_and_auto_employee(tmp_path, monkeypatch, uid):
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (engine, factory, client):
             async with engine.connect() as conn:
@@ -42,7 +42,7 @@ def test_toggle_roundtrip_and_no_auto_employee(tmp_path, monkeypatch, uid):
             assert r.status_code == 200, r.text
             enabled = await read()
             assert enabled['attendance_enabled'] is True
-            assert enabled['attendance_employee_id'] is None
+            assert isinstance(enabled['attendance_employee_id'], int)
             assert datetime.fromisoformat(enabled['attendance_enabled_at']).date() == datetime.now(timezone.utc).date()
             r = await client.put(f'/api/v1/users/{uid}', headers=auth(1), json={'attendance_enabled': True})
             assert r.status_code == 200
@@ -54,7 +54,7 @@ def test_toggle_roundtrip_and_no_auto_employee(tmp_path, monkeypatch, uid):
             async with factory() as db:
                 user = await db.get(User, uid)
                 assert UserResponse.model_validate(user).attendance_enabled
-                assert (await db.execute(select(func.count(Employee.id)))).scalar() == employees_before
+                assert (await db.execute(select(func.count(Employee.id)))).scalar() == employees_before + 1
             r = await client.put(f'/api/v1/users/{uid}', headers=auth(1), json={'attendance_enabled': False})
             assert r.status_code == 200
             disabled = await read()
@@ -134,7 +134,8 @@ def test_link_and_timestamp_are_server_owned(tmp_path, monkeypatch):
             assert r.status_code == 200, r.text
             async with factory() as db:
                 user = await db.get(User, 4)
-                assert user.attendance_employee_id is None
+                assert user.attendance_employee_id == r.json()["attendance_employee_id"] != 2
+                assert (await db.get(Employee, user.attendance_employee_id)).user_id == user.id
                 assert user.attendance_enabled_at.year != 2000
             r = await client.get('/api/v1/users/permissions', headers=auth(1))
             flag = next(item for item in r.json() if item['menu_key'] == 'attendance_enabled')

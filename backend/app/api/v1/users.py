@@ -13,6 +13,7 @@ from app.core.permissions import get_current_user, require_role, Role, ROLE_HIER
 from app.core.menu_registry import MENU_PERMISSIONS, MENU_PERMISSIONS_BY_KEY
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.data_history import record_history
+from app.services.attendance_identity import bind_attendance_employee
 
 router = APIRouter()
 
@@ -187,7 +188,7 @@ async def update_user(
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_id).with_for_update())
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -288,8 +289,14 @@ async def update_user(
     if req.extra_permissions is not None:
         user.extra_permissions = req.extra_permissions
 
+    attendance_result = {}
     if req.attendance_enabled is not None and user.role in (Role.SUPERVISOR, Role.STAFF):
         if req.attendance_enabled:
+            employee, created = await bind_attendance_employee(db, user, current_user)
+            notice = None
+            if employee.salary_template_id is None or employee.deduction_template_id is None:
+                notice = ("档案已建好，" if created else "档案已绑定，") + "请到员工档案里设置薪资模板和扣款模板"
+            attendance_result = {"attendance_employee_created": created, "attendance_notice": notice}
             if not user.attendance_enabled:
                 user.attendance_enabled_at = datetime.now(timezone.utc)
             user.attendance_enabled = True
@@ -322,7 +329,10 @@ async def update_user(
                           warehouse_id=user.warehouse_id)
 
     await db.flush()
-    return {"message": "用户更新成功", **_attendance_fields(user)}
+    message = "用户更新成功"
+    if attendance_result.get("attendance_notice"):
+        message += "；" + attendance_result["attendance_notice"]
+    return {"message": message, **_attendance_fields(user), **attendance_result}
 
 async def _delete_staff_or_labor(db: AsyncSession, user_id: int, username: str):
     """删除财务/劳工账号：解除关联并彻底删除，保留其所在仓库业务数据。"""
