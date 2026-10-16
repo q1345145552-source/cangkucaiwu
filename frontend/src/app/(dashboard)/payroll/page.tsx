@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import SafeImage from "@/components/SafeImage";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,6 +77,11 @@ export default function PayrollPage() {
   const [recalcModeOpt, setRecalcModeOpt] = useState<"recalc" | "void">("recalc");
   const [recalcWarning, setRecalcWarning] = useState(false);
   const [disburseModal, setDisburseModal] = useState<any>(null);
+  const [disburseAccounts, setDisburseAccounts] = useState<any[]>([]);
+  const [disburseAccountId, setDisburseAccountId] = useState("");
+  const [disburseAccountsLoading, setDisburseAccountsLoading] = useState(false);
+  const [disburseAccountsError, setDisburseAccountsError] = useState("");
+  const disburseAccountsSeq = useRef(0);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [zoomedSignature, setZoomedSignature] = useState<string | null>(null);
   const [revokeModal, setRevokeModal] = useState<any>(null);
@@ -312,15 +317,8 @@ export default function PayrollPage() {
   }
 
   async function handleDisburse(recordId: number) {
-    setDisbursing(recordId);
-    try {
-      const r = await api.post(`/payroll/${recordId}/disburse`, {});
-      toast("success", r.message || "发放成功");
-      loadRecordsByMonth();
-    } catch (err: any) {
-      toast("error", err.message || "发放失败");
-    }
-    setDisbursing(null);
+    const record = records.find(r => r.id === recordId) || showPayslip;
+    if (record) openDisburseModal(record);
   }
 
   function fileToBase64(file: File): Promise<string> {
@@ -332,22 +330,51 @@ export default function PayrollPage() {
     });
   }
 
-  function openDisburseModal(record: any) {
+  async function openDisburseModal(record: any) {
     setDisburseModal(record);
     setSignatureFile(null);
+    setDisburseAccounts([]);
+    setDisburseAccountId("");
+    setDisburseAccountsError("");
+    setDisburseAccountsLoading(true);
+    const seq = ++disburseAccountsSeq.current;
+    try {
+      const r = await api.get<any>("/accounts");
+      if (seq !== disburseAccountsSeq.current) return;
+      const warehouseId = Number(getActiveWarehouseId() || (user as { warehouse_id?: number } | null)?.warehouse_id);
+      const accounts = (r.data || []).filter((a: any) =>
+        a.warehouse_id === warehouseId && (!a.status || a.status === "active")
+        && (a.currency || "THB").toUpperCase() === "THB");
+      setDisburseAccounts(accounts);
+      const preferred = accounts.find((a: any) => a.account_type === "cash" || a.account_name === "现金") || accounts[0];
+      setDisburseAccountId(preferred ? String(preferred.id) : "");
+    } catch (err: any) {
+      if (seq === disburseAccountsSeq.current) setDisburseAccountsError(err.message || "账户加载失败，请重新打开发放弹框");
+    } finally {
+      if (seq === disburseAccountsSeq.current) setDisburseAccountsLoading(false);
+    }
   }
 
   async function confirmDisburse() {
-    if (!disburseModal) return;
-    const recordId = disburseModal.id;
+    if (!disburseModal || disburseAccountsLoading || disbursing !== null) return;
+    if (!disburseAccountId || !disburseAccounts.some(a => String(a.id) === disburseAccountId)) {
+      toast("error", "请选择工资发放账户");
+      return;
+    }
+    const batch = disburseModal.batch_records;
+    const recordId = batch ? -1 : disburseModal.id;
     setDisbursing(recordId);
     try {
-      let signature_base64 = null;
-      if (signatureFile) {
-        signature_base64 = await fileToBase64(signatureFile);
+      const account_id = Number(disburseAccountId);
+      let r: any;
+      if (batch) {
+        r = await api.post<any>("/payroll/batch-disburse", { record_ids: batch.map((record: any) => record.id), account_id });
+      } else {
+        let signature_base64 = null;
+        if (signatureFile) signature_base64 = await fileToBase64(signatureFile);
+        r = await api.post<any>(`/payroll/${recordId}/disburse`, { signature_base64, account_id });
       }
-      const r = await api.post(`/payroll/${recordId}/disburse`, { signature_base64 });
-      toast("success", r.message || "发放成功");
+      toast("success", `${r.message || "发放成功"}；已记入运营支出`);
       setDisburseModal(null);
       setSignatureFile(null);
       loadRecordsByMonth();
@@ -470,14 +497,9 @@ export default function PayrollPage() {
 
   async function handleBatchDisburse() {
     if (!selectedIds.length) return;
-    setCalculating(true);
-    try {
-      const r = await api.post<any>("/payroll/batch-disburse", { record_ids: selectedIds });
-      toast("success", r.message || `已发放 ${r.count} 条`);
-      loadRecordsByMonth();
-      loadProgress();
-    } catch (err: any) { toast("error", err.message || "批量发放失败"); }
-    setCalculating(false);
+    const eligible = records.filter(r => selectedIds.includes(r.id) && !r.voided && r.status === "confirmed" && !r.disbursed);
+    if (!eligible.length) { toast("error", "请选择已确认且未发放的工资单"); return; }
+    openDisburseModal({ batch_records: eligible, selected_count: selectedIds.length });
   }
 
   function openBatchRecalc() {
@@ -910,23 +932,46 @@ export default function PayrollPage() {
         </div>
       )}
 
-      {/* 发放工资 Modal（可传签字照片） */}
+      {/* 发放工资 Modal（单张、批量共用账户选择） */}
       {disburseModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setDisburseModal(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
-              <Banknote size={20} /><span className="font-semibold">发放工资</span>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4" onClick={() => { if (disbursing === null) setDisburseModal(null); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="disburse-title" className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
+              <Banknote size={20} /><span id="disburse-title" className="font-semibold">{disburseModal.batch_records ? "批量发放工资" : "发放工资"}</span>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto min-h-0">
+              {disburseModal.batch_records ? (
+                <div className="text-sm text-gray-600">选中 {disburseModal.selected_count} 张单，本次发放 {disburseModal.batch_records.length} 张</div>
+              ) : (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">员工</span>
+                  <span className="font-medium">{disburseModal.employee_name || "—"}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">员工</span>
-                <span className="font-medium">{disburseModal.employee_name || "—"}</span>
+                <span className="text-gray-500">实发合计</span>
+                <span className="font-bold text-blue-600">{(disburseModal.batch_records
+                  ? disburseModal.batch_records.reduce((sum: number, r: any) => sum + Math.round(Number(r.net_pay || 0) * 100), 0) / 100
+                  : Number(disburseModal.net_pay || 0)).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 泰铢</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">实发金额</span>
-                <span className="font-bold text-blue-600">{(disburseModal.net_pay ?? 0).toLocaleString()} 泰铢</span>
+                <span className="text-gray-500">人数</span>
+                <span>{disburseModal.batch_records ? new Set(disburseModal.batch_records.map((r: any) => r.employee_id)).size : 1} 人</span>
               </div>
               <div>
+                <label htmlFor="payroll-disburse-account" className="form-label text-sm font-medium text-gray-600 mb-1 block">工资发放账户</label>
+                <select id="payroll-disburse-account" value={disburseAccountId} onChange={e => setDisburseAccountId(e.target.value)}
+                  disabled={disburseAccountsLoading || disbursing !== null} className="input-field w-full">
+                  <option value="">请选择工资发放账户</option>
+                  {disburseAccounts.map(a => <option key={a.id} value={String(a.id)}>{a.account_name}（{a.account_type === "cash" ? "现金" : a.account_type === "bank" ? "银行" : a.account_type}）</option>)}
+                </select>
+                {disburseAccountsLoading && <p className="text-xs text-gray-500 mt-2">正在加载账户…</p>}
+                {disburseAccountsError && <p role="alert" className="text-sm text-red-600 mt-2">{disburseAccountsError}</p>}
+                {!disburseAccountsLoading && !disburseAccountsError && disburseAccounts.length === 0 && (
+                  <p role="alert" className="text-sm text-red-600 mt-2">还没有可用的泰铢收款账户，请先到收款账户里建一个或启用账户</p>
+                )}
+              </div>
+              {!disburseModal.batch_records && <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">签字照片</label>
                 <div className="flex items-center gap-2">
                   <label className="border border-dashed rounded-lg px-4 py-2 text-sm text-gray-500 hover:text-blue-500 hover:border-blue-300 cursor-pointer">
@@ -937,12 +982,12 @@ export default function PayrollPage() {
                   {signatureFile && <span className="text-xs text-gray-500 max-w-40 truncate">{signatureFile.name}</span>}
                 </div>
                 <p className="text-xs text-gray-400 mt-1">签字照片可以留空 不传也能发放</p>
-              </div>
+              </div>}
             </div>
-            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setDisburseModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmDisburse} disabled={disbursing === disburseModal.id}
-                className="btn-primary text-sm px-6 py-2">{disbursing === disburseModal.id ? "发放中..." : "确认发放"}</button>
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
+              <button onClick={() => setDisburseModal(null)} disabled={disbursing !== null} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={confirmDisburse} disabled={disbursing !== null || disburseAccountsLoading || !!disburseAccountsError || disburseAccounts.length === 0}
+                className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{disbursing !== null ? "发放中..." : "确认发放"}</button>
             </div>
           </div>
         </div>
