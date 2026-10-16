@@ -1,3 +1,4 @@
+from app.services.attendance_population import employee_account_roles
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1214,6 +1215,8 @@ async def list_payroll(
         emps = (await db.execute(select(Employee).where(Employee.id.in_(emp_ids)))).scalars().all()
         emp_map = {e.id: e for e in emps}
 
+    _, supervisor_employee_ids = await employee_account_roles(db, list(emp_map.values()))
+
     # 工号 = 员工绑定的登录账号用户名
     emp_no_map = {}
     user_ids = {e.user_id for e in emp_map.values() if e.user_id}
@@ -1271,6 +1274,7 @@ async def list_payroll(
             "recalc_to_id": recalc_to_map.get(r.id),
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
             "employee_no": emp_no_map.get(r.employee_id),
+            "is_supervisor": r.employee_id in supervisor_employee_ids,
             "is_last_record": bool(r.settle_end_date is not None and last_end_map.get(r.employee_id) is not None and r.settle_end_date == last_end_map[r.employee_id]),
             "employee_status": r.employee_status,
             "period": r.period,

@@ -1,3 +1,4 @@
+from app.services.attendance_population import employee_account_roles, includes_efficiency
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -213,10 +214,15 @@ async def _get_period_order_count(db: AsyncSession, wh_id: int, start: date, end
 
 
 async def _compute_overtime_hours(db: AsyncSession, wh_id: int, start: date, end: date) -> float:
+    # Keep the existing labor overtime scope, excluding only ineligible account identities.
+    profiles = (await db.execute(select(Employee).where(Employee.warehouse_id == wh_id))).scalars().all()
+    owners, _ = await employee_account_roles(db, profiles)
+    excluded = [e.id for e in profiles if not includes_efficiency(e, owners.get(e.id))]
     result = (await db.execute(
         select(func.sum(OvertimeTask.hours))
         .join(OvertimeAssignment, OvertimeAssignment.overtime_id == OvertimeTask.id)
         .where(
+            ~OvertimeAssignment.employee_id.in_(excluded),
             OvertimeAssignment.confirmed == True,
             OvertimeTask.warehouse_id == wh_id,
             OvertimeTask.date >= start,
@@ -293,6 +299,9 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
     emps = (await db.execute(
         select(Employee).where(Employee.warehouse_id == wh_id, Employee.is_deleted == False, Employee.status != "resigned")
     )).scalars().all()
+
+    owners, _ = await employee_account_roles(db, emps)
+    emps = [e for e in emps if includes_efficiency(e, owners.get(e.id))]
 
     # 薪资模板映射（人工成本按模板取，无模板的员工时薪按 0 计）
     template_ids = {e.salary_template_id for e in emps if e.salary_template_id}
@@ -464,6 +473,7 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
                 )
             )).scalars().all()
             exclude_uids = {u for u in bound if u}
+            exclude_uids |= {u.id for u in us if u.role != "warehouse_labor"}
             # 姓名回退：无 user_id 但姓名与账号显示名相同的离职/已删除员工
             names = [u.display_name for u in us if u.display_name]
             if names:

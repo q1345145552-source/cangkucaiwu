@@ -682,7 +682,7 @@ export default function PayrollPage() {
                       onChange={() => toggleSelect(r.id)} className="w-4 h-4 cursor-pointer align-middle disabled:cursor-not-allowed" />
                   </td>
                   <td className="px-3 py-3 font-medium">
-                    <span className={r.voided ? "text-gray-400" : ""}>{r.employee_name ?? "—"}</span>
+                    <span className={r.voided ? "text-gray-400" : ""}>{r.employee_name ?? "—"}</span>{r.is_supervisor && <span className="ml-2 inline-flex rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">主管</span>}
                     {r.voided && (
                       <span className="ml-1 px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 text-[10px] font-medium">已作废</span>
                     )}
@@ -990,7 +990,7 @@ export default function PayrollPage() {
             <div className="p-5 space-y-3">
               {/* Header */}
               <div className="text-center pb-3 border-b">
-                <h3 className="text-lg font-bold">{showPayslip.employee_name}</h3>
+                <h3 className="text-lg font-bold">{showPayslip.employee_name}{showPayslip.is_supervisor && <span className="ml-2 inline-flex rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">主管</span>}</h3>
                 <p className="text-sm text-gray-500">{recordDateLabel(showPayslip)} 工资单</p>
                 <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${templateTypeBadge(psTemplateType)}`}>
                   {templateTypeLabel(psTemplateType) || (showPayslip.employee_status === "trial" ? "试用期" : "正式员工")}
