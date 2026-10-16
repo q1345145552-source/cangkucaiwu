@@ -16,12 +16,12 @@ async def backfill_payroll_categories(conn):
     result = await conn.execute(text("""
         INSERT INTO income_expense_categories
             (warehouse_id, type, name, category_group, status, sort_order)
-        SELECT w.id, 'expense', :name, 'operating', 'active', 100
+        SELECT w.id, 'expense', CAST(:name AS VARCHAR), 'operating', 'active', 100
         FROM warehouses w
         WHERE NOT EXISTS (
             SELECT 1 FROM income_expense_categories c
             WHERE c.warehouse_id = w.id AND c.type = 'expense'
-              AND c.category_group = 'operating' AND c.name = :name
+              AND c.category_group = 'operating' AND c.name = CAST(:name AS VARCHAR)
         )
     """), {"name": PAYROLL_EXPENSE_CATEGORY})
     return result.rowcount
