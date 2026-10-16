@@ -285,10 +285,10 @@ def test_labor_only_self_and_assigned_tasks(tmp_path,monkeypatch):
     asyncio.run(run())
 
 @pytest.mark.parametrize('duration,hours,leave_type,status,work_hours,leave_days',[
-    ('hours',2.3,'personal','hours_leave',3.66,.29),
-    ('hours',2.3,'sick','hours_leave',3.66,.29),
+    ('hours',2.3,'personal','hours_leave',5.68,.29),
+    ('hours',2.3,'sick','hours_leave',5.68,.29),
     ('hours',8,'personal','leave',0,1),
-    ('hours',None,'sick','leave',5.96,1),
+    ('hours',None,'sick','leave',0,1),
     ('full',None,'sick','leave',5.96,1),
     ('full',None,'personal','leave',5.96,1),
     ('morning',None,'personal','half',5.96,.5),
@@ -326,7 +326,7 @@ def test_calendar_and_payroll_leave_rules_unchanged(tmp_path,monkeypatch,duratio
                 assert detail['work_hours']==work_hours,detail
                 assert detail['leave_days']==leave_days,detail
                 if duration=='hours' and hours==2.3:
-                    assert detail['daily_hours'][0]['hours']==3.66
+                    assert detail['daily_hours'][0]['hours']==5.68
                     print('\n口径实测：',event['status_label'],'考勤工时=',event['work_hours'],'工资工时=',detail['work_hours'])
     asyncio.run(run())
 
@@ -343,10 +343,10 @@ def test_hourly_leave_multiple_entries_are_summed(tmp_path,monkeypatch):
                 await db.commit()
             response=await client.get('/api/v1/attendance/calendar?'+DATES,headers=auth(4))
             event=next(e for e in response.json()['events'] if e['employee_id']==1)
-            assert event['leave_hours']==2.3 and event['work_hours']==3.66
+            assert event['leave_hours']==2.3 and event['work_hours']==5.68
             response=await client.post('/api/v1/payroll/calculate',headers=auth(4),json={'end_date':'2026-10-10','employee_ids':[1]})
             assert response.status_code==200,response.text
             async with factory() as db:
                 record=(await db.execute(select(PayrollRecord).where(PayrollRecord.employee_id==1))).scalar_one()
-                assert json.loads(record.detail)['work_hours']==3.66
+                assert json.loads(record.detail)['work_hours']==5.68
     asyncio.run(run())

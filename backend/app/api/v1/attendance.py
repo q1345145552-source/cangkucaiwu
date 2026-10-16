@@ -1,3 +1,4 @@
+from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -610,6 +611,7 @@ async def get_calendar(
             if l.hours is None:
                 # 小时数为空 → 按原来的全天假处理，不报错
                 info["full"] = True
+                info["hourly_missing"] = True
             else:
                 info["hours"] += float(l.hours)
                 info["hours_has"] = True
@@ -668,6 +670,7 @@ async def get_calendar(
             has_late = False
             clock_hours = 0.0
             leave_hours_val = 0.0
+            net_hourly_hours = None
             if (e.id, dt) in rest_set:
                 status_name_db = "rest"
             elif (e.id, dt) in absence_map:
@@ -701,10 +704,17 @@ async def get_calendar(
                 elif leave_info["hours_has"]:
                     # 按小时请假：落到当天，显示「请假X小时」，工时扣减
                     leave_hours_val = round(leave_info["hours"], 2)
-                    if leave_hours_val >= standard_hours:
+                    if leave_info["hours"] >= standard_hours:
                         status_name_db = "leave"  # 够整天按请假算
                     else:
                         status_name_db = "hours_leave"
+
+                if is_hourly_leave(leave_info):
+                    net_hourly_hours = hourly_leave_net_hours(
+                        hourly_clock_hours(sessions_by_time), None if leave_info.get("hourly_missing") else leave_info["hours"],
+                        sessions_by_time[-1].clocked_in_at if sessions_by_time else None,
+                        dt, work_sched, standard_hours,
+                    )
 
                 if status_name_db is None:
                     if has_morning and has_afternoon:
@@ -742,7 +752,7 @@ async def get_calendar(
                 "has_late": has_late,
                 "leave_hours": leave_hours_val if status_name_db == "hours_leave" else None,
                 "clock_hours": round(clock_hours, 2),
-                "work_hours": round(max(clock_hours - leave_hours_val, 0.0), 2),
+                "work_hours": net_hourly_hours if net_hourly_hours is not None else round(max(clock_hours - leave_hours_val, 0.0), 2),
                 "detail": "",
             }
             if (e.id, dt) in absence_map:

@@ -1,3 +1,4 @@
+from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.services.attendance_population import employee_account_roles
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -429,7 +430,8 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             info["afternoon"] = True
         elif dt == "hours":
             if lv.hours is None:
-                info["full"] = True  # 小时数为空 → 按全天假处理，不报错
+                info["full"] = True
+                info["hourly_missing"] = True  # 小时数为空 → 按全天假处理，不报错
             else:
                 info["hours"] += float(lv.hours)  # 一天多条按小时请假相加
                 info["hours_has"] = True
@@ -578,6 +580,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         "overtime_map": overtime_map, "fixed_by_emp": fixed_by_emp, "temp_by_emp": temp_by_emp,
         "early_half_time": early_half_time, "early_one_time": early_one_time, "afternoon_end_time": afternoon_end_time,
         "standard_hours": standard_hours,
+        "work_sched": work_sched,
         "period_end": period_end,
     })
     return base
@@ -710,18 +713,21 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 # 半天旷工：上午2次无下午请假，或下午2次无上午请假（缺勤半天）
                 absent_fine_day = 0.5
 
-            # 按小时请假：工时 = 打卡工时 - 请假小时（与考勤日历 /attendance/calendar 口径一致）
-            if lt == "hours" and lv_hours is not None:
-                h = float(lv_hours)
-                hours = round(max(hours - h, 0.0), 2)  # 扣工时，不为负，最多两位小数
-                lv_days = round(h / standard_hours, 4)
-                if h >= standard_hours:
-                    # 请假小时数 >= 当天应有工时 → 按整天请假算，工时记 0
-                    hours = 0.0
+            # Same net-hour decision as the calendar; no second deduction for early departure.
+            if is_hourly_leave(lt_info):
+                h = None if lt_info.get("hourly_missing") else lv_hours
+                hours = hourly_leave_net_hours(
+                    hourly_clock_hours(sessions_sorted), h, sessions_sorted[-1].clocked_in_at if sessions_sorted else None,
+                    current, prep["work_sched"], standard_hours,
+                )
+                if h is None or h >= standard_hours:
                     lv, att = 1.0, 0.0
                 else:
-                    lv = lv_days
-                    att = max(round(att - lv_days, 4), 0.0)
+                    lv = round(float(h) / standard_hours, 4)
+                    att = hours / standard_hours
+                    if tt == "monthly":
+                        # The hourly-leave day is paid by net attendance, not a second full leave deduction.
+                        lv = max(1.0 - att - ab, 0.0)
 
             work_hours_total += hours
             attendance_days_total += att
@@ -753,7 +759,7 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 status = "half"
             elif ab == 0.5:
                 status = "half"
-            daily_list.append({"day": current.day, "date": current.isoformat(), "status": status, "attendance": round(att, 2), "hours": round(hours, 2), "times": times})
+            daily_list.append({"day": current.day, "date": current.isoformat(), "status": status, "attendance": round(att, 4) if is_hourly_leave(lt_info) else round(att, 2), "hours": round(hours, 2), "times": times})
 
             for cr in sessions:
                 if cr.session == 1:

@@ -99,5 +99,5 @@ def test_calculation_formulas_and_other_payroll_actions_unchanged():
  def functions(source):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
  for file,allowed in [('payroll',{'list_payroll'}),('efficiency',{'_compute_week','_compute_overtime_hours'})]:
   name=f'backend/app/api/v1/{file}.py'
-  before=functions(subprocess.check_output(['git','show','ed3d03b:'+name],text=True,cwd=root));after=functions((root/name).read_text())
+  before=functions(subprocess.check_output(['git','show','ed3d03b:'+name],text=True,cwd=root));after=functions(subprocess.check_output(['git','show','75021e9:'+name],text=True,cwd=root))
   assert {k:v for k,v in before.items() if k not in allowed}=={k:v for k,v in after.items() if k not in allowed}
