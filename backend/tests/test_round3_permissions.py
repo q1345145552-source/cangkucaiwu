@@ -116,9 +116,6 @@ async def call(client, method, path, body, uid):
 
 
 def business_status(uid, path):
-    if path.startswith('/employees/max-limit?'):
-        # 原有静态 PUT 路由被先注册的 /{employee_id} 遮挡；本轮只加校验，不改路由。
-        return 422
     if path.startswith(('/employees', '/salary-templates', '/deduction-templates')):
         return 200
     if path == '/payroll/my-payslip':

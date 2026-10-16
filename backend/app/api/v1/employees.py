@@ -88,6 +88,43 @@ class ResignRequest(BaseModel):
     base_salary: Optional[float] = None
     remark: Optional[str] = None
 
+@router.get("/max-limit")
+async def get_max_limit(
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        return {"max_employees": 50, "current_count": 0}
+    wh = (await db.execute(select(Warehouse).where(Warehouse.id == wh_id))).scalar_one_or_none()
+    max_val = wh.max_employees if wh and wh.max_employees else 50
+    active_count = (await db.execute(
+        select(func.count(Employee.id)).where(
+            Employee.warehouse_id == wh_id, Employee.status != "resigned", Employee.is_deleted == False
+        )
+    )).scalar()
+    return {"max_employees": max_val, "current_count": active_count or 0}
+
+@router.put("/max-limit")
+async def set_max_limit(
+    max_employees: int,
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    wh = (await db.execute(select(Warehouse).where(Warehouse.id == wh_id))).scalar_one_or_none()
+    if not wh:
+        raise HTTPException(404, "仓库不存在")
+    wh.max_employees = max_employees
+    await db.flush()
+    return {"message": f"人数上限已设为 {max_employees}", "max_employees": max_employees}
+
 @router.get("")
 async def list_employees(
     page: int = Query(1, ge=1),
@@ -973,40 +1010,3 @@ async def employee_summary(
         "payroll_total": payroll_total,
         "payroll_details": payroll_details,
     }
-
-@router.get("/max-limit")
-async def get_max_limit(
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
-    db: AsyncSession = Depends(get_db),
-):
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    wh_id = get_wh_id(current_user)
-    if not wh_id:
-        return {"max_employees": 50, "current_count": 0}
-    wh = (await db.execute(select(Warehouse).where(Warehouse.id == wh_id))).scalar_one_or_none()
-    max_val = wh.max_employees if wh and wh.max_employees else 50
-    active_count = (await db.execute(
-        select(func.count(Employee.id)).where(
-            Employee.warehouse_id == wh_id, Employee.status != "resigned", Employee.is_deleted == False
-        )
-    )).scalar()
-    return {"max_employees": max_val, "current_count": active_count or 0}
-
-@router.put("/max-limit")
-async def set_max_limit(
-    max_employees: int,
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
-    db: AsyncSession = Depends(get_db),
-):
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    wh_id = get_wh_id(current_user)
-    if not wh_id:
-        raise HTTPException(400, "请先选择仓库")
-    wh = (await db.execute(select(Warehouse).where(Warehouse.id == wh_id))).scalar_one_or_none()
-    if not wh:
-        raise HTTPException(404, "仓库不存在")
-    wh.max_employees = max_employees
-    await db.flush()
-    return {"message": f"人数上限已设为 {max_employees}", "max_employees": max_employees}

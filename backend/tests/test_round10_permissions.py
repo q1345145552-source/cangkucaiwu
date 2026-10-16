@@ -54,7 +54,7 @@ def test_endpoint_matrix(tmp_path,monkeypatch,method,path,key,body,uid,grant):
     assert r.status_code==403,r.text
     assert r.json()['detail'].startswith('无此操作权限'),r.text
    else:
-    expected=422 if path.startswith('/employees/max-limit?') else (403 if uid==5 else 200)
+    expected=403 if uid==5 else 200
     assert r.status_code==expected,r.text
    if not path.endswith('/resign'):assert await snapshot(factory)==before
  asyncio.run(run())
