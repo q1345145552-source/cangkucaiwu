@@ -41,14 +41,29 @@ export default function OvertimePage() {
   const [form, setForm] = useState({ ...defaultForm });
   const [empSearch, setEmpSearch] = useState("");
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [user?.id, employeeView]);
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [filtersReady, setFiltersReady] = useState(false);
+  useEffect(() => {
+    setPendingOnly(new URLSearchParams(window.location.search).get("pending_verification") === "true");
+    setFiltersReady(true);
+  }, []);
+  useEffect(() => { if (!getToken()) router.push("/login"); if (filtersReady) load(); }, [user?.id, employeeView, filtersReady, pendingOnly]);
 
   async function load() {
     setLoading(true);
     try {
       // Load overtime tasks
-      const r = await api.get<any>(`/overtime?page_size=200${employeeView ? "&view=self" : ""}`);
-      setTasks(r.data || []);
+      const r = await api.get<any>(`/overtime?page_size=200${employeeView ? "&view=self" : pendingOnly ? "&pending_verification=true" : ""}`);
+      const loaded = [...(r.data || [])];
+      // Pending reminders are not capped at the first 200 task groups.
+      if (!employeeView && pendingOnly) {
+        for (let page = 2; loaded.length < r.total; page++) {
+          const next = await api.get<any>(`/overtime?page_size=200&page=${page}&pending_verification=true`);
+          if (!next.data?.length) break;
+          loaded.push(...next.data);
+        }
+      }
+      setTasks(loaded);
       // Load pending tasks for labor
       if (isLabor) {
         const p = await api.get<any>("/overtime/pending");
@@ -249,6 +264,9 @@ export default function OvertimePage() {
         </div>
       </div>
 
+      {!isLabor && <label className="flex items-center gap-2 mb-4 text-sm">
+        <input type="checkbox" checked={pendingOnly} onChange={e => setPendingOnly(e.target.checked)}/>只看待核实
+      </label>}
       {/* Warnings */}
       {warnings.length > 0 && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">

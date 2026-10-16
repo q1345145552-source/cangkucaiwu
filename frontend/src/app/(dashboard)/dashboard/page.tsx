@@ -1,4 +1,5 @@
 "use client";
+import BossTodos from "@/components/BossTodos";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,6 +90,10 @@ const TODO_CONFIG: Record<string, { icon: React.ReactNode; color: string; badge:
 };
 
 export default function DashboardPage() {
+  return <div className="space-y-6"><BossTodos/><DashboardContent/></div>;
+}
+
+function DashboardContent() {
   const { user } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<CockpitData | null>(null);

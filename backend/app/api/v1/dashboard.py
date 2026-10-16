@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
@@ -735,3 +735,40 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
         },
         "todos": todos,
     }
+
+
+@router.get("/boss-todos")
+async def boss_todos(response: Response, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.models.employee import Employee
+    from app.models.employee_advance import EmployeeAdvance, AdvanceApprovalStatus
+    from app.models.overtime import OvertimeTask, OvertimeAssignment
+    from app.services.boss_todos import pending_overtime_task, pending_overtime_assignment
+
+    response.headers["Cache-Control"] = "no-store"
+    empty = {"advances": {"count": 0, "items": []}, "overtime": {"count": 0, "items": []}}
+    if current_user.role == Role.SUPER_ADMIN:
+        return empty
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无此操作权限")
+    wh_ids = get_wh_ids(current_user)
+    if not wh_ids:
+        return empty
+    advance_rows = (await db.execute(select(EmployeeAdvance, Employee.name).join(
+        Employee, Employee.id == EmployeeAdvance.employee_id,
+    ).where(EmployeeAdvance.warehouse_id.in_(wh_ids), Employee.warehouse_id == EmployeeAdvance.warehouse_id,
+        EmployeeAdvance.approval_status == AdvanceApprovalStatus.PENDING.value,
+    ).order_by(EmployeeAdvance.advance_date, EmployeeAdvance.id))).all()
+    advances = [{"id": a.id, "warehouse_id": a.warehouse_id, "employee_id": a.employee_id,
+                 "employee_name": name, "amount": a.amount, "currency": a.currency or "THB",
+                 "date": a.advance_date.isoformat()} for a, name in advance_rows]
+    overtime_rows = (await db.execute(select(OvertimeAssignment, OvertimeTask, Employee.name).join(
+        OvertimeTask, OvertimeTask.id == OvertimeAssignment.overtime_id,
+    ).join(Employee, Employee.id == OvertimeAssignment.employee_id).where(
+        OvertimeTask.warehouse_id.in_(wh_ids), Employee.warehouse_id == OvertimeTask.warehouse_id,
+        pending_overtime_task(), pending_overtime_assignment(),
+    ).order_by(OvertimeTask.date, OvertimeAssignment.id))).all()
+    overtime_items = [{"id": a.id, "task_id": task.id, "warehouse_id": task.warehouse_id,
+                       "employee_id": a.employee_id, "employee_name": name, "date": task.date.isoformat(),
+                       "planned_hours": task.hours, "has_dispute": bool(a.has_dispute)} for a, task, name in overtime_rows]
+    return {"advances": {"count": len(advances), "items": advances},
+            "overtime": {"count": len(overtime_items), "items": overtime_items}}

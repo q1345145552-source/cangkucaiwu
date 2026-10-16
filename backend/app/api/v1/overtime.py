@@ -10,6 +10,7 @@ from app.models.user import User
 from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
 from app.core.messages import t, get_request_lang
 from app.services.data_history import record_history
+from app.services.boss_todos import pending_overtime_task, pending_overtime_assignment
 from pydantic import BaseModel, field_validator
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime, date
@@ -495,6 +496,7 @@ async def dispute_overtime(
 async def list_overtimes(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    pending_verification: bool = False,
     status: str = None,
     month: str = None,  # YYYY-MM
     current_user: User = Depends(employee_access(_PERMISSION)),
@@ -526,6 +528,12 @@ async def list_overtimes(
     if employee_view(current_user):
         query = query.where(OvertimeTask.warehouse_id == get_wh_id(current_user))
         count_q = count_q.where(OvertimeTask.warehouse_id == get_wh_id(current_user))
+    if pending_verification:
+        pending = select(OvertimeAssignment.id).where(
+            OvertimeAssignment.overtime_id == OvertimeTask.id, pending_overtime_assignment(),
+        ).correlate(OvertimeTask).exists()
+        query = query.where(pending_overtime_task(), pending)
+        count_q = count_q.where(pending_overtime_task(), pending)
     if status:
         query = query.where(OvertimeTask.status == status)
         count_q = count_q.where(OvertimeTask.status == status)
@@ -559,6 +567,8 @@ async def list_overtimes(
     assign_map = {}
     if task_ids:
         assign_q = select(OvertimeAssignment).where(OvertimeAssignment.overtime_id.in_(task_ids))
+        if pending_verification:
+            assign_q = assign_q.where(pending_overtime_assignment())
         # 劳工只看得到自己那一条分配记录，管理员/主管看全部
         if labor_emp_id is not None:
             assign_q = assign_q.where(OvertimeAssignment.employee_id == labor_emp_id)

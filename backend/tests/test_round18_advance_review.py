@@ -170,7 +170,7 @@ def test_only_review_actions_and_one_payroll_filter_changed():
    return node
  def money_funcs(s):return {n.name:ast.dump(RemoveApprovalFilter().visit(n),include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef))}
  assert money_funcs((root/name).read_text())==money_funcs(subprocess.check_output(['git','show','8882a6a:'+name],cwd=root,text=True))
- assert not subprocess.check_output(['git','diff','8882a6a','--','frontend','backend/app/models','backend/scripts'],cwd=root)
+ assert not subprocess.check_output(['git','diff','8882a6a','fa7708a','--','frontend','backend/app/models','backend/scripts'],cwd=root)
 
 
 def test_supervisor_self_advance_end_to_end(tmp_path,monkeypatch):

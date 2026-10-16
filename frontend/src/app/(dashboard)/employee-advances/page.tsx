@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, string> = { unpaid: "未扣", partial: "部�
 
 export default function EmployeeAdvancePage() {
   const canWrite = useMenuPermission("employee_advances");
-  const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
+  const { toast } = useToast(); const { user } = useAuth() as { user: any }; const router = useRouter();
   const [rows, setRows] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ total_by_currency: [], debtor_count: 0 });
   const [employees, setEmployees] = useState<any[]>([]);
@@ -28,13 +28,35 @@ export default function EmployeeAdvancePage() {
   const [filterEmp, setFilterEmp] = useState(0);
   const [filterPeriod, setFilterPeriod] = useState("");
 
-  useEffect(() => { if (!getToken()) { router.push("/login"); return; } load(); loadRefs(); }, []);
-  useEffect(() => { load(); }, [filterEmp, filterPeriod]);
+  const [approvalStatus, setApprovalStatus] = useState("");
+  const [filtersReady, setFiltersReady] = useState(false);
+  const [reviewing, setReviewing] = useState<number | null>(null);
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  useEffect(() => {
+    if (!getToken()) { router.push("/login"); return; }
+    const status = new URLSearchParams(window.location.search).get("approval_status") || "";
+    setApprovalStatus(["pending", "approved", "rejected"].includes(status) ? status : "");
+    setFiltersReady(true); loadRefs();
+  }, []);
+  useEffect(() => { if (filtersReady) load(); }, [filtersReady, filterEmp, filterPeriod, approvalStatus]);
+
+  async function review(id: number, reject = false) {
+    if (reject && !rejectReason.trim()) { toast("error", "请填写驳回原因"); return; }
+    setReviewing(id);
+    try {
+      await api.post(`/employee-advances/${id}/${reject ? "reject" : "approve"}`, reject ? { reject_reason: rejectReason.trim() } : {});
+      toast("success", reject ? "已驳回" : "已通过");
+      setRejectId(null); setRejectReason(""); await load();
+    } catch (err: any) { toast("error", err.message || "审批失败"); }
+    finally { setReviewing(null); }
+  }
 
   async function load() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      if (approvalStatus) params.set("approval_status", approvalStatus);
       if (filterEmp) params.set("employee_id", String(filterEmp));
       if (filterPeriod) params.set("period", filterPeriod);
       const [r, s] = await Promise.all([
@@ -111,6 +133,9 @@ export default function EmployeeAdvancePage() {
 
       {/* 筛选 */}
       <div className="flex gap-2 items-center mb-3 flex-wrap">
+        <select aria-label="审批状态" value={approvalStatus} onChange={e => setApprovalStatus(e.target.value)} className="border rounded-lg px-3 py-2 text-sm bg-white">
+          <option value="">全部审批状态</option><option value="pending">待审批</option><option value="approved">已通过</option><option value="rejected">已驳回</option>
+        </select>
         <select value={filterEmp || ""} onChange={e => setFilterEmp(+e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
           <option value="">全部员工</option>
@@ -118,8 +143,8 @@ export default function EmployeeAdvancePage() {
         </select>
         <input type="month" value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm bg-white" />
-        {(filterEmp || filterPeriod) && (
-          <button onClick={() => { setFilterEmp(0); setFilterPeriod(""); }}
+        {(filterEmp || filterPeriod || approvalStatus) && (
+          <button onClick={() => { setFilterEmp(0); setFilterPeriod(""); setApprovalStatus(""); }}
             className="text-sm text-gray-500 hover:text-gray-700">重置</button>
         )}
       </div>
@@ -145,6 +170,7 @@ export default function EmployeeAdvancePage() {
                 <th className="text-right px-3 py-3 font-medium text-gray-500">未扣金额</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">状态</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">来源</th>
+                <th className="px-3 py-3">审批状态</th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">操作人</th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">备注</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">操作</th>
@@ -167,9 +193,14 @@ export default function EmployeeAdvancePage() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-center">{SOURCE_LABELS[r.source] || r.source}</td>
+                  <td className="px-3 py-3 text-center whitespace-nowrap">{r.approval_status_label || r.approval_status}</td>
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-gray-500 max-w-32 truncate" title={r.remark}>{r.remark || "-"}</td>
                   <td className="px-3 py-3 text-center">
+                    {user?.role === "warehouse_admin" && r.approval_status === "pending" && <div className="flex gap-2 mb-2 whitespace-nowrap">
+                      <button disabled={reviewing !== null} onClick={() => review(r.id)} className="text-green-700 disabled:opacity-50">通过</button>
+                      <button disabled={reviewing !== null} onClick={() => { setRejectId(r.id); setRejectReason(""); }} className="text-red-600">驳回</button>
+                    </div>}
                     {canWrite && (<button onClick={() => handleDelete(r.id)} className="text-red-400 hover:text-red-600" title="删除">
                       <Trash2 size={16}/>
                     </button>)}
@@ -181,6 +212,13 @@ export default function EmployeeAdvancePage() {
         </div>
       )}
 
+      {rejectId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div role="dialog" aria-label="驳回预支" className="bg-white rounded-xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto space-y-4">
+          <h2 className="font-semibold">驳回预支</h2>
+          <textarea aria-label="驳回原因" placeholder="请填写驳回原因" maxLength={500} value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="form-input w-full"/>
+          <div className="flex justify-end gap-3"><button disabled={reviewing !== null} onClick={() => setRejectId(null)}>取消</button><button disabled={reviewing !== null} className="btn-primary" onClick={() => review(rejectId, true)}>确认驳回</button></div>
+        </div>
+      </div>}
       {/* 记预支弹窗 */}
       {canWrite && showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>

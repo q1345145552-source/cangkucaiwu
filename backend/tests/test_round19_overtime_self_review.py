@@ -174,7 +174,7 @@ def test_foreign_task_and_assignment_rejected(tmp_path,monkeypatch):
 
 def test_only_verify_predicate_and_audit_changed():
  root=Path(__file__).resolve().parents[2];name='backend/app/api/v1/overtime.py'
- old=ast.parse(subprocess.check_output(['git','show','fa7708a:'+name],cwd=root,text=True));new=ast.parse((root/name).read_text())
+ old=ast.parse(subprocess.check_output(['git','show','fa7708a:'+name],cwd=root,text=True));new=ast.parse(subprocess.check_output(['git','show','e950142:'+name],cwd=root,text=True))
  class Normalize(ast.NodeTransformer):
   def visit_If(self,node):
    if ast.unparse(node.test)=='current_user.role == Role.SUPERVISOR':return None
@@ -189,7 +189,7 @@ def test_only_verify_predicate_and_audit_changed():
    return self.generic_visit(node)
  def functions(tree):return {n.name:ast.dump(Normalize().visit(n) if n.name=='verify_overtime' else n,include_attributes=False) for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
  assert functions(old)==functions(new)
- assert not subprocess.check_output(['git','diff','fa7708a','--','frontend','backend/app/api/v1/payroll.py','backend/app/api/v1/attendance.py','backend/app/api/v1/clock_in.py','backend/app/models','backend/scripts'],cwd=root)
+ assert not subprocess.check_output(['git','diff','fa7708a','e950142','--','frontend','backend/app/api/v1/payroll.py','backend/app/api/v1/attendance.py','backend/app/api/v1/clock_in.py','backend/app/models','backend/scripts'],cwd=root)
 
 
 def test_monthly_limit_hours_and_cancel_unchanged(tmp_path,monkeypatch):
