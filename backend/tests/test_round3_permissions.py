@@ -43,13 +43,13 @@ CASES = [
     ('POST','/payroll/1/confirm','payroll',None),
     ('POST','/payroll/confirm-all?period=2026-10','payroll',None),
     ('POST','/payroll/batch-confirm','payroll',{'record_ids':[1]}),
-    ('POST','/payroll/batch-disburse','payroll',{'record_ids':[2]}),
+    ('POST','/payroll/batch-disburse','payroll',{'record_ids':[2],'account_id':1}),
     ('POST','/payroll/batch-delete','payroll',{'record_ids':[1]}),
     ('POST','/payroll/1/recalc','payroll',{'void_reason':'权限回归','mode':'recalc'}),
     ('POST','/payroll/batch-recalc','payroll',{'record_ids':[1],'void_reason':'权限回归','mode':'recalc'}),
     ('DELETE','/payroll/1','payroll',None),
     ('DELETE','/payroll/period/2026-10','payroll',None),
-    ('POST','/payroll/2/disburse','payroll',{}),
+    ('POST','/payroll/2/disburse','payroll',{'account_id':1}),
     ('POST','/payroll/3/revoke-disbursement','payroll',None),
     ('GET','/payroll/my-payslip','payroll',None),
     ('GET','/payroll/settlement-progress','payroll',None),
@@ -95,6 +95,9 @@ async def hr_environment(tmp_path, monkeypatch):
                                     status=status, disbursed=disbursed, net_pay=1234.56, base_pay=1500,
                                     gross_pay=1600, total_deductions=365.44, overtime_pay=100, detail='{}'))
             await db.commit()
+        from app.services.payroll_expense import backfill_payroll_categories
+        async with engine.begin() as conn:
+            await backfill_payroll_categories(conn)
         yield engine, factory, client
 
 

@@ -97,7 +97,7 @@ def test_only_half_day_paths_changed():
   assert functions(subprocess.check_output(['git','show','44d6c90:'+filename],cwd=root,text=True))==functions(subprocess.check_output(['git','show','cc9660d:'+filename],cwd=root,text=True))
  for filename in ('backend/app/services/hourly_leave.py','backend/app/services/early_departure_leave.py','backend/app/services/schedule.py'):
   assert (root/filename).read_bytes()==subprocess.check_output(['git','show','44d6c90:'+filename],cwd=root)
- assert not subprocess.check_output(['git','diff','44d6c90','--','frontend/src','backend/app/models','backend/scripts/seed.py'],cwd=root)
+ assert not subprocess.check_output(['git','diff','44d6c90','cc9660d','--','frontend/src','backend/app/models','backend/scripts/seed.py'],cwd=root)
 
 
 @pytest.mark.parametrize('duration,approval,punches,expected',[

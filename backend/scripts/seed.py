@@ -60,12 +60,26 @@ async def _migrate_advance_approval_columns(conn):
             print(f"迁移 预支审批字段 {name} 失败：{exc}")
 
 
+async def _migrate_payroll_expense_link(conn):
+    from sqlalchemy import text
+    for name, statement in (
+        ("expense_record_id", "ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS expense_record_id INTEGER REFERENCES expense_records(id)"),
+        ("expense_record_index", "CREATE UNIQUE INDEX IF NOT EXISTS ix_payroll_records_expense_record_id ON payroll_records (expense_record_id)"),
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 工资支出联动字段 {name} 失败：{exc}")
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)
+        await _migrate_payroll_expense_link(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:
@@ -874,6 +888,10 @@ async def initialize():
     # seed() 可能在发现已有管理员时提前返回；补权限必须放在返回之后，
     # 同时覆盖已有数据库和首次初始化生成的账号。
     await seed()
+    from app.services.payroll_expense import backfill_payroll_categories
+    async with _get_engine().begin() as conn:
+        categories = await backfill_payroll_categories(conn)
+    print(f"员工工资分类迁移完成，新增分类数：{categories}")
     from app.services.permission_migrations import run_permission_migrations
     async with _get_engine().begin() as conn:
         changed = await run_permission_migrations(conn)

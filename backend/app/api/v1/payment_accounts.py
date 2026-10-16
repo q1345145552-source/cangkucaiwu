@@ -16,6 +16,7 @@ router = APIRouter()
 @router.get("")
 async def list_accounts(current_user: User = Depends(check_staff_permission_any(
         _PERMISSION,
+        MENU_PERMISSIONS_BY_KEY["payroll"].label,
         MENU_PERMISSIONS_BY_KEY["operating"].label,
         MENU_PERMISSIONS_BY_KEY["other_income_expense"].label,
     )), db: AsyncSession = Depends(get_db)):

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.income_expense import IncomeExpenseCategory
+from app.services.payroll_expense import PAYROLL_EXPENSE_CATEGORY
 
 # (type, category_group, name)
 #   type:           income(收入) / expense(支出)
@@ -22,6 +23,7 @@ DEFAULT_CATEGORIES = [
     ("expense", "operating", "设备"),
     ("expense", "operating", "保护费"),
     ("expense", "operating", "其他支出"),
+    ("expense", "operating", PAYROLL_EXPENSE_CATEGORY),
     # 运营收入
     ("income", "operating", "仓储费"),
     ("income", "operating", "操作费"),

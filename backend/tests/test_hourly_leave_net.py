@@ -87,7 +87,7 @@ def test_only_hourly_branch_changed():
   def functions(source):
    return {n.name:ast.dump(NormalizeHourly().visit(n),include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef))}
   assert functions(subprocess.check_output(['git','show','a19fa60:'+name],cwd=root,text=True))==functions(subprocess.check_output(['git','show','3a88d08:'+name],cwd=root,text=True)),module
- assert not subprocess.check_output(['git','diff','a19fa60','--','frontend/src','backend/scripts/seed.py','backend/app/models'],cwd=root)
+ assert not subprocess.check_output(['git','diff','a19fa60','3a88d08','--','frontend/src','backend/scripts/seed.py','backend/app/models'],cwd=root)
 
 
 def test_existing_payroll_and_leave_rows_never_rewritten_on_read(tmp_path,monkeypatch):

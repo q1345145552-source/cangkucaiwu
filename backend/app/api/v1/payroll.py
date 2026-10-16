@@ -1,3 +1,4 @@
+from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
@@ -1281,6 +1282,7 @@ async def list_payroll(
             "disbursed": r.disbursed,
             "disbursed_at": r.disbursed_at.isoformat() if r.disbursed_at else None,
             "signature_path": r.signature_path,
+            "expense_record_id": r.expense_record_id,
             "voided": r.voided,
             "voided_by": r.voided_by,
             "voided_by_name": user_map.get(r.voided_by).display_name if r.voided_by and user_map.get(r.voided_by) else None,
@@ -1559,17 +1561,17 @@ class BatchIdsRequest(BaseModel):
     record_ids: List[int]
 
 
-async def _batch_fetch(db: AsyncSession, wh_id: int, record_ids: List[int]):
+async def _batch_fetch(db: AsyncSession, wh_id: int, record_ids: List[int], lock: bool = False):
     """拉取并校验：只返回当前仓库的记录；id 数量不符说明有越权/不存在记录。"""
     ids = list(dict.fromkeys(record_ids or []))
     if not ids:
         raise HTTPException(400, "请选择要操作的记录")
-    records = (await db.execute(
-        select(PayrollRecord).where(
-            PayrollRecord.id.in_(ids),
-            PayrollRecord.warehouse_id == wh_id,
-        )
-    )).scalars().all()
+    query = select(PayrollRecord).where(
+        PayrollRecord.id.in_(ids), PayrollRecord.warehouse_id == wh_id,
+    ).order_by(PayrollRecord.id)
+    if lock:
+        query = query.with_for_update()
+    records = (await db.execute(query)).scalars().all()
     if len(records) != len(ids):
         raise HTTPException(403, "包含无权操作的记录")
     return records
@@ -1601,9 +1603,13 @@ async def batch_confirm_payroll(
     return {"message": f"已确认 {cnt} 条", "count": cnt}
 
 
+class BatchDisburseRequest(BatchIdsRequest):
+    account_id: Optional[int] = None
+
+
 @router.post("/batch-disburse")
 async def batch_disburse_payroll(
-    req: BatchIdsRequest,
+    req: BatchDisburseRequest,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1612,20 +1618,21 @@ async def batch_disburse_payroll(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
-    records = await _batch_fetch(db, wh_id, req.record_ids)
+    records = await _batch_fetch(db, wh_id, req.record_ids, lock=True)
+    account = await payment_account(db, wh_id, req.account_id)
     now = thai_now()
+    expenses = []
     cnt = 0
     for r in records:
         if r.voided:
             continue
         # 只发放已确认的；已发放的跳过不重复处理
         if r.status == "confirmed" and not r.disbursed:
-            r.disbursed = True
-            r.disbursed_at = now
-            r.disbursed_by = current_user.id
+            expense = await create_payroll_expense(db, r, account, current_user, now)
+            expenses.append({"payroll_record_id": r.id, "expense_record_id": expense.id, "amount": expense.amount})
             cnt += 1
     await db.flush()
-    return {"message": f"已发放 {cnt} 条", "count": cnt}
+    return {"message": f"已发放 {cnt} 条", "count": cnt, "account_id": account.id, "total_net": round(sum(e["amount"] for e in expenses), 2), "expenses": expenses}
 
 
 @router.post("/batch-delete")
@@ -1943,6 +1950,7 @@ async def delete_period_payroll(
 # ═══ Disbursement ════════════════════════════
 
 class DisburseRequest(BaseModel):
+    account_id: Optional[int] = None
     signature_base64: Optional[str] = None  # 签字照片 base64
 
 
@@ -1963,7 +1971,7 @@ async def disburse_payroll(
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
             PayrollRecord.warehouse_id == wh_id,
-        )
+        ).with_for_update()
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
@@ -1973,6 +1981,9 @@ async def disburse_payroll(
         raise HTTPException(400, "请先确认工资单再发放")
     if r.disbursed:
         raise HTTPException(400, "该工资单已发放")
+
+    account = await payment_account(db, wh_id, req.account_id)
+    expense_amount(r)
 
     # Save signature if provided（压缩 + 缩略图）
     sig_path = None
@@ -1991,9 +2002,7 @@ async def disburse_payroll(
         except Exception:
             pass
 
-    r.disbursed = True
-    r.disbursed_at = thai_now()
-    r.disbursed_by = current_user.id
+    expense = await create_payroll_expense(db, r, account, current_user, thai_now())
     r.signature_path = sig_path
     await db.flush()
 
@@ -2002,9 +2011,11 @@ async def disburse_payroll(
     emp_name = emp.name if emp else ""
 
     return {
-        "message": f"已向 {emp_name} 发放 {r.net_pay:.0f} 泰铢工资",
+        "message": f"已向 {emp_name} 发放 {r.net_pay:.2f} 泰铢工资",
         "id": r.id,
         "net_pay": r.net_pay,
+        "expense_record_id": expense.id,
+        "account_id": account.id,
         "disbursed_at": r.disbursed_at.isoformat(),
     }
 
@@ -2023,7 +2034,7 @@ async def revoke_disbursement(
     if wh_id is None:
         raise HTTPException(400, "请先选择仓库")
 
-    r = (await db.execute(select(PayrollRecord).where(PayrollRecord.id == record_id))).scalar_one_or_none()
+    r = (await db.execute(select(PayrollRecord).where(PayrollRecord.id == record_id).with_for_update())).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
     if r.warehouse_id != wh_id:
@@ -2037,6 +2048,8 @@ async def revoke_disbursement(
     emp_name = emp.name if emp else ""
     old_net = r.net_pay
     range_str = f"{r.settle_start_date.isoformat()} 到 {r.settle_end_date.isoformat()}" if r.settle_start_date and r.settle_end_date else ""
+
+    reversed_expense_id = await reverse_payroll_expense(db, r, current_user)
 
     # 退回未发放，状态保持已确认
     r.disbursed = False
@@ -2059,7 +2072,7 @@ async def revoke_disbursement(
     )
     await db.flush()
 
-    return {"message": "已撤销发放", "id": r.id}
+    return {"message": "已撤销发放", "id": r.id, "reversed_expense_id": reversed_expense_id}
 
 
 # ═══ Employee Self-View Payslip ═══════════════

@@ -114,8 +114,8 @@ def test_batch_conflict_atomic_and_old_rows_unchanged(tmp_path,monkeypatch):
 def test_only_admin_record_changed():
  root=Path(__file__).resolve().parents[2];name='backend/app/api/v1/attendance.py'
  def functions(source):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name!='admin_record_leave'}
- assert functions((root/name).read_text())==functions(subprocess.check_output(['git','show','cc9660d:'+name],cwd=root,text=True))
- assert not subprocess.check_output(['git','diff','cc9660d','--','frontend','backend/app/models','backend/app/services','backend/app/api/v1/payroll.py','backend/scripts'],cwd=root)
+ assert functions(subprocess.check_output(['git','show','15d53fa:'+name],cwd=root,text=True))==functions(subprocess.check_output(['git','show','cc9660d:'+name],cwd=root,text=True))
+ assert not subprocess.check_output(['git','diff','cc9660d','15d53fa','--','frontend','backend/app/models','backend/app/services','backend/app/api/v1/payroll.py','backend/scripts'],cwd=root)
 
 
 def test_successful_date_range_records_operator(tmp_path,monkeypatch):

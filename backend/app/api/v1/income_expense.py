@@ -1,3 +1,5 @@
+from app.services.payroll_expense import require_manual_expense
+from app.models.payroll import PayrollRecord
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -231,10 +233,16 @@ async def list_expense(
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sup_ids)))).scalars().all()
         sup_map = {s.id: s.name for s in sups}
 
+    expense_ids = [r.id for r in records]
+    payroll_map = dict((await db.execute(select(PayrollRecord.expense_record_id, PayrollRecord.id).where(
+        PayrollRecord.expense_record_id.in_(expense_ids), PayrollRecord.warehouse_id.in_(get_wh_ids(current_user)),
+    ))).all()) if expense_ids else {}
+
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id, "category_id": r.category_id,
         "account_id": r.account_id, "supplier_id": r.supplier_id,
         "amount": r.amount, "currency": r.currency,
+        "payroll_record_id": payroll_map.get(r.id),
         "expense_date": r.expense_date.isoformat() if r.expense_date else None,
         "voucher": r.voucher, "remark": r.remark,
         "category_name": cat_map.get(r.category_id, ""),
@@ -327,11 +335,13 @@ async def update_expense(
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
-    r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()
+    r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id).with_for_update())).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "记录不存在")
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
+
+    await require_manual_expense(db, expense_id)
 
     before = {
         "amount": r.amount, "currency": r.currency,
@@ -434,13 +444,15 @@ async def delete_expense(
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
-    r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id))).scalar_one_or_none()
+    r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id).with_for_update())).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "记录不存在")
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
 
     wh_id = r.warehouse_id
+    await require_manual_expense(db, expense_id)
+
     before = {
         "amount": r.amount, "currency": r.currency,
         "expense_date": r.expense_date.isoformat() if r.expense_date else None,

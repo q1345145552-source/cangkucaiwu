@@ -63,6 +63,8 @@ class PayrollRecord(Base):
     confirmed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
 
+    expense_record_id = Column(Integer, ForeignKey("expense_records.id"), nullable=True, unique=True, index=True)
+
     # Disbursement tracking
     disbursed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     disbursed_at = Column(DateTime(timezone=True), nullable=True)
