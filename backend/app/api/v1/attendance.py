@@ -237,29 +237,32 @@ async def admin_record_leave(
             except (ValueError, TypeError):
                 notified_at = thai_now()
 
+    # Preflight the whole range: reject duplicates before creating any records.
+    dup = (await db.execute(
+        select(LeaveRequest.id).where(
+            LeaveRequest.warehouse_id == wh_id,
+            LeaveRequest.employee_id == req.employee_id,
+            LeaveRequest.leave_date >= start,
+            LeaveRequest.leave_date <= end,
+            LeaveRequest.status.in_(("approved", "pending")),
+        ).limit(1)
+    )).scalar_one_or_none()
+    if dup is not None:
+        raise HTTPException(400, "该员工这一天已有请假记录")
+
     created = 0
     skipped = 0
     cur = start
     while cur <= end:
-        dup = (await db.execute(
-            select(LeaveRequest).where(
-                LeaveRequest.employee_id == req.employee_id,
-                LeaveRequest.leave_date == cur,
-                LeaveRequest.status != "rejected",
-            )
-        )).scalar_one_or_none()
-        if dup:
-            skipped += 1
-        else:
-            db.add(LeaveRequest(
-                warehouse_id=wh_id, employee_id=req.employee_id,
-                leave_date=cur, leave_type=req.leave_type,
-                reason=req.reason, status="approved",
-                duration_type=req.duration_type, hours=hours_val,
-                notified_at=notified_at,
-                reviewed_by=current_user.id, reviewed_at=thai_now(),
-            ))
-            created += 1
+        db.add(LeaveRequest(
+            warehouse_id=wh_id, employee_id=req.employee_id,
+            leave_date=cur, leave_type=req.leave_type,
+            reason=req.reason, status="approved",
+            duration_type=req.duration_type, hours=hours_val,
+            notified_at=notified_at,
+            reviewed_by=current_user.id, reviewed_at=thai_now(),
+        ))
+        created += 1
         cur += timedelta(days=1)
     await db.flush()
     return {"message": f"已代录 {created} 条请假，跳过 {skipped} 天", "created": created, "skipped": skipped}

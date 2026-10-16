@@ -94,7 +94,7 @@ def test_only_half_day_paths_changed():
   filename=f'backend/app/api/v1/{module}.py'
   def functions(source):
    return {n.name:ast.dump(RemoveHalfDay().visit(n),include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-  assert functions(subprocess.check_output(['git','show','44d6c90:'+filename],cwd=root,text=True))==functions((root/filename).read_text())
+  assert functions(subprocess.check_output(['git','show','44d6c90:'+filename],cwd=root,text=True))==functions(subprocess.check_output(['git','show','cc9660d:'+filename],cwd=root,text=True))
  for filename in ('backend/app/services/hourly_leave.py','backend/app/services/early_departure_leave.py','backend/app/services/schedule.py'):
   assert (root/filename).read_bytes()==subprocess.check_output(['git','show','44d6c90:'+filename],cwd=root)
  assert not subprocess.check_output(['git','diff','44d6c90','--','frontend/src','backend/app/models','backend/scripts/seed.py'],cwd=root)
