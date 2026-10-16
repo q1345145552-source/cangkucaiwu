@@ -362,5 +362,7 @@
   "ot_verify_dispute_notified": "พนักงานที่ยื่นข้อโต้แย้งได้รับการแจ้งให้ยืนยันใหม่แล้ว",
   "ot_verify_confirmed_note": "ยืนยันแล้ว แก้ไขไม่ได้",
   "ot_verify_confirmed_hint": "มีพนักงานยืนยันแล้ว {n} คน ข้อมูลของพวกเขาจะไม่ถูกเปลี่ยนแปลง",
-  "ot_status_dispute_suffix": "{n} คนมีข้อโต้แย้ง"
+  "ot_status_dispute_suffix": "{n} คนมีข้อโต้แย้ง",
+  "employee_self": "บริการตนเองสำหรับพนักงาน",
+  "leave": "ลางาน"
 }

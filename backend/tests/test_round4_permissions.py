@@ -139,7 +139,7 @@ def test_round4_inventory():
                 if isinstance(d,ast.Call) and isinstance(d.func,ast.Attribute) and isinstance(d.func.value,ast.Name) and d.func.value.id=='router':
                     seen.append((d.func.attr.upper(),'/'+prefix+d.args[0].value))
                     default=next(v for a,v in zip(node.args.args[-len(node.args.defaults):],node.args.defaults) if a.arg=='current_user')
-                    assert 'check_staff_permission' in ast.unparse(default),node.name
+                    assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
     assert len(seen)==28
     requested={(m,re.sub(r'/[123](?=/|$)','/{}',p.split('?')[0])) for m,p,_,_ in CASES}
     assert requested=={(m,re.sub(r'\{[^}]+\}','{}',p)) for m,p in seen}

@@ -1,3 +1,4 @@
+from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
@@ -321,11 +322,11 @@ async def verify_overtime(
 async def confirm_overtime(
     overtime_id: int,
     request: Request,
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    current_user: User = Depends(employee_access(_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role not in (Role.WAREHOUSE_LABOR,):
+    if not employee_view(current_user):
         raise HTTPException(403, t("overtime_only_labor", lang))
 
     wh_id = get_wh_id(current_user)
@@ -396,11 +397,11 @@ async def dispute_overtime(
     request: Request,
     reason: str = Form(None),
     file: UploadFile = File(None),
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    current_user: User = Depends(employee_access(_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role != Role.WAREHOUSE_LABOR:
+    if not employee_view(current_user):
         raise HTTPException(403, t("overtime_dispute_only_labor", lang))
 
     wh_id = get_wh_id(current_user)
@@ -477,11 +478,11 @@ async def list_overtimes(
     page_size: int = Query(50, ge=1, le=200),
     status: str = None,
     month: str = None,  # YYYY-MM
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    current_user: User = Depends(employee_access(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     labor_emp_id = None
-    if current_user.role == Role.WAREHOUSE_LABOR:
+    if employee_view(current_user):
         # Employees see their assigned tasks（按员工档案匹配，账号换绑也能看到）
         emp = await _find_employee_for_user(db, get_wh_id(current_user), current_user)
         if not emp:
@@ -503,6 +504,9 @@ async def list_overtimes(
         query = select(OvertimeTask).where(OvertimeTask.warehouse_id.in_(wh_ids))
         count_q = select(func.count(OvertimeTask.id)).where(OvertimeTask.warehouse_id.in_(wh_ids))
 
+    if employee_view(current_user):
+        query = query.where(OvertimeTask.warehouse_id == get_wh_id(current_user))
+        count_q = count_q.where(OvertimeTask.warehouse_id == get_wh_id(current_user))
     if status:
         query = query.where(OvertimeTask.status == status)
         count_q = count_q.where(OvertimeTask.status == status)
@@ -598,10 +602,10 @@ async def list_overtimes(
 
 @router.get("/pending")
 async def pending_overtimes(
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    current_user: User = Depends(employee_access(_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_LABOR,):
+    if not employee_view(current_user):
         raise HTTPException(403, "无权限")
 
     wh_id = get_wh_id(current_user)
@@ -669,13 +673,13 @@ async def pending_overtimes(
 @router.get("/monthly-hours")
 async def monthly_hours(
     month: str = None,
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    current_user: User = Depends(employee_access(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if month is None:
         month = thai_today().strftime("%Y-%m")
 
-    if current_user.role == Role.WAREHOUSE_LABOR:
+    if employee_view(current_user):
         emp = await _find_employee_for_user(db, get_wh_id(current_user), current_user)
         if not emp:
             return {"month": month, "total_hours": 0, "employee_id": None}
@@ -729,7 +733,7 @@ async def monthly_hours(
 
 @router.get("/limit")
 async def get_overtime_limit(
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    current_user: User = Depends(employee_access(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     wh_id = get_wh_id(current_user)
@@ -819,7 +823,7 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
         user = (await db.execute(
             select(User).where(
                 User.id == emp.user_id,
-                User.role == "warehouse_labor",
+                or_(User.role == "warehouse_labor", and_(User.role == "supervisor", User.attendance_enabled == True, User.attendance_employee_id == emp.id, User.warehouse_id == emp.warehouse_id)),
                 User.is_active == True,
             )
         )).scalar_one_or_none()
@@ -847,6 +851,8 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
 
 async def _find_employee_for_user(db: AsyncSession, wh_id: int, user: User):
     """登录用户 → 员工档案：优先绑定账号(user_id)，姓名兜底。"""
+    if attendance_supervisor(user):
+        return getattr(user, "_attendance_employee", None)
     emp = (await db.execute(
         select(Employee).where(
             Employee.warehouse_id == wh_id,

@@ -53,6 +53,8 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
         "warehouse_name": warehouse_name,
         "warehouses": warehouses,
         "extra_permissions": user.extra_permissions or [],
+        "attendance_enabled": bool(user.attendance_enabled),
+        "attendance_employee_id": user.attendance_employee_id,
     }
 
 @router.get("/me")
@@ -78,6 +80,8 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
         "warehouses": warehouses,
         "is_active": current_user.is_active,
         "extra_permissions": current_user.extra_permissions or [],
+        "attendance_enabled": bool(current_user.attendance_enabled),
+        "attendance_employee_id": current_user.attendance_employee_id,
     }
 
 @router.post("/change-password")

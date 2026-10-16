@@ -279,7 +279,7 @@ def test_hr_route_inventory():
                     path='/'+prefix+decorator.args[0].value
                     seen.append((decorator.func.attr.upper(),path))
                     default=next(d for arg,d in zip(node.args.args[-len(node.args.defaults):],node.args.defaults) if arg.arg=='current_user')
-                    assert 'check_staff_permission' in ast.unparse(default),node.name
+                    assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
     assert len(seen)==40
     # 请求清单使用实际参数值，标准化后与所有40条路由精确对应。
     def normalize(path):

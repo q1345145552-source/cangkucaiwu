@@ -43,7 +43,7 @@ function useThaiClock() {
 export default function ClockInPage() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale, setLocale } = useI18n(true);
   const router = useRouter();
   const [completed, setCompleted] = useState<Record<number, any>>({});
   const [sessionTimes, setSessionTimes] = useState<Record<number, string>>({});
@@ -108,7 +108,7 @@ export default function ClockInPage() {
         method: "POST",
         headers: {
           Authorization: `Bearer ${getToken()}`,
-          "X-Language": localStorage.getItem("locale") || "zh",
+          "X-Language": locale,
         },
         body: formData,
       });

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import EmployeeLanguage from "@/components/EmployeeLanguage";
 import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { FileText, DollarSign, ChevronRight } from "lucide-react";
@@ -13,7 +14,7 @@ function templateTypeBadge(tt?: string): string {
 }
 
 export default function MyPayslipPage() {
-  const { toast } = useToast(); const { t } = useI18n(); const router = useRouter();
+  const { toast } = useToast(); const { t } = useI18n(true); const router = useRouter();
   const templateTypeLabel = (tt?: string): string => {
     if (!tt) return "";
     const map: Record<string, string> = {
@@ -52,6 +53,7 @@ export default function MyPayslipPage() {
 
   return (
     <div>
+      <EmployeeLanguage />
       <h1 className="page-title flex items-center gap-2 mb-4"><FileText size={24}/>{t("payslip_title")}</h1>
 
       {/* 我的欠款 */}

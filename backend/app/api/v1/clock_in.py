@@ -1,3 +1,4 @@
+from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_
@@ -65,11 +66,11 @@ async def clock_in(
     request: Request,
     session: int = Form(...),
     photo_base64: str = Form(None),
-    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
+    current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role != Role.WAREHOUSE_LABOR:
+    if not employee_view(current_user):
         raise HTTPException(403, t("only_labor_can_clock", lang))
     if session not in SESSIONS:
         raise HTTPException(400, t("invalid_session", lang))
@@ -84,6 +85,7 @@ async def clock_in(
     existing = (await db.execute(
         select(ClockInRecord).where(
             ClockInRecord.user_id == current_user.id,
+            ClockInRecord.warehouse_id == get_wh_id(current_user) if attendance_supervisor(current_user) else True,
             ClockInRecord.clock_date == today,
             ClockInRecord.session == session,
         )
@@ -147,16 +149,17 @@ async def clock_in(
 @router.get("/today")
 async def get_today(
     request: Request,
-    current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)),
+    current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role != Role.WAREHOUSE_LABOR:
+    if not employee_view(current_user):
         raise HTTPException(403, t("no_permission", lang))
     today = thai_today()
     records = (await db.execute(
         select(ClockInRecord).where(
             ClockInRecord.user_id == current_user.id,
+            ClockInRecord.warehouse_id == get_wh_id(current_user) if attendance_supervisor(current_user) else True,
             ClockInRecord.clock_date == today,
         ).order_by(ClockInRecord.session)
     )).scalars().all()
@@ -227,7 +230,7 @@ async def get_today(
 async def list_records(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
+    current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.employee import Employee
@@ -241,21 +244,26 @@ async def list_records(
 
     # Get employees in scope（只在职：is_deleted=False 且 status != resigned）
     emp_q = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
-    if current_user.role == Role.WAREHOUSE_LABOR:
+    if employee_view(current_user):
         wh_id = get_wh_id(current_user)
         # 劳工：优先绑定账号，兜底按显示名+仓库匹配（只能看到自己）
         cond = Employee.user_id == current_user.id
         cond = or_(cond, and_(Employee.name == current_user.display_name, Employee.warehouse_id == wh_id) if wh_id else Employee.name == current_user.display_name)
-        emp_q = emp_q.where(cond)
+        if attendance_supervisor(current_user):
+            emp_q = emp_q.where(Employee.id == current_user.attendance_employee_id, Employee.warehouse_id == wh_id)
+        else:
+            emp_q = emp_q.where(cond)
     elif active_wh:
         emp_q = emp_q.where(Employee.warehouse_id == active_wh)
     emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
 
     # Get clock-in records
     query = select(ClockInRecord)
-    if current_user.role == Role.WAREHOUSE_LABOR:
+    if employee_view(current_user):
         query = query.where(ClockInRecord.user_id == current_user.id)
     elif active_wh:
+        query = query.where(ClockInRecord.warehouse_id == active_wh)
+    if employee_view(current_user) and attendance_supervisor(current_user):
         query = query.where(ClockInRecord.warehouse_id == active_wh)
     if start_date:
         query = query.where(ClockInRecord.clock_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
@@ -639,7 +647,7 @@ async def export_records(
 async def get_photos(
     employee_id: int = Query(...),
     date: str = Query(...),
-    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
+    current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     """Admin: get all clock-in photos for a specific employee on a specific date"""
@@ -684,7 +692,7 @@ async def get_photos(
             uid = emp_to_user.get(emp.id)
 
         # 劳工只能查看自己的打卡照片
-        if current_user.role == Role.WAREHOUSE_LABOR and (not uid or uid != current_user.id):
+        if employee_view(current_user) and (not uid or uid != current_user.id):
             raise HTTPException(403, "只能查看自己的打卡照片")
 
         try:

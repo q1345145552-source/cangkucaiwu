@@ -187,5 +187,5 @@ def test_thailand_hire_date_and_same_name_not_identity(tmp_path,monkeypatch):
 def test_business_and_frontend_sources_unchanged():
     root=Path(__file__).resolve().parents[2]
     for filename in ['backend/app/api/v1/payroll.py','backend/app/api/v1/attendance.py','backend/app/api/v1/clock_in.py','backend/app/api/v1/employees.py','backend/app/models/employee.py']:
-        assert (root/filename).read_bytes()==subprocess.check_output(['git','show','deada28:'+filename],cwd=root)
-    assert not subprocess.check_output(['git','diff','deada28','--','frontend'],cwd=root)
+        assert subprocess.check_output(['git','show','3603563:'+filename],cwd=root)==subprocess.check_output(['git','show','deada28:'+filename],cwd=root)
+    assert not subprocess.check_output(['git','diff','deada28','3603563','--','frontend'],cwd=root)

@@ -19,6 +19,8 @@ def test_menu_coverage_and_legacy_compatibility():
     from app.core.permissions import STAFF_PERMISSIONS as old_import
     assert old_import is STAFF_PERMISSIONS
     layout = (ROOT / "frontend/src/components/layout/DashboardLayout.tsx").read_text()
+    # Only functional menus belong to the permission registry; employee identity links are separate.
+    layout = layout[layout.index("const navItems:"):layout.index("\n];", layout.index("const navItems:")) + 3]
     rows = re.findall(
         r'key: "([^"]+)"[^\n]+?href: "([^"]+)"[^\n]+?roles: \[([^\]]+)\]', layout
     )

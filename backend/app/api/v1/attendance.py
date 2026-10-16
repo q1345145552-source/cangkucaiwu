@@ -1,3 +1,4 @@
+from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -90,11 +91,11 @@ async def create_leave(
     duration_type: str = Form("full"),
     hours: str = Form(None),
     file: UploadFile = File(None),
-    current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)),
+    current_user: User = Depends(employee_access(_LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
-    if current_user.role not in (Role.WAREHOUSE_LABOR, Role.STAFF):
+    if not employee_view(current_user) and current_user.role != Role.STAFF:
         raise HTTPException(403, t("no_permission", lang))
 
     if leave_type not in ("sick", "personal"):
@@ -117,9 +118,12 @@ async def create_leave(
         raise HTTPException(400, t("please_select_warehouse", lang))
 
     # Find employee record for this user（排除已删除）
-    emp = (await db.execute(
-        select(Employee).where(Employee.warehouse_id == wh_id, Employee.phone == current_user.username, Employee.is_deleted == False)
-    )).scalar_one_or_none()
+    if attendance_supervisor(current_user):
+        emp = current_user._attendance_employee
+    else:
+        emp = (await db.execute(
+            select(Employee).where(Employee.warehouse_id == wh_id, Employee.phone == current_user.username, Employee.is_deleted == False)
+        )).scalar_one_or_none()
     if not emp:
         # Try matching by name
         emp = (await db.execute(
@@ -263,14 +267,14 @@ async def list_leaves(
     start_date: str = None,
     end_date: str = None,
     status: str = None,
-    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
+    current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(LeaveRequest, Employee.name).join(Employee, LeaveRequest.employee_id == Employee.id)
     query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
-    if current_user.role in (Role.WAREHOUSE_LABOR, Role.STAFF):
+    if employee_view(current_user) or current_user.role == Role.STAFF:
         wh_id = get_wh_id(current_user)
         # Use user_id link first, fallback to name matching
         emp = (await db.execute(
@@ -280,6 +284,8 @@ async def list_leaves(
                 Employee.is_deleted == False,
             )
         )).scalar_one_or_none()
+        if attendance_supervisor(current_user):
+            emp = current_user._attendance_employee
         if not emp:
             emp = (await db.execute(
                 select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
@@ -395,7 +401,7 @@ async def set_rest_days(
 async def list_rest_days(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
+    current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -405,7 +411,9 @@ async def list_rest_days(
 
     query = select(RestDay, Employee.name).join(Employee, RestDay.employee_id == Employee.id)
     query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
-    if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if employee_view(current_user) and attendance_supervisor(current_user):
+        query = query.where(RestDay.employee_id == current_user.attendance_employee_id, RestDay.warehouse_id == current_user.warehouse_id)
+    elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         active_wh = get_wh_id(current_user)
         if active_wh:
             query = query.where(RestDay.warehouse_id == active_wh)
@@ -497,7 +505,7 @@ async def remove_absence(absence_id: int, current_user: User = Depends(check_sta
 async def get_calendar(
     start_date: str = None,
     end_date: str = None,
-    current_user: User = Depends(check_staff_permission_any(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
+    current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role == Role.SUPER_ADMIN:
@@ -528,7 +536,9 @@ async def get_calendar(
 
     # Get employees scoped to the active warehouse（只在职：is_deleted=False 且 status != resigned）
     emp_query = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
-    if current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if employee_view(current_user) and attendance_supervisor(current_user):
+        emp_query = emp_query.where(Employee.id == current_user.attendance_employee_id, Employee.user_id == current_user.id, Employee.warehouse_id == wh_id)
+    elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         # Use active (header-selected) warehouse, not all warehouses
         active_wh_id = get_wh_id(current_user)
         if active_wh_id:

@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import EmployeeLanguage from "@/components/EmployeeLanguage";
+import { useEmployeeView } from "@/hooks/useEmployeeView";
 import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3 } from "lucide-react";
@@ -48,11 +50,13 @@ function fmtHours(h: number): string {
 }
 
 export default function AttendancePage() {
-  const { toast } = useToast(); const { user } = useAuth(); const { t } = useI18n(); const router = useRouter();
+  const { employeeView, initialLeave } = useEmployeeView();
+  const { toast } = useToast(); const { user } = useAuth() as { user: any }; const { t, locale } = useI18n(employeeView || user?.role === "warehouse_labor"); const router = useRouter();
   const role = user?.role;
+  const selfQuery = employeeView ? "&view=self" : "";
   const isSuperAdmin = role === "super_admin";
-  const canApprove = role === "warehouse_admin" || role === "supervisor"; // 管理员/主管
-  const canSelfLeave = role === "warehouse_labor" || role === "staff"; // 劳工/财务
+  const canApprove = !employeeView && (role === "warehouse_admin" || role === "supervisor"); // 管理员/主管
+  const canSelfLeave = role === "warehouse_labor" || role === "staff" || (employeeView && role === "supervisor" && user?.attendance_enabled); // 劳工/财务
   const canViewRecords = role === "warehouse_admin" || role === "supervisor" || role === "warehouse_labor"; // 管理员/主管/劳工
   const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
 
@@ -70,7 +74,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
 
   // Modals
-  const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [showLeaveForm, setShowLeaveForm] = useState(initialLeave);
   const [showProxyLeaveForm, setShowProxyLeaveForm] = useState(false);
   const [showRestForm, setShowRestForm] = useState(false);
   const [showAbsenceForm, setShowAbsenceForm] = useState(false);
@@ -110,16 +114,16 @@ export default function AttendancePage() {
 
   async function openPhotoPopup(empId: number, empName: string, dateStr: string) {
     try {
-      const r = await api.get<any>(`/clock-in/photos?employee_id=${empId}&date=${dateStr}`);
+      const r = await api.get<any>(`/clock-in/photos?employee_id=${empId}&date=${dateStr}${selfQuery}`);
       setPhotoPopup({ employee_name: empName, date: dateStr });
       setPhotoSessions(r.sessions || []);
     } catch {}
   }
 
-  useEffect(() => { if (!getToken()) router.push("/login"); loadCalendar(); loadLeaves(); loadRestDays(); }, [dateRange]);
+  useEffect(() => { if (!getToken()) router.push("/login"); loadCalendar(); loadLeaves(); loadRestDays(); }, [dateRange, employeeView, user?.id]);
 
   useEffect(() => {
-    if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
+    if (!employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor")) {
       api.get<any>("/config/work-schedule").then(r => {
         setScheduleTimes({
           1: r.morning_start || "09:00",
@@ -134,7 +138,7 @@ export default function AttendancePage() {
   async function loadCalendar() {
     setLoading(true);
     try {
-      const r = await api.get<any>(`/attendance/calendar?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
+      const r = await api.get<any>(`/attendance/calendar?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
       const evtMap: Record<string, any> = {};
       (r.events || []).forEach((e: any) => { evtMap[`${e.date}_${e.employee_id}`] = e; });
       setEvents(evtMap);
@@ -145,14 +149,14 @@ export default function AttendancePage() {
 
   async function loadLeaves() {
     try {
-      const r = await api.get<any>(`/attendance/leaves?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
+      const r = await api.get<any>(`/attendance/leaves?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
       setLeaves(r.data || []);
     } catch {}
   }
 
   async function loadRestDays() {
     try {
-      const r = await api.get<any>(`/attendance/rest-days?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
+      const r = await api.get<any>(`/attendance/rest-days?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
       setRestDays(r.data || []);
     } catch {}
   }
@@ -169,7 +173,7 @@ export default function AttendancePage() {
 
     try {
       const token = getToken();
-      const res = await fetch("/api/v1/attendance/leaves", { method: "POST", headers: { Authorization: `Bearer ${token}`, "X-Language": localStorage.getItem("locale") || "zh" }, body: fd });
+      const res = await fetch(`/api/v1/attendance/leaves${employeeView ? "?view=self" : ""}`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "X-Language": locale }, body: fd });
       const r = await res.json();
       if (res.ok) { toast("success", t("submit_ok")); setShowLeaveForm(false); setLeaveDate(""); setLeaveType("sick"); setLeaveDuration("full"); setLeaveHours(""); setLeavePhoto(null); loadLeaves(); }
       else toast("error", r.detail || t("submit_failed"));
@@ -253,6 +257,7 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
+      {(employeeView || role === "warehouse_labor") && <EmployeeLanguage />}
       {/* Header: Month Navigation + Tab Bar + Action Buttons */}
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div className="flex items-center gap-3 flex-wrap">
@@ -292,7 +297,7 @@ export default function AttendancePage() {
       </div>
 
       {activeTab === "records" ? (
-        <ClockRecordsGrid startDate={dateRange.start_date} endDate={dateRange.end_date} onChange={loadCalendar} />
+        <ClockRecordsGrid employeeView={employeeView || role === "warehouse_labor"} startDate={dateRange.start_date} endDate={dateRange.end_date} onChange={loadCalendar} />
       ) : (
         <>
 

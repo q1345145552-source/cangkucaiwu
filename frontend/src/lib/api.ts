@@ -63,7 +63,11 @@ async function request<T>(
   }
   // 告知后端当前语言，后端据此返回对应语言的提示消息
   if (typeof window !== "undefined") {
-    headers["X-Language"] = localStorage.getItem("locale") || "zh";
+    let labor = false;
+    try { labor = JSON.parse(localStorage.getItem("user") || "{}").role === "warehouse_labor"; } catch {}
+    const personal = ["/clock-in", "/my-payslip", "/my-attendance", "/my-overtime", "/my-leave"].includes(window.location.pathname)
+      || (["/attendance", "/overtime"].includes(window.location.pathname) && labor);
+    headers["X-Language"] = (personal ? localStorage.getItem("employee-locale") || (localStorage.getItem("locale") === "th" ? "th" : "my") : localStorage.getItem("locale")) || "zh";
   }
   // Add X-Warehouse-ID header (including "all" for total warehouse mode)
   const whId = getActiveWarehouseId();

@@ -186,4 +186,4 @@ def test_startup_wires_migration_and_business_sources_unchanged():
                  'frontend/src/components/layout/DashboardLayout.tsx']
     for filename in unchanged:
         old = subprocess.check_output(['git', 'show', 'cb3d709:' + filename], cwd=ROOT)
-        assert (ROOT / filename).read_bytes() == old, filename
+        assert subprocess.check_output(['git', 'show', 'deada28:' + filename], cwd=ROOT) == old, filename

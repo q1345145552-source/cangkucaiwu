@@ -15,7 +15,10 @@ export function AuthProvider({ children }) {
     if (saved && getToken()) {
       try { setUser(JSON.parse(saved)); } catch {}
     }
+    const refresh = (event) => setUser(event.detail);
+    window.addEventListener("auth-user-refreshed", refresh);
     setLoading(false);
+    return () => window.removeEventListener("auth-user-refreshed", refresh);
   }, []);
 
   async function doLogin(username, password) {
@@ -37,6 +40,8 @@ export function AuthProvider({ children }) {
       warehouses: res.warehouses || [],
       extra_permissions: res.extra_permissions || [],
       is_active: true,
+      attendance_enabled: !!res.attendance_enabled,
+      attendance_employee_id: res.attendance_employee_id,
     };
     setUser(u);
     localStorage.setItem("user", JSON.stringify(u));

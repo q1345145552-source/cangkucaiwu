@@ -16,8 +16,8 @@ function ensureMy() {
 
 export type Locale = "zh" | "th" | "my";
 
-export function useI18n() {
-  const [locale, setLocaleState] = useState<Locale>("zh");
+export function useI18n(employeeView = false) {
+  const [locale, setLocaleState] = useState<Locale>(employeeView ? "my" : "zh");
   const [, forceUpdate] = useState(0);
 
   // Load my.json dynamically；加载完成后强制重渲染，确保缅甸语立即生效
@@ -31,11 +31,12 @@ export function useI18n() {
 
   // Role-based default: check on mount
   useEffect(() => {
-    const saved = localStorage.getItem("locale") as Locale | null;
-    if (saved && (saved === "zh" || saved === "th" || saved === "my")) {
+    const saved = (employeeView ? localStorage.getItem("employee-locale") || localStorage.getItem("locale") : localStorage.getItem("locale")) as Locale | null;
+    if (saved && (saved === "th" || saved === "my" || (!employeeView && saved === "zh"))) {
       setLocaleState(saved);
       return;
     }
+    if (employeeView) { setLocaleState("my"); return; }
     // If no saved preference, check role from localStorage
     const stored = localStorage.getItem("user");
     if (stored) {
@@ -47,7 +48,7 @@ export function useI18n() {
         }
       } catch {}
     }
-  }, []);
+  }, [employeeView]);
 
   // 全局同步：任一组件切换语言时，所有 useI18n 实例一起更新
   useEffect(() => {
@@ -57,15 +58,16 @@ export function useI18n() {
         setLocaleState(detail.locale);
       }
     };
-    window.addEventListener("locale-changed", handler);
-    return () => window.removeEventListener("locale-changed", handler);
-  }, []);
+    window.addEventListener(employeeView ? "employee-locale-changed" : "locale-changed", handler);
+    return () => window.removeEventListener(employeeView ? "employee-locale-changed" : "locale-changed", handler);
+  }, [employeeView]);
 
   const setLocale = useCallback((l: Locale) => {
+    if (employeeView && l === "zh") return;
     setLocaleState(l);
-    localStorage.setItem("locale", l);
-    window.dispatchEvent(new CustomEvent("locale-changed", { detail: { locale: l } }));
-  }, []);
+    localStorage.setItem(employeeView ? "employee-locale" : "locale", l);
+    window.dispatchEvent(new CustomEvent(employeeView ? "employee-locale-changed" : "locale-changed", { detail: { locale: l } }));
+  }, [employeeView]);
 
   const t = useCallback(
     (key: string): string => {
@@ -77,8 +79,8 @@ export function useI18n() {
   const toggleLocale = useCallback(() => {
     if (locale === "zh") setLocale("th");
     else if (locale === "th") setLocale("my");
-    else setLocale("zh");
-  }, [locale, setLocale]);
+    else setLocale(employeeView ? "th" : "zh");
+  }, [locale, setLocale, employeeView]);
 
   return { t, locale, setLocale, toggleLocale };
 }

@@ -1,3 +1,4 @@
+from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
@@ -2046,11 +2047,11 @@ async def revoke_disbursement(
 @router.get("/my-payslip")
 async def my_payslip(
     period: str = None,
-    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    current_user: User = Depends(employee_access(_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Employee views their own payslip. Matches by display_name to employee name."""
-    if current_user.role not in (Role.WAREHOUSE_LABOR,):
+    """Employee views their own payslip; attendance supervisors require the explicit linked archive."""
+    if not employee_view(current_user):
         raise HTTPException(403, "无权限")
 
     wh_id = get_wh_id(current_user)
@@ -2060,13 +2061,16 @@ async def my_payslip(
     from app.models.employee import Employee
 
     # Find employee record matching this user（排除已删除）
-    emp = (await db.execute(
-        select(Employee).where(
-            Employee.warehouse_id == wh_id,
-            Employee.name == current_user.display_name,
-            Employee.is_deleted == False,
-        )
-    )).scalar_one_or_none()
+    if attendance_supervisor(current_user):
+        emp = current_user._attendance_employee
+    else:
+        emp = (await db.execute(
+            select(Employee).where(
+                Employee.warehouse_id == wh_id,
+                Employee.name == current_user.display_name,
+                Employee.is_deleted == False,
+            )
+        )).scalar_one_or_none()
     if not emp:
         return {"data": [], "message": "未找到员工档案"}
 

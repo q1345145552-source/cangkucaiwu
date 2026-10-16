@@ -25,12 +25,12 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
   return list;
 }
 
-export default function ClockRecordsGrid(props: { startDate: string; endDate: string; onChange?: () => void }) {
-  const { startDate, endDate, onChange } = props;
-  const { t } = useI18n();
+export default function ClockRecordsGrid(props: { startDate: string; endDate: string; onChange?: () => void; employeeView?: boolean }) {
+  const { startDate, endDate, onChange, employeeView = false } = props;
+  const { t } = useI18n(employeeView);
   const { toast } = useToast();
   const { user } = useAuth();
-  const canMakeup = user?.role === "warehouse_admin" || user?.role === "supervisor";
+  const canMakeup = !employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor");
   const [employees, setEmployees] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +46,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   const dateList = buildDateList(startDate, endDate, dayNames);
   const totalDays = dateList.length;
 
-  useEffect(() => { load(); }, [startDate, endDate]);
+  useEffect(() => { load(); }, [startDate, endDate, employeeView]);
 
   useEffect(() => {
     if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
@@ -64,7 +64,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   async function load() {
     setLoading(true);
     try {
-      const r = await api.get<any>(`/clock-in/records?start_date=${startDate}&end_date=${endDate}`);
+      const r = await api.get<any>(`/clock-in/records?start_date=${startDate}&end_date=${endDate}${employeeView ? "&view=self" : ""}`);
       setEmployees(r.employees || []);
       setRecords(r.records || []);
     } catch {}
@@ -111,7 +111,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   async function exportExcel() {
     try {
       const token = getToken();
-      const url = `/api/v1/clock-in/records/export?start_date=${startDate}&end_date=${endDate}`;
+      const url = `/api/v1/clock-in/records/export?start_date=${startDate}&end_date=${endDate}${employeeView ? "&view=self" : ""}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -175,12 +175,12 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
 
   return (
     <div>
-      <div className="flex justify-end mb-2">
+      {!(employeeView && user?.role === "supervisor") && <div className="flex justify-end mb-2">
         <button onClick={exportExcel}
           className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">
           <Download size={14}/>{t("export_excel")}
         </button>
-      </div>
+      </div>}
       {loading ? (
         <div className="text-center py-12 text-gray-400">{t("loading")}</div>
       ) : (

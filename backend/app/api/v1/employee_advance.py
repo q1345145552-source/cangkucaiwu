@@ -1,3 +1,4 @@
+from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -206,11 +207,11 @@ async def advance_summary(
 
 @router.get("/my-debt")
 async def my_debt(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(employee_access(self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
     """劳工端：我的欠款（按币种分组）"""
-    if current_user.role != Role.WAREHOUSE_LABOR:
+    if not employee_view(current_user):
         raise HTTPException(403, "无权限")
 
     wh_id = get_wh_id(current_user)
@@ -220,6 +221,8 @@ async def my_debt(
     emp = (await db.execute(
         select(Employee).where(Employee.warehouse_id == wh_id, Employee.user_id == current_user.id, Employee.is_deleted == False)
     )).scalar_one_or_none()
+    if attendance_supervisor(current_user):
+        emp = current_user._attendance_employee
     if not emp:
         emp = (await db.execute(
             select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)

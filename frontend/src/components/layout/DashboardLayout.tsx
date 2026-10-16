@@ -187,6 +187,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       }
       setUser(me);
       localStorage.setItem("user", JSON.stringify(me));
+      window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: me }));
       if (me.warehouses && me.warehouses.length > 0) {
         setWhList(me.warehouses);
         const activeId = getActiveWarehouseId();
@@ -235,6 +236,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   const filteredNav = filterNavItems(navItems, user, menuPermissions);
+  if (user?.role === "supervisor" && user.attendance_enabled) {
+    filteredNav.push({ key: "employee_self", label: "employee_self", icon: <Users size={20} />, roles: ["supervisor"], children: [
+      { key: "self_clock", label: "clock_in", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["supervisor"] },
+      { key: "self_attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/my-attendance", roles: ["supervisor"] },
+      { key: "self_overtime", label: "overtime", icon: <Clock size={18} />, href: "/my-overtime", roles: ["supervisor"] },
+      { key: "self_payslip", label: "my_payslip", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["supervisor"] },
+      { key: "self_leave", label: "leave", icon: <CalendarDays size={18} />, href: "/my-leave", roles: ["supervisor"] },
+    ] });
+  }
   const settingsItem = navItems.find(item => item.key === "settings_group")?.children?.find(item => item.key === "settings");
   const showUsersManagement = user?.role === "warehouse_labor" || (settingsItem && hasAccess(settingsItem, user, menuPermissions));
   

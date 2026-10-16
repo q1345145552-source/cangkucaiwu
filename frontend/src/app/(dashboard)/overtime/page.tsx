@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import EmployeeLanguage from "@/components/EmployeeLanguage";
+import { useEmployeeView } from "@/hooks/useEmployeeView";
 import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
 import { Clock, Plus, CheckCircle, XCircle, AlertTriangle, Upload } from "lucide-react";
 
 export default function OvertimePage() {
-  const { toast } = useToast(); const { user } = useAuth(); const { t } = useI18n(); const router = useRouter();
+  const { employeeView, initialLeave } = useEmployeeView();
+  const { toast } = useToast(); const { user } = useAuth() as { user: any }; const { t, locale } = useI18n(employeeView || user?.role === "warehouse_labor"); const router = useRouter();
   const [tasks, setTasks] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
@@ -25,9 +28,9 @@ export default function OvertimePage() {
   const [disputePreview, setDisputePreview] = useState("");
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
 
-  const isAdmin = user?.role === "warehouse_admin";
-  const isLabor = user?.role === "warehouse_labor";
-  const canVerify = user?.role === "warehouse_admin" || user?.role === "supervisor";
+  const isAdmin = !employeeView && user?.role === "warehouse_admin";
+  const isLabor = user?.role === "warehouse_labor" || (employeeView && user?.role === "supervisor" && user?.attendance_enabled);
+  const canVerify = !employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor");
 
   const defaultForm = {
     employee_ids: [] as number[],
@@ -38,13 +41,13 @@ export default function OvertimePage() {
   const [form, setForm] = useState({ ...defaultForm });
   const [empSearch, setEmpSearch] = useState("");
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); }, []);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [user?.id, employeeView]);
 
   async function load() {
     setLoading(true);
     try {
       // Load overtime tasks
-      const r = await api.get<any>("/overtime?page_size=200");
+      const r = await api.get<any>(`/overtime?page_size=200${employeeView ? "&view=self" : ""}`);
       setTasks(r.data || []);
       // Load pending tasks for labor
       if (isLabor) {
@@ -65,7 +68,7 @@ export default function OvertimePage() {
         } catch {}
       }
       // Load limit
-      const lr = await api.get<any>("/overtime/limit");
+      const lr = await api.get<any>(`/overtime/limit${employeeView ? "?view=self" : ""}`);
       setLimitHours(lr.max_hours || 50);
       setLimitInput(String(lr.max_hours || 50));
       // Load monthly hours warnings
@@ -209,7 +212,7 @@ export default function OvertimePage() {
     try {
       const token = getToken();
       const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-      headers["X-Language"] = localStorage.getItem("locale") || "zh";
+      headers["X-Language"] = locale;
       const whId = getActiveWarehouseId();
       if (whId) headers["X-Warehouse-ID"] = whId;
       const res = await fetch(`/api/v1/overtime/${disputeTask.id}/dispute`, { method: "POST", headers, body: fd });
@@ -229,6 +232,7 @@ export default function OvertimePage() {
 
   return (
     <div>
+      {isLabor && <EmployeeLanguage />}
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><Clock size={24}/>{t("overtime_title")}</h1>
         <div className="flex gap-2 items-center">
