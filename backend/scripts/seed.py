@@ -26,10 +26,27 @@ from app.models.expense_approval import ExpenseApproval
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_user_attendance_columns(conn):
+    """只加账号身份字段；每列独立保存点，失败不回滚其他启动迁移。"""
+    from sqlalchemy import text
+    columns = (
+        ("attendance_enabled", "ALTER TABLE users ADD COLUMN IF NOT EXISTS attendance_enabled BOOLEAN NOT NULL DEFAULT false"),
+        ("attendance_employee_id", "ALTER TABLE users ADD COLUMN IF NOT EXISTS attendance_employee_id INTEGER REFERENCES employees(id) ON DELETE SET NULL"),
+        ("attendance_enabled_at", "ALTER TABLE users ADD COLUMN IF NOT EXISTS attendance_enabled_at TIMESTAMPTZ"),
+    )
+    for name, statement in columns:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 账号纳入考勤字段 {name} 失败：{exc}")
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_user_attendance_columns(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

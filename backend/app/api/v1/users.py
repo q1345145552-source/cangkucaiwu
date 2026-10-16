@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from datetime import datetime, timezone
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
 from app.database import get_db
+from app.models.employee import Employee
 from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.models.warehouse import Warehouse
@@ -13,6 +15,15 @@ from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.data_history import record_history
 
 router = APIRouter()
+
+
+def _attendance_fields(user: User) -> dict:
+    return {
+        "attendance_enabled": bool(user.attendance_enabled),
+        "attendance_employee_id": user.attendance_employee_id,
+        "attendance_enabled_at": user.attendance_enabled_at.isoformat() if user.attendance_enabled_at else None,
+    }
+
 
 @router.get("", response_model=dict)
 async def list_users(
@@ -83,6 +94,7 @@ async def list_users(
                 "warehouse_ids": uw_map.get(u.id, []),
                 "warehouse_name": u.warehouse.name if u.warehouse else None,
                 "extra_permissions": u.extra_permissions or [],
+                **_attendance_fields(u),
                 "is_active": u.is_active,
                 "created_at": u.created_at.isoformat() if u.created_at else None,
             }
@@ -186,6 +198,11 @@ async def update_user(
     # - 主管/财务/劳工：无编辑权限
     if current_user.role in (Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPERVISOR):
         raise HTTPException(status_code=403, detail="无权限编辑用户")
+    # 身份开关不适用于管理员/超管；本人仅提交该开关时成功忽略，
+    # 不放开既有的同级编辑、角色、密码或仓库修改权限。
+    if (current_user.id == user_id
+            and req.model_fields_set == {"attendance_enabled"}):
+        return {"message": "用户更新成功", **_attendance_fields(user)}
     if ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY.get(current_user.role, 0):
         raise HTTPException(status_code=403, detail="只能编辑比自己级别低的角色")
     if current_user.role == Role.WAREHOUSE_ADMIN:
@@ -208,6 +225,7 @@ async def update_user(
         "username": user.username, "display_name": user.display_name,
         "role": user.role, "warehouse_ids": sorted([uw.warehouse_id for uw in before_uws]),
         "is_active": user.is_active,
+        **_attendance_fields(user),
     }
 
     # 修改用户名：校验唯一性
@@ -270,6 +288,22 @@ async def update_user(
     if req.extra_permissions is not None:
         user.extra_permissions = req.extra_permissions
 
+    if req.attendance_enabled is not None and user.role in (Role.SUPERVISOR, Role.STAFF):
+        if req.attendance_enabled:
+            if not user.attendance_enabled:
+                user.attendance_enabled_at = datetime.now(timezone.utc)
+            user.attendance_enabled = True
+        else:
+            if user.attendance_employee_id is not None:
+                # 只解除该档案对当前账号的绑定，不删除档案或修改业务记录。
+                await db.execute(update(Employee).where(
+                    Employee.id == user.attendance_employee_id,
+                    Employee.user_id == user.id,
+                ).values(user_id=None, updated_at=Employee.updated_at))
+            user.attendance_enabled = False
+            user.attendance_employee_id = None
+            user.attendance_enabled_at = None
+
     # 修改后快照 + 记录日志（密码只记录已重置，不记录内容）
     after_uws = (await db.execute(
         select(UserWarehouse).where(UserWarehouse.user_id == user_id)
@@ -278,6 +312,7 @@ async def update_user(
         "username": user.username, "display_name": user.display_name,
         "role": user.role, "warehouse_ids": sorted([uw.warehouse_id for uw in after_uws]),
         "is_active": user.is_active,
+        **_attendance_fields(user),
     }
     if req.password:
         after_data["password"] = "已重置密码"
@@ -287,7 +322,7 @@ async def update_user(
                           warehouse_id=user.warehouse_id)
 
     await db.flush()
-    return {"message": "用户更新成功"}
+    return {"message": "用户更新成功", **_attendance_fields(user)}
 
 async def _delete_staff_or_labor(db: AsyncSession, user_id: int, username: str):
     """删除财务/劳工账号：解除关联并彻底删除，保留其所在仓库业务数据。"""

@@ -23,6 +23,7 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     line_user_id: str | None = None
     extra_permissions: list[str] | None = None
+    attendance_enabled: bool | None = None
 
 class UserResponse(BaseModel):
     id: int
@@ -32,6 +33,9 @@ class UserResponse(BaseModel):
     warehouse_id: int | None = None
     warehouse_name: str | None = None
     extra_permissions: list[str] | None = None
+    attendance_enabled: bool = False
+    attendance_employee_id: int | None = None
+    attendance_enabled_at: datetime | None = None
     is_active: bool
     created_at: datetime | None = None
 

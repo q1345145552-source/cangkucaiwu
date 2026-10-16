@@ -29,7 +29,7 @@ def test_menu_coverage_and_legacy_compatibility():
         entry["roles"].update(re.findall(r'"([^"]+)"', roles))
     actual = {p.menu_key: p for p in MENU_PERMISSIONS}
     assert len(actual) == len(MENU_PERMISSIONS)
-    assert set(actual) == set(expected) | {"leave"}
+    assert set(actual) == set(expected) | {"leave", "attendance_enabled"}
     for key, item in expected.items():
         assert actual[key].path == item["path"]
         assert set(actual[key].roles) == item["roles"]
@@ -41,7 +41,11 @@ def test_menu_coverage_and_legacy_compatibility():
     assert "PERM_LABELS" not in settings
     assert 'api.get<MenuPermission[]>("/users/permissions")' in settings
     assert "permission.selectable" in settings
+    identity = actual["attendance_enabled"]
+    assert identity.label == "纳入考勤" and not identity.selectable and identity.path == ""
     for item in MENU_PERMISSIONS:
+        if item.menu_key == "attendance_enabled":
+            continue
         assert (ROOT / "frontend/src/app/(dashboard)" / item.path.lstrip("/") / "page.tsx").is_file()
 
 
@@ -75,7 +79,7 @@ def test_http_permissions_and_account_lifecycle(tmp_path, monkeypatch):
                 response = await client.get("/api/v1/users/permissions", headers=headers)
                 assert response.status_code == 200, response.text
                 items = response.json()
-                assert len(items) == len(MENU_PERMISSIONS) == 37
+                assert len(items) == len(MENU_PERMISSIONS) == 38
                 for item in items:
                     assert {"key", "label", "menu_key", "path", "roles", "default_roles", "selectable"} <= item.keys()
                     assert isinstance(item["selectable"], bool)

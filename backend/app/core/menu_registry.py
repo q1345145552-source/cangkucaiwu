@@ -84,6 +84,8 @@ MENU_PERMISSIONS: tuple[MenuPermission, ...] = (
     MenuPermission("employee_advances", "员工预支", "/employee-advances", _MANAGERS, permission_menu_key="employee_advances"),
     MenuPermission("clock_in", "打卡签到", "/clock-in", ("warehouse_labor",), selectable=False),
     MenuPermission("my_payslip", "我的工资单", "/my-payslip", ("warehouse_labor",), selectable=False),
+    # 账号身份开关，没有菜单页面，也不是 extra_permissions 勾选项。
+    MenuPermission("attendance_enabled", "纳入考勤", "", ("supervisor", "staff"), selectable=False),
 )
 
 MENU_PERMISSIONS_BY_KEY = {item.menu_key: item for item in MENU_PERMISSIONS}

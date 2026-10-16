@@ -147,7 +147,7 @@ def test_shared_reads_and_cockpit_unchanged(tmp_path,monkeypatch,uid):
    for p in paths:
     r=await client.get('/api/v1'+p,headers=auth(uid));assert r.status_code==200,r.text;assert r.json()==before[p]
    await set_perms(factory,uid,[])
-   r=await client.get('/api/v1/users/permissions',headers=auth(uid));assert r.status_code==200 and len(r.json())==37
+   r=await client.get('/api/v1/users/permissions',headers=auth(uid));assert r.status_code==200 and len(r.json())==38
    for key in ('config_center','settings','labor_efficiency','reports','ledger','reconciliation'):
     entry=next(x for x in r.json() if x['menu_key']==key);assert entry['selectable'];assert 'supervisor' not in entry['default_roles'];assert 'staff' not in entry['default_roles']
    if uid==4:
