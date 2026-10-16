@@ -291,8 +291,8 @@ def test_labor_only_self_and_assigned_tasks(tmp_path,monkeypatch):
     ('hours',None,'sick','leave',0,1),
     ('full',None,'sick','leave',5.96,1),
     ('full',None,'personal','leave',5.96,1),
-    ('morning',None,'personal','half',5.96,.5),
-    ('afternoon',None,'sick','half',5.96,.5),
+    ('morning',None,'personal','half',2.98,.38),
+    ('afternoon',None,'sick','half',2.98,.62),
     (None,None,None,'present',5.96,0),
 ])
 def test_calendar_and_payroll_leave_rules_unchanged(tmp_path,monkeypatch,duration,hours,leave_type,status,work_hours,leave_days):

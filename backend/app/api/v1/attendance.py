@@ -1,3 +1,4 @@
+from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
@@ -716,6 +717,9 @@ async def get_calendar(
                         dt, work_sched, standard_hours,
                     )
 
+                if is_half_day_leave(leave_info):
+                    leave_hours_val, net_hourly_hours = half_day_leave_hours(sessions_by_time, leave_info, dt, work_sched)
+
                 if status_name_db is None:
                     if has_morning and has_afternoon:
                         status_name_db = "late" if has_late else "present"
@@ -750,7 +754,7 @@ async def get_calendar(
                 "status_label": status_label,
                 "session_count": session_count,
                 "has_late": has_late,
-                "leave_hours": leave_hours_val if status_name_db == "hours_leave" else None,
+                "leave_hours": leave_hours_val if (status_name_db == "hours_leave" or (net_hourly_hours is not None and is_half_day_leave(leave_map.get((e.id, dt))))) else None,
                 "clock_hours": round(clock_hours, 2),
                 "work_hours": net_hourly_hours if net_hourly_hours is not None else round(max(clock_hours - leave_hours_val, 0.0), 2),
                 "detail": "",

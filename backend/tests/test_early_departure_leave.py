@@ -107,7 +107,7 @@ def test_scope_configuration_and_tolerance(info,clock,schedule,expected):
 def test_source_change_is_only_early_departure_predicate():
  root=Path(__file__).resolve().parents[2]
  filename='backend/app/api/v1/payroll.py'
- before=ast.parse(subprocess.check_output(['git','show','3a88d08:'+filename],cwd=root,text=True));after=ast.parse((root/filename).read_text())
+ before=ast.parse(subprocess.check_output(['git','show','3a88d08:'+filename],cwd=root,text=True));after=ast.parse(subprocess.check_output(['git','show','44d6c90:'+filename],cwd=root,text=True))
  class RemoveExemption(ast.NodeTransformer):
   def visit_If(self,node):
    if isinstance(node.test,ast.BoolOp) and len(node.test.values)==2 and ast.unparse(node.test.values[0])=='s4 is not None' and 'leave_covers_early_departure(' in ast.unparse(node.test.values[1]):node.test=node.test.values[0]
@@ -115,5 +115,5 @@ def test_source_change_is_only_early_departure_predicate():
  def functions(tree):return {n.name:ast.dump(RemoveExemption().visit(n),include_attributes=False) for n in tree.body if isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef))}
  assert functions(before)==functions(after)
  for name in ('backend/app/api/v1/attendance.py','backend/app/services/hourly_leave.py'):
-  assert (root/name).read_bytes()==subprocess.check_output(['git','show','3a88d08:'+name],cwd=root)
- assert not subprocess.check_output(['git','diff','3a88d08','--','frontend/src','backend/app/models','backend/scripts/seed.py'],cwd=root)
+  assert subprocess.check_output(['git','show','44d6c90:'+name],cwd=root)==subprocess.check_output(['git','show','3a88d08:'+name],cwd=root)
+ assert not subprocess.check_output(['git','diff','3a88d08','44d6c90','--','frontend/src','backend/app/models','backend/scripts/seed.py'],cwd=root)

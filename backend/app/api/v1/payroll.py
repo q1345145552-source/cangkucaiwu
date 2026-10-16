@@ -1,3 +1,4 @@
+from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.services.attendance_population import employee_account_roles
@@ -730,6 +731,14 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                         # The hourly-leave day is paid by net attendance, not a second full leave deduction.
                         lv = max(1.0 - att - ab, 0.0)
 
+            if is_half_day_leave(lt_info):
+                half_leave_hours, hours = half_day_leave_hours(sessions_sorted, lt_info, current, prep["work_sched"])
+                att = hours / standard_hours
+                lv = half_leave_hours / standard_hours
+                ab = 0.0
+                if tt == "monthly":
+                    lv = max(1.0 - att, 0.0)
+
             work_hours_total += hours
             attendance_days_total += att
             leave_days_count += lv
@@ -760,7 +769,7 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 status = "half"
             elif ab == 0.5:
                 status = "half"
-            daily_list.append({"day": current.day, "date": current.isoformat(), "status": status, "attendance": round(att, 4) if is_hourly_leave(lt_info) else round(att, 2), "hours": round(hours, 2), "times": times})
+            daily_list.append({"day": current.day, "date": current.isoformat(), "status": status, "attendance": round(att, 4) if (is_hourly_leave(lt_info) or is_half_day_leave(lt_info)) else round(att, 2), "hours": round(hours, 2), "times": times})
 
             for cr in sessions:
                 if cr.session == 1:
