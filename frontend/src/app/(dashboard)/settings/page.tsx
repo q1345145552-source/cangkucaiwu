@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Key, UserPlus, MessageCircle, Pencil, Trash2, DollarSign, Clock, History, Phone } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AttendanceToggle, { findAttendanceEmployee, AttendanceEmployee } from "@/components/settings/AttendanceToggle";
 
 interface MenuPermission {
   key: string;
@@ -62,6 +63,10 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "", warehouse_ids: [] as number[] });
   const [newPerms, setNewPerms] = useState<string[]>([]);
+  const [newAttendanceEnabled, setNewAttendanceEnabled] = useState(false);
+  const [newAttendanceError, setNewAttendanceError] = useState("");
+  const [attendanceNotices, setAttendanceNotices] = useState<Record<number, string>>({});
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
   const [menuPermissions, setMenuPermissions] = useState<MenuPermission[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionsError, setPermissionsError] = useState("");
@@ -78,11 +83,33 @@ export default function SettingsPage() {
   const [editWarehouseId, setEditWarehouseId] = useState<number | string>("");
   const [editWarehouseIds, setEditWarehouseIds] = useState<number[]>([]);
   const [editActive, setEditActive] = useState(true);
+  const [editAttendanceEnabled, setEditAttendanceEnabled] = useState(false);
+  const [editAttendanceEmployee, setEditAttendanceEmployee] = useState<AttendanceEmployee | null>(null);
+  const [attendanceProfileLoading, setAttendanceProfileLoading] = useState(false);
+  const [attendanceProfileError, setAttendanceProfileError] = useState("");
+  const [attendanceProfileRetry, setAttendanceProfileRetry] = useState(0);
+  const [editAttendanceError, setEditAttendanceError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { if (!getToken()) router.push("/login"); if (tab === "users") { loadUsers(); loadWarehouses(); loadPermissions(); } if (tab === "rates") loadRates(); }, [tab]);
   useEffect(() => { if (user?.role === "warehouse_admin" || user?.role === "super_admin") loadBossContact(); }, [user?.role]);
+
+  useEffect(() => {
+    let active = true;
+    setEditAttendanceEmployee(null);
+    setAttendanceProfileError("");
+    if (!editUser || !["supervisor", "staff"].includes(editUser.role)) {
+      setAttendanceProfileLoading(false);
+      return;
+    }
+    setAttendanceProfileLoading(true);
+    findAttendanceEmployee(editUser)
+      .then(employee => { if (active) setEditAttendanceEmployee(employee); })
+      .catch(() => { if (active) setAttendanceProfileError("员工档案信息读取失败，请重试"); })
+      .finally(() => { if (active) setAttendanceProfileLoading(false); });
+    return () => { active = false; };
+  }, [editUser?.id, attendanceProfileRetry]);
 
   async function loadBossContact() {
     try { const r = await api.get<any>("/settings/boss-contact"); setBossContact({ name: r.name || "", phone: r.phone || "" }); } catch {}
@@ -150,6 +177,8 @@ export default function SettingsPage() {
   }
 
   async function createUser() {
+    const enableAttendance = ["supervisor", "staff"].includes(newUser.role) && newAttendanceEnabled;
+    setNewAttendanceError("");
     try {
       if (newUser.role === "supervisor") {
         if (newUser.warehouse_ids.length === 0) {
@@ -174,12 +203,29 @@ export default function SettingsPage() {
       } else {
         payload.warehouse_id = +newUser.warehouse_id;
       }
-      await api.post("/users", payload);
-      toast("success", "创建成功");
+      if (enableAttendance) setAttendanceSaving(true);
+      const created = await api.post<{ id: number }>("/users", payload);
+      let attendanceFailed = false;
+      let notice = "";
+      if (enableAttendance) {
+        // 创建接口不接收身份开关；用返回的账号编号调用现有编辑接口。
+        try {
+          const result = await api.put<any>(`/users/${created.id}`, { attendance_enabled: true });
+          notice = result.attendance_notice || "";
+          if (notice) setAttendanceNotices(prev => ({ ...prev, [created.id]: notice }));
+        } catch (err: any) {
+          attendanceFailed = true;
+          setNewAttendanceError(`账号 ${newUser.username} 已创建，但纳入考勤未开启。请管理员在该账号的编辑弹窗重试。`);
+          toast("error", err.message || "开启纳入考勤失败");
+        }
+      }
+      if (!attendanceFailed) toast("success", notice || "创建成功");
+      setNewAttendanceEnabled(false);
       setNewUser({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "staff", warehouse_id: "", warehouse_ids: [] });
       setNewPerms([]);
       loadUsers();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
+    finally { setAttendanceSaving(false); }
   }
 
   function openEdit(u: any) {
@@ -191,6 +237,8 @@ export default function SettingsPage() {
     setEditWarehouseId(u.warehouse_id || "");
     setEditWarehouseIds(u.warehouse_ids || []);
     setEditActive(u.is_active !== false);
+    setEditAttendanceEnabled(!!u.attendance_enabled);
+    setEditAttendanceError("");
   }
 
   function toggleWarehouseId(wid: number) {
@@ -220,11 +268,23 @@ export default function SettingsPage() {
       } else if (editWarehouseId) {
         payload.warehouse_id = +editWarehouseId;
       }
-      await api.put(`/users/${editUser.id}`, payload);
-      toast("success", "更新成功");
+      if (["supervisor", "staff"].includes(editUser.role) &&
+          (editAttendanceEnabled !== !!editUser.attendance_enabled || (editAttendanceEnabled && !editUser.attendance_employee_id))) {
+        payload.attendance_enabled = editAttendanceEnabled;
+      }
+      if (payload.attendance_enabled !== undefined) setAttendanceSaving(true);
+      const result = await api.put<any>(`/users/${editUser.id}`, payload);
+      if (result.attendance_notice) setAttendanceNotices(prev => ({ ...prev, [editUser.id]: result.attendance_notice }));
+      toast("success", result.attendance_notice || "更新成功");
       setEditUser(null);
       loadUsers();
-    } catch (err: any) { toast("error", err.message || "更新失败"); }
+    } catch (err: any) {
+      if (["supervisor", "staff"].includes(editUser.role) &&
+          (editAttendanceEnabled !== !!editUser.attendance_enabled || (editAttendanceEnabled && !editUser.attendance_employee_id))) {
+        setEditAttendanceError(err.message || "更新失败");
+      }
+      toast("error", err.message || "更新失败");
+    } finally { setAttendanceSaving(false); }
   }
 
   async function handleDelete() {
@@ -300,7 +360,7 @@ export default function SettingsPage() {
               <div><label className="form-label">用户名</label><input className="form-input text-sm" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">显示名称</label><input className="form-input text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
-              <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>{setNewUser({...newUser,role:e.target.value}); setNewPerms([]);}}>
+              <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>{setNewUser({...newUser,role:e.target.value}); setNewPerms([]); setNewAttendanceEnabled(false);}}>
                 {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
                 {user?.role === "warehouse_admin" && (<>
                   <option value="supervisor">仓库主管</option>
@@ -352,7 +412,11 @@ export default function SettingsPage() {
                     loading={permissionsLoading} error={permissionsError} onRetry={loadPermissions} />
                 </div>
               )}
-              <button onClick={createUser} disabled={(newUser.role === "supervisor" || newUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="btn-primary">创建用户</button>
+              {(newUser.role === "supervisor" || newUser.role === "staff") && (
+                <AttendanceToggle id="new-attendance-enabled" enabled={newAttendanceEnabled} onChange={setNewAttendanceEnabled} />
+              )}
+              {newAttendanceError && <p role="alert" className="text-sm text-red-600">{newAttendanceError}</p>}
+              <button onClick={createUser} disabled={attendanceSaving || (newUser.role === "supervisor" || newUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="btn-primary">创建用户</button>
             </div>
           </div>
 
@@ -440,9 +504,19 @@ export default function SettingsPage() {
                       onToggle={togglePerm} loading={permissionsLoading} error={permissionsError} onRetry={loadPermissions} />
                   </div>
                 )}
-                <div className="flex justify-end gap-3">
+                {(editUser.role === "supervisor" || editUser.role === "staff") && (
+                  <div className="mb-4">
+                    <AttendanceToggle id="edit-attendance-enabled" enabled={editAttendanceEnabled}
+                      onChange={value => { setEditAttendanceEnabled(value); setEditAttendanceError(""); }}
+                      account={editUser} employee={editAttendanceEmployee} loading={attendanceProfileLoading}
+                      error={attendanceProfileError} onRetry={() => setAttendanceProfileRetry(value => value + 1)}
+                      notice={attendanceNotices[editUser.id] || ""} />
+                    {editAttendanceError && <p role="alert" className="text-sm text-red-600 mt-2">{editAttendanceError}</p>}
+                  </div>
+                )}
+                <div className="flex justify-end gap-3 sticky bottom-0 bg-white py-2">
                   <button onClick={() => setEditUser(null)} className="btn-secondary">取消</button>
-                  <button onClick={saveEdit} disabled={(editUser.role === "supervisor" || editUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
+                  <button onClick={saveEdit} disabled={attendanceSaving || (editUser.role === "supervisor" || editUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
                 </div>
               </div>
             </div>

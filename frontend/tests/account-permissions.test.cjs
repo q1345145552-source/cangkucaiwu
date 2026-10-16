@@ -9,15 +9,19 @@ async function login(name,password='test-password'){const r=await http('POST','/
 const text=node=>node==null||typeof node==='boolean'?'':typeof node==='string'||typeof node==='number'?String(node):Array.isArray(node)?node.map(text).join(''):text(node.props?.children);
 function walk(node){if(!node||typeof node!=='object')return [];if(Array.isArray(node))return node.flatMap(walk);return [node,...walk(node.props?.children)];}
 function harness(user,token){
- let states=[],cursor=0,effectCursor=0,dependencies=[],effects=[],pending=[],errorMode=false;
- const messages=[];const moduleObject={exports:{}};
+ let states=[],cursor=0,effectCursor=0,dependencies=[],effects=[],pending=[],cleanups=[],errorMode=false,failure=null,dirty=false;
+ const messages=[],requests=[];const moduleObject={exports:{}};
  const source=fs.readFileSync(path.resolve(__dirname,'../src/app/(dashboard)/settings/page.tsx'),'utf8');
  assert(!source.includes('PERM_LABELS'));
- const request=async(method,route,body)=>{if(errorMode&&route==='/users/permissions')throw new Error('simulated offline');const r=await http(method,route,token,body);if(r.status!==200)throw new Error(JSON.stringify(r));return r.data;};
+ const request=async(method,route,body)=>{requests.push({method,route,body});if(failure?.(method,route,body))throw new Error('simulated attendance failure');if(errorMode&&route==='/users/permissions')throw new Error('simulated offline');const r=await http(method,route,token,body);if(r.status!==200)throw new Error(r.data.detail||JSON.stringify(r));return r.data;};
  const api=Object.fromEntries(['get','post','put','delete'].map(method=>[method,(route,body)=>{const promise=request(method.toUpperCase(),route,body);pending.push(promise.catch(()=>{}));return promise;}]));
+ const attendanceModule={exports:{}};
+ const attendanceSource=fs.readFileSync(path.resolve(__dirname,'../src/components/settings/AttendanceToggle.tsx'),'utf8');
+ vm.runInNewContext(ts.transpileModule(attendanceSource,{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:attendanceModule,exports:attendanceModule.exports,require:name=>name==='@/lib/api'?{api}:require(name)});
  const code=ts.transpileModule(source+'\nexport { PermissionCheckboxes };',{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  vm.runInNewContext(code,{module:moduleObject,exports:moduleObject.exports,require(name){
-  if(name==='react')return {...React,useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return [states[i],value=>states[i]=typeof value==='function'?value(states[i]):value];},useEffect(fn,deps){const i=effectCursor++;const key=JSON.stringify(deps);if(dependencies[i]!==key){dependencies[i]=key;effects.push(fn);}}};
+  if(name==='react')return {...React,useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return [states[i],value=>{states[i]=typeof value==='function'?value(states[i]):value;dirty=true;}];},useEffect(fn,deps){const i=effectCursor++;const key=JSON.stringify(deps);if(dependencies[i]!==key){dependencies[i]=key;effects.push(()=>{cleanups[i]?.();cleanups[i]=fn();});}}};
+  if(name==='@/components/settings/AttendanceToggle')return attendanceModule.exports;
   if(name==='@/hooks/useAuth')return {useAuth:()=>({user})};
   if(name==='@/hooks/useI18n')return {useI18n:()=>({t:k=>k})};
   if(name==='@/components/ui/Toast')return {useToast:()=>({toast:(...args)=>messages.push(args)})};
@@ -26,14 +30,14 @@ function harness(user,token){
   if(name==='@/components/ui/ConfirmDialog')return {__esModule:true,default:()=>null};
   return require(name);
  }});
- async function render(){cursor=0;effectCursor=0;let tree=moduleObject.exports.default();const work=effects;effects=[];work.forEach(fn=>fn());while(pending.length){const p=pending;pending=[];await Promise.all(p);}cursor=0;effectCursor=0;return moduleObject.exports.default();}
+ async function render(){let tree;for(let round=0;round<12;round++){dirty=false;cursor=0;effectCursor=0;tree=moduleObject.exports.default();const work=effects;effects=[];work.forEach(fn=>fn());while(pending.length){const p=pending;pending=[];await Promise.all(p);await new Promise(resolve=>setImmediate(resolve));}if(!dirty&&!effects.length)break;}cursor=0;effectCursor=0;return moduleObject.exports.default();}
  const find=(tree,predicate)=>{const result=walk(tree).find(predicate);assert(result,'Element not found');return result;};
  const button=(tree,label)=>find(tree,n=>n.type==='button'&&text(n)===label);
  const field=(tree,label)=>{const div=find(tree,n=>n.type==='div'&&Array.isArray(n.props.children)&&n.props.children.some(c=>c?.type==='label'&&text(c).trim().startsWith(label))&&n.props.children.some(c=>['input','select'].includes(c?.type)));return div.props.children.find(c=>['input','select'].includes(c?.type));};
  const blocks=tree=>walk(tree).filter(n=>n.type===moduleObject.exports.PermissionCheckboxes);
  function checkGroups(block,registry){const elements=walk(moduleObject.exports.PermissionCheckboxes(block.props));const boxes=elements.filter(n=>n.type==='input');const groups=elements.filter(n=>n.type==='fieldset');assert.equal(groups.length,2);assert.equal(boxes.length,registry.filter(p=>p.selectable).length);assert.equal(walk(groups[0]).filter(n=>n.type==='input').length,8);same(elements.filter(n=>n.type==='label').map(text).sort(),registry.filter(p=>p.selectable).map(p=>p.label).sort());return boxes;}
  const toggle=(block,label)=>{const tree=moduleObject.exports.PermissionCheckboxes(block.props);const row=find(tree,n=>n.type==='label'&&text(n)===label);find(row,n=>n.type==='input').props.onChange();};
- return {render,button,field,blocks,find,toggle,checkGroups,messages,setOffline:value=>errorMode=value};
+ return {render,button,field,blocks,find,toggle,checkGroups,messages,requests,attendance:attendanceModule.exports,setFailure:value=>failure=value,setOffline:value=>errorMode=value};
 }
 async function main(){
  const admin=await login('warehouse_admin');const token=admin.access_token;const user=(await http('GET','/auth/me',token)).data;const registry=(await http('GET','/users/permissions',token)).data;
@@ -71,4 +75,5 @@ async function main(){
  fs.writeFileSync('/tmp/r8-created-accounts.json',JSON.stringify(created.map(u=>({username:u.username,user_id:u.user_id})),null,2));
  console.log(JSON.stringify({selectable:registry.filter(p=>p.selectable).length,finance:8,business:25,roleDefaults:'PASS',createEditRoundtrip:'PASS',loadFailureAndRetry:'PASS',passwordWarehouseActivationDelete:'PASS'},null,2));
 }
-main().catch(e=>{console.error(e);process.exitCode=1});
+module.exports={harness,http,login,text,walk};
+if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1});
