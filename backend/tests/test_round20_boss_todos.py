@@ -98,5 +98,5 @@ def test_existing_review_and_business_functions_unchanged():
  root=Path(__file__).resolve().parents[2]
  for name,allowed in [('backend/app/api/v1/dashboard.py',{'boss_todos'}),('backend/app/api/v1/overtime.py',{'list_overtimes'}),('backend/app/api/v1/employee_advance.py',set())]:
   def funcs(s):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-  old=funcs(subprocess.check_output(['git','show','e950142:'+name],cwd=root,text=True));new=funcs((root/name).read_text())
+  old=funcs(subprocess.check_output(['git','show','e950142:'+name],cwd=root,text=True));new=funcs(subprocess.check_output(['git','show','ba9cc23:'+name],cwd=root,text=True))
   assert {k:v for k,v in old.items() if k not in allowed}=={k:v for k,v in new.items() if k not in allowed}

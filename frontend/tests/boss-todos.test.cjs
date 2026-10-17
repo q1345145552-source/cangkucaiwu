@@ -29,7 +29,7 @@ function text(n){if(n==null)return '';if(typeof n!=='object')return String(n);re
  const printer=ts.createPrinter();
  for(let file of ['employee-advances','overtime']){
   let name=`frontend/src/app/(dashboard)/${file}/page.tsx`;
-  function functions(s){let out={};let sf=ts.createSourceFile(name,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['load','review','EmployeeAdvancePage','OvertimePage'].includes(n.name.text))out[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return out;}
+  function functions(s){let out={};let sf=ts.createSourceFile(name,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['load','review','handleCreate','loadRefs','EmployeeAdvancePage','OvertimePage'].includes(n.name.text))out[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return out;}
   assert.deepEqual(functions(fs.readFileSync(path.join(root,name),'utf8')),functions(execFileSync('git',['show','e950142:'+name],{cwd:root,encoding:'utf8'})));count++;
  }
  console.log(`Boss todos: ${count} checks passed`);

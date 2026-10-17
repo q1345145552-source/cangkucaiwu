@@ -278,6 +278,15 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             emp_q = emp_q.where(Employee.id.in_(req.employee_ids))
         employees = (await db.execute(emp_q)).scalars().all()
 
+    owners, _ = await employee_account_roles(db, employees)
+    employees = [emp for emp in employees if not (
+        emp.position in ("仓库主管", "仓库管理员")
+        and owners.get(emp.id) is not None
+        and owners[emp.id].role in ("supervisor", "warehouse_admin")
+        and owners[emp.id].warehouse_id == emp.warehouse_id
+        and not owners[emp.id].attendance_enabled
+    )]
+
     if not employees:
         msg = "该仓库没有可结算的在职员工"
         if cap_note:

@@ -21,6 +21,8 @@ export default function EmployeeAdvancePage() {
   const [rows, setRows] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ total_by_currency: [], debtor_count: 0 });
   const [employees, setEmployees] = useState<any[]>([]);
+  const [recipients, setRecipients] = useState<any[]>([]);
+  const [recipient, setRecipient] = useState("");
   const [fundAccounts, setFundAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -71,6 +73,8 @@ export default function EmployeeAdvancePage() {
 
   async function loadRefs() {
     try {
+      const rr = await api.get<any>("/employee-advances/recipients");
+      setRecipients(rr.data || []);
       const er = await api.get<any>("/employees?page_size=200&active_only=true");
       setEmployees(er.data || []);
       const fr = await api.get<any>("/expense-fund/accounts");
@@ -79,14 +83,20 @@ export default function EmployeeAdvancePage() {
   }
 
   async function handleCreate() {
-    if (!form.employee_id) { toast("error", "请选择员工"); return; }
+    if (!recipient) { toast("error", "请选择员工"); return; }
     const amt = parseFloat(form.amount);
     if (!amt || amt <= 0) { toast("error", "请填写预支金额"); return; }
     if (form.source === "fund" && !form.fund_account_id) { toast("error", "请选择备用金账户"); return; }
     try {
-      await api.post("/employee-advances", { ...form, amount: amt });
+      const [kind, id] = recipient.split(":");
+      await api.post("/employee-advances", { ...form, amount: amt,
+        employee_id: kind === "employee" ? Number(id) : undefined,
+        user_id: kind === "user" ? Number(id) : undefined,
+      });
       toast("success", "预支记录已创建");
       setShowForm(false);
+      setRecipient("");
+      loadRefs();
       setForm({ employee_id: 0, amount: "", advance_date: todayStr(), source: "supervisor", fund_account_id: 0, remark: "" });
       load();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
@@ -229,9 +239,9 @@ export default function EmployeeAdvancePage() {
             <div className="p-5 space-y-4">
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">员工</label>
-                <select className="form-input py-2.5 w-full" value={form.employee_id || ""} onChange={e => setForm({ ...form, employee_id: +e.target.value })}>
+                <select className="form-input py-2.5 w-full" aria-label="预支对象" value={recipient} onChange={e => setRecipient(e.target.value)}>
                   <option value="">请选择员工</option>
-                  {employees.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  {recipients.map((r: any) => <option key={r.value} value={r.value}>{r.name}（{r.role_label}）</option>)}
                 </select>
               </div>
               <div>

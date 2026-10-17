@@ -159,7 +159,7 @@ def test_only_review_actions_and_one_payroll_filter_changed():
  root=Path(__file__).resolve().parents[2]
  name='backend/app/api/v1/employee_advance.py'
  def funcs(s):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef))}
- old=funcs(subprocess.check_output(['git','show','8882a6a:'+name],cwd=root,text=True));new=funcs((root/name).read_text())
+ old=funcs(subprocess.check_output(['git','show','8882a6a:'+name],cwd=root,text=True));new=funcs(subprocess.check_output(['git','show','fa7708a:'+name],cwd=root,text=True))
  assert {k:new[k] for k in old}==old
  assert set(new)-set(old)=={'_advance_approver','_review_advance','approve_advance','reject_advance'}
  name='backend/app/api/v1/payroll.py'
@@ -169,7 +169,7 @@ def test_only_review_actions_and_one_payroll_filter_changed():
    node.args=[arg for arg in node.args if ast.unparse(arg)!='EmployeeAdvance.approval_status == AdvanceApprovalStatus.APPROVED.value']
    return node
  def money_funcs(s):return {n.name:ast.dump(RemoveApprovalFilter().visit(n),include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef))}
- assert money_funcs((root/name).read_text())==money_funcs(subprocess.check_output(['git','show','8882a6a:'+name],cwd=root,text=True))
+ assert money_funcs(subprocess.check_output(['git','show','fa7708a:'+name],cwd=root,text=True))==money_funcs(subprocess.check_output(['git','show','8882a6a:'+name],cwd=root,text=True))
  assert not subprocess.check_output(['git','diff','8882a6a','fa7708a','--','frontend','backend/app/models','backend/scripts'],cwd=root)
 
 

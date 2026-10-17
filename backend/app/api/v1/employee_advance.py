@@ -31,7 +31,8 @@ def _approval_fields(advance):
 
 
 class AdvanceCreate(BaseModel):
-    employee_id: int
+    employee_id: Optional[int] = None
+    user_id: Optional[int] = None
     amount: float
     advance_date: str  # YYYY-MM-DD
     source: str  # supervisor / fund
@@ -60,9 +61,15 @@ async def create_advance(
     except:
         raise HTTPException(400, "预支日期格式错误 YYYY-MM-DD")
 
-    emp = (await db.execute(
-        select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
-    )).scalar_one_or_none()
+    if (req.employee_id is None) == (req.user_id is None):
+        raise HTTPException(400, "请选择一个预支对象")
+    if req.user_id is not None:
+        from app.services.advance_recipients import resolve_advance_account
+        emp = await resolve_advance_account(db, req.user_id, wh_id, current_user)
+    else:
+        emp = (await db.execute(
+            select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
+        )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
     if emp.status == "resigned":
@@ -95,7 +102,7 @@ async def create_advance(
 
     adv = EmployeeAdvance(
         warehouse_id=wh_id,
-        employee_id=req.employee_id,
+        employee_id=emp.id,
         amount=req.amount,
         currency=currency,
         advance_date=adv_dt,
@@ -136,6 +143,18 @@ async def create_advance(
         await db.flush()
 
     return {"message": "预支记录已创建", "id": adv.id, **_approval_fields(adv)}
+
+
+@router.get("/recipients")
+async def list_advance_recipients(
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无此操作权限")
+    from app.services.advance_recipients import advance_recipient_options
+    wh_id = get_wh_id(current_user)
+    return {"data": await advance_recipient_options(db, wh_id) if wh_id else []}
 
 
 @router.get("")
