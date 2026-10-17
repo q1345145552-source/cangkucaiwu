@@ -145,7 +145,10 @@ def test_all_finance_endpoints(tmp_path,monkeypatch,method,path,module,body,uid,
             else:
                 expected=expected_status(uid,method,path)
                 assert response.status_code==expected,response.text
-                if expected==403:assert not response.json()['detail'].startswith('无此操作权限'),response.text
+                if expected==403:
+                    if uid in (3,4) and method=='PUT' and path=='/suppliers/concentration-threshold':
+                        assert response.json()['detail'].startswith('无此操作权限') and '配置中心' in response.json()['detail'],response.text
+                    else:assert not response.json()['detail'].startswith('无此操作权限'),response.text
                 if expected!=200 or method=='GET':assert await finance_snapshot(factory)==before
                 if expected==200 and isinstance(body,dict) and body.get('file') and path!='/payable':assert response.json()['path']
     asyncio.run(run())

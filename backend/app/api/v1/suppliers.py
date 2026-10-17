@@ -16,6 +16,7 @@ from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierRespons
 import io
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+from app.core.config_access import ensure_config_editor
 
 _CONCENTRATION_PERMISSION = MENU_PERMISSIONS_BY_KEY["concentration"].label
 
@@ -898,7 +899,10 @@ class ApprovalThresholdSet(BaseModel):
 @router.get("/purchase-approval-threshold")
 async def get_approval_threshold(current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["config_center"].label, MENU_PERMISSIONS_BY_KEY["suppliers"].label)), db: AsyncSession = Depends(get_db)):
     _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) and not (
+        current_user.role == Role.STAFF
+        and MENU_PERMISSIONS_BY_KEY["config_center"].label in (current_user.extra_permissions or [])
+    ):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     threshold = await _get_approval_threshold(db, wh_id)
@@ -907,10 +911,8 @@ async def get_approval_threshold(current_user: User = Depends(check_staff_permis
 
 @router.put("/purchase-approval-threshold")
 async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
-    """门槛金额只有仓库管理员能设置（按当前选中仓库）。"""
-    _forbid_super_admin(current_user)
-    if current_user.role != Role.WAREHOUSE_ADMIN:
-        raise HTTPException(403, "只有仓库管理员可以设置门槛金额")
+    """按当前选中仓库，仓库管理员或已授权主管设置门槛。"""
+    ensure_config_editor(current_user)
     if req.threshold < 0:
         raise HTTPException(400, "门槛金额不能为负数")
     wh_id = get_wh_id(current_user)
@@ -1416,10 +1418,8 @@ async def get_concentration_threshold(current_user: User = Depends(check_staff_p
 
 @router.put("/concentration-threshold")
 async def set_concentration_threshold(req: ConcentrationThresholdSet,
-                                      current_user: User = Depends(check_staff_permission_any(_CONCENTRATION_PERMISSION, MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
-    _forbid_super_admin(current_user)
-    if current_user.role != Role.WAREHOUSE_ADMIN:
-        raise HTTPException(403, "只有仓库管理员可以设置")
+                                      current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
+    ensure_config_editor(current_user)
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")

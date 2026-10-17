@@ -97,7 +97,7 @@ export default function ConfigCenterPage() {
   const timeField = (label: string, key: string) => (
     <div>
       <label className="form-label text-xs">{label}</label>
-      <input type="time" className="form-input text-sm" value={(form as any)[key]}
+      <input type="time" className="form-input text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" value={(form as any)[key]}
         disabled={!editable}
         onChange={e => setForm({ ...form, [key]: e.target.value })} />
     </div>
@@ -124,13 +124,13 @@ export default function ConfigCenterPage() {
           {timeField("下午下班时间", "afternoon_end")}
           <div>
             <label className="form-label text-xs">加班月度上限（小时/月）</label>
-            <input type="number" step="1" min="0" className="form-input text-sm" value={form.overtime_limit}
+            <input type="number" step="1" min="0" className="form-input text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" value={form.overtime_limit}
               disabled={!editable}
               onChange={e => setForm({ ...form, overtime_limit: e.target.value })} />
           </div>
         </div>
         <div className="text-xs text-gray-400 mt-3">顺序：上班 &lt; 迟到半小时 &lt; 迟到1小时 &lt; 午休开始 &lt; 午休结束 &lt; 早退1小时 &lt; 早退半小时 &lt; 下班</div>
-        {!editable && <div className="text-xs text-gray-400 mt-2">仅仓库管理员可修改</div>}
+        {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，仓库管理员和已授权主管可修改</div>}
         {editable && (
           <button onClick={save} disabled={saving} className="btn-primary mt-4">
             {saving ? "保存中..." : "保存作息"}
@@ -144,27 +144,27 @@ export default function ConfigCenterPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="form-label text-xs">费用审批门槛（泰铢）</label>
-            <input type="number" step="1" min="0" className="form-input text-sm" value={thresholds.expense}
+            <input type="number" step="1" min="0" className="form-input text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" value={thresholds.expense}
               disabled={!editable}
               onChange={e => setThresholds({ ...thresholds, expense: e.target.value })} />
             <p className="text-xs text-gray-400 mt-1">0 表示全部都走审批</p>
           </div>
           <div>
             <label className="form-label text-xs">采购审批门槛（泰铢）</label>
-            <input type="number" step="1" min="0" className="form-input text-sm" value={thresholds.purchase}
+            <input type="number" step="1" min="0" className="form-input text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" value={thresholds.purchase}
               disabled={!editable}
               onChange={e => setThresholds({ ...thresholds, purchase: e.target.value })} />
             <p className="text-xs text-gray-400 mt-1">0 表示不需要审批</p>
           </div>
           <div>
             <label className="form-label text-xs">集中度预警阈值（%）</label>
-            <input type="number" step="1" min="0" max="100" className="form-input text-sm" value={thresholds.concentration}
+            <input type="number" step="1" min="0" max="100" className="form-input text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" value={thresholds.concentration}
               disabled={!editable}
               onChange={e => setThresholds({ ...thresholds, concentration: e.target.value })} />
             <p className="text-xs text-gray-400 mt-1">超过这个比例会红色预警</p>
           </div>
         </div>
-        {!editable && <div className="text-xs text-gray-400 mt-2">仅仓库管理员可修改</div>}
+        {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，仓库管理员和已授权主管可修改</div>}
         {editable && (
           <button onClick={saveThresholds} disabled={savingThresholds} className="btn-primary mt-4">
             {savingThresholds ? "保存中..." : "保存审批门槛"}

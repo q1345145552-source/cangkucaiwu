@@ -53,9 +53,9 @@ def expected(uid,method,path):
  if path=='/suppliers/concentration-threshold' and method=='GET':return 200
  if path in ('/config/work-schedule','/suppliers/purchase-approval-threshold','/suppliers/concentration-threshold'):
   if uid==2:return 403
-  if method=='PUT':return 200 if uid==1 else 403
-  return 403 if uid==3 else 200
- if path=='/expense-approvals/threshold':return 403 if uid==2 or (method=='PUT' and uid!=1) else 200
+  if method=='PUT':return 200 if uid in (1,4) else 403
+  return 200
+ if path=='/expense-approvals/threshold':return 403 if uid==2 or (method=='PUT' and uid not in (1,4)) else 200
  if path.startswith('/rates'):return 403 if uid==2 or (method=='POST' and uid!=1) else 200
  if path.startswith('/efficiency'):return 200
  if path=='/users':return 200
@@ -151,7 +151,7 @@ def test_shared_reads_and_cockpit_unchanged(tmp_path,monkeypatch,uid):
    for key in ('config_center','settings','labor_efficiency','reports','ledger','reconciliation'):
     entry=next(x for x in r.json() if x['menu_key']==key);assert entry['selectable'];assert 'supervisor' not in entry['default_roles'];assert 'staff' not in entry['default_roles']
    if uid==4:
-    r=await client.get('/api/v1/config/work-schedule',headers=auth(uid));assert r.status_code==200
+    r=await client.get('/api/v1/config/work-schedule',headers=auth(uid));assert r.status_code==403
    # Other consuming pages work with their own permission and without config/settings.
    for label,path in [('费用审批','/expense-approvals/threshold'),('供应商管理','/suppliers/purchase-approval-threshold'),('采购分析','/suppliers/concentration-threshold')]:
     await set_perms(factory,uid,[label]);r=await client.get('/api/v1'+path,headers=auth(uid))
@@ -181,7 +181,8 @@ def test_warehouse_boundaries(tmp_path,monkeypatch,uid):
    r=await client.get('/api/v1/reconciliation/results',headers=h);assert r.status_code==200,r.text;assert {x['warehouse_id'] for x in r.json()['data']}=={1}
  asyncio.run(run())
 
-def test_config_redlines_clock_and_payroll_without_config_permission(tmp_path,monkeypatch):
+@pytest.mark.parametrize("setter",[1,4])
+def test_config_redlines_clock_and_payroll_without_config_permission(tmp_path,monkeypatch,setter):
  async def run():
   from tests.test_round4_permissions import attendance_environment, call as attendance_call, CASES as ATTENDANCE_CASES
   from tests.test_round2_permissions import png
@@ -189,7 +190,8 @@ def test_config_redlines_clock_and_payroll_without_config_permission(tmp_path,mo
   async with attendance_environment(tmp_path,monkeypatch) as (_,factory,client):
    settings={**default_work_schedule(),'morning_start':'08:30','late_half':'08:35','late_one':'08:50','overtime_limit':65}
    before=await snapshot(factory)
-   r=await client.put('/api/v1/config/work-schedule',headers=auth(1),json=settings);assert r.status_code==200,r.text
+   await set_perms(factory,setter,['配置中心'])
+   r=await client.put('/api/v1/config/work-schedule',headers=auth(setter),json=settings);assert r.status_code==200,r.text
    assert await snapshot(factory)==before
    async with factory() as db:
     schedule=await get_work_schedule(db,1);assert all(schedule[k]==v for k,v in settings.items())

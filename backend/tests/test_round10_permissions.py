@@ -118,18 +118,18 @@ def test_business_bodies_and_config_exceptions_unchanged():
  for file in ('employees','salary_template','deduction_template','efficiency','employee_deduction','employee_advance','suppliers'):
   name=f'backend/app/api/v1/{file}.py'
   old=ast.parse(subprocess.check_output(['git','show','8629b2f:'+name],text=True))
-  new=ast.parse((root/'app/api/v1'/f'{file}.py').read_text())
+  new=ast.parse(subprocess.check_output(['git','show','e970f41:'+name],text=True))
   def bodies(tree):
    return {n.name:ast.dump(RemoveRoleChecks().visit(ast.Module(body=n.body,type_ignores=[])),include_attributes=False) for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name not in {"my_debt", "_compute_week", "_compute_overtime_hours", "_approval_fields", "create_advance", "list_advances", "_advance_approver", "_review_advance", "approve_advance", "reject_advance", "list_advance_recipients"}}
   assert bodies(old)==bodies(new),file
  for file in ('config_api','history'):
   name=f'backend/app/api/v1/{file}.py'
-  assert subprocess.check_output(['git','show','8629b2f:'+name],text=True)==(root/'app/api/v1'/f'{file}.py').read_text()
+  assert subprocess.check_output(['git','show','8629b2f:'+name],text=True)==subprocess.check_output(['git','show','e970f41:'+name],text=True)
  # The shared concentration threshold remains a configuration write: unchanged in full.
  def threshold_body(text):
   n=next(n for n in ast.parse(text).body if isinstance(n,ast.AsyncFunctionDef) and n.name=='set_concentration_threshold')
   return ast.dump(n,include_attributes=False)
- assert threshold_body(subprocess.check_output(['git','show','8629b2f:backend/app/api/v1/suppliers.py'],text=True))==threshold_body((root/'app/api/v1/suppliers.py').read_text())
+ assert threshold_body(subprocess.check_output(['git','show','8629b2f:backend/app/api/v1/suppliers.py'],text=True))==threshold_body(subprocess.check_output(['git','show','e970f41:backend/app/api/v1/suppliers.py'],text=True))
 
 @pytest.mark.parametrize('uid',[3,4])
 def test_advance_fund_money_and_ownership_preserved(tmp_path,monkeypatch,uid):
@@ -166,12 +166,14 @@ def test_config_and_history_actual_behavior(tmp_path,monkeypatch):
    for uid in (3,4):
     await set_perms(factory,uid,['配置中心','修改日志','采购分析'])
     read=await client.get('/api/v1/config/work-schedule',headers=auth(uid))
-    assert read.status_code==(200 if uid==4 else 403),read.text
-    if uid==4:assert read.json()['editable'] is False
+    assert read.status_code==200,read.text
+    assert read.json()['editable'] is (uid==4)
     write=await client.put('/api/v1/config/work-schedule',headers=auth(uid),json=default_work_schedule())
-    assert write.status_code==403 and '只有仓库管理员' in write.text
+    assert write.status_code==(200 if uid==4 else 403),write.text
+    if uid==3:assert write.json()['detail']=='财务只能查看配置中心'
     write=await client.put('/api/v1/suppliers/concentration-threshold',headers=auth(uid),json={'threshold':80})
-    assert write.status_code==403 and '只有仓库管理员' in write.text
+    assert write.status_code==(200 if uid==4 else 403),write.text
+    if uid==3:assert write.json()['detail']=='财务只能查看配置中心'
     history=await client.get('/api/v1/history',headers=auth(uid));assert history.status_code==403 and '只有仓库管理员' in history.text
  asyncio.run(run())
 

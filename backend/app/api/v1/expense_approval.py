@@ -9,6 +9,7 @@ from app.models.expense_fund import SystemSetting, ExpenseFund, ExpenseFundItem,
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission_any, check_staff_permission
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+from app.core.config_access import ensure_config_editor
 from app.core.timezone import thai_now, thai_today
 from pydantic import BaseModel, Field
 from datetime import datetime, date
@@ -318,7 +319,7 @@ async def set_threshold(
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)),
     db: AsyncSession = Depends(get_db),
 ):
-    _check_manage_role(current_user)
+    ensure_config_editor(current_user)
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")

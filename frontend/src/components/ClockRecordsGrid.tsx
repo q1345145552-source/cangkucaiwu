@@ -50,7 +50,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
 
   useEffect(() => {
     if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
-      api.get<any>("/config/work-schedule").then(r => {
+      api.get<any>("/config/attendance-times").then(r => {
         setScheduleTimes({
           1: r.morning_start || "09:00",
           2: r.noon_break_start || "12:00",
