@@ -104,6 +104,16 @@ async def backfill_round9_supervisor_permissions(conn: AsyncConnection) -> int:
     )
 
 
+MODIFICATION_LOGS_PERMISSION_MARKER = "modification_logs_supervisors_backfilled_v1_20261018"
+
+
+async def backfill_modification_logs_permission(conn: AsyncConnection) -> int:
+    return await _backfill_permissions(
+        conn, MODIFICATION_LOGS_PERMISSION_MARKER,
+        (MENU_PERMISSIONS_BY_KEY["modification_logs"].label,), roles=(Role.SUPERVISOR.value,),
+    )
+
+
 async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
     """启动只调用此入口，后续轮次继续在本文件登记；不触碰工资业务数据。"""
     return {
@@ -113,4 +123,5 @@ async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
         "round5": await backfill_round5_permissions(conn),
         "round6": await backfill_round6_permissions(conn),
         "round9": await backfill_round9_supervisor_permissions(conn),
+        "modification_logs": await backfill_modification_logs_permission(conn),
     }

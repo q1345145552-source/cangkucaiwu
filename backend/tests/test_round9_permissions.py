@@ -114,10 +114,7 @@ def test_migrated_supervisor_each_permission_read(tmp_path,monkeypatch):
             for item in MENU_PERMISSIONS:
                 if not item.selectable:continue
                 response=await client.get('/api/v1'+paths[item.menu_key],headers=auth(4))
-                # 修改日志的旧角色规则不属于本轮迁移；明确记录，不能把它算作业务通过。
-                expected=403 if item.menu_key=='modification_logs' else 200
-                assert response.status_code==expected,(item.label,response.text)
-                if expected==403:assert response.json()['detail']=='只有仓库管理员可以查看修改日志'
+                assert response.status_code==200,(item.label,response.text)
                 assert '无此操作权限' not in response.text,(item.label,response.text)
                 print(f'{item.label}: {response.status_code}')
     asyncio.run(run())

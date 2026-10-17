@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { History, Search, RotateCcw } from "lucide-react";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { useToast } from "@/components/ui/Toast";
+import { History, Search, RotateCcw, Download } from "lucide-react";
 
 const MODULE_LABELS: Record<string, string> = {
   recharge: "充值申报",
@@ -73,6 +75,9 @@ function renderFieldVal(k: string, v: any): string {
 
 export default function ModificationLogsPage() {
   const router = useRouter();
+  const canView = useMenuPermission("modification_logs");
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -112,9 +117,38 @@ export default function ModificationLogsPage() {
     setLoading(false);
   }
 
+  async function handleExport() {
+    if (!canView) return;
+    setExporting(true);
+    const params = new URLSearchParams();
+    if (module) params.set("module", module);
+    if (operatorId) params.set("operator_id", String(operatorId));
+    if (startDate) params.set("start_date", startDate);
+    if (endDate) params.set("end_date", endDate);
+    if (opType) params.set("operation_type", opType);
+    const headers: Record<string, string> = { Authorization: `Bearer ${getToken()}` };
+    const warehouse = getActiveWarehouseId();
+    if (warehouse) headers["X-Warehouse-ID"] = warehouse;
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+      const response = await fetch(`${base}/history/export?${params}`, { headers });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "导出失败");
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url; link.download = "modification_logs.xlsx";
+      document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    } catch (error: any) { toast("error", error.message || "导出失败"); }
+    finally { setExporting(false); }
+  }
+
   function resetFilters() {
     setModule(""); setOperatorId(0); setStartDate(""); setEndDate(""); setOpType(""); setPage(1);
   }
+
+  if (!canView) return <div className="text-gray-500">无此操作权限</div>;
 
   return (
     <>
@@ -127,6 +161,8 @@ export default function ModificationLogsPage() {
           <p className="text-xs text-gray-400 mt-0.5">充值申报 / 报销 / 运营支出 的新建、编辑、删除记录</p>
         </div>
       </div>
+
+      {canView && <button className="btn-secondary mb-4 flex items-center gap-2" disabled={exporting} onClick={handleExport}><Download size={16}/>{exporting ? "导出中..." : "导出修改日志"}</button>}
 
       {/* 筛选 */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-5">

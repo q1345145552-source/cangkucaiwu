@@ -79,7 +79,7 @@ MENU_PERMISSIONS: tuple[MenuPermission, ...] = (
     MenuPermission("other_income_expense", "其他收支", "/other-income-expense", _OFFICE, legacy_permission=True),
     MenuPermission("dashboard", "仪表盘", "/dashboard", _OFFICE, selectable=False),
     MenuPermission("warehouses", "仓库档案", "/warehouses", ("super_admin", "warehouse_admin"), selectable=False),
-    MenuPermission("modification_logs", "修改日志", "/modification-logs", ("warehouse_admin",)),
+    MenuPermission("modification_logs", "修改日志", "/modification-logs", ("warehouse_admin", "super_admin", "supervisor", "staff"), permission_menu_key="modification_logs"),
     MenuPermission("employee_deductions", "员工扣款", "/employee-deductions", _MANAGERS, permission_menu_key="employee_deductions"),
     MenuPermission("employee_advances", "员工预支", "/employee-advances", _MANAGERS, permission_menu_key="employee_advances"),
     MenuPermission("clock_in", "打卡签到", "/clock-in", ("warehouse_labor",), selectable=False),

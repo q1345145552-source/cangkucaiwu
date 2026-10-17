@@ -174,7 +174,7 @@ def test_config_and_history_actual_behavior(tmp_path,monkeypatch):
     write=await client.put('/api/v1/suppliers/concentration-threshold',headers=auth(uid),json={'threshold':80})
     assert write.status_code==(200 if uid==4 else 403),write.text
     if uid==3:assert write.json()['detail']=='财务只能查看配置中心'
-    history=await client.get('/api/v1/history',headers=auth(uid));assert history.status_code==403 and '只有仓库管理员' in history.text
+    history=await client.get('/api/v1/history',headers=auth(uid));assert history.status_code==200,history.text
  asyncio.run(run())
 
 def test_route_inventory():

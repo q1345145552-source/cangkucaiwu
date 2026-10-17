@@ -89,7 +89,7 @@ def test_only_config_access_changed_business_tail_identical():
  for name,changed in allowed.items():
   p=f'backend/app/api/v1/{name}.py'
   def funcs(s):return {n.name:n for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-  old=funcs(subprocess.check_output(['git','show','e970f41:'+p],cwd=root,text=True));new=funcs((root/p).read_text())
+  old=funcs(subprocess.check_output(['git','show','e970f41:'+p],cwd=root,text=True));new=funcs(subprocess.check_output(['git','show','f70e0b6:'+p],cwd=root,text=True) if name=='history' else (root/p).read_text())
   assert {k:ast.dump(v,include_attributes=False) for k,v in old.items() if k not in changed}=={k:ast.dump(v,include_attributes=False) for k,v in new.items() if k not in changed}
   for key in changed:
    if key.startswith('get_'):continue

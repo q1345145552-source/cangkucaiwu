@@ -60,7 +60,7 @@ const navItems: NavItem[] = [
     ],
   },
   { key: "warehouses", label: "warehouses", icon: <Warehouse size={20} />, href: "/warehouses", roles: ["super_admin"] },
-  { key: "modification_logs", label: "modification_logs", icon: <History size={20} />, href: "/modification-logs", roles: ["warehouse_admin"] },
+  { key: "modification_logs", label: "modification_logs", icon: <History size={20} />, href: "/modification-logs", roles: ["warehouse_admin", "super_admin", "supervisor", "staff"] },
   {
     key: "group_order_group", label: "group_order_group", icon: <PackageOpen size={20} />,
     roles: ["super_admin", "warehouse_admin", "staff", "supervisor"],

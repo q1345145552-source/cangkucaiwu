@@ -109,6 +109,7 @@ def test_migration_round6(tmp_path,monkeypatch):
     db.add(User(id=7,username='inactive',display_name='停用财务',role='staff',password_hash='unused',is_active=False,extra_permissions=[]))
     db.add_all([SystemSetting(warehouse_id=1,key=getattr(migrations,f'ROUND{r}_PERMISSION_MARKER'),value='true') for r in (2,3,4,5)])
     db.add(SystemSetting(warehouse_id=1,key=migrations.ROUND9_SUPERVISOR_PERMISSION_MARKER,value='true'))
+    db.add(SystemSetting(warehouse_id=1,key=migrations.MODIFICATION_LOGS_PERMISSION_MARKER,value='true'))
     await db.commit()
    before=await snapshot(factory)
    with pytest.raises(RuntimeError):
@@ -117,7 +118,7 @@ def test_migration_round6(tmp_path,monkeypatch):
    async with factory() as db:
     assert (await db.get(User,3)).extra_permissions is None
     assert not (await db.execute(select(SystemSetting).where(SystemSetting.key==migrations.ROUND6_PERMISSION_MARKER))).first()
-   async with engine.begin() as conn:assert await migrations.run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':3,'round9':0}
+   async with engine.begin() as conn:assert await migrations.run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':3,'round9':0,'modification_logs':0}
    async with factory() as db:
     assert (await db.get(User,3)).extra_permissions==list(migrations.ROUND6_PERMISSIONS)
     assert (await db.get(User,4)).extra_permissions==['操作日志',*migrations.ROUND6_PERMISSIONS]
