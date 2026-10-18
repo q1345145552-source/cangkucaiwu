@@ -13,7 +13,7 @@ const change = (n, value) => n.props.onChange({target:{value}});
 function harness({employees=people,error=false}={}) {
   let state=[],cursor=0,closed=0,refreshed=0;const writes=[],messages=[];
   const react={...React,useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],v=>{state[i]=typeof v==='function'?v(state[i]):v;}];}};
-  const imports={react,'@/lib/api':{api:{post:async(route,body)=>{writes.push({route,body});if(error)throw Error('员工不存在或不属于当前仓库');return {created_count:8,skipped_count:0};}}},'@/components/ui/Toast':{useToast:()=>({toast:(...v)=>messages.push(v)})}};
+  const imports={react,'@/components/MakeupBatchHistory':{__esModule:true,default:()=>null},'@/lib/api':{api:{post:async(route,body)=>{writes.push({route,body});if(error)throw Error('员工不存在或不属于当前仓库');return {created_count:8,skipped_count:0};}}},'@/components/ui/Toast':{useToast:()=>({toast:(...v)=>messages.push(v)})}};
   const m={exports:{}};
   vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>imports[n]||require(n),Intl,Date});
   return {render(){cursor=0;return m.exports.default({employees,scheduleTimes:{1:'08:30',2:'11:30',3:'12:30',4:'17:30'},onClose(){closed++;},onSuccess(){refreshed++;}});},writes,messages,get closed(){return closed;},get refreshed(){return refreshed;}};

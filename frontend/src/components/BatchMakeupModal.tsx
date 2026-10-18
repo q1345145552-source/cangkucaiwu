@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import MakeupBatchHistory from "@/components/MakeupBatchHistory";
 
 interface Employee { id: number; name: string }
 interface Props {
@@ -20,6 +21,7 @@ export default function BatchMakeupModal({ employees, scheduleTimes, onClose, on
   const [selectedSessions, setSelectedSessions] = useState<number[]>([1, 2, 3, 4]);
   const [reason, setReason] = useState("系统故障");
   const [saving, setSaving] = useState(false);
+  const [historyBusy, setHistoryBusy] = useState(false);
   const toggle = (values: number[], id: number) => values.includes(id) ? values.filter(v => v !== id) : [...values, id];
 
   async function submit() {
@@ -42,7 +44,8 @@ export default function BatchMakeupModal({ employees, scheduleTimes, onClose, on
   return <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="batch-makeup-title">
     <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90dvh] flex flex-col overflow-hidden">
       <h2 id="batch-makeup-title" className="text-lg font-semibold px-5 py-4 border-b shrink-0">批量补卡</h2>
-      <fieldset disabled={saving} className="p-5 space-y-4 overflow-y-auto min-h-0">
+      <div className="p-5 overflow-y-auto min-h-0">
+      <fieldset disabled={saving || historyBusy} className="space-y-4 min-w-0">
         <label className="block text-sm">日期
           <input aria-label="补卡日期" type="date" max={today} value={date} onChange={e => setDate(e.target.value)} className="form-input mt-1" />
         </label>
@@ -80,10 +83,12 @@ export default function BatchMakeupModal({ employees, scheduleTimes, onClose, on
           <textarea aria-label="补卡原因" value={reason} maxLength={500} onChange={e => setReason(e.target.value)} className="form-input mt-1" rows={2} required />
         </label>
         <p className="text-xs text-gray-500">已有记录会跳过；本次补卡不占个人每月两次额度。</p>
+        <MakeupBatchHistory onChange={onSuccess} onBusyChange={setHistoryBusy} />
       </fieldset>
+      </div>
       <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0">
-        <button type="button" disabled={saving} onClick={onClose} className="btn-secondary">取消</button>
-        <button type="button" disabled={saving || !employees.length} onClick={submit} className="btn-primary">{saving ? "补卡中..." : "确认补卡"}</button>
+        <button type="button" disabled={saving || historyBusy} onClick={onClose} className="btn-secondary">取消</button>
+        <button type="button" disabled={saving || historyBusy || !employees.length} onClick={submit} className="btn-primary">{saving ? "补卡中..." : "确认补卡"}</button>
       </div>
     </div>
   </div>;

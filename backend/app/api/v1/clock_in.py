@@ -1,10 +1,10 @@
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, delete
 from app.database import get_db
 from app.models.user import User
-from app.models.clock_in_records import ClockInRecord
+from app.models.clock_in_records import ClockInRecord, ClockInMakeupBatch
 from app.core.permissions import check_staff_permission, check_staff_permission_any, get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
@@ -509,6 +509,13 @@ async def batch_makeup_clock_in(
     session_times = await get_session_times(db, wh_id)
     created, skipped = [], []
     now = thai_now()
+    batch = ClockInMakeupBatch(
+        warehouse_id=wh_id, clock_date=req.date, operator_id=current_user.id,
+        operator_name=current_user.display_name or current_user.username,
+        operated_at=now, reason=reason, created_count=0, status="active",
+    )
+    db.add(batch)
+    await db.flush()
     for employee in employees:
         uid = emp_to_user[employee.id]
         for session in sessions:
@@ -522,13 +529,86 @@ async def batch_makeup_clock_in(
                 clocked_in_at=clocked, status="normal", penalty_amount=0,
                 is_makeup=True, makeup_counts_toward_limit=False,
                 makeup_by=current_user.id, makeup_at=now, makeup_reason=reason,
+                makeup_batch_id=batch.id,
             ))
             existing.add((uid, session))
             created.append({**item, "clocked_in_at": clocked.isoformat()})
+    batch.created_count = len(created)
     await db.flush()
     return {"message": f"批量补卡完成：建了{len(created)}条，跳过{len(skipped)}条",
+            "batch_id": batch.id,
             "created_count": len(created), "skipped_count": len(skipped),
             "created": created, "skipped": skipped}
+
+
+async def makeup_batch_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只能由仓库管理员查看或撤销补卡批次")
+    return current_user
+
+
+def _makeup_batch_data(batch: ClockInMakeupBatch):
+    return {
+        "id": batch.id, "warehouse_id": batch.warehouse_id, "date": batch.clock_date.isoformat(),
+        "operator_id": batch.operator_id, "operator_name": batch.operator_name,
+        "operated_at": batch.operated_at.isoformat(), "reason": batch.reason,
+        "created_count": batch.created_count, "status": batch.status,
+        "status_label": "已撤销" if batch.status == "revoked" else "有效",
+        "can_revoke": batch.status == "active",
+        "revoked_by": batch.revoked_by, "revoked_by_name": batch.revoked_by_name,
+        "revoked_at": batch.revoked_at.isoformat() if batch.revoked_at else None,
+    }
+
+
+@router.get("/makeup-batches")
+async def list_makeup_batches(
+    response: Response,
+    start_date: Optional[date] = None, end_date: Optional[date] = None,
+    page: int = Query(1, ge=1), page_size: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(makeup_batch_admin), db: AsyncSession = Depends(get_db),
+):
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, "开始日期不能晚于结束日期")
+    response.headers["Cache-Control"] = "no-store"
+    query = select(ClockInMakeupBatch).where(ClockInMakeupBatch.warehouse_id == wh_id)
+    if start_date:
+        query = query.where(ClockInMakeupBatch.clock_date >= start_date)
+    if end_date:
+        query = query.where(ClockInMakeupBatch.clock_date <= end_date)
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
+    rows = (await db.execute(query.order_by(ClockInMakeupBatch.operated_at.desc(), ClockInMakeupBatch.id.desc())
+                            .offset((page - 1) * page_size).limit(page_size))).scalars().all()
+    return {"data": [_makeup_batch_data(batch) for batch in rows], "total": total, "page": page, "page_size": page_size}
+
+
+@router.post("/makeup-batches/{batch_id}/revoke")
+async def revoke_makeup_batch(
+    batch_id: int,
+    current_user: User = Depends(makeup_batch_admin), db: AsyncSession = Depends(get_db),
+):
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    batch = (await db.execute(select(ClockInMakeupBatch).where(
+        ClockInMakeupBatch.id == batch_id, ClockInMakeupBatch.warehouse_id == wh_id,
+    ).with_for_update())).scalar_one_or_none()
+    if not batch:
+        raise HTTPException(404, "补卡批次不存在")
+    if batch.status == "revoked":
+        raise HTTPException(400, "该批次已撤销")
+    result = await db.execute(delete(ClockInRecord).where(
+        ClockInRecord.makeup_batch_id == batch.id, ClockInRecord.warehouse_id == wh_id,
+    ))
+    batch.status = "revoked"
+    batch.revoked_by = current_user.id
+    batch.revoked_by_name = current_user.display_name or current_user.username
+    batch.revoked_at = thai_now()
+    await db.flush()
+    return {"message": "批次已撤销，已算工资单请按需人工重算", "batch_id": batch.id,
+            "deleted_count": result.rowcount, "batch": _makeup_batch_data(batch)}
 
 
 @router.get("/makeup-count")

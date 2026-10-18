@@ -141,13 +141,18 @@ def test_round4_inventory():
             for d in node.decorator_list:
                 if isinstance(d,ast.Call) and isinstance(d.func,ast.Attribute) and isinstance(d.func.value,ast.Name) and d.func.value.id=='router':
                     default=next(v for a,v in zip(node.args.args[-len(node.args.defaults):],node.args.defaults) if a.arg=='current_user')
-                    if filename=='clock_in' and d.args[0].value=='/batch-makeup':
-                        assert d.func.attr=='post' and ast.unparse(default)=='Depends(batch_makeup_admin)'
+                    batch_endpoints={
+                        '/batch-makeup':('post','Depends(batch_makeup_admin)'),
+                        '/makeup-batches':('get','Depends(makeup_batch_admin)'),
+                        '/makeup-batches/{batch_id}/revoke':('post','Depends(makeup_batch_admin)'),
+                    }
+                    if filename=='clock_in' and d.args[0].value in batch_endpoints:
+                        assert (d.func.attr,ast.unparse(default))==batch_endpoints[d.args[0].value]
                         batch_routes.append(node.name)
                         continue
                     seen.append((d.func.attr.upper(),'/'+prefix+d.args[0].value))
                     assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
-    assert batch_routes==['batch_makeup_clock_in']
+    assert batch_routes==['batch_makeup_clock_in','list_makeup_batches','revoke_makeup_batch']
     assert len(seen)==28
     requested={(m,re.sub(r'/[123](?=/|$)','/{}',p.split('?')[0])) for m,p,_,_ in CASES}
     assert requested=={(m,re.sub(r'\{[^}]+\}','{}',p)) for m,p in seen}

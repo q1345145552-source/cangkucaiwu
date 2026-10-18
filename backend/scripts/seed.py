@@ -55,6 +55,37 @@ async def _migrate_makeup_quota_column(conn):
         raise
 
 
+async def _migrate_makeup_batches(conn):
+    """按独立保存点幂等建批次表和关联列；旧补卡不回填批次。"""
+    from sqlalchemy import text
+    statements = (
+        ("clock_in_makeup_batches", """CREATE TABLE IF NOT EXISTS clock_in_makeup_batches (
+            id SERIAL PRIMARY KEY,
+            warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+            clock_date DATE NOT NULL,
+            operator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            operator_name VARCHAR(100) NOT NULL,
+            operated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            reason VARCHAR(500) NOT NULL,
+            created_count INTEGER NOT NULL DEFAULT 0,
+            status VARCHAR(20) NOT NULL DEFAULT 'active',
+            revoked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            revoked_by_name VARCHAR(100),
+            revoked_at TIMESTAMPTZ
+        )"""),
+        ("makeup_batch_id", "ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS makeup_batch_id INTEGER REFERENCES clock_in_makeup_batches(id)"),
+        ("batch_records_index", "CREATE INDEX IF NOT EXISTS ix_clock_in_records_makeup_batch_id ON clock_in_records(makeup_batch_id)"),
+        ("batch_history_index", "CREATE INDEX IF NOT EXISTS ix_clock_in_makeup_batches_warehouse_date ON clock_in_makeup_batches(warehouse_id, clock_date)"),
+    )
+    for name, statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 批量补卡批次 {name} 失败：{exc}")
+            raise
+
+
 async def _migrate_advance_approval_columns(conn):
     """Old advances remain effective; never reset a pending/rejected row on restart."""
     from sqlalchemy import text
@@ -93,6 +124,7 @@ async def seed():
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)
         await _migrate_makeup_quota_column(conn)
+        await _migrate_makeup_batches(conn)
         await _migrate_payroll_expense_link(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text

@@ -2,6 +2,23 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Dat
 from sqlalchemy.sql import func
 from app.database import Base
 
+
+class ClockInMakeupBatch(Base):
+    __tablename__ = "clock_in_makeup_batches"
+    id = Column(Integer, primary_key=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False)
+    clock_date = Column(Date, nullable=False)
+    operator_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    operator_name = Column(String(100), nullable=False)
+    operated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    reason = Column(String(500), nullable=False)
+    created_count = Column(Integer, nullable=False, default=0, server_default="0")
+    status = Column(String(20), nullable=False, default="active", server_default="active")
+    revoked_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    revoked_by_name = Column(String(100), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class ClockInRecord(Base):
     __tablename__ = "clock_in_records"
     id = Column(Integer, primary_key=True, index=True)
@@ -20,3 +37,4 @@ class ClockInRecord(Base):
     makeup_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="补卡人")
     makeup_at = Column(DateTime(timezone=True), nullable=True, comment="补卡操作时间")
     makeup_reason = Column(String(500), nullable=True, comment="补卡原因")
+    makeup_batch_id = Column(Integer, ForeignKey("clock_in_makeup_batches.id"), nullable=True, comment="批量补卡批次；旧记录与单条补卡留空")
