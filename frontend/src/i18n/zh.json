@@ -366,5 +366,6 @@
   "ot_verify_confirmed_hint": "本次有 {n} 个人已经确认过了，不会改动他们的数据",
   "ot_status_dispute_suffix": "{n}人有异议",
   "employee_self": "员工自助",
-  "leave": "请假"
+  "leave": "请假",
+  "cash_advances": "垫款单"
 }

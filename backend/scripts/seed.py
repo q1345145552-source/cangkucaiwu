@@ -23,6 +23,7 @@ from app.models.salary_template import SalaryTemplate
 from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.expense_approval import ExpenseApproval
+from app.models.cash_advance import CashAdvance
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
@@ -117,6 +118,38 @@ async def _migrate_payroll_expense_link(conn):
             print(f"迁移 工资支出联动字段 {name} 失败：{exc}")
 
 
+async def _migrate_cash_advances(conn):
+    """只建垫款登记表，独立保存点；不回填任何历史财务记录。"""
+    from sqlalchemy import text
+    statements = (
+        ("cash_advances", """CREATE TABLE IF NOT EXISTS cash_advances (
+            id SERIAL PRIMARY KEY,
+            warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+            payer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            payer_name VARCHAR(100) NOT NULL,
+            advance_date DATE NOT NULL,
+            amount NUMERIC(14,2) NOT NULL CONSTRAINT ck_cash_advances_amount CHECK (amount > 0),
+            purpose VARCHAR(20) NOT NULL CONSTRAINT ck_cash_advances_purpose CHECK (purpose IN ('salary','purchase','expense','other')),
+            description VARCHAR(2000), voucher_path VARCHAR(500),
+            status VARCHAR(20) NOT NULL DEFAULT 'pending' CONSTRAINT ck_cash_advances_status CHECK (status IN ('pending','confirmed','rejected','repaid')),
+            repaid_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+            created_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_by_name VARCHAR(100) NOT NULL, created_at TIMESTAMPTZ NOT NULL,
+            reviewed_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            reviewed_by_name VARCHAR(100), reviewed_at TIMESTAMPTZ, reject_reason VARCHAR(500),
+            CONSTRAINT ck_cash_advances_repaid CHECK (repaid_amount >= 0 AND repaid_amount <= amount)
+        )"""),
+        ("cash_advances_index", "CREATE INDEX IF NOT EXISTS ix_cash_advances_warehouse_date ON cash_advances(warehouse_id, advance_date)"),
+    )
+    for name, statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 垫款单 {name} 失败：{exc}")
+            raise
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
@@ -126,6 +159,7 @@ async def seed():
         await _migrate_makeup_quota_column(conn)
         await _migrate_makeup_batches(conn)
         await _migrate_payroll_expense_link(conn)
+        await _migrate_cash_advances(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

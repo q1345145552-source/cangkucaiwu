@@ -1,4 +1,4 @@
-from app.services.permission_migrations import MODIFICATION_LOGS_PERMISSION_MARKER
+from app.services.permission_migrations import MODIFICATION_LOGS_PERMISSION_MARKER, CASH_ADVANCES_PERMISSION_MARKER
 """第三轮真实 HTTP、独立数据库、工资快照与补权迁移测试。"""
 import asyncio
 import ast
@@ -224,11 +224,12 @@ def test_round3_migration_preserves_payroll_and_revocations(tmp_path,monkeypatch
                 db.add(SystemSetting(warehouse_id=1,key=ROUND6_PERMISSION_MARKER,value='true'))
                 db.add(SystemSetting(warehouse_id=1,key=ROUND9_SUPERVISOR_PERMISSION_MARKER,value='true'))
                 db.add(SystemSetting(warehouse_id=1,key=MODIFICATION_LOGS_PERMISSION_MARKER,value='true'))
+                db.add(SystemSetting(warehouse_id=1,key=CASH_ADVANCES_PERMISSION_MARKER,value='true'))
                 await db.commit()
             before=await snapshot(factory)
             async with engine.begin() as conn:
                 counts=await run_permission_migrations(conn)
-                assert counts=={'round2':0,'round3':3,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0}
+                assert counts=={'round2':0,'round3':3,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             assert await snapshot(factory)==before
             async with factory() as db:
                 values=dict((await db.execute(select(User.id,User.extra_permissions))).all())
@@ -246,7 +247,7 @@ def test_round3_migration_preserves_payroll_and_revocations(tmp_path,monkeypatch
             assert await snapshot(factory)==before
             await set_perms(factory,3,[])
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             async with factory() as db:
                 assert (await db.get(User,3)).extra_permissions==[]
             assert await snapshot(factory)==before

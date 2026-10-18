@@ -52,7 +52,7 @@ def test_migration_once_supervisor_only_and_real_read(tmp_path,monkeypatch):
    await seed_logs(f)
    async with f() as db:
     db.add_all([SystemSetting(warehouse_id=1,key=key,value='true') for key in (
-     migrations.ROUND2_PERMISSION_MARKER,migrations.ROUND3_PERMISSION_MARKER,migrations.ROUND4_PERMISSION_MARKER,migrations.ROUND5_PERMISSION_MARKER,migrations.ROUND6_PERMISSION_MARKER,migrations.ROUND9_SUPERVISOR_PERMISSION_MARKER)])
+     migrations.ROUND2_PERMISSION_MARKER,migrations.ROUND3_PERMISSION_MARKER,migrations.ROUND4_PERMISSION_MARKER,migrations.ROUND5_PERMISSION_MARKER,migrations.ROUND6_PERMISSION_MARKER,migrations.ROUND9_SUPERVISOR_PERMISSION_MARKER,migrations.CASH_ADVANCES_PERMISSION_MARKER)])
     db.add(User(id=7,username='inactive_sup',display_name='停用主管',role='supervisor',warehouse_id=1,password_hash='unused',is_active=False,extra_permissions=['考勤']))
     await db.commit()
     before={u.id:u.extra_permissions for u in (await db.execute(select(User))).scalars()}

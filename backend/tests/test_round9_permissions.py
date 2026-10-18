@@ -13,7 +13,7 @@ from tests.test_round2_permissions import auth
 def test_registry_source():
     expected = tuple(p.label for p in MENU_PERMISSIONS if p.selectable)
     assert migrations.ROUND9_SUPERVISOR_PERMISSIONS == expected
-    assert len(expected) == len(set(expected)) == 33
+    assert len(expected) == len(set(expected)) == 34
     assert not set(expected) & {p.label for p in MENU_PERMISSIONS if not p.selectable}
     assert migrations.ROUND9_SUPERVISOR_PERMISSION_MARKER not in [getattr(migrations, f'ROUND{r}_PERMISSION_MARKER') for r in (2,3,4,5,6)]
 
@@ -45,7 +45,7 @@ def test_supervisors_only_and_transaction(tmp_path, monkeypatch, rollback):
                 users={u.id:u for u in (await db.execute(select(User))).scalars()}
                 for uid in (4,7,8):
                     assert set(users[uid].extra_permissions)==set(migrations.ROUND9_SUPERVISOR_PERMISSIONS)
-                    assert len(users[uid].extra_permissions)==33
+                    assert len(users[uid].extra_permissions)==34
                 assert users[9].extra_permissions==before[9]
                 for uid,u in users.items():
                     if u.role!='supervisor':assert u.extra_permissions==before[uid],(uid,u.role)
@@ -72,7 +72,7 @@ def test_real_startup_and_revocation(tmp_path,monkeypatch):
             async with factory() as db:
                 actual=(await db.get(User,4)).extra_permissions
                 assert actual==list(migrations.ROUND9_SUPERVISOR_PERMISSIONS)
-                assert (await db.get(User,3)).extra_permissions==finance_before
+                assert (await db.get(User,3)).extra_permissions==[*finance_before,'垫款单']
                 print('\n测试库主管权限：'+json.dumps(actual,ensure_ascii=False))
                 await db.execute(update(User).where(User.id==4).values(extra_permissions=[]))
                 db.add(User(id=7,username='new-supervisor',display_name='标记后新主管',role='supervisor',warehouse_id=1,password_hash='unused',extra_permissions=[]))
@@ -80,7 +80,7 @@ def test_real_startup_and_revocation(tmp_path,monkeypatch):
             await startup.initialize()
             async with factory() as db:
                 for uid in (4,7):assert (await db.get(User,uid)).extra_permissions==[]
-                assert (await db.get(User,3)).extra_permissions==finance_before
+                assert (await db.get(User,3)).extra_permissions==[*finance_before,'垫款单']
                 assert len((await db.execute(select(SystemSetting).where(SystemSetting.key==migrations.ROUND9_SUPERVISOR_PERMISSION_MARKER))).scalars().all())==1
             assert len(calls)==3
             assert await snapshot(factory)==before
@@ -103,7 +103,7 @@ def test_migrated_supervisor_each_permission_read(tmp_path,monkeypatch):
             'incoming':'/incoming','expense_fund':'/expense-fund/accounts','reimbursement':'/reimbursement',
             'operating':'/income-expense/operating-dashboard','credit':'/credit','audit_logs':'/settings/logs',
             'suppliers':'/suppliers/categories','other_income_expense':'/income-expense/income',
-            'modification_logs':'/history','employee_deductions':'/employee-deductions','employee_advances':'/employee-advances',
+            'cash_advances':'/cash-advances','modification_logs':'/history','employee_deductions':'/employee-deductions','employee_advances':'/employee-advances',
         }
         assert set(paths)=={p.menu_key for p in MENU_PERMISSIONS if p.selectable}
         async with hr_environment(tmp_path,monkeypatch) as (engine,factory,client):

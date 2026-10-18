@@ -73,6 +73,7 @@ MENU_PERMISSIONS: tuple[MenuPermission, ...] = (
     MenuPermission("expense_fund", "备用金管理", "/expense-fund", _OFFICE, legacy_permission=True),
     MenuPermission("reimbursement", "报销管理", "/reimbursement", _OFFICE, legacy_permission=True),
     MenuPermission("operating", "运营收支", "/operating", _OFFICE, legacy_permission=True),
+    MenuPermission("cash_advances", "垫款单", "/cash-advances", _OFFICE, permission_menu_key="cash_advances"),
     MenuPermission("credit", "账期管理", "/credit", _OFFICE, legacy_permission=True),
     MenuPermission("audit_logs", "操作日志", "/audit-logs", _ADMIN_OFFICE, legacy_permission=True),
     MenuPermission("suppliers", "供应商管理", "/suppliers", _OFFICE, legacy_permission=True),

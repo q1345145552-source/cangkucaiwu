@@ -140,7 +140,7 @@ def test_link_and_timestamp_are_server_owned(tmp_path, monkeypatch):
             r = await client.get('/api/v1/users/permissions', headers=auth(1))
             flag = next(item for item in r.json() if item['menu_key'] == 'attendance_enabled')
             assert flag['label'] == '纳入考勤' and flag['selectable'] is False and flag['path'] == ''
-            assert len([p for p in MENU_PERMISSIONS if p.selectable]) == 33
+            assert len([p for p in MENU_PERMISSIONS if p.selectable]) == 34
     asyncio.run(run())
 
 

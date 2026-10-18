@@ -105,6 +105,14 @@ async def backfill_round9_supervisor_permissions(conn: AsyncConnection) -> int:
 
 
 MODIFICATION_LOGS_PERMISSION_MARKER = "modification_logs_supervisors_backfilled_v1_20261018"
+CASH_ADVANCES_PERMISSION_MARKER = "cash_advances_supervisor_staff_backfilled_v1_20261018"
+
+
+async def backfill_cash_advances_permission(conn: AsyncConnection) -> int:
+    return await _backfill_permissions(
+        conn, CASH_ADVANCES_PERMISSION_MARKER,
+        (MENU_PERMISSIONS_BY_KEY["cash_advances"].label,),
+    )
 
 
 async def backfill_modification_logs_permission(conn: AsyncConnection) -> int:
@@ -124,4 +132,5 @@ async def run_permission_migrations(conn: AsyncConnection) -> dict[str, int]:
         "round6": await backfill_round6_permissions(conn),
         "round9": await backfill_round9_supervisor_permissions(conn),
         "modification_logs": await backfill_modification_logs_permission(conn),
+        "cash_advances": await backfill_cash_advances_permission(conn),
     }

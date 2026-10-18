@@ -73,7 +73,7 @@ async function main(){
   if(u.role==='staff')assert.equal((await http('DELETE','/users/'+u.user_id,token)).status,200);
  }
  fs.writeFileSync('/tmp/r8-created-accounts.json',JSON.stringify(created.map(u=>({username:u.username,user_id:u.user_id})),null,2));
- console.log(JSON.stringify({selectable:registry.filter(p=>p.selectable).length,finance:8,business:25,roleDefaults:'PASS',createEditRoundtrip:'PASS',loadFailureAndRetry:'PASS',passwordWarehouseActivationDelete:'PASS'},null,2));
+ console.log(JSON.stringify({selectable:registry.filter(p=>p.selectable).length,finance:8,business:registry.filter(p=>p.selectable).length-8,roleDefaults:'PASS',createEditRoundtrip:'PASS',loadFailureAndRetry:'PASS',passwordWarehouseActivationDelete:'PASS'},null,2));
 }
 module.exports={harness,http,login,text,walk};
 if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1});

@@ -269,7 +269,7 @@ def test_startup_runs_backfill_after_seed_returns(tmp_path, monkeypatch):
             await startup.initialize()
             assert calls == ['seed-returned', 'seed-returned']
             async with factory() as db:
-                assert (await db.execute(select(User.extra_permissions).where(User.id == 3))).scalar_one() == [*ROUND2_PERMISSIONS, *ROUND3_PERMISSIONS, *ROUND4_PERMISSIONS, *ROUND5_PERMISSIONS, *ROUND6_PERMISSIONS]
+                assert (await db.execute(select(User.extra_permissions).where(User.id == 3))).scalar_one() == [*ROUND2_PERMISSIONS, *ROUND3_PERMISSIONS, *ROUND4_PERMISSIONS, *ROUND5_PERMISSIONS, *ROUND6_PERMISSIONS, '垫款单']
                 assert set((await db.get(User, 4)).extra_permissions) == set(ROUND9_SUPERVISOR_PERMISSIONS)
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(
                     SystemSetting.key == ROUND2_PERMISSION_MARKER))).scalar_one() == 1

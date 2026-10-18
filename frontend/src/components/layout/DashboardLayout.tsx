@@ -44,6 +44,7 @@ const navItems: NavItem[] = [
       { key: "other_income_expense", label: "other_income_expense", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "expense_fund", label: "expense_fund", icon: <PiggyBank size={18} />, href: "/expense-fund", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "reimbursement", label: "reimbursement", icon: <Receipt size={18} />, href: "/reimbursement", roles: ["warehouse_admin", "staff", "supervisor"] },
+      { key: "cash_advances", label: "cash_advances", icon: <Receipt size={18} />, href: "/cash-advances", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "credit", label: "credit", icon: <Clock size={18} />, href: "/credit", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "reports", label: "reports", icon: <BarChart3 size={18} />, href: "/reports", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "ledger", label: "ledger", icon: <FileText size={18} />, href: "/ledger", roles: ["warehouse_admin", "supervisor"] },

@@ -81,7 +81,7 @@ def test_http_permissions_and_account_lifecycle(tmp_path, monkeypatch):
                 response = await client.get("/api/v1/users/permissions", headers=headers)
                 assert response.status_code == 200, response.text
                 items = response.json()
-                assert len(items) == len(MENU_PERMISSIONS) == 38
+                assert len(items) == len(MENU_PERMISSIONS) == 39
                 for item in items:
                     assert {"key", "label", "menu_key", "path", "roles", "default_roles", "selectable"} <= item.keys()
                     assert isinstance(item["selectable"], bool)

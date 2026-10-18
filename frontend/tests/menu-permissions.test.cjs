@@ -13,7 +13,7 @@ const sourcePath = path.resolve(__dirname, '../src/components/layout/DashboardLa
 const source = fs.readFileSync(sourcePath, 'utf8');
 const baseline = execFileSync('git', ['show', '03dd578:frontend/src/components/layout/DashboardLayout.tsx'], {encoding:'utf8'});
 const navDeclaration = s => s.slice(s.indexOf('const navItems:'), s.indexOf('\n];', s.indexOf('const navItems:')) + 3);
-const normalizeHistoryRoles = s => s.replace('href: "/modification-logs", roles: ["warehouse_admin", "super_admin", "supervisor", "staff"]', 'href: "/modification-logs", roles: ["warehouse_admin"]');
+const normalizeHistoryRoles = s => s.split('\n').filter(line=>!line.includes('key: "cash_advances"')).join('\n').replace('href: "/modification-logs", roles: ["warehouse_admin", "super_admin", "supervisor", "staff"]', 'href: "/modification-logs", roles: ["warehouse_admin"]');
 assert.equal(navDeclaration(normalizeHistoryRoles(source)), navDeclaration(baseline), 'Menu paths, icons, order, labels and role rules must remain unchanged');
 assert(!source.includes('STAFF_EXTRA_MAP'));
 assert(source.includes('"/users/permissions"'));

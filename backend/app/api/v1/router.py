@@ -10,6 +10,7 @@ from app.api.v1 import salary_template
 from app.api.v1 import deduction_template
 from app.api.v1 import employee_deduction
 from app.api.v1 import expense_approval
+from app.api.v1 import cash_advance
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["认证"])
@@ -46,3 +47,4 @@ api_router.include_router(salary_template.router, prefix="/salary-templates", ta
 api_router.include_router(deduction_template.router, prefix="/deduction-templates", tags=["扣款模板"])
 api_router.include_router(employee_deduction.router, prefix="/employee-deductions", tags=["员工扣款"])
 api_router.include_router(expense_approval.router, prefix="/expense-approvals", tags=["费用审批"])
+api_router.include_router(cash_advance.router, prefix="/cash-advances", tags=["垫款单"])

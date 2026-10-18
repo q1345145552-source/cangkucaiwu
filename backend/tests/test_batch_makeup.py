@@ -219,5 +219,11 @@ def test_single_makeup_function_and_unrelated_business_unchanged():
     for key in old:
         if key not in ("_count_makeup_days", "list_records"): assert new[key] == old[key], key
     assert_record_dict_only_adds_makeup_batch_id(original, current)
-    for filename in ("backend/app/api/v1/attendance.py", "backend/app/api/v1/payroll.py", "backend/app/services/schedule.py", "backend/app/core/menu_registry.py"):
+    for filename in ("backend/app/api/v1/attendance.py", "backend/app/api/v1/payroll.py", "backend/app/services/schedule.py"):
         assert (root / filename).read_bytes() == subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root)
+
+    # 本轮只给唯一清单追加垫款单；其余菜单仍与补卡前相同。
+    registry = "backend/app/core/menu_registry.py"
+    current_registry = (root / registry).read_text()
+    without_cash = "\n".join(line for line in current_registry.split("\n") if 'MenuPermission("cash_advances"' not in line)
+    assert without_cash == subprocess.check_output(["git", "show", "c515151:" + registry], cwd=root, text=True)

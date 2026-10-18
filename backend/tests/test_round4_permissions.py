@@ -1,4 +1,4 @@
-from app.services.permission_migrations import MODIFICATION_LOGS_PERMISSION_MARKER
+from app.services.permission_migrations import MODIFICATION_LOGS_PERMISSION_MARKER, CASH_ADVANCES_PERMISSION_MARKER
 """第四轮：28接口、无额外权限劳工、隔离与工资口径回归。"""
 import asyncio, ast, base64, json, re
 from contextlib import asynccontextmanager
@@ -195,11 +195,11 @@ def test_round4_migration_database_and_payroll_snapshot(tmp_path,monkeypatch):
             await set_perms(factory,4,['到账流水','考勤','考勤'])
             async with factory() as db:
                 db.add(User(id=8,username='inactive-staff',display_name='停用财务',role='staff',is_active=False,password_hash='unused',extra_permissions=['旧自定义权限']))
-                db.add_all([SystemSetting(warehouse_id=1,key=marker,value='true') for marker in (MODIFICATION_LOGS_PERMISSION_MARKER,ROUND9_SUPERVISOR_PERMISSION_MARKER,ROUND6_PERMISSION_MARKER,ROUND2_PERMISSION_MARKER,ROUND3_PERMISSION_MARKER,ROUND5_PERMISSION_MARKER)])
+                db.add_all([SystemSetting(warehouse_id=1,key=marker,value='true') for marker in (CASH_ADVANCES_PERMISSION_MARKER,MODIFICATION_LOGS_PERMISSION_MARKER,ROUND9_SUPERVISOR_PERMISSION_MARKER,ROUND6_PERMISSION_MARKER,ROUND2_PERMISSION_MARKER,ROUND3_PERMISSION_MARKER,ROUND5_PERMISSION_MARKER)])
                 await db.commit()
             before=await business_snapshot(factory)
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':3,'round5':0,'round6':0,'round9':0,'modification_logs':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':3,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             assert await business_snapshot(factory)==before
             async with factory() as db:
                 values=dict((await db.execute(select(User.id,User.extra_permissions))).all())
@@ -210,7 +210,7 @@ def test_round4_migration_database_and_payroll_snapshot(tmp_path,monkeypatch):
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(SystemSetting.key==ROUND4_PERMISSION_MARKER))).scalar_one()==1
             await set_perms(factory,3,[])
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             async with factory() as db:assert (await db.get(User,3)).extra_permissions==[]
             assert await business_snapshot(factory)==before
     asyncio.run(run())
