@@ -15,6 +15,7 @@ interface Advance {
   reject_reason: string | null; created_by_name: string; created_at: string;
   reviewed_by_name: string | null; reviewed_at: string | null;
   payroll_used_amount: number; payroll_available_amount: number;
+  reimbursement_used_amount: number; available_amount: number;
 }
 interface Payer { id: number; name: string; username: string; role: string }
 interface CurrencyAmount { currency: string; amount: number }
@@ -127,12 +128,12 @@ export default function CashAdvancesPage() {
       <input aria-label="垫款人筛选" placeholder="按垫款人姓名筛选" className="form-input w-auto" maxLength={100} value={filters.payer_name} onChange={e => filter("payer_name", e.target.value)} />
     </div>
     <div className="bg-white rounded-xl border overflow-x-auto">
-      <table className="w-full text-sm whitespace-nowrap"><thead className="bg-gray-50 text-gray-500"><tr>{["日期", "垫款人", "金额", "用途", "状态", "剩余未还", "工资使用", "说明 / 凭证", "操作"].map(title => <th key={title} className="text-left px-4 py-3">{title}</th>)}</tr></thead>
+      <table className="w-full text-sm whitespace-nowrap"><thead className="bg-gray-50 text-gray-500"><tr>{["日期", "垫款人", "金额", "用途", "状态", "剩余未还", "资金使用", "说明 / 凭证", "操作"].map(title => <th key={title} className="text-left px-4 py-3">{title}</th>)}</tr></thead>
         <tbody className="divide-y">{rows.map(row => <tr key={row.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setHistoryAdvance(row)}>
           <td className="px-4 py-3">{row.advance_date}</td><td className="px-4 py-3">{row.payer_name}</td><td className="px-4 py-3">{money(row.amount)} {currencyName(row.currency)}</td><td className="px-4 py-3">{row.purpose_label}</td>
           <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${STATUS_STYLES[row.status]}`}>{row.status_label}</span>{row.reject_reason && <p className="whitespace-normal max-w-48 text-xs text-red-600 mt-2">{row.reject_reason}</p>}</td>
           <td className="px-4 py-3">{money(row.outstanding_amount)} {currencyName(row.currency)}</td>
-          <td className="px-4 py-3"><p>已用 {money(row.payroll_used_amount || 0)} {currencyName(row.currency)}</p><p className="text-xs text-gray-500 mt-1">可用 {money(row.payroll_available_amount || 0)}</p></td>
+          <td className="px-4 py-3"><p>工资 {money(row.payroll_used_amount || 0)} · 报销 {money(row.reimbursement_used_amount || 0)} {currencyName(row.currency)}</p><p className="text-xs text-gray-500 mt-1">可用 {money(row.available_amount || 0)}</p></td>
           <td className="px-4 py-3"><p className="whitespace-normal max-w-56">{row.description || "—"}</p>{row.voucher_path && <a href={`/${row.voucher_path}`} onClick={event => event.stopPropagation()} target="_blank" rel="noreferrer" className="text-blue-600">查看凭证</a>}</td>
           <td className="px-4 py-3" onClick={event => event.stopPropagation()}><div className="flex gap-3">
             {canReview && row.status === "pending" && <><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></>}

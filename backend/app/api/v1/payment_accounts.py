@@ -12,6 +12,7 @@ from app.services.account_balances import current_account_balances
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.payroll import PayrollRecord
 from app.models.income_expense import ExpenseRecord
+from app.models.reimbursement_payment import ReimbursementPayment
 
 _PERMISSION = MENU_PERMISSIONS_BY_KEY["accounts"].label
 
@@ -75,6 +76,10 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
         ).limit(1))).first()
         if paid_payroll:
             raise HTTPException(400, "该账户有已发放工资，不能修改币种")
+        if (await db.execute(select(ReimbursementPayment.id).where(
+            ReimbursementPayment.payment_account_id == a.id, ReimbursementPayment.status == "active",
+        ).limit(1))).first():
+            raise HTTPException(400, "该账户有有效报销付款记录，不能修改币种")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(a, k, v)
     await db.flush(); return {"message": "更新成功"}
@@ -106,4 +111,6 @@ async def delete_account(account_id: int, current_user: User = Depends(check_sta
         raise HTTPException(403, "只能删除自己仓库的账户")
     if (await db.execute(select(CashAdvanceRepayment.id).where(CashAdvanceRepayment.account_id == a.id).limit(1))).first():
         raise HTTPException(400, "该账户有关联的垫款归还记录，不能删除，请停用")
+    if (await db.execute(select(ReimbursementPayment.id).where(ReimbursementPayment.payment_account_id == a.id).limit(1))).first():
+        raise HTTPException(400, "该账户有关联报销付款记录，不能删除，请停用")
     await db.delete(a); await db.flush(); return {"message": "删除成功"}

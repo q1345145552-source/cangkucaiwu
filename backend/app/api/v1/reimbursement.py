@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
@@ -9,8 +9,10 @@ from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, Re
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from app.services.data_history import record_history
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Literal
+from app.services import reimbursement_payment as payments
+from app.models.reimbursement_payment import ReimbursementPayment
 
 router = APIRouter()
 
@@ -28,6 +30,67 @@ class ReimbReview(BaseModel):
 
 class CategoryReq(BaseModel):
     name: str; description: Optional[str] = None
+
+class ReimbPay(BaseModel):
+    funding_source: Literal["company_account", "cash_advance", "expense_fund"] | None = None
+    payment_account_id: int | None = Field(default=None, gt=0)
+    cash_advance_id: int | None = Field(default=None, gt=0)
+    payment_method: Literal["cash", "transfer"] = "cash"
+    payment_voucher_path: str | None = Field(default=None, max_length=500)
+
+class RevokePayment(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+async def _payment_reimb(db, reimb_id, user, *, lock=False):
+    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    query = select(Reimbursement).where(Reimbursement.id == reimb_id)
+    if lock: query = query.with_for_update()
+    r = (await db.execute(query)).scalar_one_or_none()
+    if r is None: raise HTTPException(404, "报销单不存在")
+    if r.warehouse_id not in get_wh_ids(user): raise HTTPException(403, "无权操作其他仓库的报销单")
+    return r
+
+@router.get("/payment-sources")
+async def payment_sources(reimbursement_id: int, current_user: User = Depends(get_current_user),
+                          db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
+    from app.models.customer import PaymentAccount
+    from app.models.cash_advance import CashAdvance
+    from app.services.account_balances import current_account_balances
+    from app.services.cash_advance_payroll import payroll_usage_totals, usage_amounts
+    from app.services.cash_advance_usage import reimbursement_usage_totals
+    r = await _payment_reimb(db, reimbursement_id, current_user)
+    accounts = (await db.execute(select(PaymentAccount).where(
+        PaymentAccount.warehouse_id == r.warehouse_id,
+        (PaymentAccount.status == "active") | PaymentAccount.status.is_(None),
+    ).order_by(PaymentAccount.id))).scalars().all()
+    balances = await current_account_balances(db, accounts)
+    advances = (await db.execute(select(CashAdvance).where(
+        CashAdvance.warehouse_id == r.warehouse_id, CashAdvance.status == "confirmed",
+        CashAdvance.currency == (r.currency or "THB").upper(), CashAdvance.amount > CashAdvance.repaid_amount,
+    ).order_by(CashAdvance.id.desc()))).scalars().all()
+    wages, expenses = await payroll_usage_totals(db, advances), await reimbursement_usage_totals(db, advances)
+    return {"currency": r.currency or "THB", "is_fund_linked": r.is_fund_linked or "0",
+        "accounts": [{"id": a.id, "account_name": a.account_name, "account_type": a.account_type,
+            "currency": a.currency or "THB", "current_balance": float(balances[a.id])} for a in accounts
+            if (a.currency or "THB").upper() == (r.currency or "THB").upper()],
+        "cash_advances": [{"id": a.id, "payer_name": a.payer_name, "currency": a.currency,
+            "outstanding_amount": float(a.amount - a.repaid_amount), **usage_amounts(a, wages[a.id], expenses[a.id])} for a in advances]}
+
+@router.post("/payment-voucher")
+async def payment_voucher(reimbursement_id: int = Form(...), file: UploadFile = File(...),
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                          _perm=Depends(check_staff_permission("报销管理"))):
+    import os, uuid
+    from app.services.image_utils import is_image, save_image
+    r = await _payment_reimb(db, reimbursement_id, current_user)
+    content = await file.read(10 * 1024 * 1024 + 1)
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    if not content or len(content) > 10 * 1024 * 1024: raise HTTPException(400, "付款凭证须在10MB以内")
+    if ext not in ("png", "jpg", "jpeg", "webp") or not is_image(content): raise HTTPException(400, "请上传有效付款凭证图片")
+    subdir = f"{r.warehouse_id}/{thai_now():%Y-%m-%d}/reimbursement-payments"
+    output = save_image(content, os.path.join(payments.UPLOAD_DIR, subdir), f"uploads/{subdir}", f"{uuid.uuid4().hex}.{ext}")
+    return {"path": output["path"], "thumb_path": output["thumb_path"]}
 
 @router.get("")
 async def list_reimbursements(
@@ -67,6 +130,7 @@ async def list_reimbursements(
     if uids:
         users = (await db.execute(select(User).where(User.id.in_(uids)))).scalars().all()
         umap = {u.id: u.display_name for u in users}
+    paid = await payments.active_payment_map(db, reimbs)
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id, "employee_id": r.employee_id,
         "employee_name": umap.get(r.employee_id, ""),
@@ -74,6 +138,7 @@ async def list_reimbursements(
         "total_amount": r.total_amount, "currency": r.currency, "status": r.status,
         "is_fund_linked": r.is_fund_linked or "0", "fund_item_id": r.fund_item_id,
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
+        **payments.payment_fields(r, paid.get(r.id), can_revoke=current_user.role == Role.WAREHOUSE_ADMIN),
     } for r in reimbs], "total": total, "page": page, "page_size": page_size}
 
 @router.post("")
@@ -122,6 +187,7 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
         total_amount=total, currency=req.currency,
         is_fund_linked=req.is_fund_linked or "0",
         fund_item_id=fund_item_id,
+        funding_source="expense_fund" if req.is_fund_linked == "1" else None,
         status=ReimbStatus.FUND_LINKED.value if req.is_fund_linked == "1" else ReimbStatus.PENDING.value,
     )
     db.add(r); await db.flush()
@@ -241,12 +307,16 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权查看其他仓库的报销单")
     items = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id))).scalars().all()
+    paid = (await payments.active_payment_map(db, [r])).get(r.id)
+    employee = await db.get(User, r.employee_id)
     return {
         "id": r.id, "warehouse_id": r.warehouse_id, "employee_id": r.employee_id,
+        "employee_name": employee.display_name if employee else "",
         "is_fund_linked": r.is_fund_linked or "0", "fund_item_id": r.fund_item_id,
         "submit_date": r.submit_date.isoformat() if r.submit_date else None,
         "total_amount": r.total_amount, "currency": r.currency, "status": r.status,
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
+        **payments.payment_fields(r, paid, can_revoke=current_user.role == Role.WAREHOUSE_ADMIN),
         "items": [{"id": i.id, "category": i.category, "amount": i.amount,
                    "description": i.description, "receipt": i.receipt,
                    "review_status": i.review_status} for i in items],
@@ -258,7 +328,7 @@ async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depen
                      _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
+    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id).with_for_update())
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
@@ -293,11 +363,14 @@ async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_u
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
+    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id).with_for_update())
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
+    if r.status == "paid": raise HTTPException(400, "已付款报销请先撤销付款")
+    if (await db.execute(select(ReimbursementPayment.id).where(ReimbursementPayment.reimbursement_id == r.id).limit(1))).first():
+        raise HTTPException(400, "有付款记录的报销单不能删除，请保留付款历史")
 
     wh_id = r.warehouse_id
     before = {
@@ -338,11 +411,13 @@ async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_u
                        _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
+    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id).with_for_update())
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权操作其他仓库的报销单")
+    if r.status == "paid" or await payments.active_payment_map(db, [r]):
+        raise HTTPException(400, "已付款报销请先撤销付款")
     r.status = ReimbStatus.PENDING.value
     await db.flush(); return {"message": "已提交审批"}
 
@@ -354,7 +429,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无审批权限")
-    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
+    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id).with_for_update())
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")
     if r.warehouse_id not in get_wh_ids(current_user):
@@ -399,22 +474,34 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
     await db.flush(); return {"message": "审批完成", "status": r.status, "approved_amount": approved_amount}
 
 @router.post("/{reimb_id}/pay")
-async def pay_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
+async def pay_reimb(reimb_id: int, req: ReimbPay | None = None, current_user: User = Depends(get_current_user),
                     db: AsyncSession = Depends(get_db),
                     _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
-    r = result.scalar_one_or_none()
-    if not r: raise HTTPException(404, "报销单不存在")
-    if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "无权操作其他仓库的报销单")
-    if r.status not in (ReimbStatus.APPROVED.value, ReimbStatus.PARTIALLY_APPROVED.value):
-        raise HTTPException(400, "仅已审批状态可付款")
-    r.status = ReimbStatus.PAID.value; r.paid_at = thai_now()
-    await db.flush(); return {"message": "已标记付款"}
+    r = await _payment_reimb(db, reimb_id, current_user, lock=True)
+    return await payments.pay(db, r, req or ReimbPay(), current_user)
+
+@router.get("/{reimb_id}/payments")
+async def payment_history(reimb_id: int, current_user: User = Depends(get_current_user),
+                          db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
+    r = await _payment_reimb(db, reimb_id, current_user)
+    rows = (await db.execute(select(ReimbursementPayment).where(
+        ReimbursementPayment.reimbursement_id == r.id, ReimbursementPayment.warehouse_id == r.warehouse_id,
+    ).order_by(ReimbursementPayment.id.desc()))).scalars().all()
+    return {"data": [{**payments.payment_dict(p), "can_revoke": p.status == "active" and current_user.role == Role.WAREHOUSE_ADMIN} for p in rows],
+        "total": len(rows), "status": r.status, "is_legacy_payment": r.status == "paid" and not rows}
+
+@router.post("/{reimb_id}/revoke-payment")
+async def revoke_payment(reimb_id: int, req: RevokePayment | None = None, current_user: User = Depends(get_current_user),
+                         db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
+    if current_user.role != Role.WAREHOUSE_ADMIN: raise HTTPException(403, "只有仓库管理员可以撤销报销付款")
+    reason = ((req.reason if req else None) or "").strip()
+    if not reason: raise HTTPException(400, "请填写撤销原因")
+    r = await _payment_reimb(db, reimb_id, current_user, lock=True)
+    return await payments.revoke(db, r, current_user, reason)
 
 
 # === Reimbursement Categories ===

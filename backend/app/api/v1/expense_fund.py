@@ -417,6 +417,16 @@ async def batch_review(
         fund_wh = (await db.execute(select(ExpenseFund.warehouse_id).where(ExpenseFund.id == item.fund_id))).scalar_one_or_none()
         if fund_wh is None or fund_wh not in wh_ids:
             continue
+        # 与报销付款/撤销按相同顺序锁行；原扣款、退款金额和审批规则不变。
+        linked_reimb = None
+        if item.category == "报销":
+            linked_reimb = (await db.execute(select(Reimbursement).where(
+                Reimbursement.fund_item_id == item_id, Reimbursement.is_fund_linked == "1",
+            ).with_for_update())).scalar_one_or_none()
+        item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == item_id)
+            .with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
+        if item is None:
+            continue
         old_status = item.review_status
         # 幂等守卫：状态未变化则跳过，避免重复驳回导致余额被多次退回
         if old_status == new_status:
@@ -427,14 +437,13 @@ async def batch_review(
 
         # Sync with linked reimbursement（仅在状态真正发生变化时执行一次）
         if item.category == "报销":
-            reimb = (await db.execute(select(Reimbursement).where(
-                Reimbursement.fund_item_id == item_id,
-                Reimbursement.is_fund_linked == "1",
-            ))).scalar_one_or_none()
+            reimb = linked_reimb
             if reimb:
                 if req.action == "approve":
                     reimb.status = ReimbStatus.PAID.value
                     reimb.paid_at = datetime.utcnow()
+                    from app.services.reimbursement_payment import sync_fund_review_payment
+                    await sync_fund_review_payment(db, reimb, current_user, approved=True)
                 elif req.action == "reject":
                     # Restore balance and unlock reimbursement（仅当之前不是已驳回）
                     from app.services.flow_rules import can_refund_fund_item
@@ -444,6 +453,8 @@ async def batch_review(
                             fund.remaining_balance = (fund.remaining_balance or 0) + item.amount
                     reimb.status = ReimbStatus.PENDING.value
                     reimb.is_fund_linked = "0"
+                    from app.services.reimbursement_payment import sync_fund_review_payment
+                    await sync_fund_review_payment(db, reimb, current_user, approved=False, reason=req.remark)
 
     await db.flush()
 

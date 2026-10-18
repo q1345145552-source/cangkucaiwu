@@ -213,6 +213,49 @@ async def _migrate_payroll_cash_advance_link(conn):
             raise
 
 
+async def _migrate_reimbursement_payments(conn):
+    """仅加付款字段、成本关联及撤销历史；不补历史付款或成本。"""
+    from sqlalchemy import text
+    statements = [
+        ("payment_account_id", "ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS payment_account_id INTEGER REFERENCES payment_accounts(id)"),
+        ("payment_method", "ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20)"),
+        ("payment_voucher_path", "ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS payment_voucher_path VARCHAR(500)"),
+        ("funding_source", "ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS funding_source VARCHAR(30)"),
+        ("cash_advance_id", "ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS cash_advance_id INTEGER REFERENCES cash_advances(id)"),
+        ("expense_record_id", "ALTER TABLE reimbursements ADD COLUMN IF NOT EXISTS expense_record_id INTEGER REFERENCES expense_records(id)"),
+        ("expense_index", "CREATE UNIQUE INDEX IF NOT EXISTS ix_reimbursements_expense_record_id ON reimbursements(expense_record_id)"),
+        ("advance_index", "CREATE INDEX IF NOT EXISTS ix_reimbursements_cash_advance_id ON reimbursements(cash_advance_id)"),
+        ("payment_history", """CREATE TABLE IF NOT EXISTS reimbursement_payments (
+            id SERIAL PRIMARY KEY,
+            reimbursement_id INTEGER NOT NULL REFERENCES reimbursements(id),
+            warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+            amount NUMERIC(14,2) NOT NULL CONSTRAINT ck_reimb_payment_amount CHECK (amount > 0),
+            currency VARCHAR(10) NOT NULL,
+            funding_source VARCHAR(30) NOT NULL CONSTRAINT ck_reimb_payment_source CHECK (funding_source IN ('company_account','cash_advance','expense_fund')),
+            payment_account_id INTEGER REFERENCES payment_accounts(id), account_name VARCHAR(100),
+            cash_advance_id INTEGER REFERENCES cash_advances(id), payment_method VARCHAR(20), voucher_path VARCHAR(500),
+            expense_record_id INTEGER, previous_status VARCHAR(30) NOT NULL,
+            paid_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL, paid_by_name VARCHAR(100) NOT NULL,
+            paid_at TIMESTAMPTZ NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'active' CONSTRAINT ck_reimb_payment_status CHECK (status IN ('active','revoked')),
+            revoked_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL, revoked_by_name VARCHAR(100),
+            revoked_at TIMESTAMPTZ, revoke_reason VARCHAR(500),
+            fund_id INTEGER REFERENCES expense_funds(id) ON DELETE SET NULL, fund_item_snapshot JSON
+        )"""),
+        ("history_date_index", "CREATE INDEX IF NOT EXISTS ix_reimb_payment_warehouse_date ON reimbursement_payments(warehouse_id,paid_at)"),
+        ("history_advance_index", "CREATE INDEX IF NOT EXISTS ix_reimb_payment_advance ON reimbursement_payments(cash_advance_id)"),
+        ("history_account_index", "CREATE INDEX IF NOT EXISTS ix_reimb_payment_account ON reimbursement_payments(payment_account_id)"),
+        ("active_payment_index", "CREATE UNIQUE INDEX IF NOT EXISTS uq_reimb_payment_active ON reimbursement_payments(reimbursement_id) WHERE status='active'"),
+    ]
+    for name, statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 报销付款 {name} 失败：{exc}")
+            raise
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
@@ -226,6 +269,7 @@ async def seed():
         await _migrate_cash_advance_currency(conn)
         await _migrate_cash_advance_repayments(conn)
         await _migrate_payroll_cash_advance_link(conn)
+        await _migrate_reimbursement_payments(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:
@@ -1038,6 +1082,11 @@ async def initialize():
     async with _get_engine().begin() as conn:
         categories = await backfill_payroll_categories(conn)
     print(f"员工工资分类迁移完成，新增分类数：{categories}")
+    from app.services.reimbursement_payment import backfill_reimbursement_categories
+    async with _get_engine().begin() as conn:
+        async with conn.begin_nested():
+            reimbursement_categories = await backfill_reimbursement_categories(conn)
+    print(f"报销支出分类迁移完成，新增分类数：{reimbursement_categories}")
     from app.services.permission_migrations import run_permission_migrations
     async with _get_engine().begin() as conn:
         changed = await run_permission_migrations(conn)

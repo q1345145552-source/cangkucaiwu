@@ -1,4 +1,6 @@
 from app.services.payroll_expense import require_manual_expense
+from app.services.reimbursement_payment import require_manual_reimbursement_expense
+from app.models.reimbursement import Reimbursement
 from app.models.payroll import PayrollRecord
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from typing import Optional, List
@@ -239,14 +241,21 @@ async def list_expense(
     ))).all() if expense_ids else []
     payroll_map = {expense_id: payroll_id for expense_id, payroll_id, _ in payroll_rows}
     cash_advance_map = {expense_id: advance_id for expense_id, _, advance_id in payroll_rows}
+    reimbursement_rows = (await db.execute(select(
+        Reimbursement.expense_record_id, Reimbursement.id, Reimbursement.cash_advance_id, Reimbursement.funding_source,
+    ).where(Reimbursement.expense_record_id.in_(expense_ids),
+        Reimbursement.warehouse_id.in_(get_wh_ids(current_user)),
+    ))).all() if expense_ids else []
+    reimbursement_map = {expense_id: (reimb_id, advance_id, source) for expense_id, reimb_id, advance_id, source in reimbursement_rows}
 
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id, "category_id": r.category_id,
         "account_id": r.account_id, "supplier_id": r.supplier_id,
         "amount": r.amount, "currency": r.currency,
         "payroll_record_id": payroll_map.get(r.id),
-        "cash_advance_id": cash_advance_map.get(r.id),
-        "funding_source": "cash_advance" if cash_advance_map.get(r.id) is not None else "company_account",
+        "cash_advance_id": reimbursement_map[r.id][1] if r.id in reimbursement_map else cash_advance_map.get(r.id),
+        "funding_source": reimbursement_map[r.id][2] if r.id in reimbursement_map else "cash_advance" if cash_advance_map.get(r.id) is not None else "company_account",
+        "reimbursement_id": reimbursement_map[r.id][0] if r.id in reimbursement_map else None,
         "expense_date": r.expense_date.isoformat() if r.expense_date else None,
         "voucher": r.voucher, "remark": r.remark,
         "category_name": cat_map.get(r.category_id, ""),
@@ -346,6 +355,7 @@ async def update_expense(
         raise HTTPException(403, "无权限")
 
     await require_manual_expense(db, expense_id)
+    await require_manual_reimbursement_expense(db, expense_id)
 
     before = {
         "amount": r.amount, "currency": r.currency,
@@ -456,6 +466,7 @@ async def delete_expense(
 
     wh_id = r.warehouse_id
     await require_manual_expense(db, expense_id)
+    await require_manual_reimbursement_expense(db, expense_id)
 
     before = {
         "amount": r.amount, "currency": r.currency,
@@ -560,7 +571,7 @@ async def ledger(
             WHERE {wh_cond('ef2')} AND {date_cond('efi', 'expense_date')}
         """)
 
-    # 5. 报销出款
+    # 5. 历史报销保留原口径；新付款按付款记录只计公司账户路径，撤销留痕。
     if not source or source == "reimbursement":
         unions.append(f"""
             SELECT COALESCE(rb.paid_at, rb.submit_date) AS date_val, rb.total_amount AS amount,
@@ -570,7 +581,17 @@ async def ledger(
                    'RB-' || rb.id AS ref_no, rb.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 5 AS sort_ord
             FROM reimbursements rb
             LEFT JOIN users u3 ON rb.employee_id = u3.id
-            WHERE rb.status = 'paid' AND {wh_cond('rb')} AND {date_cond('rb', 'paid_at')}
+            WHERE rb.status = 'paid' AND rb.funding_source IS NULL AND {wh_cond('rb')} AND {date_cond('rb', 'paid_at')}
+        """)
+        unions.append(f"""
+            SELECT rp.paid_at AS date_val, rp.amount, rp.currency, 'expense' AS flow_type,
+                   'reimbursement' AS source, '报销付款' AS source_label,
+                   '报销付款 #' || rp.reimbursement_id || CASE WHEN rp.status='revoked'
+                       THEN '；已冲销：' || COALESCE(rp.revoke_reason,'') ELSE '' END AS remark,
+                   'RB-P-' || rp.id AS ref_no, rp.id AS raw_id, rp.status AS ledger_status,
+                   rp.account_name AS account_name, rp.payment_account_id AS account_id, 5 AS sort_ord
+            FROM reimbursement_payments rp
+            WHERE rp.funding_source='company_account' AND {wh_cond('rp')} AND {date_cond('rp', 'paid_at')}
         """)
 
     # 6. 应付账款付款
@@ -608,6 +629,7 @@ async def ledger(
                   SELECT 1 FROM payroll_records pr
                   WHERE pr.expense_record_id = er.id AND pr.cash_advance_id IS NOT NULL
               )
+              AND NOT EXISTS (SELECT 1 FROM reimbursements rb2 WHERE rb2.expense_record_id=er.id)
         """)
 
     # 垫款归还是资金流出，不写 ExpenseRecord；撤销留在流水中显示已冲销。

@@ -4,6 +4,7 @@ from sqlalchemy import select, func
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.income_expense import ExpenseRecord
 from app.models.payroll import PayrollRecord
+from app.models.reimbursement_payment import ReimbursementPayment
 
 
 async def current_account_balances(db, accounts):
@@ -24,4 +25,11 @@ async def current_account_balances(db, accounts):
     ))).all()
     for account_id, amount in payroll:
         amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount)).quantize(Decimal("0.01"))
+    reimbursements = (await db.execute(select(
+        ReimbursementPayment.payment_account_id, func.sum(ReimbursementPayment.amount),
+    ).where(ReimbursementPayment.payment_account_id.in_([a.id for a in accounts]),
+        ReimbursementPayment.funding_source == "company_account", ReimbursementPayment.status == "active",
+    ).group_by(ReimbursementPayment.payment_account_id))).all()
+    for account_id, amount in reimbursements:
+        amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount))
     return {a.id: Decimal(str(a.opening_balance or 0)) - Decimal(str(amounts.get(a.id) or 0)) for a in accounts}

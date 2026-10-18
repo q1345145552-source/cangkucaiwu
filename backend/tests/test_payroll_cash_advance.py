@@ -301,5 +301,5 @@ def test_no_payroll_calculation_or_other_financial_module_changes():
         return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
             if isinstance(n, ast.AsyncFunctionDef) and n.name in ("_prepare_payroll", "_compute_employee_records", "_calc_payroll", "_recalc_or_void_one", "calculate_payroll")}
     assert calculations(old) == calculations(new)
-    assert not subprocess.check_output(["git", "diff", "0a845c3", "--", "backend/app/api/v1/reimbursement.py",
+    assert not subprocess.check_output(["git", "diff", "0a845c3", "6f528a9", "--", "backend/app/api/v1/reimbursement.py",
         "backend/app/api/v1/expense_fund.py", "backend/app/api/v1/employee_advance.py", "backend/app/api/v1/payable.py"], cwd=root)

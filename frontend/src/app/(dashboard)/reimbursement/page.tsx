@@ -4,6 +4,8 @@ import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import ReimbursementPaymentModal from "@/components/ReimbursementPaymentModal";
+import ReimbursementPaymentHistory from "@/components/ReimbursementPaymentHistory";
 import {
   Receipt, Plus, PiggyBank, Info, Lock, Search, Download,
   CheckCircle, XCircle, FileText, Camera, Image as ImageIcon, X,
@@ -39,6 +41,7 @@ export default function ReimbursementPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<any>(null);
+  const [paymentRow, setPaymentRow] = useState<any>(null);
 
   // 编辑 / 删除 / 历史
   const [editingRow, setEditingRow] = useState<any>(null);
@@ -228,12 +231,8 @@ export default function ReimbursementPage() {
     } catch (err: any) { toast("error", err.message || "审批失败"); }
   }
 
-  async function markPaid(reimbId: number) {
-    try {
-      await api.post(`/reimbursement/${reimbId}/pay`);
-      toast("success", "已标记付款");
-      load();
-    } catch (err: any) { toast("error", err.message || "操作失败"); }
+  function markPaid(row: any) {
+    setPaymentRow(row);
   }
 
   async function doExport() {
@@ -421,7 +420,7 @@ export default function ReimbursementPage() {
                             )}
                             <button onClick={() => openHistory(row)} className="px-2 py-1 rounded text-xs bg-gray-50 text-gray-600 hover:bg-gray-100">历史</button>
                             {(row.status === "approved" || row.status === "partially_approved") && isAdmin && (
-                              <button onClick={() => { markPaid(row.id); }} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">付款</button>
+                              <button onClick={() => { markPaid(row); }} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">付款</button>
                             )}
                           </div>
                         </td>
@@ -556,7 +555,7 @@ export default function ReimbursementPage() {
       {/* ===== 详情弹窗 ===== */}
       {detail && (
         <div className="modal-overlay z-50" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-2xl p-6 w-[560px] max-h-[80vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[560px] max-h-[85dvh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-lg flex items-center gap-2">
                 报销详情
@@ -594,9 +593,11 @@ export default function ReimbursementPage() {
               ))}</tbody>
             </table>
             </div>
+            <ReimbursementPaymentHistory reimbursementId={detail.id} onChange={() => { void viewDetail(detail.id); void load(); }} />
           </div>
         </div>
       )}
+      {paymentRow && <ReimbursementPaymentModal reimbursement={paymentRow} onClose={() => setPaymentRow(null)} onSuccess={() => { void load(); }} />}
 
       {/* 编辑弹窗 */}
       {editingRow && (

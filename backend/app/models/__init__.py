@@ -25,6 +25,7 @@ from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduct
 from app.models.expense_approval import ExpenseApproval
 from app.models.cash_advance import CashAdvance
 from app.models.cash_advance_repayment import CashAdvanceRepayment
+from app.models.reimbursement_payment import ReimbursementPayment
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -46,4 +47,5 @@ __all__ = [
     "ExpenseApproval",
     "CashAdvance",
     "CashAdvanceRepayment",
+    "ReimbursementPayment",
 ]
