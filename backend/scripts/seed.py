@@ -42,6 +42,19 @@ async def _migrate_user_attendance_columns(conn):
             print(f"迁移 账号纳入考勤字段 {name} 失败：{exc}")
 
 
+async def _migrate_makeup_quota_column(conn):
+    """旧记录和普通补卡默认计额度；系统故障批量补卡显式设为 false。"""
+    from sqlalchemy import text
+    try:
+        async with conn.begin_nested():
+            await conn.execute(text(
+                "ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS makeup_counts_toward_limit BOOLEAN NOT NULL DEFAULT true"
+            ))
+    except Exception as exc:
+        print(f"迁移 补卡额度字段 makeup_counts_toward_limit 失败：{exc}")
+        raise
+
+
 async def _migrate_advance_approval_columns(conn):
     """Old advances remain effective; never reset a pending/rejected row on restart."""
     from sqlalchemy import text
@@ -79,6 +92,7 @@ async def seed():
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)
+        await _migrate_makeup_quota_column(conn)
         await _migrate_payroll_expense_link(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text

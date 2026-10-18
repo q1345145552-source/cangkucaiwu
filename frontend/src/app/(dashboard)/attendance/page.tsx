@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3 } from "lucide-react";
 import ClockRecordsGrid from "@/components/ClockRecordsGrid";
 import SafeImage from "@/components/SafeImage";
+import BatchMakeupModal from "@/components/BatchMakeupModal";
 
 const STATUS_COLORS: Record<string, string> = {
   "present": "bg-green-100 text-green-700 border-green-300",
@@ -78,6 +79,7 @@ export default function AttendancePage() {
   const [showProxyLeaveForm, setShowProxyLeaveForm] = useState(false);
   const [showRestForm, setShowRestForm] = useState(false);
   const [showAbsenceForm, setShowAbsenceForm] = useState(false);
+  const [showBatchMakeup, setShowBatchMakeup] = useState(false);
   const [leaveDate, setLeaveDate] = useState("");
   const [leaveType, setLeaveType] = useState("sick");
   const [leaveDuration, setLeaveDuration] = useState("full");
@@ -284,6 +286,7 @@ export default function AttendancePage() {
             </div>
           )}
         </div>
+        {!employeeView && role === "warehouse_admin" && <button type="button" className="btn-secondary" onClick={() => setShowBatchMakeup(true)} disabled={loading}>批量补卡</button>}
         {canViewRecords && (
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => { setActiveTab("calendar"); loadCalendar(); }} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
@@ -295,6 +298,8 @@ export default function AttendancePage() {
           </div>
         )}
       </div>
+
+      {!employeeView && role === "warehouse_admin" && showBatchMakeup && <BatchMakeupModal employees={employees} scheduleTimes={scheduleTimes} onClose={() => setShowBatchMakeup(false)} onSuccess={() => { setActiveTab("calendar"); loadCalendar(); }} />}
 
       {activeTab === "records" ? (
         <ClockRecordsGrid employeeView={employeeView || role === "warehouse_labor"} startDate={dateRange.start_date} endDate={dateRange.end_date} onChange={loadCalendar} />

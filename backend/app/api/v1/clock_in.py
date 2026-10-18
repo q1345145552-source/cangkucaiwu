@@ -5,13 +5,13 @@ from sqlalchemy import select, func, or_, and_
 from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord
-from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
 from app.services.image_utils import thumb_path_of
 from app.services.schedule import get_session_times, get_work_schedule
 from datetime import datetime, date, time, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StrictInt
 from typing import Optional, List
 import os, uuid, base64
 
@@ -330,6 +330,7 @@ async def _count_makeup_days(db: AsyncSession, uid: int, wh_id: int, target: dat
             ClockInRecord.user_id == uid,
             ClockInRecord.warehouse_id == wh_id,
             ClockInRecord.is_makeup == True,
+            ClockInRecord.makeup_counts_toward_limit == True,
             ClockInRecord.clock_date >= month_start,
             ClockInRecord.clock_date < month_end,
         )
@@ -447,6 +448,87 @@ async def makeup_clock_in(
         "used_days": used_days,
         "remaining": remaining,
     }
+
+
+class BatchMakeupCreate(BaseModel):
+    date: date
+    employee_ids: List[StrictInt] = Field(min_length=1)
+    sessions: List[StrictInt] = Field(min_length=1)
+    reason: str = Field(max_length=500)
+
+
+async def batch_makeup_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只能由仓库管理员批量补卡")
+    return current_user
+
+
+@router.post("/batch-makeup")
+async def batch_makeup_clock_in(
+    req: BatchMakeupCreate,
+    current_user: User = Depends(batch_makeup_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """系统故障补卡：按人/时点补缺，不覆盖已有记录，不占个人额度。"""
+    from app.models.employee import Employee
+    from app.services.employee_match import resolve_employee_user_map
+
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    if req.date > thai_today():
+        raise HTTPException(400, "不能补未来的日期")
+    reason = req.reason.strip()
+    if not reason:
+        raise HTTPException(400, "请填写补卡原因")
+    if any(s not in SESSIONS for s in req.sessions):
+        raise HTTPException(400, "打卡时点只能为1到4")
+    employee_ids = sorted(set(req.employee_ids))
+    sessions = sorted(set(req.sessions))
+    employees = (await db.execute(select(Employee).where(
+        Employee.id.in_(employee_ids), Employee.warehouse_id == wh_id,
+        Employee.is_deleted == False,
+    ).order_by(Employee.id).with_for_update())).scalars().all()
+    if len(employees) != len(employee_ids):
+        raise HTTPException(404, "员工不存在或不属于当前仓库")
+    if any(e.status == "resigned" for e in employees):
+        raise HTTPException(400, "所选员工中有已离职员工，不能补卡")
+    emp_to_user, _ = await resolve_employee_user_map(db, employees)
+    if any(e.id not in emp_to_user for e in employees):
+        raise HTTPException(400, "所选员工中有未关联打卡账号的员工，无法补卡")
+    user_ids = sorted(set(emp_to_user.values()))
+    # 排序锁定账号，串行化同一账号的并发批量补卡，再检查已有记录。
+    users = (await db.execute(select(User).where(User.id.in_(user_ids))
+                              .order_by(User.id).with_for_update())).scalars().all()
+    if len(users) != len(user_ids) or any(u.warehouse_id != wh_id for u in users):
+        raise HTTPException(400, "员工关联的打卡账号不属于当前仓库")
+    existing = set((await db.execute(select(ClockInRecord.user_id, ClockInRecord.session).where(
+        ClockInRecord.user_id.in_(user_ids), ClockInRecord.warehouse_id == wh_id,
+        ClockInRecord.clock_date == req.date, ClockInRecord.session.in_(sessions),
+    ))).all())
+    session_times = await get_session_times(db, wh_id)
+    created, skipped = [], []
+    now = thai_now()
+    for employee in employees:
+        uid = emp_to_user[employee.id]
+        for session in sessions:
+            item = {"employee_id": employee.id, "session": session}
+            if (uid, session) in existing:
+                skipped.append(item)
+                continue
+            clocked = datetime.combine(req.date, session_times[session], tzinfo=THAI_TZ)
+            db.add(ClockInRecord(
+                user_id=uid, warehouse_id=wh_id, clock_date=req.date, session=session,
+                clocked_in_at=clocked, status="normal", penalty_amount=0,
+                is_makeup=True, makeup_counts_toward_limit=False,
+                makeup_by=current_user.id, makeup_at=now, makeup_reason=reason,
+            ))
+            existing.add((uid, session))
+            created.append({**item, "clocked_in_at": clocked.isoformat()})
+    await db.flush()
+    return {"message": f"批量补卡完成：建了{len(created)}条，跳过{len(skipped)}条",
+            "created_count": len(created), "skipped_count": len(skipped),
+            "created": created, "skipped": skipped}
 
 
 @router.get("/makeup-count")

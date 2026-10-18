@@ -134,14 +134,20 @@ def test_all_attendance_endpoints(tmp_path,monkeypatch,method,path,module,body,u
 def test_round4_inventory():
     root=Path(__file__).resolve().parents[1]/'app/api/v1'
     seen=[]
+    batch_routes=[]
     for filename,prefix in {'clock_in':'clock-in','attendance':'attendance','overtime':'overtime'}.items():
         for node in ast.walk(ast.parse((root/(filename+'.py')).read_text())):
             if not isinstance(node,ast.AsyncFunctionDef):continue
             for d in node.decorator_list:
                 if isinstance(d,ast.Call) and isinstance(d.func,ast.Attribute) and isinstance(d.func.value,ast.Name) and d.func.value.id=='router':
-                    seen.append((d.func.attr.upper(),'/'+prefix+d.args[0].value))
                     default=next(v for a,v in zip(node.args.args[-len(node.args.defaults):],node.args.defaults) if a.arg=='current_user')
+                    if filename=='clock_in' and d.args[0].value=='/batch-makeup':
+                        assert d.func.attr=='post' and ast.unparse(default)=='Depends(batch_makeup_admin)'
+                        batch_routes.append(node.name)
+                        continue
+                    seen.append((d.func.attr.upper(),'/'+prefix+d.args[0].value))
                     assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
+    assert batch_routes==['batch_makeup_clock_in']
     assert len(seen)==28
     requested={(m,re.sub(r'/[123](?=/|$)','/{}',p.split('?')[0])) for m,p,_,_ in CASES}
     assert requested=={(m,re.sub(r'\{[^}]+\}','{}',p)) for m,p in seen}

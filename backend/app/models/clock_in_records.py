@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean, true
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -16,6 +16,7 @@ class ClockInRecord(Base):
     remark = Column(String(200), nullable=True)
     # 补卡标记（管理员/主管代补）
     is_makeup = Column(Boolean, default=False, comment="补卡标记")
+    makeup_counts_toward_limit = Column(Boolean, nullable=False, default=True, server_default=true(), comment="是否计入个人补卡额度")
     makeup_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="补卡人")
     makeup_at = Column(DateTime(timezone=True), nullable=True, comment="补卡操作时间")
     makeup_reason = Column(String(500), nullable=True, comment="补卡原因")
