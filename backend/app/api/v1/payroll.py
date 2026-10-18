@@ -1,4 +1,5 @@
 from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount
+from app.services.cash_advance_payroll import lock_payroll_advance, payroll_usage_totals, usage_amounts, PAYROLL_CURRENCY
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
@@ -21,10 +22,10 @@ from app.models.user import User
 from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
 from app.services.schedule import get_work_schedule
 from app.services.data_history import record_history
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from datetime import datetime, date, timedelta, time
-from typing import Optional, List
+from typing import Optional, List, Literal
 import calendar
 import json
 
@@ -1293,6 +1294,8 @@ async def list_payroll(
             "disbursed_at": r.disbursed_at.isoformat() if r.disbursed_at else None,
             "signature_path": r.signature_path,
             "expense_record_id": r.expense_record_id,
+            "cash_advance_id": r.cash_advance_id,
+            "funding_source": "cash_advance" if r.cash_advance_id is not None else "company_account",
             "voided": r.voided,
             "voided_by": r.voided_by,
             "voided_by_name": user_map.get(r.voided_by).display_name if r.voided_by and user_map.get(r.voided_by) else None,
@@ -1615,6 +1618,42 @@ async def batch_confirm_payroll(
 
 class BatchDisburseRequest(BatchIdsRequest):
     account_id: Optional[int] = None
+    funding_source: Literal["company_account", "cash_advance"] = "company_account"
+    cash_advance_id: Optional[int] = Field(default=None, gt=0)
+
+
+async def _disbursement_funding(db, wh_id, req, records):
+    if req.funding_source == "cash_advance":
+        if req.account_id is not None:
+            raise HTTPException(400, "垫款单发放不能选择公司账户")
+        return None, await lock_payroll_advance(db, wh_id, req.cash_advance_id, records)
+    if req.cash_advance_id is not None:
+        raise HTTPException(400, "公司账户发放不能选择垫款单")
+    return await payment_account(db, wh_id, req.account_id), None
+
+
+@router.get("/cash-advance-sources")
+async def payroll_cash_advance_sources(
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员和主管可以选择工资垫款单")
+    wh_id = get_wh_id(current_user)
+    if wh_id is None:
+        raise HTTPException(400, "请先选择仓库")
+    from app.models.cash_advance import CashAdvance
+    advances = (await db.execute(select(CashAdvance).where(
+        CashAdvance.warehouse_id == wh_id, CashAdvance.status == "confirmed",
+        CashAdvance.currency == PAYROLL_CURRENCY, CashAdvance.amount > CashAdvance.repaid_amount,
+    ).order_by(CashAdvance.advance_date.desc(), CashAdvance.id.desc()))).scalars().all()
+    used = await payroll_usage_totals(db, advances)
+    return {"currency": PAYROLL_CURRENCY, "data": [{
+        "id": a.id, "payer_name": a.payer_name, "advance_date": a.advance_date.isoformat(),
+        "amount": float(a.amount), "currency": a.currency,
+        "outstanding_amount": float(a.amount - a.repaid_amount),
+        **usage_amounts(a, used[a.id]),
+    } for a in advances]}
 
 
 @router.post("/batch-disburse")
@@ -1629,7 +1668,8 @@ async def batch_disburse_payroll(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
     records = await _batch_fetch(db, wh_id, req.record_ids, lock=True)
-    account = await payment_account(db, wh_id, req.account_id)
+    eligible = [r for r in records if not r.voided and r.status == "confirmed" and not r.disbursed]
+    account, advance = await _disbursement_funding(db, wh_id, req, eligible)
     now = thai_now()
     expenses = []
     cnt = 0
@@ -1638,11 +1678,13 @@ async def batch_disburse_payroll(
             continue
         # 只发放已确认的；已发放的跳过不重复处理
         if r.status == "confirmed" and not r.disbursed:
-            expense = await create_payroll_expense(db, r, account, current_user, now)
+            expense = await create_payroll_expense(db, r, account, current_user, now, cash_advance=advance)
             expenses.append({"payroll_record_id": r.id, "expense_record_id": expense.id, "amount": expense.amount})
             cnt += 1
     await db.flush()
-    return {"message": f"已发放 {cnt} 条", "count": cnt, "account_id": account.id, "total_net": round(sum(e["amount"] for e in expenses), 2), "expenses": expenses}
+    return {"message": f"已发放 {cnt} 条", "count": cnt, "account_id": account.id if account else None,
+            "funding_source": req.funding_source, "cash_advance_id": advance.id if advance else None,
+            "total_net": round(sum(e["amount"] for e in expenses), 2), "expenses": expenses}
 
 
 @router.post("/batch-delete")
@@ -1961,6 +2003,8 @@ async def delete_period_payroll(
 
 class DisburseRequest(BaseModel):
     account_id: Optional[int] = None
+    funding_source: Literal["company_account", "cash_advance"] = "company_account"
+    cash_advance_id: Optional[int] = Field(default=None, gt=0)
     signature_base64: Optional[str] = None  # 签字照片 base64
 
 
@@ -1992,7 +2036,7 @@ async def disburse_payroll(
     if r.disbursed:
         raise HTTPException(400, "该工资单已发放")
 
-    account = await payment_account(db, wh_id, req.account_id)
+    account, advance = await _disbursement_funding(db, wh_id, req, [r])
     expense_amount(r)
 
     # Save signature if provided（压缩 + 缩略图）
@@ -2012,7 +2056,7 @@ async def disburse_payroll(
         except Exception:
             pass
 
-    expense = await create_payroll_expense(db, r, account, current_user, thai_now())
+    expense = await create_payroll_expense(db, r, account, current_user, thai_now(), cash_advance=advance)
     r.signature_path = sig_path
     await db.flush()
 
@@ -2025,7 +2069,9 @@ async def disburse_payroll(
         "id": r.id,
         "net_pay": r.net_pay,
         "expense_record_id": expense.id,
-        "account_id": account.id,
+        "account_id": account.id if account else None,
+        "funding_source": req.funding_source,
+        "cash_advance_id": advance.id if advance else None,
         "disbursed_at": r.disbursed_at.isoformat(),
     }
 
@@ -2059,6 +2105,7 @@ async def revoke_disbursement(
     old_net = r.net_pay
     range_str = f"{r.settle_start_date.isoformat()} 到 {r.settle_end_date.isoformat()}" if r.settle_start_date and r.settle_end_date else ""
 
+    reversed_cash_advance_id = r.cash_advance_id
     reversed_expense_id = await reverse_payroll_expense(db, r, current_user)
 
     # 退回未发放，状态保持已确认
@@ -2082,7 +2129,8 @@ async def revoke_disbursement(
     )
     await db.flush()
 
-    return {"message": "已撤销发放", "id": r.id, "reversed_expense_id": reversed_expense_id}
+    return {"message": "已撤销发放", "id": r.id, "reversed_expense_id": reversed_expense_id,
+            "reversed_cash_advance_id": reversed_cash_advance_id}
 
 
 # ═══ Employee Self-View Payslip ═══════════════

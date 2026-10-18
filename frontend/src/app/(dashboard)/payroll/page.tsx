@@ -81,6 +81,11 @@ export default function PayrollPage() {
   const [disburseAccountId, setDisburseAccountId] = useState("");
   const [disburseAccountsLoading, setDisburseAccountsLoading] = useState(false);
   const [disburseAccountsError, setDisburseAccountsError] = useState("");
+  const [disburseFundingSource, setDisburseFundingSource] = useState<"company_account" | "cash_advance">("company_account");
+  const [disburseAdvances, setDisburseAdvances] = useState<any[]>([]);
+  const [disburseAdvanceId, setDisburseAdvanceId] = useState("");
+  const [disburseAdvancesLoading, setDisburseAdvancesLoading] = useState(false);
+  const [disburseAdvancesError, setDisburseAdvancesError] = useState("");
   const disburseAccountsSeq = useRef(0);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [zoomedSignature, setZoomedSignature] = useState<string | null>(null);
@@ -337,7 +342,19 @@ export default function PayrollPage() {
     setDisburseAccountId("");
     setDisburseAccountsError("");
     setDisburseAccountsLoading(true);
+    setDisburseFundingSource("company_account");
+    setDisburseAdvances([]);
+    setDisburseAdvanceId("");
+    setDisburseAdvancesError("");
+    setDisburseAdvancesLoading(true);
     const seq = ++disburseAccountsSeq.current;
+    void api.get<any>("/payroll/cash-advance-sources").then(result => {
+      if (seq === disburseAccountsSeq.current) setDisburseAdvances(result.data || []);
+    }).catch((err: any) => {
+      if (seq === disburseAccountsSeq.current) setDisburseAdvancesError(err.message || "垫款单加载失败，请重新打开发放弹框");
+    }).finally(() => {
+      if (seq === disburseAccountsSeq.current) setDisburseAdvancesLoading(false);
+    });
     try {
       const r = await api.get<any>("/accounts");
       if (seq !== disburseAccountsSeq.current) return;
@@ -356,25 +373,33 @@ export default function PayrollPage() {
   }
 
   async function confirmDisburse() {
-    if (!disburseModal || disburseAccountsLoading || disbursing !== null) return;
-    if (!disburseAccountId || !disburseAccounts.some(a => String(a.id) === disburseAccountId)) {
+    if (!disburseModal || disbursing !== null) return;
+    const fromAdvance = disburseFundingSource === "cash_advance";
+    if (fromAdvance ? disburseAdvancesLoading || !!disburseAdvancesError : disburseAccountsLoading || !!disburseAccountsError) return;
+    if (!fromAdvance && (!disburseAccountId || !disburseAccounts.some(a => String(a.id) === disburseAccountId))) {
       toast("error", "请选择工资发放账户");
       return;
     }
     const batch = disburseModal.batch_records;
+    if (fromAdvance) {
+      const advance = disburseAdvances.find(a => String(a.id) === disburseAdvanceId);
+      if (!advance) { toast("error", "请选择工资垫款单"); return; }
+      const total = batch ? batch.reduce((sum: number, r: any) => sum + Math.round(Number(r.net_pay || 0) * 100), 0) / 100 : Number(disburseModal.net_pay || 0);
+      if (total > Number(advance.payroll_available_amount)) { toast("error", "垫款单剩余金额不足"); return; }
+    }
     const recordId = batch ? -1 : disburseModal.id;
     setDisbursing(recordId);
     try {
-      const account_id = Number(disburseAccountId);
+      const funding = fromAdvance ? { funding_source: "cash_advance", cash_advance_id: Number(disburseAdvanceId) } : { account_id: Number(disburseAccountId) };
       let r: any;
       if (batch) {
-        r = await api.post<any>("/payroll/batch-disburse", { record_ids: batch.map((record: any) => record.id), account_id });
+        r = await api.post<any>("/payroll/batch-disburse", { record_ids: batch.map((record: any) => record.id), ...funding });
       } else {
         let signature_base64 = null;
         if (signatureFile) signature_base64 = await fileToBase64(signatureFile);
-        r = await api.post<any>(`/payroll/${recordId}/disburse`, { signature_base64, account_id });
+        r = await api.post<any>(`/payroll/${recordId}/disburse`, { signature_base64, ...funding });
       }
-      toast("success", `${r.message || "发放成功"}；已记入运营支出`);
+      toast("success", `${r.message || "发放成功"}；已记入运营支出${fromAdvance ? "；公司账户未扣款" : ""}`);
       setDisburseModal(null);
       setSignatureFile(null);
       loadRecordsByMonth();
@@ -932,7 +957,7 @@ export default function PayrollPage() {
         </div>
       )}
 
-      {/* 发放工资 Modal（单张、批量共用账户选择） */}
+      {/* 发放工资 Modal（单张、批量共用资金来源选择） */}
       {disburseModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4" onClick={() => { if (disbursing === null) setDisburseModal(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="disburse-title" className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85dvh] flex flex-col" onClick={e => e.stopPropagation()}>
@@ -958,7 +983,11 @@ export default function PayrollPage() {
                 <span className="text-gray-500">人数</span>
                 <span>{disburseModal.batch_records ? new Set(disburseModal.batch_records.map((r: any) => r.employee_id)).size : 1} 人</span>
               </div>
-              <div>
+              <fieldset disabled={disbursing !== null} className="space-y-2">
+                <legend className="text-sm font-medium text-gray-600 mb-2">资金来源</legend>
+                <div className="flex flex-wrap gap-4 text-sm"><label className="flex items-center gap-1"><input type="radio" name="payroll-funding-source" value="company_account" checked={disburseFundingSource === "company_account"} onChange={() => setDisburseFundingSource("company_account")} />公司账户</label><label className="flex items-center gap-1"><input type="radio" name="payroll-funding-source" value="cash_advance" checked={disburseFundingSource === "cash_advance"} onChange={() => setDisburseFundingSource("cash_advance")} />垫款单</label></div>
+              </fieldset>
+              {disburseFundingSource === "company_account" ? <div>
                 <label htmlFor="payroll-disburse-account" className="form-label text-sm font-medium text-gray-600 mb-1 block">工资发放账户</label>
                 <select id="payroll-disburse-account" value={disburseAccountId} onChange={e => setDisburseAccountId(e.target.value)}
                   disabled={disburseAccountsLoading || disbursing !== null} className="input-field w-full">
@@ -970,7 +999,17 @@ export default function PayrollPage() {
                 {!disburseAccountsLoading && !disburseAccountsError && disburseAccounts.length === 0 && (
                   <p role="alert" className="text-sm text-red-600 mt-2">还没有可用的泰铢收款账户，请先到收款账户里建一个或启用账户</p>
                 )}
-              </div>
+              </div> : <div>
+                <label htmlFor="payroll-disburse-advance" className="form-label text-sm font-medium text-gray-600 mb-1 block">工资垫款单（泰铢）</label>
+                <select id="payroll-disburse-advance" value={disburseAdvanceId} onChange={e => setDisburseAdvanceId(e.target.value)} disabled={disburseAdvancesLoading || disbursing !== null} className="input-field w-full">
+                  <option value="">请选择工资垫款单</option>
+                  {disburseAdvances.map(a => <option key={a.id} value={String(a.id)}>#{a.id} {a.payer_name} · 未还 {Number(a.outstanding_amount).toLocaleString()} · 可用 {Number(a.payroll_available_amount).toLocaleString()} THB</option>)}
+                </select>
+                {disburseAdvancesLoading && <p className="text-xs text-gray-500 mt-2">正在加载垫款单…</p>}
+                {disburseAdvancesError && <p role="alert" className="text-sm text-red-600 mt-2">{disburseAdvancesError}</p>}
+                {!disburseAdvancesLoading && !disburseAdvancesError && !disburseAdvances.length && <p role="alert" className="text-sm text-red-600 mt-2">还没有已确认且尚未还清的泰铢垫款单，请先登记并确认</p>}
+                <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-2">这笔钱从主管垫款里出，公司账户不扣款。成本照记，剩余未还金额不因发工资减少。</p>
+              </div>}
               {!disburseModal.batch_records && <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">签字照片</label>
                 <div className="flex items-center gap-2">
@@ -986,7 +1025,7 @@ export default function PayrollPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setDisburseModal(null)} disabled={disbursing !== null} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmDisburse} disabled={disbursing !== null || disburseAccountsLoading || !!disburseAccountsError || disburseAccounts.length === 0}
+              <button onClick={confirmDisburse} disabled={disbursing !== null || (disburseFundingSource === "cash_advance" ? disburseAdvancesLoading || !!disburseAdvancesError || disburseAdvances.length === 0 : disburseAccountsLoading || !!disburseAccountsError || disburseAccounts.length === 0)}
                 className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{disbursing !== null ? "发放中..." : "确认发放"}</button>
             </div>
           </div>

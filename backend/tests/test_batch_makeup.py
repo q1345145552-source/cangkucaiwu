@@ -220,7 +220,14 @@ def test_single_makeup_function_and_unrelated_business_unchanged():
         if key not in ("_count_makeup_days", "list_records"): assert new[key] == old[key], key
     assert_record_dict_only_adds_makeup_batch_id(original, current)
     for filename in ("backend/app/api/v1/attendance.py", "backend/app/api/v1/payroll.py", "backend/app/services/schedule.py"):
-        assert (root / filename).read_bytes() == subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root)
+        baseline = subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root)
+        if filename.endswith("/payroll.py"):
+            # 后续允许发放选择垫款；工资计算及其他函数仍严格守住补卡前的版本。
+            changed = {"list_payroll", "batch_disburse_payroll", "disburse_payroll", "revoke_disbursement", "_disbursement_funding", "payroll_cash_advance_sources"}
+            before_funcs, after_funcs = functions(baseline), functions((root / filename).read_text())
+            assert {k: v for k, v in before_funcs.items() if k not in changed} == {k: v for k, v in after_funcs.items() if k not in changed}
+        else:
+            assert (root / filename).read_bytes() == baseline
 
     # 本轮只给唯一清单追加垫款单；其余菜单仍与补卡前相同。
     registry = "backend/app/core/menu_registry.py"

@@ -197,6 +197,22 @@ async def _migrate_cash_advance_repayments(conn):
             raise
 
 
+async def _migrate_payroll_cash_advance_link(conn):
+    """只加工资资金来源关联；垫款成本允许没有公司账户，不回填历史单。"""
+    from sqlalchemy import text
+    for name, statement in (
+        ("cash_advance_id", "ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS cash_advance_id INTEGER REFERENCES cash_advances(id)"),
+        ("cash_advance_index", "CREATE INDEX IF NOT EXISTS ix_payroll_records_cash_advance_id ON payroll_records(cash_advance_id)"),
+        ("expense_account_nullable", "ALTER TABLE expense_records ALTER COLUMN account_id DROP NOT NULL"),
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 工资垫款资金来源 {name} 失败：{exc}")
+            raise
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
@@ -209,6 +225,7 @@ async def seed():
         await _migrate_cash_advances(conn)
         await _migrate_cash_advance_currency(conn)
         await _migrate_cash_advance_repayments(conn)
+        await _migrate_payroll_cash_advance_link(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

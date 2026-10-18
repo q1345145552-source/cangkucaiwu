@@ -10,6 +10,8 @@ from app.schemas.business import PaymentAccountCreate
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.services.account_balances import current_account_balances
 from app.models.cash_advance_repayment import CashAdvanceRepayment
+from app.models.payroll import PayrollRecord
+from app.models.income_expense import ExpenseRecord
 
 _PERMISSION = MENU_PERMISSIONS_BY_KEY["accounts"].label
 
@@ -66,6 +68,13 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
         ).limit(1))).first()
         if active_repayment:
             raise HTTPException(400, "该账户有有效垫款归还记录，不能修改币种")
+        paid_payroll = (await db.execute(select(PayrollRecord.id).join(
+            ExpenseRecord, PayrollRecord.expense_record_id == ExpenseRecord.id,
+        ).where(ExpenseRecord.account_id == a.id, PayrollRecord.disbursed.is_(True),
+            PayrollRecord.cash_advance_id.is_(None), PayrollRecord.voided.is_not(True),
+        ).limit(1))).first()
+        if paid_payroll:
+            raise HTTPException(400, "该账户有已发放工资，不能修改币种")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(a, k, v)
     await db.flush(); return {"message": "更新成功"}

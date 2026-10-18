@@ -22,6 +22,7 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.services.data_history import record_history
 from app.services.account_balances import current_account_balances
+from app.services.cash_advance_payroll import payroll_usage_totals, usage_amounts, payroll_usage
 
 router = APIRouter()
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
@@ -161,7 +162,9 @@ async def list_advances(
     rows = (await db.execute(select(CashAdvance).where(*filters).order_by(
         CashAdvance.advance_date.desc(), CashAdvance.id.desc(),
     ).offset((page - 1) * page_size).limit(page_size))).scalars().all()
-    return {"data": [_serialize(r) for r in rows], "total": total, "page": page, "page_size": page_size}
+    used = await payroll_usage_totals(db, rows)
+    return {"data": [{**_serialize(r), **usage_amounts(r, used[r.id])} for r in rows],
+            "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/voucher")
@@ -303,7 +306,8 @@ async def list_repayments(advance_id: int, user=Depends(_reader), db: AsyncSessi
         CashAdvanceRepayment.cash_advance_id == loan.id, CashAdvanceRepayment.warehouse_id == wid,
     ).order_by(CashAdvanceRepayment.id.desc()))).scalars().all()
     return {"advance": _serialize(loan), "data": [_repayment_dict(r) for r in rows],
-            "total": len(rows), "active_count": sum(r.status == "active" for r in rows)}
+            "total": len(rows), "active_count": sum(r.status == "active" for r in rows),
+            "payroll_usage": await payroll_usage(db, loan)}
 
 
 @router.post("/{advance_id}/repayments")

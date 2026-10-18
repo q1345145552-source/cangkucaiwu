@@ -234,15 +234,19 @@ async def list_expense(
         sup_map = {s.id: s.name for s in sups}
 
     expense_ids = [r.id for r in records]
-    payroll_map = dict((await db.execute(select(PayrollRecord.expense_record_id, PayrollRecord.id).where(
+    payroll_rows = (await db.execute(select(PayrollRecord.expense_record_id, PayrollRecord.id, PayrollRecord.cash_advance_id).where(
         PayrollRecord.expense_record_id.in_(expense_ids), PayrollRecord.warehouse_id.in_(get_wh_ids(current_user)),
-    ))).all()) if expense_ids else {}
+    ))).all() if expense_ids else []
+    payroll_map = {expense_id: payroll_id for expense_id, payroll_id, _ in payroll_rows}
+    cash_advance_map = {expense_id: advance_id for expense_id, _, advance_id in payroll_rows}
 
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id, "category_id": r.category_id,
         "account_id": r.account_id, "supplier_id": r.supplier_id,
         "amount": r.amount, "currency": r.currency,
         "payroll_record_id": payroll_map.get(r.id),
+        "cash_advance_id": cash_advance_map.get(r.id),
+        "funding_source": "cash_advance" if cash_advance_map.get(r.id) is not None else "company_account",
         "expense_date": r.expense_date.isoformat() if r.expense_date else None,
         "voucher": r.voucher, "remark": r.remark,
         "category_name": cat_map.get(r.category_id, ""),
@@ -600,6 +604,10 @@ async def ledger(
             FROM expense_records er
             LEFT JOIN income_expense_categories iec2 ON er.category_id = iec2.id
             WHERE {wh_cond('er')} AND {date_cond('er', 'expense_date')}
+              AND NOT EXISTS (
+                  SELECT 1 FROM payroll_records pr
+                  WHERE pr.expense_record_id = er.id AND pr.cash_advance_id IS NOT NULL
+              )
         """)
 
     # 垫款归还是资金流出，不写 ExpenseRecord；撤销留在流水中显示已冲销。

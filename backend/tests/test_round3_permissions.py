@@ -40,6 +40,7 @@ CASES = [
     ('POST','/payroll/single-settle','payroll',{'employee_id':1,'end_date':'2026-10-15'}),
     ('GET','/payroll','payroll',None),
     ('GET','/payroll/summary','payroll',None),
+    ('GET','/payroll/cash-advance-sources','payroll',None),
     ('GET','/payroll/export','payroll',None),
     ('POST','/payroll/1/confirm','payroll',None),
     ('POST','/payroll/confirm-all?period=2026-10','payroll',None),
@@ -283,8 +284,8 @@ def test_hr_route_inventory():
                     seen.append((decorator.func.attr.upper(),path))
                     default=next(d for arg,d in zip(node.args.args[-len(node.args.defaults):],node.args.defaults) if arg.arg=='current_user')
                     assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
-    assert len(seen)==40
-    # 请求清单使用实际参数值，标准化后与所有40条路由精确对应。
+    assert len(seen)==41
+    # 含工资资金来源选单接口；请求矩阵与所有路由精确对应。
     def normalize(path):
         return __import__('re').sub(r'\{[^}]+\}', '{}', path.split('?')[0])
     expected={(method,normalize(path)) for method,path in seen}

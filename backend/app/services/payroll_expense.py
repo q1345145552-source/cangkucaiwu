@@ -58,9 +58,13 @@ def period_label(record):
     return f"{record.period} {'上半月' if record.half == 'first_half' else '下半月'}"
 
 
-async def create_payroll_expense(db, record, account, operator, now):
+async def create_payroll_expense(db, record, account, operator, now, *, cash_advance=None):
     if record.expense_record_id is not None:
         raise HTTPException(400, "工资单已关联支出，请先核对")
+    if record.cash_advance_id is not None:
+        raise HTTPException(400, "工资单已关联垫款单，请先核对")
+    if (account is None) == (cash_advance is None):
+        raise HTTPException(400, "请选择一种工资资金来源")
     amount = expense_amount(record)
     category = (await db.execute(select(IncomeExpenseCategory).where(
         IncomeExpenseCategory.warehouse_id == record.warehouse_id,
@@ -74,25 +78,41 @@ async def create_payroll_expense(db, record, account, operator, now):
         raise HTTPException(400, "员工工资支出分类已停用")
     warehouse = await db.get(Warehouse, record.warehouse_id)
     expense = ExpenseRecord(
-        warehouse_id=record.warehouse_id, category_id=category.id, account_id=account.id,
+        warehouse_id=record.warehouse_id, category_id=category.id, account_id=account.id if account else None,
         amount=amount, currency="THB", expense_date=now.replace(tzinfo=None),
         remark=f"{warehouse.name} {period_label(record)} 1人", approved_by=operator.id,
     )
     db.add(expense)
     await db.flush()
     record.expense_record_id = expense.id
+    record.cash_advance_id = cash_advance.id if cash_advance else None
     record.disbursed = True
     record.disbursed_at = now
     record.disbursed_by = operator.id
     await record_history(db, module="expense", record_id=expense.id, operator=operator,
         operation_type="create", after={"payroll_record_id": record.id, "amount": amount,
-        "account_id": account.id, "remark": expense.remark}, warehouse_id=record.warehouse_id)
+        "account_id": expense.account_id, "remark": expense.remark,
+        "cash_advance_id": record.cash_advance_id}, warehouse_id=record.warehouse_id)
+    if cash_advance:
+        await record_history(db, module="cash_advances", record_id=cash_advance.id, operator=operator,
+            operation_type="payroll_use", after={"payroll_record_id": record.id, "amount": amount,
+            "currency": "THB", "expense_record_id": expense.id}, warehouse_id=record.warehouse_id)
     return expense
 
 
 async def reverse_payroll_expense(db, record, operator):
     """Delete the linked expense, retaining its values and reason in history."""
     expense_id = record.expense_record_id
+    advance_id = record.cash_advance_id
+    if advance_id is not None:
+        from app.models.cash_advance import CashAdvance
+        advance = (await db.execute(select(CashAdvance).where(
+            CashAdvance.id == advance_id, CashAdvance.warehouse_id == record.warehouse_id,
+        ).with_for_update())).scalar_one_or_none()
+        if advance is None:
+            raise HTTPException(400, "关联垫款单不存在或不属于当前仓库")
+        if expense_id is None:
+            raise HTTPException(400, "垫款工资关联支出不存在，请先核对")
     if expense_id is None:  # Historical disbursement: do not manufacture an expense.
         return None
     expense = (await db.execute(select(ExpenseRecord).where(
@@ -106,8 +126,14 @@ async def reverse_payroll_expense(db, record, operator):
         "account_id": expense.account_id, "remark": expense.remark},
         after={"remark": f"{expense.remark}；{reason}"}, warehouse_id=record.warehouse_id)
     record.expense_record_id = None
+    record.cash_advance_id = None
     await db.flush()  # Clear FK before deleting the referenced expense.
     await db.delete(expense)
+    if advance_id is not None:
+        await record_history(db, module="cash_advances", record_id=advance_id, operator=operator,
+            operation_type="payroll_use_revoke", before={"payroll_record_id": record.id,
+            "amount": expense.amount, "currency": "THB", "expense_record_id": expense.id},
+            after={"remark": reason}, warehouse_id=record.warehouse_id)
     return expense_id
 
 

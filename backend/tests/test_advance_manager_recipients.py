@@ -191,7 +191,9 @@ def test_payroll_excludes_off_managers_not_enabled_or_staff_or_labor(tmp_path,mo
 
 def test_unchanged_review_and_payroll_math():
     root=Path(__file__).resolve().parents[2]
-    for name,changed in [('employee_advance',{'create_advance','list_advance_recipients'}),('payroll',{'_prepare_payroll'})]:
+    # 允许后来新增的工资资金来源路径；其余计算及预支审批函数仍与原基线比较。
+    funding_changes = {'list_payroll', 'batch_disburse_payroll', 'disburse_payroll', 'revoke_disbursement', '_disbursement_funding', 'payroll_cash_advance_sources'}
+    for name,changed in [('employee_advance',{'create_advance','list_advance_recipients'}),('payroll',{'_prepare_payroll'} | funding_changes)]:
         path=f'backend/app/api/v1/{name}.py'
         def funcs(s):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
         before=funcs(subprocess.check_output(['git','show','cbaddcb:'+path],cwd=root,text=True));after=funcs((root/path).read_text())
