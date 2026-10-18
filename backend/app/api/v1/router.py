@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1 import auth, users, dashboard, customers, warehouses, payment_accounts, suppliers
 from app.api.v1 import recharge, incoming, reconciliation, income_expense
-from app.api.v1 import expense_fund, reimbursement, payable, credit, market, group_order, reports
+from app.api.v1 import expense_fund, reimbursement, payable, credit, market, group_order, reports, cost_funds_debt
 from app.api.v1 import upload, settings_api, exchange_rates, employees, clock_in, attendance, overtime, payroll
 from app.api.v1 import history, efficiency
 from app.api.v1 import config_api
@@ -30,6 +30,7 @@ api_router.include_router(payable.router, prefix="/payable", tags=["应付账款
 api_router.include_router(credit.router, prefix="/credit", tags=["账期"])
 api_router.include_router(market.router, prefix="/market", tags=["商品展示区"])
 api_router.include_router(group_order.router, prefix="/group-order", tags=["拼单"])
+api_router.include_router(cost_funds_debt.router, prefix="/reports/cost-funds-debt", tags=["成本资金欠款"])
 api_router.include_router(reports.router, prefix="/reports", tags=["报表中心"])
 api_router.include_router(upload.router, prefix="/upload", tags=["文件上传"])
 api_router.include_router(settings_api.router, prefix="/settings", tags=["系统设置"])

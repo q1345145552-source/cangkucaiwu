@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, FileText, PiggyBank, Receipt, CreditCard, Clock, AlertTriangle, Download } from "lucide-react";
 
 const reportTypes = [
+  { key: "cost-funds-debt", label: "成本资金欠款", icon: <FileText size={24} />, color: "text-indigo-600 bg-indigo-50" },
   { key: "recharge-summary", label: "充值汇总", icon: <TrendingUp size={24} />, color: "text-green-600 bg-green-50" },
   { key: "incoming-summary", label: "到账汇总", icon: <TrendingDown size={24} />, color: "text-blue-600 bg-blue-50" },
   { key: "income-expense", label: "收支报表", icon: <FileText size={24} />, color: "text-purple-600 bg-purple-50" },
@@ -139,7 +140,7 @@ export default function ReportsPage() {
           const pv = previews[rt.key];
           const previewText = formatPreview(rt.key, pv);
           return (
-            <button key={rt.key} onClick={() => loadReport(rt.key)}
+            <button key={rt.key} onClick={() => rt.key === "cost-funds-debt" ? router.push(`/reports/cost-funds-debt?${new URLSearchParams(dateRange)}`) : loadReport(rt.key)}
               className={`relative bg-white rounded-2xl p-4 shadow-sm border text-left hover:shadow-md transition-all ${selected === rt.key ? "ring-2 ring-blue-500 border-blue-200" : "border-gray-100"}`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rt.color}`}>{rt.icon}</div>
               <div className="font-semibold text-sm mt-2.5 text-gray-700">{rt.label}</div>

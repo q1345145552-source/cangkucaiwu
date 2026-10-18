@@ -30,6 +30,10 @@ export default function OperatingPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: todayStr(), remark: "" });
+  const [reportView, setReportView] = useState(false);
+  const [costCategory, setCostCategory] = useState("");
+  const [costTotals, setCostTotals] = useState<Record<string, number>>({});
+  const [queryReady, setQueryReady] = useState(false);
   const [expFilters, setExpFilters] = useState({ category_id: 0, account_id: 0, currency: "" });
   const [voucherFiles, setVoucherFiles] = useState<File[]>([]);
   const [voucherPreviews, setVoucherPreviews] = useState<string[]>([]);
@@ -50,14 +54,26 @@ export default function OperatingPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => { if (!getToken()) { router.push("/login"); return; } loadRefs(); }, []);
-  useEffect(() => { loadDashboard(); }, [dateRange]);
-  useEffect(() => { loadExpenses(); }, [expPage, expFilters, dateRange]);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setReportView(q.get("report_view") === "1"); setCostCategory(q.get("cost_category") || "");
+    if (q.get("start_date") && q.get("end_date")) setDateRange({ start_date: q.get("start_date")!, end_date: q.get("end_date")! });
+    setExpFilters({ category_id: Number(q.get("category_id") || 0), account_id: Number(q.get("account_id") || 0), currency: q.get("currency") || "" });
+    setQueryReady(true);
+  }, []);
+  useEffect(() => { if (queryReady && !reportView) loadDashboard(); }, [dateRange, queryReady, reportView]);
+  useEffect(() => { if (queryReady) loadExpenses(); }, [expPage, expFilters, dateRange, queryReady, reportView, costCategory]);
 
   async function loadDashboard() {
     setLoading(true);
     try {
-      const r = await api.get<any>(`/income-expense/operating-dashboard?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
-      setDashboard(r);
+      const [r, cost] = await Promise.all([
+        api.get<any>(`/income-expense/operating-dashboard?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`),
+        api.get<any>(`/income-expense/expense?cost_view=unified&category_group=operating&page_size=1&start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`),
+      ]);
+      const exp = cost.totals_by_currency || {}, net: Record<string, number> = {};
+      Object.keys({ ...r.income_by_currency, ...exp }).forEach(c => { net[c] = Math.round(((r.income_by_currency?.[c] || 0) - (exp[c] || 0)) * 100) / 100; });
+      setDashboard({ ...r, expense_by_currency: exp, net_by_currency: net });
     } catch (err) { console.error("加载看板失败:", err); }
     setLoading(false);
   }
@@ -70,10 +86,15 @@ export default function OperatingPage() {
       params.set("category_group", "operating");
       params.set("start_date", dateRange.start_date);
       params.set("end_date", dateRange.end_date);
-      if (expFilters.category_id) params.set("category_id", String(expFilters.category_id));
+      if (costCategory) params.set("cost_category", costCategory);
+      else if (expFilters.category_id === -1) params.set("cost_category", "备用金开销");
+      else if (expFilters.category_id) params.set("category_id", String(expFilters.category_id));
       if (expFilters.account_id) params.set("account_id", String(expFilters.account_id));
       if (expFilters.currency) params.set("currency", expFilters.currency);
-      const res = await api.get<any>(`/income-expense/expense?${params.toString()}`);
+      params.set("cost_view", "unified");
+      const endpoint = reportView ? "/reports/cost-funds-debt/costs" : "/income-expense/expense";
+      const res = await api.get<any>(`${endpoint}?${params.toString()}`);
+      setCostTotals(res.totals_by_currency || {});
       setExpenses(res.data); setExpTotal(res.total);
     } catch (err) { console.error("加载支出失败:", err); }
     setExpLoading(false);
@@ -280,7 +301,7 @@ export default function OperatingPage() {
   }
 
   function resetFilters() {
-    setExpFilters({ category_id: 0, account_id: 0, currency: "" });
+    setExpFilters({ category_id: 0, account_id: 0, currency: "" }); setCostCategory("");
     setDateRange({ start_date: monthStartStr(), end_date: todayStr() });
     setExpPage(1);
   }
@@ -339,21 +360,21 @@ export default function OperatingPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <h1 className="page-title">运营收支</h1>
+        <h1 className="page-title">{reportView ? "运营支出 · 报表只读明细" : "运营收支"}</h1>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 bg-white rounded-lg border p-1.5">
             <input type="date" value={dateRange.start_date} onChange={e => { setDateRange({ ...dateRange, start_date: e.target.value }); setExpPage(1); }} className="form-input text-sm w-[140px]" />
             <span className="text-gray-400 text-xs">至</span>
             <input type="date" value={dateRange.end_date} onChange={e => { setDateRange({ ...dateRange, end_date: e.target.value }); setExpPage(1); }} className="form-input text-sm w-[140px]" />
           </div>
-          <button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary flex items-center gap-1.5 text-sm">
+          {queryReady && !reportView && <button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary flex items-center gap-1.5 text-sm">
             <Plus size={16} />录入支出
-          </button>
+          </button>}
         </div>
       </div>
 
       {/* 收入趋势图 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-5">
+      {!reportView && <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-5">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center"><TrendingUp size={20} className="text-blue-600" /></div>
           <div><h2 className="text-base font-semibold text-gray-800">充值收入趋势</h2><span className="text-xs text-gray-400">{dashboard?.granularity === "day" ? "按日" : "按月"} · {dateRange.start_date} ~ {dateRange.end_date}</span></div>
@@ -368,6 +389,8 @@ export default function OperatingPage() {
         )}
       </div>
 
+      }
+
       {/* 支出管理 */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-5">
         <div className="flex items-center gap-2.5 mb-4">
@@ -376,7 +399,7 @@ export default function OperatingPage() {
         </div>
         <div className="bg-gray-50/70 rounded-xl p-4 mb-4">
           <div className="flex items-end gap-3 flex-wrap">
-            <div className="w-[140px]"><label className="form-label text-xs">类别</label><select className="form-input text-sm" value={expFilters.category_id} onChange={e => setExpFilters({ ...expFilters, category_id: +e.target.value })}><option value={0}>全部类别</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+            <div className="w-[140px]"><label className="form-label text-xs">类别</label><select className="form-input text-sm" value={expFilters.category_id} onChange={e => { setCostCategory(""); setExpPage(1); setExpFilters({ ...expFilters, category_id: +e.target.value }); }}><option value={0}>{costCategory || "全部类别"}</option><option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
             <div className="w-[110px]"><label className="form-label text-xs">币种</label><select className="form-input text-sm" value={expFilters.currency} onChange={e => setExpFilters({ ...expFilters, currency: e.target.value })}><option value="">全部</option><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
             <div className="w-[150px]"><label className="form-label text-xs">账户</label><select className="form-input text-sm" value={expFilters.account_id} onChange={e => setExpFilters({ ...expFilters, account_id: +e.target.value })}><option value={0}>全部账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name}</option>)}</select></div>
             <button onClick={resetFilters} className="btn-secondary flex items-center gap-1.5 text-sm h-[38px]">重置</button>
@@ -412,13 +435,13 @@ export default function OperatingPage() {
                     </button>
                   ) : <span className="text-gray-300">无</span>;
                 } },
-              { key: "id", label: "操作", render: (_: any, row: any) => (
+              ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">备用金只读明细</span> : (
                   <div className="flex items-center gap-2">
                     <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
                     <button onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
                     <button onClick={(e) => { e.stopPropagation(); openHistory(row); }} className="text-gray-500 hover:underline text-xs font-medium">历史</button>
                   </div>
-                ) },
+                ) }] : []),
             ]}
             data={expenses} total={expTotal} page={expPage} pageSize={25} onPageChange={setExpPage}
           />
@@ -427,12 +450,12 @@ export default function OperatingPage() {
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center"><DollarSign size={18} className="text-red-500" /></div>
           <span className="text-sm text-gray-500">运营支出合计（范围内）</span>
-          <span className="text-xl font-bold text-red-600">{fmtMoneyByCurrency(dashboard?.expense_by_currency)}</span>
+          <span className="text-xl font-bold text-red-600">{fmtMoneyByCurrency(costTotals)}</span>
         </div>
       </div>
 
       {/* 收支对比 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      {!reportView && <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center"><DollarSign size={20} className="text-indigo-600" /></div>
           <div><h2 className="text-base font-semibold text-gray-800">收支对比</h2><span className="text-xs text-gray-400">{dateRange.start_date} ~ {dateRange.end_date}</span></div>
@@ -456,6 +479,8 @@ export default function OperatingPage() {
           <div className="flex items-center justify-center h-24 text-gray-400"><div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-2" />加载中...</div>
         )}
       </div>
+
+      }
 
       {/* 录入弹窗 */}
       {showForm && (

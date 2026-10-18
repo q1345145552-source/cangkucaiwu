@@ -39,6 +39,9 @@ export default function LedgerPage() {
   const [source, setSource] = useState("");
   const [flowType, setFlowType] = useState("");
   const [loading, setLoading] = useState(false);
+  const [reportView, setReportView] = useState(false), [queryReady, setQueryReady] = useState(false);
+  const [accountFilter, setAccountFilter] = useState(""), [currencyFilter, setCurrencyFilter] = useState("");
+  const [unassigned, setUnassigned] = useState(false);
 
   // summary cards
   const [totalIncome, setTotalIncome] = useState(0);
@@ -52,8 +55,14 @@ export default function LedgerPage() {
   });
 
   useEffect(() => { if (!getToken()) router.push("/login"); }, []);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setReportView(q.get("report_view") === "1"); setAccountFilter(q.get("account_id") || ""); setCurrencyFilter(q.get("currency") || ""); setUnassigned(q.get("unassigned") === "true");
+    if (q.get("start_date") && q.get("end_date")) setDateRange({ start_date: q.get("start_date")!, end_date: q.get("end_date")! });
+    setSource(q.get("source") || ""); setFlowType(q.get("flow_type") || ""); setQueryReady(true);
+  }, []);
   useEffect(() => { setPage(1); }, [dateRange, source, flowType]);
-  useEffect(() => { loadData(); }, [page, dateRange, source, flowType]);
+  useEffect(() => { if (queryReady) loadData(); }, [page, dateRange, source, flowType, queryReady, reportView, accountFilter, currencyFilter, unassigned]);
 
   async function loadData() {
     setLoading(true);
@@ -65,7 +74,11 @@ export default function LedgerPage() {
       if (dateRange.end_date) params.set("end_date", dateRange.end_date);
       if (source) params.set("source", source);
       if (flowType) params.set("flow_type", flowType);
-      const r = await api.get<any>(`/income-expense/ledger?${params.toString()}`);
+      if (accountFilter) params.set("account_id", accountFilter);
+      if (currencyFilter) params.set("currency", currencyFilter);
+      if (unassigned) params.set("unassigned", "true");
+      const endpoint = reportView ? "/reports/cost-funds-debt/flows" : "/income-expense/ledger";
+      const r = await api.get<any>(`${endpoint}?${params.toString()}`);
       setData(r.data || []);
       setTotal(r.total || 0);
       setTotalIncome(r.total_income || 0);
@@ -106,7 +119,7 @@ export default function LedgerPage() {
   function handleReset() {
     setDateRange({ start_date: `${curMonth}-01`, end_date: todayStr });
     setSource("");
-    setFlowType("");
+    setFlowType(""); setAccountFilter(""); setCurrencyFilter(""); setUnassigned(false);
   }
 
   return (
@@ -117,12 +130,12 @@ export default function LedgerPage() {
           <DollarSign size={20} className="text-indigo-600" />
         </div>
         <div className="flex-1">
-          <h1 className="page-title">资金流水总览</h1>
-          <p className="text-xs text-gray-400 mt-0.5">聚合充值申报、到账流水、备用金、报销、应付账款、手工收支所有资金变动</p>
+          <h1 className="page-title">{reportView ? "公司资金流水 · 报表只读明细" : "资金流水总览"}</h1>
+          <p className="text-xs text-gray-400 mt-0.5">{reportView ? `公司真实收付，账户筛选：${unassigned ? "未指定账户" : accountFilter ? `#${accountFilter}` : "全部"}；币种：${currencyFilter === "CNY" ? "¥" : currencyFilter === "THB" ? "฿" : "全部"}。申报及备用金二次开销不计公司资金。` : "聚合充值申报、到账流水、备用金、报销、应付账款、手工收支所有资金变动"}</p>
         </div>
-        <button onClick={handleExport} className="btn-primary flex items-center gap-1.5 text-sm">
+        {queryReady && !reportView && <button onClick={handleExport} className="btn-primary flex items-center gap-1.5 text-sm">
           <Download size={15} />导出Excel
-        </button>
+        </button>}
       </div>
 
       {/* Summary Cards */}

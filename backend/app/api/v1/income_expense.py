@@ -3,7 +3,7 @@ from app.services.reimbursement_payment import require_manual_reimbursement_expe
 from app.models.reimbursement import Reimbursement
 from app.models.payroll import PayrollRecord
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
-from typing import Optional, List
+from typing import Optional, List, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
@@ -184,11 +184,18 @@ async def list_expense(
     start_date: str = None, end_date: str = None,
     category_group: str = None,
     currency: str = None,
+    cost_view: Literal["records", "unified"] = "records", cost_category: str | None = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if cost_view == "unified":
+        from app.services import cost_funds_debt as projection
+        start, end = projection.dates(start_date or (f"{month}-01" if month else None), end_date)
+        return await projection.cost_list(db, get_wh_ids(current_user), start, end,
+            page=max(page, 1), page_size=min(max(page_size, 1), 200), category_id=category_id,
+            cost_category=cost_category, account_id=account_id, currency_code=currency)
     query = select(ExpenseRecord); count_q = select(func.count(ExpenseRecord.id))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
@@ -488,12 +495,22 @@ async def ledger(
     end_date: str = None,
     source: str = None,
     flow_type: str = None,
+    flow_scope: Literal["all", "company"] = "all", account_id: int | None = None,
+    currency: Literal["THB", "CNY"] | None = None, unassigned: bool = False,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["ledger"].label)),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if flow_scope == "company":
+        from app.services import cost_funds_debt as projection
+        if getattr(current_user, "_all_warehouses", False) or get_wh_id(current_user) is None:
+            raise HTTPException(400, "请先选择一个仓库")
+        start, end = projection.dates(start_date, end_date)
+        return await projection.flow_list(db, [get_wh_id(current_user)], start, end,
+            page=max(page, 1), page_size=min(max(page_size, 1), 200), account_id=account_id,
+            currency_code=currency, source=source, flow_type=flow_type, unassigned=unassigned)
     wh_id = get_wh_id(current_user)
     today = thai_today()
     cur_month = f"{today.year}-{today.month:02d}"

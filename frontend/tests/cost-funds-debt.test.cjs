@@ -1,0 +1,26 @@
+// Execute the actual report with intercepted read-only API requests.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),React=require('react');
+const root=path.resolve(__dirname,'../..');
+const walk=n=>!n||typeof n!=='object'?[]:Array.isArray(n)?n.flatMap(walk):[n,...walk(n.props?.children)];
+const text=n=>n==null||typeof n==='boolean'?'':typeof n!=='object'?String(n):Array.isArray(n)?n.map(text).join(''):text(n.props?.children);
+const find=(t,p)=>{const n=walk(t).find(p);assert(n,'Missing node');return n;}, button=(t,name)=>find(t,n=>n.type==='button'&&text(n)===name),tick=()=>new Promise(r=>setTimeout(r,0));
+function fixture(balanced=true){return {start_date:'2026-10-01',end_date:'2026-10-19',balance_anchor_date:'2026-10-01',notes:['已通过备用金开销只读合并'],undated_flows:[],currencies:[{currency:'THB',symbol:'฿',costs:{data:[{name:'员工工资',count:1,amount:7000},{name:'报销',count:1,amount:2000},{name:'备用金开销',count:1,amount:1000}],count:3,total:10000},funds:{data:[{account_id:1,account_name:'现金',opening_balance:20000,inflow:0,outflow:balanced?7000:8000,closing_balance:balanced?13000:12000}],total:{opening_balance:20000,inflow:0,outflow:7000,closing_balance:13000},unassigned:{inflow:0,outflow:0}},debt:{data:[{key:'user:4',payer_id:4,payer_name:'测试主管',amount:10000,repaid_amount:0,outstanding_amount:10000,count:1}],total:{amount:10000,repaid_amount:0,outstanding_amount:10000}},reconciliation:{cost_total:10000,company_outflow:balanced?7000:8000,difference:balanced?3000:2000,cash_advance_cost:2000,expense_fund_cost:1000,non_company_cost:3000,unreconciled_difference:balanced?0:-1000,balanced,non_cost_outflows:balanced?[]:[{name:'垫款归还',count:1,amount:1000}],details:[{id:1,source:'expense',source_id:1,date:'2026-10-19',category_name:'报销',amount:2000,funding_source:'cash_advance',cash_advance_id:1,reimbursement_id:1},{id:-1,source:'fund_item',source_id:1,date:'2026-10-19',category_name:'备用金开销',amount:1000,funding_source:'expense_fund'}],detail_count:2}}]};}
+function harness(options={}){
+ let state=[],deps=[],effects=[],cursor=0,ei=0;const reads=[];
+ const react={...React,useState(v){const i=cursor++;if(!(i in state))state[i]=typeof v==='function'?v():v;return[state[i],v=>state[i]=typeof v==='function'?v(state[i]):v];},useEffect(fn,d){const i=ei++,k=JSON.stringify(d);if(deps[i]!==k){deps[i]=k;effects.push(fn);}}};
+ const api={get:async route=>{reads.push(route);if(options.error)throw Error('无此操作权限');return fixture(options.balanced!==false);},post(){throw Error('Report must never write');},put(){throw Error('Report must never write');},delete(){throw Error('Report must never write');}};
+ const imports={react,'@/lib/api':{api},'next/link':{__esModule:true,default:()=>null}};
+ const source=fs.readFileSync(path.join(root,'frontend/src/app/(dashboard)/reports/cost-funds-debt/page.tsx'),'utf8'),m={exports:{}};
+ vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>imports[n]||require(n),Date,Intl,URLSearchParams,window:{location:{search:options.query||'?start_date=2026-10-01&end_date=2026-10-19'}}});
+ return{reads,async render(){for(let i=0;i<8;i++){cursor=ei=0;const t=m.exports.default();if(!effects.length)return t;for(const f of effects.splice(0))f();await tick();}throw Error('Unsettled effects');}};
+}
+(async()=>{
+ let h=harness(),t=await h.render();assert(text(t).includes('฿10,000.00'));assert(text(t).includes('฿7,000.00'));assert(text(t).includes('฿3,000.00'));assert(text(t).includes('公式核对一致'));
+ let links=walk(t).filter(n=>n.props?.href).map(n=>n.props.href);assert(links.some(s=>s.includes('/operating?')&&s.includes('cost_category=')&&s.includes('currency=THB')));assert(links.some(s=>s.includes('/ledger?')&&s.includes('account_id=1')));assert(links.some(s=>s.includes('/cash-advances?')&&s.includes('payer_id=4')));
+ const toggle=find(t,n=>n.type==='button'&&text(n).includes('查看垫款及备用金'));toggle.props.onClick();t=await h.render();assert(text(t).includes('备用金开销 #1'));assert(text(t).includes('报销单 #1'));assert(text(t).includes('合计 2 笔'));
+ button(t,'上周').props.onClick();t=await h.render();assert(h.reads.at(-1).includes('start_date=')&&h.reads.at(-1).includes('end_date='));
+ const input=find(t,n=>n.props?.['aria-label']==='开始日期');input.props.onChange({target:{value:''}});t=await h.render();assert(text(t).includes('请选择完整日期范围'));
+ h=harness({balanced:false});t=await h.render();assert(text(t).includes('未对平'));assert(text(t).includes('垫款归还'));assert(walk(t).some(n=>n.props?.className?.includes('text-red-700')&&text(n).includes('-1,000.00')));
+ h=harness({error:true});t=await h.render();assert(text(t).includes('无此操作权限'));assert(walk(t).some(n=>n.props?.role==='alert'));button(t,'重试').props.onClick();await h.render();assert.equal(h.reads.length,2);
+ console.log('PASS: exact formula, non-cost red difference, read-only requests, detail counts, date range, currency/account/category/payer links, invalid dates and error retry');
+})().catch(e=>{console.error(e);process.exitCode=1;});

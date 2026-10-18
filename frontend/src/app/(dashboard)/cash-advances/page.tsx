@@ -31,9 +31,12 @@ const newForm = () => ({ payer_id: "", payer_name: "", advance_date: today(), am
 
 export default function CashAdvancesPage() {
   const { user } = useAuth() as { user: any };
-  const canView = useMenuPermission("cash_advances");
-  const canCreate = canView && ["warehouse_admin", "supervisor"].includes(user?.role);
-  const canReview = user?.role === "warehouse_admin";
+  const advancePermission = useMenuPermission("cash_advances"), reportPermission = useMenuPermission("reports");
+  const [reportView, setReportView] = useState(false), [queryReady, setQueryReady] = useState(false);
+  const [reportFilter, setReportFilter] = useState({ payer_id: "", payer_name: "", currency: "" });
+  const canView = reportView ? reportPermission : advancePermission;
+  const canCreate = queryReady && !reportView && canView && ["warehouse_admin", "supervisor"].includes(user?.role);
+  const canReview = queryReady && !reportView && user?.role === "warehouse_admin";
   const { toast } = useToast();
   const [rows, setRows] = useState<Advance[]>([]);
   const [summary, setSummary] = useState<Summary>({ payer_count: 0, total_outstanding: 0, totals_by_currency: [], data: [] });
@@ -49,18 +52,30 @@ export default function CashAdvancesPage() {
   const [repayAdvance, setRepayAdvance] = useState<Advance | null>(null);
   const [historyAdvance, setHistoryAdvance] = useState<Advance | null>(null);
 
-  useEffect(() => { if (canView) void load(); return () => { loadVersion.current++; }; }, [canView, page, filters]);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("report_view") === "1") {
+      setReportView(true); setReportFilter({ payer_id: q.get("payer_id") || "", payer_name: q.get("payer_name_exact") || "", currency: q.get("currency") || "" });
+      setFilters({ start_date: q.get("start_date") || "", end_date: q.get("end_date") || "", status: "", payer_name: "" });
+    }
+    setQueryReady(true);
+  }, []);
+  useEffect(() => { if (queryReady && canView) void load(); return () => { loadVersion.current++; }; }, [canView, page, filters, reportView, reportFilter, queryReady]);
   async function load() {
     const version = ++loadVersion.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), page_size: "20" });
       Object.entries(filters).forEach(([key, value]) => { if (value.trim()) params.set(key, value.trim()); });
-      const [list, totals] = await Promise.all([
+      const [list, totals] = reportView ? await (async () => {
+        Object.entries(reportFilter).forEach(([key, value]) => { if (value) params.set(key, value); });
+        const rows = await api.get<{ data: Advance[]; total: number }>(`/reports/cost-funds-debt/advances?${params}`);
+        return [rows, null] as const;
+      })() : await Promise.all([
         api.get<{ data: Advance[]; total: number }>(`/cash-advances?${params}`),
         api.get<Summary>("/cash-advances/summary"),
       ]);
-      if (version === loadVersion.current) { setRows(list.data); setTotal(list.total); setSummary(totals); }
+      if (version === loadVersion.current) { setRows(list.data); setTotal(list.total); if (totals) setSummary(totals); }
     } catch (err: any) { if (version === loadVersion.current) toast("error", err.message || "加载垫款单失败"); }
     finally { if (version === loadVersion.current) setLoading(false); }
   }
@@ -113,23 +128,23 @@ export default function CashAdvancesPage() {
   if (!canView) return <p className="text-sm text-gray-500">无此操作权限</p>;
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <h1 className="page-title flex items-center gap-2"><Receipt size={24} />垫款单</h1>
+      <h1 className="page-title flex items-center gap-2"><Receipt size={24} />{reportView ? "垫款单 · 报表只读明细" : "垫款单"}</h1>
       {canCreate && <button type="button" onClick={openForm} className="btn-primary flex items-center gap-1"><Plus size={16} />新建垫款单</button>}
     </div>
-    <section className="bg-white rounded-xl border p-4 space-y-2" aria-label="本仓垫款汇总">
+    {!reportView && <section className="bg-white rounded-xl border p-4 space-y-2" aria-label="本仓垫款汇总">
       <p>本仓现在欠垫款 <strong>{summary.payer_count}</strong> 人，共 <strong className="text-red-600">{currencyAmounts(summary.totals_by_currency, summary.total_outstanding)}</strong></p>
       <p className="text-xs text-gray-500">汇总为本仓全部已确认、尚未归还的垫款，不随下方筛选变化。</p>
       {summary.data.length > 0 && <div className="divide-y text-sm">{summary.data.map((payer, index) => <div key={`${payer.payer_id}-${index}`} className="flex justify-between gap-3 py-2"><span>{payer.payer_name}</span><span>{currencyAmounts(payer.totals_by_currency, payer.outstanding_amount)}</span></div>)}</div>}
-    </section>
+    </section>}
     <div className="flex flex-wrap gap-2 items-center">
       <input aria-label="开始日期" type="date" className="form-input w-auto" value={filters.start_date} onChange={e => filter("start_date", e.target.value)} />
       <span className="text-gray-400">至</span><input aria-label="结束日期" type="date" className="form-input w-auto" value={filters.end_date} onChange={e => filter("end_date", e.target.value)} />
-      <select aria-label="状态筛选" className="form-input w-auto" value={filters.status} onChange={e => filter("status", e.target.value)}><option value="">全部状态</option><option value="pending">待确认</option><option value="confirmed">已确认</option><option value="partially_repaid">部分归还</option><option value="rejected">已驳回</option><option value="repaid">已归还</option></select>
-      <input aria-label="垫款人筛选" placeholder="按垫款人姓名筛选" className="form-input w-auto" maxLength={100} value={filters.payer_name} onChange={e => filter("payer_name", e.target.value)} />
+      {!reportView && <><select aria-label="状态筛选" className="form-input w-auto" value={filters.status} onChange={e => filter("status", e.target.value)}><option value="">全部状态</option><option value="pending">待确认</option><option value="confirmed">已确认</option><option value="partially_repaid">部分归还</option><option value="rejected">已驳回</option><option value="repaid">已归还</option></select>
+      <input aria-label="垫款人筛选" placeholder="按垫款人姓名筛选" className="form-input w-auto" maxLength={100} value={filters.payer_name} onChange={e => filter("payer_name", e.target.value)} /></>}
     </div>
     <div className="bg-white rounded-xl border overflow-x-auto">
       <table className="w-full text-sm whitespace-nowrap"><thead className="bg-gray-50 text-gray-500"><tr>{["日期", "垫款人", "金额", "用途", "状态", "剩余未还", "资金使用", "说明 / 凭证", "操作"].map(title => <th key={title} className="text-left px-4 py-3">{title}</th>)}</tr></thead>
-        <tbody className="divide-y">{rows.map(row => <tr key={row.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setHistoryAdvance(row)}>
+        <tbody className="divide-y">{rows.map(row => <tr key={row.id} className="cursor-pointer hover:bg-gray-50" onClick={() => { if (!reportView) setHistoryAdvance(row); }}>
           <td className="px-4 py-3">{row.advance_date}</td><td className="px-4 py-3">{row.payer_name}</td><td className="px-4 py-3">{money(row.amount)} {currencyName(row.currency)}</td><td className="px-4 py-3">{row.purpose_label}</td>
           <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${STATUS_STYLES[row.status]}`}>{row.status_label}</span>{row.reject_reason && <p className="whitespace-normal max-w-48 text-xs text-red-600 mt-2">{row.reject_reason}</p>}</td>
           <td className="px-4 py-3">{money(row.outstanding_amount)} {currencyName(row.currency)}</td>
@@ -138,7 +153,7 @@ export default function CashAdvancesPage() {
           <td className="px-4 py-3" onClick={event => event.stopPropagation()}><div className="flex gap-3">
             {canReview && row.status === "pending" && <><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></>}
             {canReview && row.status === "confirmed" && row.outstanding_amount > 0 && <button type="button" onClick={() => setRepayAdvance(row)} className="text-blue-600">归还</button>}
-            <button type="button" onClick={() => setHistoryAdvance(row)} className="text-gray-600">归还记录</button>
+            <button type="button" onClick={() => setHistoryAdvance(row)} className="text-gray-600" disabled={reportView}>{reportView ? "只读" : "归还记录"}</button>
           </div></td>
         </tr>)}{!rows.length && <tr><td colSpan={9} className="text-center text-gray-400 py-10">{loading ? "加载中..." : "暂无垫款单"}</td></tr>}</tbody>
       </table>
