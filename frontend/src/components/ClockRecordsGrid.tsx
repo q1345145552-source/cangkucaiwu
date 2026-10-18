@@ -247,13 +247,8 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                                 <span className={`rounded px-1 py-0.5 font-medium ${colorClass}`}>
                                   {count}/4
                                 </span>
-                                {hasMakeup ? <div className="space-y-0.5 text-[10px]">
-                                  {[1,2,3,4].map(session => cell[session] && <div key={session} className="flex items-center justify-center gap-0.5 whitespace-nowrap min-w-max" title={t(SESSION_KEYS[session])}>
-                                    <span className="text-gray-400">{session}.</span>
-                                    <span className="text-gray-500">{formatTime(cell[session].clocked_in_at)}</span>
-                                    {cell[session].is_makeup && <MakeupBadge t={t} />}
-                                  </div>)}
-                                </div> : cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
+                                {hasMakeup && <span className="text-[9px] font-bold text-purple-600 bg-purple-50 rounded px-0.5">{t("makeup_short")}</span>}
+                                {cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
                               </div>
                             ) : (
                               <span className="text-gray-300 text-[10px]">{t("att_not_clocked")}</span>

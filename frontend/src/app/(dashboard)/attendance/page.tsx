@@ -376,12 +376,12 @@ export default function AttendancePage() {
                     return (
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
-                          className={`rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"} ${status === "half_absence" ? "font-bold" : ""}`}
+                          className={`${makeupDays[key]?.length ? "relative " : ""}rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"} ${status === "half_absence" ? "font-bold" : ""}`}
                           title={tooltip}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
                           <div>{cellText}</div>
-                          {!!makeupDays[key]?.length && <div className="mt-0.5 flex justify-center"><MakeupBadge t={t} /></div>}
+                          {!!makeupDays[key]?.length && <span className="absolute top-0 right-0 text-[9px] leading-none text-purple-700" title={t("makeup")} aria-label={t("makeup")} data-makeup-badge>{t("makeup_short")}</span>}
                           {subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
                         </div>
                       </td>
