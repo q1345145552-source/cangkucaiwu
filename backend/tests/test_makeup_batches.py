@@ -13,7 +13,7 @@ from app.models import User, UserWarehouse, ClockInRecord, ClockInMakeupBatch
 from app.models.payroll import PayrollRecord
 from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import hr_environment, snapshot
-from tests.test_batch_makeup import BODY, DAY, seed_batch
+from tests.test_batch_makeup import BODY, DAY, assert_record_dict_only_adds_makeup_batch_id, seed_batch
 
 BASE = "/api/v1/clock-in"
 
@@ -198,7 +198,11 @@ def test_first_round_logic_and_quota_unchanged_except_batch_link():
     funcs = lambda tree: {n.name: copy.deepcopy(n) for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     previous, current = funcs(old), funcs(new)
     for name in previous:
-        if name != "batch_makeup_clock_in": assert ast.dump(previous[name]) == ast.dump(current[name]), name
+        if name not in ("batch_makeup_clock_in", "list_records"): assert ast.dump(previous[name]) == ast.dump(current[name]), name
+    assert_record_dict_only_adds_makeup_batch_id(
+        subprocess.check_output(["git", "show", "f8a4341:" + filename], cwd=root, text=True),
+        (root / filename).read_text(),
+    )
     batch = current["batch_makeup_clock_in"]
     start = next(i for i, n in enumerate(batch.body) if isinstance(n, ast.Assign) and ast.unparse(n.targets[0]) == "batch")
     assert ast.unparse(batch.body[start + 1]) == "db.add(batch)" and ast.unparse(batch.body[start + 2]) == "await db.flush()"

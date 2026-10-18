@@ -308,6 +308,7 @@ async def list_records(
             "makeup_by_name": makeup_by_names.get(r.makeup_by, ""),
             "makeup_at": r.makeup_at.isoformat() if r.makeup_at else None,
             "makeup_reason": r.makeup_reason,
+            "makeup_batch_id": r.makeup_batch_id,
         } for r in records],
     }
 

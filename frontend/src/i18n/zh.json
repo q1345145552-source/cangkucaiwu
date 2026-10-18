@@ -270,6 +270,8 @@
   "makeup": "补卡",
   "makeup_short": "补",
   "makeup_by": "补卡人",
+  "makeup_at": "补卡时间",
+  "makeup_batch": "补卡批次",
   "sessions": "时段",
   "makeup_all_day": "补全天",
   "submit_makeup": "提交补卡",

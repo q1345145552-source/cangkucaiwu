@@ -11,6 +11,8 @@ import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, Ch
 import ClockRecordsGrid from "@/components/ClockRecordsGrid";
 import SafeImage from "@/components/SafeImage";
 import BatchMakeupModal from "@/components/BatchMakeupModal";
+import { MakeupBadge, MakeupRecordDetails } from "@/components/MakeupDisplay";
+import { makeupRecordsByDay, attachMakeupDetails, MakeupDisplayRecord } from "@/lib/makeup-display";
 
 const STATUS_COLORS: Record<string, string> = {
   "present": "bg-green-100 text-green-700 border-green-300",
@@ -110,15 +112,20 @@ export default function AttendancePage() {
   const [photoPopup, setPhotoPopup] = useState<any>(null);
   const [photoSessions, setPhotoSessions] = useState<any[]>([]);
   const [scheduleTimes, setScheduleTimes] = useState<Record<number, string>>({});
+  const [makeupDays, setMakeupDays] = useState<Record<string, MakeupDisplayRecord[]>>({});
+  const makeupLoadVersion = useRef(0);
 
   const weekdayNames = [0, 1, 2, 3, 4, 5, 6].map(i => t(`att_weekday_${i}`));
   const dateList = buildDateList(dateRange.start_date, dateRange.end_date, weekdayNames);
 
   async function openPhotoPopup(empId: number, empName: string, dateStr: string) {
     try {
-      const r = await api.get<any>(`/clock-in/photos?employee_id=${empId}&date=${dateStr}${selfQuery}`);
+      const [r, records] = await Promise.all([
+        api.get<any>(`/clock-in/photos?employee_id=${empId}&date=${dateStr}${selfQuery}`),
+        api.get<{ records: MakeupDisplayRecord[] }>(`/clock-in/records?start_date=${dateStr}&end_date=${dateStr}${selfQuery}`).catch(() => ({ records: [] })),
+      ]);
       setPhotoPopup({ employee_name: empName, date: dateStr });
-      setPhotoSessions(r.sessions || []);
+      setPhotoSessions(attachMakeupDetails(r.sessions || [], records.records || [], empId, dateStr));
     } catch {}
   }
 
@@ -138,6 +145,8 @@ export default function AttendancePage() {
   }, [user?.role]);
 
   async function loadCalendar() {
+    const version = ++makeupLoadVersion.current;
+    setMakeupDays({});
     setLoading(true);
     try {
       const r = await api.get<any>(`/attendance/calendar?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
@@ -145,8 +154,17 @@ export default function AttendancePage() {
       (r.events || []).forEach((e: any) => { evtMap[`${e.date}_${e.employee_id}`] = e; });
       setEvents(evtMap);
       setEmployees(r.employees || []);
+      void loadMakeupMarkers(version);
     } catch {}
     setLoading(false);
+  }
+
+  async function loadMakeupMarkers(version: number) {
+    if (!canViewRecords || version !== makeupLoadVersion.current) return;
+    try {
+      const result = await api.get<{ records: MakeupDisplayRecord[] }>(`/clock-in/records?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
+      if (version === makeupLoadVersion.current) setMakeupDays(makeupRecordsByDay(result.records || []));
+    } catch { /* Marker metadata failure must not break the existing calendar. */ }
   }
 
   async function loadLeaves() {
@@ -363,6 +381,7 @@ export default function AttendancePage() {
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
                           <div>{cellText}</div>
+                          {!!makeupDays[key]?.length && <div className="mt-0.5 flex justify-center"><MakeupBadge t={t} /></div>}
                           {subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
                         </div>
                       </td>
@@ -658,8 +677,9 @@ export default function AttendancePage() {
                       {scheduleTimes[s.session] && <span className="ml-1 text-xs text-gray-400 font-mono">{scheduleTimes[s.session]}</span>}
                     </span>
                     {s.clocked_in_at ? (
-                      <span className="text-xs text-gray-400">
+                      <span className={`text-xs text-gray-400${s.is_makeup ? " inline-flex items-center gap-1 flex-wrap justify-end" : ""}`}>
                         {new Date(s.clocked_in_at).toLocaleTimeString("zh-CN", { timeZone: "Asia/Bangkok" })}
+                        {s.is_makeup && <MakeupBadge t={t} />}
                         {s.status !== "normal" && (
                           <span className={s.status === "late_half" ? "text-orange-500 ml-1" : "text-red-500 ml-1"}>
                             · {t("att_late")}
@@ -670,6 +690,7 @@ export default function AttendancePage() {
                       <span className="text-xs text-gray-300">{t("att_not_clocked")}</span>
                     )}
                   </div>
+                  <MakeupRecordDetails record={s} t={t} locale={locale} />
                   {s.photo_path ? (
                     <SafeImage
                       src={`/${s.photo_thumb_path || s.photo_path}`}

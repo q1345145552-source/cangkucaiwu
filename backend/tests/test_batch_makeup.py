@@ -94,6 +94,8 @@ def test_selected_people_sessions_quota_payroll_and_single_makeup(tmp_path, monk
             records = await c.get("/api/v1/clock-in/records?start_date=2026-10-18&end_date=2026-10-18", headers=auth(1))
             assert records.status_code == 200 and len(records.json()["records"]) == 8
             assert all(r["is_makeup"] and r["makeup_by"] == 1 and r["makeup_reason"] == "系统故障" and r["makeup_at"] for r in records.json()["records"])
+            # 打卡记录接口必须回传批次号，前端详情用它显示「补卡批次」
+            assert {x["makeup_batch_id"] for x in records.json()["records"]} == {r.json()["batch_id"]}
             assert await snapshot(f) == old_payroll
             cal = await c.get("/api/v1/attendance/calendar?start_date=2026-10-18&end_date=2026-10-18", headers=auth(1))
             assert cal.status_code == 200, cal.text
@@ -184,13 +186,38 @@ def test_existing_late_record_untouched_and_input_deduplicated(tmp_path, monkeyp
     asyncio.run(run())
 
 
+def assert_record_dict_only_adds_makeup_batch_id(before_src, after_src):
+    """list_records 的打卡记录字典只允许新增 makeup_batch_id，其余键与取值顺序保持不变。"""
+    def record_dict(src):
+        tree = ast.parse(src)
+        fn = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "list_records")
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Dict):
+                keys = [k.value for k in node.keys if isinstance(k, ast.Constant)]
+                if "is_makeup" in keys:
+                    return node
+        raise AssertionError("未找到 list_records 的打卡记录序列化字典")
+    old_dict, new_dict = record_dict(before_src), record_dict(after_src)
+    old_keys = [k.value for k in old_dict.keys if isinstance(k, ast.Constant)]
+    new_keys = [k.value for k in new_dict.keys if isinstance(k, ast.Constant)]
+    assert [k for k in new_keys if k not in old_keys] == ["makeup_batch_id"], new_keys
+    assert [k for k in new_keys if k != "makeup_batch_id"] == old_keys, new_keys
+    pairs = [(k, v) for k, v in zip(new_dict.keys, new_dict.values)
+             if not (isinstance(k, ast.Constant) and k.value == "makeup_batch_id")]
+    new_dict.keys = [k for k, _ in pairs]
+    new_dict.values = [v for _, v in pairs]
+    assert ast.dump(new_dict) == ast.dump(old_dict)
+
+
 def test_single_makeup_function_and_unrelated_business_unchanged():
     root = Path(__file__).resolve().parents[2]
     filename = "backend/app/api/v1/clock_in.py"
     original = subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root, text=True)
+    current = (root / filename).read_text()
     functions = lambda s: {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(s).body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-    old, new = functions(original), functions((root / filename).read_text())
+    old, new = functions(original), functions(current)
     for key in old:
-        if key != "_count_makeup_days": assert new[key] == old[key], key
+        if key not in ("_count_makeup_days", "list_records"): assert new[key] == old[key], key
+    assert_record_dict_only_adds_makeup_batch_id(original, current)
     for filename in ("backend/app/api/v1/attendance.py", "backend/app/api/v1/payroll.py", "backend/app/services/schedule.py", "backend/app/core/menu_registry.py"):
         assert (root / filename).read_bytes() == subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root)

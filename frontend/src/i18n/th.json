@@ -270,6 +270,8 @@
   "makeup": "ลงเวลาย้อนหลัง",
   "makeup_short": "ย้อน",
   "makeup_by": "ผู้ลงเวลา",
+  "makeup_at": "เวลาที่ลงย้อนหลัง",
+  "makeup_batch": "ชุดการลงเวลาย้อนหลัง",
   "sessions": "ช่วงเวลา",
   "makeup_all_day": "ลงเวลาทั้งวัน",
   "submit_makeup": "ส่งการลงเวลา",

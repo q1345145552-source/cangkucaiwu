@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Camera, ChevronLeft, ChevronRight, Download, CalendarClock } from "lucide-react";
 import SafeImage from "@/components/SafeImage";
+import { MakeupBadge, MakeupRecordDetails } from "@/components/MakeupDisplay";
 
 const SESSION_KEYS: Record<number, string> = {
   1: "morning_shift", 2: "noon_break_end", 3: "afternoon_shift", 4: "evening_shift",
@@ -27,7 +28,7 @@ function buildDateList(startDate: string, endDate: string, dayNames: string[]): 
 
 export default function ClockRecordsGrid(props: { startDate: string; endDate: string; onChange?: () => void; employeeView?: boolean }) {
   const { startDate, endDate, onChange, employeeView = false } = props;
-  const { t } = useI18n(employeeView);
+  const { t, locale } = useI18n(employeeView);
   const { toast } = useToast();
   const { user } = useAuth();
   const canMakeup = !employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor");
@@ -246,8 +247,13 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                                 <span className={`rounded px-1 py-0.5 font-medium ${colorClass}`}>
                                   {count}/4
                                 </span>
-                                {hasMakeup && <span className="text-[9px] font-bold text-purple-600 bg-purple-50 rounded px-0.5">{t("makeup_short")}</span>}
-                                {cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
+                                {hasMakeup ? <div className="space-y-0.5 text-[10px]">
+                                  {[1,2,3,4].map(session => cell[session] && <div key={session} className="flex items-center justify-center gap-0.5 whitespace-nowrap min-w-max" title={t(SESSION_KEYS[session])}>
+                                    <span className="text-gray-400">{session}.</span>
+                                    <span className="text-gray-500">{formatTime(cell[session].clocked_in_at)}</span>
+                                    {cell[session].is_makeup && <MakeupBadge t={t} />}
+                                  </div>)}
+                                </div> : cell[4] && <span className="text-[10px] text-gray-500">{formatTime(cell[4].clocked_in_at)}</span>}
                               </div>
                             ) : (
                               <span className="text-gray-300 text-[10px]">{t("att_not_clocked")}</span>
@@ -285,20 +291,16 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
                       <span className="font-medium text-sm text-gray-700">{s}. {t(SESSION_KEYS[s])}{scheduleTimes[s] && <span className="ml-1 text-xs text-gray-400 font-mono">{scheduleTimes[s]}</span>}</span>
                       {cr ? (
                         <div className="flex items-center gap-2 flex-wrap">
-                          {cr.is_makeup && <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">{t("makeup")}</span>}
                           {cr.status !== "normal" && (
                             <span className={`text-xs px-1.5 py-0.5 rounded ${cr.status === "late_half" ? "bg-orange-50 text-orange-600" : "bg-red-50 text-red-600"}`}>
                               {cr.status === "late_half" ? t("att_late_half_hour") : t("att_late_one_hour")}</span>
                           )}
                           <span className="text-xs text-gray-500">{formatTime(cr.clocked_in_at)}</span>
+                          {cr.is_makeup && <MakeupBadge t={t} />}
                         </div>
                       ) : <span className="text-xs text-gray-300">{t("att_not_clocked")}</span>}
                     </div>
-                    {cr?.is_makeup && (
-                      <div className="mb-2 text-[11px] text-purple-600 bg-purple-50 rounded px-2 py-1">
-                        {t("makeup_by")}：{cr.makeup_by_name || "-"} · {t("reason")}：{cr.makeup_reason || "-"}
-                      </div>
-                    )}
+                    <MakeupRecordDetails record={cr} t={t} locale={locale} />
                     {cr?.photo_path ? (
                       <SafeImage
                         src={`/${cr.photo_thumb_path || cr.photo_path}`}

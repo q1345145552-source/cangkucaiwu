@@ -34,7 +34,7 @@ function harness({employees=people,error=false}={}) {
   h=harness();t=h.render();button(t,'取消').props.onClick();assert.equal(h.closed,1);assert.equal(h.writes.length,0);
   const filename='frontend/src/app/(dashboard)/attendance/page.tsx',page=fs.readFileSync(path.join(root,filename),'utf8'),old=execFileSync('git',['show','c515151:'+filename],{cwd:root,encoding:'utf8'});
   assert(page.includes('!employeeView && role === "warehouse_admin"'));
-  const printer=ts.createPrinter();function handlers(s){const sf=ts.createSourceFile(filename,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),result={};function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&n.name.text!=='AttendancePage')result[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return result;}
+  const printer=ts.createPrinter();function handlers(s){const sf=ts.createSourceFile(filename,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),result={};function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['AttendancePage','openPhotoPopup','loadCalendar','loadMakeupMarkers'].includes(n.name.text))result[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return result;}
   assert.deepEqual(handlers(page),handlers(old));
-  console.log('PASS: defaults, person/session selection, select all/none, date/reason checks, success/error/cancel, empty employees, admin-only gate, original handlers unchanged');
+  console.log('PASS: defaults, person/session selection, select all/none, date/reason checks, success/error/cancel, empty employees, admin-only gate, original write handlers unchanged');
 })().catch(error=>{console.error(error);process.exitCode=1;});
