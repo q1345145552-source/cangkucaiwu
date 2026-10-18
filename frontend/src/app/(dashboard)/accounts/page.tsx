@@ -85,6 +85,7 @@ export default function AccountsPage() {
     { key: "account_number", label: "账号" },
     { key: "currency", label: "币种", render: (v: string) => currencyLabels[v] || v },
     { key: "opening_balance", label: "月初余额", align: "right" as const, render: (v: number) => v ? v.toLocaleString() : "0" },
+    { key: "current_balance", label: "当前余额", align: "right" as const, render: (v: number) => (v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
     { key: "status", label: "状态", hideOnMobile: true, render: (v: string) => (
       <span className={`px-2 py-0.5 rounded text-xs font-medium ${v === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
         {v === "active" ? "启用" : "停用"}

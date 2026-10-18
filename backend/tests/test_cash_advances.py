@@ -54,7 +54,7 @@ def test_supervisor_voucher_admin_confirmation_exact_summary_and_finance_unchang
             listing = (await c.get(URL + "?status=confirmed", headers=auth(1))).json()
             assert listing["data"][0]["outstanding_amount"] == 3000
             totals = (await c.get(URL + "/summary", headers=auth(1))).json()
-            assert totals == {"payer_count": 1, "total_outstanding": 3000, "data": [{"payer_id": 4, "payer_name": "supervisor", "outstanding_amount": 3000}]}
+            assert totals == {"payer_count": 1, "total_outstanding": 3000, "totals_by_currency": [{"currency": "THB", "amount": 3000}], "data": [{"payer_id": 4, "payer_name": "supervisor", "outstanding_amount": 3000, "totals_by_currency": [{"currency": "THB", "amount": 3000}]}]}
             assert sum(r["outstanding_amount"] for r in listing["data"]) == totals["total_outstanding"]
             assert await finance_snapshot(factory) == before
             async with factory() as db:
@@ -189,7 +189,7 @@ def test_permission_backfill_once_only_for_existing_supervisor_and_staff(tmp_pat
     asyncio.run(run())
 
 
-def test_bad_voucher_and_no_repayment_action(tmp_path, monkeypatch):
+def test_bad_voucher_and_unknown_action(tmp_path, monkeypatch):
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, _, c):
             r = await c.post(URL + "/voucher", headers=auth(1), files={"file": ("fake.png", b"not an image", "image/png")})

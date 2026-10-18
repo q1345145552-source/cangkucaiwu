@@ -24,6 +24,7 @@ from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.expense_approval import ExpenseApproval
 from app.models.cash_advance import CashAdvance
+from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
@@ -129,6 +130,7 @@ async def _migrate_cash_advances(conn):
             payer_name VARCHAR(100) NOT NULL,
             advance_date DATE NOT NULL,
             amount NUMERIC(14,2) NOT NULL CONSTRAINT ck_cash_advances_amount CHECK (amount > 0),
+            currency VARCHAR(10) NOT NULL DEFAULT 'THB',
             purpose VARCHAR(20) NOT NULL CONSTRAINT ck_cash_advances_purpose CHECK (purpose IN ('salary','purchase','expense','other')),
             description VARCHAR(2000), voucher_path VARCHAR(500),
             status VARCHAR(20) NOT NULL DEFAULT 'pending' CONSTRAINT ck_cash_advances_status CHECK (status IN ('pending','confirmed','rejected','repaid')),
@@ -150,6 +152,51 @@ async def _migrate_cash_advances(conn):
             raise
 
 
+async def _migrate_cash_advance_currency(conn):
+    """旧单沿用原系统泰铢口径，金额不转换；新单明确选币种。"""
+    from sqlalchemy import text
+    try:
+        async with conn.begin_nested():
+            await conn.execute(text("ALTER TABLE cash_advances ADD COLUMN IF NOT EXISTS currency VARCHAR(10) NOT NULL DEFAULT 'THB'"))
+    except Exception as exc:
+        print(f"迁移 垫款单币种 失败：{exc}")
+        raise
+
+
+async def _migrate_cash_advance_repayments(conn):
+    """仅加归还表和索引，独立保存点，不改账户月初余额或历史成本。"""
+    from sqlalchemy import text
+    statements = (
+        ("cash_advance_repayments", """CREATE TABLE IF NOT EXISTS cash_advance_repayments (
+            id SERIAL PRIMARY KEY,
+            cash_advance_id INTEGER NOT NULL REFERENCES cash_advances(id),
+            warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+            repayment_date DATE NOT NULL,
+            amount NUMERIC(14,2) NOT NULL CONSTRAINT ck_cash_repayments_amount CHECK (amount > 0),
+            account_id INTEGER NOT NULL REFERENCES payment_accounts(id),
+            account_name VARCHAR(100) NOT NULL, currency VARCHAR(10) NOT NULL,
+            payment_method VARCHAR(20) NOT NULL CONSTRAINT ck_cash_repayments_method CHECK (payment_method IN ('cash','transfer')),
+            voucher_path VARCHAR(500) NOT NULL, description VARCHAR(2000), request_key VARCHAR(64),
+            created_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_by_name VARCHAR(100) NOT NULL, created_at TIMESTAMPTZ NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'active' CONSTRAINT ck_cash_repayments_status CHECK (status IN ('active','revoked')),
+            revoked_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            revoked_by_name VARCHAR(100), revoked_at TIMESTAMPTZ, revoke_reason VARCHAR(500),
+            CONSTRAINT uq_cash_repayment_request UNIQUE (warehouse_id, request_key)
+        )"""),
+        ("cash_repayments_date_index", "CREATE INDEX IF NOT EXISTS ix_cash_repayments_warehouse_date ON cash_advance_repayments(warehouse_id, repayment_date)"),
+        ("cash_repayments_advance_index", "CREATE INDEX IF NOT EXISTS ix_cash_repayments_advance ON cash_advance_repayments(cash_advance_id)"),
+        ("cash_repayments_account_index", "CREATE INDEX IF NOT EXISTS ix_cash_repayments_account ON cash_advance_repayments(account_id)"),
+    )
+    for name, statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 垫款归还 {name} 失败：{exc}")
+            raise
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
@@ -160,6 +207,8 @@ async def seed():
         await _migrate_makeup_batches(conn)
         await _migrate_payroll_expense_link(conn)
         await _migrate_cash_advances(conn)
+        await _migrate_cash_advance_currency(conn)
+        await _migrate_cash_advance_repayments(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

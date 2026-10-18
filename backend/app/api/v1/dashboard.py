@@ -486,11 +486,16 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     overdue_payable = _merge_currency(overdue_rows)
 
     # 账户余额
-    payacct_rows = (await db.execute(
-        select(PaymentAccount.currency, func.coalesce(func.sum(PaymentAccount.opening_balance), 0))
-        .where(PaymentAccount.warehouse_id == wh_id, PaymentAccount.status == "active")
-        .group_by(PaymentAccount.currency)
-    )).all()
+    from app.services.account_balances import current_account_balances
+    payaccts = (await db.execute(select(PaymentAccount).where(
+        PaymentAccount.warehouse_id == wh_id, PaymentAccount.status == "active",
+    ))).scalars().all()
+    payacct_balances = await current_account_balances(db, payaccts)
+    payacct_totals = {}
+    for account in payaccts:
+        currency = account.currency or "THB"
+        payacct_totals[currency] = payacct_totals.get(currency, 0) + payacct_balances[account.id]
+    payacct_rows = list(payacct_totals.items())
     fund_rows = (await db.execute(
         select(ExpenseFund.currency, func.coalesce(func.sum(ExpenseFund.remaining_balance), 0))
         .where(ExpenseFund.warehouse_id == wh_id, ExpenseFund.status == "active")

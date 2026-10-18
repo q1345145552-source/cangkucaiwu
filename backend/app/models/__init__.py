@@ -24,6 +24,7 @@ from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.expense_approval import ExpenseApproval
 from app.models.cash_advance import CashAdvance
+from app.models.cash_advance_repayment import CashAdvanceRepayment
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -44,4 +45,5 @@ __all__ = [
     "DeductionTemplate", "EmployeeDeduction", "EmployeeFixedDeduction",
     "ExpenseApproval",
     "CashAdvance",
+    "CashAdvanceRepayment",
 ]

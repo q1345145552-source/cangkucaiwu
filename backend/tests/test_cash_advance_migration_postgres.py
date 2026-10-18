@@ -37,7 +37,7 @@ def test_cash_advance_ddl_idempotency_data_and_savepoint(fail):
             await _migrate_cash_advances(conn)
             assert await conn.execute("SELECT * FROM cash_advances") == []
             fields = await conn.execute("SELECT column_name FROM information_schema.columns WHERE table_name='cash_advances'")
-            assert len(fields) == 18
+            assert len(fields) == 19
             await conn.execute("INSERT INTO cash_advances(warehouse_id,payer_id,payer_name,advance_date,amount,purpose,created_by_id,created_by_name,created_at) VALUES(1,2,'主管','2026-10-18',3000,'salary',2,'主管',now())")
             first = await conn.execute("SELECT * FROM cash_advances")
             assert first[0]["status"] == "pending" and float(first[0]["repaid_amount"]) == 0

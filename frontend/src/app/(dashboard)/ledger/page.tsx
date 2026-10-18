@@ -8,6 +8,7 @@ import { TrendingUp, TrendingDown, DollarSign, Search, Download, RotateCcw, Arro
 
 const SOURCE_OPTIONS = [
   { value: "", label: "全部来源" },
+  { value: "cash_advance_repayment", label: "垫款归还" },
   { value: "recharge", label: "充值申报" },
   { value: "incoming", label: "到账流水" },
   { value: "expense_fund", label: "备用金领用" },
@@ -230,6 +231,7 @@ export default function LedgerPage() {
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${row.type === "income" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
                           {row.type === "income" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                           {row.type === "income" ? "收入" : "支出"}
+                          {row.status === "revoked" && <span className="ml-1 text-gray-500">已冲销</span>}
                         </span>
                       </td>
                       <td className="px-4 py-3">

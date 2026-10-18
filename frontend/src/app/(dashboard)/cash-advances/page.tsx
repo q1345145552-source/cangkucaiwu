@@ -5,22 +5,27 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useToast } from "@/components/ui/Toast";
 import { Plus, Receipt, X } from "lucide-react";
+import CashAdvanceRepaymentModal from "@/components/CashAdvanceRepaymentModal";
+import CashAdvanceRepaymentHistory from "@/components/CashAdvanceRepaymentHistory";
 
 interface Advance {
   id: number; payer_id: number | null; payer_name: string; advance_date: string;
-  amount: number; purpose: string; purpose_label: string; status: string; status_label: string;
-  outstanding_amount: number; description: string | null; voucher_path: string | null;
+  amount: number; currency: string; purpose: string; purpose_label: string; status: string; status_label: string;
+  outstanding_amount: number; repaid_amount: number; description: string | null; voucher_path: string | null;
   reject_reason: string | null; created_by_name: string; created_at: string;
   reviewed_by_name: string | null; reviewed_at: string | null;
 }
 interface Payer { id: number; name: string; username: string; role: string }
-interface Summary { payer_count: number; total_outstanding: number; data: { payer_id: number | null; payer_name: string; outstanding_amount: number }[] }
+interface CurrencyAmount { currency: string; amount: number }
+interface Summary { payer_count: number; total_outstanding: number | null; totals_by_currency: CurrencyAmount[]; data: { payer_id: number | null; payer_name: string; outstanding_amount: number | null; totals_by_currency: CurrencyAmount[] }[] }
 const PURPOSES = { salary: "工资", purchase: "采购", expense: "费用", other: "其他" };
 const ROLES: Record<string, string> = { warehouse_admin: "仓库管理员", supervisor: "主管", staff: "财务", warehouse_labor: "劳工" };
 const STATUS_STYLES: Record<string, string> = { pending: "bg-yellow-50 text-yellow-700", confirmed: "bg-green-50 text-green-700", rejected: "bg-red-50 text-red-700", repaid: "bg-gray-100 text-gray-600" };
 const money = (value: number) => value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const currencyName = (currency: string) => currency === "CNY" ? "人民币" : "泰铢";
+const currencyAmounts = (amounts: CurrencyAmount[], legacy: number | null) => amounts?.length ? amounts.map(item => `${money(item.amount)} ${currencyName(item.currency)}`).join(" / ") : money(legacy || 0);
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-const newForm = () => ({ payer_id: "", payer_name: "", advance_date: today(), amount: "", purpose: "", description: "" });
+const newForm = () => ({ payer_id: "", payer_name: "", advance_date: today(), amount: "", currency: "THB", purpose: "", description: "" });
 
 export default function CashAdvancesPage() {
   const { user } = useAuth() as { user: any };
@@ -29,7 +34,7 @@ export default function CashAdvancesPage() {
   const canReview = user?.role === "warehouse_admin";
   const { toast } = useToast();
   const [rows, setRows] = useState<Advance[]>([]);
-  const [summary, setSummary] = useState<Summary>({ payer_count: 0, total_outstanding: 0, data: [] });
+  const [summary, setSummary] = useState<Summary>({ payer_count: 0, total_outstanding: 0, totals_by_currency: [], data: [] });
   const [total, setTotal] = useState(0), [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ start_date: "", end_date: "", status: "", payer_name: "" });
   const [loading, setLoading] = useState(false), [saving, setSaving] = useState(false);
@@ -39,6 +44,8 @@ export default function CashAdvancesPage() {
   const [reviewing, setReviewing] = useState<number | null>(null), [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const loadVersion = useRef(0);
+  const [repayAdvance, setRepayAdvance] = useState<Advance | null>(null);
+  const [historyAdvance, setHistoryAdvance] = useState<Advance | null>(null);
 
   useEffect(() => { if (canView) void load(); return () => { loadVersion.current++; }; }, [canView, page, filters]);
   async function load() {
@@ -80,7 +87,7 @@ export default function CashAdvancesPage() {
         if (!response.ok) throw new Error(result.detail || "凭证上传失败");
         voucher_path = result.path;
       }
-      await api.post("/cash-advances", { advance_date: form.advance_date, amount: form.amount, purpose: form.purpose,
+      await api.post("/cash-advances", { advance_date: form.advance_date, amount: form.amount, currency: form.currency, purpose: form.purpose,
         description: form.description.trim() || null, voucher_path,
         payer_id: !manual && form.payer_id ? Number(form.payer_id) : null,
         payer_name: manual ? form.payer_name.trim() : null,
@@ -108,24 +115,28 @@ export default function CashAdvancesPage() {
       {canCreate && <button type="button" onClick={openForm} className="btn-primary flex items-center gap-1"><Plus size={16} />新建垫款单</button>}
     </div>
     <section className="bg-white rounded-xl border p-4 space-y-2" aria-label="本仓垫款汇总">
-      <p>本仓现在欠垫款 <strong>{summary.payer_count}</strong> 人，共 <strong className="text-red-600">{money(summary.total_outstanding)}</strong> 元</p>
+      <p>本仓现在欠垫款 <strong>{summary.payer_count}</strong> 人，共 <strong className="text-red-600">{currencyAmounts(summary.totals_by_currency, summary.total_outstanding)}</strong></p>
       <p className="text-xs text-gray-500">汇总为本仓全部已确认、尚未归还的垫款，不随下方筛选变化。</p>
-      {summary.data.length > 0 && <div className="divide-y text-sm">{summary.data.map((payer, index) => <div key={`${payer.payer_id}-${index}`} className="flex justify-between gap-3 py-2"><span>{payer.payer_name}</span><span>{money(payer.outstanding_amount)} 元</span></div>)}</div>}
+      {summary.data.length > 0 && <div className="divide-y text-sm">{summary.data.map((payer, index) => <div key={`${payer.payer_id}-${index}`} className="flex justify-between gap-3 py-2"><span>{payer.payer_name}</span><span>{currencyAmounts(payer.totals_by_currency, payer.outstanding_amount)}</span></div>)}</div>}
     </section>
     <div className="flex flex-wrap gap-2 items-center">
       <input aria-label="开始日期" type="date" className="form-input w-auto" value={filters.start_date} onChange={e => filter("start_date", e.target.value)} />
       <span className="text-gray-400">至</span><input aria-label="结束日期" type="date" className="form-input w-auto" value={filters.end_date} onChange={e => filter("end_date", e.target.value)} />
-      <select aria-label="状态筛选" className="form-input w-auto" value={filters.status} onChange={e => filter("status", e.target.value)}><option value="">全部状态</option><option value="pending">待确认</option><option value="confirmed">已确认</option><option value="rejected">已驳回</option><option value="repaid">已归还</option></select>
+      <select aria-label="状态筛选" className="form-input w-auto" value={filters.status} onChange={e => filter("status", e.target.value)}><option value="">全部状态</option><option value="pending">待确认</option><option value="confirmed">已确认</option><option value="partially_repaid">部分归还</option><option value="rejected">已驳回</option><option value="repaid">已归还</option></select>
       <input aria-label="垫款人筛选" placeholder="按垫款人姓名筛选" className="form-input w-auto" maxLength={100} value={filters.payer_name} onChange={e => filter("payer_name", e.target.value)} />
     </div>
     <div className="bg-white rounded-xl border overflow-x-auto">
       <table className="w-full text-sm whitespace-nowrap"><thead className="bg-gray-50 text-gray-500"><tr>{["日期", "垫款人", "金额", "用途", "状态", "剩余未还", "说明 / 凭证", "操作"].map(title => <th key={title} className="text-left px-4 py-3">{title}</th>)}</tr></thead>
-        <tbody className="divide-y">{rows.map(row => <tr key={row.id}>
-          <td className="px-4 py-3">{row.advance_date}</td><td className="px-4 py-3">{row.payer_name}</td><td className="px-4 py-3">{money(row.amount)}</td><td className="px-4 py-3">{row.purpose_label}</td>
+        <tbody className="divide-y">{rows.map(row => <tr key={row.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setHistoryAdvance(row)}>
+          <td className="px-4 py-3">{row.advance_date}</td><td className="px-4 py-3">{row.payer_name}</td><td className="px-4 py-3">{money(row.amount)} {currencyName(row.currency)}</td><td className="px-4 py-3">{row.purpose_label}</td>
           <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${STATUS_STYLES[row.status]}`}>{row.status_label}</span>{row.reject_reason && <p className="whitespace-normal max-w-48 text-xs text-red-600 mt-2">{row.reject_reason}</p>}</td>
-          <td className="px-4 py-3">{money(row.outstanding_amount)}</td>
-          <td className="px-4 py-3"><p className="whitespace-normal max-w-56">{row.description || "—"}</p>{row.voucher_path && <a href={`/${row.voucher_path}`} target="_blank" rel="noreferrer" className="text-blue-600">查看凭证</a>}</td>
-          <td className="px-4 py-3">{canReview && row.status === "pending" && <div className="flex gap-3"><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></div>}</td>
+          <td className="px-4 py-3">{money(row.outstanding_amount)} {currencyName(row.currency)}</td>
+          <td className="px-4 py-3"><p className="whitespace-normal max-w-56">{row.description || "—"}</p>{row.voucher_path && <a href={`/${row.voucher_path}`} onClick={event => event.stopPropagation()} target="_blank" rel="noreferrer" className="text-blue-600">查看凭证</a>}</td>
+          <td className="px-4 py-3" onClick={event => event.stopPropagation()}><div className="flex gap-3">
+            {canReview && row.status === "pending" && <><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></>}
+            {canReview && row.status === "confirmed" && row.outstanding_amount > 0 && <button type="button" onClick={() => setRepayAdvance(row)} className="text-blue-600">归还</button>}
+            <button type="button" onClick={() => setHistoryAdvance(row)} className="text-gray-600">归还记录</button>
+          </div></td>
         </tr>)}{!rows.length && <tr><td colSpan={8} className="text-center text-gray-400 py-10">{loading ? "加载中..." : "暂无垫款单"}</td></tr>}</tbody>
       </table>
     </div>
@@ -139,6 +150,7 @@ export default function CashAdvancesPage() {
           </div>
           <label className="block text-sm">日期<input required type="date" className="form-input mt-1" value={form.advance_date} onChange={e => setForm({ ...form, advance_date: e.target.value })} /></label>
           <label className="block text-sm">金额<input required type="number" min="0.01" step="0.01" className="form-input mt-1" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></label>
+          <label className="block text-sm">币种<select aria-label="垫款币种" className="form-input mt-1" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}><option value="THB">泰铢</option><option value="CNY">人民币</option></select></label>
           <label className="block text-sm">用途<select required className="form-input mt-1" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })}><option value="">请选择用途</option>{Object.entries(PURPOSES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
           <label className="block text-sm">说明<textarea className="form-input mt-1" rows={3} maxLength={2000} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></label>
           <label className="block text-sm">凭证照片<input aria-label="凭证照片" type="file" accept="image/png,image/jpeg,image/webp" className="block w-full mt-2 text-sm" onChange={e => setFile(e.target.files?.[0] || null)} />{file && <span className="block mt-1 break-all text-gray-500">{file.name}</span>}</label>
@@ -147,5 +159,7 @@ export default function CashAdvancesPage() {
       </form>
     </div>}
     {rejectId !== null && <div role="dialog" aria-modal="true" aria-labelledby="cash-reject-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3"><form onSubmit={e => { e.preventDefault(); void review(rejectId, true); }} className="bg-white rounded-xl w-full max-w-sm max-h-[90dvh] overflow-y-auto p-5 space-y-4"><h2 id="cash-reject-title" className="font-semibold">驳回垫款单</h2><label className="block text-sm">驳回原因<textarea aria-label="驳回原因" className="form-input mt-1" rows={3} maxLength={500} value={rejectReason} onChange={e => setRejectReason(e.target.value)} /></label><div className="flex justify-end gap-3"><button type="button" disabled={reviewing !== null} className="btn-secondary" onClick={() => setRejectId(null)}>取消</button><button type="submit" disabled={reviewing !== null} className="btn-danger">确认驳回</button></div></form></div>}
+    {repayAdvance && <CashAdvanceRepaymentModal advance={repayAdvance} onClose={() => setRepayAdvance(null)} onSuccess={() => { void load(); }} />}
+    {historyAdvance && <CashAdvanceRepaymentHistory advance={historyAdvance} canRevoke={canReview} onClose={() => setHistoryAdvance(null)} onSuccess={() => { void load(); }} />}
   </div>;
 }

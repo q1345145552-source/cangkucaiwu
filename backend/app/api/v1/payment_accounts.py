@@ -8,6 +8,8 @@ from app.core.permissions import check_staff_permission, check_staff_permission_
 from app.schemas.business import PaymentAccountCreate
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+from app.services.account_balances import current_account_balances
+from app.models.cash_advance_repayment import CashAdvanceRepayment
 
 _PERMISSION = MENU_PERMISSIONS_BY_KEY["accounts"].label
 
@@ -26,9 +28,10 @@ async def list_accounts(current_user: User = Depends(check_staff_permission_any(
     query = query.where(PaymentAccount.warehouse_id.in_(get_wh_ids(current_user)))
     result = await db.execute(query.order_by(PaymentAccount.id))
     accs = result.scalars().all()
+    balances = await current_account_balances(db, accs)
     return {"data": [{"id": a.id, "warehouse_id": a.warehouse_id, "account_name": a.account_name,
                       "account_type": a.account_type, "account_number": a.account_number,
-                      "opening_balance": a.opening_balance, "bank_name": a.bank_name,
+                      "opening_balance": a.opening_balance, "current_balance": float(balances[a.id]), "bank_name": a.bank_name,
                       "branch_name": a.branch_name, "account_holder": a.account_holder,
                       "currency": a.currency or "THB", "status": a.status or "active",
                       "remark": a.remark} for a in accs]}
@@ -52,11 +55,17 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
                          db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id))
+    result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id).with_for_update())
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
     if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能修改自己仓库的账户")
+    if req.currency.upper() != (a.currency or "THB").upper():
+        active_repayment = (await db.execute(select(CashAdvanceRepayment.id).where(
+            CashAdvanceRepayment.account_id == a.id, CashAdvanceRepayment.status == "active",
+        ).limit(1))).first()
+        if active_repayment:
+            raise HTTPException(400, "该账户有有效垫款归还记录，不能修改币种")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(a, k, v)
     await db.flush(); return {"message": "更新成功"}
@@ -86,4 +95,6 @@ async def delete_account(account_id: int, current_user: User = Depends(check_sta
     if not a: raise HTTPException(404, "账户不存在")
     if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能删除自己仓库的账户")
+    if (await db.execute(select(CashAdvanceRepayment.id).where(CashAdvanceRepayment.account_id == a.id).limit(1))).first():
+        raise HTTPException(400, "该账户有关联的垫款归还记录，不能删除，请停用")
     await db.delete(a); await db.flush(); return {"message": "删除成功"}

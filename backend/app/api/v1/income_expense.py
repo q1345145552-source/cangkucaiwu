@@ -497,10 +497,12 @@ async def ledger(
 
     def date_cond(alias: str, col: str):
         conds = []
+        start_param = "DATE(:start_date)" if col == "repayment_date" else ":start_date"
+        end_param = "DATE(:end_date)" if col == "repayment_date" else ":end_date"
         if start_dt is not None:
-            conds.append(f"{alias}.{col} >= :start_date")
+            conds.append(f"{alias}.{col} >= {start_param}")
         if end_dt is not None:
-            conds.append(f"{alias}.{col} < :end_date")
+            conds.append(f"{alias}.{col} < {end_param}")
         return " AND ".join(conds) if conds else "1=1"
 
     unions = []
@@ -512,7 +514,7 @@ async def ledger(
             SELECT d.declare_date AS date_val, d.amount, d.currency, 'income' AS flow_type, 'recharge' AS source,
                    '充值申报' AS source_label,
                    COALESCE('客户: ' || cust.company_name, '充值') AS remark,
-                   'RC-' || d.id AS ref_no, d.id AS raw_id, 1 AS sort_ord
+                   'RC-' || d.id AS ref_no, d.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 1 AS sort_ord
             FROM recharge_declarations d
             LEFT JOIN customers cust ON d.customer_id = cust.id
             WHERE {wh_cond('d')} AND {date_cond('d', 'declare_date')}
@@ -524,7 +526,7 @@ async def ledger(
             SELECT f.received_date AS date_val, f.amount, f.currency, 'income' AS flow_type, 'incoming' AS source,
                    '到账流水' AS source_label,
                    '付款方: ' || COALESCE(f.payer_name, '') || COALESCE(' (' || f.payment_method || ')', '') AS remark,
-                   'FL-' || f.id AS ref_no, f.id AS raw_id, 2 AS sort_ord
+                   'FL-' || f.id AS ref_no, f.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 2 AS sort_ord
             FROM incoming_flows f
             WHERE {wh_cond('f')} AND {date_cond('f', 'received_date')}
         """)
@@ -535,7 +537,7 @@ async def ledger(
             SELECT ef.receive_date AS date_val, ef.amount, 'THB' AS currency, 'expense' AS flow_type,
                    'expense_fund' AS source, '备用金领用' AS source_label,
                    '领用人: ' || COALESCE(u.display_name, '') || ' (' || COALESCE(ef.purpose, '') || ')' AS remark,
-                   'EF-' || ef.id AS ref_no, ef.id AS raw_id, 3 AS sort_ord
+                   'EF-' || ef.id AS ref_no, ef.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 3 AS sort_ord
             FROM expense_funds ef
             LEFT JOIN users u ON ef.employee_id = u.id
             WHERE {wh_cond('ef')} AND ef.amount > 0 AND {date_cond('ef', 'receive_date')}
@@ -547,7 +549,7 @@ async def ledger(
             SELECT efi.expense_date AS date_val, efi.amount, COALESCE(efi.currency, 'THB') AS currency,
                    'expense' AS flow_type, 'fund_item' AS source, '备用金开销' AS source_label,
                    COALESCE(u2.display_name, '') || ': ' || efi.category || ' - ' || COALESCE(efi.description, '') AS remark,
-                   'FI-' || efi.id AS ref_no, efi.id AS raw_id, 4 AS sort_ord
+                   'FI-' || efi.id AS ref_no, efi.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 4 AS sort_ord
             FROM expense_fund_items efi
             JOIN expense_funds ef2 ON efi.fund_id = ef2.id
             LEFT JOIN users u2 ON ef2.employee_id = u2.id
@@ -561,7 +563,7 @@ async def ledger(
                    COALESCE(rb.currency, 'THB') AS currency, 'expense' AS flow_type,
                    'reimbursement' AS source, '报销' AS source_label,
                    '报销人: ' || COALESCE(u3.display_name, '') AS remark,
-                   'RB-' || rb.id AS ref_no, rb.id AS raw_id, 5 AS sort_ord
+                   'RB-' || rb.id AS ref_no, rb.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 5 AS sort_ord
             FROM reimbursements rb
             LEFT JOIN users u3 ON rb.employee_id = u3.id
             WHERE rb.status = 'paid' AND {wh_cond('rb')} AND {date_cond('rb', 'paid_at')}
@@ -574,7 +576,7 @@ async def ledger(
                    COALESCE(pb.currency, 'THB') AS currency, 'expense' AS flow_type,
                    'payable' AS source, '应付账款' AS source_label,
                    '账单: ' || COALESCE(pb.bill_number, '') || COALESCE(' (' || pb.remark || ')', '') AS remark,
-                   'PB-' || pb.id AS ref_no, pb.id AS raw_id, 6 AS sort_ord
+                   'PB-' || pb.id AS ref_no, pb.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 6 AS sort_ord
             FROM payable_bills pb
             WHERE pb.paid_amount > 0 AND {wh_cond('pb')} AND {date_cond('pb', 'paid_at')}
         """)
@@ -585,7 +587,7 @@ async def ledger(
             SELECT ir.income_date AS date_val, ir.amount, COALESCE(ir.currency, 'THB') AS currency,
                    'income' AS flow_type, 'manual' AS source, '手工收支' AS source_label,
                    COALESCE(iec.name, '') || COALESCE(' - ' || ir.remark, '') AS remark,
-                   'IN-' || ir.id AS ref_no, ir.id AS raw_id, 7 AS sort_ord
+                   'IN-' || ir.id AS ref_no, ir.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 7 AS sort_ord
             FROM income_records ir
             LEFT JOIN income_expense_categories iec ON ir.category_id = iec.id
             WHERE {wh_cond('ir')} AND {date_cond('ir', 'income_date')}
@@ -594,10 +596,23 @@ async def ledger(
             SELECT er.expense_date AS date_val, er.amount, COALESCE(er.currency, 'THB') AS currency,
                    'expense' AS flow_type, 'manual' AS source, '手工收支' AS source_label,
                    COALESCE(iec2.name, '') || COALESCE(' - ' || er.remark, '') AS remark,
-                   'EX-' || er.id AS ref_no, er.id AS raw_id, 8 AS sort_ord
+                   'EX-' || er.id AS ref_no, er.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 8 AS sort_ord
             FROM expense_records er
             LEFT JOIN income_expense_categories iec2 ON er.category_id = iec2.id
             WHERE {wh_cond('er')} AND {date_cond('er', 'expense_date')}
+        """)
+
+    # 垫款归还是资金流出，不写 ExpenseRecord；撤销留在流水中显示已冲销。
+    if not source or source == "cash_advance_repayment":
+        unions.append(f"""
+            SELECT cr.repayment_date AS date_val, cr.amount, cr.currency,
+                   'expense' AS flow_type, 'cash_advance_repayment' AS source, '垫款归还' AS source_label,
+                   '归还垫款 #' || cr.cash_advance_id || CASE WHEN cr.status = 'revoked'
+                       THEN '；已冲销：' || COALESCE(cr.revoke_reason, '') ELSE '' END AS remark,
+                   'CAR-' || cr.id AS ref_no, cr.id AS raw_id, cr.status AS ledger_status,
+                   cr.account_name AS account_name, cr.account_id AS account_id, 9 AS sort_ord
+            FROM cash_advance_repayments cr
+            WHERE {wh_cond('cr')} AND {date_cond('cr', 'repayment_date')}
         """)
 
     if not unions:
@@ -618,7 +633,7 @@ async def ledger(
         WITH all_flows AS (
             {full_union}
         )
-        SELECT date_val, amount, currency, flow_type, source, source_label, remark, ref_no, raw_id
+        SELECT date_val, amount, currency, flow_type, source, source_label, remark, ref_no, raw_id, ledger_status, account_name, account_id
         FROM all_flows
         {type_filter}
         ORDER BY date_val DESC NULLS LAST
@@ -654,8 +669,8 @@ async def ledger(
             {full_union}
         )
         SELECT
-            COALESCE(SUM(CASE WHEN flow_type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
-            COALESCE(SUM(CASE WHEN flow_type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
+            COALESCE(SUM(CASE WHEN flow_type = 'income' AND ledger_status = 'active' THEN amount ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN flow_type = 'expense' AND ledger_status = 'active' THEN amount ELSE 0 END), 0) AS total_expense
         FROM all_flows
         {type_filter}
     """
@@ -670,8 +685,8 @@ async def ledger(
             {full_union}
         )
         SELECT currency,
-            COALESCE(SUM(CASE WHEN flow_type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
-            COALESCE(SUM(CASE WHEN flow_type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
+            COALESCE(SUM(CASE WHEN flow_type = 'income' AND ledger_status = 'active' THEN amount ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN flow_type = 'expense' AND ledger_status = 'active' THEN amount ELSE 0 END), 0) AS total_expense
         FROM all_flows
         {type_filter}
         GROUP BY currency
@@ -686,8 +701,8 @@ async def ledger(
             {full_union}
         )
         SELECT
-            COALESCE(SUM(CASE WHEN flow_type = 'income' AND to_char(date_val, 'YYYY-MM') = :cur_month THEN amount ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN flow_type = 'expense' AND to_char(date_val, 'YYYY-MM') = :cur_month THEN amount ELSE 0 END), 0)
+            COALESCE(SUM(CASE WHEN flow_type = 'income' AND ledger_status = 'active' AND to_char(date_val, 'YYYY-MM') = :cur_month THEN amount ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN flow_type = 'expense' AND ledger_status = 'active' AND to_char(date_val, 'YYYY-MM') = :cur_month THEN amount ELSE 0 END), 0)
         FROM all_flows
         {type_filter}
     """
@@ -709,6 +724,10 @@ async def ledger(
             "remark": row[6] or "",
             "ref_no": row[7] or "",
             "id": row[8] or 0,
+            "status": row[9] or "active",
+            "status_label": "已冲销" if row[9] == "revoked" else "有效",
+            "account_name": row[10] or "", "account_id": row[11],
+            "is_non_cost_flow": row[4] == "cash_advance_repayment",
         })
 
     return {

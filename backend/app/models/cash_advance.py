@@ -23,6 +23,7 @@ class CashAdvance(Base):
     payer_name = Column(String(100), nullable=False)
     advance_date = Column(Date, nullable=False)
     amount = Column(Numeric(14, 2), nullable=False)
+    currency = Column(String(10), nullable=False, default="THB", server_default="THB")
     purpose = Column(String(20), nullable=False)
     description = Column(String(2000), nullable=True)
     voucher_path = Column(String(500), nullable=True)
