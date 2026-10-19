@@ -20,6 +20,7 @@ function monthStartStr(): string {
 
 export default function OperatingPage() {
   const { toast } = useToast(); const router = useRouter();
+  const [chartCurrency, setChartCurrency] = useState("THB");
   const [dashboard, setDashboard] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]); const [expTotal, setExpTotal] = useState(0);
   const [expPage, setExpPage] = useState(1);
@@ -309,7 +310,7 @@ export default function OperatingPage() {
   // === SVG Chart ===
   function renderChart() {
     if (!dashboard?.data || dashboard.data.length === 0) return null;
-    const d = dashboard.data;
+    const d = dashboard.data.map((r: any) => ({ ...r, recharge_income: r.income_by_currency?.[chartCurrency] || 0 }));
     const w = 860; const h = 280; const px = 65; const py = 35;
     const gw = w - px - 30; const gh = h - py * 2;
     const maxVal = Math.max(...d.map((x: any) => Math.max(x.recharge_income || 0, 1)), 1);
@@ -323,7 +324,7 @@ export default function OperatingPage() {
       const y = py + gh - ((d[i].recharge_income || 0) / scale * gh);
       linePath += (i === 0 ? "M" : "L") + x + "," + y + " ";
       areaPath += (i === 0 ? "M" : "L") + x + "," + y + " ";
-      dots.push(<circle key={"d" + i} cx={x} cy={y} r={3.5} fill="#2563EB" stroke="white" strokeWidth={2}><title>{d[i].label}: {fmtMoney(Math.round(d[i].recharge_income || 0))}</title></circle>);
+      dots.push(<circle key={"d" + i} cx={x} cy={y} r={3.5} fill="#2563EB" stroke="white" strokeWidth={2}><title>{d[i].label}: {fmtMoney(d[i].recharge_income || 0, chartCurrency)}</title></circle>);
     }
     areaPath += "L" + (px + (d.length - 1) * step) + "," + (py + gh) + " L" + px + "," + (py + gh) + " Z";
 
@@ -377,15 +378,15 @@ export default function OperatingPage() {
       {!reportView && <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-5">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center"><TrendingUp size={20} className="text-blue-600" /></div>
-          <div><h2 className="text-base font-semibold text-gray-800">充值收入趋势</h2><span className="text-xs text-gray-400">{dashboard?.granularity === "day" ? "按日" : "按月"} · {dateRange.start_date} ~ {dateRange.end_date}</span></div>
-          <div className="ml-auto flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-600" /><span className="text-xs text-gray-400">充值收入</span></div>
+          <div><h2 className="text-base font-semibold text-gray-800">实际收入趋势</h2><span className="text-xs text-gray-400">{dashboard?.granularity === "day" ? "按日" : "按月"} · {dateRange.start_date} ~ {dateRange.end_date}</span></div>
+          <div className="ml-auto flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-600" /><span className="text-xs text-gray-400">实际收入</span></div>
         </div>
         {loading ? (
           <div className="flex items-center justify-center h-64 text-gray-400"><div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mr-2" />加载中...</div>
         ) : dashboard?.data?.length > 0 ? (
-          <div className="bg-gradient-to-b from-blue-50/40 to-white rounded-xl p-3">{renderChart()}</div>
+          <div className="bg-gradient-to-b from-blue-50/40 to-white rounded-xl p-3"><select aria-label="趋势币种" className="form-input text-sm max-w-32 mb-2" value={chartCurrency} onChange={e => setChartCurrency(e.target.value)}><option value="THB">泰铢 THB</option><option value="CNY">人民币 CNY</option></select>{renderChart()}</div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-gray-50/50 rounded-xl"><TrendingUp size={44} className="text-gray-200 mb-3" /><span className="text-sm">该时间范围内暂无充值收入数据</span></div>
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-gray-50/50 rounded-xl"><TrendingUp size={44} className="text-gray-200 mb-3" /><span className="text-sm">该时间范围内暂无实际收入数据</span></div>
         )}
       </div>
 
@@ -399,7 +400,7 @@ export default function OperatingPage() {
         </div>
         <div className="bg-gray-50/70 rounded-xl p-4 mb-4">
           <div className="flex items-end gap-3 flex-wrap">
-            <div className="w-[140px]"><label className="form-label text-xs">类别</label><select className="form-input text-sm" value={expFilters.category_id} onChange={e => { setCostCategory(""); setExpPage(1); setExpFilters({ ...expFilters, category_id: +e.target.value }); }}><option value={0}>{costCategory || "全部类别"}</option><option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name === "采购" ? "手工采购" : c.name}</option>)}</select></div>
+            <div className="w-[140px]"><label className="form-label text-xs">类别</label><select className="form-input text-sm" value={expFilters.category_id} onChange={e => { setCostCategory(""); setExpPage(1); setExpFilters({ ...expFilters, category_id: +e.target.value }); }}><option value={0}>{costCategory || "全部类别"}</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name === "采购" ? "手工采购" : c.name}</option>)}</select></div>
             <div className="w-[110px]"><label className="form-label text-xs">币种</label><select className="form-input text-sm" value={expFilters.currency} onChange={e => setExpFilters({ ...expFilters, currency: e.target.value })}><option value="">全部</option><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
             <div className="w-[150px]"><label className="form-label text-xs">账户</label><select className="form-input text-sm" value={expFilters.account_id} onChange={e => setExpFilters({ ...expFilters, account_id: +e.target.value })}><option value={0}>全部账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name}</option>)}</select></div>
             <button onClick={resetFilters} className="btn-secondary flex items-center gap-1.5 text-sm h-[38px]">重置</button>
@@ -435,7 +436,7 @@ export default function OperatingPage() {
                     </button>
                   ) : <span className="text-gray-300">无</span>;
                 } },
-              ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.source === "payable" ? `应付付款 #${row.source_id}` : row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span> : (
+              ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.source === "payable" ? `采购付款记录 #${row.source_id}` : row.source === "cash_advance_repayment" ? `归还垫款 #${row.cash_advance_id}` : row.payroll_record_id ? `工资单 #${row.payroll_record_id}` : row.reimbursement_id ? `报销单 #${row.reimbursement_id}` : row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? `预支单 #${row.employee_advance_id}` : row.source === "expense_fund" ? "历史备用金拨付" : "业务联动明细"}</span> : (
                   <div className="flex items-center gap-2">
                     <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
                     <button onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
@@ -463,7 +464,7 @@ export default function OperatingPage() {
         {dashboard ? (
           <div className="grid grid-cols-3 gap-5">
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center"><ArrowUp size={16} className="text-green-600" /></div><span className="text-sm font-medium text-green-700">充值收入</span></div>
+              <div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center"><ArrowUp size={16} className="text-green-600" /></div><span className="text-sm font-medium text-green-700">实际收入</span></div>
               <div className="text-2xl font-bold text-green-700">{fmtMoneyByCurrency(dashboard.income_by_currency)}</div>
             </div>
             <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl p-6 border border-red-100 shadow-sm">

@@ -1,4 +1,4 @@
-"""垫款归还既是还款凭据，也是非成本资金流水的唯一来源。"""
+"""垫款归还是公司实际付款与按用途支出的唯一来源。"""
 from sqlalchemy import Column, Integer, String, Date, DateTime, Numeric, ForeignKey, CheckConstraint, Index, UniqueConstraint
 from app.database import Base
 from app.core.timezone import thai_now

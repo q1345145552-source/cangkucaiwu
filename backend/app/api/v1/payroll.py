@@ -1653,7 +1653,13 @@ async def _disbursement_funding(db, wh_id, req, records):
         return None, await lock_payroll_advance(db, wh_id, req.cash_advance_id, records)
     if req.cash_advance_id is not None:
         raise HTTPException(400, "公司账户发放不能选择垫款单")
-    return await payment_account(db, wh_id, req.account_id), None
+    account = await payment_account(db, wh_id, req.account_id)
+    from app.services.account_balances import current_account_balances
+    from decimal import Decimal
+    total = sum((Decimal(str(expense_amount(r))) for r in records), Decimal("0"))
+    if (await current_account_balances(db, [account]))[account.id] < total:
+        raise HTTPException(400, "公司账户余额不足")
+    return account, None
 
 
 @router.get("/cash-advance-sources")
@@ -1705,7 +1711,7 @@ async def batch_disburse_payroll(
         # 只发放已确认的；已发放的跳过不重复处理
         if r.status == "confirmed" and not r.disbursed:
             expense = await create_payroll_expense(db, r, account, current_user, now, cash_advance=advance)
-            expenses.append({"payroll_record_id": r.id, "expense_record_id": expense.id, "amount": expense.amount})
+            expenses.append({"payroll_record_id": r.id, "expense_record_id": expense.id if expense else None, "amount": expense_amount(r)})
             cnt += 1
     await db.flush()
     return {"message": f"已发放 {cnt} 条", "count": cnt, "account_id": account.id if account else None,
@@ -2094,7 +2100,7 @@ async def disburse_payroll(
         "message": f"已向 {emp_name} 发放 {r.net_pay:.2f} 泰铢工资",
         "id": r.id,
         "net_pay": r.net_pay,
-        "expense_record_id": expense.id,
+        "expense_record_id": expense.id if expense else None,
         "account_id": account.id if account else None,
         "funding_source": req.funding_source,
         "cash_advance_id": advance.id if advance else None,

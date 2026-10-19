@@ -248,10 +248,13 @@ def test_only_seven_requested_read_guards_added_all_queries_unchanged():
     routes=[r for r in app.routes if isinstance(r,APIRoute)
         and any(d.call is require_non_labor for d in r.dependant.dependencies)]
     expected={(method,'/api/v1'+template) for method,template,_,_ in BATCH1+BATCH2+CASES}
+    from tests.wallet_contract_support import WALLET_GUARDED_ROUTES
+    expected.update(WALLET_GUARDED_ROUTES)
     assert {(method,r.path) for r in routes for method in r.methods}==expected
     assert all(r.dependant.dependencies[0].call is require_non_labor for r in routes)
     root=Path(__file__).resolve().parents[2]
     for name in ('users','dashboard','customers','payment_accounts'):
         path='backend/app/api/v1/'+name+'.py'
         old=subprocess.check_output(['git','show','c04f7a4:'+path],cwd=root,text=True)
-        assert without_non_labor_guard((root/path).read_text())==without_non_labor_guard(old),path
+        from tests.wallet_contract_support import without_wallet_contract_changes
+        assert without_wallet_contract_changes(without_non_labor_guard((root/path).read_text())) == without_wallet_contract_changes(without_non_labor_guard(old)),path

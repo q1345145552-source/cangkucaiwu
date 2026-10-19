@@ -50,7 +50,7 @@ class ExpenseRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     category_id = Column(Integer, ForeignKey("income_expense_categories.id"), nullable=False)
-    account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=True)  # 垫款发工资只记成本，不走公司账户
+    account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=True)  # 历史记录可为空；新垫款业务在归还时按付款记录计支出
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
     amount = Column(Float, nullable=False)
     currency = Column(String(5), nullable=False, default="THB")

@@ -1,4 +1,4 @@
-"""垫款登记、确认和非成本归还；不写运营支出或工资。"""
+"""垫款登记、确认与归还；归还记录按用途计入实际支出，不重复写支出表。"""
 import os
 import uuid
 from datetime import date

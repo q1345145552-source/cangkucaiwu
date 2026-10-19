@@ -1,4 +1,5 @@
 "use client";
+import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -28,6 +29,8 @@ function todayStr(): string {
 
 export default function ExpenseApprovalsPage() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
+  const [accountId, setAccountId] = useState(0);
+  const [payAccountId, setPayAccountId] = useState(0);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -95,6 +98,7 @@ export default function ExpenseApprovalsPage() {
 
   function openEdit(r: any) {
     setEditingId(r.id);
+    setAccountId(r.payment_account_id || 0);
     setForm({
       amount: String(r.amount ?? ""), currency: r.currency || "THB", purpose: r.purpose || "",
       expense_date: r.expense_date || todayStr(), payment_method: r.payment_method || "cash", fund_source: r.fund_source || "company",
@@ -107,6 +111,7 @@ export default function ExpenseApprovalsPage() {
     const amt = parseFloat(form.amount);
     if (!amt || amt <= 0) { toast("error", "请填写金额"); return; }
     if (!form.purpose.trim()) { toast("error", "请填写用途说明"); return; }
+    if (form.fund_source === "company" && !accountId) { toast("error", "请选择付款账户"); return; }
     try {
       let voucher_base64: string | undefined;
       if (voucherFile) {
@@ -118,10 +123,10 @@ export default function ExpenseApprovalsPage() {
         });
       }
       if (editingId) {
-        const r = await api.put<any>(`/expense-approvals/${editingId}`, { ...form, amount: amt, voucher_base64 });
+        const r = await api.put<any>(`/expense-approvals/${editingId}`, { ...form, amount: amt, voucher_base64, payment_account_id: form.fund_source === "company" ? accountId : null });
         toast("success", r.message || "已重新提交");
       } else {
-        const r = await api.post<any>("/expense-approvals", { ...form, amount: amt, voucher_base64 });
+        const r = await api.post<any>("/expense-approvals", { ...form, amount: amt, voucher_base64, payment_account_id: form.fund_source === "company" ? accountId : null });
         toast("success", r.status === "completed" ? "费用已直接生效" : "已提交，等待审批");
       }
       setShowForm(false);
@@ -140,12 +145,14 @@ export default function ExpenseApprovalsPage() {
   }
 
   function openPay(id: number) {
+    setPayAccountId(rows.find(r => r.id === id)?.payment_account_id || 0);
     setPayId(id);
     setPayVoucherFile(null);
   }
 
   async function confirmPay() {
     if (!payId) return;
+    if (rows.find(r => r.id === payId)?.fund_source !== "fund" && !payAccountId) { toast("error", "请选择付款账户"); return; }
     if (!payVoucherFile) { toast("error", "请上传付款凭证"); return; }
     try {
       const voucher_base64 = await new Promise<string>((resolve, reject) => {
@@ -154,7 +161,7 @@ export default function ExpenseApprovalsPage() {
         reader.onerror = reject;
         reader.readAsDataURL(payVoucherFile);
       });
-      await api.post(`/expense-approvals/${payId}/pay`, { voucher_base64 });
+      await api.post(`/expense-approvals/${payId}/pay`, { voucher_base64, payment_account_id: payAccountId });
       toast("success", "已付款");
       setPayId(null);
       setPayVoucherFile(null);
@@ -328,6 +335,7 @@ export default function ExpenseApprovalsPage() {
                     {Object.entries(FUND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
+                {form.fund_source === "company" && <WalletAccountSelect value={accountId} onChange={setAccountId} currency={form.currency} />}
               </div>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">凭证照片</label>
@@ -377,6 +385,7 @@ export default function ExpenseApprovalsPage() {
               <Banknote size={20} /><span className="font-semibold">确认付款</span>
             </div>
             <div className="p-5 space-y-4">
+              {rows.find(r => r.id === payId)?.fund_source !== "fund" && <WalletAccountSelect value={payAccountId} onChange={setPayAccountId} currency={rows.find(r => r.id === payId)?.currency || "THB"} />}
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">付款凭证照片 <span className="text-red-400">*</span></label>
                 <div className="flex items-center gap-2">

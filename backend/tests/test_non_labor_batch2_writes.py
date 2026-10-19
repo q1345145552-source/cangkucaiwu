@@ -264,6 +264,8 @@ def test_only_ten_requested_decorators_added_and_handlers_unchanged():
     guarded=[r for r in app.routes if isinstance(r,APIRoute)
         and any(d.call is require_non_labor for d in r.dependant.dependencies)]
     expected={(method,'/api/v1'+template) for method,template,_,_ in BATCH1+CASES+READ_GROUP1}
+    from tests.wallet_contract_support import WALLET_GUARDED_ROUTES
+    expected.update(WALLET_GUARDED_ROUTES)
     assert {(method,r.path) for r in guarded for method in r.methods}==expected
     for route in guarded:
         assert route.dependant.dependencies[0].call is require_non_labor
@@ -271,5 +273,5 @@ def test_only_ten_requested_decorators_added_and_handlers_unchanged():
     for name in ('reconciliation','expense_fund','reimbursement','payable','upload'):
         path='backend/app/api/v1/'+name+'.py'
         old=subprocess.check_output(['git','show','e4a2bb7:'+path],cwd=root,text=True)
-        assert ast.dump(ast.parse(without_non_labor_guard((root/path).read_text())))==ast.dump(
-            ast.parse(without_non_labor_guard(old))),path
+        from tests.wallet_contract_support import without_wallet_contract_changes
+        assert without_wallet_contract_changes(without_non_labor_guard((root/path).read_text())) == without_wallet_contract_changes(without_non_labor_guard(old)),path

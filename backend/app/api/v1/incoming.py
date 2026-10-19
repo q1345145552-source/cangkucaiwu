@@ -5,16 +5,16 @@ from datetime import datetime
 from app.database import get_db
 from app.models.recharge import IncomingFlow, CurrencyEnum, MatchStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_non_labor, check_staff_permission, check_staff_permission_any
 from app.schemas.business import IncomingCreate, IncomingBatchImport
 
 router = APIRouter()
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_non_labor)])
 async def list_incoming(
     page: int = 1, page_size: int = 20, month: str = None, status: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("到账流水")),
+    _perm=Depends(check_staff_permission_any("到账流水", "账期管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -38,7 +38,7 @@ async def list_incoming(
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id,
         "received_date": r.received_date.isoformat() if r.received_date else None,
-        "amount": r.amount, "currency": r.currency or "THB",
+        "amount": r.amount, "currency": r.currency or "THB", "account_id": r.account_id,
         "payer_name": r.payer_name, "payment_method": r.payment_method, "remark": r.remark,
         "match_status": r.match_status or "unmatched",
         "entrant_name": user_map.get(r.entrant_id, ""),
@@ -54,8 +54,11 @@ async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "无法确定仓库")
+    from app.services.wallet import lock_account, positive_money
+    positive_money(req.amount)
+    await lock_account(db, wh_id, req.account_id, req.currency)
     r = IncomingFlow(
-        warehouse_id=wh_id,
+        warehouse_id=wh_id, account_id=req.account_id,
         received_date=datetime.fromisoformat(req.received_date),
         amount=req.amount, currency=req.currency,
         payer_name=req.payer_name, payment_method=req.payment_method,
@@ -69,10 +72,16 @@ async def batch_import(req: IncomingBatchImport, current_user: User = Depends(ge
                        _perm=Depends(check_staff_permission("到账流水"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
+    wh_id = get_wh_id(current_user)
+    if not wh_id: raise HTTPException(400, "请先选择仓库")
     imported = 0
+    from app.services.wallet import lock_account, positive_money
     for rec in req.records:
+        if rec.get("warehouse_id", wh_id) != wh_id: raise HTTPException(403, "不能导入其他仓库的到账")
+        positive_money(rec.get("amount"))
+        await lock_account(db, wh_id, rec.get("account_id"), rec.get("currency", "THB"))
         r = IncomingFlow(
-            warehouse_id=rec.get("warehouse_id", get_wh_id(current_user)),
+            warehouse_id=wh_id, account_id=rec.get("account_id"),
             received_date=datetime.fromisoformat(rec["received_date"]),
             amount=rec["amount"], currency=rec.get("currency", "THB"),
             payer_name=rec.get("payer_name"), payment_method=rec.get("payment_method"),
@@ -93,11 +102,11 @@ async def download_template(current_user: User = Depends(get_current_user),
     wb = Workbook(); ws = wb.active; ws.title = "到账流水导入模板"
     hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
-    headers = ["到账日期", "金额", "币种", "付款方", "付款方式", "备注"]
+    headers = ["到账日期", "金额", "币种", "付款方", "付款方式", "备注", "收款账户编号"]
     for c, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hf
     # Example row
-    example = ["2026-07-01", 5000, "THB", "示例客户", "银行转账", "示例备注"]
+    example = ["2026-07-01", 5000, "THB", "示例客户", "银行转账", "示例备注", "请填写本仓同币种账户编号"]
     ef = Font(italic=True, color="999999")
     for c, v in enumerate(example, 1):
         cell = ws.cell(row=2, column=c, value=v); cell.font = ef

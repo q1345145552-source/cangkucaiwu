@@ -1,4 +1,6 @@
 "use client";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
+import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
@@ -8,7 +10,11 @@ import { useRouter } from "next/navigation";
 import { Calendar, Play, Download, Eye, X, ChevronRight, FileText } from "lucide-react";
 
 export default function PaymentPlansPage() {
+  const canWriteWallet = useMenuPermission("payment_plans");
   const { toast } = useToast(); const router = useRouter();
+  const [executePlan, setExecutePlan] = useState<any>(null);
+  const [accountId, setAccountId] = useState(0);
+  const [executing, setExecuting] = useState(false);
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<any[]>([]);
@@ -52,13 +58,24 @@ export default function PaymentPlansPage() {
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
-  async function handleExecute(plan: any) {
-    if (!confirm(`确认执行计划"${plan.plan_name}"？\n执行后关联账单将自动标记为已付款。`)) return;
+  async function openExecute(plan: any) {
     try {
-      await api.put(`/payable/plans/${plan.id}/execute`, {});
+      const detail = await api.get<any>(`/payable/plans/${plan.id}/detail`);
+      const currencies = [...new Set((detail.bills || []).filter((b: any) => b.status !== "voided" && b.amount > b.paid_amount).map((b: any) => b.currency || "THB"))];
+      if (currencies.length > 1) { toast("error", "该计划含不同币种，请按币种拆分付款计划"); return; }
+      setAccountId(0); setExecutePlan({ ...plan, currency: currencies[0] || "THB" });
+    } catch (err: any) { toast("error", err.message || "计划加载失败"); }
+  }
+
+  async function handleExecute(plan: any) {
+    if (!accountId) { toast("error", "请选择付款账户"); return; }
+    setExecuting(true);
+    try {
+      await api.put(`/payable/plans/${plan.id}/execute?account_id=${accountId}`, {});
       toast("success", "计划执行成功，关联账单已付款");
-      load(); loadBills();
+      setExecutePlan(null); load(); loadBills();
     } catch (err: any) { toast("error", err.message || "执行失败"); }
+    finally { setExecuting(false); }
   }
 
   async function handleDeleteTemplate(id: number) {
@@ -181,7 +198,7 @@ export default function PaymentPlansPage() {
         )},
         { key: "id", label: "操作", render: (_: any, row: any) => (
           <div className="flex items-center gap-1">
-            {row.status === "pending" && <button onClick={() => handleExecute(row)} className="btn-primary btn-xs flex items-center gap-0.5"><Play size={12} />执行</button>}
+            {canWriteWallet && row.status === "pending" && <button onClick={() => openExecute(row)} className="btn-primary btn-xs flex items-center gap-0.5"><Play size={12} />执行</button>}
             <button onClick={() => handleViewDetail(row.id)} className="btn-secondary btn-xs">详情</button>
             <button onClick={() => handleExport(row.id)} className="btn-secondary btn-xs"><Download size={12} /></button>
           </div>
@@ -316,7 +333,15 @@ export default function PaymentPlansPage() {
         </div>
       )}
 
-      {/* 执行确认弹窗（简化版，直接用 confirm，不需要额外弹窗） */}
+      {/* 执行付款计划时明确实际付款账户 */}
+      {executePlan && <div className="modal-overlay"><div className="modal-sm p-5 max-h-[90dvh] overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-4">执行付款计划</h2>
+        <p className="text-sm mb-3">{executePlan.plan_name}：将实际支付关联账单的剩余应付金额。</p>
+        <WalletAccountSelect value={accountId} onChange={setAccountId} currency={executePlan.currency} />
+        <p className="text-xs text-gray-500">同一计划使用一个账户；不同币种请分开建立计划。</p>
+        <div className="flex gap-2 justify-end mt-4"><button className="btn-secondary" disabled={executing} onClick={() => setExecutePlan(null)}>取消</button>
+        <button className="btn-primary" disabled={executing || !accountId} onClick={() => handleExecute(executePlan)}>确认付款</button></div>
+      </div></div>}
     </>
   );
 }

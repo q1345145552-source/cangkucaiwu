@@ -1,4 +1,4 @@
-"""报销付款、成本、非成本垫款额度与撤销共用请求事务。"""
+"""报销公司付款与垫款额度共用请求事务；垫付不先记公司支出。"""
 import os
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -203,7 +203,11 @@ async def pay(db, r, req, user):
     if source != "expense_fund":
         voucher = validate_voucher(req.payment_voucher_path, r.warehouse_id)
         if req.payment_method not in ("cash", "transfer"): raise HTTPException(400, "请选择现金或转账付款方式")
-        if source == "company_account": account = await payment_account(db, r, req.payment_account_id)
+        if source == "company_account":
+            account = await payment_account(db, r, req.payment_account_id)
+            from app.services.account_balances import current_account_balances
+            if (await current_account_balances(db, [account]))[account.id] < amount:
+                raise HTTPException(400, "公司账户余额不足")
         else: advance = await lock_advance(db, r, req.cash_advance_id, amount)
     else:
         fund, item = await fund_details(db, r)
@@ -212,7 +216,7 @@ async def pay(db, r, req, user):
     r.cash_advance_id = advance.id if advance else None
     r.payment_method = req.payment_method if source != "expense_fund" else None
     r.payment_voucher_path = voucher
-    expense = await create_cost(db, r, amount, r.payment_account_id, voucher, user, now) if source != "expense_fund" else None
+    expense = await create_cost(db, r, amount, r.payment_account_id, voucher, user, now) if source == "company_account" else None
     p = ReimbursementPayment(reimbursement_id=r.id, warehouse_id=r.warehouse_id, amount=amount,
         currency=(r.currency or "THB").upper(), funding_source=source, payment_account_id=r.payment_account_id,
         account_name=account.account_name if account else None, cash_advance_id=r.cash_advance_id,

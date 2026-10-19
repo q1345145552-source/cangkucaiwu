@@ -1,4 +1,6 @@
 "use client";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
+import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -17,6 +19,7 @@ const RATING_LABELS: Record<string, string> = { A: "A级 优质", B: "B级 正�
 const RATING_ICONS: Record<string, any> = { A: ShieldCheck, B: Shield, C: ShieldAlert };
 
 export default function CreditPage() {
+  const canWriteWallet = useMenuPermission("credit");
   const { toast } = useToast(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -25,6 +28,10 @@ export default function CreditPage() {
   const [showForm, setShowForm] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [form, setForm] = useState({ customer_id: 0, credit_limit: 0, repayment_day: 15 });
+  const [paymentFor, setPaymentFor] = useState<any>(null);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [payment, setPayment] = useState({ amount: "", repayment_date: new Date().toLocaleDateString("en-CA"), account_id: 0, incoming_flow_id: "", mode: "new", request_key: "" });
+  const [receipts, setReceipts] = useState<any[]>([]);
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const _now = new Date();
@@ -71,6 +78,22 @@ export default function CreditPage() {
       a.download = "账期客户评估报告.xlsx"; a.click();
       toast("success", "导出成功");
     } catch { toast("error", "导出失败"); }
+  }
+
+  async function openPayment(row: any) {
+    setPaymentFor(row);
+    setPayment({ amount: "", repayment_date: _todayStr, account_id: 0, incoming_flow_id: "", mode: "new", request_key: crypto.randomUUID() });
+    try { const r = await api.get<any>("/incoming?page_size=200"); setReceipts(r.data || []); } catch { setReceipts([]); }
+  }
+  async function savePayment() {
+    if (!payment.amount || (payment.mode === "new" ? !payment.account_id : !payment.incoming_flow_id)) { toast("error", "请填写金额并选择账户或到账流水"); return; }
+    setPaymentSaving(true);
+    try {
+      await api.post(`/credit/${paymentFor.id}/payment`, { amount: +payment.amount, repayment_date: payment.repayment_date, request_key: payment.request_key,
+        account_id: payment.mode === "new" ? payment.account_id : null, incoming_flow_id: payment.mode === "existing" ? +payment.incoming_flow_id : null });
+      toast("success", "回款已登记，到账只计一次"); setPaymentFor(null); setDetail(null); load(); loadDashboard();
+    } catch (err: any) { toast("error", err.message || "登记失败"); }
+    finally { setPaymentSaving(false); }
   }
 
   return (
@@ -182,7 +205,7 @@ export default function CreditPage() {
                           <Icon size={11} />{RATING_LABELS[quickRating]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-800">{row.customer_name}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800">{row.customer_name}{canWriteWallet && <button className="btn-secondary btn-xs ml-2" onClick={e => { e.stopPropagation(); openPayment(row); }}>登记回款</button>}</td>
                       <td className="px-4 py-3 text-right font-mono text-sm">฿{row.credit_limit?.toLocaleString()}</td>
                       <td className="px-4 py-3 text-right font-mono text-sm text-blue-700">฿{row.current_debt?.toLocaleString()}</td>
                       <td className={`px-4 py-3 text-center font-medium ${row.overdue_days > 0 ? "text-red-600" : "text-gray-400"}`}>{row.overdue_days || 0}天</td>
@@ -319,6 +342,18 @@ export default function CreditPage() {
           </div>
         </div>
       )}
+      {paymentFor && <div className="modal-overlay"><div className="modal-sm p-5 max-h-[90dvh] overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-4">登记回款 · {paymentFor.customer_name}</h2>
+        <label className="form-label">登记方式</label><select className="form-input mb-3" value={payment.mode} onChange={e => setPayment({ ...payment, mode: e.target.value })}>
+          <option value="new">新到账（同时记录收款）</option><option value="existing">关联已有到账（不重复记收入）</option></select>
+        {payment.mode === "new" ? <WalletAccountSelect value={payment.account_id} onChange={account_id => setPayment(p => ({ ...p, account_id }))} currency={paymentFor.currency || "THB"} label="收款账户" /> :
+          <div className="form-group"><label className="form-label">到账流水</label><select className="form-input" value={payment.incoming_flow_id} onChange={e => {
+            const row = receipts.find(r => r.id === +e.target.value); setPayment({ ...payment, incoming_flow_id: e.target.value, amount: row ? String(row.amount) : "", repayment_date: row?.received_date?.slice(0,10) || payment.repayment_date });
+          }}><option value="">请选择已到账的一笔</option>{receipts.filter(r => r.currency === (paymentFor.currency || "THB")).map(r => <option key={r.id} value={r.id}>#{r.id} {r.received_date?.slice(0,10)} {r.payer_name} {r.amount} {r.currency}</option>)}</select></div>}
+        <div className="form-group"><label className="form-label">实际收款日期</label><input className="form-input" type="date" value={payment.repayment_date} onChange={e => setPayment({ ...payment, repayment_date: e.target.value })} /></div>
+        <div className="form-group"><label className="form-label">金额</label><input className="form-input" type="number" step="0.01" value={payment.amount} onChange={e => setPayment({ ...payment, amount: e.target.value })} /></div>
+        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={paymentSaving} onClick={() => setPaymentFor(null)}>取消</button><button className="btn-primary" disabled={paymentSaving} onClick={savePayment}>确认登记</button></div>
+      </div></div>}
     </>
   );
 }

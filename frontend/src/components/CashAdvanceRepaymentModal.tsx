@@ -47,7 +47,7 @@ export default function CashAdvanceRepaymentModal({ advance, onClose, onSuccess 
       if (!response.ok) throw new Error(upload.detail || "凭证照片上传失败");
       await api.post(`/cash-advances/${advance.id}/repayments`, { repayment_date: date, amount, account_id: Number(accountId),
         payment_method: method, voucher_path: upload.path, description: description.trim() || null, request_key: requestKey });
-      toast("success", "归还成功，已记资金流水，不计入成本"); onSuccess(); onClose();
+      toast("success", "归还成功，已按用途计入支出和资金流水"); onSuccess(); onClose();
     } catch (err: any) { toast("error", err.message || "归还失败"); }
     finally { setSaving(false); }
   }

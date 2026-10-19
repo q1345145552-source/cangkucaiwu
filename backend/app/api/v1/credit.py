@@ -25,6 +25,9 @@ class CreditUpdate(BaseModel):
 
 class RepaymentCreate(BaseModel):
     repayment_date: str; amount: float; remark: Optional[str] = None
+    request_key: Optional[str] = None
+    account_id: Optional[int] = None
+    incoming_flow_id: Optional[int] = None
 
 class ShipmentCreate(BaseModel):
     ship_date: str; amount: float; order_no: Optional[str] = None; remark: Optional[str] = None
@@ -145,7 +148,7 @@ async def list_credit_customers(
         debt, overdue = debt_map.get(r.id, (0, 0))
         data.append({
             "id": r.id, "warehouse_id": r.warehouse_id, "customer_id": r.customer_id,
-            "customer_name": cmap.get(r.customer_id, ""),
+            "customer_name": cmap.get(r.customer_id, ""), "currency": next((c.default_currency or "THB" for c in custs if c.id == r.customer_id), "THB"),
             "credit_limit": r.credit_limit, "current_debt": debt,
             "overdue_days": overdue, "repayment_day": r.repayment_day,
             "status": r.status, "remark": r.remark,
@@ -256,7 +259,7 @@ async def credit_detail(credit_id: int, start_date: str = None, end_date: str = 
         "avg_monthly_repay": assessment["avg_monthly_repay"] if assessment else 0,
         "utilization_rate": assessment["utilization_rate"] if assessment else 0,
         "repayments": [{"id": r.id, "repayment_date": r.repayment_date.isoformat() if r.repayment_date else None,
-                        "amount": r.amount, "remark": r.remark,
+                        "amount": r.amount, "remark": r.remark, "incoming_flow_id": r.incoming_flow_id,
                         "created_at": r.created_at.isoformat() if r.created_at else None} for r in reps],
         "shipments": [{"id": s.id, "ship_date": s.ship_date.isoformat() if s.ship_date else None,
                        "order_no": s.order_no, "amount": s.amount, "remark": s.remark,
@@ -310,16 +313,47 @@ async def record_repayment(credit_id: int, req: RepaymentCreate,
                            _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
+    result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id).with_for_update().execution_options(populate_existing=True))
     c = result.scalar_one_or_none()
     if not c: raise HTTPException(404, "记录不存在")
     if c.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库的账期客户")
     if req.amount is None or req.amount <= 0:
         raise HTTPException(400, "还款金额必须大于0")
+    from app.models.recharge import IncomingFlow
+    from app.services.wallet import positive_money, money, lock_account
+    value = positive_money(req.amount)
+    customer = await db.get(Customer, c.customer_id)
+    currency = customer.default_currency or "THB"
+    if req.request_key:
+        old = (await db.execute(select(CreditRepayment).where(CreditRepayment.request_key == req.request_key))).scalar_one_or_none()
+        if old:
+            if old.credit_customer_id != credit_id or money(old.amount) != value or old.repayment_date.date() != datetime.fromisoformat(req.repayment_date).date():
+                raise HTTPException(409, "回款请求已使用，请刷新后重试")
+            old_flow = await db.get(IncomingFlow, old.incoming_flow_id)
+            if old_flow is None or (req.account_id is not None and req.account_id != old_flow.account_id) or (req.incoming_flow_id is not None and req.incoming_flow_id != old_flow.id):
+                raise HTTPException(409, "回款请求已使用，请刷新后重试")
+            debt, overdue = await _compute_debt_and_overdue(db, credit_id)
+            return {"id": old.id, "incoming_flow_id": old.incoming_flow_id, "current_debt": debt, "overdue_days": overdue, "message": "回款已登记"}
+    if req.incoming_flow_id:
+        flow = (await db.execute(select(IncomingFlow).where(IncomingFlow.id == req.incoming_flow_id,
+            IncomingFlow.warehouse_id == c.warehouse_id).with_for_update())).scalar_one_or_none()
+        if flow is None or money(flow.amount) != value or flow.currency != currency:
+            raise HTTPException(400, "到账流水不存在、币种或金额不一致")
+        if flow.received_date.date() != datetime.fromisoformat(req.repayment_date).date():
+            raise HTTPException(400, "回款日期必须与到账日期一致")
+        if (await db.execute(select(CreditRepayment.id).where(CreditRepayment.incoming_flow_id == flow.id))).first():
+            raise HTTPException(400, "该到账流水已登记回款")
+    else:
+        account = await lock_account(db, c.warehouse_id, req.account_id, currency)
+        flow = IncomingFlow(warehouse_id=c.warehouse_id, account_id=account.id,
+            received_date=datetime.fromisoformat(req.repayment_date), amount=float(value), currency=currency,
+            payer_name=customer.company_name, remark=f"账期回款 #{credit_id} {req.remark or ''}", entrant_id=current_user.id)
+        db.add(flow)
+        await db.flush()
     r = CreditRepayment(
         credit_customer_id=credit_id, repayment_date=datetime.fromisoformat(req.repayment_date),
-        amount=req.amount, remark=req.remark, recorded_by=current_user.id,
+        amount=req.amount, remark=req.remark, recorded_by=current_user.id, incoming_flow_id=flow.id, request_key=req.request_key,
     )
     db.add(r)
 
@@ -329,7 +363,7 @@ async def record_repayment(credit_id: int, req: RepaymentCreate,
     c.overdue_days = overdue
     await db.flush()
 
-    return {"id": r.id, "current_debt": debt, "overdue_days": overdue, "message": "还款记录创建成功"}
+    return {"id": r.id, "incoming_flow_id": flow.id, "current_debt": debt, "overdue_days": overdue, "message": "还款记录创建成功，已关联到账流水"}
 
 @router.get("/dashboard")
 async def credit_dashboard(current_user: User = Depends(get_current_user),

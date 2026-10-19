@@ -26,6 +26,7 @@ from app.models.expense_approval import ExpenseApproval
 from app.models.cash_advance import CashAdvance, CashAdvanceDocument
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.reimbursement_payment import ReimbursementPayment
+from app.models.wallet import PayablePayment, AccountTransfer
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",

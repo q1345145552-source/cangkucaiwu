@@ -28,6 +28,9 @@ class PayableBill(Base):
     amount = Column(Float, nullable=False)
     currency = Column(String(5), nullable=False, default="THB")
     paid_amount = Column(Float, default=0)
+    # 第一次逐笔付款前冻结旧累计额和日期，后续付款不再挪动历史月份。
+    legacy_paid_amount = Column(Float, nullable=True)
+    legacy_paid_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(30), default=PayableStatus.PENDING.value)
     confirmed_amount = Column(Float, nullable=True, comment="供应商确认金额，与amount不同时标差异")
     payment_commitment_days = Column(Integer, nullable=True, comment="付款承诺天数")

@@ -18,7 +18,8 @@ from app.core.permissions import require_non_labor
 from app.core.menu_registry import MENU_PERMISSIONS
 from app.models.supplier import Supplier
 from app.models.payable import PayableBill, PayablePlan, PlanTemplate
-from app.models.income_expense import IncomeRecord
+from app.models.income_expense import IncomeRecord, IncomeExpenseCategory
+from app.models import PaymentAccount
 from app.models.credit import CreditCustomer
 from app.models.market import MarketItem
 from app.models.group_order import GroupOrder
@@ -35,11 +36,11 @@ CASES = [
     ('PUT', '/suppliers/{supplier_id}', '/suppliers/1', {'name':'更新供应商'}),
     ('DELETE', '/suppliers/{supplier_id}', '/suppliers/3', None),
     ('POST', '/recharge', '/recharge', {'customer_id':1,'declare_date':'2026-10-20','amount':50}),
-    ('PUT', '/income-expense/income/{income_id}', '/income-expense/income/90', {'category_id':1,'account_id':1,'amount':15,'income_date':'2026-10-10'}),
+    ('PUT', '/income-expense/income/{income_id}', '/income-expense/income/90', {'category_id':90,'account_id':1,'amount':15,'income_date':'2026-10-10'}),
     ('DELETE', '/income-expense/income/{income_id}', '/income-expense/income/90', None),
-    ('PUT', '/payable/plans/{plan_id}/execute', '/payable/plans/1/execute', None),
+    ('PUT', '/payable/plans/{plan_id}/execute', '/payable/plans/1/execute?account_id=1', None),
     ('DELETE', '/payable/plan-templates/{template_id}', '/payable/plan-templates/1', None),
-    ('POST', '/credit/{credit_id}/payment', '/credit/1/payment', {'repayment_date':'2026-10-20','amount':10}),
+    ('POST', '/credit/{credit_id}/payment', '/credit/1/payment', {'repayment_date':'2026-10-20','amount':10,'account_id':1}),
     ('POST', '/market/{item_id}/purchase', '/market/1/purchase', {'contact_info':'测试购买'}),
     ('PUT', '/market/{item_id}/confirm', '/market/1/confirm', None),
     ('POST', '/group-order/{go_id}/join', '/group-order/1/join', {'quantity':1}),
@@ -52,7 +53,12 @@ ALL_PERMISSIONS = [p.label for p in MENU_PERMISSIONS if p.selectable]
 async def environment(tmp_path, monkeypatch):
     tmp_path.mkdir(exist_ok=True)
     async with attendance_environment(tmp_path, monkeypatch) as (engine, factory, client):
+        import app.services.payable_payment as payments
+        from app.core.timezone import THAI_TZ
+        monkeypatch.setattr(payments, 'thai_now', lambda: datetime(2026,10,20,12,tzinfo=THAI_TZ))
         async with factory() as db:
+            (await db.get(PaymentAccount,1)).opening_balance = 20000
+            db.add(IncomeExpenseCategory(id=90,warehouse_id=1,type='income',name='实际收入',category_group='other'))
             db.add_all([Supplier(id=i,warehouse_id=1,name=f'测试供应商{i}') for i in (1,3)])
             db.add(PayableBill(id=1,warehouse_id=1,supplier_id=1,bill_number='GUARD-1',
                 bill_date=datetime(2026,10,1),due_date=datetime(2026,12,30),amount=100))
@@ -132,6 +138,10 @@ def test_batch_report_admin_all_fifteen_and_original_credit_rejection(tmp_path, 
                     'labor':{'status':response.status_code,'body':response.json()}})
             assert await snapshot(factory)==before
             for case,row in zip(CASES,rows):
+                if case[1] in ('/income-expense/income/{income_id}', '/payable/plans/{plan_id}/execute','/credit/{credit_id}/payment'):
+                    async with factory() as db:
+                        (await db.get(PaymentAccount,1)).status = 'active'
+                        await db.commit()
                 response = await call(client,case,1)
                 assert response.status_code==200,response.text
                 row['warehouse_admin']={'status':response.status_code,'body':response.json()}
@@ -155,6 +165,8 @@ def test_guard_first_all_approved_routes_and_all_business_code_unchanged():
     guarded=[r for r in app.routes if isinstance(r,APIRoute)
         and any(d.call is require_non_labor for d in r.dependant.dependencies)]
     expected={(method,'/api/v1'+template) for method,template,_,_ in CASES+BATCH2+READ_GROUP1}
+    from tests.wallet_contract_support import WALLET_GUARDED_ROUTES
+    expected.update(WALLET_GUARDED_ROUTES)
     assert {(method,r.path) for r in guarded for method in r.methods}==expected
     for r in guarded:
         assert r.dependant.dependencies[0].call is require_non_labor
@@ -165,4 +177,5 @@ def test_guard_first_all_approved_routes_and_all_business_code_unchanged():
     from tests.non_labor_test_support import without_non_labor_guard
     for path in paths:
         old=subprocess.check_output(['git','show','78b50cc:'+path],cwd=root,text=True)
-        assert ast.dump(ast.parse(without_non_labor_guard((root/path).read_text())))==ast.dump(ast.parse(old)),path
+        from tests.wallet_contract_support import without_wallet_contract_changes
+        assert without_wallet_contract_changes(without_non_labor_guard((root/path).read_text())) == without_wallet_contract_changes(old),path

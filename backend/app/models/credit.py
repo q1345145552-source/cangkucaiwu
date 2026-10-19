@@ -50,6 +50,8 @@ class CreditRepayment(Base):
     credit_customer_id = Column(Integer, ForeignKey("credit_customers.id"), nullable=False, index=True)
     repayment_date = Column(DateTime, nullable=False)
     amount = Column(Float, nullable=False)
+    request_key = Column(String(64), nullable=True, unique=True)
+    incoming_flow_id = Column(Integer, ForeignKey("incoming_flows.id"), nullable=True, unique=True)
     remark = Column(String(500), nullable=True)
     recorded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

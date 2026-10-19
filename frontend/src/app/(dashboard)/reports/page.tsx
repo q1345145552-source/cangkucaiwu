@@ -113,7 +113,8 @@ export default function ReportsPage() {
   function formatPreview(key: string, p: any): string {
     if (!p) return "";
     if (key === "reconciliation-diff") return `${p.count || 0}条`;
-    return fmtMoney(p.preview);
+    if (p.preview_by_currency) return fmtMoneyByCurrency(p.preview_by_currency);
+    return p.preview == null ? "按币种查看" : fmtMoney(p.preview);
   }
 
   const cols = selected ? (columnConfig[selected] || []) : [];
@@ -189,7 +190,7 @@ export default function ReportsPage() {
             {selected === "income-expense" && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                 <div className="bg-green-50 rounded-xl p-4"><div className="text-xs text-green-500 mb-1">总收入</div><div className="text-lg font-bold text-green-700">{fmtMoneyByCurrency(data.total_income_by_currency)}</div></div>
-                <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">充值收入</div><div className="text-lg font-bold text-blue-700">{fmtMoneyByCurrency(data.recharge_income_by_currency)}</div></div>
+                <div className="bg-blue-50 rounded-xl p-4"><div className="text-xs text-blue-500 mb-1">到账收入</div><div className="text-lg font-bold text-blue-700">{fmtMoneyByCurrency(data.recharge_income_by_currency)}</div></div>
                 <div className="bg-orange-50 rounded-xl p-4"><div className="text-xs text-orange-500 mb-1">其他收入</div><div className="text-lg font-bold text-orange-700">{fmtMoneyByCurrency(data.other_income_by_currency)}</div></div>
                 <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">总支出</div><div className="text-lg font-bold text-red-700">{fmtMoneyByCurrency(data.total_expense_by_currency)}</div></div>
               </div>

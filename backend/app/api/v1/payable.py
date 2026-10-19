@@ -262,39 +262,23 @@ async def upload_bill_attachment(bill_id: int, file: UploadFile = File(...),
     return {"message": "账单附件上传成功", "path": b.bill_attachment}
 
 @router.put("/{bill_id}/pay")
-async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str = None,
+async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str = None, account_id: int = None, request_key: str = None,
                    current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
                    db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
-    result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
-    b = result.scalar_one_or_none()
+    b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id).with_for_update()
+        .execution_options(populate_existing=True))).scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
-    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "无权操作其他仓库的账单")
-    if b.need_boss_confirm == "true":
-        raise HTTPException(400, "该账单存在收货差异，需老板确认后才能付款")
-    remaining = b.amount - b.paid_amount
-    pay = paid_amount if paid_amount is not None else remaining
-    # Boundary checks
-    if pay <= 0:
-        raise HTTPException(400, "付款金额必须大于0")
-    if pay > remaining:
-        raise HTTPException(400, f"付款金额({pay:,.2f})超过剩余应付({remaining:,.2f})")
-    b.paid_amount += pay
-    b.paid_at = thai_now()
-    if payment_method:
-        b.payment_method = payment_method
-    if b.paid_amount >= b.amount:
-        b.status = PayableStatus.PAID.value
-    else:
-        b.status = PayableStatus.PARTIALLY_PAID.value
-    # 清除逾期标记
-    if b.status in (PayableStatus.PAID.value, PayableStatus.PARTIALLY_PAID.value) and b.status != PayableStatus.OVERDUE.value:
-        pass
-    await db.flush(); return {"message": "付款记录成功"}
+    if b.warehouse_id not in get_wh_ids(current_user): raise HTTPException(403, "无权操作其他仓库的账单")
+    from app.services.payable_payment import record_payment
+    from app.services.wallet import money
+    row = await record_payment(db, b, paid_amount if paid_amount is not None else money(b.amount) - money(b.paid_amount),
+        account_id, payment_method, current_user, request_key)
+    return {"message": "付款记录成功", "payment_id": row.id, "amount": float(row.amount),
+        "account_id": row.account_id, "paid_at": row.paid_at.isoformat()}
 
 @router.put("/{bill_id}/confirm")
 async def confirm_bill(bill_id: int, current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db)):
@@ -376,7 +360,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
 
     # 已付款账单只允许改 备注 和 差异处理说明
     provided = req.model_dump(exclude_none=True)
-    if b.status == PayableStatus.PAID.value:
+    if b.status == PayableStatus.PAID.value or (b.paid_amount or 0) > 0:
         disallowed = [k for k in provided.keys() if k not in ("remark", "diff_note")]
         if disallowed:
             raise HTTPException(400, "已付款的账单只能修改备注")
@@ -807,10 +791,10 @@ async def payable_timeline(current_user: User = Depends(check_staff_permission(_
 
 # === Execute Plan ===
 @router.put("/plans/{plan_id}/execute", dependencies=[Depends(require_non_labor)])
-async def execute_plan(plan_id: int, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
+async def execute_plan(plan_id: int, account_id: int = None, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id))
+    result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id).with_for_update())
     p = result.scalar_one_or_none()
     if not p: raise HTTPException(404, "计划不存在")
     if current_user.role != Role.SUPER_ADMIN and p.warehouse_id not in get_wh_ids(current_user):
@@ -821,15 +805,15 @@ async def execute_plan(plan_id: int, current_user: User = Depends(check_staff_pe
     paid_count = 0
     if p.bill_ids:
         from app.services.flow_rules import should_settle_bill
-        bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(p.bill_ids)))).scalars().all()
+        bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(p.bill_ids)).order_by(PayableBill.id).with_for_update())).scalars().all()
         for b in bills:
             # 仅结算本仓库、且尚未付清的账单（幂等：已付清的跳过，不重复计入现金流出）
             if not should_settle_bill(b.warehouse_id, b.status, b.paid_amount, b.amount, wh_ids, PayableStatus.PAID.value):
                 continue
-            b.paid_amount = b.amount  # 付清剩余部分
-            b.paid_at = thai_now()
-            b.payment_method = b.payment_method or "银行转账"
-            b.status = PayableStatus.PAID.value
+            from app.services.payable_payment import record_payment
+            from app.services.wallet import money
+            await record_payment(db, b, money(b.amount) - money(b.paid_amount), account_id,
+                b.payment_method or "银行转账", current_user)
             paid_count += 1
     p.status = PlanStatus.EXECUTED.value
     await db.flush()
@@ -853,7 +837,7 @@ async def plan_detail(plan_id: int, current_user: User = Depends(check_staff_per
             smap = {s.id: s.name for s in sups}
         bills_data = [{
             "id": b.id, "supplier_name": smap.get(b.supplier_id, ""),
-            "bill_number": b.bill_number, "amount": b.amount,
+            "bill_number": b.bill_number, "amount": b.amount, "currency": b.currency or "THB",
             "due_date": b.due_date.isoformat() if b.due_date else None,
             "status": b.status, "paid_amount": b.paid_amount,
         } for b in bills]

@@ -30,7 +30,7 @@ async def backfill_advance_categories(conn):
     return result.rowcount
 
 
-async def create_advance_expense(db, advance, operator):
+async def create_advance_expense(db, advance, operator, *, paid_at=None):
     if not advance.expense_tracking_enabled or advance.approval_status != AdvanceApprovalStatus.APPROVED.value:
         return None
     if advance.funding_source in ("cash_advance", "expense_fund"):
@@ -60,7 +60,7 @@ async def create_advance_expense(db, advance, operator):
     expense = ExpenseRecord(warehouse_id=advance.warehouse_id, category_id=category.id,
         account_id=advance.payment_account_id if advance.funding_source == "company_account" else None,
         amount=advance.amount, currency=advance.currency or "THB",
-        expense_date=datetime.combine(advance.advance_date, time.min),
+        expense_date=(paid_at.replace(tzinfo=None) if paid_at else datetime.combine(advance.advance_date, time.min)),
         remark=f"{employee.name} 预支（预支单 #{advance.id}）", approved_by=operator.id)
     db.add(expense)
     await db.flush()
@@ -68,7 +68,7 @@ async def create_advance_expense(db, advance, operator):
     await record_history(db, module="expense", record_id=expense.id, operator=operator,
         operation_type="create", after={"employee_advance_id": advance.id,
             "employee_id": advance.employee_id, "amount": expense.amount, "currency": expense.currency,
-            "expense_date": advance.advance_date.isoformat(), "remark": expense.remark},
+            "expense_date": expense.expense_date.isoformat(), "remark": expense.remark},
         warehouse_id=advance.warehouse_id)
     return expense
 

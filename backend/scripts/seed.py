@@ -28,6 +28,41 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_wallet_basis(conn):
+    """只增加收付关联/逐笔表；不补成本、不重算工资、不猜拆历史付款。失败终止启动。"""
+    from sqlalchemy import text
+    from app.models.wallet import PayablePayment, AccountTransfer
+    from sqlalchemy.schema import CreateTable, CreateIndex
+    from sqlalchemy.dialects.postgresql import dialect
+    statements = (
+        "ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS opening_balance_date DATE",
+        "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS legacy_paid_amount DOUBLE PRECISION",
+        "ALTER TABLE payable_bills ADD COLUMN IF NOT EXISTS legacy_paid_at TIMESTAMPTZ",
+        "ALTER TABLE incoming_flows ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES payment_accounts(id)",
+        "ALTER TABLE credit_repayments ADD COLUMN IF NOT EXISTS incoming_flow_id INTEGER REFERENCES incoming_flows(id)",
+        "ALTER TABLE credit_repayments ADD COLUMN IF NOT EXISTS request_key VARCHAR(64)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_credit_repayment_request ON credit_repayments(request_key)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_credit_repayment_incoming ON credit_repayments(incoming_flow_id)",
+        "ALTER TABLE expense_approvals ADD COLUMN IF NOT EXISTS payment_account_id INTEGER REFERENCES payment_accounts(id)",
+        "ALTER TABLE expense_approvals ADD COLUMN IF NOT EXISTS expense_record_id INTEGER REFERENCES expense_records(id)",
+        # 仅固定原“月初余额”的日期，原金额不变，重启不滚动锚点。
+        "UPDATE payment_accounts SET opening_balance_date = date_trunc('month', timezone('Asia/Bangkok', now()))::date WHERE opening_balance_date IS NULL",
+    )
+    for statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"钱包口径迁移失败：{exc}")
+            raise
+    for model in (PayablePayment, AccountTransfer):
+        async with conn.begin_nested():
+            await conn.execute(text(str(CreateTable(model.__table__, if_not_exists=True).compile(dialect=dialect()))))
+            for index in model.__table__.indexes:
+                await conn.execute(text(str(CreateIndex(index, if_not_exists=True).compile(dialect=dialect()))))
+    print("钱包口径迁移完成：逐笔采购付款、到账回款关联、账户期初日期及内部转账")
+
+
 async def _migrate_audit_ip_location(conn):
     """Add nullable location columns only; never geolocate historical logs."""
     from sqlalchemy import text
@@ -396,6 +431,7 @@ async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_wallet_basis(conn)
         await _migrate_audit_ip_location(conn)
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)

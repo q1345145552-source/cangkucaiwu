@@ -41,67 +41,44 @@ def dates(start=None, end=None):
     return start, end
 
 
-def day(db, column):
-    # 有时区的付款时间按仓库业务时区取日；业务日期/无时区作息原样取日。
-    if db.bind.dialect.name == "postgresql" and getattr(column.type, "timezone", False):
-        return type_coerce(func.date(func.timezone("Asia/Bangkok", column)), Date)
-    return type_coerce(func.date(column), Date)
-
-
-def amount(column):
-    return cast(column, Numeric(18, 2))
-
-
-def currency(column):
-    return func.coalesce(column, "THB")
+from app.services.wallet import day, flow_query
 
 
 def cost_query(db, warehouse_ids):
-    e, c, p, r, a, d = ExpenseRecord, IncomeExpenseCategory, PayrollRecord, Reimbursement, EmployeeAdvance, ExpenseFundDisbursement
-    category = case((or_(c.name.in_(["员工工资", "工资"]), p.id.is_not(None)), "员工工资"),
-        (c.name == "采购", "手工采购"), else_=c.name)
-    source = case((or_(r.cash_advance_id.is_not(None), p.cash_advance_id.is_not(None)), "cash_advance"),
-        (a.source == "fund", "expense_fund"),
-        (e.account_id.is_not(None), "company_account"), else_="unknown")
-    records = select(
-        e.id.label("id"), literal("expense").label("source"), e.id.label("source_id"),
-        e.warehouse_id.label("warehouse_id"), day(db, e.expense_date).label("date"),
-        e.category_id.label("category_id"), category.label("category_name"),
-        amount(e.amount).label("amount"), currency(e.currency).label("currency"),
-        e.account_id.label("account_id"), e.remark.label("remark"), e.voucher.label("voucher"),
-        source.label("funding_source"), func.coalesce(r.cash_advance_id, p.cash_advance_id).label("cash_advance_id"),
-        r.id.label("reimbursement_id"), p.id.label("payroll_record_id"), or_(a.id.is_not(None), d.id.is_not(None)).label("is_read_only"),
-        a.id.label("employee_advance_id"), a.employee_id.label("employee_id"),
-        d.id.label("fund_disbursement_id"), d.fund_id.label("fund_id"),
-    ).join(c, and_(c.id == e.category_id, c.warehouse_id == e.warehouse_id)).outerjoin(
-        p, and_(p.expense_record_id == e.id, p.warehouse_id == e.warehouse_id),
-    ).outerjoin(r, and_(r.expense_record_id == e.id, r.warehouse_id == e.warehouse_id)).outerjoin(
-        a, and_(a.expense_record_id == e.id, a.warehouse_id == e.warehouse_id)).outerjoin(
-        d, and_(d.expense_record_id == e.id, d.warehouse_id == e.warehouse_id)).where(
-        e.warehouse_id.in_(warehouse_ids), c.type == "expense", c.category_group == "operating", cost_record_filter(e))
-    f, i = ExpenseFund, ExpenseFundItem
-    funds = select(
-        (-i.id).label("id"), literal("fund_item").label("source"), i.id.label("source_id"), f.warehouse_id,
-        day(db, i.expense_date), literal(None), literal("备用金开销"), amount(i.amount), currency(i.currency),
-        literal(None), i.description, i.receipt, literal("expense_fund"), literal(None),
-        literal(None), literal(None), literal(True), literal(None), literal(None), literal(None), literal(None),
-    ).join(f, f.id == i.fund_id).where(f.warehouse_id.in_(warehouse_ids), i.review_status == "approved", i.cost_record_only.is_(False),
-        # 新预支只在审批通过后由 ExpenseRecord 计一次；旧备用金记录原样保留。
-        ~select(a.id).where(a.fund_item_id == i.id, a.expense_tracking_enabled.is_(True),
-            a.warehouse_id == f.warehouse_id).exists())
-    paid = procurement_payment_rows(db, warehouse_ids)
-    purchases = select(
-        paid.c.bill_id, literal("payable"), paid.c.bill_id, paid.c.warehouse_id,
-        paid.c.payment_date, literal(None), literal("采购"), paid.c.amount, paid.c.currency,
-        literal(None), paid.c.bill_number, literal(None), literal("company_account"), literal(None),
-        literal(None), literal(None), literal(True), literal(None), literal(None), literal(None), literal(None),
-    )
-    return union_all(records, funds, purchases).subquery("cost_rows")
+    """钱包支出的只读列表，精确关联已有支出，方便反查且避免旁路编辑付款。"""
+    from app.models.expense_approval import ExpenseApproval
+    q = flow_query(db, warehouse_ids)
+    e, p, r, a, d, rp = ExpenseRecord, PayrollRecord, Reimbursement, EmployeeAdvance, ExpenseFundDisbursement, ReimbursementPayment
+    linked_id = func.coalesce(e.id, q.c.id)
+    linked_source = case((e.id.is_not(None), "expense"), else_=q.c.source)
+    approval_link = select(ExpenseApproval.id).where(ExpenseApproval.warehouse_id == q.c.warehouse_id,
+        ExpenseApproval.expense_record_id == e.id).exists()
+    return select(linked_id.label("id"), linked_source.label("source"), linked_id.label("source_id"),
+        q.c.warehouse_id, q.c.date, func.coalesce(q.c.category_id, e.category_id).label("category_id"), q.c.category_name,
+        q.c.amount, q.c.currency, q.c.account_id, q.c.remark, e.voucher,
+        literal("company_account").label("funding_source"), q.c.cash_advance_id,
+        r.id.label("reimbursement_id"), p.id.label("payroll_record_id"),
+        or_(q.c.source != "manual", p.id.is_not(None), a.id.is_not(None), approval_link).label("is_read_only"),
+        a.id.label("employee_advance_id"), a.employee_id,
+        d.id.label("fund_disbursement_id"), d.fund_id,
+    ).outerjoin(rp, and_(rp.id == q.c.id, q.c.source == "reimbursement", rp.warehouse_id == q.c.warehouse_id)).outerjoin(
+        d, and_(d.id == q.c.id, q.c.source == "expense_fund", q.c.ref_no.like("EFD-%"), d.warehouse_id == q.c.warehouse_id)).outerjoin(
+        e, and_(e.warehouse_id == q.c.warehouse_id, or_(and_(q.c.source == "manual", e.id == q.c.id),
+            and_(q.c.source == "reimbursement", e.id == rp.expense_record_id),
+            and_(q.c.source == "expense_fund", e.id == d.expense_record_id)))).outerjoin(
+        p, and_(p.expense_record_id == e.id, p.warehouse_id == q.c.warehouse_id)).outerjoin(
+        r, and_(or_(r.expense_record_id == e.id, r.id == rp.reimbursement_id), r.warehouse_id == q.c.warehouse_id)).outerjoin(
+        a, and_(a.expense_record_id == e.id, a.warehouse_id == q.c.warehouse_id)).where(
+        q.c.type == "expense", q.c.status == "active", q.c.is_internal_transfer.is_(False)).subquery("cost_rows")
 
 
 def cost_filters(q, start, end, *, category_id=None, cost_category=None, account_id=None, currency_code=None):
     filters = [q.c.date >= start, q.c.date <= end]
-    if category_id: filters.append(q.c.category_id == category_id)
+    if category_id:
+        category = IncomeExpenseCategory
+        name = select(case((category.name == "采购", "手工采购"), (category.name == "工资", "员工工资"),
+            else_=category.name)).where(category.id == category_id, category.warehouse_id == q.c.warehouse_id).scalar_subquery()
+        filters.append(or_(q.c.category_id == category_id, q.c.category_name == name))
     if cost_category: filters.append(q.c.category_name == cost_category)
     if account_id: filters.append(q.c.account_id == account_id)
     if currency_code: filters.append(q.c.currency == currency_code)
@@ -120,69 +97,13 @@ async def cost_list(db, warehouse_ids, start, end, *, page=1, page_size=25, cate
     rows = (await db.execute(select(q).where(*filters).order_by(q.c.date.desc(), q.c.source, q.c.source_id.desc())
         .offset((page - 1) * page_size).limit(page_size))).mappings().all()
     accounts = {a.id: a.account_name for a in (await db.execute(select(PaymentAccount).where(PaymentAccount.warehouse_id.in_(warehouse_ids)))).scalars()}
-    data = [{**dict(r), "id": f"payable-{r['source_id']}" if r["source"] == "payable" else r["id"],
+    data = [{**dict(r), "id": r["id"] if r["source"] == "expense" else f"{r['source']}-{r['id']}",
         "amount": float(r["amount"]), "expense_date": str(r["date"]),
         "date": str(r["date"]), "account_name": accounts.get(r["account_id"], "付款账户未记录" if r["source"] == "payable" else "备用金" if r["source"] == "fund_item" else "不使用公司账户"),
         "is_read_only": bool(r["is_read_only"])} for r in rows]
     return {"data": data, "total": total, "page": page, "page_size": page_size,
-        "totals_by_currency": await cost_totals(db, q, filters), "cost_basis": "运营支出、应付实付及保留的历史备用金开销；手工采购单列，新开销只记台账"}
+        "totals_by_currency": await cost_totals(db, q, filters), "cost_basis": "按实际收付日期统计公司支出；垫款归还才计支出，备用金拨付只计一次，内部转账不计收支"}
 
-
-def flow_query(db, warehouse_ids):
-    """公司真实收付视图：申报不作到账、备用金开销不作公司二次付款。"""
-    def row(model, date_col, value, currency_col, kind, source, label, *, account=None, account_name=None,
-            status=None, non_cost=False, reference=None, remark=None):
-        return select(model.id.label("id"), day(db, date_col).label("date"), amount(value).label("amount"),
-            currency(currency_col).label("currency"), literal(kind).label("type"), literal(source).label("source"),
-            literal(label).label("source_label"), (account if account is not None else literal(None)).label("account_id"),
-            (account_name if account_name is not None else literal(None)).label("account_name"),
-            (status if status is not None else literal("active")).label("status"), literal(non_cost).label("is_non_cost_flow"),
-            (literal(reference) + cast(model.id, String)).label("ref_no"),
-            (remark if remark is not None else literal("")).label("remark"),
-        ).where(model.warehouse_id.in_(warehouse_ids))
-    ir, er, r, p = IncomeRecord, ExpenseRecord, Reimbursement, PayrollRecord
-    incomes = row(ir, ir.income_date, ir.amount, ir.currency, "income", "manual", "手工收入",
-        account=ir.account_id, reference="IN-", remark=ir.remark)
-    expenses = row(er, er.expense_date, er.amount, er.currency, "expense", "manual", "公司账户支出",
-        account=er.account_id, reference="EX-", remark=er.remark).outerjoin(
-        r, and_(r.expense_record_id == er.id, r.warehouse_id == er.warehouse_id),
-    ).outerjoin(p, and_(p.expense_record_id == er.id, p.warehouse_id == er.warehouse_id)).where(
-        r.id.is_(None), or_(p.id.is_(None), and_(p.cash_advance_id.is_(None), p.disbursed.is_(True), p.voided.is_not(True))),
-        ~select(EmployeeAdvance.id).where(EmployeeAdvance.expense_record_id == er.id,
-            EmployeeAdvance.source == "fund").exists(),
-        ~select(ExpenseFundDisbursement.id).where(ExpenseFundDisbursement.expense_record_id == er.id).exists())
-    rp, cr = ReimbursementPayment, CashAdvanceRepayment
-    reimbursements = row(rp, rp.paid_at, rp.amount, rp.currency, "expense", "reimbursement", "报销付款",
-        account=rp.payment_account_id, account_name=rp.account_name, status=rp.status, reference="RB-P-",
-        remark=literal("报销付款 #") + cast(rp.reimbursement_id, String)).where(rp.funding_source == "company_account")
-    returns = row(cr, cr.repayment_date, cr.amount, cr.currency, "expense", "cash_advance_repayment", "垫款归还",
-        account=cr.account_id, account_name=cr.account_name, status=cr.status, non_cost=True, reference="CAR-",
-        remark=literal("归还垫款 #") + cast(cr.cash_advance_id, String))
-    incoming = row(IncomingFlow, IncomingFlow.received_date, IncomingFlow.amount, IncomingFlow.currency,
-        "income", "incoming", "到账流水（未指定账户）", reference="FL-", remark=IncomingFlow.remark)
-    legacy = row(r, r.paid_at, r.total_amount, r.currency, "expense", "reimbursement", "历史报销（未指定账户）",
-        reference="RB-", remark=literal("历史已付款，未推断账户")).where(
-        r.status == "paid", r.funding_source.is_(None), or_(r.is_fund_linked.is_(None), r.is_fund_linked != "1"))
-    payable = row(PayableBill, PayableBill.paid_at, PayableBill.paid_amount, PayableBill.currency,
-        "expense", "payable", "应付付款（未指定账户）", reference="PB-", remark=PayableBill.bill_number).where(PayableBill.paid_amount > 0)
-    already = select(func.coalesce(func.sum(ExpenseFundDisbursement.amount), 0)).where(
-        ExpenseFundDisbursement.fund_id == ExpenseFund.id).scalar_subquery()
-    old_amount = ExpenseFund.amount - already
-    fund = row(ExpenseFund, ExpenseFund.receive_date, old_amount, ExpenseFund.currency,
-        "expense", "expense_fund", "备用金领用（未指定账户）", non_cost=True, reference="EF-", remark=ExpenseFund.purpose).where(old_amount > 0)
-    d = ExpenseFundDisbursement
-    disbursements = row(d, d.disbursed_date, d.amount, d.currency, "expense", "expense_fund", "备用金拨付",
-        account=d.payment_account_id, account_name=d.account_name, reference="EFD-", remark=d.remark)
-    raw = union_all(incomes, expenses, reimbursements, returns, incoming, legacy, payable, fund, disbursements).subquery("raw_company_flows")
-    a = PaymentAccount
-    valid = and_(a.id.is_not(None), a.warehouse_id.in_(warehouse_ids), currency(a.currency) == raw.c.currency)
-    # 无账户、旧错误账户或跨币种账户记录不能被悄悄分摊进真实账户。
-    columns = []
-    for col in raw.c:
-        if col.name == "account_id": columns.append(case((valid, raw.c.account_id), else_=None).label("account_id"))
-        elif col.name == "account_name": columns.append(case((valid, a.account_name), else_="未指定账户").label("account_name"))
-        else: columns.append(col)
-    return select(*columns).outerjoin(a, a.id == raw.c.account_id).subquery("company_flows")
 
 
 def flow_filters(q, start, end, *, account_id=None, currency_code=None, source=None, flow_type=None, unassigned=False):
@@ -205,15 +126,15 @@ async def flow_list(db, warehouse_ids, start, end, *, page=1, page_size=30, acco
     data = [{**dict(r), "date": str(r["date"]), "amount": float(r["amount"]), "status_label": "已冲销" if r["status"] == "revoked" else "有效",
         "account_name": accounts.get(r["account_id"], r["account_name"] or "未指定账户")} for r in rows]
     totals = (await db.execute(select(q.c.currency, q.c.type, func.sum(q.c.amount)).where(
-        *filters, q.c.status == "active").group_by(q.c.currency, q.c.type))).all()
+        *filters, q.c.status == "active", literal(True) if account_id is not None else q.c.is_internal_transfer.is_(False)).group_by(q.c.currency, q.c.type))).all()
     inc = {c: float(money(a)) for c, kind, a in totals if kind == "income"}
     exp = {c: float(money(a)) for c, kind, a in totals if kind == "expense"}
     single = currency_code or (next(iter(set(inc) | set(exp))) if len(set(inc) | set(exp)) == 1 else None)
-    total_income, total_expense = (inc.get(single, 0), exp.get(single, 0)) if single else (None, None)
+    total_income, total_expense = (inc.get(single, 0), exp.get(single, 0)) if single or not (inc or exp) else (None, None)
     # 无单一币种时不提供混币种金额；指定币种下保留原流水页净额颜色。
     return {"data": data, "total": total, "page": page, "page_size": page_size,
         "income_by_currency": inc, "expense_by_currency": exp, "total_income": total_income,
-        "total_expense": total_expense, "net": total_income - total_expense if single else None, "flow_scope": "company"}
+        "total_expense": total_expense, "net": total_income - total_expense if total_income is not None else None, "flow_scope": "company"}
 
 
 async def advance_list(db, warehouse_ids, start, end, *, page=1, page_size=20, payer_id=None, payer_name=None, currency_code=None):
@@ -246,14 +167,9 @@ async def report(db, warehouse_ids, start, end):
     known = (await db.execute(select(flows.c.account_id, flows.c.currency, flows.c.type, func.sum(flows.c.amount))
         .where(*ff, flows.c.status == "active").group_by(flows.c.account_id, flows.c.currency, flows.c.type))).all()
     accounts = (await db.execute(select(PaymentAccount).where(PaymentAccount.warehouse_id.in_(warehouse_ids)).order_by(PaymentAccount.id))).scalars().all()
-    # “月初余额”没有历史快照，明确以当前月初的登记数为基准，按同一流水前推/回推。
+    from app.services.account_balances import balances_at
+    opening_balances = await balances_at(db, accounts, start)
     anchor = thai_today().replace(day=1)
-    low, high = min(start, anchor), max(start, anchor)
-    before = (await db.execute(select(flows.c.account_id, flows.c.currency, flows.c.type, func.sum(flows.c.amount)).where(
-        flows.c.date >= low, flows.c.date < high, flows.c.status == "active",
-    ).group_by(flows.c.account_id, flows.c.currency, flows.c.type))).all() if low < high else []
-    prior_net = defaultdict(lambda: ZERO)
-    for aid, cur, kind, value in before: prior_net[(aid, cur)] += money(value) * (1 if kind == "income" else -1)
     period = defaultdict(lambda: {"income": ZERO, "expense": ZERO})
     for aid, cur, kind, value in known: period[(aid, cur)][kind] += money(value)
     loans = (await db.execute(select(CashAdvance).where(CashAdvance.warehouse_id.in_(warehouse_ids),
@@ -263,14 +179,14 @@ async def report(db, warehouse_ids, start, end):
     blocks = []
     for cur in currencies:
         categories = {name: {"name": name, "count": count, "amount": float(money(value))} for c, name, count, value in cost_groups if c == cur}
-        for name in ("员工工资", "报销", "采购", "备用金开销"): categories.setdefault(name, {"name": name, "count": 0, "amount": 0.0})
-        ordered = [categories.pop(name) for name in ("员工工资", "报销", "采购", "备用金开销")]
+        for name in ("员工工资", "报销", "采购", "备用金拨付"): categories.setdefault(name, {"name": name, "count": 0, "amount": 0.0})
+        ordered = [categories.pop(name) for name in ("员工工资", "报销", "采购", "备用金拨付")]
         ordered += [categories[k] for k in sorted(categories)]
         cost_total = sum((money(r["amount"]) for r in ordered), ZERO)
         account_rows = []
         for a in accounts:
             if (a.currency or "THB") != cur: continue
-            opening = money(a.opening_balance) + prior_net[(a.id, cur)] * (1 if start >= anchor else -1)
+            opening = opening_balances[a.id]
             movements = period[(a.id, cur)]
             account_rows.append({"account_id": a.id, "account_name": a.account_name, "opening_balance": float(opening),
                 "inflow": float(movements["income"]), "outflow": float(movements["expense"]),
@@ -288,7 +204,9 @@ async def report(db, warehouse_ids, start, end):
         details = [{**dict(r), "amount": float(r["amount"]), "date": str(r["date"])} for r in used if r["currency"] == cur]
         advance_used = sum((money(r["amount"]) for r in details if r["funding_source"] == "cash_advance"), ZERO)
         fund_used = sum((money(r["amount"]) for r in details if r["funding_source"] == "expense_fund"), ZERO)
-        outgoing = sum((v["expense"] for (aid, c), v in period.items() if c == cur), ZERO)
+        outgoing = money((await db.execute(select(func.coalesce(func.sum(flows.c.amount), 0)).where(
+            *ff, flows.c.currency == cur, flows.c.type == "expense", flows.c.status == "active",
+            flows.c.is_internal_transfer.is_(False)))).scalar_one())
         non_costs = (await db.execute(select(flows.c.source_label, func.count(), func.sum(flows.c.amount)).where(
             *ff, flows.c.currency == cur, flows.c.status == "active", flows.c.type == "expense", flows.c.is_non_cost_flow.is_(True),
         ).group_by(flows.c.source_label))).all()
@@ -307,11 +225,11 @@ async def report(db, warehouse_ids, start, end):
         .where(flows.c.date.is_(None), flows.c.status == "active").group_by(flows.c.currency, flows.c.source_label))).all()
     return {"start_date": start.isoformat(), "end_date": end.isoformat(), "warehouse_ids": warehouse_ids, "currencies": blocks,
         "balance_anchor_date": anchor.isoformat(), "notes": [
-            "采购按应付账单的付款日期和已付金额统计，排除作废及未付款；原采购类运营支出单列手工采购，不按名称或金额推断关联。",
-            "应付账单只存累计已付和最后付款时间，跨月分次付款缺少逐笔日期/金额，当前口径无法还原每次付款所属月份。",
-            "新备用金在拨付时计成本，后续开销只记台账；保留已按旧口径计入的历史备用金开销，不回填旧拨付。",
-            "公司资金流水不含充值申报（申报不等于到账）、垫款付款或备用金二次开销；归还垫款和领用备用金计真实流出，另列差异解释。",
-            "期初按当前月初登记余额及现存有效流水前推/回推；系统没有历史月初余额快照，历史余额请结合银行账单核对。",
+            "采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。",
+            "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。",
+            "备用金在拨付时计一次支出，后续开销和备用金报销仅记录使用；原记录保留，不重复合计。",
+            "收入只认实际到账和收款；垫款业务不先记公司支出，归还垫款当天按用途记支出。内部转账只影响各账户余额，不计公司收入支出。",
+            "账户按保存的期初日期与同一套有效流水推算；旧累计付款和未指定账户单列，历史余额仍需结合银行账单核对。",
             "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。",
             "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"],
         "undated_flows": [{"currency": c, "source": source, "count": count, "amount": float(money(value))} for c, source, count, value in undated]}

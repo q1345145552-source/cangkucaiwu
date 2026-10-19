@@ -60,7 +60,7 @@ export default function CostFundsDebtPage() {
           </tbody></table></div>
         </div>
         <div className="bg-white border rounded-xl overflow-hidden">
-          <h3 className="px-4 py-3 font-semibold border-b">资金线</h3><p className="px-4 pt-3 text-xs text-gray-500">期初按 {data.balance_anchor_date} 月初登记余额与现存有效流水推算。</p>
+          <h3 className="px-4 py-3 font-semibold border-b">资金线</h3><p className="px-4 pt-3 text-xs text-gray-500">账户收付包含内部调拨；公司实际收入、支出及下方对账已剔除内部转账。</p><p className="px-4 pt-3 text-xs text-gray-500">期初按各账户保存的期初日期与现存有效流水推算。</p>
           <div className="overflow-x-auto"><table className="w-full text-sm whitespace-nowrap"><thead className="bg-gray-50 text-gray-500"><tr>{["账户", "期初余额", "本期流入", "本期流出", "期末余额"].map(h => <th key={h} className={`p-3 ${h === "账户" ? "text-left" : "text-right"}`}>{h}</th>)}</tr></thead><tbody>
             {funds.data.map(row => <tr key={row.account_id} className="border-t"><td className="p-3"><Link className="text-blue-600 hover:underline" href={href("/ledger", cur, { account_id: String(row.account_id), flow_scope: "company" })}>{row.account_name}</Link></td>{(["opening_balance", "inflow", "outflow", "closing_balance"] as const).map(k => <td key={k} className="text-right p-3">{amount(row[k], sym)}</td>)}</tr>)}
             {!funds.data.length && <tr><td colSpan={5} className="p-4 text-gray-500">暂无账户</td></tr>}
@@ -83,12 +83,12 @@ export default function CostFundsDebtPage() {
             <p>减：公司实际资金流出<strong className="block text-xl mt-1">{amount(r.company_outflow, sym)}</strong></p>
             <p>等于：差额<strong className="block text-xl mt-1">{amount(r.difference, sym)}</strong></p>
           </div>
-          <p className="text-sm">垫款付掉的成本 {amount(r.cash_advance_cost, sym)} ＋ 备用金扣的成本 {amount(r.expense_fund_cost, sym)} ＝ {amount(r.non_company_cost, sym)}</p>
-          <p className={`text-sm font-semibold ${r.balanced ? "text-green-800" : "text-red-700"}`}>{r.balanced ? "公式核对一致" : `未对平：差额与垫款、备用金成本相差 ${amount(r.unreconciled_difference, sym)}`}</p>
+          <p className="text-sm">历史垫付口径差异 {amount(r.cash_advance_cost, sym)} ＋ 历史备用金口径差异 {amount(r.expense_fund_cost, sym)} ＝ {amount(r.non_company_cost, sym)}</p>
+          <p className={`text-sm font-semibold ${r.balanced ? "text-green-800" : "text-red-700"}`}>{r.balanced ? "公式核对一致" : `未对平：支出与实际付款相差 ${amount(r.unreconciled_difference, sym)}`}</p>
           {r.non_cost_outflows.map((row, i) => <p key={i} className="text-sm">另有 {row.name} {row.count} 笔，共 {amount(row.amount, sym)}，属于资金流出，不属于本期成本，会影响原公式。</p>)}
-          {!r.balanced && <p className="text-xs text-red-700">保留原公式，不把非成本流出藏掉。除上述项目外，请核对非运营支出、历史无账户/无成本关联记录及跨期付款。</p>}
-          <p className="text-xs text-gray-600">例：成本 {sym}10,000，公司账户流出 {sym}7,000，差额 {sym}3,000；若垫款和备用金成本合计也是 {sym}3,000，就能对上。</p>
-          <button className="text-blue-700 flex items-center gap-1 text-sm font-medium" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : cur)}>{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}查看垫款及备用金成本明细（{r.detail_count} 笔）</button>
+          {!r.balanced && <p className="text-xs text-red-700">请核对未指定账户、缺失日期和历史累计付款，不自动改写原记录。</p>}
+          <p className="text-xs text-gray-600">钱包口径：公司实际付出才算支出。垫款在归还时计入，备用金在拨付时计入，后续使用不重复计算。</p>
+          <button className="text-blue-700 flex items-center gap-1 text-sm font-medium" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : cur)}>{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}查看历史口径差异明细（{r.detail_count} 笔）</button>
           {expanded && <div className="overflow-x-auto bg-white rounded-lg"><table className="w-full text-sm whitespace-nowrap"><thead><tr>{["日期", "来源", "分类 / 关联单", "金额"].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>
             {r.details.map(row => <tr key={`${row.source}-${row.source_id}`} className="border-t"><td className="p-3">{row.date}</td><td className="p-3">{row.funding_source === "cash_advance" ? `垫款单 #${row.cash_advance_id}` : row.source === "expense" ? row.remark || "备用金支付" : `备用金开销 #${row.source_id}`}</td><td className="p-3">{row.category_name}{row.reimbursement_id ? ` / 报销单 #${row.reimbursement_id}` : row.payroll_record_id ? ` / 工资单 #${row.payroll_record_id}` : ""}</td><td className="p-3 text-right">{amount(row.amount, sym)}</td></tr>)}
             {!r.details.length && <tr><td colSpan={4} className="p-4 text-gray-500">暂无垫款或备用金成本</td></tr>}

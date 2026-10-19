@@ -14,7 +14,7 @@ from app.models.payable import PayableBill
 from app.models.supplier import PurchaseOrder
 from app.models.credit import CreditCustomer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, require_non_labor
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 import io
 from openpyxl import Workbook
@@ -87,7 +87,7 @@ def to_excel(headers, rows, sheet_name="Sheet1"):
 
 
 # ===== 0. 报表预览（所有卡片一次性返回） =====
-@router.get("/previews")
+@router.get("/previews", dependencies=[Depends(require_non_labor)])
 async def report_previews(
     start_date: str = None,
     end_date: str = None,
@@ -114,21 +114,13 @@ async def report_previews(
     total_amt, count = (await db.execute(q)).first()
     previews["incoming-summary"] = {"preview": float(total_amt or 0), "count": count or 0}
 
-    # 3. 收支报表
-    iq = select(func.coalesce(func.sum(IncomeRecord.amount), 0))
-    eq = select(func.coalesce(func.sum(ExpenseRecord.amount), 0)).where(cost_record_filter())
-    iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
-    iq = _apply_date(iq, IncomeRecord.income_date, start_date, end_date)
-    eq = _apply_date(eq, ExpenseRecord.expense_date, start_date, end_date)
-    inc = float((await db.execute(iq)).scalar() or 0)
-    exp = float((await db.execute(eq)).scalar() or 0)
-    # Also add recharge income
-    rq2 = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0))
-    rq2 = rq2.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
-    rq2 = _apply_date(rq2, RechargeDeclaration.declare_date, start_date, end_date)
-    rch = float((await db.execute(rq2)).scalar() or 0)
-    previews["income-expense"] = {"preview": inc + exp + rch, "total_income": inc + rch, "total_expense": exp, "net": inc + rch - exp}
-
+    # 收支预览与详情共用真实收付口径，不混加币种。
+    from app.services.wallet import totals, grouped_totals
+    from app.services.cost_funds_debt import dates
+    start, end = dates(start_date or "1900-01-01", end_date or "9999-12-31")
+    summary = grouped_totals(await totals(db, wh_ids, start, end))
+    previews["income-expense"] = {**summary, "preview": summary["net"],
+        "preview_by_currency": summary["net_by_currency"]}
     # 4. 应付报表
     q = select(func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0), func.count(PayableBill.id))
     q = q.outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
@@ -166,6 +158,25 @@ async def report_previews(
     total_diff, count = (await db.execute(q)).first()
     previews["reconciliation-diff"] = {"preview": float(total_diff or 0), "count": count or 0}
 
+    preview_models = {
+        "recharge-summary": (RechargeDeclaration, RechargeDeclaration.amount, RechargeDeclaration.currency, RechargeDeclaration.declare_date, []),
+        "incoming-summary": (IncomingFlow, IncomingFlow.amount, IncomingFlow.currency, IncomingFlow.received_date, []),
+        "payable": (PayableBill, PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0), PayableBill.currency, PayableBill.due_date, [PayableBill.status != "voided"]),
+        "expense-fund": (ExpenseFund, ExpenseFund.remaining_balance, ExpenseFund.currency, None, [ExpenseFund.status == "active"]),
+        "reimbursement": (Reimbursement, Reimbursement.total_amount, Reimbursement.currency, Reimbursement.submit_date, []),
+    }
+    for key, (model, value, cur, date_col, extra) in preview_models.items():
+        query = select(cur, func.sum(value)).where(model.warehouse_id.in_(wh_ids), *extra).group_by(cur)
+        if date_col is not None: query = _apply_date(query, date_col, start_date, end_date)
+        amounts = {c or "THB": round(float(n or 0), 2) for c, n in (await db.execute(query)).all()}
+        previews[key]["preview_by_currency"] = amounts
+        previews[key]["preview"] = next(iter(amounts.values())) if len(amounts) == 1 else 0 if not amounts else None
+    from app.models.customer import Customer
+    credit_amounts = {c or "THB": round(float(n or 0), 2) for c,n in (await db.execute(select(
+        Customer.default_currency, func.sum(CreditCustomer.current_debt)).join(Customer, Customer.id == CreditCustomer.customer_id).where(
+        CreditCustomer.warehouse_id.in_(wh_ids)).group_by(Customer.default_currency))).all()}
+    previews["credit"]["preview_by_currency"] = credit_amounts
+    previews["credit"]["preview"] = next(iter(credit_amounts.values())) if len(credit_amounts) == 1 else None if credit_amounts else 0
     return {"previews": previews, "start_date": start_date, "end_date": end_date}
 
 # ===== 1. 充值汇总 =====
@@ -205,55 +216,35 @@ async def incoming_summary(start_date: str = None, end_date: str = None, warehou
     return {"data": data, "total_amount_by_currency": _sum_by_currency(records), "total_count": len(records)}
 
 # ===== 3. 收支报表 =====
-@router.get("/income-expense")
+@router.get("/income-expense", dependencies=[Depends(require_non_labor)])
 async def income_expense_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
                                  current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_ids = get_wh_ids(current_user)
-    iq = select(IncomeRecord); eq = select(ExpenseRecord).where(cost_record_filter())
-    rq = select(RechargeDeclaration)  # 充值申报也作为收入来源
-    iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
-    rq = rq.where(RechargeDeclaration.warehouse_id.in_(wh_ids))
-    iq = _apply_date(iq, IncomeRecord.income_date, start_date, end_date)
-    eq = _apply_date(eq, ExpenseRecord.expense_date, start_date, end_date)
-    rq = _apply_date(rq, RechargeDeclaration.declare_date, start_date, end_date)
-    if warehouse_id: iq = iq.where(IncomeRecord.warehouse_id == warehouse_id); eq = eq.where(ExpenseRecord.warehouse_id == warehouse_id)
-    if warehouse_id: rq = rq.where(RechargeDeclaration.warehouse_id == warehouse_id)
-
-    incomes = (await db.execute(iq.order_by(IncomeRecord.income_date.desc()))).scalars().all()
-    expenses = (await db.execute(eq.order_by(ExpenseRecord.expense_date.desc()))).scalars().all()
-    recharges = (await db.execute(rq.order_by(RechargeDeclaration.declare_date.desc()))).scalars().all()
-
-    # 获取充值对应的客户名称
-    recharge_cust_ids = list(set(r.customer_id for r in recharges if r.customer_id))
-    recharge_cust_map = {}
-    if recharge_cust_ids:
-        from app.models.customer import Customer
-        custs = (await db.execute(select(Customer).where(Customer.id.in_(recharge_cust_ids)))).scalars().all()
-        recharge_cust_map = {c.id: c.company_name for c in custs}
-
-    data = []
-    for r in incomes:
-        data.append({"类型": "收入", "日期": r.income_date.strftime("%Y-%m-%d") if r.income_date else "", "金额": r.amount, "币种": r.currency or "THB", "备注": r.remark or ""})
-    for r in recharges:
-        cust_name = recharge_cust_map.get(r.customer_id, "") if r.customer_id else ""
-        label = f"充值-{cust_name}" if cust_name else "充值收入"
-        data.append({"类型": "充值收入", "日期": r.declare_date.strftime("%Y-%m-%d") if r.declare_date else "", "金额": r.amount, "币种": r.currency or "THB", "备注": label})
-    for r in expenses:
-        data.append({"类型": "支出", "日期": r.expense_date.strftime("%Y-%m-%d") if r.expense_date else "", "金额": r.amount, "币种": r.currency or "THB", "备注": r.remark or ""})
-    data.sort(key=lambda x: x["日期"], reverse=True)
-
-    total_income_by_currency = _sum_by_currency(list(incomes) + list(recharges))
-    total_expense_by_currency = _sum_by_currency(expenses)
-    recharge_income_by_currency = _sum_by_currency(recharges)
-    other_income_by_currency = _sum_by_currency(incomes)
-    headers = ["类型","日期","金额","币种","备注"]
+    from app.services.wallet import flow_query, grouped_totals
+    from app.services.cost_funds_debt import dates
+    wh_ids = [warehouse_id] if warehouse_id in wh_ids else wh_ids
+    if warehouse_id and warehouse_id not in get_wh_ids(current_user): raise HTTPException(403, "无权访问其他仓库")
+    start, end = dates(start_date or "1900-01-01", end_date or "9999-12-31")
+    q = flow_query(db, wh_ids)
+    rows = (await db.execute(select(q).where(q.c.date >= start, q.c.date <= end,
+        q.c.status == "active", q.c.is_internal_transfer.is_(False)).order_by(q.c.date.desc()))).mappings().all()
+    data = [{"类型": "收入" if r["type"] == "income" else "支出", "日期": str(r["date"]),
+        "金额": float(r["amount"]), "币种": r["currency"], "备注": r["remark"] or r["source_label"]} for r in rows]
+    from collections import defaultdict
+    totals = defaultdict(float)
+    received, other = defaultdict(float), defaultdict(float)
+    for r in rows:
+        totals[(r["currency"], r["type"])] += float(r["amount"])
+        if r["type"] == "income":
+            (received if r["source"] == "incoming" else other)[r["currency"]] += float(r["amount"])
+    result = grouped_totals([(c, kind, n) for (c, kind), n in totals.items()])
+    headers = ["类型", "日期", "金额", "币种", "备注"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "收支报表")
-    return {"data": data, "total_income_by_currency": total_income_by_currency,
-            "total_expense_by_currency": total_expense_by_currency,
-            "recharge_income_by_currency": recharge_income_by_currency,
-            "other_income_by_currency": other_income_by_currency}
+    return {"data": data, **result, "total_income_by_currency": result["income_by_currency"],
+        "total_expense_by_currency": result["expense_by_currency"],
+        "recharge_income_by_currency": dict(received), "other_income_by_currency": dict(other)}
 
 # ===== 4. 应付报表 =====
 @router.get("/payable")

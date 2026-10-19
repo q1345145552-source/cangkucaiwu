@@ -9,13 +9,12 @@ import { TrendingUp, TrendingDown, DollarSign, Search, Download, RotateCcw, Arro
 const SOURCE_OPTIONS = [
   { value: "", label: "全部来源" },
   { value: "cash_advance_repayment", label: "垫款归还" },
-  { value: "recharge", label: "充值申报" },
   { value: "incoming", label: "到账流水" },
   { value: "expense_fund", label: "备用金领用" },
-  { value: "fund_item", label: "备用金开销" },
   { value: "reimbursement", label: "报销" },
   { value: "payable", label: "应付账款" },
   { value: "manual", label: "手工收支" },
+  { value: "transfer", label: "内部转账（不计收支）" },
 ];
 
 const TYPE_OPTIONS = [
@@ -67,7 +66,7 @@ export default function LedgerPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ flow_scope: "company" });
       params.set("page", String(page));
       params.set("page_size", String(pageSize));
       if (dateRange.start_date) params.set("start_date", dateRange.start_date);
@@ -96,6 +95,9 @@ export default function LedgerPage() {
     if (dateRange.end_date) params.set("end_date", dateRange.end_date);
     if (source) params.set("source", source);
     if (flowType) params.set("flow_type", flowType);
+    if (accountFilter) params.set("account_id", accountFilter);
+    if (currencyFilter) params.set("currency", currencyFilter);
+    if (unassigned) params.set("unassigned", "true");
     const token = getToken();
     const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
     try {
@@ -256,7 +258,7 @@ export default function LedgerPage() {
                           row.source === "payable" ? "bg-red-50 text-red-700" :
                           "bg-gray-100 text-gray-600"
                         }`}>
-                          {row.source_label || row.source}
+                          {row.source_label || row.source}{row.is_internal_transfer ? "（不计收支）" : ""}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600 max-w-[260px] truncate" title={row.remark}>{row.remark || "-"}</td>

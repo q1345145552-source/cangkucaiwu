@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, Float, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from app.core.timezone import thai_today
 
 class Customer(Base):
     __tablename__ = "customers"
@@ -41,6 +42,7 @@ class PaymentAccount(Base):
     account_type = Column(String(20), nullable=False, comment="alipay/wechat/bank")
     account_number = Column(String(100), nullable=False)
     opening_balance = Column(Float, default=0)
+    opening_balance_date = Column(Date, nullable=True, default=lambda: thai_today().replace(day=1))
     bank_name = Column(String(200), nullable=True, comment="开户银行")
     branch_name = Column(String(200), nullable=True, comment="开户支行")
     account_holder = Column(String(100), nullable=True, comment="账户持有人")

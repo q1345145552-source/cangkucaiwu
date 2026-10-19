@@ -24,6 +24,8 @@ class ExpenseApproval(Base):
     approval_note = Column(String(500), nullable=True, comment="审批备注")
     payer_id = Column(Integer, ForeignKey("users.id"), nullable=True, comment="付款人")
     paid_at = Column(DateTime(timezone=True), nullable=True)
+    payment_account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=True)
+    expense_record_id = Column(Integer, ForeignKey("expense_records.id"), nullable=True)
     payment_voucher = Column(String(500), nullable=True, comment="付款凭证")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

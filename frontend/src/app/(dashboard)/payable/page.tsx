@@ -1,4 +1,5 @@
 "use client";
+import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
@@ -25,6 +26,9 @@ export default function PayablePage() {
   const [voucherFile, setVoucherFile] = useState<File | null>(null);
   const [payingBillId, setPayingBillId] = useState(0);
   const [payingRow, setPayingRow] = useState<any>(null);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [payAccountId, setPayAccountId] = useState(0);
+  const [payRequestKey, setPayRequestKey] = useState("");
   const [payMethod, setPayMethod] = useState("银行转账");
   const [showPayModal, setShowPayModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -123,17 +127,21 @@ export default function PayablePage() {
   }
 
   function openPayModal(row: any) {
-    setPayAmounts(prev => ({ ...prev, [row.id]: "" }));
+    setPayAmounts(prev => ({ ...prev, [row.id]: Math.round((row.amount - (row.paid_amount || 0)) * 100) / 100 }));
     setPayingBillId(row.id);
     setPayingRow(row);
     setVoucherFile(null);
-    setShowPayModal(true);
+    setPayAccountId(0); setPayRequestKey(crypto.randomUUID()); setShowPayModal(true);
   }
 
   async function handlePay() {
-    const payAmount = payAmounts[payingBillId] || (payingRow.amount - payingRow.paid_amount);
+    if (!payAccountId) { toast("error", "请选择付款账户"); return; }
+    const payAmount = Number(payAmounts[payingBillId]);
+    if (!Number.isFinite(payAmount) || payAmount <= 0) { toast("error", "请填写大于零的付款金额"); return; }
+    if (paymentSaving) return;
+    setPaymentSaving(true);
     try {
-      const payRes = await fetch(`${API_URL}/payable/${payingBillId}/pay?paid_amount=${payAmount}&payment_method=${payMethod}`, {
+      const payRes = await fetch(`${API_URL}/payable/${payingBillId}/pay?paid_amount=${payAmount}&payment_method=${encodeURIComponent(payMethod)}&account_id=${payAccountId}&request_key=${payRequestKey}`, {
         method: "PUT", headers: { "Authorization": `Bearer ${getToken()}` },
       });
       const payJson = await payRes.json().catch(() => ({}));
@@ -153,6 +161,7 @@ export default function PayablePage() {
       toast("success", "付款成功");
       setShowPayModal(false); load(); loadStats();
     } catch (err: any) { toast("error", err.message || "付款失败"); }
+    finally { setPaymentSaving(false); }
   }
 
   function openEditModal(row: any) {
@@ -185,7 +194,7 @@ export default function PayablePage() {
 
   async function handleEdit() {
     try {
-      const isPaid = editingBill.status === "paid";
+      const isPaid = (editingBill.status === "paid" || editingBill.paid_amount > 0);
       const payload: any = {};
       if (isPaid) {
         // 已付款：只发备注和差异说明，避免后端按“有其他字段”拒绝
@@ -485,7 +494,7 @@ export default function PayablePage() {
             </div>
 
             <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
-              {editingBill.status === "paid" && (
+              {(editingBill.status === "paid" || editingBill.paid_amount > 0) && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">已付款的账单只能修改备注</div>
               )}
 
@@ -493,26 +502,26 @@ export default function PayablePage() {
               <div className="text-sm font-semibold text-gray-400 pb-1 border-b">基本信息</div>
               <div className="form-group">
                 <label className="form-label">供应商</label>
-                <select className="form-input" value={editForm.supplier_id} onChange={e => setEditForm({ ...editForm, supplier_id: +e.target.value })} disabled={editingBill.status === "paid"}>
+                <select className="form-input" value={editForm.supplier_id} onChange={e => setEditForm({ ...editForm, supplier_id: +e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)}>
                   <option value={0}>选择供应商</option>
                   {suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div className="form-grid">
-                <div className="form-group"><label className="form-label">账单编号</label><input className="form-input" value={editForm.bill_number} onChange={e => setEditForm({ ...editForm, bill_number: e.target.value })} disabled={editingBill.status === "paid"} /></div>
-                <div className="form-group"><label className="form-label">币种</label><select className="form-input" value={editForm.currency} onChange={e => setEditForm({ ...editForm, currency: e.target.value })} disabled={editingBill.status === "paid"}><option>THB</option><option>CNY</option><option>USD</option></select></div>
+                <div className="form-group"><label className="form-label">账单编号</label><input className="form-input" value={editForm.bill_number} onChange={e => setEditForm({ ...editForm, bill_number: e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
+                <div className="form-group"><label className="form-label">币种</label><select className="form-input" value={editForm.currency} onChange={e => setEditForm({ ...editForm, currency: e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)}><option>THB</option><option>CNY</option><option>USD</option></select></div>
               </div>
-              <div className="form-group"><label className="form-label">关联采购单号（可选）</label><input className="form-input" value={editForm.purchase_order_number} onChange={e => setEditForm({ ...editForm, purchase_order_number: e.target.value })} placeholder="如 PO2026..." disabled={editingBill.status === "paid"} /></div>
+              <div className="form-group"><label className="form-label">关联采购单号（可选）</label><input className="form-input" value={editForm.purchase_order_number} onChange={e => setEditForm({ ...editForm, purchase_order_number: e.target.value })} placeholder="如 PO2026..." disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
               <div className="form-grid">
-                <div className="form-group"><label className="form-label">账单日期</label><input type="date" className="form-input" value={editForm.bill_date} onChange={e => setEditForm({ ...editForm, bill_date: e.target.value })} disabled={editingBill.status === "paid"} /></div>
-                <div className="form-group"><label className="form-label">到期日期</label><input type="date" className="form-input" value={editForm.due_date} onChange={e => setEditForm({ ...editForm, due_date: e.target.value })} disabled={editingBill.status === "paid"} /></div>
+                <div className="form-group"><label className="form-label">账单日期</label><input type="date" className="form-input" value={editForm.bill_date} onChange={e => setEditForm({ ...editForm, bill_date: e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
+                <div className="form-group"><label className="form-label">到期日期</label><input type="date" className="form-input" value={editForm.due_date} onChange={e => setEditForm({ ...editForm, due_date: e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
               </div>
 
               {/* 金额信息 */}
               <div className="text-sm font-semibold text-gray-400 pb-1 border-b">金额信息</div>
               <div className="form-grid">
-                <div className="form-group"><label className="form-label">金额</label><input type="number" className="form-input" value={editForm.amount || ""} onChange={e => setEditForm({ ...editForm, amount: e.target.value === "" ? "" : +e.target.value })} disabled={editingBill.status === "paid"} /></div>
-                <div className="form-group"><label className="form-label">供应商确认金额</label><input type="number" className="form-input" value={editForm.confirmed_amount || ""} onChange={e => setEditForm({ ...editForm, confirmed_amount: e.target.value === "" ? "" : +e.target.value })} disabled={editingBill.status === "paid"} /></div>
+                <div className="form-group"><label className="form-label">金额</label><input type="number" className="form-input" value={editForm.amount || ""} onChange={e => setEditForm({ ...editForm, amount: e.target.value === "" ? "" : +e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
+                <div className="form-group"><label className="form-label">供应商确认金额</label><input type="number" className="form-input" value={editForm.confirmed_amount || ""} onChange={e => setEditForm({ ...editForm, confirmed_amount: e.target.value === "" ? "" : +e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
               </div>
               {editForm.confirmed_amount !== "" && +editForm.confirmed_amount !== (editForm.amount !== "" ? +editForm.amount : editingBill.amount) && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700 flex items-center gap-2">
@@ -520,11 +529,11 @@ export default function PayablePage() {
                   确认金额与金额不一致，差额 {fmtMoney(Math.abs((editForm.amount !== "" ? +editForm.amount : editingBill.amount) - +editForm.confirmed_amount), editForm.currency || editingBill.currency)}
                 </div>
               )}
-              <div className="form-group"><label className="form-label">付款承诺天数</label><input type="number" className="form-input" value={editForm.payment_commitment_days || ""} onChange={e => setEditForm({ ...editForm, payment_commitment_days: e.target.value === "" ? "" : +e.target.value })} disabled={editingBill.status === "paid"} /></div>
+              <div className="form-group"><label className="form-label">付款承诺天数</label><input type="number" className="form-input" value={editForm.payment_commitment_days || ""} onChange={e => setEditForm({ ...editForm, payment_commitment_days: e.target.value === "" ? "" : +e.target.value })} disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
 
               {/* 补充信息 */}
               <div className="text-sm font-semibold text-gray-400 pb-1 border-b">补充信息</div>
-              <div className="form-group"><label className="form-label">费用明细</label><textarea className="form-input" rows={3} value={editForm.detail} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} placeholder="费用明细描述" disabled={editingBill.status === "paid"} /></div>
+              <div className="form-group"><label className="form-label">费用明细</label><textarea className="form-input" rows={3} value={editForm.detail} onChange={e => setEditForm({ ...editForm, detail: e.target.value })} placeholder="费用明细描述" disabled={(editingBill.status === "paid" || editingBill.paid_amount > 0)} /></div>
               <div className="form-group"><label className="form-label">差异处理说明</label><textarea className="form-input" rows={2} value={editForm.diff_note} onChange={e => setEditForm({ ...editForm, diff_note: e.target.value })} placeholder="填写差异原因和处理结果" /></div>
               <div className="form-group"><label className="form-label">备注</label><input className="form-input" value={editForm.remark} onChange={e => setEditForm({ ...editForm, remark: e.target.value })} placeholder="其他备注" /></div>
             </div>
@@ -604,6 +613,7 @@ export default function PayablePage() {
               <div className="border-t" />
 
               <div className="form-grid">
+                <WalletAccountSelect value={payAccountId} onChange={setPayAccountId} currency={payingRow.currency || "THB"} />
                 <div className="form-group"><label className="form-label">付款金额</label><input type="number" className="form-input text-lg font-semibold" value={payAmounts[payingBillId] ?? ""} onChange={e => setPayAmounts(prev => ({ ...prev, [payingBillId]: e.target.value === "" ? "" : +e.target.value }))} /></div>
                 <div className="form-group"><label className="form-label">付款方式</label><select className="form-input" value={payMethod} onChange={e => setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
               </div>
@@ -619,7 +629,7 @@ export default function PayablePage() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowPayModal(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handlePay} className="btn-primary min-w-[80px]">确认付款</button>
+              <button onClick={handlePay} disabled={paymentSaving || !payAccountId} className="btn-primary min-w-[80px]">确认付款</button>
             </div>
           </div></div>
       )}

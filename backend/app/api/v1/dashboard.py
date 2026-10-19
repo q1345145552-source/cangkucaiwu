@@ -250,34 +250,14 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
         d = dt.date() if hasattr(dt, "date") else dt
         return d.strftime("%Y-%m")
 
-    income_rec_rows = (await db.execute(
-        select(IncomeRecord.currency, IncomeRecord.income_date, IncomeRecord.amount)
-        .where(IncomeRecord.warehouse_id == wh_id,
-               IncomeRecord.income_date >= datetime.combine(min_month, datetime.min.time()),
-               IncomeRecord.income_date < datetime.combine(max_month_end, datetime.min.time()))
-    )).all()
-    recharge_month_rows = (await db.execute(
-        select(RechargeDeclaration.currency, RechargeDeclaration.declare_date, RechargeDeclaration.amount)
-        .where(RechargeDeclaration.warehouse_id == wh_id,
-               RechargeDeclaration.declare_date >= datetime.combine(min_month, datetime.min.time()),
-               RechargeDeclaration.declare_date < datetime.combine(max_month_end, datetime.min.time()))
-    )).all()
-    expense_rec_rows = (await db.execute(
-        select(ExpenseRecord.currency, ExpenseRecord.expense_date, ExpenseRecord.amount)
-        .where(ExpenseRecord.warehouse_id == wh_id,
-               ExpenseRecord.expense_date >= datetime.combine(min_month, datetime.min.time()),
-               ExpenseRecord.expense_date < datetime.combine(max_month_end, datetime.min.time()))
-    )).all()
-    bill_month_rows = (await db.execute(
-        select(PayableBill.currency, PayableBill.bill_date, PayableBill.amount)
-        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
-        .where(PayableBill.warehouse_id == wh_id,
-               PayableBill.status != "voided",
-               PayableBill.bill_date >= datetime.combine(min_month, datetime.min.time()),
-               PayableBill.bill_date < datetime.combine(max_month_end, datetime.min.time()),
-               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
-    )).all()
-
+    from app.services.wallet import flow_query
+    wallet = flow_query(db, [wh_id])
+    actual = (await db.execute(select(wallet.c.currency, wallet.c.date, wallet.c.amount, wallet.c.type).where(
+        wallet.c.date >= min_month, wallet.c.date < max_month_end, wallet.c.status == "active",
+        wallet.c.is_internal_transfer.is_(False)))).all()
+    income_rec_rows = [(c, d, n) for c, d, n, kind in actual if kind == "income"]
+    expense_rec_rows = [(c, d, n) for c, d, n, kind in actual if kind == "expense"]
+    recharge_month_rows, bill_month_rows = [], []
     def _ie_series(cur):
         inc = {}
         for c, dt, amt in list(income_rec_rows) + list(recharge_month_rows):
@@ -336,13 +316,10 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
     else:
         next_month = today.replace(month=today.month + 1, day=1)
 
-    cat_rows = (await db.execute(
-        select(ExpenseRecord.currency, ExpenseRecord.amount, IncomeExpenseCategory.name)
-        .join(IncomeExpenseCategory, ExpenseRecord.category_id == IncomeExpenseCategory.id)
-        .where(ExpenseRecord.warehouse_id == wh_id,
-               ExpenseRecord.expense_date >= datetime.combine(month_start, datetime.min.time()),
-               ExpenseRecord.expense_date < datetime.combine(next_month, datetime.min.time()))
-    )).all()
+    from app.services.cost_funds_debt import cost_query
+    costs = cost_query(db, [wh_id])
+    cat_rows = (await db.execute(select(costs.c.currency, costs.c.amount, costs.c.category_name).where(
+        costs.c.date >= month_start, costs.c.date < next_month))).all()
     procurement = procurement_payment_rows(db, [wh_id])
     sup_rows = (await db.execute(
         select(procurement.c.currency, procurement.c.amount, Supplier.name)
@@ -350,6 +327,11 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
         .where(procurement.c.payment_date >= month_start,
                procurement.c.payment_date < next_month)
     )).all()
+
+    advance_purchase_rows = (await db.execute(select(wallet.c.currency, wallet.c.amount).where(
+        wallet.c.date >= month_start, wallet.c.date < next_month, wallet.c.source == "cash_advance_repayment",
+        wallet.c.category_name == "采购", wallet.c.status == "active"))).all()
+    sup_rows = list(sup_rows) + [(cur, value, "垫款归还（未指定供应商）") for cur, value in advance_purchase_rows]
 
     def _group_by_name(rows, cur):
         d = {}
@@ -402,14 +384,13 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     month_str = today.strftime("%Y-%m")
 
     # ── 钱 ──
-    # 本月收入（客户充值合计）
-    income_rows = (await db.execute(
-        select(RechargeDeclaration.currency, func.coalesce(func.sum(RechargeDeclaration.amount), 0))
-        .where(RechargeDeclaration.warehouse_id == wh_id,
-               RechargeDeclaration.declare_date >= month_start,
-               RechargeDeclaration.declare_date < next_month)
-        .group_by(RechargeDeclaration.currency)
-    )).all()
+    # 本月收入（公司实际收款）
+    from app.services.wallet import totals as wallet_totals
+    wallet_rows = await wallet_totals(db, [wh_id], month_start, next_month - timedelta(days=1))
+    income_rows = [(c, n) for c, kind, n in wallet_rows if kind == "income"]
+    declaration_rows = (await db.execute(select(RechargeDeclaration.currency, func.sum(RechargeDeclaration.amount)).where(
+        RechargeDeclaration.warehouse_id == wh_id, RechargeDeclaration.declare_date >= month_start,
+        RechargeDeclaration.declare_date < next_month).group_by(RechargeDeclaration.currency))).all()
     # 本月到账合计
     incoming_rows = (await db.execute(
         select(IncomingFlow.currency, func.coalesce(func.sum(IncomingFlow.amount), 0))
@@ -425,29 +406,13 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
             RechargeDeclaration.match_status == MatchStatus.UNMATCHED.value,
         )
     )).scalar() or 0
-    # 运营支出
-    op_rows = (await db.execute(
-        select(ExpenseRecord.currency, func.coalesce(func.sum(ExpenseRecord.amount), 0))
-        .where(ExpenseRecord.warehouse_id == wh_id,
-               ExpenseRecord.expense_date >= month_start,
-               ExpenseRecord.expense_date < next_month)
-        .group_by(ExpenseRecord.currency)
-    )).all()
-    # 采购支出（应付账单本月）
-    proc_rows = (await db.execute(
-        select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount), 0))
-        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
-        .where(PayableBill.warehouse_id == wh_id,
-               PayableBill.status != "voided",
-               PayableBill.bill_date >= month_start,
-               PayableBill.bill_date < next_month,
-               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
-        .group_by(PayableBill.currency)
-    )).all()
-
-    # 采购卡片改为实付口径；原月度支出/盈亏按本轮要求保留，仍使用上面的旧汇总。
+    from app.services.cost_funds_debt import cost_query
+    costs = cost_query(db, [wh_id])
+    op_rows = (await db.execute(select(costs.c.currency, func.sum(costs.c.amount)).where(
+        costs.c.date >= month_start, costs.c.date < next_month, costs.c.category_name != "采购",
+    ).group_by(costs.c.currency))).all()
     procurement_paid_rows = await procurement_payment_totals(db, [wh_id], month_start, next_month - timedelta(days=1))
-    expense_rows = _merge_currency(op_rows, proc_rows)
+    expense_rows = _merge_currency([(c, n) for c, kind, n in wallet_rows if kind == "expense"])
     income_list = _merge_currency(income_rows)
     expense_list = expense_rows
     # 盈亏 = 收入 - 支出（按币种）
@@ -720,7 +685,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
                 "non_lowest_count": non_lowest,
             },
             "recharge_reconciliation": {
-                "recharge": _merge_currency(income_rows),
+                "recharge": _merge_currency(declaration_rows),
                 "incoming": _merge_currency(incoming_rows),
                 "unmatched_count": unmatched_recharge,
             },

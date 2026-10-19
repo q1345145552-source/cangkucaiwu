@@ -66,6 +66,14 @@ async def create_payroll_expense(db, record, account, operator, now, *, cash_adv
     if (account is None) == (cash_advance is None):
         raise HTTPException(400, "请选择一种工资资金来源")
     amount = expense_amount(record)
+    if cash_advance is not None:
+        record.cash_advance_id = cash_advance.id
+        record.disbursed, record.disbursed_at, record.disbursed_by = True, now, operator.id
+        await db.flush()
+        await record_history(db, module="cash_advances", record_id=cash_advance.id, operator=operator,
+            operation_type="payroll_use", after={"payroll_record_id": record.id, "amount": amount,
+                "currency": "THB", "expense_record_id": None}, warehouse_id=record.warehouse_id)
+        return None
     category = (await db.execute(select(IncomeExpenseCategory).where(
         IncomeExpenseCategory.warehouse_id == record.warehouse_id,
         IncomeExpenseCategory.type == "expense",
@@ -138,6 +146,9 @@ async def reverse_payroll_expense(db, record, operator):
 
 
 async def require_manual_expense(db, expense_id):
+    from app.models.expense_approval import ExpenseApproval
+    if (await db.execute(select(ExpenseApproval.id).where(ExpenseApproval.expense_record_id == expense_id).limit(1))).first():
+        raise HTTPException(400, "费用审批联动支出不能直接修改，请用负数冲销记录处理")
     linked = (await db.execute(select(PayrollRecord.id).where(
         PayrollRecord.expense_record_id == expense_id,
     ).limit(1))).scalar_one_or_none()

@@ -1,51 +1,29 @@
-"""保留月初余额；扣除有效垫款归还及公司账户工资，撤销后自动恢复。"""
+"""账户余额与报表使用同一套实际收付；内部转账只改变各账户，不改变公司收支。"""
+from collections import defaultdict
+from datetime import timedelta
 from decimal import Decimal
 from sqlalchemy import select, func
-from app.models.cash_advance_repayment import CashAdvanceRepayment
-from app.models.income_expense import ExpenseRecord
-from app.models.payroll import PayrollRecord
-from app.models.reimbursement_payment import ReimbursementPayment
-from app.models.expense_fund import ExpenseFundDisbursement
-from app.models.employee_advance import EmployeeAdvance
+from app.core.timezone import thai_today
+
+
+async def balances_at(db, accounts, at):
+    """at 当天开始的余额；期初日期前后均按原始币种正反推，不移动历史日期。"""
+    if not accounts: return {}
+    from app.services.wallet import flow_query, money
+    q = flow_query(db, sorted({a.warehouse_id for a in accounts}))
+    anchors = {a.id: a.opening_balance_date or thai_today().replace(day=1) for a in accounts}
+    low, high = min([at, *anchors.values()]), max([at, *anchors.values()])
+    changes = defaultdict(lambda: Decimal('0.00'))
+    if low < high:
+        rows = (await db.execute(select(q.c.account_id, q.c.date, q.c.type, func.sum(q.c.amount)).where(
+            q.c.account_id.in_(anchors), q.c.date >= low, q.c.date < high, q.c.status == 'active'
+        ).group_by(q.c.account_id, q.c.date, q.c.type))).all()
+        for aid, day, kind, value in rows:
+            anchor = anchors[aid]
+            if min(anchor, at) <= day < max(anchor, at):
+                changes[aid] += money(value) * (1 if kind == 'income' else -1) * (1 if at >= anchor else -1)
+    return {a.id: money(a.opening_balance) + changes[a.id] for a in accounts}
 
 
 async def current_account_balances(db, accounts):
-    if not accounts:
-        return {}
-    amounts = dict((await db.execute(select(
-        CashAdvanceRepayment.account_id, func.sum(CashAdvanceRepayment.amount),
-    ).where(
-        CashAdvanceRepayment.account_id.in_([a.id for a in accounts]),
-        CashAdvanceRepayment.status == "active",
-    ).group_by(CashAdvanceRepayment.account_id))).all())
-    payroll = (await db.execute(select(ExpenseRecord.account_id, ExpenseRecord.amount).join(
-        PayrollRecord, PayrollRecord.expense_record_id == ExpenseRecord.id,
-    ).where(
-        ExpenseRecord.account_id.in_([a.id for a in accounts]),
-        PayrollRecord.cash_advance_id.is_(None), PayrollRecord.disbursed.is_(True),
-        PayrollRecord.voided.is_not(True), PayrollRecord.warehouse_id == ExpenseRecord.warehouse_id,
-    ))).all()
-    for account_id, amount in payroll:
-        amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount)).quantize(Decimal("0.01"))
-    reimbursements = (await db.execute(select(
-        ReimbursementPayment.payment_account_id, func.sum(ReimbursementPayment.amount),
-    ).where(ReimbursementPayment.payment_account_id.in_([a.id for a in accounts]),
-        ReimbursementPayment.funding_source == "company_account", ReimbursementPayment.status == "active",
-    ).group_by(ReimbursementPayment.payment_account_id))).all()
-    for account_id, amount in reimbursements:
-        amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount))
-    disbursements = (await db.execute(select(ExpenseFundDisbursement.payment_account_id,
-        func.sum(ExpenseFundDisbursement.amount)).where(
-        ExpenseFundDisbursement.payment_account_id.in_([a.id for a in accounts])
-    ).group_by(ExpenseFundDisbursement.payment_account_id))).all()
-    for account_id, amount in disbursements:
-        amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount))
-    advances = (await db.execute(select(EmployeeAdvance.payment_account_id, func.sum(EmployeeAdvance.amount)).join(
-        ExpenseRecord, ExpenseRecord.id == EmployeeAdvance.expense_record_id,
-    ).where(EmployeeAdvance.payment_account_id.in_([a.id for a in accounts]),
-        EmployeeAdvance.funding_source == "company_account", EmployeeAdvance.approval_status == "approved",
-        EmployeeAdvance.not_voided(), ExpenseRecord.warehouse_id == EmployeeAdvance.warehouse_id,
-    ).group_by(EmployeeAdvance.payment_account_id))).all()
-    for account_id, amount in advances:
-        amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount)).quantize(Decimal("0.01"))
-    return {a.id: Decimal(str(a.opening_balance or 0)) - Decimal(str(amounts.get(a.id) or 0)) for a in accounts}
+    return await balances_at(db, accounts, thai_today() + timedelta(days=1))

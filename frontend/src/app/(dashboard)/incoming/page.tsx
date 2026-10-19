@@ -1,4 +1,5 @@
 "use client";
+import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
@@ -14,6 +15,7 @@ export default function IncomingPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [accountId, setAccountId] = useState(0);
   const [saving, setSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -42,9 +44,11 @@ export default function IncomingPage() {
     if (!form.payer_name) { toast("error", "请选择付款方"); return; }
     if (!form.amount) { toast("error", "请填写金额"); return; }
 
+    if (!accountId) { toast("error", "请选择收款账户"); return; }
     setSaving(true);
     try {
       const res = await api.post<any>("/incoming", {
+        account_id: accountId,
         received_date: form.received_date,
         amount: +form.amount,
         currency: form.currency,
@@ -114,6 +118,7 @@ export default function IncomingPage() {
               <option value="CNY">人民币 (CNY)</option>
             </select>
           </div>
+          <WalletAccountSelect value={accountId} onChange={setAccountId} currency={form.currency} label="收款账户" />
           <div>
             <label className="form-label">付款方</label>
             <select className="form-input" value={form.payer_name} onChange={e => setForm({ ...form, payer_name: e.target.value })}>
@@ -162,7 +167,7 @@ export default function IncomingPage() {
           const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls';
           input.onchange = async (e: any) => {
             const file = e.target.files?.[0]; if (!file) return;
-            alert('Excel导入功能：请确保文件包含 received_date, amount, currency, payer_name 列');
+            alert('Excel导入功能：请确保文件包含 received_date, amount, currency, payer_name, account_id 列');
           }; input.click();
         }} className="btn-secondary h-9">批量导入Excel</button>
       </div>

@@ -46,6 +46,7 @@ class IncomingFlow(Base):
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     received_date = Column(DateTime, nullable=False)
+    account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=True)
     amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False, default=CurrencyEnum.THB.value)
     payer_name = Column(String(200), nullable=True)

@@ -1,0 +1,450 @@
+{
+  "scope": "修复 cb1ac9c 的钱包口径审计发现；隔离合成数据验证，无生产操作、无部署",
+  "policy": "按实际收付日统计公司收付；同笔只计一次；垫款归还才记支出；备用金拨付只计一次；内部转账排除；THB/CNY分开",
+  "test_results": {
+    "wallet_and_permissions": 288,
+    "payroll_attendance_leave_limit_regressions": 152,
+    "postgres_migration_boundary_fx_limit": 3,
+    "passed_distinct": 443
+  },
+  "browser": {
+    "width": 390,
+    "actual_receipt": 1000,
+    "purchase_payment": 300,
+    "unpaid_remainder": 700,
+    "cash_opening": 50000,
+    "cash_closing_api_and_report": 50700,
+    "dashboard_profit": 700
+  },
+  "historical_constraints": [
+    "原始数据、老工资计算值不回填、不重算",
+    "旧采购累计额保留原最后付款日，不猜拆逐笔日期和账户",
+    "未指定账户的历史收付单列，不分摊到真实账户",
+    "旧账期回款没有到账关联时不猜测是否另有到账，需与原凭据核对"
+  ],
+  "legacy_full_suite": "完整旧套件初跑112项失败；在原提交回放对应732项亦有32项失败。相反的旧口径断言及整文件冻结断言未当作本轮通过。已更新相关权限验收的有效输入和冻结范围；未宣称全项目旧套件全绿。",
+  "deployment": "尚未部署；启动迁移新增两张表和8个字段，固定原月初余额的日期，原余额不改。",
+  "cases": {
+    "unreceived_declaration": {
+      "views": {
+        "ledger_income": 0,
+        "ledger_expense": 0,
+        "company_income": 0,
+        "company_expense": 0,
+        "old_report_income": 0,
+        "old_report_expense": 0,
+        "unified_cost": 0.0,
+        "company_outflow": 0.0,
+        "cash_report_close": 10000.0,
+        "cash_current_api": 10000.0
+      },
+      "dashboard_income": 0,
+      "operating_income": 0,
+      "expected_wallet_income": 0
+    },
+    "matched_declaration_and_receipt_double_count": {
+      "views": {
+        "ledger_income": 1000.0,
+        "ledger_expense": 0,
+        "company_income": 1000.0,
+        "company_expense": 0,
+        "old_report_income": 1000.0,
+        "old_report_expense": 0,
+        "unified_cost": 0.0,
+        "company_outflow": 0.0,
+        "cash_report_close": 10000.0,
+        "cash_current_api": 10000.0
+      },
+      "expected_wallet_income": 1000
+    },
+    "manual_receipt_payment_balance_and_dashboard": {
+      "views": {
+        "ledger_income": 500.0,
+        "ledger_expense": 200.0,
+        "company_income": 500.0,
+        "company_expense": 200.0,
+        "old_report_income": 500.0,
+        "old_report_expense": 200.0,
+        "unified_cost": 200.0,
+        "company_outflow": 200.0,
+        "cash_report_close": 10300.0,
+        "cash_current_api": 10300.0
+      },
+      "dashboard_income": 500,
+      "expected_wallet_income": 500,
+      "expected_cash_balance": 10300
+    },
+    "unpaid_bill_in_dashboard_headline": {
+      "views": {
+        "ledger_income": 0,
+        "ledger_expense": 0,
+        "company_income": 0,
+        "company_expense": 0,
+        "old_report_income": 0,
+        "old_report_expense": 0,
+        "unified_cost": 0.0,
+        "company_outflow": 0.0,
+        "cash_report_close": 10000.0,
+        "cash_current_api": 10000.0
+      },
+      "dashboard_expense": 0,
+      "dashboard_procurement_card": 0,
+      "expected_wallet_expense": 0
+    },
+    "paid_procurement_missing_in_old_report_and_account": {
+      "views": {
+        "ledger_income": 0,
+        "ledger_expense": 300.0,
+        "company_income": 0,
+        "company_expense": 300.0,
+        "old_report_income": 0,
+        "old_report_expense": 300.0,
+        "unified_cost": 300.0,
+        "company_outflow": 300.0,
+        "cash_report_close": 9700.0,
+        "cash_current_api": 9700.0
+      },
+      "paid_amount": 300,
+      "expected_wallet_expense": 300,
+      "payment_account_recorded": true
+    },
+    "partially_paid_void_loses_cost_but_not_cash": {
+      "views": {
+        "ledger_income": 0,
+        "ledger_expense": 300.0,
+        "company_income": 0,
+        "company_expense": 300.0,
+        "old_report_income": 0,
+        "old_report_expense": 300.0,
+        "unified_cost": 300.0,
+        "company_outflow": 300.0,
+        "cash_report_close": 9700.0,
+        "cash_current_api": 9700.0
+      },
+      "already_paid": 300,
+      "expected_wallet_expense": 300
+    },
+    "split_payment_last_date_overwrites_prior_month": {
+      "september_before_second_payment": {
+        "ledger_income": 0,
+        "ledger_expense": 400.0,
+        "company_income": 0,
+        "company_expense": 400.0,
+        "old_report_income": 0,
+        "old_report_expense": 400.0,
+        "unified_cost": 400.0,
+        "company_outflow": 400.0,
+        "cash_report_close": 10000.0,
+        "cash_current_api": 10000.0
+      },
+      "september_after_second_payment": {
+        "ledger_income": 0,
+        "ledger_expense": 400.0,
+        "company_income": 0,
+        "company_expense": 400.0,
+        "old_report_income": 0,
+        "old_report_expense": 400.0,
+        "unified_cost": 400.0,
+        "company_outflow": 400.0,
+        "cash_report_close": 10000.0,
+        "cash_current_api": 9400.0
+      },
+      "october_after_second_payment": {
+        "ledger_income": 0,
+        "ledger_expense": 600.0,
+        "company_income": 0,
+        "company_expense": 600.0,
+        "old_report_income": 0,
+        "old_report_expense": 600.0,
+        "unified_cost": 600.0,
+        "company_outflow": 600.0,
+        "cash_report_close": 9400.0,
+        "cash_current_api": 9400.0
+      },
+      "expected_september": 400,
+      "expected_october": 600
+    },
+    "cash_advance_payroll_before_and_after_repayment": {
+      "before": {
+        "ledger_income": 0,
+        "ledger_expense": 750.0,
+        "company_income": 0,
+        "company_expense": 750.0,
+        "old_report_income": 0,
+        "old_report_expense": 750.0,
+        "unified_cost": 750.0,
+        "company_outflow": 750.0,
+        "cash_report_close": 9250.0,
+        "cash_current_api": 9250.0
+      },
+      "after_payroll": {
+        "ledger_income": 0,
+        "ledger_expense": 750.0,
+        "company_income": 0,
+        "company_expense": 750.0,
+        "old_report_income": 0,
+        "old_report_expense": 750.0,
+        "unified_cost": 750.0,
+        "company_outflow": 750.0,
+        "cash_report_close": 9250.0,
+        "cash_current_api": 9250.0
+      },
+      "november_repayment": {
+        "ledger_income": 0,
+        "ledger_expense": 7000.0,
+        "company_income": 0,
+        "company_expense": 7000.0,
+        "old_report_income": 0,
+        "old_report_expense": 7000.0,
+        "unified_cost": 7000.0,
+        "company_outflow": 7000.0,
+        "cash_report_close": 2250.0,
+        "cash_current_api": 9250.0
+      },
+      "expected_cost_at_payroll_under_wallet_rule": 0,
+      "expected_november_wallet_expense": 7000
+    },
+    "cash_advance_reimbursement_counts_before_company_pays": {
+      "before": {
+        "ledger_income": 0,
+        "ledger_expense": 5750.0,
+        "company_income": 0,
+        "company_expense": 5750.0,
+        "old_report_income": 0,
+        "old_report_expense": 5750.0,
+        "unified_cost": 5750.0,
+        "company_outflow": 5750.0,
+        "cash_report_close": 9250.0,
+        "cash_current_api": 9250.0
+      },
+      "after": {
+        "ledger_income": 0,
+        "ledger_expense": 5750.0,
+        "company_income": 0,
+        "company_expense": 5750.0,
+        "old_report_income": 0,
+        "old_report_expense": 5750.0,
+        "unified_cost": 5750.0,
+        "company_outflow": 5750.0,
+        "cash_report_close": 9250.0,
+        "cash_current_api": 9250.0
+      },
+      "expected_new_company_expense": 0
+    },
+    "new_fund_disbursement_and_spending_correct": {
+      "after_topup": {
+        "expense_count": 1,
+        "expense_amount": 10000.0,
+        "unified_count": 1,
+        "unified_amount": 10000.0,
+        "flow_count": 1,
+        "flow_amount": 10000.0,
+        "company_flow_count": 1,
+        "company_flow_amount": 10000.0,
+        "company_cash": 10000.0,
+        "fund": {
+          "id": 1,
+          "employee_id": 4,
+          "employee_name": "supervisor",
+          "currency": "THB",
+          "total_topped_up": 10000.0,
+          "current_balance": 10000.0,
+          "total_spent": 0,
+          "spent_by_currency": {},
+          "available": 10000.0,
+          "fund_limit": 20000.0,
+          "alert_threshold": 500.0,
+          "is_low": false
+        }
+      },
+      "after_spend": {
+        "expense_count": 1,
+        "expense_amount": 10000.0,
+        "unified_count": 1,
+        "unified_amount": 10000.0,
+        "flow_count": 1,
+        "flow_amount": 10000.0,
+        "company_flow_count": 1,
+        "company_flow_amount": 10000.0,
+        "company_cash": 10000.0,
+        "fund": {
+          "id": 1,
+          "employee_id": 4,
+          "employee_name": "supervisor",
+          "currency": "THB",
+          "total_topped_up": 10000.0,
+          "current_balance": 10000.0,
+          "total_spent": 2000.0,
+          "spent_by_currency": {
+            "THB": 2000.0
+          },
+          "available": 8000.0,
+          "fund_limit": 20000.0,
+          "alert_threshold": 500.0,
+          "is_low": false
+        }
+      },
+      "expected_wallet_expense": 10000
+    },
+    "fund_expense_approval_double_counts_company_payment": {
+      "approval": {
+        "id": 1,
+        "message": "已付款"
+      },
+      "before": {
+        "expense_count": 1,
+        "expense_amount": 10000.0,
+        "unified_count": 1,
+        "unified_amount": 10000.0,
+        "flow_count": 1,
+        "flow_amount": 10000.0,
+        "company_flow_count": 1,
+        "company_flow_amount": 10000.0,
+        "company_cash": 10000.0,
+        "fund": {
+          "id": 1,
+          "employee_id": 4,
+          "employee_name": "supervisor",
+          "currency": "THB",
+          "total_topped_up": 10000.0,
+          "current_balance": 10000.0,
+          "total_spent": 2000.0,
+          "spent_by_currency": {
+            "THB": 2000.0
+          },
+          "available": 8000.0,
+          "fund_limit": 20000.0,
+          "alert_threshold": 500.0,
+          "is_low": false
+        }
+      },
+      "after": {
+        "expense_count": 1,
+        "expense_amount": 10000.0,
+        "unified_count": 1,
+        "unified_amount": 10000.0,
+        "flow_count": 1,
+        "flow_amount": 10000.0,
+        "company_flow_count": 1,
+        "company_flow_amount": 10000.0,
+        "company_cash": 10000.0,
+        "fund": {
+          "id": 1,
+          "employee_id": 4,
+          "employee_name": "supervisor",
+          "currency": "THB",
+          "total_topped_up": 10000.0,
+          "current_balance": 10000.0,
+          "total_spent": 4000.0,
+          "spent_by_currency": {
+            "THB": 4000.0
+          },
+          "available": 6000.0,
+          "fund_limit": 20000.0,
+          "alert_threshold": 500.0,
+          "is_low": false
+        }
+      },
+      "expected_wallet_expense": 10000
+    },
+    "credit_repayment_not_in_cash_receipts": {
+      "payment": {
+        "id": 1,
+        "incoming_flow_id": 1,
+        "current_debt": 700.0,
+        "overdue_days": 0,
+        "message": "还款记录创建成功，已关联到账流水"
+      },
+      "views": {
+        "ledger_income": 300.0,
+        "ledger_expense": 0,
+        "company_income": 300.0,
+        "company_expense": 0,
+        "old_report_income": 300.0,
+        "old_report_expense": 0,
+        "unified_cost": 0.0,
+        "company_outflow": 0.0,
+        "cash_report_close": 10300.0,
+        "cash_current_api": 10300.0
+      },
+      "expected_receipt_if_payment_is_actual": 300
+    },
+    "preview_mixes_currencies": {
+      "preview": {
+        "income_by_currency": {
+          "CNY": 200.0,
+          "THB": 400.0
+        },
+        "expense_by_currency": {},
+        "net_by_currency": {
+          "CNY": 200.0,
+          "THB": 400.0
+        },
+        "total_income": null,
+        "total_expense": null,
+        "net": null,
+        "preview": null,
+        "preview_by_currency": {
+          "CNY": 200.0,
+          "THB": 400.0
+        }
+      },
+      "default_ledger_total_income": null,
+      "by_currency": {
+        "CNY": 200.0,
+        "THB": 400.0
+      },
+      "company_total_income": null
+    },
+    "pending_advance_executes_on_approval_but_posts_registration_date": {
+      "approval": {
+        "message": "预支已通过",
+        "id": 1,
+        "amount": 1000.0,
+        "approval_status": "approved",
+        "approval_status_label": "已通过",
+        "reviewer_id": 1,
+        "reviewed_at": "2026-10-20T12:00:00+07:00",
+        "reject_reason": null,
+        "expense_record_id": 1,
+        "funding_source": "company_account",
+        "funding_source_label": "公司账户",
+        "cash_advance_id": null,
+        "payment_account_id": 1,
+        "fund_account_id": null
+      },
+      "september": {
+        "ledger_income": 0,
+        "ledger_expense": 0,
+        "company_income": 0,
+        "company_expense": 0,
+        "old_report_income": 0,
+        "old_report_expense": 0,
+        "unified_cost": 0.0,
+        "company_outflow": 0.0,
+        "cash_report_close": 10000.0,
+        "cash_current_api": 9000.0
+      },
+      "october": {
+        "ledger_income": 0,
+        "ledger_expense": 1000.0,
+        "company_income": 0,
+        "company_expense": 1000.0,
+        "old_report_income": 0,
+        "old_report_expense": 1000.0,
+        "unified_cost": 1000.0,
+        "company_outflow": 1000.0,
+        "cash_report_close": 9000.0,
+        "cash_current_api": 9000.0
+      },
+      "expected_execution_date": "2026-10-20",
+      "stored_expense_date": "2026-10-20"
+    }
+  },
+  "performance": {
+    "local_isolated_dashboard_requests": 10,
+    "average_ms": 40.26,
+    "maximum_ms": 82.87,
+    "scope": "本机小规模隔离数据，不代表线上性能"
+  }
+}

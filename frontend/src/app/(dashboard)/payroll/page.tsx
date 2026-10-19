@@ -401,7 +401,7 @@ export default function PayrollPage() {
         if (signatureFile) signature_base64 = await fileToBase64(signatureFile);
         r = await api.post<any>(`/payroll/${recordId}/disburse`, { signature_base64, ...funding });
       }
-      toast("success", `${r.message || "发放成功"}；已记入运营支出${fromAdvance ? "；公司账户未扣款" : ""}`);
+      toast("success", `${r.message || "发放成功"}；${fromAdvance ? "已记录垫款使用，公司归还时记支出" : "已记入运营支出"}`);
       setDisburseModal(null);
       setSignatureFile(null);
       loadRecordsByMonth();
@@ -1011,7 +1011,7 @@ export default function PayrollPage() {
                 {disburseAdvancesLoading && <p className="text-xs text-gray-500 mt-2">正在加载垫款单…</p>}
                 {disburseAdvancesError && <p role="alert" className="text-sm text-red-600 mt-2">{disburseAdvancesError}</p>}
                 {!disburseAdvancesLoading && !disburseAdvancesError && !disburseAdvances.length && <p role="alert" className="text-sm text-red-600 mt-2">还没有已确认且尚未还清的泰铢垫款单，请先登记并确认</p>}
-                <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-2">这笔钱从主管垫款里出，公司账户不扣款。成本照记，剩余未还金额不因发工资减少。</p>
+                <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-2">这笔钱由垫款人支付，公司账户不扣款，归还垫款当天才记支出；剩余未还金额不因发工资减少。</p>
               </div>}
               {!disburseModal.batch_records && <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">签字照片</label>

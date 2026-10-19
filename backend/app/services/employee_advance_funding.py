@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from fastapi import HTTPException
 from sqlalchemy import func, select
 
+from app.core.timezone import thai_now
 from app.models.cash_advance import CashAdvance
 from app.models.customer import PaymentAccount
 from app.models.employee import Employee
@@ -114,7 +115,7 @@ async def apply_advance_funding(db, advance, operator):
         return
     if advance.funding_source is None:
         # 老单审批沿用原成本处理，不猜账户、不补扣资金或补占垫款。
-        await create_advance_expense(db, advance, operator)
+        await create_advance_expense(db, advance, operator, paid_at=advance.reviewed_at)
         return
     # 审批时尚未将新状态 flush，避免把本笔算作已占用额度。
     with db.no_autoflush:
@@ -123,7 +124,7 @@ async def apply_advance_funding(db, advance, operator):
             cash_advance_id=advance.cash_advance_id, fund_account_id=advance.fund_account_id, lock=True, exclude_id=advance.id)
     employee = await db.get(Employee, advance.employee_id)
     if advance.funding_source == "company_account":
-        await create_advance_expense(db, advance, operator)
+        await create_advance_expense(db, advance, operator, paid_at=advance.reviewed_at)
     elif advance.funding_source == "expense_fund":
         item = ExpenseFundItem(fund_id=source.id, expense_date=datetime.combine(advance.advance_date, time.min),
             category="预支工资", amount=advance.amount, currency=advance.currency,

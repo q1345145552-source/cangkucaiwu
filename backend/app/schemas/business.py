@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, List
 from decimal import Decimal
 
@@ -65,6 +65,7 @@ class CustomerResponse(BaseModel):
 class PaymentAccountCreate(BaseModel):
     account_name: str; account_type: str; account_number: str
     opening_balance: float = 0
+    opening_balance_date: Optional[date] = None
     bank_name: Optional[str] = None; branch_name: Optional[str] = None
     account_holder: Optional[str] = None; currency: str = "THB"
     status: str = "active"; remark: Optional[str] = None
@@ -128,6 +129,7 @@ class RechargeResponse(BaseModel):
 
 # ---- Incoming Flow ----
 class IncomingCreate(BaseModel):
+    account_id: Optional[int] = None
     received_date: str; amount: float = Field(gt=0); currency: str = "THB"
     payer_name: Optional[str] = None; payment_method: Optional[str] = None
     remark: Optional[str] = None
