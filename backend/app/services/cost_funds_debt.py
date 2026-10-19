@@ -13,6 +13,7 @@ from app.models.customer import PaymentAccount
 from app.models.employee_advance import EmployeeAdvance
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, ExpenseFundDisbursement
 from app.services.fund_disbursement import cost_record_filter
+from app.services.procurement_payments import procurement_payment_rows
 from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory, IncomeRecord
 from app.models.payable import PayableBill
 from app.models.payroll import PayrollRecord
@@ -57,7 +58,8 @@ def currency(column):
 
 def cost_query(db, warehouse_ids):
     e, c, p, r, a, d = ExpenseRecord, IncomeExpenseCategory, PayrollRecord, Reimbursement, EmployeeAdvance, ExpenseFundDisbursement
-    category = case((or_(c.name.in_(["员工工资", "工资"]), p.id.is_not(None)), "员工工资"), else_=c.name)
+    category = case((or_(c.name.in_(["员工工资", "工资"]), p.id.is_not(None)), "员工工资"),
+        (c.name == "采购", "手工采购"), else_=c.name)
     source = case((or_(r.cash_advance_id.is_not(None), p.cash_advance_id.is_not(None)), "cash_advance"),
         (a.source == "fund", "expense_fund"),
         (e.account_id.is_not(None), "company_account"), else_="unknown")
@@ -87,7 +89,14 @@ def cost_query(db, warehouse_ids):
         # 新预支只在审批通过后由 ExpenseRecord 计一次；旧备用金记录原样保留。
         ~select(a.id).where(a.fund_item_id == i.id, a.expense_tracking_enabled.is_(True),
             a.warehouse_id == f.warehouse_id).exists())
-    return union_all(records, funds).subquery("cost_rows")
+    paid = procurement_payment_rows(db, warehouse_ids)
+    purchases = select(
+        paid.c.bill_id, literal("payable"), paid.c.bill_id, paid.c.warehouse_id,
+        paid.c.payment_date, literal(None), literal("采购"), paid.c.amount, paid.c.currency,
+        literal(None), paid.c.bill_number, literal(None), literal("company_account"), literal(None),
+        literal(None), literal(None), literal(True), literal(None), literal(None), literal(None), literal(None),
+    )
+    return union_all(records, funds, purchases).subquery("cost_rows")
 
 
 def cost_filters(q, start, end, *, category_id=None, cost_category=None, account_id=None, currency_code=None):
@@ -111,11 +120,12 @@ async def cost_list(db, warehouse_ids, start, end, *, page=1, page_size=25, cate
     rows = (await db.execute(select(q).where(*filters).order_by(q.c.date.desc(), q.c.source, q.c.source_id.desc())
         .offset((page - 1) * page_size).limit(page_size))).mappings().all()
     accounts = {a.id: a.account_name for a in (await db.execute(select(PaymentAccount).where(PaymentAccount.warehouse_id.in_(warehouse_ids)))).scalars()}
-    data = [{**dict(r), "amount": float(r["amount"]), "expense_date": str(r["date"]),
-        "date": str(r["date"]), "account_name": accounts.get(r["account_id"], "备用金" if r["source"] == "fund_item" else "不使用公司账户"),
+    data = [{**dict(r), "id": f"payable-{r['source_id']}" if r["source"] == "payable" else r["id"],
+        "amount": float(r["amount"]), "expense_date": str(r["date"]),
+        "date": str(r["date"]), "account_name": accounts.get(r["account_id"], "付款账户未记录" if r["source"] == "payable" else "备用金" if r["source"] == "fund_item" else "不使用公司账户"),
         "is_read_only": bool(r["is_read_only"])} for r in rows]
     return {"data": data, "total": total, "page": page, "page_size": page_size,
-        "totals_by_currency": await cost_totals(db, q, filters), "cost_basis": "运营支出及保留的历史备用金开销；新开销只记台账"}
+        "totals_by_currency": await cost_totals(db, q, filters), "cost_basis": "运营支出、应付实付及保留的历史备用金开销；手工采购单列，新开销只记台账"}
 
 
 def flow_query(db, warehouse_ids):
@@ -297,6 +307,8 @@ async def report(db, warehouse_ids, start, end):
         .where(flows.c.date.is_(None), flows.c.status == "active").group_by(flows.c.currency, flows.c.source_label))).all()
     return {"start_date": start.isoformat(), "end_date": end.isoformat(), "warehouse_ids": warehouse_ids, "currencies": blocks,
         "balance_anchor_date": anchor.isoformat(), "notes": [
+            "采购按应付账单的付款日期和已付金额统计，排除作废及未付款；原采购类运营支出单列手工采购，不按名称或金额推断关联。",
+            "应付账单只存累计已付和最后付款时间，跨月分次付款缺少逐笔日期/金额，当前口径无法还原每次付款所属月份。",
             "新备用金在拨付时计成本，后续开销只记台账；保留已按旧口径计入的历史备用金开销，不回填旧拨付。",
             "公司资金流水不含充值申报（申报不等于到账）、垫款付款或备用金二次开销；归还垫款和领用备用金计真实流出，另列差异解释。",
             "期初按当前月初登记余额及现存有效流水前推/回推；系统没有历史月初余额快照，历史余额请结合银行账单核对。",

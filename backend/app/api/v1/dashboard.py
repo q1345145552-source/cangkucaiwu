@@ -13,6 +13,7 @@ from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
 from app.core.timezone import thai_now, thai_today
+from app.services.procurement_payments import procurement_payment_rows, procurement_payment_totals
 from datetime import datetime, date, timedelta
 
 router = APIRouter()
@@ -342,15 +343,12 @@ async def dashboard_trends(current_user: User = Depends(get_current_user), db: A
                ExpenseRecord.expense_date >= datetime.combine(month_start, datetime.min.time()),
                ExpenseRecord.expense_date < datetime.combine(next_month, datetime.min.time()))
     )).all()
+    procurement = procurement_payment_rows(db, [wh_id])
     sup_rows = (await db.execute(
-        select(PayableBill.currency, PayableBill.amount, Supplier.name)
-        .join(Supplier, PayableBill.supplier_id == Supplier.id)
-        .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
-        .where(PayableBill.warehouse_id == wh_id,
-               PayableBill.status != "voided",
-               PayableBill.bill_date >= datetime.combine(month_start, datetime.min.time()),
-               PayableBill.bill_date < datetime.combine(next_month, datetime.min.time()),
-               (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
+        select(procurement.c.currency, procurement.c.amount, Supplier.name)
+        .join(Supplier, procurement.c.supplier_id == Supplier.id)
+        .where(procurement.c.payment_date >= month_start,
+               procurement.c.payment_date < next_month)
     )).all()
 
     def _group_by_name(rows, cur):
@@ -447,6 +445,8 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
         .group_by(PayableBill.currency)
     )).all()
 
+    # 采购卡片改为实付口径；原月度支出/盈亏按本轮要求保留，仍使用上面的旧汇总。
+    procurement_paid_rows = await procurement_payment_totals(db, [wh_id], month_start, next_month - timedelta(days=1))
     expense_rows = _merge_currency(op_rows, proc_rows)
     income_list = _merge_currency(income_rows)
     expense_list = expense_rows
@@ -701,7 +701,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
             "month": {
                 "income": income_list,
                 "operating_expense": _merge_currency(op_rows),
-                "procurement_expense": _merge_currency(proc_rows),
+                "procurement_expense": _merge_currency(procurement_paid_rows),
                 "expense": expense_list,
                 "profit": profit_list,
             },
@@ -715,7 +715,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
                 "expense_funds": _merge_currency(fund_rows),
             },
             "procurement": {
-                "expense": _merge_currency(proc_rows),
+                "expense": _merge_currency(procurement_paid_rows),
                 "price_anomaly_count": price_anomaly,
                 "non_lowest_count": non_lowest,
             },

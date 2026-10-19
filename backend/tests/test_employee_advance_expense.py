@@ -272,7 +272,7 @@ def test_payroll_frontend_and_unrelated_write_code_unchanged():
     # 两轮仅扩充联动行的只读说明，排版和其他交互保持原样。
     path = "frontend/src/app/(dashboard)/operating/page.tsx"
     old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()
-    assert (root / path).read_text() == old.replace("备用金只读明细</span>", '{row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span>')
+    assert (root / path).read_text() == old.replace("备用金只读明细</span>", '{row.source === "payable" ? `应付付款 #${row.source_id}` : row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span>').replace('<option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}', '<option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name === "采购" ? "手工采购" : c.name}</option>)}')
     path = "frontend/src/app/(dashboard)/reports/cost-funds-debt/page.tsx"
     old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()
     assert (root / path).read_text() == old.replace(': `备用金开销 #${row.source_id}`}', ': row.source === "expense" ? row.remark || "备用金支付" : `备用金开销 #${row.source_id}`}')

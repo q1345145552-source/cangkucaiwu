@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 from app.services import cost_funds_debt as s
+from app.models.supplier import PurchaseOrder
 from tests.test_round12_migration_postgres import PostgreSQLConnection
 
 pytestmark = pytest.mark.skipif(not os.environ.get("PGLITE_NODE"), reason="Requires embedded PostgreSQL")
@@ -23,7 +24,7 @@ def test_actual_postgres_union_types_currency_and_business_day():
         try:
             for model in (s.ExpenseRecord, s.IncomeExpenseCategory, s.PayrollRecord, s.Reimbursement, s.ExpenseFund,
                 s.ExpenseFundItem, s.IncomeRecord, s.ReimbursementPayment, s.CashAdvanceRepayment,
-                s.IncomingFlow, s.PayableBill, s.PaymentAccount, s.EmployeeAdvance, s.ExpenseFundDisbursement):
+                s.IncomingFlow, s.PayableBill, s.PaymentAccount, s.EmployeeAdvance, s.ExpenseFundDisbursement, PurchaseOrder):
                 await conn.execute(str(CreateTable(model.__table__, include_foreign_key_constraints=[]).compile(dialect=dialect)))
             for sql in (
                 "INSERT INTO income_expense_categories(id,warehouse_id,type,name,category_group) VALUES(1,1,'expense','报销','operating')",

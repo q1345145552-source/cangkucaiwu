@@ -399,7 +399,7 @@ export default function OperatingPage() {
         </div>
         <div className="bg-gray-50/70 rounded-xl p-4 mb-4">
           <div className="flex items-end gap-3 flex-wrap">
-            <div className="w-[140px]"><label className="form-label text-xs">类别</label><select className="form-input text-sm" value={expFilters.category_id} onChange={e => { setCostCategory(""); setExpPage(1); setExpFilters({ ...expFilters, category_id: +e.target.value }); }}><option value={0}>{costCategory || "全部类别"}</option><option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+            <div className="w-[140px]"><label className="form-label text-xs">类别</label><select className="form-input text-sm" value={expFilters.category_id} onChange={e => { setCostCategory(""); setExpPage(1); setExpFilters({ ...expFilters, category_id: +e.target.value }); }}><option value={0}>{costCategory || "全部类别"}</option><option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name === "采购" ? "手工采购" : c.name}</option>)}</select></div>
             <div className="w-[110px]"><label className="form-label text-xs">币种</label><select className="form-input text-sm" value={expFilters.currency} onChange={e => setExpFilters({ ...expFilters, currency: e.target.value })}><option value="">全部</option><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
             <div className="w-[150px]"><label className="form-label text-xs">账户</label><select className="form-input text-sm" value={expFilters.account_id} onChange={e => setExpFilters({ ...expFilters, account_id: +e.target.value })}><option value={0}>全部账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name}</option>)}</select></div>
             <button onClick={resetFilters} className="btn-secondary flex items-center gap-1.5 text-sm h-[38px]">重置</button>
@@ -435,7 +435,7 @@ export default function OperatingPage() {
                     </button>
                   ) : <span className="text-gray-300">无</span>;
                 } },
-              ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span> : (
+              ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.source === "payable" ? `应付付款 #${row.source_id}` : row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span> : (
                   <div className="flex items-center gap-2">
                     <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
                     <button onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
