@@ -106,6 +106,24 @@ async def _migrate_advance_approval_columns(conn):
             print(f"迁移 预支审批字段 {name} 失败：{exc}")
 
 
+async def _migrate_employee_advance_expenses(conn):
+    """仅加新旧标记和关联列；老预支不补任何支出。"""
+    from sqlalchemy import text
+    for name, statement in (
+        ("expense_tracking_enabled", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS expense_tracking_enabled BOOLEAN NOT NULL DEFAULT false"),
+        ("expense_record_id", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS expense_record_id INTEGER REFERENCES expense_records(id)"),
+        ("fund_item_id", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS fund_item_id INTEGER REFERENCES expense_fund_items(id)"),
+        ("expense_index", "CREATE UNIQUE INDEX IF NOT EXISTS ix_employee_advances_expense_record_id ON employee_advances(expense_record_id)"),
+        ("fund_item_index", "CREATE UNIQUE INDEX IF NOT EXISTS ix_employee_advances_fund_item_id ON employee_advances(fund_item_id)"),
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 员工预支支出关联 {name} 失败：{exc}")
+            raise
+
+
 async def _migrate_payroll_expense_link(conn):
     from sqlalchemy import text
     for name, statement in (
@@ -262,6 +280,7 @@ async def seed():
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)
+        await _migrate_employee_advance_expenses(conn)
         await _migrate_makeup_quota_column(conn)
         await _migrate_makeup_batches(conn)
         await _migrate_payroll_expense_link(conn)
@@ -1087,6 +1106,11 @@ async def initialize():
         async with conn.begin_nested():
             reimbursement_categories = await backfill_reimbursement_categories(conn)
     print(f"报销支出分类迁移完成，新增分类数：{reimbursement_categories}")
+    from app.services.employee_advance_expense import backfill_advance_categories
+    async with _get_engine().begin() as conn:
+        async with conn.begin_nested():
+            advance_categories = await backfill_advance_categories(conn)
+    print(f"员工预支支出分类迁移完成，新增分类数：{advance_categories}")
     from app.services.permission_migrations import run_permission_migrations
     async with _get_engine().begin() as conn:
         changed = await run_permission_migrations(conn)

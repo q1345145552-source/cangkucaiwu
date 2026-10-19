@@ -8,7 +8,7 @@ function fixture(balanced=true){return {start_date:'2026-10-01',end_date:'2026-1
 function harness(options={}){
  let state=[],deps=[],effects=[],cursor=0,ei=0;const reads=[];
  const react={...React,useState(v){const i=cursor++;if(!(i in state))state[i]=typeof v==='function'?v():v;return[state[i],v=>state[i]=typeof v==='function'?v(state[i]):v];},useEffect(fn,d){const i=ei++,k=JSON.stringify(d);if(deps[i]!==k){deps[i]=k;effects.push(fn);}}};
- const api={get:async route=>{reads.push(route);if(options.error)throw Error('无此操作权限');return fixture(options.balanced!==false);},post(){throw Error('Report must never write');},put(){throw Error('Report must never write');},delete(){throw Error('Report must never write');}};
+ const api={get:async route=>{reads.push(route);if(options.error)throw Error('无此操作权限');const data=fixture(options.balanced!==false);if(options.advanceFund){data.currencies[0].costs.data[2].name='员工预支';Object.assign(data.currencies[0].reconciliation.details[1],{id:22,source:'expense',source_id:22,category_name:'员工预支',remark:'主管甲 预支（预支单 #9）'});}return data;},post(){throw Error('Report must never write');},put(){throw Error('Report must never write');},delete(){throw Error('Report must never write');}};
  const imports={react,'@/lib/api':{api},'next/link':{__esModule:true,default:()=>null}};
  const source=fs.readFileSync(path.join(root,'frontend/src/app/(dashboard)/reports/cost-funds-debt/page.tsx'),'utf8'),m={exports:{}};
  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>imports[n]||require(n),Date,Intl,URLSearchParams,window:{location:{search:options.query||'?start_date=2026-10-01&end_date=2026-10-19'}}});
@@ -21,6 +21,7 @@ function harness(options={}){
  button(t,'上周').props.onClick();t=await h.render();assert(h.reads.at(-1).includes('start_date=')&&h.reads.at(-1).includes('end_date='));
  const input=find(t,n=>n.props?.['aria-label']==='开始日期');input.props.onChange({target:{value:''}});t=await h.render();assert(text(t).includes('请选择完整日期范围'));
  h=harness({balanced:false});t=await h.render();assert(text(t).includes('未对平'));assert(text(t).includes('垫款归还'));assert(walk(t).some(n=>n.props?.className?.includes('text-red-700')&&text(n).includes('-1,000.00')));
+ h=harness({advanceFund:true});t=await h.render();find(t,n=>n.type==='button'&&text(n).includes('查看垫款及备用金')).props.onClick();t=await h.render();assert(text(t).includes('主管甲 预支（预支单 #9）'));assert(!text(t).includes('备用金开销 #22'));
  h=harness({error:true});t=await h.render();assert(text(t).includes('无此操作权限'));assert(walk(t).some(n=>n.props?.role==='alert'));button(t,'重试').props.onClick();await h.render();assert.equal(h.reads.length,2);
  console.log('PASS: exact formula, non-cost red difference, read-only requests, detail counts, date range, currency/account/category/payer links, invalid dates and error retry');
 })().catch(e=>{console.error(e);process.exitCode=1;});

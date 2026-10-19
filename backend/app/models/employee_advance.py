@@ -1,5 +1,5 @@
 from enum import Enum
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean, false
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -40,6 +40,10 @@ class EmployeeAdvance(Base):
     reviewer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     reject_reason = Column(String(500), nullable=True)
+    # 只对上线后新建的预支记支出；历史待审批记录以后通过也不补账。
+    expense_tracking_enabled = Column(Boolean, nullable=False, default=False, server_default=false())
+    expense_record_id = Column(Integer, ForeignKey("expense_records.id"), nullable=True, unique=True, index=True)
+    fund_item_id = Column(Integer, ForeignKey("expense_fund_items.id"), nullable=True, unique=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     employee = relationship("Employee", foreign_keys=[employee_id])

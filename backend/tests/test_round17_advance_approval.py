@@ -95,7 +95,8 @@ def test_startup_wired_and_payroll_frontend_unchanged():
 def test_original_advance_money_actions_unchanged():
  root=Path(__file__).resolve().parents[2]
  name='backend/app/api/v1/employee_advance.py'
- old=ast.parse(subprocess.check_output(['git','show','75021e9:'+name],text=True,cwd=root));new=ast.parse((root/name).read_text())
+ # 验证第17轮当时的改动；后续预支记支出另有独立生命周期测试。
+ old=ast.parse(subprocess.check_output(['git','show','75021e9:'+name],text=True,cwd=root));new=ast.parse(subprocess.check_output(['git','show','a19fa60:'+name],text=True,cwd=root))
  def get(tree,name):return next(n for n in tree.body if isinstance(n,ast.AsyncFunctionDef) and n.name==name)
  for name in ('advance_summary','delete_advance'):
   assert ast.dump(get(old,name),include_attributes=False)==ast.dump(get(new,name),include_attributes=False)

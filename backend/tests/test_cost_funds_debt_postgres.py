@@ -23,7 +23,7 @@ def test_actual_postgres_union_types_currency_and_business_day():
         try:
             for model in (s.ExpenseRecord, s.IncomeExpenseCategory, s.PayrollRecord, s.Reimbursement, s.ExpenseFund,
                 s.ExpenseFundItem, s.IncomeRecord, s.ReimbursementPayment, s.CashAdvanceRepayment,
-                s.IncomingFlow, s.PayableBill, s.PaymentAccount):
+                s.IncomingFlow, s.PayableBill, s.PaymentAccount, s.EmployeeAdvance):
                 await conn.execute(str(CreateTable(model.__table__, include_foreign_key_constraints=[]).compile(dialect=dialect)))
             for sql in (
                 "INSERT INTO income_expense_categories(id,warehouse_id,type,name,category_group) VALUES(1,1,'expense','报销','operating')",

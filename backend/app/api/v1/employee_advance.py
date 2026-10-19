@@ -13,6 +13,8 @@ from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.core.timezone import thai_now, thai_today
 from app.services.flow_rules import fund_available
 from app.services.data_history import record_history
+from app.services.employee_advance_expense import create_advance_expense, delete_advance_expense
+from math import isfinite
 from pydantic import BaseModel
 from datetime import datetime, date
 from typing import Optional, List, Literal
@@ -27,6 +29,7 @@ def _approval_fields(advance):
         "reviewer_id": advance.reviewer_id,
         "reviewed_at": advance.reviewed_at.isoformat() if advance.reviewed_at else None,
         "reject_reason": advance.reject_reason,
+        "expense_record_id": advance.expense_record_id,
     }
 
 
@@ -53,7 +56,7 @@ async def create_advance(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
-    if req.amount is None or req.amount <= 0:
+    if req.amount is None or not isfinite(req.amount) or req.amount <= 0:
         raise HTTPException(400, "预支金额必须大于0")
 
     try:
@@ -115,6 +118,7 @@ async def create_advance(
         deducted_amount=0,
         status="unpaid",
         approval_status=approval_status,
+        expense_tracking_enabled=True,
     )
     db.add(adv)
     await db.flush()
@@ -131,7 +135,7 @@ async def create_advance(
         available = fund_available(fund_account.remaining_balance, spent_regular)
         if req.amount > available:
             raise HTTPException(400, f"超出备用金可用余额（可用 {available:,.2f}）")
-        db.add(ExpenseFundItem(
+        fund_item = ExpenseFundItem(
             fund_id=fund_account.id,
             expense_date=datetime.combine(adv_dt, datetime.min.time()),
             category="预支工资",
@@ -139,8 +143,12 @@ async def create_advance(
             currency=currency,
             description=f"预支工资 {emp.name}",
             review_status=ReviewStatus.APPROVED.value,
-        ))
+        )
+        db.add(fund_item)
         await db.flush()
+        adv.fund_item_id = fund_item.id
+
+    await create_advance_expense(db, adv, current_user)
 
     return {"message": "预支记录已创建", "id": adv.id, **_approval_fields(adv)}
 
@@ -308,11 +316,16 @@ async def delete_advance(
         raise HTTPException(400, "请先选择仓库")
 
     r = (await db.execute(
-        select(EmployeeAdvance).where(EmployeeAdvance.id == advance_id, EmployeeAdvance.warehouse_id == wh_id)
+        select(EmployeeAdvance).where(EmployeeAdvance.id == advance_id, EmployeeAdvance.warehouse_id == wh_id).with_for_update()
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "预支记录不存在")
 
+    before = {"employee_id": r.employee_id, "amount": r.amount, "currency": r.currency,
+              "fund_item_id": r.fund_item_id, **_approval_fields(r)}
+    await delete_advance_expense(db, r, current_user)
+    await record_history(db, module="employee_advances", record_id=r.id, operator=current_user,
+        operation_type="delete", before=before, warehouse_id=wh_id)
     await db.delete(r)
     await db.flush()
     return {"message": "预支记录已删除"}
@@ -355,6 +368,8 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
     advance.reviewer_id = current_user.id
     advance.reviewed_at = thai_now()
     advance.reject_reason = reason if action == "reject" else None
+    if action == "approve":
+        await create_advance_expense(db, advance, current_user)
     await record_history(db, module="employee_advances", record_id=advance.id,
         operator=current_user, operation_type=action, before=before,
         after={"amount": advance.amount, **_approval_fields(advance)}, warehouse_id=wh_id)

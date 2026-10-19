@@ -1,5 +1,7 @@
 from app.services.payroll_expense import require_manual_expense
 from app.services.reimbursement_payment import require_manual_reimbursement_expense
+from app.services.employee_advance_expense import require_manual_advance_expense
+from app.models.employee_advance import EmployeeAdvance
 from app.models.reimbursement import Reimbursement
 from app.models.payroll import PayrollRecord
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
@@ -254,6 +256,11 @@ async def list_expense(
         Reimbursement.warehouse_id.in_(get_wh_ids(current_user)),
     ))).all() if expense_ids else []
     reimbursement_map = {expense_id: (reimb_id, advance_id, source) for expense_id, reimb_id, advance_id, source in reimbursement_rows}
+    advance_rows = (await db.execute(select(EmployeeAdvance).where(
+        EmployeeAdvance.expense_record_id.in_(expense_ids),
+        EmployeeAdvance.warehouse_id.in_(get_wh_ids(current_user)),
+    ))).scalars().all() if expense_ids else []
+    advance_map = {row.expense_record_id: row for row in advance_rows}
 
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id, "category_id": r.category_id,
@@ -261,8 +268,11 @@ async def list_expense(
         "amount": r.amount, "currency": r.currency,
         "payroll_record_id": payroll_map.get(r.id),
         "cash_advance_id": reimbursement_map[r.id][1] if r.id in reimbursement_map else cash_advance_map.get(r.id),
-        "funding_source": reimbursement_map[r.id][2] if r.id in reimbursement_map else "cash_advance" if cash_advance_map.get(r.id) is not None else "company_account",
+        "funding_source": ("expense_fund" if advance_map[r.id].source == "fund" else "unknown") if r.id in advance_map else reimbursement_map[r.id][2] if r.id in reimbursement_map else "cash_advance" if cash_advance_map.get(r.id) is not None else "company_account",
         "reimbursement_id": reimbursement_map[r.id][0] if r.id in reimbursement_map else None,
+        "employee_advance_id": advance_map[r.id].id if r.id in advance_map else None,
+        "employee_id": advance_map[r.id].employee_id if r.id in advance_map else None,
+        "is_read_only": r.id in advance_map,
         "expense_date": r.expense_date.isoformat() if r.expense_date else None,
         "voucher": r.voucher, "remark": r.remark,
         "category_name": cat_map.get(r.category_id, ""),
@@ -363,6 +373,7 @@ async def update_expense(
 
     await require_manual_expense(db, expense_id)
     await require_manual_reimbursement_expense(db, expense_id)
+    await require_manual_advance_expense(db, expense_id)
 
     before = {
         "amount": r.amount, "currency": r.currency,
@@ -474,6 +485,7 @@ async def delete_expense(
     wh_id = r.warehouse_id
     await require_manual_expense(db, expense_id)
     await require_manual_reimbursement_expense(db, expense_id)
+    await require_manual_advance_expense(db, expense_id)
 
     before = {
         "amount": r.amount, "currency": r.currency,
@@ -647,6 +659,7 @@ async def ledger(
                   WHERE pr.expense_record_id = er.id AND pr.cash_advance_id IS NOT NULL
               )
               AND NOT EXISTS (SELECT 1 FROM reimbursements rb2 WHERE rb2.expense_record_id=er.id)
+              AND NOT EXISTS (SELECT 1 FROM employee_advances ea WHERE ea.expense_record_id=er.id AND ea.source='fund')
         """)
 
     # 垫款归还是资金流出，不写 ExpenseRecord；撤销留在流水中显示已冲销。

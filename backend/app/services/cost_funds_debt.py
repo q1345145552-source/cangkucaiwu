@@ -10,6 +10,7 @@ from app.core.timezone import thai_today
 from app.models.cash_advance import CashAdvance
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.customer import PaymentAccount
+from app.models.employee_advance import EmployeeAdvance
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem
 from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory, IncomeRecord
 from app.models.payable import PayableBill
@@ -54,9 +55,10 @@ def currency(column):
 
 
 def cost_query(db, warehouse_ids):
-    e, c, p, r = ExpenseRecord, IncomeExpenseCategory, PayrollRecord, Reimbursement
+    e, c, p, r, a = ExpenseRecord, IncomeExpenseCategory, PayrollRecord, Reimbursement, EmployeeAdvance
     category = case((or_(c.name.in_(["员工工资", "工资"]), p.id.is_not(None)), "员工工资"), else_=c.name)
     source = case((or_(r.cash_advance_id.is_not(None), p.cash_advance_id.is_not(None)), "cash_advance"),
+        (a.source == "fund", "expense_fund"),
         (e.account_id.is_not(None), "company_account"), else_="unknown")
     records = select(
         e.id.label("id"), literal("expense").label("source"), e.id.label("source_id"),
@@ -65,18 +67,23 @@ def cost_query(db, warehouse_ids):
         amount(e.amount).label("amount"), currency(e.currency).label("currency"),
         e.account_id.label("account_id"), e.remark.label("remark"), e.voucher.label("voucher"),
         source.label("funding_source"), func.coalesce(r.cash_advance_id, p.cash_advance_id).label("cash_advance_id"),
-        r.id.label("reimbursement_id"), p.id.label("payroll_record_id"), literal(False).label("is_read_only"),
+        r.id.label("reimbursement_id"), p.id.label("payroll_record_id"), a.id.is_not(None).label("is_read_only"),
+        a.id.label("employee_advance_id"), a.employee_id.label("employee_id"),
     ).join(c, and_(c.id == e.category_id, c.warehouse_id == e.warehouse_id)).outerjoin(
         p, and_(p.expense_record_id == e.id, p.warehouse_id == e.warehouse_id),
-    ).outerjoin(r, and_(r.expense_record_id == e.id, r.warehouse_id == e.warehouse_id)).where(
+    ).outerjoin(r, and_(r.expense_record_id == e.id, r.warehouse_id == e.warehouse_id)).outerjoin(
+        a, and_(a.expense_record_id == e.id, a.warehouse_id == e.warehouse_id)).where(
         e.warehouse_id.in_(warehouse_ids), c.type == "expense", c.category_group == "operating")
     f, i = ExpenseFund, ExpenseFundItem
     funds = select(
         (-i.id).label("id"), literal("fund_item").label("source"), i.id.label("source_id"), f.warehouse_id,
         day(db, i.expense_date), literal(None), literal("备用金开销"), amount(i.amount), currency(i.currency),
         literal(None), i.description, i.receipt, literal("expense_fund"), literal(None),
-        literal(None), literal(None), literal(True),
-    ).join(f, f.id == i.fund_id).where(f.warehouse_id.in_(warehouse_ids), i.review_status == "approved")
+        literal(None), literal(None), literal(True), literal(None), literal(None),
+    ).join(f, f.id == i.fund_id).where(f.warehouse_id.in_(warehouse_ids), i.review_status == "approved",
+        # 新预支只在审批通过后由 ExpenseRecord 计一次；旧备用金记录原样保留。
+        ~select(a.id).where(a.fund_item_id == i.id, a.expense_tracking_enabled.is_(True),
+            a.warehouse_id == f.warehouse_id).exists())
     return union_all(records, funds).subquery("cost_rows")
 
 
@@ -127,7 +134,9 @@ def flow_query(db, warehouse_ids):
         account=er.account_id, reference="EX-", remark=er.remark).outerjoin(
         r, and_(r.expense_record_id == er.id, r.warehouse_id == er.warehouse_id),
     ).outerjoin(p, and_(p.expense_record_id == er.id, p.warehouse_id == er.warehouse_id)).where(
-        r.id.is_(None), or_(p.id.is_(None), and_(p.cash_advance_id.is_(None), p.disbursed.is_(True), p.voided.is_not(True))))
+        r.id.is_(None), or_(p.id.is_(None), and_(p.cash_advance_id.is_(None), p.disbursed.is_(True), p.voided.is_not(True))),
+        ~select(EmployeeAdvance.id).where(EmployeeAdvance.expense_record_id == er.id,
+            EmployeeAdvance.source == "fund").exists())
     rp, cr = ReimbursementPayment, CashAdvanceRepayment
     reimbursements = row(rp, rp.paid_at, rp.amount, rp.currency, "expense", "reimbursement", "报销付款",
         account=rp.payment_account_id, account_name=rp.account_name, status=rp.status, reference="RB-P-",
