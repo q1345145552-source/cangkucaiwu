@@ -937,7 +937,8 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 EmployeeAdvance.employee_id == emp.id,
                 EmployeeAdvance.status != "deducted",
                 EmployeeAdvance.approval_status == AdvanceApprovalStatus.APPROVED.value,
-            ).order_by(EmployeeAdvance.advance_date.asc(), EmployeeAdvance.id.asc())
+                EmployeeAdvance.not_voided(),
+            ).order_by(EmployeeAdvance.advance_date.asc(), EmployeeAdvance.id.asc()).with_for_update()
         )).scalars().all()
 
         remaining_pay = available

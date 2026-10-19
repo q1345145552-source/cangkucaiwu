@@ -5,7 +5,7 @@ import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { DollarSign, Plus, Trash2 } from "lucide-react";
+import { DollarSign, Plus, Ban } from "lucide-react";
 
 function todayStr(): string {
   const n = new Date();
@@ -13,7 +13,7 @@ function todayStr(): string {
 }
 
 const SOURCE_LABELS: Record<string, string> = { supervisor: "主管垫付", fund: "备用金" };
-const STATUS_LABELS: Record<string, string> = { unpaid: "未扣", partial: "部分扣", deducted: "已扣完" };
+const STATUS_LABELS: Record<string, string> = { unpaid: "未扣", partial: "部分扣", deducted: "已扣完", voided: "已作废" };
 
 export default function EmployeeAdvancePage() {
   const canWrite = useMenuPermission("employee_advances");
@@ -35,6 +35,9 @@ export default function EmployeeAdvancePage() {
   const [reviewing, setReviewing] = useState<number | null>(null);
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [voidId, setVoidId] = useState<number | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voiding, setVoiding] = useState(false);
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
     const status = new URLSearchParams(window.location.search).get("approval_status") || "";
@@ -102,13 +105,17 @@ export default function EmployeeAdvancePage() {
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm("确定删除这条预支记录吗？")) return;
+  async function handleVoid() {
+    if (voidId === null) return;
+    if (!voidReason.trim()) { toast("error", "请填写作废原因"); return; }
+    setVoiding(true);
     try {
-      await api.delete(`/employee-advances/${id}`);
-      toast("success", "已删除");
-      load();
-    } catch (err: any) { toast("error", err.message || "删除失败"); }
+      await api.delete(`/employee-advances/${voidId}`, { void_reason: voidReason.trim() });
+      toast("success", "预支已作废");
+      setVoidId(null); setVoidReason("");
+      await load();
+    } catch (err: any) { toast("error", err.message || "作废失败"); }
+    finally { setVoiding(false); }
   }
 
   const fmtPeriod = (period: string, half: string) => `${period} ${half === "second_half" ? "下半月" : "上半月"}`;
@@ -188,7 +195,7 @@ export default function EmployeeAdvancePage() {
             </thead>
             <tbody>
               {rows.map((r: any) => (
-                <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                <tr key={r.id} className={`border-b border-gray-50 hover:bg-gray-50 ${r.is_voided || r.status === "voided" ? "text-gray-400 opacity-60" : ""}`}>
                   <td className="px-3 py-3 font-medium">{r.employee_name}{r.employee_status === "resigned" && <span className="ml-1 text-xs text-red-500">已离职</span>}</td>
                   <td className="px-3 py-3 text-right font-bold">{r.amount?.toLocaleString()} {r.currency}</td>
                   <td className="px-3 py-3">{r.advance_date}</td>
@@ -196,10 +203,10 @@ export default function EmployeeAdvancePage() {
                   <td className="px-3 py-3 text-right">{r.deducted_amount?.toLocaleString()}</td>
                   <td className="px-3 py-3 text-right text-red-600">{r.remaining_amount?.toLocaleString()}</td>
                   <td className="px-3 py-3 text-center">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      r.status === "deducted" ? "bg-green-50 text-green-700" : r.status === "partial" ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-600"
+                    <span title={r.is_voided ? `作废人：${r.voided_by_name || r.voided_by || "-"}；时间：${r.voided_at || "-"}；原因：${r.void_reason || "-"}` : undefined} className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      r.is_voided || r.status === "voided" ? "bg-gray-100 text-gray-500" : r.status === "deducted" ? "bg-green-50 text-green-700" : r.status === "partial" ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-600"
                     }`}>
-                      {STATUS_LABELS[r.status] || r.status}
+                      {r.is_voided ? "已作废" : STATUS_LABELS[r.status] || r.status}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-center">{SOURCE_LABELS[r.source] || r.source}</td>
@@ -207,12 +214,16 @@ export default function EmployeeAdvancePage() {
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-gray-500 max-w-32 truncate" title={r.remark}>{r.remark || "-"}</td>
                   <td className="px-3 py-3 text-center">
-                    {user?.role === "warehouse_admin" && r.approval_status === "pending" && <div className="flex gap-2 mb-2 whitespace-nowrap">
+                    {user?.role === "warehouse_admin" && !r.is_voided && r.status !== "voided" && r.approval_status === "pending" && <div className="flex gap-2 mb-2 whitespace-nowrap">
                       <button disabled={reviewing !== null} onClick={() => review(r.id)} className="text-green-700 disabled:opacity-50">通过</button>
                       <button disabled={reviewing !== null} onClick={() => { setRejectId(r.id); setRejectReason(""); }} className="text-red-600">驳回</button>
                     </div>}
-                    {canWrite && (<button onClick={() => handleDelete(r.id)} className="text-red-400 hover:text-red-600" title="删除">
-                      <Trash2 size={16}/>
+                    {user?.role === "warehouse_admin" && !r.is_voided && r.status !== "voided" && (<button
+                      disabled={r.can_void === false || r.status === "deducted" || r.status === "partial" || (r.deducted_amount || 0) > 0}
+                      onClick={() => { setVoidId(r.id); setVoidReason(""); }}
+                      className="inline-flex items-center gap-1 text-red-400 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+                      title={r.status === "deducted" ? "该预支已随工资结清 不能作废" : (r.deducted_amount || 0) > 0 || r.status === "partial" ? "该预支已随工资抵扣 不能作废" : "作废"}>
+                      <Ban size={16}/>作废
                     </button>)}
                   </td>
                 </tr>
@@ -222,6 +233,16 @@ export default function EmployeeAdvancePage() {
         </div>
       )}
 
+      {voidId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div role="dialog" aria-label="作废预支" className="bg-white rounded-xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto space-y-4">
+          <h2 className="font-semibold">确认作废预支</h2>
+          <p className="text-sm text-red-600">作废后当作没预支过 关联的支出也会删除</p>
+          <label className="block text-sm">作废原因 <span className="text-red-500">*</span>
+            <textarea aria-label="作废原因" required maxLength={500} value={voidReason} onChange={e => setVoidReason(e.target.value)} className="form-input w-full mt-2" placeholder="请填写作废原因"/>
+          </label>
+          <div className="flex justify-end gap-3"><button disabled={voiding} onClick={() => setVoidId(null)}>取消</button><button disabled={voiding} className="btn-primary" onClick={handleVoid}>{voiding ? "作废中…" : "确认作废"}</button></div>
+        </div>
+      </div>}
       {rejectId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
         <div role="dialog" aria-label="驳回预支" className="bg-white rounded-xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto space-y-4">
           <h2 className="font-semibold">驳回预支</h2>

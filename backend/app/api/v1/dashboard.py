@@ -762,6 +762,7 @@ async def boss_todos(response: Response, current_user: User = Depends(get_curren
         Employee, Employee.id == EmployeeAdvance.employee_id,
     ).where(EmployeeAdvance.warehouse_id.in_(wh_ids), Employee.warehouse_id == EmployeeAdvance.warehouse_id,
         EmployeeAdvance.approval_status == AdvanceApprovalStatus.PENDING.value,
+        EmployeeAdvance.not_voided(),
     ).order_by(EmployeeAdvance.advance_date, EmployeeAdvance.id))).all()
     advances = [{"id": a.id, "warehouse_id": a.warehouse_id, "employee_id": a.employee_id,
                  "employee_name": name, "amount": a.amount, "currency": a.currency or "THB",

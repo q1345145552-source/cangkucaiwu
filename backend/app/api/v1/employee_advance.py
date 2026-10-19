@@ -19,6 +19,7 @@ from math import isfinite
 from pydantic import BaseModel
 from datetime import datetime, date
 from typing import Optional, List, Literal
+import json
 
 router = APIRouter()
 
@@ -32,6 +33,12 @@ def _approval_fields(advance):
         "reject_reason": advance.reject_reason,
         "expense_record_id": advance.expense_record_id,
     }
+
+
+def _void_fields(advance):
+    return {"is_voided": advance.is_voided, "voided_by": advance.voided_by,
+            "voided_at": advance.voided_at.isoformat() if advance.voided_at else None,
+            "void_reason": advance.void_reason}
 
 
 class AdvanceCreate(BaseModel):
@@ -199,7 +206,7 @@ async def list_advances(
     rows = (await db.execute(q.order_by(EmployeeAdvance.advance_date.desc(), EmployeeAdvance.id.desc()))).scalars().all()
 
     emp_ids = {r.employee_id for r in rows}
-    op_ids = {r.operator_id for r in rows if r.operator_id}
+    op_ids = {uid for r in rows for uid in (r.operator_id, r.voided_by) if uid}
     emp_map = {}
     op_map = {}
     if emp_ids:
@@ -213,6 +220,10 @@ async def list_advances(
         "data": [{
             "id": r.id,
             **_approval_fields(r),
+            **_void_fields(r),
+            "voided_by_name": op_map.get(r.voided_by).display_name if op_map.get(r.voided_by) else "",
+            "can_void": current_user.role == Role.WAREHOUSE_ADMIN and not r.is_voided
+                and r.status not in ("deducted", "partial") and (r.deducted_amount or 0) <= 0,
             "employee_id": r.employee_id,
             "employee_name": emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else "",
             "employee_status": emp_map.get(r.employee_id).status if emp_map.get(r.employee_id) else "",
@@ -223,7 +234,7 @@ async def list_advances(
             "half": r.half,
             "source": r.source,
             "deducted_amount": r.deducted_amount or 0,
-            "remaining_amount": round((r.amount or 0) - (r.deducted_amount or 0), 2),
+            "remaining_amount": 0 if r.is_voided else round((r.amount or 0) - (r.deducted_amount or 0), 2),
             "status": r.status,
             "operator_name": op_map.get(r.operator_id).display_name if op_map.get(r.operator_id) else "",
             "remark": r.remark,
@@ -246,7 +257,7 @@ async def advance_summary(
         return {"total_by_currency": [], "debtor_count": 0}
 
     rows = (await db.execute(
-        select(EmployeeAdvance).where(EmployeeAdvance.warehouse_id.in_(wh_ids))
+        select(EmployeeAdvance).where(EmployeeAdvance.warehouse_id.in_(wh_ids), EmployeeAdvance.not_voided())
     )).scalars().all()
 
     by_currency = {}
@@ -290,7 +301,7 @@ async def my_debt(
         return {"total_by_currency": [], "data": []}
 
     advances = (await db.execute(
-        select(EmployeeAdvance).where(EmployeeAdvance.employee_id == emp.id, EmployeeAdvance.status != "deducted")
+        select(EmployeeAdvance).where(EmployeeAdvance.employee_id == emp.id, EmployeeAdvance.status != "deducted", EmployeeAdvance.not_voided())
     )).scalars().all()
 
     by_currency = {}
@@ -309,15 +320,24 @@ async def my_debt(
     }
 
 
+class AdvanceVoidRequest(BaseModel):
+    void_reason: Optional[str] = None
+
+
+async def _advance_voider(current_user: User = Depends(get_current_user)):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "只有仓库管理员可以作废预支")
+    return current_user
+
+
 @router.delete("/{advance_id}")
 async def delete_advance(
     advance_id: int,
-    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
+    req: AdvanceVoidRequest = AdvanceVoidRequest(),
+    current_user: User = Depends(_advance_voider),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "只有仓库管理员/主管可以删除预支记录")
-
+    """保留原DELETE地址，只作废留痕，不硬删预支。"""
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
@@ -327,15 +347,39 @@ async def delete_advance(
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "预支记录不存在")
-
+    if r.is_voided:
+        raise HTTPException(400, "该预支已作废")
+    if r.status in ("deducted", "partial") or (r.deducted_amount or 0) > 0:
+        raise HTTPException(400, "该预支已随工资结清 不能作废" if r.status == "deducted"
+                            else "该预支已随工资抵扣 不能作废")
+    # 包括保留的作废工资明细；凡查得到扣过这笔预支，就不再允许作废。
+    from app.models.payroll import PayrollRecord
+    details = (await db.execute(select(PayrollRecord.detail).where(
+        PayrollRecord.warehouse_id == wh_id, PayrollRecord.employee_id == r.employee_id,
+    ))).scalars().all()
+    for raw in details:
+        try:
+            detail = json.loads(raw or "{}")
+            for line in detail.get("advance_deductions", []) or []:
+                if str(line.get("advance_id")) == str(r.id) and float(line.get("amount") or 0) > 0:
+                    raise HTTPException(400, "该预支已随工资抵扣 不能作废")
+        except (ValueError, TypeError, AttributeError):
+            continue
+    reason = (req.void_reason or "").strip()
+    if not reason:
+        raise HTTPException(400, "请填写作废原因")
+    if len(reason) > 500:
+        raise HTTPException(400, "作废原因不能超过500字")
     before = {"employee_id": r.employee_id, "amount": r.amount, "currency": r.currency,
-              "fund_item_id": r.fund_item_id, **_approval_fields(r)}
-    await delete_advance_expense(db, r, current_user)
+              "status": r.status, "fund_item_id": r.fund_item_id, **_approval_fields(r)}
+    await delete_advance_expense(db, r, current_user, reason=f"作废预支：{reason}")
+    r.status, r.voided_by, r.voided_at, r.void_reason = "voided", current_user.id, thai_now(), reason
     await record_history(db, module="employee_advances", record_id=r.id, operator=current_user,
-        operation_type="delete", before=before, warehouse_id=wh_id)
-    await db.delete(r)
+        operation_type="void", before=before,
+        after={"status": r.status, "amount": r.amount, **_approval_fields(r), **_void_fields(r)}, warehouse_id=wh_id)
     await db.flush()
-    return {"message": "预支记录已删除"}
+    return {"message": "预支已作废", "id": r.id, "status": r.status,
+            "remaining_amount": 0, **_approval_fields(r), **_void_fields(r)}
 
 
 class AdvanceRejectRequest(BaseModel):
@@ -357,6 +401,8 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
     ).with_for_update())).scalar_one_or_none()
     if advance is None:
         raise HTTPException(404, "预支记录不存在")
+    if advance.is_voided:
+        raise HTTPException(400, "该预支已作废，不能审批")
     if action == "reject":
         reason = (reason or "").strip()
         if not reason:

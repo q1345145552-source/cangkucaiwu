@@ -32,7 +32,7 @@ const change=(n,value)=>n.props.onChange({target:{value}});
  const quotaError='预支合计不能超过当月工资，当前可用 2000.00 元';
  h=harness(quotaError);t=await h.render();button(t,'记预支').props.onClick();t=await h.render();change(find(t,n=>n.type==='select'&&n.props['aria-label']==='预支对象'),'employee:1');change(find(t,n=>n.type==='input'&&n.props.type==='number'),'3000');t=await h.render();await button(t,'提交').props.onClick();t=await h.render();assert.equal(h.messages.at(-1)[1],quotaError);assert.equal(find(t,n=>n.type==='select'&&n.props['aria-label']==='预支对象').props.value,'employee:1');
  const before=execFileSync('git',['show','cbaddcb:'+name],{cwd:root,encoding:'utf8'}),printer=ts.createPrinter();
- function funcs(s){const out={},sf=ts.createSourceFile(name,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['EmployeeAdvancePage','loadRefs','handleCreate'].includes(n.name.text))out[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return out;}
+ function funcs(s){const out={},sf=ts.createSourceFile(name,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['EmployeeAdvancePage','loadRefs','handleCreate','handleDelete','handleVoid'].includes(n.name.text))out[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return out;}
  assert.deepEqual(funcs(source),funcs(before));
  console.log('Advance recipient dropdown and quota messages: 15 checks passed');
 })().catch(e=>{console.error(e);process.exit(1)});

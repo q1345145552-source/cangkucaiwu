@@ -260,6 +260,7 @@ def test_fifo_sources_multiple_disbursements_and_cross_warehouse(tmp_path, monke
 
 
 def test_new_fund_employee_advance_dedup_is_read_only_payroll_and_reimbursement_code_unchanged(tmp_path, monkeypatch):
+    from tests.financial_reversal_test_support import without_advance_void_query
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
             assert (await topup(c, fid)).status_code == 200
@@ -276,19 +277,25 @@ def test_new_fund_employee_advance_dedup_is_read_only_payroll_and_reimbursement_
     root = Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py", "backend/app/api/v1/employee_advance.py",
         "backend/app/services/employee_advance_expense.py", "backend/app/api/v1/reimbursement.py", "backend/app/services/reimbursement_payment.py"):
-        current = without_disabled_gate((root / path).read_text())
+        current = without_advance_void_query(without_disabled_gate((root / path).read_text()))
         old = subprocess.check_output(["git", "show", f"ee327fa:{path}"], cwd=root, text=True)
         if path.endswith("/employee_advance.py"):
             # 后续仅登记增加工资额度校验，其他预支动作仍逐函数保持原样。
             def other_functions(source):
                 return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
-                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name != "create_advance"}
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in {
+                        "create_advance", "delete_advance", "list_advances", "advance_summary", "my_debt", "_review_advance", "_void_fields", "_advance_voider"}}
             assert other_functions(current) == other_functions(old)
             def fund_block(source):
                 create = next(n for n in ast.parse(source).body if isinstance(n, ast.AsyncFunctionDef) and n.name == "create_advance")
                 return next(ast.dump(n, include_attributes=False) for n in create.body
                     if isinstance(n, ast.If) and ast.unparse(n.test) == "req.source == 'fund' and fund_account")
             assert fund_block(current) == fund_block(old)
+        elif path.endswith("/employee_advance_expense.py"):
+            def unchanged_functions(source):
+                return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name != "delete_advance_expense"}
+            assert unchanged_functions(current) == unchanged_functions(old)
         else:
             assert current == old
 

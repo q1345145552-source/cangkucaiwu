@@ -108,12 +108,13 @@ def test_revoked_history_amounts_and_ledger_readback_unchanged(tmp_path, monkeyp
 
 
 def test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate():
+    from tests.financial_reversal_test_support import without_advance_void_query
     root = Path(__file__).resolve().parents[2]
     for name in ("payroll", "reimbursement", "cash_advance"):
         path = f"backend/app/api/v1/{name}.py"
         old = subprocess.check_output(["git", "show", "14a0198:" + path], cwd=root, text=True)
         current = (root / path).read_text()
-        assert without_disabled_gate(current) == old
+        assert without_advance_void_query(without_disabled_gate(current)) == old
         tree = ast.parse(current)
         gated = [n.name for n in tree.body if isinstance(n, ast.AsyncFunctionDef)
                  and "reject_disabled_financial_reversal" in ast.unparse(n.decorator_list)]
@@ -127,7 +128,8 @@ def test_original_handlers_and_calculations_are_byte_identical_after_removing_on
             # 后续登记额度校验不改变删除、审批和其他原预支动作。
             def other_functions(source):
                 return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
-                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name != "create_advance"}
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in {
+                        "create_advance", "delete_advance", "list_advances", "advance_summary", "my_debt", "_review_advance", "_void_fields", "_advance_voider"}}
             assert other_functions(current) == other_functions(old)
         else:
             assert current == old

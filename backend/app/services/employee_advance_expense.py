@@ -70,9 +70,9 @@ async def create_advance_expense(db, advance, operator):
     return expense
 
 
-async def delete_advance_expense(db, advance, operator):
-    """删除新预支时删除联动成本并留痕，历史预支不追溯。"""
-    if not advance.expense_tracking_enabled:
+async def delete_advance_expense(db, advance, operator, *, reason=None):
+    """作废预支时删除精确关联的成本并留痕，不猜补历史关联。"""
+    if not advance.expense_tracking_enabled and advance.expense_record_id is None and advance.fund_item_id is None:
         return
     if advance.expense_record_id is not None:
         expense = (await db.execute(select(ExpenseRecord).where(
@@ -83,7 +83,7 @@ async def delete_advance_expense(db, advance, operator):
         await record_history(db, module="expense", record_id=expense.id, operator=operator,
             operation_type="delete", before={"employee_advance_id": advance.id,
                 "employee_id": advance.employee_id, "amount": expense.amount, "currency": expense.currency,
-                "remark": expense.remark}, after={"reason": "删除预支时同时删除关联支出"},
+                "remark": expense.remark}, after={"reason": reason or "删除预支时同时删除关联支出"},
             warehouse_id=advance.warehouse_id)
         advance.expense_record_id = None
         await db.flush()

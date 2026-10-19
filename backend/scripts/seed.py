@@ -124,6 +124,22 @@ async def _migrate_employee_advance_expenses(conn):
             raise
 
 
+async def _migrate_employee_advance_void_columns(conn):
+    """仅加可空留痕列；老记录不变，每列独立保存点，可重复运行。"""
+    from sqlalchemy import text
+    for name, statement in (
+        ("voided_by", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS voided_by INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+        ("voided_at", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ"),
+        ("void_reason", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS void_reason VARCHAR(500)"),
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 员工预支作废字段 {name} 失败：{exc}")
+            raise
+
+
 async def _migrate_fund_disbursements(conn):
     """老开销保留原口径；新拨付逐笔记账，不回填历史拨付或支出。"""
     from sqlalchemy import text
@@ -314,6 +330,7 @@ async def seed():
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)
         await _migrate_employee_advance_expenses(conn)
+        await _migrate_employee_advance_void_columns(conn)
         await _migrate_fund_disbursements(conn)
         await _migrate_makeup_quota_column(conn)
         await _migrate_makeup_batches(conn)

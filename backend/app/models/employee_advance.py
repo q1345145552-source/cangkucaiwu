@@ -1,5 +1,5 @@
 from enum import Enum
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean, false
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Date, Boolean, false, and_, or_
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -35,7 +35,10 @@ class EmployeeAdvance(Base):
     remark = Column(String(500), nullable=True)
     operator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     deducted_amount = Column(Float, default=0)
-    status = Column(String(20), default="unpaid")  # unpaid / partial / deducted
+    status = Column(String(20), default="unpaid")  # unpaid / partial / deducted / voided
+    voided_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    voided_at = Column(DateTime(timezone=True), nullable=True)
+    void_reason = Column(String(500), nullable=True)
     approval_status = Column(String(20), nullable=False, default=AdvanceApprovalStatus.APPROVED.value, server_default="approved")
     reviewer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
@@ -49,3 +52,11 @@ class EmployeeAdvance(Base):
     employee = relationship("Employee", foreign_keys=[employee_id])
     operator = relationship("User", foreign_keys=[operator_id])
     fund_account = relationship("ExpenseFund", foreign_keys=[fund_account_id])
+
+    @property
+    def is_voided(self):
+        return self.status == "voided" or self.voided_at is not None
+
+    @classmethod
+    def not_voided(cls):
+        return and_(cls.voided_at.is_(None), or_(cls.status.is_(None), cls.status != "voided"))

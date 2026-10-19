@@ -5,7 +5,7 @@ from datetime import date, datetime
 import json
 from pathlib import Path
 import subprocess
-from tests.financial_reversal_test_support import without_disabled_gate
+from tests.financial_reversal_test_support import without_disabled_gate, without_advance_void_query
 
 from fastapi import HTTPException
 import pytest
@@ -176,11 +176,11 @@ def test_delete_linked_cost_and_history_and_protect_manual_edits(tmp_path, monke
             denied = await c.put(f"/api/v1/income-expense/expense/{eid}", headers=auth(1), data={
                 "category_id": (await expenses(f))[0].category_id, "account_id": 1, "amount": 3000, "expense_date": "2026-10-16"})
             assert denied.status_code == 400 and "预支联动支出" in denied.text
-            removed = await c.delete(f"{BASE}/{aid}", headers=auth(1))
+            removed = await c.request("DELETE", f"{BASE}/{aid}", headers=auth(1), json={"void_reason": "测试作废"})
             assert removed.status_code == 200, removed.text
             assert len(await expenses(f)) == 0
             async with f() as db:
-                assert await db.get(EmployeeAdvance, aid) is None
+                assert (await db.get(EmployeeAdvance, aid)).status == "voided"
                 if source == "fund":
                     assert (await db.execute(select(func.count()).select_from(ExpenseFundItem))).scalar_one() == 0
                 logs = (await db.execute(select(DataChangeHistory).where(DataChangeHistory.module == "expense"))).scalars().all()
@@ -216,7 +216,7 @@ def test_expense_failure_rolls_back_both_sides(tmp_path, monkeypatch, action, so
             monkeypatch.setattr(service, "record_history", broken)
             if action == "create": r = await c.post(BASE, headers=auth(1), json=body)
             elif action == "approve": r = await c.post(f"{BASE}/{aid}/approve", headers=auth(1))
-            else: r = await c.delete(f"{BASE}/{aid}", headers=auth(1))
+            else: r = await c.request("DELETE", f"{BASE}/{aid}", headers=auth(1), json={"void_reason": "测试回滚"})
             assert r.status_code == 500, r.text
             assert [(r.id, r.amount) for r in await expenses(f)] == before_expenses
             async with f() as db:
@@ -271,7 +271,7 @@ def test_payroll_frontend_and_unrelated_write_code_unchanged():
     root = Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py",
         "backend/app/api/v1/reimbursement.py"):
-        assert without_disabled_gate((root / path).read_text()).encode() == subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root)
+        assert without_advance_void_query(without_disabled_gate((root / path).read_text())).encode() == subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root)
     # 两轮仅扩充联动行的只读说明，排版和其他交互保持原样。
     path = "frontend/src/app/(dashboard)/operating/page.tsx"
     old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()

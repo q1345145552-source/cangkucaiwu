@@ -190,13 +190,14 @@ def test_payroll_excludes_off_managers_not_enabled_or_staff_or_labor(tmp_path,mo
 
 
 def test_unchanged_review_and_payroll_math():
+    from tests.financial_reversal_test_support import without_advance_void_query
     root=Path(__file__).resolve().parents[2]
     # 允许后续已授权的工资资金来源和预支支出联动；工资计算本身仍严格比较。
     funding_changes = {'list_payroll', 'batch_disburse_payroll', 'disburse_payroll', 'revoke_disbursement', '_disbursement_funding', 'payroll_cash_advance_sources'}
-    for name,changed in [('employee_advance',{'create_advance','list_advance_recipients','_approval_fields','delete_advance','_review_advance'}),('payroll',{'_prepare_payroll'} | funding_changes)]:
+    for name,changed in [('employee_advance',{'create_advance','list_advance_recipients','_approval_fields','delete_advance','_review_advance','_void_fields','_advance_voider','list_advances','advance_summary','my_debt'}),('payroll',{'_prepare_payroll'} | funding_changes)]:
         path=f'backend/app/api/v1/{name}.py'
         def funcs(s):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-        before=funcs(subprocess.check_output(['git','show','cbaddcb:'+path],cwd=root,text=True));after=funcs((root/path).read_text())
+        before=funcs(subprocess.check_output(['git','show','cbaddcb:'+path],cwd=root,text=True));after=funcs(without_advance_void_query((root/path).read_text()))
         assert {k:v for k,v in before.items() if k not in changed}=={k:v for k,v in after.items() if k not in changed}
 
 

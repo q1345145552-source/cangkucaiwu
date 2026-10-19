@@ -71,6 +71,7 @@ async def check_advance_limit(db, employee, amount, currency, advance_date):
     outstanding = (await db.execute(select(EmployeeAdvance).where(
         EmployeeAdvance.employee_id == employee.id,
         EmployeeAdvance.warehouse_id == employee.warehouse_id,
+        EmployeeAdvance.not_voided(),
         or_(EmployeeAdvance.status.is_(None), EmployeeAdvance.status != "deducted"),
         EmployeeAdvance.approval_status.in_((
             AdvanceApprovalStatus.APPROVED.value, AdvanceApprovalStatus.PENDING.value,

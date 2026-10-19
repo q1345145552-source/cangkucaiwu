@@ -75,10 +75,10 @@ def test_permission_warehouse_and_delete_guards(tmp_path,monkeypatch,uid):
    good=await c.post('/api/v1/employee-advances',headers=auth(uid),json=body);assert good.status_code==200 and good.json()['approval_status']=='approved',good.text
    async with factory() as db:
     db.add(EmployeeAdvance(id=100,employee_id=2,warehouse_id=2,amount=50,advance_date=datetime(2026,10,16).date(),period='2026-10',approval_status='pending'));await db.commit()
-   baddelete=await c.delete('/api/v1/employee-advances/100',headers=auth(uid));assert baddelete.status_code==404
+   baddelete=await c.request('DELETE','/api/v1/employee-advances/100',headers=auth(uid),json={'void_reason':'测试'});assert baddelete.status_code==(404 if uid==1 else 403)
    for status in ('pending','approved'):
     rows=(await c.get('/api/v1/employee-advances',headers=auth(uid),params={'approval_status':status})).json()['data'];assert all(r['id']!=100 for r in rows)
-   deleted=await c.delete('/api/v1/employee-advances/'+str(good.json()['id']),headers=auth(uid));assert deleted.status_code==200
+   deleted=await c.request('DELETE','/api/v1/employee-advances/'+str(good.json()['id']),headers=auth(uid),json={'void_reason':'测试'});assert deleted.status_code==(200 if uid==1 else 403)
  asyncio.run(run())
 
 
