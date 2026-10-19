@@ -19,6 +19,8 @@ from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.employee_advance import EmployeeAdvance
 from app.models.data_change_history import DataChangeHistory
 from app.services import fund_disbursement as s
+import app.api.v1.expense_fund as fund_api
+import app.services.image_utils as images
 from scripts.audit_fund_costs import audit
 from tests.test_round2_permissions import auth, set_perms, png
 from tests.test_round3_permissions import hr_environment, snapshot
@@ -29,7 +31,10 @@ RANGE = {"start_date": "2026-10-01", "end_date": "2026-10-31"}
 
 @asynccontextmanager
 async def environment(tmp_path, monkeypatch):
+    save_image = images.save_image
     async with hr_environment(tmp_path, monkeypatch) as (engine, f, c):
+        monkeypatch.setattr(images, "save_image", save_image)
+        monkeypatch.setattr(fund_api, "UPLOAD_DIR", str(tmp_path / "fund-uploads"))
         @event.listens_for(engine.sync_engine, "connect")
         def functions(conn, _):
             conn.create_function("to_char", 2, lambda value, fmt: str(value)[:7] if value else None)
@@ -51,9 +56,17 @@ async def topup(c, fid, *, uid=1, amount=10000, **extra):
         "amount": amount, "payment_account_id": 1, "receive_date": "2026-10-10", **extra})
 
 
+async def receipt(c, fid, uid=4):
+    response = await c.post(f"{BASE}/accounts/{fid}/upload-receipt", headers=auth(uid),
+        files={"file": ("receipt.png", png(), "image/png")})
+    assert response.status_code == 200, response.text
+    return response.json()["receipt"]
+
+
 async def spend(c, fid, *, amount=2000):
+    path = await receipt(c, fid)
     return await c.post(f"{BASE}/accounts/{fid}/items", headers=auth(4), json={
-        "amount": amount, "expense_date": "2026-10-11", "category": "耗材", "currency": "THB", "description": "购买包装耗材"})
+        "amount": amount, "expense_date": "2026-10-11", "category": "耗材", "currency": "THB", "description": "购买包装耗材", "receipt": path})
 
 
 async def values(c, fid):
@@ -316,7 +329,7 @@ def test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb(tmp_pat
             paid = await topup(c, fid, amount=1000, payment_account_id=3)
             assert paid.status_code == 200 and paid.json()["account_balance"] == 29000, paid.text
             item = await c.post(f"{BASE}/accounts/{fid}/items", headers=auth(4), json={"amount": 200,
-                "expense_date": "2026-10-11", "category": "耗材", "currency": "CNY", "description": "人民币耗材"})
+                "expense_date": "2026-10-11", "category": "耗材", "currency": "CNY", "description": "人民币耗材", "receipt": await receipt(c, fid)})
             assert item.status_code == 200, item.text
             r = await c.get("/api/v1/reports/cost-funds-debt", headers=auth(1), params=RANGE)
             assert r.status_code == 200, r.text

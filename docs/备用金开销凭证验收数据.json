@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-19",
+  "environment": "local isolated database",
+  "missing_receipt": {
+    "status_code": 400,
+    "body": {
+      "detail": "请上传开销凭证"
+    }
+  },
+  "saved_list_record": {
+    "id": 4,
+    "fund_id": 1,
+    "expense_date": "2026-10-19T00:00:00",
+    "category": "耗材",
+    "amount": 2000.0,
+    "currency": "THB",
+    "description": "包装耗材凭证验收",
+    "receipt": "/uploads/fund_receipts/1/1/5c60366d3cf84c04a6c32f522c966925.png",
+    "review_status": "pending",
+    "review_remark": null,
+    "review_action": null,
+    "cost_record_only": true,
+    "disbursement_sources": [
+      {
+        "disbursement_id": 1,
+        "amount": 2000.0,
+        "label": "拨付 #1"
+      }
+    ]
+  },
+  "legacy_approval_missing": {
+    "status_code": 400,
+    "body": {
+      "detail": "该开销没有凭证，请先上传开销凭证（开销 #1）"
+    }
+  },
+  "approval_with_receipt": {
+    "status_code": 200,
+    "body": {
+      "message": "已通过1条记录"
+    }
+  },
+  "image": {
+    "http_status": 200,
+    "bytes": 16531,
+    "browser_natural_width": 600,
+    "browser_natural_height": 800
+  },
+  "legacy_records": {
+    "before_count": 3,
+    "after_count": 3,
+    "before_amount": 369,
+    "after_amount": 369,
+    "full_rows_unchanged": true
+  },
+  "other_business_tables_unchanged": true,
+  "isolated_api_create_case": {
+    "missing": {
+      "status": 400,
+      "body": {
+        "detail": "请上传开销凭证"
+      }
+    },
+    "uploaded_receipt": "/uploads/fund_receipts/1/1/5b41a80755ac4924a30d40b7c8ac0c3d.png",
+    "created": {
+      "id": 1,
+      "message": "开销记录添加成功",
+      "receipt": "/uploads/fund_receipts/1/1/5b41a80755ac4924a30d40b7c8ac0c3d.png",
+      "cost_record_only": true,
+      "disbursement_sources": [
+        {
+          "disbursement_id": 1,
+          "amount": 2000.0,
+          "label": "拨付 #1"
+        }
+      ]
+    },
+    "list_row": {
+      "id": 1,
+      "fund_id": 1,
+      "expense_date": "2026-10-19T00:00:00",
+      "category": "耗材",
+      "amount": 2000.0,
+      "currency": "THB",
+      "description": "购买包装耗材",
+      "receipt": "/uploads/fund_receipts/1/1/5b41a80755ac4924a30d40b7c8ac0c3d.png",
+      "review_status": "pending",
+      "review_remark": null,
+      "review_action": null,
+      "cost_record_only": true,
+      "disbursement_sources": [
+        {
+          "disbursement_id": 1,
+          "amount": 2000.0,
+          "label": "拨付 #1"
+        }
+      ]
+    },
+    "approved": {
+      "message": "已通过1条记录"
+    }
+  }
+}

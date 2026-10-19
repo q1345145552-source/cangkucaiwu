@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime
 import os, uuid
+from pathlib import Path
 from app.database import get_db
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus, SystemSetting, FundRechargeRequest, ExpenseFundDisbursement
 from app.services.fund_disbursement import create_disbursement, disbursement_fields, fund_sources, validate_amount
@@ -14,6 +15,38 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 router = APIRouter()
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
+
+
+def _required_receipt(path, account):
+    path = (path or "").strip()
+    if not path:
+        raise HTTPException(400, "请上传开销凭证")
+    parts = path.lstrip("/").split("/")
+    if (len(parts) != 5 or parts[:4] != ["uploads", "fund_receipts", str(account.warehouse_id), str(account.id)]
+            or any(p in ("", ".", "..") or "\\" in p for p in parts)):
+        raise HTTPException(400, "开销凭证不属于当前备用金账户，请重新上传")
+    if not Path(UPLOAD_DIR).joinpath(*parts[1:]).is_file():
+        raise HTTPException(400, "开销凭证不存在，请重新上传")
+    return "/" + "/".join(parts)
+
+
+async def _save_receipt(file, account):
+    from app.services.image_utils import is_image, save_image
+    content = await file.read(10 * 1024 * 1024 + 1)
+    if not content or len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400, "开销凭证大小须在10MB以内")
+    if not is_image(content):
+        raise HTTPException(400, "请上传有效的开销凭证照片")
+    folder = f"fund_receipts/{account.warehouse_id}/{account.id}"
+    # 以图片实际格式决定后缀，不信任上传文件名；沿用统一压缩和缩略图处理。
+    import io
+    from PIL import Image
+    with Image.open(io.BytesIO(content)) as photo:
+        ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp", "GIF": "gif"}.get(photo.format)
+    if not ext:
+        raise HTTPException(400, "请上传 JPG、PNG、WebP 或 GIF 开销凭证照片")
+    return save_image(content, str(Path(UPLOAD_DIR) / folder), f"/uploads/{folder}", f"{uuid.uuid4().hex}.{ext}")
 
 async def get_setting(db: AsyncSession, warehouse_id: int, key: str, default: str = "5000"):
     r = (await db.execute(select(SystemSetting).where(
@@ -311,6 +344,7 @@ async def add_item(
         raise HTTPException(400, "开销金额必须大于0")
     if (req.currency or "THB") != (account.currency or "THB"):
         raise HTTPException(400, "开销币种必须与备用金账户一致")
+    receipt = _required_receipt(req.receipt, account)
 
     # 超支守卫：常规开销（非报销）不得超过备用金里的现金余额
     # （报销类开销走报销流程，创建时已扣减 remaining_balance，这里不重复限制）
@@ -330,16 +364,36 @@ async def add_item(
     i = ExpenseFundItem(
         fund_id=account_id, expense_date=datetime.fromisoformat(req.expense_date),
         category=req.category, amount=req.amount, currency=req.currency or "THB",
-        description=req.description, receipt=req.receipt,
+        description=req.description, receipt=receipt,
     )
     db.add(i)
     await db.flush()
     _, sources = await fund_sources(db, account)
-    return {"id": i.id, "message": "开销记录添加成功", "cost_record_only": True,
+    return {"id": i.id, "message": "开销记录添加成功", "receipt": i.receipt, "cost_record_only": True,
             "disbursement_sources": sources.get(i.id, [])}
 
 
 # ==== Upload Receipt ====
+@router.post("/accounts/{account_id}/upload-receipt")
+async def upload_new_item_receipt(
+    account_id: int, file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理")),
+):
+    """先上传凭证，再带凭证路径新建开销；不创建空白开销或扣减余额。"""
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无此操作权限")
+    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
+    if account is None:
+        raise HTTPException(404, "账户不存在")
+    if account.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能操作本仓库的备用金账户")
+    result = await _save_receipt(file, account)
+    return {"message": "凭证上传成功", "receipt": result["path"]}
+
+
 @router.post("/accounts/{account_id}/items/{item_id}/upload-receipt")
 async def upload_receipt(
     account_id: int, item_id: int,
@@ -358,10 +412,7 @@ async def upload_receipt(
     ))).scalar_one_or_none()
     if not item:
         raise HTTPException(404, "开销记录不存在")
-    from app.services.image_utils import save_image
-    ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "jpg"
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    result = save_image(await file.read(), "/app/uploads/fund_receipts", "/uploads/fund_receipts", filename)
+    result = await _save_receipt(file, account)
     item.receipt = result["path"]
     await db.flush()
     return {"message": "凭证上传成功", "receipt": item.receipt}
@@ -481,6 +532,9 @@ async def batch_review(
         # 幂等守卫：状态未变化则跳过，避免重复驳回导致余额被多次退回
         if old_status == new_status:
             continue
+        # 报销自动生成的台账保留原报销审核路径；手工登记开销即使类别写“报销”也不能绕过。
+        if req.action == "approve" and linked_reimb is None and not (item.receipt or "").strip():
+            raise HTTPException(400, f"该开销没有凭证，请先上传开销凭证（开销 #{item.id}）")
         item.review_status = new_status
         item.review_remark = req.remark
         processed += 1

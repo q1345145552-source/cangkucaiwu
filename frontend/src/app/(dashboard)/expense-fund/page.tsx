@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, getToken } from "@/lib/api";
+import { api, getActiveWarehouseId, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +45,7 @@ export default function ExpenseFundPage() {
   const [expenseAccount, setExpenseAccount] = useState<any>(null);
   const [itemForm, setItemForm] = useState({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: "THB", description: "" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [expenseBusy, setExpenseBusy] = useState(false);
 
   // ====== Review state ======
   const [reviewData, setReviewData] = useState<any[]>([]);
@@ -163,19 +164,21 @@ export default function ExpenseFundPage() {
     setShowExpense(true);
   }
   async function doAddExpense() {
-    if (!expenseAccount) return;
+    if (!expenseAccount || expenseBusy) return;
+    if (!receiptFile) { toast("error", "请上传开销凭证"); return; }
+    setExpenseBusy(true);
     try {
-      const res = await api.post<any>(`/expense-fund/accounts/${expenseAccount.id}/items`, { ...itemForm, amount: itemForm.amount || 0, currency: itemForm.currency });
-      if (receiptFile && res.id) {
-        const fd = new FormData(); fd.append("file", receiptFile);
-        const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/expense-fund/accounts/${expenseAccount.id}/items/${res.id}/upload-receipt`, {
-          method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
-        });
-        const upData = await upRes.json().catch(() => ({}));
-        if (!upRes.ok) {
-          throw new Error(upData.detail || "收据上传失败");
-        }
-      }
+      const fd = new FormData(); fd.append("file", receiptFile);
+      const headers: Record<string, string> = { Authorization: `Bearer ${getToken()}` };
+      const warehouse = getActiveWarehouseId(); if (warehouse) headers["X-Warehouse-ID"] = warehouse;
+      const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/expense-fund/accounts/${expenseAccount.id}/upload-receipt`, {
+        method: "POST", headers, body: fd,
+      });
+      const upData = await upRes.json().catch(() => ({}));
+      if (!upRes.ok || !upData.receipt) throw new Error(upData.detail || "凭证上传失败，请重试");
+      await api.post<any>(`/expense-fund/accounts/${expenseAccount.id}/items`, {
+        ...itemForm, amount: itemForm.amount || 0, currency: itemForm.currency, receipt: upData.receipt,
+      });
       toast("success", "开销添加成功");
       setShowExpense(false);
       loadAccounts();
@@ -183,6 +186,7 @@ export default function ExpenseFundPage() {
       setItems(prev => ({ ...prev, [expenseAccount.id]: updated.data || [] }));
       loadDisbursements(expenseAccount.id);
     } catch (err: any) { toast("error", err.message || "添加失败"); }
+    finally { setExpenseBusy(false); }
   }
 
   // ====== Review logic ======
@@ -429,6 +433,7 @@ export default function ExpenseFundPage() {
                                       <th className="text-center px-2 py-1.5 text-gray-500 w-12">币种</th>
                                       <th className="text-left px-2 py-1.5 text-gray-500">说明</th>
                                       <th className="text-center px-2 py-1.5 text-gray-500">审核</th>
+                                      <th className="text-center px-2 py-1.5 text-gray-500">凭证</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -446,6 +451,7 @@ export default function ExpenseFundPage() {
                                             {it.review_status === "approved" ? "已通过" : it.review_status === "rejected" ? "已驳回" : "待审核"}
                                           </span>
                                         </td>
+                                        <td className="px-2 py-1.5 text-center">{it.receipt ? <button type="button" onClick={() => setPreviewUrl(it.receipt)} className="text-blue-600 whitespace-nowrap" aria-label={`查看开销 #${it.id} 凭证`}><Eye size={14} className="inline mr-1" />查看凭证</button> : <span className="text-gray-400">未上传</span>}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -457,7 +463,7 @@ export default function ExpenseFundPage() {
                                 {(disbursements[acc.id] || []).map((d: any) => <details key={d.id} className="bg-white rounded-md border border-gray-100 p-2 mb-2">
                                   <summary className="cursor-pointer">拨付 #{d.id} · {d.disbursed_date} · {fmtMoney(d.amount, d.currency)} · {d.account_name} · 支出 #{d.expense_record_id}</summary>
                                   <div className="mt-1 text-gray-500">经办：{d.operator_name}，已用 {fmtMoney(d.used_amount, d.currency)}</div>
-                                  {(d.items || []).map((it: any) => <div key={it.item_id} className="mt-1 text-gray-500">开销 #{it.item_id} · {it.expense_date} · {it.description} · 本笔使用 {fmtMoney(it.amount, d.currency)}</div>)}
+                                  {(d.items || []).map((it: any) => <div key={it.item_id} className="mt-1 text-gray-500">开销 #{it.item_id} · {it.expense_date} · {it.description} · 本笔使用 {fmtMoney(it.amount, d.currency)}{it.receipt && <button type="button" onClick={() => setPreviewUrl(it.receipt)} className="text-blue-600 ml-2" aria-label={`查看明细开销 #${it.item_id} 凭证`}>查看凭证</button>}</div>)}
                                 </details>)}
                                 {!disbursements[acc.id]?.length && <div className="text-gray-400">暂无逐笔拨付记录，历史余额保留原记录</div>}
                               </div>
@@ -540,10 +546,10 @@ export default function ExpenseFundPage() {
 
           {/* Expense modal */}
           {showExpense && (
-            <div className="modal-overlay z-50" onClick={() => { setShowExpense(false); setReceiptFile(null); }}>
-              <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2"><FileText size={18} /><h2 className="font-semibold">添加开销 - {expenseAccount?.employee_name}</h2><button onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button></div>
-                <div className="p-5 space-y-3">
+            <div role="dialog" aria-modal="true" aria-label="添加备用金开销" className="modal-overlay z-50" onClick={() => { if (!expenseBusy) { setShowExpense(false); setReceiptFile(null); } }}>
+              <div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 shrink-0"><FileText size={18} /><h2 className="font-semibold">添加开销 - {expenseAccount?.employee_name}</h2><button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button></div>
+                <div className="p-5 space-y-3 overflow-y-auto min-h-0">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">累计拨付</div><div className="text-sm font-bold text-blue-700">{fmtMoney(expenseAccount?.total_topped_up, expenseAccount?.currency)}</div></div>
                     <div className="bg-gray-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-gray-400">可用余额</div><div className="text-sm font-bold text-gray-700">{fmtMoney(Math.max(0, (expenseAccount?.available ?? expenseAccount?.current_balance ?? 0)), expenseAccount?.currency)}</div></div>
@@ -555,16 +561,19 @@ export default function ExpenseFundPage() {
                     <div><label className="form-label">币种</label><select className="form-input" value={itemForm.currency} onChange={e => setItemForm({ ...itemForm, currency: e.target.value })}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
                   </div>
                   <div><label className="form-label">说明</label><input className="form-input" value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} /></div>
-                  <div><label className="form-label">凭证截图（非必填）</label>
+                  <div><label className="form-label" htmlFor="receiptFileInput4">凭证照片（必填）</label>
                     <div className="border-2 border-dashed border-gray-200 rounded-lg p-3 text-center hover:border-blue-400 transition-colors cursor-pointer" onClick={() => document.getElementById("receiptFileInput4")?.click()}>
                       {receiptFile ? <div className="flex items-center gap-2 text-sm text-blue-600"><Image size={16} />{receiptFile.name}</div> : <div className="text-gray-400 text-sm"><Camera size={22} className="mx-auto mb-1 text-gray-300" />点击上传截图</div>}
-                      <input id="receiptFileInput4" type="file" accept="image/*" className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
+                      <input id="receiptFileInput4" type="file" accept="image/*" disabled={expenseBusy} className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
                     </div>
+                    <div className="flex gap-3 text-xs mt-2"><button type="button" disabled={expenseBusy} onClick={() => document.getElementById("receiptCameraInput4")?.click()} className="text-blue-600">拍照</button><button type="button" disabled={expenseBusy} onClick={() => document.getElementById("receiptFileInput4")?.click()} className="text-blue-600">相册 / 文件</button></div>
+                    <input id="receiptCameraInput4" aria-label="拍摄开销凭证" type="file" accept="image/*" capture="environment" disabled={expenseBusy} className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
+                    <p className="mt-1 text-xs text-gray-500">必须上传凭证，没有凭证不能报销。照片不超过10MB。</p>
                   </div>
                 </div>
-                <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-                  <button onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm">取消</button>
-                  <button onClick={doAddExpense} className="btn-primary text-sm">保存</button>
+                <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
+                  <button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm">取消</button>
+                  <button disabled={expenseBusy} onClick={doAddExpense} className="btn-primary text-sm">{expenseBusy ? "保存中..." : "保存"}</button>
                 </div>
               </div>
             </div>
@@ -773,20 +782,14 @@ export default function ExpenseFundPage() {
             </div>
           )}
 
-          {/* Receipt preview modal */}
-          {previewUrl && (
-            <div className="modal-overlay z-50" onClick={() => setPreviewUrl(null)}>
-              <div className="bg-white rounded-2xl max-w-2xl max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-5 py-3 border-b">
-                  <h3 className="font-semibold text-gray-700 flex items-center gap-2"><Image size={18} />凭证查看</h3>
-                  <button onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-                </div>
-                <div className="p-4 flex items-center justify-center bg-gray-100"><img src={previewUrl} alt="凭证" className="max-w-full max-h-[70vh] object-contain rounded" /></div>
-              </div>
-            </div>
-          )}
         </>
       )}
+      {previewUrl && <div role="dialog" aria-modal="true" aria-label="开销凭证大图" className="modal-overlay z-[120]" onClick={() => setPreviewUrl(null)}>
+        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-3 border-b"><h3 className="font-semibold text-gray-700 flex items-center gap-2"><Image size={18} />凭证查看</h3><div className="flex items-center gap-3"><a href={previewUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600">查看原图</a><button aria-label="关闭凭证大图" onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button></div></div>
+          <div className="p-4 flex items-center justify-center bg-gray-100"><img src={previewUrl} alt="开销凭证" className="max-w-full max-h-[70vh] object-contain rounded" /></div>
+        </div>
+      </div>}
     </>
   );
 }
