@@ -1178,12 +1178,12 @@ export default function PayrollPage() {
                 ))}
                 {psAdvanceDeduction > 0 && (
                   <div className="flex justify-between text-sm text-red-500">
-                    <span>预支扣款</span>
+                    <span>其中已预发</span>
                     <span>-{psAdvanceDeduction.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm text-gray-500">
-                  <span>剩余欠款</span>
+                  <span>已预支</span>
                   <span>{psRemainingDebt.toLocaleString()}</span>
                 </div>
               </div>

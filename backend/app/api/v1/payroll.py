@@ -1438,7 +1438,7 @@ async def export_payroll(
     wb = Workbook()
     ws = wb.active
     ws.title = "工资单"
-    headers = ["员工姓名", "工号", "结算开始日", "结算结束日", "试用还是正式", "出勤天数", "请假天数", "休息天数", "缺勤天数", "基本工资", "加班费", "扣款合计", "预支扣款", "实发", "状态", "是否发放", "剩余欠款", "是否作废"]
+    headers = ["员工姓名", "工号", "结算开始日", "结算结束日", "试用还是正式", "出勤天数", "请假天数", "休息天数", "缺勤天数", "基本工资", "加班费", "扣款合计", "其中已预发", "实发", "状态", "是否发放", "已预支", "是否作废"]
     ws.append(headers)
     hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
