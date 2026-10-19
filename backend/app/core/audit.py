@@ -5,15 +5,16 @@
 - 从 Authorization 头解析出 user_id（尽力而为，失败不影响主流程）。
 - module 取 /api/v1/<module>，target_id 取路径末段整数（如 /api/v1/payable/5 -> 5）。
 - 全程 try/except 包裹，审计失败绝不影响正常请求。
-- 显式跳过登录接口，避免把凭证写进日志。
+- 登录单独记录已验证的账号身份，绝不读取或记录登录凭证和令牌。
 """
 import logging
 from starlette.middleware.base import BaseHTTPMiddleware
+from app.core.client_ip import get_client_ip
 
 logger = logging.getLogger("uvicorn.error")
 
 _WRITE_METHODS = {"POST", "PUT", "DELETE", "PATCH"}
-# 不审计的路径片段（登录/改密等敏感或高频无意义）
+# 通用写操作跳过这些路径；成功登录通过已验证身份的专门分支记录。
 _SKIP = ("/auth/login", "/auth/change-password", "/clock-in")
 
 
@@ -64,16 +65,18 @@ class AuditMiddleware(BaseHTTPMiddleware):
         try:
             method = request.method.upper()
             path = request.url.path
+            login_user_id = getattr(request.state, "audit_login_user_id", None)
+            is_login = method == "POST" and path == "/api/v1/auth/login" and login_user_id is not None
             if (
                 method in _WRITE_METHODS
                 and 200 <= response.status_code < 300
-                and not any(s in path for s in _SKIP)
+                and (is_login or not any(s in path for s in _SKIP))
             ):
-                user_id = _extract_user_id(request.headers.get("Authorization", ""))
-                warehouse_id = _extract_warehouse_id(request.headers.get("X-Warehouse-ID", ""))
+                user_id = login_user_id if is_login else _extract_user_id(request.headers.get("Authorization", ""))
+                warehouse_id = getattr(request.state, "audit_login_warehouse_id", None) if is_login else _extract_warehouse_id(request.headers.get("X-Warehouse-ID", ""))
                 module, target_id = _parse_path(path)
-                action = {"POST": "create", "PUT": "edit", "PATCH": "edit", "DELETE": "delete"}.get(method, method.lower())
-                client_ip = request.client.host if request.client else None
+                action = "login" if is_login else {"POST": "create", "PUT": "edit", "PATCH": "edit", "DELETE": "delete"}.get(method, method.lower())
+                client_ip = get_client_ip(request)
 
                 # 用独立会话写入，避免与请求本身的事务耦合
                 from app.database import async_session_factory

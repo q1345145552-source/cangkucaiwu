@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -22,7 +22,7 @@ def _build_warehouses_list(db_result) -> list:
     return warehouses
 
 @router.post("/login")
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(User).options(selectinload(User.warehouse)).where(User.username == req.username)
     )
@@ -42,6 +42,8 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
     warehouses = _build_warehouses_list(uw_result.all())
 
+    request.state.audit_login_user_id = user.id
+    request.state.audit_login_warehouse_id = user.warehouse_id
     return {
         "access_token": token,
         "token_type": "bearer",

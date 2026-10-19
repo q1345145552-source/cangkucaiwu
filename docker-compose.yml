@@ -43,11 +43,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:?请在 .env 设置 POSTGRES_PASSWORD}@db:5432/warehouse_finance
       SECRET_KEY: ${SECRET_KEY:?请在 .env 设置 SECRET_KEY}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      # 启动时解析 nginx 容器 IP，只信任这一代理，不使用 * 或整个容器网段。
+      TRUSTED_PROXY_HOSTS: nginx
     # 生产环境使用镜像内代码，不挂载宿主源码（仅持久化上传目录）
     volumes:
       - uploads:/app/uploads
     command: >
-      sh -c "python scripts/seed.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -c "python scripts/seed.py && exec python scripts/start_server.py"
 
   frontend:
     build: ./frontend
