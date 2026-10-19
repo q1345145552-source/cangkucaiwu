@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Numeric, true
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Numeric, true, and_, or_
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -14,6 +14,7 @@ class ReviewStatus(str, enum.Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    VOIDED = "voided"
 
 class ReviewAction(str, enum.Enum):
     EMPLOYEE_PAY = "employee_pay"
@@ -59,6 +60,17 @@ class ExpenseFundItem(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     fund = relationship("ExpenseFund", back_populates="items")
+    voided_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    voided_at = Column(DateTime(timezone=True), nullable=True)
+    void_reason = Column(String(500), nullable=True)
+
+    @property
+    def is_voided(self):
+        return self.review_status == ReviewStatus.VOIDED.value or self.voided_at is not None
+
+    @classmethod
+    def not_voided(cls):
+        return and_(cls.voided_at.is_(None), or_(cls.review_status.is_(None), cls.review_status != ReviewStatus.VOIDED.value))
 
 
 class ExpenseFundDisbursement(Base):

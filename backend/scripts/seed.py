@@ -189,6 +189,22 @@ async def _migrate_fund_disbursements(conn):
             raise
 
 
+async def _migrate_fund_item_void_columns(conn):
+    """只加作废留痕三列；不回填或改动旧开销、审核状态和金额。"""
+    from sqlalchemy import text
+    for name, statement in (
+        ("voided_by", "ALTER TABLE expense_fund_items ADD COLUMN IF NOT EXISTS voided_by INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+        ("voided_at", "ALTER TABLE expense_fund_items ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ"),
+        ("void_reason", "ALTER TABLE expense_fund_items ADD COLUMN IF NOT EXISTS void_reason VARCHAR(500)"),
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 备用金开销作废字段 {name} 失败：{exc}")
+            raise
+
+
 async def _migrate_payroll_expense_link(conn):
     from sqlalchemy import text
     for name, statement in (
@@ -375,6 +391,7 @@ async def seed():
         await _migrate_employee_advance_void_columns(conn)
         await _migrate_employee_advance_funding(conn)
         await _migrate_fund_disbursements(conn)
+        await _migrate_fund_item_void_columns(conn)
         await _migrate_makeup_quota_column(conn)
         await _migrate_makeup_batches(conn)
         await _migrate_payroll_expense_link(conn)

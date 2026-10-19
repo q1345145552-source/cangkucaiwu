@@ -14,6 +14,7 @@ const MODULE_LABELS: Record<string, string> = {
   employee: "员工档案",
   payroll: "工资",
   payable: "应付账单",
+  expense_fund_item: "备用金开销",
 };
 const OP_LABELS: Record<string, string> = { create: "新建", edit: "编辑", delete: "删除", resign: "离职", void: "作废", undisburse: "撤销发放" };
 const OP_COLORS: Record<string, string> = {
@@ -36,6 +37,8 @@ const FIELD_LABELS: Record<string, string> = {
   employee_name: "员工姓名", range: "区间", void_reason: "作废原因", new_record_id: "新工资单编号", net_pay: "实发金额",
   bill_number: "账单编号", purchase_order_number: "关联采购单号", bill_date: "账单日期", due_date: "到期日期",
   confirmed_amount: "供应商确认金额", payment_commitment_days: "付款承诺天数", detail: "费用明细", diff_note: "差异说明",
+  fund_id: "备用金账户", category: "用途", description: "说明", receipt: "凭证照片", review_status: "审核状态",
+  voided_by: "作废人编号", voided_at: "作废时间", is_voided: "是否已作废", cost_record_only: "仅记开销台账",
 };
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "系统总管理员", warehouse_admin: "仓库管理员", supervisor: "仓库主管",
@@ -65,6 +68,8 @@ function renderVal(v: any): string {
 }
 
 function renderFieldVal(k: string, v: any): string {
+  if (k === "is_voided" || k === "cost_record_only") return v ? "是" : "否";
+  if (k === "review_status") return ({ pending: "待审核", approved: "已通过", rejected: "已驳回", voided: "已作废" } as Record<string, string>)[v] || renderVal(v);
   if (k === "role") return ROLE_LABELS[v] || String(v);
   if (k === "status") return STATUS_LABELS[v] || String(v);
   if (k === "reason") return RESIGN_REASON_LABELS[v] || String(v);
@@ -178,6 +183,7 @@ export default function ModificationLogsPage() {
               <option value="employee">员工档案</option>
               <option value="payroll">工资</option>
               <option value="payable">应付账单</option>
+              <option value="expense_fund_item">备用金开销</option>
             </select>
           </div>
           <div className="w-[140px]">

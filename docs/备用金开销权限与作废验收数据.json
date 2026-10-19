@@ -1,0 +1,282 @@
+{
+  "environment": "local isolated fixture; not production",
+  "mobile_viewport": "390x844",
+  "supervisor_edit": {
+    "status": 403,
+    "body": {
+      "detail": "开销记录只有仓库管理员可以修改"
+    }
+  },
+  "supervisor_void": {
+    "status": 403,
+    "body": {
+      "detail": "开销记录只有仓库管理员可以删除"
+    }
+  },
+  "approved_edit": {
+    "status": 400,
+    "body": {
+      "detail": "该开销已审核通过 不能修改"
+    }
+  },
+  "approved_void": {
+    "status": 400,
+    "body": {
+      "detail": "该开销已审核通过 不能作废"
+    }
+  },
+  "fund_accounts": {
+    "data": [
+      {
+        "id": 1,
+        "employee_id": 4,
+        "employee_name": "测试主管",
+        "currency": "THB",
+        "total_topped_up": 12000.0,
+        "current_balance": 12000.0,
+        "total_spent": 2000.0,
+        "spent_by_currency": {
+          "THB": 2000.0
+        },
+        "available": 10000.0,
+        "fund_limit": 20000.0,
+        "alert_threshold": 500.0,
+        "is_low": false
+      }
+    ]
+  },
+  "items": {
+    "data": [
+      {
+        "id": 1,
+        "fund_id": 1,
+        "expense_date": "2026-10-11T00:00:00",
+        "category": "耗材",
+        "amount": 1500.0,
+        "currency": "THB",
+        "description": "购买包装耗材",
+        "receipt": "/uploads/fund_receipts/1/1/0ebec4cbb6f84ec897303a011f21ec72.png",
+        "review_status": "voided",
+        "review_remark": null,
+        "review_action": null,
+        "cost_record_only": true,
+        "is_voided": true,
+        "voided_by": 1,
+        "voided_at": "2026-10-19T23:40:53.542786",
+        "void_reason": "重复登记，老板核对后作废",
+        "disbursement_sources": [],
+        "can_edit": false,
+        "can_void": false
+      },
+      {
+        "id": 2,
+        "fund_id": 1,
+        "expense_date": "2026-09-01T00:00:00",
+        "category": "旧耗材",
+        "amount": 2000.0,
+        "currency": "THB",
+        "description": "历史已通过开销，不得更改",
+        "receipt": null,
+        "review_status": "approved",
+        "review_remark": null,
+        "review_action": null,
+        "cost_record_only": false,
+        "is_voided": false,
+        "voided_by": null,
+        "voided_at": null,
+        "void_reason": null,
+        "disbursement_sources": [
+          {
+            "disbursement_id": 1,
+            "amount": 2000.0,
+            "label": "拨付 #1"
+          }
+        ],
+        "can_edit": false,
+        "can_void": false
+      }
+    ]
+  },
+  "history": {
+    "data": [
+      {
+        "id": 4,
+        "module": "expense_fund_item",
+        "record_id": 1,
+        "operator_id": 1,
+        "operator_name": "测试老板",
+        "operation_type": "void",
+        "before_data": {
+          "id": 1,
+          "fund_id": 1,
+          "expense_date": "2026-10-11T00:00:00",
+          "category": "耗材",
+          "amount": 1500.0,
+          "currency": "THB",
+          "description": "购买包装耗材",
+          "receipt": "/uploads/fund_receipts/1/1/0ebec4cbb6f84ec897303a011f21ec72.png",
+          "review_status": "pending",
+          "review_remark": null,
+          "review_action": null,
+          "cost_record_only": true,
+          "is_voided": false,
+          "voided_by": null,
+          "voided_at": null,
+          "void_reason": null
+        },
+        "after_data": {
+          "id": 1,
+          "fund_id": 1,
+          "expense_date": "2026-10-11T00:00:00",
+          "category": "耗材",
+          "amount": 1500.0,
+          "currency": "THB",
+          "description": "购买包装耗材",
+          "receipt": "/uploads/fund_receipts/1/1/0ebec4cbb6f84ec897303a011f21ec72.png",
+          "review_status": "voided",
+          "review_remark": null,
+          "review_action": null,
+          "cost_record_only": true,
+          "is_voided": true,
+          "voided_by": 1,
+          "voided_at": "2026-10-19T23:40:53.542786+07:00",
+          "void_reason": "重复登记，老板核对后作废"
+        },
+        "warehouse_id": 1,
+        "created_at": "2026-10-19T16:40:53"
+      },
+      {
+        "id": 3,
+        "module": "expense_fund_item",
+        "record_id": 1,
+        "operator_id": 1,
+        "operator_name": "测试老板",
+        "operation_type": "edit",
+        "before_data": {
+          "id": 1,
+          "fund_id": 1,
+          "expense_date": "2026-10-11T00:00:00",
+          "category": "耗材",
+          "amount": 2000.0,
+          "currency": "THB",
+          "description": "购买包装耗材",
+          "receipt": "/uploads/fund_receipts/1/1/0ebec4cbb6f84ec897303a011f21ec72.png",
+          "review_status": "pending",
+          "review_remark": null,
+          "review_action": null,
+          "cost_record_only": true,
+          "is_voided": false,
+          "voided_by": null,
+          "voided_at": null,
+          "void_reason": null
+        },
+        "after_data": {
+          "id": 1,
+          "fund_id": 1,
+          "expense_date": "2026-10-11T00:00:00",
+          "category": "耗材",
+          "amount": 1500.0,
+          "currency": "THB",
+          "description": "购买包装耗材",
+          "receipt": "/uploads/fund_receipts/1/1/0ebec4cbb6f84ec897303a011f21ec72.png",
+          "review_status": "pending",
+          "review_remark": null,
+          "review_action": null,
+          "cost_record_only": true,
+          "is_voided": false,
+          "voided_by": null,
+          "voided_at": null,
+          "void_reason": null
+        },
+        "warehouse_id": 1,
+        "created_at": "2026-10-19T16:40:44"
+      }
+    ],
+    "total": 2,
+    "page": 1,
+    "page_size": 20
+  },
+  "company_accounts": {
+    "data": [
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "account_name": "测试现金",
+        "account_type": "cash",
+        "account_number": "1",
+        "opening_balance": 20000.0,
+        "current_balance": 8000.0,
+        "bank_name": null,
+        "branch_name": null,
+        "account_holder": null,
+        "currency": "THB",
+        "status": "active",
+        "remark": null
+      },
+      {
+        "id": 3,
+        "warehouse_id": 1,
+        "account_name": "人民币账户",
+        "account_type": "bank",
+        "account_number": "CNY",
+        "opening_balance": 30000.0,
+        "current_balance": 30000.0,
+        "bank_name": null,
+        "branch_name": null,
+        "account_holder": null,
+        "currency": "CNY",
+        "status": "active",
+        "remark": null
+      }
+    ]
+  },
+  "database_preservation": {
+    "unchanged_tables": {
+      "payroll_records": true,
+      "reimbursements": true,
+      "reimbursement_items": true,
+      "expense_funds": true,
+      "expense_records": true,
+      "income_records": true,
+      "employee_advances": true,
+      "payable_bills": true,
+      "clock_in_records": true,
+      "employees": true
+    },
+    "item_count_before": 2,
+    "item_count_after": 2,
+    "old_approved_item_unchanged": true
+  },
+  "balance_steps": {
+    "fund_total": 12000,
+    "old_approved_expense": 2000,
+    "edited_expense": [
+      2000,
+      1500
+    ],
+    "available": [
+      8000,
+      8500,
+      10000
+    ],
+    "company_cash_after_disbursement_and_after_void": 8000
+  },
+  "ui_buttons": {
+    "supervisor_edit": 0,
+    "supervisor_void": 0,
+    "admin_before_void_edit": 1,
+    "admin_before_void_void": 1,
+    "voided_edit": 0,
+    "voided_void": 0
+  },
+  "checks": {
+    "backend_passed": 133,
+    "postgres_migration_tests_included": 8,
+    "frontend_suites_passed": [
+      "fund-item-controls",
+      "fund-receipts",
+      "fund-disbursement"
+    ],
+    "production_build": "passed"
+  }
+}

@@ -102,7 +102,7 @@ def test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links(tmp
             assert item.status_code == 200, item.text
             iid = item.json()["id"]
             assert item.json()["cost_record_only"] and item.json()["disbursement_sources"] == [{"disbursement_id": paid["disbursement_id"], "amount": 2000, "label": f"拨付 #{paid['disbursement_id']}"}]
-            up = await c.post(f"{BASE}/accounts/{fid}/items/{iid}/upload-receipt", headers=auth(4), files={"file": ("receipt.png", png(), "image/png")})
+            up = await c.post(f"{BASE}/accounts/{fid}/items/{iid}/upload-receipt", headers=auth(1), files={"file": ("receipt.png", png(), "image/png")})
             assert up.status_code == 200, up.text
             after_spend = await values(c, fid)
             for key in ("expense_count", "unified_count", "flow_count", "company_flow_count", "expense_amount", "unified_amount", "flow_amount", "company_flow_amount", "company_cash"):

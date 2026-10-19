@@ -46,6 +46,9 @@ export default function ExpenseFundPage() {
   const [itemForm, setItemForm] = useState({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: "THB", description: "" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [expenseBusy, setExpenseBusy] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [voidTarget, setVoidTarget] = useState<{ account: any; item: any } | null>(null);
+  const [voidReason, setVoidReason] = useState(""), [voidBusy, setVoidBusy] = useState(false);
 
   // ====== Review state ======
   const [reviewData, setReviewData] = useState<any[]>([]);
@@ -158,28 +161,41 @@ export default function ExpenseFundPage() {
   }
 
   function openExpense(acc: any) {
+    setEditingItem(null);
     setExpenseAccount(acc);
     setItemForm({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: acc.currency || "THB", description: "" });
     setReceiptFile(null);
     setShowExpense(true);
   }
+  function openEditExpense(acc: any, item: any) {
+    if (!isAdmin || !item.can_edit) return;
+    setExpenseAccount(acc); setEditingItem(item); setReceiptFile(null);
+    setItemForm({ expense_date: item.expense_date?.slice(0, 10) || "", category: item.category,
+      amount: String(item.amount), currency: item.currency || "THB", description: item.description || "" });
+    setShowExpense(true);
+  }
   async function doAddExpense() {
     if (!expenseAccount || expenseBusy) return;
-    if (!receiptFile) { toast("error", "请上传开销凭证"); return; }
+    if (editingItem && !isAdmin) return;
+    if (!receiptFile && !editingItem?.receipt) { toast("error", "请上传开销凭证"); return; }
     setExpenseBusy(true);
     try {
-      const fd = new FormData(); fd.append("file", receiptFile);
-      const headers: Record<string, string> = { Authorization: `Bearer ${getToken()}` };
-      const warehouse = getActiveWarehouseId(); if (warehouse) headers["X-Warehouse-ID"] = warehouse;
-      const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/expense-fund/accounts/${expenseAccount.id}/upload-receipt`, {
-        method: "POST", headers, body: fd,
-      });
-      const upData = await upRes.json().catch(() => ({}));
-      if (!upRes.ok || !upData.receipt) throw new Error(upData.detail || "凭证上传失败，请重试");
-      await api.post<any>(`/expense-fund/accounts/${expenseAccount.id}/items`, {
-        ...itemForm, amount: itemForm.amount || 0, currency: itemForm.currency, receipt: upData.receipt,
-      });
-      toast("success", "开销添加成功");
+      let receipt = editingItem?.receipt;
+      if (receiptFile) {
+        const fd = new FormData(); fd.append("file", receiptFile);
+        const headers: Record<string, string> = { Authorization: `Bearer ${getToken()}` };
+        const warehouse = getActiveWarehouseId(); if (warehouse) headers["X-Warehouse-ID"] = warehouse;
+        const upRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/expense-fund/accounts/${expenseAccount.id}/upload-receipt`, {
+          method: "POST", headers, body: fd,
+        });
+        const upData = await upRes.json().catch(() => ({}));
+        if (!upRes.ok || !upData.receipt) throw new Error(upData.detail || "凭证上传失败，请重试");
+        receipt = upData.receipt;
+      }
+      const body = { ...itemForm, amount: itemForm.amount || 0, currency: itemForm.currency, receipt };
+      if (editingItem) await api.put(`/expense-fund/accounts/${expenseAccount.id}/items/${editingItem.id}`, body);
+      else await api.post(`/expense-fund/accounts/${expenseAccount.id}/items`, body);
+      toast("success", editingItem ? "开销修改成功" : "开销添加成功");
       setShowExpense(false);
       loadAccounts();
       const updated = await api.get<any>(`/expense-fund/accounts/${expenseAccount.id}/items`);
@@ -187,6 +203,20 @@ export default function ExpenseFundPage() {
       loadDisbursements(expenseAccount.id);
     } catch (err: any) { toast("error", err.message || "添加失败"); }
     finally { setExpenseBusy(false); }
+  }
+  async function doVoidExpense() {
+    if (!isAdmin || !voidTarget || voidBusy) return;
+    if (!voidReason.trim()) { toast("error", "请填写作废原因"); return; }
+    setVoidBusy(true);
+    try {
+      await api.delete(`/expense-fund/accounts/${voidTarget.account.id}/items/${voidTarget.item.id}`, { reason: voidReason.trim() });
+      const accountId = voidTarget.account.id;
+      toast("success", "开销已作废，原记录已保留"); setVoidTarget(null); setVoidReason("");
+      loadAccounts(); loadDisbursements(accountId);
+      const updated = await api.get<any>(`/expense-fund/accounts/${accountId}/items`);
+      setItems(previous => ({ ...previous, [accountId]: updated.data || [] }));
+    } catch (err: any) { toast("error", err.message || "作废失败"); }
+    finally { setVoidBusy(false); }
   }
 
   // ====== Review logic ======
@@ -386,7 +416,7 @@ export default function ExpenseFundPage() {
                   {accounts.map((acc: any) => {
                     const isExpanded = expandedId === acc.id;
                     const accItems = items[acc.id] || [];
-                    const accSpentTotal = acc.total_spent ?? accItems.filter((i: any) => i.review_status !== "rejected").reduce((s: number, i: any) => s + (i.amount || 0), 0);
+                    const accSpentTotal = acc.total_spent ?? accItems.filter((i: any) => i.review_status !== "rejected" && i.review_status !== "voided" && !i.is_voided).reduce((s: number, i: any) => s + (i.amount || 0), 0);
                     const accPendingSpent = accItems.filter((i: any) => i.review_status === "pending").reduce((s: number, i: any) => s + (i.amount || 0), 0);
                     const accAvailable = acc.available ?? Math.max(0, (acc.current_balance || 0) - accPendingSpent);
                     return (
@@ -434,11 +464,12 @@ export default function ExpenseFundPage() {
                                       <th className="text-left px-2 py-1.5 text-gray-500">说明</th>
                                       <th className="text-center px-2 py-1.5 text-gray-500">审核</th>
                                       <th className="text-center px-2 py-1.5 text-gray-500">凭证</th>
+                                      {isAdmin && <th className="text-center px-2 py-1.5 text-gray-500">操作</th>}
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {accItems.map((it: any) => (
-                                      <tr key={it.id} className="border-b border-gray-100">
+                                      <tr key={it.id} className={`border-b border-gray-100 ${it.is_voided || it.review_status === "voided" ? "bg-gray-100 text-gray-400" : ""}`}>
                                         <td className="px-2 py-1.5">{it.expense_date?.slice(0, 10)}</td>
                                         <td className="px-2 py-1.5">{it.category}</td>
                                         <td className="px-2 py-1.5 text-right font-mono">{it.currency === "CNY" ? "¥" : "฿"}{it.amount?.toLocaleString()}</td>
@@ -447,11 +478,13 @@ export default function ExpenseFundPage() {
                                           {(it.disbursement_sources || []).map((p: any, index: number) => <div key={index} className="text-[10px] text-gray-400">{p.label} · {fmtMoney(p.amount, it.currency)}</div>)}
                                         </td>
                                         <td className="px-2 py-1.5 text-center">
-                                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${it.review_status === "approved" ? "bg-green-50 text-green-600" : it.review_status === "rejected" ? "bg-red-50 text-red-600" : "bg-yellow-50 text-yellow-600"}`}>
-                                            {it.review_status === "approved" ? "已通过" : it.review_status === "rejected" ? "已驳回" : "待审核"}
+                                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${it.is_voided || it.review_status === "voided" ? "bg-gray-200 text-gray-500" : it.review_status === "approved" ? "bg-green-50 text-green-600" : it.review_status === "rejected" ? "bg-red-50 text-red-600" : "bg-yellow-50 text-yellow-600"}`}>
+                                            {it.is_voided || it.review_status === "voided" ? "已作废" : it.review_status === "approved" ? "已通过" : it.review_status === "rejected" ? "已驳回" : "待审核"}
                                           </span>
+                                          {it.void_reason && <p className="mt-1 max-w-40 whitespace-normal">原因：{it.void_reason}</p>}
                                         </td>
-                                        <td className="px-2 py-1.5 text-center">{it.receipt ? <button type="button" onClick={() => setPreviewUrl(it.receipt)} className="text-blue-600 whitespace-nowrap" aria-label={`查看开销 #${it.id} 凭证`}><Eye size={14} className="inline mr-1" />查看凭证</button> : <span className="text-gray-400">未上传</span>}</td>
+                                        <td className="px-2 py-1.5 text-center">{it.is_voided || it.review_status === "voided" ? <span>—</span> : it.receipt ? <button type="button" onClick={() => setPreviewUrl(it.receipt)} className="text-blue-600 whitespace-nowrap" aria-label={`查看开销 #${it.id} 凭证`}><Eye size={14} className="inline mr-1" />查看凭证</button> : <span className="text-gray-400">未上传</span>}</td>
+                                        {isAdmin && <td className="px-2 py-1.5 text-center whitespace-nowrap">{it.can_edit && <button type="button" aria-label={`编辑开销 #${it.id}`} className="text-blue-600 mr-3" onClick={() => openEditExpense(acc, it)}>编辑</button>}{it.can_void && <button type="button" aria-label={`作废开销 #${it.id}`} className="text-red-600" onClick={() => { setVoidTarget({ account: acc, item: it }); setVoidReason(""); }}>作废</button>}</td>}
                                       </tr>
                                     ))}
                                   </tbody>
@@ -546,9 +579,9 @@ export default function ExpenseFundPage() {
 
           {/* Expense modal */}
           {showExpense && (
-            <div role="dialog" aria-modal="true" aria-label="添加备用金开销" className="modal-overlay z-50" onClick={() => { if (!expenseBusy) { setShowExpense(false); setReceiptFile(null); } }}>
+            <div role="dialog" aria-modal="true" aria-label={editingItem ? "编辑备用金开销" : "添加备用金开销"} className="modal-overlay z-50" onClick={() => { if (!expenseBusy) { setShowExpense(false); setReceiptFile(null); } }}>
               <div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 shrink-0"><FileText size={18} /><h2 className="font-semibold">添加开销 - {expenseAccount?.employee_name}</h2><button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button></div>
+                <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 shrink-0"><FileText size={18} /><h2 className="font-semibold">{editingItem ? "编辑开销" : "添加开销"} - {expenseAccount?.employee_name}</h2><button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button></div>
                 <div className="p-5 space-y-3 overflow-y-auto min-h-0">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">累计拨付</div><div className="text-sm font-bold text-blue-700">{fmtMoney(expenseAccount?.total_topped_up, expenseAccount?.currency)}</div></div>
@@ -558,10 +591,11 @@ export default function ExpenseFundPage() {
                   <div><label className="form-label">类别</label><select className="form-input" value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })}><option>耗材</option><option>交通费</option><option>餐饮</option><option>办公用品</option><option>维修</option><option>其他</option></select></div>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="form-label">金额</label><input type="number" className="form-input" value={itemForm.amount} onChange={e => setItemForm({ ...itemForm, amount: e.target.value === "" ? "" : +e.target.value })} /></div>
-                    <div><label className="form-label">币种</label><select className="form-input" value={itemForm.currency} onChange={e => setItemForm({ ...itemForm, currency: e.target.value })}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
+                    <div><label className="form-label">币种</label><select disabled={!!editingItem} className="form-input" value={itemForm.currency} onChange={e => setItemForm({ ...itemForm, currency: e.target.value })}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
                   </div>
                   <div><label className="form-label">说明</label><input className="form-input" value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} /></div>
                   <div><label className="form-label" htmlFor="receiptFileInput4">凭证照片（必填）</label>
+                    {editingItem?.receipt && <p className="text-xs text-gray-500 mb-1">已有凭证会保留，选择新照片才替换。<button type="button" className="text-blue-600 ml-2" onClick={() => setPreviewUrl(editingItem.receipt)}>查看当前凭证</button></p>}
                     <div className="border-2 border-dashed border-gray-200 rounded-lg p-3 text-center hover:border-blue-400 transition-colors cursor-pointer" onClick={() => document.getElementById("receiptFileInput4")?.click()}>
                       {receiptFile ? <div className="flex items-center gap-2 text-sm text-blue-600"><Image size={16} />{receiptFile.name}</div> : <div className="text-gray-400 text-sm"><Camera size={22} className="mx-auto mb-1 text-gray-300" />点击上传截图</div>}
                       <input id="receiptFileInput4" type="file" accept="image/*" disabled={expenseBusy} className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
@@ -790,6 +824,11 @@ export default function ExpenseFundPage() {
           <div className="p-4 flex items-center justify-center bg-gray-100"><img src={previewUrl} alt="开销凭证" className="max-w-full max-h-[70vh] object-contain rounded" /></div>
         </div>
       </div>}
+      {voidTarget && <div role="dialog" aria-modal="true" aria-label="作废备用金开销" className="modal-overlay z-[120]" onClick={() => { if (!voidBusy) setVoidTarget(null); }}><div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 space-y-4" onClick={e => e.stopPropagation()}>
+        <h3 className="font-semibold">确认作废这条开销？</h3><p className="text-sm">开销 #{voidTarget.item.id} · {fmtMoney(voidTarget.item.amount, voidTarget.item.currency)}</p><p className="text-sm text-gray-500">作废后记录保留，不再计入备用金台账。已审核通过的开销不能作废。</p>
+        <label className="block text-sm">作废原因（必填）<textarea aria-label="开销作废原因" className="form-input mt-1" rows={3} maxLength={500} disabled={voidBusy} value={voidReason} onChange={e => setVoidReason(e.target.value)} /></label>
+        <div className="flex justify-end gap-3"><button type="button" disabled={voidBusy} className="btn-secondary" onClick={() => setVoidTarget(null)}>取消</button><button type="button" disabled={voidBusy} className="btn-primary" onClick={doVoidExpense}>{voidBusy ? "作废中..." : "确认作废"}</button></div>
+      </div></div>}
     </>
   );
 }

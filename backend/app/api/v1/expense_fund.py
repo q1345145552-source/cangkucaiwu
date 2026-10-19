@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime
+from datetime import datetime, date
+from decimal import Decimal
 import os, uuid
 from pathlib import Path
 from app.database import get_db
@@ -11,8 +12,9 @@ from app.models.user import User
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
+from app.services import fund_item_controls as item_controls
 
 router = APIRouter()
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
@@ -84,6 +86,31 @@ class FundItemCreate(BaseModel):
     expense_date: str; category: str; amount: float; description: str
     currency: str = "THB"
     receipt: Optional[str] = None
+
+
+class FundItemUpdate(BaseModel):
+    expense_date: Optional[date] = None
+    category: Optional[str] = Field(default=None, max_length=100)
+    amount: Optional[Decimal] = Field(default=None, gt=0, max_digits=14, decimal_places=2, allow_inf_nan=False)
+    currency: Optional[str] = Field(default=None, max_length=5)
+    description: Optional[str] = Field(default=None, max_length=500)
+    receipt: Optional[str] = Field(default=None, max_length=500)
+
+
+class FundItemVoid(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
+async def _item_editor(current_user=Depends(get_current_user)):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "开销记录只有仓库管理员可以修改")
+    return current_user
+
+
+async def _item_voider(current_user=Depends(get_current_user)):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, "开销记录只有仓库管理员可以删除")
+    return current_user
 
 class BatchReviewReq(BaseModel):
     item_ids: List[int]
@@ -199,14 +226,14 @@ async def list_accounts(
         # 已用金额按币种分组（排除被驳回的）
         spent_q = select(ExpenseFundItem.currency, func.sum(ExpenseFundItem.amount).label("total")).where(
             ExpenseFundItem.fund_id == a.id,
-            ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+            ExpenseFundItem.review_status != ReviewStatus.REJECTED.value, ExpenseFundItem.not_voided(),
         ).group_by(ExpenseFundItem.currency)
         spent_rows = (await db.execute(spent_q)).all()
         spent_by_currency = {r.currency or "THB": float(r.total or 0) for r in spent_rows}
         total_spent = round(sum(spent_by_currency.values()), 2)
         spent_regular = float((await db.execute(select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
             ExpenseFundItem.fund_id == a.id, ExpenseFundItem.category != "报销",
-            ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+            ExpenseFundItem.review_status != ReviewStatus.REJECTED.value, ExpenseFundItem.not_voided(),
         ))).scalar() or 0)
         result.append({
             "id": a.id, "employee_id": a.employee_id,
@@ -314,15 +341,25 @@ async def list_items(
     ).order_by(ExpenseFundItem.expense_date.desc()))
     items = result.scalars().all()
     _, sources = await fund_sources(db, account)
-    return {"data": [{
-        "id": i.id, "fund_id": i.fund_id,
-        "expense_date": i.expense_date.isoformat() if i.expense_date else None,
-        "category": i.category, "amount": i.amount, "currency": i.currency or "THB",
-        "description": i.description, "receipt": i.receipt,
-        "review_status": i.review_status,
-        "review_remark": i.review_remark, "review_action": i.review_action,
-        "cost_record_only": i.cost_record_only, "disbursement_sources": sources.get(i.id, []),
+    linked = await item_controls.linked_ids(db, [i.id for i in items])
+    return {"data": [{**item_controls.fields(i), "disbursement_sources": sources.get(i.id, []),
+        "can_edit": current_user.role == Role.WAREHOUSE_ADMIN and i.review_status != "approved" and not i.is_voided and i.id not in linked,
+        "can_void": current_user.role == Role.WAREHOUSE_ADMIN and i.review_status != "approved" and not i.is_voided and i.id not in linked,
     } for i in items]}
+
+
+@router.put("/accounts/{account_id}/items/{item_id}")
+async def edit_item(account_id: int, item_id: int, req: FundItemUpdate,
+    current_user: User = Depends(_item_editor), db: AsyncSession = Depends(get_db)):
+    fund, item = await item_controls.lock_manual_item(db, account_id, item_id, get_wh_ids(current_user), action="edit")
+    return await item_controls.update(db, fund, item, req.model_dump(exclude_unset=True), current_user, _required_receipt)
+
+
+@router.delete("/accounts/{account_id}/items/{item_id}")
+async def void_item(account_id: int, item_id: int, req: FundItemVoid | None = None,
+    current_user: User = Depends(_item_voider), db: AsyncSession = Depends(get_db)):
+    fund, item = await item_controls.lock_manual_item(db, account_id, item_id, get_wh_ids(current_user), action="void")
+    return await item_controls.void(db, fund, item, req.reason if req else None, current_user)
 
 @router.post("/accounts/{account_id}/items")
 async def add_item(
@@ -353,7 +390,7 @@ async def add_item(
             select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
                 ExpenseFundItem.fund_id == account_id,
                 ExpenseFundItem.category != "报销",
-                ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+                ExpenseFundItem.review_status != ReviewStatus.REJECTED.value, ExpenseFundItem.not_voided(),
             )
         )).scalar() or 0)
         from app.services.flow_rules import fund_available
@@ -397,24 +434,14 @@ async def upload_new_item_receipt(
 @router.post("/accounts/{account_id}/items/{item_id}/upload-receipt")
 async def upload_receipt(
     account_id: int, item_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(_item_editor),
     db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
     _perm=Depends(check_staff_permission("备用金管理")),
 ):
-    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
-    if not account:
-        raise HTTPException(404, "账户不存在")
-    if current_user.role != Role.SUPER_ADMIN and account.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "只能操作本仓库的备用金账户")
-    item = (await db.execute(select(ExpenseFundItem).where(
-        ExpenseFundItem.id == item_id, ExpenseFundItem.fund_id == account_id
-    ))).scalar_one_or_none()
-    if not item:
-        raise HTTPException(404, "开销记录不存在")
+    account, item = await item_controls.lock_manual_item(db, account_id, item_id, get_wh_ids(current_user), action="edit")
     result = await _save_receipt(file, account)
-    item.receipt = result["path"]
-    await db.flush()
+    await item_controls.update(db, account, item, {"receipt": result["path"]}, current_user, _required_receipt)
     return {"message": "凭证上传成功", "receipt": item.receipt}
 
 
@@ -439,6 +466,7 @@ async def list_pending_reviews(
     filters = [
         ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
         ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
+        ExpenseFundItem.not_voided(),
     ]
     if employee_id:
         filters.append(ExpenseFund.employee_id == employee_id)
@@ -528,6 +556,8 @@ async def batch_review(
             .with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
         if item is None:
             continue
+        if item.is_voided:
+            raise HTTPException(400, "该开销已作废，不能审核")
         old_status = item.review_status
         # 幂等守卫：状态未变化则跳过，避免重复驳回导致余额被多次退回
         if old_status == new_status:
@@ -642,7 +672,7 @@ async def list_recharge_requests(
     fund_ids = {fund.id for _, fund, _, _ in rows}
     regular_spent = dict((await db.execute(select(ExpenseFundItem.fund_id, func.sum(ExpenseFundItem.amount)).where(
         ExpenseFundItem.fund_id.in_(fund_ids), ExpenseFundItem.category != "报销",
-        ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+        ExpenseFundItem.review_status != ReviewStatus.REJECTED.value, ExpenseFundItem.not_voided(),
     ).group_by(ExpenseFundItem.fund_id))).all()) if fund_ids else {}
     result = []
     for rr, fund, applicant, wh in rows:

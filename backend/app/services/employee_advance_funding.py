@@ -35,7 +35,7 @@ def validate_money(value):
 async def fund_available_amount(db, fund):
     spent = (await db.execute(select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
         ExpenseFundItem.fund_id == fund.id, ExpenseFundItem.category != "报销",
-        ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+        ExpenseFundItem.review_status != ReviewStatus.REJECTED.value, ExpenseFundItem.not_voided(),
     ))).scalar_one()
     return max(money(fund.remaining_balance) - money(spent), Decimal(0))
 

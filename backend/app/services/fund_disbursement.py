@@ -152,7 +152,7 @@ async def fund_sources(db, fund):
             r = rows[offset]
             pools.append({"disbursement_id": r.id, "remaining": r.amount, "label": f"拨付 #{r.id}"})
             offset += 1
-        if item.review_status == "rejected":
+        if item.review_status == "rejected" or item.is_voided:
             by_item[item.id] = []
             continue
         remaining = money(item.amount)

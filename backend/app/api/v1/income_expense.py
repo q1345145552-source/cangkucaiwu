@@ -617,6 +617,7 @@ async def ledger(
             JOIN expense_funds ef2 ON efi.fund_id = ef2.id
             LEFT JOIN users u2 ON ef2.employee_id = u2.id
             WHERE {wh_cond('ef2')} AND {date_cond('efi', 'expense_date')} AND efi.cost_record_only=false
+                AND efi.voided_at IS NULL AND (efi.review_status IS NULL OR efi.review_status <> 'voided')
         """)
 
     # 5. 历史报销保留原口径；新付款按付款记录只计公司账户路径，撤销留痕。
