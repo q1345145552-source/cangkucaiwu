@@ -3,11 +3,12 @@ import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import SafeImage from "@/components/SafeImage";
+import CashAdvanceLink from "@/components/CashAdvanceLink";
 import { useToast } from "@/components/ui/Toast";
 
 interface Payment {
   id: number; amount: number; currency: string; funding_source_label: string; account_name: string | null;
-  cash_advance_id: number | null; payment_method_label: string; paid_by_name: string; paid_at: string;
+  cash_advance_id: number | null; cash_advance_number?: string | null; payment_method_label: string; paid_by_name: string; paid_at: string;
   expense_record_id: number | null;
   payment_voucher_path: string | null; status: string; can_revoke: boolean;
   revoked_by_name: string | null; revoked_at: string | null; revoke_reason: string | null;
@@ -42,7 +43,7 @@ export default function ReimbursementPaymentHistory({ reimbursementId, onChange 
     <h3 className="font-semibold text-sm">付款记录</h3>
     {loading ? <p className="text-sm text-gray-500">加载中…</p> : error ? <div><p className="text-sm text-red-600">{error}</p><button onClick={load} className="text-sm text-blue-600">重试</button></div> : !rows.length ? <p className="text-sm text-gray-500">{legacy ? "历史已付款记录保持原样，未自动补成本或推断付款账户。" : "暂无付款记录"}</p> : rows.map(p => <article key={p.id} className="border rounded-lg p-3 space-y-2 text-sm">
       <div className="flex flex-wrap gap-2 justify-between"><strong>{Number(p.amount).toLocaleString("zh-CN", { minimumFractionDigits: 2 })} {p.currency}</strong><span className={p.status === "active" ? "text-green-700" : "text-gray-500"}>{p.status === "active" ? "已付款" : "已撤销"}</span></div>
-      <p>资金来源：{p.funding_source_label}{p.cash_advance_id ? ` #${p.cash_advance_id}` : ""}</p>
+      <p>资金来源：{p.funding_source_label} <CashAdvanceLink id={p.cash_advance_id} number={p.cash_advance_number} /></p>
       {p.expense_record_id && <p>关联运营支出 #{p.expense_record_id}{p.status === "revoked" ? "（已撤回）" : ""}</p>}
       <p>账户：{p.account_name || "不使用公司账户"} · {p.payment_method_label}</p>
       <p>付款人：{p.paid_by_name} · {when(p.paid_at)}</p>

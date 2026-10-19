@@ -1,4 +1,5 @@
 "use client";
+import CashAdvanceLink from "@/components/CashAdvanceLink";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
@@ -244,7 +245,7 @@ export default function EmployeeAdvancePage() {
                       {r.is_voided ? "已作废" : STATUS_LABELS[r.status] || r.status}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center">{r.funding_source_label || SOURCE_LABELS[r.funding_source || "company_account"]}</td>
+                  <td className="px-3 py-3 text-center">{r.cash_advance_number ? <CashAdvanceLink id={r.cash_advance_id} number={r.cash_advance_number} /> : r.funding_source_label || SOURCE_LABELS[r.funding_source || "company_account"]}</td>
                   <td className="px-3 py-3 text-center whitespace-nowrap">{r.approval_status_label || r.approval_status}</td>
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-gray-500 max-w-32 truncate" title={r.remark}>{r.remark || "-"}</td>

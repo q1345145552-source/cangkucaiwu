@@ -1,6 +1,7 @@
 from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount
 from app.services.cash_advance_payroll import lock_payroll_advance, payroll_usage_totals, usage_amounts, PAYROLL_CURRENCY
 from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
+from app.services.cash_advance_reference import cash_advance_numbers, cash_advance_reference
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.full_day_leave import full_day_net_hours
 from app.services.early_departure_leave import leave_covers_early_departure
@@ -1218,6 +1219,7 @@ async def list_payroll(
     status: str = None,
     name: str = None,
     voided_filter: str = None,
+    record_id: int = None,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1225,6 +1227,8 @@ async def list_payroll(
     if wh_id is None:
         return {"data": [], "periods": [], "months": []}
     query = select(PayrollRecord).where(PayrollRecord.warehouse_id == wh_id)
+    if record_id is not None:
+        query = query.where(PayrollRecord.id == record_id)
 
     # 公共筛选：作废、结算月份、姓名模糊、状态
     query = _apply_payroll_filters(query, settle_month=settle_month, voided_filter=voided_filter, name=name, status=status)
@@ -1241,6 +1245,7 @@ async def list_payroll(
     )
     records = result.scalars().all()
 
+    advance_numbers = await cash_advance_numbers(db, records)
     # Get employee names
     emp_ids = {r.employee_id for r in records}
     emp_map = {}
@@ -1300,6 +1305,7 @@ async def list_payroll(
             "signature_path": r.signature_path,
             "expense_record_id": r.expense_record_id,
             "cash_advance_id": r.cash_advance_id,
+            **cash_advance_reference(r, advance_numbers),
             "funding_source": "cash_advance" if r.cash_advance_id is not None else "company_account",
             "voided": r.voided,
             "voided_by": r.voided_by,
@@ -2283,3 +2289,15 @@ async def settlement_progress(
     } for e in emps]
     data.sort(key=lambda x: x["settle_end_date"] or "")
     return {"data": data}
+
+
+@router.get("/{record_id}")
+async def payroll_detail(record_id: int,
+    current_user: User = Depends(check_staff_permission(_PERMISSION)),
+    db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无此操作权限")
+    result = await list_payroll(record_id=record_id, current_user=current_user, db=db)
+    if not result["data"]:
+        raise HTTPException(404, "工资单不存在")
+    return result["data"][0]

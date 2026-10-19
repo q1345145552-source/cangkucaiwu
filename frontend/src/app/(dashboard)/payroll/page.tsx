@@ -3,6 +3,7 @@ import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import SafeImage from "@/components/SafeImage";
+import CashAdvanceLink from "@/components/CashAdvanceLink";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -738,6 +739,7 @@ export default function PayrollPage() {
                       <div className="text-[11px] text-gray-400 font-normal">{r.employee_no}</div>
                     )}
                     <div className="text-[11px] text-gray-400 font-normal">{recordDateLabel(r)}</div>
+                    <CashAdvanceLink id={r.cash_advance_id} number={r.cash_advance_number} />
                   </td>
                   <td className="px-3 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs ${templateTypeBadge(r.detail?.salary_template_type)}`}>
@@ -1077,6 +1079,7 @@ export default function PayrollPage() {
               <div className="text-center pb-3 border-b">
                 <h3 className="text-lg font-bold">{showPayslip.employee_name}{showPayslip.is_supervisor && <span className="ml-2 inline-flex rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">主管</span>}</h3>
                 <p className="text-sm text-gray-500">{recordDateLabel(showPayslip)} 工资单</p>
+                <CashAdvanceLink id={showPayslip.cash_advance_id} number={showPayslip.cash_advance_number} />
                 <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${templateTypeBadge(psTemplateType)}`}>
                   {templateTypeLabel(psTemplateType) || (showPayslip.employee_status === "trial" ? "试用期" : "正式员工")}
                 </span>

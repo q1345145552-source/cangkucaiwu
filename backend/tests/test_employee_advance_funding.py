@@ -285,9 +285,10 @@ def test_options_wh_isolation_and_advance_permission_only(tmp_path, monkeypatch)
 
 def test_salary_functions_and_cap_unchanged():
     from tests.full_day_leave_test_support import before_full_day_guards
+    from tests.cash_reference_test_support import without_reference_readers
     name = 'backend/app/api/v1/payroll.py'
-    before = ast.parse(before_full_day_guards(subprocess.check_output(['git','show','3e19093:'+name]).decode()))
-    after = ast.parse(before_full_day_guards(Path(name.removeprefix('backend/')).read_text()))
+    before = ast.parse(without_reference_readers(before_full_day_guards(subprocess.check_output(['git','show','3e19093:'+name]).decode())))
+    after = ast.parse(without_reference_readers(before_full_day_guards(Path(name.removeprefix('backend/')).read_text())))
     functions = lambda t: {n.name: ast.dump(n,include_attributes=False) for n in t.body
         if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name != 'payroll_cash_advance_sources'}
     assert functions(before) == functions(after)

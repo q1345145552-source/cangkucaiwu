@@ -161,6 +161,7 @@ def test_partial_payment_not_bill_total_and_date_currency_warehouse_void_guards(
 
 def test_payable_balances_ledger_and_all_other_dashboard_functions_unchanged():
     from tests.full_day_leave_test_support import before_full_day_guards
+    from tests.cash_reference_test_support import without_reference_readers
     root = Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payable.py", "backend/app/api/v1/income_expense.py", "backend/app/services/account_balances.py",
                  "backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py"):
@@ -170,6 +171,7 @@ def test_payable_balances_ledger_and_all_other_dashboard_functions_unchanged():
         original = subprocess.check_output(["git", "show", baseline + ":" + path], cwd=root, text=True)
         if path.endswith('/payroll.py'):
             current, original = map(before_full_day_guards, (current, original))
+            current, original = map(without_reference_readers, (current, original))
         assert current == original
     for path, allowed in (("backend/app/api/v1/dashboard.py", {"dashboard_cockpit", "dashboard_trends"}),
                           ("backend/app/services/cost_funds_debt.py", {"cost_query", "cost_list", "report"})):

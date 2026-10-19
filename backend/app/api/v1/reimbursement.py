@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from app.services import reimbursement_payment as payments
 from app.models.reimbursement_payment import ReimbursementPayment
+from app.services.cash_advance_reference import cash_advance_numbers, cash_advance_reference
 
 router = APIRouter()
 
@@ -132,6 +133,7 @@ async def list_reimbursements(
         users = (await db.execute(select(User).where(User.id.in_(uids)))).scalars().all()
         umap = {u.id: u.display_name for u in users}
     paid = await payments.active_payment_map(db, reimbs)
+    advance_numbers = await cash_advance_numbers(db, reimbs)
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id, "employee_id": r.employee_id,
         "employee_name": umap.get(r.employee_id, ""),
@@ -140,6 +142,7 @@ async def list_reimbursements(
         "is_fund_linked": r.is_fund_linked or "0", "fund_item_id": r.fund_item_id,
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
         **payments.payment_fields(r, paid.get(r.id), can_revoke=current_user.role == Role.WAREHOUSE_ADMIN),
+        **cash_advance_reference(r, advance_numbers),
     } for r in reimbs], "total": total, "page": page, "page_size": page_size}
 
 @router.post("")
@@ -309,6 +312,7 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
         raise HTTPException(403, "无权查看其他仓库的报销单")
     items = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.reimbursement_id == reimb_id))).scalars().all()
     paid = (await payments.active_payment_map(db, [r])).get(r.id)
+    advance_numbers = await cash_advance_numbers(db, [r])
     employee = await db.get(User, r.employee_id)
     return {
         "id": r.id, "warehouse_id": r.warehouse_id, "employee_id": r.employee_id,
@@ -318,6 +322,7 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
         "total_amount": r.total_amount, "currency": r.currency, "status": r.status,
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
         **payments.payment_fields(r, paid, can_revoke=current_user.role == Role.WAREHOUSE_ADMIN),
+        **cash_advance_reference(r, advance_numbers),
         "items": [{"id": i.id, "category": i.category, "amount": i.amount,
                    "description": i.description, "receipt": i.receipt,
                    "review_status": i.review_status} for i in items],
@@ -492,7 +497,8 @@ async def payment_history(reimb_id: int, current_user: User = Depends(get_curren
     rows = (await db.execute(select(ReimbursementPayment).where(
         ReimbursementPayment.reimbursement_id == r.id, ReimbursementPayment.warehouse_id == r.warehouse_id,
     ).order_by(ReimbursementPayment.id.desc()))).scalars().all()
-    return {"data": [{**payments.payment_dict(p), "can_revoke": p.status == "active" and current_user.role == Role.WAREHOUSE_ADMIN} for p in rows],
+    advance_numbers = await cash_advance_numbers(db, rows)
+    return {"data": [{**payments.payment_dict(p), **cash_advance_reference(p, advance_numbers), "can_revoke": p.status == "active" and current_user.role == Role.WAREHOUSE_ADMIN} for p in rows],
         "total": len(rows), "status": r.status, "is_legacy_payment": r.status == "paid" and not rows}
 
 @router.post("/{reimb_id}/revoke-payment", dependencies=[Depends(reject_disabled_financial_reversal)])

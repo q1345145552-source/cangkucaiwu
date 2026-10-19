@@ -14,6 +14,7 @@ from app.services.data_history import record_history
 from app.services.employee_advance_expense import delete_advance_expense
 from app.services.employee_advance_limit import check_advance_limit
 from app.services.employee_advance_funding import SOURCES, apply_advance_funding, validate_funding, funding_options
+from app.services.cash_advance_reference import cash_advance_numbers, cash_advance_reference
 from math import isfinite
 from pydantic import BaseModel
 from datetime import datetime
@@ -172,6 +173,7 @@ async def list_advance_recipients(
 async def list_advances(
     employee_id: Optional[int] = None,
     period: Optional[str] = None,
+    advance_id: Optional[int] = None,
     approval_status: Optional[Literal["pending", "approved", "rejected", "待审批", "已通过", "已驳回"]] = None,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
     db: AsyncSession = Depends(get_db),
@@ -184,6 +186,8 @@ async def list_advances(
         return {"data": [], "total": 0}
 
     q = select(EmployeeAdvance).where(EmployeeAdvance.warehouse_id.in_(wh_ids))
+    if advance_id is not None:
+        q = q.where(EmployeeAdvance.id == advance_id)
     if approval_status is not None:
         normalized = {label: value for value, label in ADVANCE_APPROVAL_LABELS.items()}.get(approval_status, approval_status)
         q = q.where(EmployeeAdvance.approval_status == normalized)
@@ -193,6 +197,7 @@ async def list_advances(
         q = q.where(EmployeeAdvance.period == period)
 
     rows = (await db.execute(q.order_by(EmployeeAdvance.advance_date.desc(), EmployeeAdvance.id.desc()))).scalars().all()
+    advance_numbers = await cash_advance_numbers(db, rows)
 
     emp_ids = {r.employee_id for r in rows}
     op_ids = {uid for r in rows for uid in (r.operator_id, r.voided_by) if uid}
@@ -209,6 +214,7 @@ async def list_advances(
         "data": [{
             "id": r.id,
             **_approval_fields(r),
+            **cash_advance_reference(r, advance_numbers),
             **_void_fields(r),
             "voided_by_name": op_map.get(r.voided_by).display_name if op_map.get(r.voided_by) else "",
             "can_void": current_user.role == Role.WAREHOUSE_ADMIN and not r.is_voided
@@ -430,3 +436,13 @@ async def approve_advance(advance_id: int,
 async def reject_advance(advance_id: int, req: AdvanceRejectRequest = AdvanceRejectRequest(),
     current_user: User = Depends(_advance_approver), db: AsyncSession = Depends(get_db)):
     return await _review_advance(db, advance_id, current_user, "reject", req.reject_reason)
+
+
+@router.get("/{advance_id}")
+async def advance_detail(advance_id: int,
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
+    db: AsyncSession = Depends(get_db)):
+    result = await list_advances(advance_id=advance_id, current_user=current_user, db=db)
+    if not result["data"]:
+        raise HTTPException(404, "预支记录不存在")
+    return result["data"][0]
