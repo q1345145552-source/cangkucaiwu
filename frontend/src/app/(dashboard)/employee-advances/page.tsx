@@ -13,7 +13,7 @@ function todayStr(): string {
 }
 
 const SOURCE_LABELS: Record<string, string> = { supervisor: "主管垫付", fund: "备用金" };
-const STATUS_LABELS: Record<string, string> = { unpaid: "未扣", partial: "部分扣", deducted: "已扣完", voided: "已作废" };
+const STATUS_LABELS: Record<string, string> = { unpaid: "未扣", partial: "部分结清", deducted: "已随工资结清", voided: "已作废" };
 
 export default function EmployeeAdvancePage() {
   const canWrite = useMenuPermission("employee_advances");
@@ -133,12 +133,12 @@ export default function EmployeeAdvancePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         {(summary.total_by_currency || []).length > 0 ? summary.total_by_currency.map((c: any) => (
           <div key={c.currency} className="bg-white rounded-xl border p-4">
-            <p className="text-xs text-gray-400">当前欠款 ({c.currency})</p>
+            <p className="text-xs text-gray-400">已预支 ({c.currency})</p>
             <p className="text-2xl font-bold text-red-600">{c.total?.toLocaleString()}</p>
           </div>
         )) : (
           <div className="bg-white rounded-xl border p-4">
-            <p className="text-xs text-gray-400">当前欠款</p>
+            <p className="text-xs text-gray-400">已预支</p>
             <p className="text-2xl font-bold text-red-600">0</p>
           </div>
         )}
@@ -184,7 +184,7 @@ export default function EmployeeAdvancePage() {
                 <th className="text-left px-3 py-3 font-medium text-gray-500">预支日期</th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">所属周期</th>
                 <th className="text-right px-3 py-3 font-medium text-gray-500">已扣金额</th>
-                <th className="text-right px-3 py-3 font-medium text-gray-500">未扣金额</th>
+                <th className="text-right px-3 py-3 font-medium text-gray-500">已预支</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">状态</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">来源</th>
                 <th className="px-3 py-3">审批状态</th>
