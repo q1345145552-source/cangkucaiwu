@@ -9,7 +9,7 @@ from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, h
 from app.services.attendance_population import employee_account_roles
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from app.core.financial_reversals import reject_disabled_financial_reversal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from app.database import get_db
@@ -23,7 +23,7 @@ from app.models.clock_in_records import ClockInRecord
 from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.overtime import OvertimeAssignment, OvertimeTask
 from app.models.user import User
-from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, get_current_user, get_wh_id, get_wh_ids, Role
 from app.services.schedule import get_work_schedule
 from app.services.data_history import record_history
 from pydantic import BaseModel, Field
@@ -37,7 +37,20 @@ from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
 _PERMISSION = MENU_PERMISSIONS_BY_KEY["payroll"].label
 
-router = APIRouter()
+
+async def reject_labor_management_payroll(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    # 管理端全部拦截；本人专用工资单仍由原有员工身份、档案和仓库校验处理。
+    if (
+        current_user.role == Role.WAREHOUSE_LABOR
+        and request.scope["route"].endpoint is not my_payslip
+    ):
+        raise HTTPException(403, "无权查看工资数据")
+
+
+router = APIRouter(dependencies=[Depends(reject_labor_management_payroll)])
 
 
 class CalculateRequest(BaseModel):

@@ -138,7 +138,7 @@ def test_metadata_batches_same_warehouse_only_and_missing_ids_are_empty(tmp_path
 
 def test_all_calculation_payment_repayment_and_other_functions_unchanged():
     root=Path(__file__).resolve().parents[2]
-    allowed={'payroll.py':{'list_payroll','payroll_detail'},'employee_advance.py':{'list_advances','advance_detail'},
+    allowed={'payroll.py':{'list_payroll','payroll_detail','reject_labor_management_payroll'},'employee_advance.py':{'list_advances','advance_detail'},
         'reimbursement.py':{'list_reimbursements','get_reimb_detail','payment_history'}}
     def funcs(source,skip):
         return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body

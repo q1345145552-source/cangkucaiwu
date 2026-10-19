@@ -1,0 +1,379 @@
+{
+  "environment": "isolated SQLite; real HTTP and real login tokens; not production",
+  "labor_management": {
+    "status": 403,
+    "body": {
+      "detail": "无权查看工资数据"
+    }
+  },
+  "labor_own_payslip": {
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "id": 1,
+          "period": "2026-10",
+          "half": "first_half",
+          "settle_start_date": "2026-10-01",
+          "settle_end_date": "2026-10-15",
+          "status": "pending",
+          "disbursed": false,
+          "disbursed_at": null,
+          "employee_name": "员工1",
+          "employee_status": "trial",
+          "total_days_in_month": 0,
+          "attendance_days": 0.0,
+          "leave_days": 0.0,
+          "rest_days": 0.0,
+          "absence_days": 0.0,
+          "daily_wage": 400.0,
+          "base_salary": 12000.0,
+          "base_pay": 1500.0,
+          "overtime_pay": 100.0,
+          "overtime_hours": 0.0,
+          "late_penalty": 0.0,
+          "early_penalty": 0,
+          "leave_deduction": 0.0,
+          "absence_deduction": 0.0,
+          "absence_fine": 0,
+          "fixed_deduction": 0,
+          "temp_deduction": 0,
+          "advance_deduction": 0,
+          "remaining_debt": 0,
+          "gross_pay": 1600.0,
+          "total_deductions": 365.44,
+          "net_pay": 1234.56,
+          "detail": {},
+          "created_at": "2026-10-19T18:29:30"
+        },
+        {
+          "id": 2,
+          "period": "2026-10",
+          "half": "first_half",
+          "settle_start_date": "2026-10-01",
+          "settle_end_date": "2026-10-15",
+          "status": "confirmed",
+          "disbursed": false,
+          "disbursed_at": null,
+          "employee_name": "员工1",
+          "employee_status": "trial",
+          "total_days_in_month": 0,
+          "attendance_days": 0.0,
+          "leave_days": 0.0,
+          "rest_days": 0.0,
+          "absence_days": 0.0,
+          "daily_wage": 400.0,
+          "base_salary": 12000.0,
+          "base_pay": 1500.0,
+          "overtime_pay": 100.0,
+          "overtime_hours": 0.0,
+          "late_penalty": 0.0,
+          "early_penalty": 0,
+          "leave_deduction": 0.0,
+          "absence_deduction": 0.0,
+          "absence_fine": 0,
+          "fixed_deduction": 0,
+          "temp_deduction": 0,
+          "advance_deduction": 0,
+          "remaining_debt": 0,
+          "gross_pay": 1600.0,
+          "total_deductions": 365.44,
+          "net_pay": 1234.56,
+          "detail": {},
+          "created_at": "2026-10-19T18:29:30"
+        },
+        {
+          "id": 3,
+          "period": "2026-10",
+          "half": "first_half",
+          "settle_start_date": "2026-10-01",
+          "settle_end_date": "2026-10-15",
+          "status": "confirmed",
+          "disbursed": true,
+          "disbursed_at": null,
+          "employee_name": "员工1",
+          "employee_status": "trial",
+          "total_days_in_month": 0,
+          "attendance_days": 0.0,
+          "leave_days": 0.0,
+          "rest_days": 0.0,
+          "absence_days": 0.0,
+          "daily_wage": 400.0,
+          "base_salary": 12000.0,
+          "base_pay": 1500.0,
+          "overtime_pay": 100.0,
+          "overtime_hours": 0.0,
+          "late_penalty": 0.0,
+          "early_penalty": 0,
+          "leave_deduction": 0.0,
+          "absence_deduction": 0.0,
+          "absence_fine": 0,
+          "fixed_deduction": 0,
+          "temp_deduction": 0,
+          "advance_deduction": 0,
+          "remaining_debt": 0,
+          "gross_pay": 1600.0,
+          "total_deductions": 365.44,
+          "net_pay": 1234.56,
+          "detail": {},
+          "created_at": "2026-10-19T18:29:30"
+        }
+      ]
+    }
+  },
+  "other_warehouse_own_ids": [
+    10
+  ],
+  "attendance_supervisor_own_ids": [
+    20
+  ],
+  "management_roles": [
+    {
+      "role": "warehouse_admin",
+      "status": 200,
+      "record_ids": [
+        1,
+        2,
+        3,
+        99,
+        20
+      ]
+    },
+    {
+      "role": "super_admin",
+      "status": 200,
+      "record_ids": [
+        1,
+        2,
+        3,
+        99,
+        20
+      ]
+    },
+    {
+      "role": "staff",
+      "status": 200,
+      "record_ids": [
+        1,
+        2,
+        3,
+        99,
+        20
+      ]
+    },
+    {
+      "role": "supervisor",
+      "status": 200,
+      "record_ids": [
+        1,
+        2,
+        3,
+        99,
+        20
+      ]
+    }
+  ],
+  "employee_reads": [
+    {
+      "method": "GET",
+      "path": "/clock-in/today",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/clock-in/records?view=self",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/calendar?view=self",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/leaves?view=self",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/attendance/rest-days?view=self",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/overtime?view=self",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/overtime/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/overtime/monthly-hours?view=self&month=2026-10",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/overtime/limit?view=self",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/payroll/my-payslip",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/employee-advances/my-debt",
+      "status": 200
+    }
+  ],
+  "employee_writes": {
+    "clock": {
+      "message": "早上上班打卡成功",
+      "session": 1,
+      "clocked_in_at": "2026-10-16T09:00:00+07:00",
+      "status": "normal",
+      "penalty_amount": 0,
+      "photo_path": null
+    },
+    "leave": {
+      "message": "请假申请已提交，等待审批",
+      "id": 5
+    },
+    "overtime_confirm": {
+      "message": "加班确认成功，已挣 50 泰铢",
+      "earned_amount": 50.0,
+      "confirmed_at": "2026-10-16T09:00:00+07:00"
+    }
+  },
+  "labor_calendar_employee_ids": [
+    1
+  ],
+  "labor_calendar_salary_fields": [],
+  "all_tables_unchanged_after_reads": true,
+  "management_routes": [
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/calculate",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/preview",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/single-settle",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payroll",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payroll/summary",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payroll/export",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/confirm",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/confirm-all",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-confirm",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payroll/cash-advance-sources",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-disburse",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-delete",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/recalc",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-recalc",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/payroll/{record_id}",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/payroll/period/{period}",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/disburse",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/revoke-disbursement",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payroll/settlement-progress",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payroll/{record_id}",
+      "labor_status": 403,
+      "detail": "无权查看工资数据"
+    }
+  ]
+}

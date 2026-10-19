@@ -40,6 +40,7 @@ CASES = [
     ('POST','/payroll/single-settle','payroll',{'employee_id':1,'end_date':'2026-10-15'}),
     ('GET','/payroll','payroll',None),
     ('GET','/payroll/summary','payroll',None),
+    ('GET','/payroll/1','payroll',None),
     ('GET','/payroll/cash-advance-sources','payroll',None),
     ('GET','/payroll/export','payroll',None),
     ('POST','/payroll/1/confirm','payroll',None),
@@ -117,12 +118,12 @@ async def call(client, method, path, body, uid):
     return await client.request(method, '/api/v1'+path, **kwargs)
 
 
-def business_status(uid, path):
+def business_status(uid, path, method):
     if path.startswith(('/employees', '/salary-templates', '/deduction-templates')):
         return 200
     if path == '/payroll/my-payslip':
         return 403  # 原有劳工本人专用限制
-    if uid in (2,3) and path not in ('/payroll','/payroll/summary'):
+    if uid in (2,3) and path not in ('/payroll','/payroll/summary') and not (method=='GET' and path=='/payroll/1'):
         return 403  # 原有业务角色限制
     return 200
 
@@ -148,7 +149,7 @@ def test_all_hr_endpoints(tmp_path,monkeypatch,method,path,module,body,uid,grant
                 assert response.json()['detail'].startswith('无此操作权限'),response.text
                 assert await snapshot(factory)==before
             else:
-                expected=business_status(uid,path)
+                expected=business_status(uid,path,method)
                 assert response.status_code==expected,response.text
                 if expected==403:
                     assert not response.json()['detail'].startswith('无此操作权限'),response.text
@@ -287,7 +288,7 @@ def test_hr_route_inventory():
                     seen.append((decorator.func.attr.upper(),path))
                     default=next(d for arg,d in zip(node.args.args[-len(node.args.defaults):],node.args.defaults) if arg.arg=='current_user')
                     assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
-    assert len(seen)==41
+    assert len(seen)==42
     # 含工资资金来源选单接口；请求矩阵与所有路由精确对应。
     def normalize(path):
         return __import__('re').sub(r'\{[^}]+\}', '{}', path.split('?')[0])
