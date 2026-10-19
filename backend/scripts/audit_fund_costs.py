@@ -32,21 +32,23 @@ async def audit(db, warehouse_ids=None):
         rows = (await db.execute(query)).all()
         return [{"warehouse_id": r[0], "currency": r[1], "count": r[2], "amount": round(float(r[3] or 0), 2)} for r in rows]
     def item_query(*conditions):
-        return select(f.warehouse_id, func.coalesce(i.currency, "THB"), func.count(i.id), func.sum(cast(i.amount, Numeric(18, 2))))\
+        cur = func.coalesce(i.currency, "THB")
+        return select(f.warehouse_id, cur, func.count(i.id), func.sum(cast(i.amount, Numeric(18, 2))))\
             .join(f, f.id == i.fund_id).where(scope, old_item, *conditions)\
-            .group_by(f.warehouse_id, func.coalesce(i.currency, "THB")).order_by(f.warehouse_id, func.coalesce(i.currency, "THB"))
+            .group_by(f.warehouse_id, cur).order_by(f.warehouse_id, cur)
     expense_scope = e.warehouse_id.in_(warehouse_ids) if warehouse_ids is not None else literal(True)
     no_new_disbursement = ~select(d.id).where(d.expense_record_id == e.id).exists() if columns["expense_fund_disbursements"] else literal(True)
-    named = select(e.warehouse_id, func.coalesce(e.currency, "THB"), func.count(e.id), func.sum(cast(e.amount, Numeric(18, 2))))\
+    e_cur = func.coalesce(e.currency, "THB")
+    named = select(e.warehouse_id, e_cur, func.count(e.id), func.sum(cast(e.amount, Numeric(18, 2))))\
         .join(c, and_(c.id == e.category_id, c.warehouse_id == e.warehouse_id))\
         .where(expense_scope, c.name.like("%备用金%"), no_new_disbursement)\
-        .group_by(e.warehouse_id, func.coalesce(e.currency, "THB")).order_by(e.warehouse_id, func.coalesce(e.currency, "THB"))
+        .group_by(e.warehouse_id, e_cur).order_by(e.warehouse_id, e_cur)
     known = []
     if joined:
-        q = select(e.warehouse_id, func.coalesce(e.currency, "THB"), func.count(e.id), func.sum(cast(e.amount, Numeric(18, 2))))\
+        q = select(e.warehouse_id, e_cur, func.count(e.id), func.sum(cast(e.amount, Numeric(18, 2))))\
             .join(a, and_(a.expense_record_id == e.id, a.warehouse_id == e.warehouse_id))\
             .join(i, i.id == a.fund_item_id).where(expense_scope, a.source == "fund", old_item)\
-            .group_by(e.warehouse_id, func.coalesce(e.currency, "THB")).order_by(e.warehouse_id, func.coalesce(e.currency, "THB"))
+            .group_by(e.warehouse_id, e_cur).order_by(e.warehouse_id, e_cur)
         known = await grouped(q)
     return {"legacy_merged_operating_costs": await grouped(item_query(i.review_status == "approved", not_prepaid)),
         "legacy_ledger_item_rows": await grouped(item_query()),
