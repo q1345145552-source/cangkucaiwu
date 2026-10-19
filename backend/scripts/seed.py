@@ -28,6 +28,17 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_audit_ip_location(conn):
+    """Add nullable location columns only; never geolocate historical logs."""
+    from sqlalchemy import text
+    for name, size in (("ip_country", 100), ("ip_region", 150), ("ip_city", 150)):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(f"ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS {name} VARCHAR({size})"))
+        except Exception as exc:
+            print(f"迁移 操作日志地区字段 {name} 失败：{exc}")
+            raise
+
 async def _migrate_user_attendance_columns(conn):
     """只加账号身份字段；每列独立保存点，失败不回滚其他启动迁移。"""
     from sqlalchemy import text
@@ -385,6 +396,7 @@ async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_audit_ip_location(conn)
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)
         await _migrate_employee_advance_expenses(conn)

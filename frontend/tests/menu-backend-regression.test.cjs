@@ -33,7 +33,9 @@ async function main(){
   for(const route of protectedReads){const r=await call('GET',route,empty.access_token);assert.equal(r.status,403,role+' '+route+': '+JSON.stringify(r));assert(r.body.detail.startsWith('无此操作权限'));}
  }
  const paths={recharge:'/recharge',customers:'/customers',accounts:'/accounts',employees:'/employees',payroll:'/payroll',salary_templates:'/salary-templates',deduction_templates:'/deduction-templates',attendance:'/attendance/calendar',leave:'/attendance/leaves',overtime:'/overtime',payable:'/payable',payment_plans:'/payable/plans',concentration:'/suppliers/concentration',group_order:'/group-order',config_center:'/config/work-schedule',settings:'/users',labor_efficiency:'/efficiency/standard',reports:'/reports/previews',ledger:'/income-expense/ledger',reconciliation:'/reconciliation/results',expense_approval:'/expense-approvals',market:'/market',incoming:'/incoming',expense_fund:'/expense-fund/accounts',reimbursement:'/reimbursement',operating:'/income-expense/operating-dashboard',credit:'/credit',audit_logs:'/settings/logs',suppliers:'/suppliers/categories',other_income_expense:'/income-expense/income',modification_logs:'/history',employee_deductions:'/employee-deductions',employee_advances:'/employee-advances'};
- const originalRoleLimits={supervisor:new Set(['modification_logs']),staff:new Set(['config_center','modification_logs'])};
+ paths.cash_advances='/cash-advances';
+ // Config reads and modification logs were deliberately opened in later rounds.
+ const originalRoleLimits={supervisor:new Set(),staff:new Set()};
  const report=[];
  for(const role of ['supervisor','staff'])for(const p of registry.filter(x=>x.selectable)){
   const u=await login(role+'_'+p.menu_key);const result=await call('GET',paths[p.menu_key],u.access_token);

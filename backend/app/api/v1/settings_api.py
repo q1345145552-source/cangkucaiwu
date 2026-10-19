@@ -88,6 +88,7 @@ async def operation_logs(
         "id": l.id, "user_name": uid_map.get(l.user_id, ""),
         "action_type": l.action_type, "module": l.module, "target_id": l.target_id,
         "ip_address": l.ip_address,
+        "ip_country": l.ip_country, "ip_region": l.ip_region, "ip_city": l.ip_city,
         "created_at": l.created_at.isoformat() if l.created_at else None,
     } for l in logs], "total": total, "page": page, "page_size": page_size}
 

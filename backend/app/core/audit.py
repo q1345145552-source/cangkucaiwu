@@ -10,6 +10,7 @@
 import logging
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.client_ip import get_client_ip
+from app.core.ip_location import get_ip_location
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -90,6 +91,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                         module=module or "unknown",
                         target_id=target_id,
                         ip_address=client_ip,
+                        **get_ip_location(client_ip),
                         detail={"method": method, "path": path, "status": response.status_code},
                     ))
                     await session.commit()

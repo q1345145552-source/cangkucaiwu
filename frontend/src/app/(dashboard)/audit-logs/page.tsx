@@ -7,6 +7,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Download } from "lucide-react";
 
+function locationText(row: any): string {
+  const fields = [row.ip_country, row.ip_region, row.ip_city];
+  if (fields.every(value => value == null)) return "";
+  return fields.filter((value, index) => value && fields.indexOf(value) === index).join(" ") || "未知";
+}
+
 export default function AuditLogsPage() {
   const { t } = useI18n(); const router = useRouter();
   const { user } = useAuth();
@@ -37,7 +43,9 @@ export default function AuditLogsPage() {
       <DataTable columns={[
         { key: "user_name", label: "操作人" }, { key: "action_type", label: "操作类型" },
         { key: "module", label: "模块" }, { key: "created_at", label: "时间", render: (v:any)=>v?.slice(0,19) },
+        { key: "ip_country", label: "地区", cellClassName: "min-w-[120px] whitespace-normal", render: (_:any, row:any) => locationText(row) },
       ]} data={logs} total={total} page={page} pageSize={20} onPageChange={setPage} />
+      <p className="text-xs text-gray-400 mt-2">地区数据：<a href="https://db-ip.com" target="_blank" rel="noopener noreferrer" className="underline">IP Geolocation by DB-IP</a></p>
     </>
   );
 }

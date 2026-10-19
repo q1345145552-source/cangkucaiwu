@@ -14,6 +14,9 @@ class AuditLog(Base):
     target_id = Column(Integer, nullable=True)
     detail = Column(JSON, nullable=True)
     ip_address = Column(String(50), nullable=True)
+    ip_country = Column(String(100), nullable=True)
+    ip_region = Column(String(150), nullable=True)
+    ip_city = Column(String(150), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     user = relationship("User", foreign_keys=[user_id])

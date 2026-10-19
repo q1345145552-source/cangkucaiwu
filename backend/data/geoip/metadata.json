@@ -1,0 +1,11 @@
+{
+  "source": "DB-IP City Lite",
+  "release": "2026-10",
+  "url": "https://download.db-ip.com/free/dbip-city-lite-2026-10.mmdb.gz",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "IP Geolocation by DB-IP https://db-ip.com",
+  "compressed_bytes": 60193321,
+  "database_bytes": 126998165,
+  "sha256": "c839d407f85a1e0bddba354cef16b2c398182d1c34ed8d985555dce134b36b14"
+}

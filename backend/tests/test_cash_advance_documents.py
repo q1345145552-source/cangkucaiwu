@@ -197,9 +197,15 @@ def test_snapshot_survives_payment_change_and_log_failure_rolls_back_edit(tmp_pa
 
 
 def test_payment_and_repayment_business_functions_unchanged():
+    from tests.full_day_leave_test_support import before_full_day_guards
     root=Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payroll.py","backend/app/api/v1/payable.py","backend/app/api/v1/reimbursement.py","backend/app/api/v1/employee_advance.py"):
-        assert (root/path).read_text()==subprocess.check_output(["git","show",f"7b8b05b:{path}"],cwd=root,text=True)
+        current=(root/path).read_text()
+        original=subprocess.check_output(["git","show",f"7b8b05b:{path}"],cwd=root,text=True)
+        # Round 12 deliberately added full-day leave guards, not payment changes.
+        if path.endswith('/payroll.py'):
+            current, original = map(before_full_day_guards, (current, original))
+        assert current == original
     path="backend/app/api/v1/cash_advance.py"
     def functions(text): return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(text).body if isinstance(n,ast.AsyncFunctionDef)}
     old=functions(subprocess.check_output(["git","show",f"7b8b05b:{path}"],cwd=root,text=True)); now=functions((root/path).read_text())

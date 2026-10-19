@@ -175,8 +175,11 @@ def test_compose_backend_not_published_and_no_business_frontend_or_nginx_changes
     assert backend['environment']['TRUSTED_PROXY_HOSTS']=='nginx'
     assert 'scripts/start_server.py' in backend['command'] and 'scripts/seed.py' in backend['command']
     assert compose['volumes']=={'pgdata':None,'uploads':None}
-    for path in ('frontend/src','nginx','backend/app/models','backend/scripts/seed.py','backend/app/api/v1/users.py'):
-        assert not subprocess.check_output(['git','diff','2ee4964','--',path],cwd=root),path
+    changed = subprocess.check_output(['git','diff','--name-only','f154f16','--',
+        'frontend/src','nginx','backend/app/models','backend/scripts/seed.py','backend/app/api/v1/users.py'],cwd=root,text=True).splitlines()
+    # Round 14 intentionally adds only the three location columns and their display.
+    assert set(changed) <= {'frontend/src/app/(dashboard)/audit-logs/page.tsx',
+        'backend/app/models/audit_log.py','backend/scripts/seed.py'}
     # Authentication/authorization behavior remains identical after removing audit metadata only.
     path='backend/app/api/v1/auth.py'
     class StripAudit(ast.NodeTransformer):

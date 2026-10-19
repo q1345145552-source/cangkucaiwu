@@ -1,0 +1,1872 @@
+{
+  "ROUND9_ACTUAL": [
+    {
+      "wages": {
+        "id": 1,
+        "warehouse_id": 1,
+        "payer_id": 4,
+        "payer_name": "supervisor",
+        "advance_date": "2026-10-18",
+        "amount": 7000.0,
+        "currency": "THB",
+        "purpose": "salary",
+        "purpose_label": "工资",
+        "description": "主管垫付工资",
+        "voucher_path": null,
+        "status": "pending",
+        "status_label": "待确认",
+        "repaid_amount": 0.0,
+        "outstanding_amount": 0.0,
+        "created_by_id": 4,
+        "created_by_name": "supervisor",
+        "created_at": "2026-10-20T00:41:53.581611+07:00",
+        "reviewed_by_id": null,
+        "reviewed_by_name": null,
+        "reviewed_at": null,
+        "reject_reason": null,
+        "amount_difference_note": null,
+        "linked_documents": [
+          {
+            "id": 1,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 2,
+            "document_number": "工资单 #2",
+            "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+            "document_date": "2026-10-15",
+            "amount": 3000.0,
+            "currency": "THB"
+          },
+          {
+            "id": 2,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 4,
+            "document_number": "工资单 #4",
+            "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+            "document_date": "2026-10-31",
+            "amount": 4000.0,
+            "currency": "THB"
+          }
+        ],
+        "linked_documents_total": 7000.0,
+        "can_edit": true
+      },
+      "difference_rejected": {
+        "detail": "垫款金额与关联单据合计不一致，请填写差额备注"
+      },
+      "difference_saved": {
+        "id": 2,
+        "warehouse_id": 1,
+        "payer_id": 4,
+        "payer_name": "supervisor",
+        "advance_date": "2026-10-18",
+        "amount": 6000.0,
+        "currency": "THB",
+        "purpose": "salary",
+        "purpose_label": "工资",
+        "description": "主管垫付工资",
+        "voucher_path": null,
+        "status": "pending",
+        "status_label": "待确认",
+        "repaid_amount": 0.0,
+        "outstanding_amount": 0.0,
+        "created_by_id": 4,
+        "created_by_name": "supervisor",
+        "created_at": "2026-10-20T00:41:53.596004+07:00",
+        "reviewed_by_id": null,
+        "reviewed_by_name": null,
+        "reviewed_at": null,
+        "reject_reason": null,
+        "amount_difference_note": "差额1000另行结算",
+        "linked_documents": [
+          {
+            "id": 3,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 2,
+            "document_number": "工资单 #2",
+            "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+            "document_date": "2026-10-15",
+            "amount": 3000.0,
+            "currency": "THB"
+          },
+          {
+            "id": 4,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 4,
+            "document_number": "工资单 #4",
+            "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+            "document_date": "2026-10-31",
+            "amount": 4000.0,
+            "currency": "THB"
+          }
+        ],
+        "linked_documents_total": 7000.0,
+        "can_edit": true
+      },
+      "manual": {
+        "id": 3,
+        "warehouse_id": 1,
+        "payer_id": 1,
+        "payer_name": "warehouse_admin",
+        "advance_date": "2026-10-18",
+        "amount": 600.0,
+        "currency": "THB",
+        "purpose": "expense",
+        "purpose_label": "费用",
+        "description": "临时购买耗材，无供应商单据",
+        "voucher_path": null,
+        "status": "confirmed",
+        "status_label": "已确认",
+        "repaid_amount": 0.0,
+        "outstanding_amount": 600.0,
+        "created_by_id": 1,
+        "created_by_name": "warehouse_admin",
+        "created_at": "2026-10-20T00:41:53.605259+07:00",
+        "reviewed_by_id": 1,
+        "reviewed_by_name": "warehouse_admin",
+        "reviewed_at": "2026-10-20T00:41:53.605259+07:00",
+        "reject_reason": null,
+        "amount_difference_note": null,
+        "linked_documents": [],
+        "linked_documents_total": 0.0,
+        "can_edit": true
+      },
+      "admin": {
+        "id": 4,
+        "warehouse_id": 1,
+        "payer_id": 1,
+        "payer_name": "warehouse_admin",
+        "advance_date": "2026-10-18",
+        "amount": 7000.0,
+        "currency": "THB",
+        "purpose": "salary",
+        "purpose_label": "工资",
+        "description": "主管垫付工资",
+        "voucher_path": null,
+        "status": "confirmed",
+        "status_label": "已确认",
+        "repaid_amount": 0.0,
+        "outstanding_amount": 7000.0,
+        "created_by_id": 1,
+        "created_by_name": "warehouse_admin",
+        "created_at": "2026-10-20T00:41:53.615486+07:00",
+        "reviewed_by_id": 1,
+        "reviewed_by_name": "warehouse_admin",
+        "reviewed_at": "2026-10-20T00:41:53.615486+07:00",
+        "reject_reason": null,
+        "amount_difference_note": null,
+        "linked_documents": [
+          {
+            "id": 5,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 2,
+            "document_number": "工资单 #2",
+            "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+            "document_date": "2026-10-15",
+            "amount": 3000.0,
+            "currency": "THB"
+          },
+          {
+            "id": 6,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 4,
+            "document_number": "工资单 #4",
+            "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+            "document_date": "2026-10-31",
+            "amount": 4000.0,
+            "currency": "THB"
+          }
+        ],
+        "linked_documents_total": 7000.0,
+        "can_edit": true
+      },
+      "linked_details": [
+        {
+          "snapshot": {
+            "id": 1,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 2,
+            "document_number": "工资单 #2",
+            "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+            "document_date": "2026-10-15",
+            "amount": 3000.0,
+            "currency": "THB"
+          },
+          "current": {
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 2,
+            "document_number": "工资单 #2",
+            "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+            "document_date": "2026-10-15",
+            "amount": 3000.0,
+            "currency": "THB",
+            "status": "confirmed",
+            "detail": {
+              "period": "2026-10",
+              "settle_start_date": "2026-10-01",
+              "settle_end_date": "2026-10-15",
+              "gross_pay": 1600.0,
+              "net_pay": 3000.0,
+              "disbursed": false,
+              "voided": false
+            }
+          },
+          "notice": "此处为垫款用途关联，不代表该单据已由此垫款实际付款"
+        },
+        {
+          "snapshot": {
+            "id": 2,
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 4,
+            "document_number": "工资单 #4",
+            "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+            "document_date": "2026-10-31",
+            "amount": 4000.0,
+            "currency": "THB"
+          },
+          "current": {
+            "document_type": "payroll",
+            "document_type_label": "工资单",
+            "document_id": 4,
+            "document_number": "工资单 #4",
+            "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+            "document_date": "2026-10-31",
+            "amount": 4000.0,
+            "currency": "THB",
+            "status": "confirmed",
+            "detail": {
+              "period": "2026-10",
+              "settle_start_date": "2026-10-16",
+              "settle_end_date": "2026-10-31",
+              "gross_pay": 0.0,
+              "net_pay": 4000.0,
+              "disbursed": false,
+              "voided": false
+            }
+          },
+          "notice": "此处为垫款用途关联，不代表该单据已由此垫款实际付款"
+        }
+      ]
+    }
+  ],
+  "PROCUREMENT_MONTH": [
+    {
+      "unpaid_bill": "TEST-OCT-UNPAID",
+      "unpaid_amount": 1000,
+      "cross_month_bill": "TEST-SEP-PAID-OCT",
+      "paid_in_october": 3000,
+      "dashboard_before": 1000,
+      "dashboard_after": 3000,
+      "report_purchase": 3000,
+      "manual_purchase_preserved": 250,
+      "operating_expense_before_after": [
+        1000,
+        1000
+      ],
+      "income_before_after": [
+        100,
+        100
+      ],
+      "profit_before_after": [
+        -1900,
+        -1900
+      ],
+      "database_unchanged": true
+    }
+  ],
+  "FULL_DAY_ZERO": [
+    {
+      "template": "hourly",
+      "punches": 2,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 2,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 3.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "daily",
+      "punches": 2,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 2,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 3.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "monthly",
+      "punches": 2,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 2,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 3.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "hourly",
+      "punches": 4,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 4,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 8.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00",
+          "13:00",
+          "18:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "daily",
+      "punches": 4,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 4,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 8.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00",
+          "13:00",
+          "18:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "monthly",
+      "punches": 4,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 4,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 8.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00",
+          "13:00",
+          "18:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    }
+  ],
+  "PAYROLL_ADVANCE_MONEY": [
+    {
+      "paid": {
+        "message": "已向 员工1 发放 7000.00 泰铢工资",
+        "id": 2,
+        "net_pay": 7000.0,
+        "expense_record_id": 3,
+        "account_id": null,
+        "funding_source": "cash_advance",
+        "cash_advance_id": 1,
+        "disbursed_at": "2026-10-20T00:42:02.385294+07:00"
+      },
+      "cost_before": 750.0,
+      "cost_after": 7750.0,
+      "balances_before": {
+        "1": 10000.0,
+        "3": 20000.0
+      },
+      "balances_after": {
+        "1": 10000.0,
+        "3": 20000.0
+      },
+      "ledger_count_before": 3,
+      "ledger_count_after": 3,
+      "usage": {
+        "payroll_used_amount": 7000.0,
+        "payroll_unused_amount": 3000.0,
+        "reimbursement_used_amount": 0.0,
+        "employee_advance_used_amount": 0.0,
+        "total_used_amount": 7000.0,
+        "available_amount": 3000.0,
+        "payroll_available_amount": 3000.0,
+        "data": [
+          {
+            "payroll_record_id": 2,
+            "employee_name": "员工1",
+            "period": "2026-10",
+            "settle_start_date": "2026-10-01",
+            "settle_end_date": "2026-10-15",
+            "amount": 7000.0,
+            "currency": "THB",
+            "disbursed_at": "2026-10-20T00:42:02.385294"
+          }
+        ]
+      },
+      "outstanding": 10000.0,
+      "revoked": {
+        "message": "已撤销发放",
+        "id": 2,
+        "reversed_expense_id": 3,
+        "reversed_cash_advance_id": 1
+      },
+      "cost_after_revoke": 750.0,
+      "usage_after_revoke": {
+        "payroll_used_amount": 0.0,
+        "payroll_unused_amount": 10000.0,
+        "reimbursement_used_amount": 0.0,
+        "employee_advance_used_amount": 0.0,
+        "total_used_amount": 0.0,
+        "available_amount": 10000.0,
+        "payroll_available_amount": 10000.0,
+        "data": []
+      }
+    }
+  ],
+  "ADVANCE_FUNDING": [
+    {
+      "source": "company_account",
+      "before": {
+        "balance": 20000.0,
+        "expenses": 0,
+        "expense_amount": 0,
+        "fund_available": 10000.0
+      },
+      "after": {
+        "balance": 19000.0,
+        "expenses": 1,
+        "expense_amount": 1000.0,
+        "fund_available": 10000.0
+      },
+      "flows_before": 2,
+      "flows_after": 3,
+      "response": {
+        "message": "预支记录已创建",
+        "id": 1,
+        "approval_status": "approved",
+        "approval_status_label": "已通过",
+        "reviewer_id": null,
+        "reviewed_at": null,
+        "reject_reason": null,
+        "expense_record_id": 1,
+        "funding_source": "company_account",
+        "funding_source_label": "公司账户",
+        "cash_advance_id": null,
+        "payment_account_id": 1,
+        "fund_account_id": null,
+        "limit_check": {
+          "checked": true,
+          "currency": "THB",
+          "monthly_salary": 10400.0,
+          "occupied_amount": 0.0,
+          "requested_amount": 1000.0,
+          "available_amount": 10400.0,
+          "remaining_amount": 9400.0
+        }
+      }
+    },
+    {
+      "source": "cash_advance",
+      "before": {
+        "balance": 20000.0,
+        "expenses": 0,
+        "expense_amount": 0,
+        "fund_available": 10000.0
+      },
+      "after": {
+        "balance": 20000.0,
+        "expenses": 0,
+        "expense_amount": 0,
+        "fund_available": 10000.0
+      },
+      "flows_before": 2,
+      "flows_after": 2,
+      "response": {
+        "message": "预支记录已创建",
+        "id": 1,
+        "approval_status": "approved",
+        "approval_status_label": "已通过",
+        "reviewer_id": null,
+        "reviewed_at": null,
+        "reject_reason": null,
+        "expense_record_id": null,
+        "funding_source": "cash_advance",
+        "funding_source_label": "垫款单",
+        "cash_advance_id": 1,
+        "payment_account_id": null,
+        "fund_account_id": null,
+        "limit_check": {
+          "checked": true,
+          "currency": "THB",
+          "monthly_salary": 10400.0,
+          "occupied_amount": 0.0,
+          "requested_amount": 1000.0,
+          "available_amount": 10400.0,
+          "remaining_amount": 9400.0
+        }
+      }
+    },
+    {
+      "source": "expense_fund",
+      "before": {
+        "balance": 20000.0,
+        "expenses": 0,
+        "expense_amount": 0,
+        "fund_available": 10000.0
+      },
+      "after": {
+        "balance": 20000.0,
+        "expenses": 0,
+        "expense_amount": 0,
+        "fund_available": 9000.0
+      },
+      "flows_before": 2,
+      "flows_after": 2,
+      "response": {
+        "message": "预支记录已创建",
+        "id": 1,
+        "approval_status": "approved",
+        "approval_status_label": "已通过",
+        "reviewer_id": null,
+        "reviewed_at": null,
+        "reject_reason": null,
+        "expense_record_id": null,
+        "funding_source": "expense_fund",
+        "funding_source_label": "备用金",
+        "cash_advance_id": null,
+        "payment_account_id": null,
+        "fund_account_id": 1,
+        "limit_check": {
+          "checked": true,
+          "currency": "THB",
+          "monthly_salary": 10400.0,
+          "occupied_amount": 0.0,
+          "requested_amount": 1000.0,
+          "available_amount": 10400.0,
+          "remaining_amount": 9400.0
+        }
+      }
+    }
+  ],
+  "menu_checks": [
+    {
+      "role": "supervisor",
+      "key": "none",
+      "label": "none",
+      "menus": [
+        "/dashboard"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "all",
+      "label": "all",
+      "menus": [
+        "/dashboard",
+        "/customers",
+        "/accounts",
+        "/recharge",
+        "/incoming",
+        "/reconciliation",
+        "/operating",
+        "/expense-approvals",
+        "/other-income-expense",
+        "/expense-fund",
+        "/reimbursement",
+        "/cash-advances",
+        "/credit",
+        "/reports",
+        "/ledger",
+        "/suppliers",
+        "/payable",
+        "/payment-plans",
+        "/concentration",
+        "/modification-logs",
+        "/market",
+        "/group-order",
+        "/employees",
+        "/salary-templates",
+        "/deduction-templates",
+        "/employee-deductions",
+        "/attendance",
+        "/overtime",
+        "/payroll",
+        "/employee-advances",
+        "/labor-efficiency",
+        "/config-center",
+        "/settings",
+        "/audit-logs"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "recharge",
+      "label": "充值申报",
+      "menus": [
+        "/dashboard",
+        "/recharge"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "customers",
+      "label": "客户档案",
+      "menus": [
+        "/dashboard",
+        "/customers"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "accounts",
+      "label": "收款账户",
+      "menus": [
+        "/dashboard",
+        "/accounts"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "employees",
+      "label": "员工档案",
+      "menus": [
+        "/dashboard",
+        "/employees"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "payroll",
+      "label": "工资",
+      "menus": [
+        "/dashboard",
+        "/payroll"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "salary_templates",
+      "label": "薪资模板",
+      "menus": [
+        "/dashboard",
+        "/salary-templates"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "deduction_templates",
+      "label": "扣款模板",
+      "menus": [
+        "/dashboard",
+        "/deduction-templates"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "attendance",
+      "label": "考勤",
+      "menus": [
+        "/dashboard",
+        "/attendance"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "leave",
+      "label": "请假",
+      "menus": [
+        "/dashboard",
+        "/attendance"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "overtime",
+      "label": "加班",
+      "menus": [
+        "/dashboard",
+        "/overtime"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "payable",
+      "label": "应付账款",
+      "menus": [
+        "/dashboard",
+        "/payable"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "payment_plans",
+      "label": "付款计划",
+      "menus": [
+        "/dashboard",
+        "/payment-plans"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "concentration",
+      "label": "采购分析",
+      "menus": [
+        "/dashboard",
+        "/concentration"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "group_order",
+      "label": "拼单",
+      "menus": [
+        "/dashboard",
+        "/group-order"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "config_center",
+      "label": "配置中心",
+      "menus": [
+        "/dashboard",
+        "/config-center"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "settings",
+      "label": "系统设置",
+      "menus": [
+        "/dashboard",
+        "/settings"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "labor_efficiency",
+      "label": "人效",
+      "menus": [
+        "/dashboard",
+        "/labor-efficiency"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "reports",
+      "label": "报表中心",
+      "menus": [
+        "/dashboard",
+        "/reports"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "ledger",
+      "label": "资金流水",
+      "menus": [
+        "/dashboard",
+        "/ledger"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "reconciliation",
+      "label": "对账",
+      "menus": [
+        "/dashboard",
+        "/reconciliation"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "expense_approval",
+      "label": "费用审批",
+      "menus": [
+        "/dashboard",
+        "/expense-approvals"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "market",
+      "label": "市场",
+      "menus": [
+        "/dashboard",
+        "/market"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "incoming",
+      "label": "到账流水",
+      "menus": [
+        "/dashboard",
+        "/incoming"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "expense_fund",
+      "label": "备用金管理",
+      "menus": [
+        "/dashboard",
+        "/expense-fund"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "reimbursement",
+      "label": "报销管理",
+      "menus": [
+        "/dashboard",
+        "/reimbursement"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "operating",
+      "label": "运营收支",
+      "menus": [
+        "/dashboard",
+        "/operating"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "cash_advances",
+      "label": "垫款单",
+      "menus": [
+        "/dashboard",
+        "/cash-advances"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "credit",
+      "label": "账期管理",
+      "menus": [
+        "/dashboard",
+        "/credit"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "audit_logs",
+      "label": "操作日志",
+      "menus": [
+        "/dashboard",
+        "/audit-logs"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "suppliers",
+      "label": "供应商管理",
+      "menus": [
+        "/dashboard",
+        "/suppliers"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "other_income_expense",
+      "label": "其他收支",
+      "menus": [
+        "/dashboard",
+        "/other-income-expense"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "modification_logs",
+      "label": "修改日志",
+      "menus": [
+        "/dashboard",
+        "/modification-logs"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "employee_deductions",
+      "label": "员工扣款",
+      "menus": [
+        "/dashboard",
+        "/employee-deductions"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "key": "employee_advances",
+      "label": "员工预支",
+      "menus": [
+        "/dashboard",
+        "/employee-advances"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "none",
+      "label": "none",
+      "menus": [
+        "/dashboard"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "all",
+      "label": "all",
+      "menus": [
+        "/dashboard",
+        "/customers",
+        "/accounts",
+        "/recharge",
+        "/incoming",
+        "/reconciliation",
+        "/operating",
+        "/expense-approvals",
+        "/other-income-expense",
+        "/expense-fund",
+        "/reimbursement",
+        "/cash-advances",
+        "/credit",
+        "/reports",
+        "/ledger",
+        "/suppliers",
+        "/payable",
+        "/payment-plans",
+        "/concentration",
+        "/modification-logs",
+        "/market",
+        "/group-order",
+        "/employees",
+        "/salary-templates",
+        "/deduction-templates",
+        "/employee-deductions",
+        "/attendance",
+        "/overtime",
+        "/payroll",
+        "/employee-advances",
+        "/labor-efficiency",
+        "/config-center",
+        "/settings",
+        "/audit-logs"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "recharge",
+      "label": "充值申报",
+      "menus": [
+        "/dashboard",
+        "/recharge"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "customers",
+      "label": "客户档案",
+      "menus": [
+        "/dashboard",
+        "/customers"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "accounts",
+      "label": "收款账户",
+      "menus": [
+        "/dashboard",
+        "/accounts"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "employees",
+      "label": "员工档案",
+      "menus": [
+        "/dashboard",
+        "/employees"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "payroll",
+      "label": "工资",
+      "menus": [
+        "/dashboard",
+        "/payroll"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "salary_templates",
+      "label": "薪资模板",
+      "menus": [
+        "/dashboard",
+        "/salary-templates"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "deduction_templates",
+      "label": "扣款模板",
+      "menus": [
+        "/dashboard",
+        "/deduction-templates"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "attendance",
+      "label": "考勤",
+      "menus": [
+        "/dashboard",
+        "/attendance"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "leave",
+      "label": "请假",
+      "menus": [
+        "/dashboard",
+        "/attendance"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "overtime",
+      "label": "加班",
+      "menus": [
+        "/dashboard",
+        "/overtime"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "payable",
+      "label": "应付账款",
+      "menus": [
+        "/dashboard",
+        "/payable"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "payment_plans",
+      "label": "付款计划",
+      "menus": [
+        "/dashboard",
+        "/payment-plans"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "concentration",
+      "label": "采购分析",
+      "menus": [
+        "/dashboard",
+        "/concentration"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "group_order",
+      "label": "拼单",
+      "menus": [
+        "/dashboard",
+        "/group-order"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "config_center",
+      "label": "配置中心",
+      "menus": [
+        "/dashboard",
+        "/config-center"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "settings",
+      "label": "系统设置",
+      "menus": [
+        "/dashboard",
+        "/settings"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "labor_efficiency",
+      "label": "人效",
+      "menus": [
+        "/dashboard",
+        "/labor-efficiency"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "reports",
+      "label": "报表中心",
+      "menus": [
+        "/dashboard",
+        "/reports"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "ledger",
+      "label": "资金流水",
+      "menus": [
+        "/dashboard",
+        "/ledger"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "reconciliation",
+      "label": "对账",
+      "menus": [
+        "/dashboard",
+        "/reconciliation"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "expense_approval",
+      "label": "费用审批",
+      "menus": [
+        "/dashboard",
+        "/expense-approvals"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "market",
+      "label": "市场",
+      "menus": [
+        "/dashboard",
+        "/market"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "incoming",
+      "label": "到账流水",
+      "menus": [
+        "/dashboard",
+        "/incoming"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "expense_fund",
+      "label": "备用金管理",
+      "menus": [
+        "/dashboard",
+        "/expense-fund"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "reimbursement",
+      "label": "报销管理",
+      "menus": [
+        "/dashboard",
+        "/reimbursement"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "operating",
+      "label": "运营收支",
+      "menus": [
+        "/dashboard",
+        "/operating"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "cash_advances",
+      "label": "垫款单",
+      "menus": [
+        "/dashboard",
+        "/cash-advances"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "credit",
+      "label": "账期管理",
+      "menus": [
+        "/dashboard",
+        "/credit"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "audit_logs",
+      "label": "操作日志",
+      "menus": [
+        "/dashboard",
+        "/audit-logs"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "suppliers",
+      "label": "供应商管理",
+      "menus": [
+        "/dashboard",
+        "/suppliers"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "other_income_expense",
+      "label": "其他收支",
+      "menus": [
+        "/dashboard",
+        "/other-income-expense"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "modification_logs",
+      "label": "修改日志",
+      "menus": [
+        "/dashboard",
+        "/modification-logs"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "employee_deductions",
+      "label": "员工扣款",
+      "menus": [
+        "/dashboard",
+        "/employee-deductions"
+      ],
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "key": "employee_advances",
+      "label": "员工预支",
+      "menus": [
+        "/dashboard",
+        "/employee-advances"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "business_checks": [
+    {
+      "role": "supervisor",
+      "key": "recharge",
+      "label": "充值申报",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "customers",
+      "label": "客户档案",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "accounts",
+      "label": "收款账户",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "employees",
+      "label": "员工档案",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "payroll",
+      "label": "工资",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "salary_templates",
+      "label": "薪资模板",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "deduction_templates",
+      "label": "扣款模板",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "attendance",
+      "label": "考勤",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "leave",
+      "label": "请假",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "overtime",
+      "label": "加班",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "payable",
+      "label": "应付账款",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "payment_plans",
+      "label": "付款计划",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "concentration",
+      "label": "采购分析",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "group_order",
+      "label": "拼单",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "config_center",
+      "label": "配置中心",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "settings",
+      "label": "系统设置",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "labor_efficiency",
+      "label": "人效",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "reports",
+      "label": "报表中心",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "ledger",
+      "label": "资金流水",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "reconciliation",
+      "label": "对账",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "expense_approval",
+      "label": "费用审批",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "market",
+      "label": "市场",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "incoming",
+      "label": "到账流水",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "expense_fund",
+      "label": "备用金管理",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "reimbursement",
+      "label": "报销管理",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "operating",
+      "label": "运营收支",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "cash_advances",
+      "label": "垫款单",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "credit",
+      "label": "账期管理",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "audit_logs",
+      "label": "操作日志",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "suppliers",
+      "label": "供应商管理",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "other_income_expense",
+      "label": "其他收支",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "modification_logs",
+      "label": "修改日志",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "employee_deductions",
+      "label": "员工扣款",
+      "status": 200
+    },
+    {
+      "role": "supervisor",
+      "key": "employee_advances",
+      "label": "员工预支",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "recharge",
+      "label": "充值申报",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "customers",
+      "label": "客户档案",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "accounts",
+      "label": "收款账户",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "employees",
+      "label": "员工档案",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "payroll",
+      "label": "工资",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "salary_templates",
+      "label": "薪资模板",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "deduction_templates",
+      "label": "扣款模板",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "attendance",
+      "label": "考勤",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "leave",
+      "label": "请假",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "overtime",
+      "label": "加班",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "payable",
+      "label": "应付账款",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "payment_plans",
+      "label": "付款计划",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "concentration",
+      "label": "采购分析",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "group_order",
+      "label": "拼单",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "config_center",
+      "label": "配置中心",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "settings",
+      "label": "系统设置",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "labor_efficiency",
+      "label": "人效",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "reports",
+      "label": "报表中心",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "ledger",
+      "label": "资金流水",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "reconciliation",
+      "label": "对账",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "expense_approval",
+      "label": "费用审批",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "market",
+      "label": "市场",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "incoming",
+      "label": "到账流水",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "expense_fund",
+      "label": "备用金管理",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "reimbursement",
+      "label": "报销管理",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "operating",
+      "label": "运营收支",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "cash_advances",
+      "label": "垫款单",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "credit",
+      "label": "账期管理",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "audit_logs",
+      "label": "操作日志",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "suppliers",
+      "label": "供应商管理",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "other_income_expense",
+      "label": "其他收支",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "modification_logs",
+      "label": "修改日志",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "employee_deductions",
+      "label": "员工扣款",
+      "status": 200
+    },
+    {
+      "role": "staff",
+      "key": "employee_advances",
+      "label": "员工预支",
+      "status": 200
+    }
+  ],
+  "browser_paid": {
+    "balances": {
+      "1": 20000.0,
+      "2": 0.0,
+      "3": 20000.0
+    },
+    "expenses": [
+      {
+        "id": 1,
+        "amount": 7000.0,
+        "account_id": null
+      }
+    ]
+  },
+  "environment": "local temporary isolated database, no production writes"
+}
