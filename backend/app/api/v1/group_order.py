@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models.group_order import GroupOrder, GroupOrderParticipant, GroupOrderStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role, require_role
+from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role, require_role, require_non_labor
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -130,7 +130,7 @@ async def create_group_order(req: GOCreate, current_user: User = Depends(check_s
     db.add(o); await db.flush(); return {"id": o.id, "message": "拼单发起成功"}
 
 
-@router.post("/{go_id}/join")
+@router.post("/{go_id}/join", dependencies=[Depends(require_non_labor)])
 async def join_group_order(go_id: int, req: JoinRequest, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                             db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:

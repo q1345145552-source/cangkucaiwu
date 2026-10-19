@@ -5,7 +5,7 @@ from app.database import get_db
 from app.models.market import MarketItem, MarketStatus
 from app.models.user import User
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_role, require_non_labor
 from pydantic import BaseModel
 from typing import Optional
 from app.core.timezone import thai_now, thai_today
@@ -109,7 +109,7 @@ async def review_item(item_id: int, req: MarketReview, current_user: User = Depe
     i.reviewer_id = current_user.id; i.reviewed_at = thai_now()
     await db.flush(); return {"message": f"审核{'通过' if req.status == 'approved' else '驳回'}"}
 
-@router.post("/{item_id}/purchase")
+@router.post("/{item_id}/purchase", dependencies=[Depends(require_non_labor)])
 async def purchase(item_id: int, req: PurchaseRequest, current_user: User = Depends(get_current_user),
                    db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MarketItem).where(MarketItem.id == item_id))
@@ -124,7 +124,7 @@ async def purchase(item_id: int, req: PurchaseRequest, current_user: User = Depe
     await db.flush()
     return {"message": "购买申请已提交", "seller_warehouse": i.warehouse_id}
 
-@router.put("/{item_id}/confirm")
+@router.put("/{item_id}/confirm", dependencies=[Depends(require_non_labor)])
 async def confirm_trade(item_id: int, current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(MarketItem).where(MarketItem.id == item_id))

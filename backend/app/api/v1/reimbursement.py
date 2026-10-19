@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory, ReimbStatus
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, require_non_labor
 from app.core.financial_reversals import reject_disabled_financial_reversal
 from app.services.data_history import record_history
 from pydantic import BaseModel, Field
@@ -145,7 +145,7 @@ async def list_reimbursements(
         **cash_advance_reference(r, advance_numbers),
     } for r in reimbs], "total": total, "page": page, "page_size": page_size}
 
-@router.post("")
+@router.post("", dependencies=[Depends(require_non_labor)])
 async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db),
                                 _perm=Depends(check_staff_permission("报销管理"))):

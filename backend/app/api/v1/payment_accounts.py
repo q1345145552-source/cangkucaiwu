@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.customer import PaymentAccount
 from app.models.user import User
-from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role, require_non_labor
 from app.schemas.business import PaymentAccountCreate
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
@@ -54,7 +54,7 @@ async def create_account(req: PaymentAccountCreate, current_user: User = Depends
     a = PaymentAccount(warehouse_id=wh_id, **req.model_dump())
     db.add(a); await db.flush(); return {"id": a.id, "message": "创建成功"}
 
-@router.put("/{account_id}")
+@router.put("/{account_id}", dependencies=[Depends(require_non_labor)])
 async def update_account(account_id: int, req: PaymentAccountCreate,
                          current_user: User = Depends(check_staff_permission(_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
@@ -90,7 +90,7 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
         setattr(a, k, v)
     await db.flush(); return {"message": "更新成功"}
 
-@router.put("/{account_id}/toggle-status")
+@router.put("/{account_id}/toggle-status", dependencies=[Depends(require_non_labor)])
 async def toggle_account_status(account_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                                 db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:

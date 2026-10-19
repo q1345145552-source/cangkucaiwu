@@ -7,7 +7,7 @@ from app.models.recharge import RechargeDeclaration, CurrencyEnum, MatchStatus
 from app.models.customer import Customer
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role, require_non_labor
 from app.schemas.business import RechargeCreate
 from app.services.data_history import record_history
 
@@ -79,7 +79,7 @@ async def list_recharges(
         "created_at": r.created_at.isoformat() if r.created_at else None,
     } for r in records], "total": total, "page": page, "page_size": page_size}
 
-@router.post("")
+@router.post("", dependencies=[Depends(require_non_labor)])
 async def create_recharge(req: RechargeCreate, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:

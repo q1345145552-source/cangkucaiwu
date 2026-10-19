@@ -7,7 +7,7 @@ from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, Sup
 from app.models.user import User
 from app.models.payable import PayableBill
 from app.models.expense_fund import SystemSetting
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any, require_non_labor
 from pydantic import BaseModel
 from typing import Optional, List
 from app.core.timezone import thai_now, thai_today, THAI_TZ
@@ -1756,7 +1756,7 @@ async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_
     s = Supplier(warehouse_id=get_wh_id(current_user), **d)
     db.add(s); await db.flush(); return {"id": s.id, "message": "创建成功"}
 
-@router.put("/{supplier_id}")
+@router.put("/{supplier_id}", dependencies=[Depends(require_non_labor)])
 async def update_supplier(supplier_id: int, req: SupplierUpdate,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
@@ -1772,7 +1772,7 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
         setattr(s, k, v)
     await db.flush(); return {"message": "更新成功"}
 
-@router.delete("/{supplier_id}")
+@router.delete("/{supplier_id}", dependencies=[Depends(require_non_labor)])
 async def delete_supplier(supplier_id: int, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):

@@ -108,6 +108,13 @@ async def get_current_user(
     return user
 
 
+async def require_non_labor(current_user=Depends(get_current_user)):
+    """非劳工可访问：管理端入口先挂此依赖，再保留原有权限与业务校验。"""
+    if current_user.role == Role.WAREHOUSE_LABOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问")
+    return current_user
+
+
 def get_wh_id(user) -> int | None:
     """Returns a single warehouse_id for CREATE operations. Uses header-selected warehouse first."""
     wh = getattr(user, '_active_wh_id', None)

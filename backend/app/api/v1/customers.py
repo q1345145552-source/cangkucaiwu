@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 from app.database import get_db
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role, require_non_labor
 from app.schemas.business import CustomerCreate, CustomerUpdate
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
@@ -82,7 +82,7 @@ async def get_customer(customer_id: int, current_user: User = Depends(check_staf
             "contact_info": c.contact_info, "credit_status": c.credit_status,
             "credit_limit": c.credit_limit, "remark": c.remark, "tags": c.tags}
 
-@router.put("/{customer_id}")
+@router.put("/{customer_id}", dependencies=[Depends(require_non_labor)])
 async def update_customer(customer_id: int, req: CustomerUpdate,
                           current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):

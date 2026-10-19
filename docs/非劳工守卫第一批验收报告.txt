@@ -1,0 +1,39 @@
+第十七轮第一批验收：统一非劳工守卫 + 15个写接口
+基线：78b50cc；隔离SQLite与合成数据；未连接生产，未部署。
+
+守卫：app.core.permissions.require_non_labor。挂在路由装饰器dependencies第一位，原功能权限、角色和仓库校验不变。
+劳工统一403：{"detail":"无权访问"}。管理员/超管通过此守卫，但不绕过原业务限制。
+
+实际结果：15个目标接口逐个403；仓库管理员15个逐个200，比要求的抽5个更全面。
+第一批专项107项通过；相关模块回归938项通过，共1045项。另对报告/结构校验再次验证2项通过。
+劳工被拒请求前后全表快照一致；即使劳工额外存有全部菜单权限、伪造view=self和仓库请求头，也不能越过守卫。
+4种管理角色逐条对比有无新增守卫的响应，状态和内容一致；主管/财务取消功能权限后，仍按原规则拒绝。
+代码结构保护：与78b50cc逐文件比对，仅新增守卫、导入和15个路由依赖；处理函数、公式、单据状态和仓库隔离原样。
+前端、模型、启动脚本和迁移未改。没有生产数据变化。
+
+每条实测（劳工/仓库管理员）：
+PUT /api/v1/customers/{customer_id} → 劳工403 无权访问；仓管200 {"message": "更新成功"}
+PUT /api/v1/accounts/{account_id} → 劳工403 无权访问；仓管200 {"message": "更新成功"}
+PUT /api/v1/accounts/{account_id}/toggle-status → 劳工403 无权访问；仓管200 {"message": "状态已切换", "status": "inactive"}
+PUT /api/v1/suppliers/{supplier_id} → 劳工403 无权访问；仓管200 {"message": "更新成功"}
+DELETE /api/v1/suppliers/{supplier_id} → 劳工403 无权访问；仓管200 {"message": "删除成功"}
+POST /api/v1/recharge → 劳工403 无权访问；仓管200 {"id": 3, "message": "申报成功"}
+PUT /api/v1/income-expense/income/{income_id} → 劳工403 无权访问；仓管200 {"message": "更新成功"}
+DELETE /api/v1/income-expense/income/{income_id} → 劳工403 无权访问；仓管200 {"message": "删除成功"}
+PUT /api/v1/payable/plans/{plan_id}/execute → 劳工403 无权访问；仓管200 {"message": "计划执行成功，已结算 1 笔账单"}
+DELETE /api/v1/payable/plan-templates/{template_id} → 劳工403 无权访问；仓管200 {"message": "模板已删除"}
+POST /api/v1/credit/{credit_id}/payment → 劳工403 无权访问；仓管200 {"id": 1, "current_debt": 0, "overdue_days": 0, "message": "还款记录创建成功"}
+POST /api/v1/market/{item_id}/purchase → 劳工403 无权访问；仓管200 {"message": "购买申请已提交", "seller_warehouse": 1}
+PUT /api/v1/market/{item_id}/confirm → 劳工403 无权访问；仓管200 {"message": "交易确认完成"}
+POST /api/v1/group-order/{go_id}/join → 劳工403 无权访问；仓管200 {"id": 1, "message": "参与成功"}
+POST /api/v1/reimbursement → 劳工403 无权访问；仓管200 {"id": 1, "message": "报销单创建成功"}
+
+员工自助保护：
+API回归：劳工打卡、请假、加班确认/异议、本人考勤、我的工资单正常；纳入考勤主管员工视角正常，关闭开关后仍拒绝旧令牌。
+浏览器：劳工登录后打卡页四个时点正常；本人考勤只列员工1；提交请假提示成功；确认加班后待确认从3变2、显示50泰铢；我的工资单只列本人3张测试单。
+主管/财务功能权限和菜单数据未改，原有权限校验继续生效。
+
+批次边界：用户要求第一批验完先报告、不继续第二批。本次只有15个路由使用此守卫。
+94条原清单按HTTP方法分为22条非GET、72条GET；15条是上轮已复现写操作，其余79含7条非GET和72条GET。另4条GET有旧自动写入副作用，已在对话表中标出，本批未改。
+原清单另有1条旧角色已拦截的误报，已在对话中更正，仍保留在原94条表中等待后续统一守卫。
+94条含未修复入口的完整表仅本地交付，并直接贴到对话，不随代码推送。第二批尚未执行，不能报告94条全已修复。

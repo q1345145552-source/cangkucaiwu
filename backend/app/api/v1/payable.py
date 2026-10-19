@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.payable import PayableBill, PayablePlan, PlanTemplate, PayableStatus, PlanStatus, MonthlyOrderVolume
 from app.models.supplier import Supplier, SupplierCategory, PurchaseOrder
 from app.models.user import User
-from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
+from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role, require_non_labor
 from app.services.data_history import record_history
 from pydantic import BaseModel
 from typing import Optional, List
@@ -772,7 +772,7 @@ async def list_templates(current_user: User = Depends(check_staff_permission(_PL
     result = await db.execute(query.order_by(PlanTemplate.created_at.desc()))
     return {"data": [{"id": t.id, "name": t.name, "bill_ids": t.bill_ids} for t in result.scalars().all()]}
 
-@router.delete("/plan-templates/{template_id}")
+@router.delete("/plan-templates/{template_id}", dependencies=[Depends(require_non_labor)])
 async def delete_template(template_id: int, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PlanTemplate).where(PlanTemplate.id == template_id))
     t = result.scalar_one_or_none()
@@ -806,7 +806,7 @@ async def payable_timeline(current_user: User = Depends(check_staff_permission(_
     return {"data": weeks}
 
 # === Execute Plan ===
-@router.put("/plans/{plan_id}/execute")
+@router.put("/plans/{plan_id}/execute", dependencies=[Depends(require_non_labor)])
 async def execute_plan(plan_id: int, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

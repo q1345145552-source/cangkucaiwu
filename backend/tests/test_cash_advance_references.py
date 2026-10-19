@@ -137,16 +137,20 @@ def test_metadata_batches_same_warehouse_only_and_missing_ids_are_empty(tmp_path
 
 
 def test_all_calculation_payment_repayment_and_other_functions_unchanged():
+    from tests.non_labor_test_support import without_non_labor_guard
     root=Path(__file__).resolve().parents[2]
     allowed={'payroll.py':{'list_payroll','payroll_detail','reject_labor_management_payroll'},'employee_advance.py':{'list_advances','advance_detail'},
         'reimbursement.py':{'list_reimbursements','get_reimb_detail','payment_history'}}
     def funcs(source,skip):
-        return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body
+        return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(without_non_labor_guard(source)).body
             if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name not in skip}
     for name,skip in allowed.items():
         path='backend/app/api/v1/'+name
         assert funcs((root/path).read_text(),skip)==funcs(subprocess.check_output(['git','show','5af2588:'+path],cwd=root,text=True),skip)
-    untouched=['backend/app/models','backend/scripts/seed.py','backend/app/api/v1/cash_advance.py','backend/app/api/v1/payable.py',
+    payable='backend/app/api/v1/payable.py'
+    assert without_non_labor_guard((root/payable).read_text()) == without_non_labor_guard(
+        subprocess.check_output(['git','show','5af2588:'+payable],cwd=root,text=True))
+    untouched=['backend/app/models','backend/scripts/seed.py','backend/app/api/v1/cash_advance.py',
         'backend/app/services/payroll_expense.py','backend/app/services/employee_advance_funding.py',
         'backend/app/services/reimbursement_payment.py','frontend/src/app/(dashboard)/cash-advances/page.tsx']
     assert not subprocess.check_output(['git','diff','5af2588','--',*untouched],cwd=root)

@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.credit import CreditCustomer, CreditRepayment, CreditShipment, CreditStatus
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, require_non_labor
 from app.services.flow_rules import exceeds_credit_limit
 from pydantic import BaseModel
 from typing import Optional
@@ -303,7 +303,7 @@ async def create_shipment(credit_id: int, req: ShipmentCreate,
 
     return {"id": s.id, "current_debt": debt, "overdue_days": overdue, "message": "发货记录创建成功"}
 
-@router.post("/{credit_id}/payment")
+@router.post("/{credit_id}/payment", dependencies=[Depends(require_non_labor)])
 async def record_repayment(credit_id: int, req: RepaymentCreate,
                            current_user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db),

@@ -17,7 +17,7 @@ from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpense
 from app.models.customer import Customer, PaymentAccount
 from app.models.supplier import Supplier
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any, require_non_labor
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
 from app.services.data_history import record_history
@@ -144,7 +144,7 @@ async def create_income(req: IncomeRecordCreate, current_user: User = Depends(ge
     db.add(r); await db.flush(); return {"id": r.id, "message": "收款记录创建成功"}
 
 # ==== Income Edit / Delete ====
-@router.put("/income/{income_id}")
+@router.put("/income/{income_id}", dependencies=[Depends(require_non_labor)])
 async def update_income(income_id: int, req: IncomeRecordCreate, current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db),
                         _perm=Depends(check_staff_permission("其他收支"))):
@@ -164,7 +164,7 @@ async def update_income(income_id: int, req: IncomeRecordCreate, current_user: U
     await db.flush()
     return {"message": "更新成功"}
 
-@router.delete("/income/{income_id}")
+@router.delete("/income/{income_id}", dependencies=[Depends(require_non_labor)])
 async def delete_income(income_id: int, current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db),
                         _perm=Depends(check_staff_permission("其他收支"))):

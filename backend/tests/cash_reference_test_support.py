@@ -1,11 +1,13 @@
 """Historic business guards exclude separately tested readers and payroll access boundary."""
 import ast
+from tests.non_labor_test_support import without_non_labor_guard
 
 READERS = {'list_payroll', 'payroll_detail', 'list_advances', 'advance_detail',
     'list_reimbursements', 'get_reimb_detail', 'payment_history', 'reject_labor_management_payroll'}
 
 
 def without_reference_readers(source):
+    source = without_non_labor_guard(source)
     tree = ast.parse(source)
     has_payroll_boundary = any(isinstance(node, ast.AsyncFunctionDef)
         and node.name == 'reject_labor_management_payroll' for node in tree.body)

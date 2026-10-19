@@ -1,0 +1,255 @@
+{
+  "environment": "isolated SQLite, synthetic data, not production",
+  "batch1": [
+    {
+      "method": "PUT",
+      "path": "/api/v1/customers/{customer_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "更新成功"
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/accounts/{account_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "更新成功"
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/accounts/{account_id}/toggle-status",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "状态已切换",
+          "status": "inactive"
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "更新成功"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "删除成功"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/recharge",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "id": 3,
+          "message": "申报成功"
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/income-expense/income/{income_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "更新成功"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/income-expense/income/{income_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "删除成功"
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/payable/plans/{plan_id}/execute",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "计划执行成功，已结算 1 笔账单"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/payable/plan-templates/{template_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "模板已删除"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/credit/{credit_id}/payment",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "current_debt": 0,
+          "overdue_days": 0,
+          "message": "还款记录创建成功"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/market/{item_id}/purchase",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "购买申请已提交",
+          "seller_warehouse": 1
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/market/{item_id}/confirm",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "交易确认完成"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/group-order/{go_id}/join",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "message": "参与成功"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/reimbursement",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "message": "报销单创建成功"
+        }
+      }
+    }
+  ],
+  "blocked_requests_all_tables_unchanged": true,
+  "second_batch_not_started": true
+}
