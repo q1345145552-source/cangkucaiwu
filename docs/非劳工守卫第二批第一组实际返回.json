@@ -1,0 +1,490 @@
+{
+  "environment": "isolated SQLite; synthetic data; no production changes",
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/v1/reconciliation/unmatch",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "已解除匹配"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/items",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "message": "开销记录添加成功",
+          "receipt": "/uploads/fund_receipts/1/1/test.png",
+          "cost_record_only": true,
+          "disbursement_sources": [
+            {
+              "disbursement_id": null,
+              "amount": 10.0,
+              "label": "历史余额（原拨付编号未记录）"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/reimbursement/{reimb_id}",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "更新成功"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/reimbursement/{reimb_id}/submit",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "message": "已提交审批"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payable/plans",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "id": 2,
+          "message": "付款计划创建成功"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/upload/recharge-screenshot",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "path": "uploads/1/2026-10-20/recharge/e1b51e0e277d4fb0853e301a73957081.png",
+          "thumb_path": "uploads/1/2026-10-20/recharge/e1b51e0e277d4fb0853e301a73957081_thumb.jpg",
+          "message": "截图上传成功"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reimbursement/categories",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "name": "交通费"
+            },
+            {
+              "id": 2,
+              "name": "餐饮费"
+            },
+            {
+              "id": 3,
+              "name": "办公用品"
+            },
+            {
+              "id": 4,
+              "name": "通讯费"
+            },
+            {
+              "id": 5,
+              "name": "差旅费"
+            },
+            {
+              "id": 6,
+              "name": "水电费"
+            },
+            {
+              "id": 7,
+              "name": "维修费"
+            },
+            {
+              "id": 8,
+              "name": "其他"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": 21,
+              "warehouse_id": 1,
+              "supplier_id": 1,
+              "supplier_name": "测试供应商1",
+              "bill_number": "EXPIRED-21",
+              "bill_date": "2020-01-01T00:00:00",
+              "due_date": "2020-01-02T00:00:00",
+              "amount": 100.0,
+              "confirmed_amount": null,
+              "currency": "THB",
+              "paid_amount": 0.0,
+              "status": "pending",
+              "is_duplicate_warned": null,
+              "payment_commitment_days": null,
+              "payment_voucher": null,
+              "payment_method": null,
+              "bill_attachment": null,
+              "is_fund_linked": null,
+              "detail": null,
+              "remark": null,
+              "diff_note": null,
+              "source": "manual",
+              "purchase_order_id": null,
+              "purchase_order_number": "",
+              "need_boss_confirm": "false"
+            },
+            {
+              "id": 23,
+              "warehouse_id": 1,
+              "supplier_id": 1,
+              "supplier_name": "测试供应商1",
+              "bill_number": "EXPIRED-23",
+              "bill_date": "2020-01-01T00:00:00",
+              "due_date": "2020-01-02T00:00:00",
+              "amount": 100.0,
+              "confirmed_amount": null,
+              "currency": "THB",
+              "paid_amount": 100.0,
+              "status": "paid",
+              "is_duplicate_warned": null,
+              "payment_commitment_days": null,
+              "payment_voucher": null,
+              "payment_method": null,
+              "bill_attachment": null,
+              "is_fund_linked": null,
+              "detail": null,
+              "remark": null,
+              "diff_note": null,
+              "source": "manual",
+              "purchase_order_id": null,
+              "purchase_order_number": "",
+              "need_boss_confirm": "false"
+            },
+            {
+              "id": 24,
+              "warehouse_id": 1,
+              "supplier_id": 1,
+              "supplier_name": "测试供应商1",
+              "bill_number": "EXPIRED-24",
+              "bill_date": "2020-01-01T00:00:00",
+              "due_date": "2020-01-02T00:00:00",
+              "amount": 100.0,
+              "confirmed_amount": null,
+              "currency": "THB",
+              "paid_amount": 0.0,
+              "status": "voided",
+              "is_duplicate_warned": null,
+              "payment_commitment_days": null,
+              "payment_voucher": null,
+              "payment_method": null,
+              "bill_attachment": null,
+              "is_fund_linked": null,
+              "detail": null,
+              "remark": null,
+              "diff_note": null,
+              "source": "manual",
+              "purchase_order_id": null,
+              "purchase_order_number": "",
+              "need_boss_confirm": "false"
+            },
+            {
+              "id": 1,
+              "warehouse_id": 1,
+              "supplier_id": 1,
+              "supplier_name": "测试供应商1",
+              "bill_number": "GUARD-1",
+              "bill_date": "2026-10-01T00:00:00",
+              "due_date": "2026-12-30T00:00:00",
+              "amount": 100.0,
+              "confirmed_amount": null,
+              "currency": "THB",
+              "paid_amount": 0.0,
+              "status": "pending",
+              "is_duplicate_warned": null,
+              "payment_commitment_days": null,
+              "payment_voucher": null,
+              "payment_method": null,
+              "bill_attachment": null,
+              "is_fund_linked": null,
+              "detail": null,
+              "remark": null,
+              "diff_note": null,
+              "source": "manual",
+              "purchase_order_id": null,
+              "purchase_order_number": "",
+              "need_boss_confirm": "false"
+            }
+          ],
+          "total": 4,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/plans",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "plan_name": "测试计划",
+              "planned_date": "2026-10-20T00:00:00",
+              "total_amount": 100.0,
+              "status": "pending",
+              "bill_ids": [
+                1
+              ],
+              "bill_attachment": null,
+              "remark": null
+            },
+            {
+              "id": 2,
+              "plan_name": "隔离测试付款计划",
+              "planned_date": "2026-10-20T00:00:00",
+              "total_amount": 100.0,
+              "status": "pending",
+              "bill_ids": [
+                1
+              ],
+              "bill_attachment": null,
+              "remark": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/batch-export",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      },
+      "warehouse_admin": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "bill_id": 21,
+              "supplier": "测试供应商1",
+              "amount": 100.0,
+              "paid_amount": 0.0,
+              "unpaid": 100.0,
+              "currency": "THB",
+              "due_date": "2020-01-02 00:00:00",
+              "bill_number": "EXPIRED-21",
+              "status": "overdue"
+            },
+            {
+              "bill_id": 1,
+              "supplier": "测试供应商1",
+              "amount": 100.0,
+              "paid_amount": 0.0,
+              "unpaid": 100.0,
+              "currency": "THB",
+              "due_date": "2026-12-30 00:00:00",
+              "bill_number": "GUARD-1",
+              "status": "pending"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "denied_requests_all_tables_unchanged": true,
+  "automatic_write_results": {
+    "bill_statuses": {
+      "21": "overdue",
+      "22": "pending",
+      "23": "paid",
+      "24": "voided"
+    },
+    "categories": [
+      {
+        "name": "交通费",
+        "warehouse_id": 1
+      },
+      {
+        "name": "餐饮费",
+        "warehouse_id": 1
+      },
+      {
+        "name": "办公用品",
+        "warehouse_id": 1
+      },
+      {
+        "name": "通讯费",
+        "warehouse_id": 1
+      },
+      {
+        "name": "差旅费",
+        "warehouse_id": 1
+      },
+      {
+        "name": "水电费",
+        "warehouse_id": 1
+      },
+      {
+        "name": "维修费",
+        "warehouse_id": 1
+      },
+      {
+        "name": "其他",
+        "warehouse_id": 1
+      }
+    ]
+  },
+  "finance_five_actual_requests": [
+    {
+      "method": "POST",
+      "path": "/api/v1/reconciliation/unmatch",
+      "status": 200,
+      "body": {
+        "message": "已解除匹配"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/items",
+      "status": 200,
+      "body": {
+        "id": 1,
+        "message": "开销记录添加成功",
+        "receipt": "/uploads/fund_receipts/1/1/test.png",
+        "cost_record_only": true,
+        "disbursement_sources": [
+          {
+            "disbursement_id": null,
+            "amount": 10.0,
+            "label": "历史余额（原拨付编号未记录）"
+          }
+        ]
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/reimbursement/{reimb_id}",
+      "status": 200,
+      "body": {
+        "message": "更新成功"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payable/plans",
+      "status": 200,
+      "body": {
+        "id": 2,
+        "message": "付款计划创建成功"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/batch-export",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "bill_id": 21,
+            "supplier": "测试供应商1",
+            "amount": 100.0,
+            "paid_amount": 0.0,
+            "unpaid": 100.0,
+            "currency": "THB",
+            "due_date": "2020-01-02 00:00:00",
+            "bill_number": "EXPIRED-21",
+            "status": "pending"
+          },
+          {
+            "bill_id": 1,
+            "supplier": "测试供应商1",
+            "amount": 100.0,
+            "paid_amount": 0.0,
+            "unpaid": 100.0,
+            "currency": "THB",
+            "due_date": "2026-12-30 00:00:00",
+            "bill_number": "GUARD-1",
+            "status": "pending"
+          }
+        ]
+      }
+    }
+  ]
+}

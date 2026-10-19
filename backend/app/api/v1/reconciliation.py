@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.recharge import RechargeDeclaration, IncomingFlow, ReconciliationResult, ReconMatchStatus, MatchStatus
 from app.models.customer import Customer
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, require_non_labor
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
 router = APIRouter()
@@ -103,7 +103,7 @@ async def manual_match(
     db.add(rr); decl.match_status = MatchStatus.MATCHED; flow.match_status = MatchStatus.MATCHED
     await db.flush(); return {"message": "匹配成功"}
 
-@router.post("/unmatch")
+@router.post("/unmatch", dependencies=[Depends(require_non_labor)])
 async def unmatch_record(
     record_id: int = Query(...),
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),

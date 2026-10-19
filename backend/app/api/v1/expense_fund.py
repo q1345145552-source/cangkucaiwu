@@ -11,7 +11,7 @@ from app.services.fund_disbursement import create_disbursement, disbursement_fie
 from app.models.user import User
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, require_non_labor
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from app.services import fund_item_controls as item_controls
@@ -361,7 +361,7 @@ async def void_item(account_id: int, item_id: int, req: FundItemVoid | None = No
     fund, item = await item_controls.lock_manual_item(db, account_id, item_id, get_wh_ids(current_user), action="void")
     return await item_controls.void(db, fund, item, req.reason if req else None, current_user)
 
-@router.post("/accounts/{account_id}/items")
+@router.post("/accounts/{account_id}/items", dependencies=[Depends(require_non_labor)])
 async def add_item(
     account_id: int, req: FundItemCreate,
     current_user: User = Depends(get_current_user),

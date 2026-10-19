@@ -6,7 +6,7 @@ import os, uuid
 from app.core.timezone import thai_now, thai_today
 from datetime import datetime
 from app.database import get_db
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, check_staff_permission_any
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, check_staff_permission_any, require_non_labor
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
 router = APIRouter()
@@ -41,7 +41,7 @@ async def upload_file(
     result = save_image(content, abs_subdir, rel_subdir, fname)
     return {"path": result["path"], "thumb_path": result["thumb_path"], "filename": file.filename, "size": result["size"]}
 
-@router.post("/recharge-screenshot")
+@router.post("/recharge-screenshot", dependencies=[Depends(require_non_labor)])
 async def upload_recharge_screenshot(
     recharge_id: int = Form(...),
     file: UploadFile = File(...),

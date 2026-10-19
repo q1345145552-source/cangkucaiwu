@@ -27,7 +27,7 @@ from tests.test_round4_permissions import attendance_environment
 from tests.test_cash_advance_references import snapshot
 
 
-# 上轮已实际复现的15条；其他79条不在本批注册守卫。
+# 第十七轮已实际复现并关闭的15条；后续批次单独声明，原15条继续回归。
 CASES = [
     ('PUT', '/customers/{customer_id}', '/customers/1', {'company_name':'更新客户'}),
     ('PUT', '/accounts/{account_id}', '/accounts/1', {'account_name':'更新账户','account_type':'bank','account_number':'changed'}),
@@ -120,7 +120,7 @@ def test_all_other_roles_preserve_original_responses(tmp_path, monkeypatch, case
     asyncio.run(run())
 
 
-def test_batch_report_admin_all_fifteen_and_remaining_stage_untouched(tmp_path, monkeypatch):
+def test_batch_report_admin_all_fifteen_and_original_credit_rejection(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path,monkeypatch) as (_,factory,client):
             before = await snapshot(factory)
@@ -141,7 +141,7 @@ def test_batch_report_admin_all_fifteen_and_remaining_stage_untouched(tmp_path, 
             async with factory() as db:
                 assert (await db.get(CreditCustomer,1)).credit_limit==10000
             report={'environment':'isolated SQLite, synthetic data, not production','batch1':rows,
-                'blocked_requests_all_tables_unchanged':True,'second_batch_not_started':True,
+                'blocked_requests_all_tables_unchanged':True,'scope':'round17 first fifteen regression',
                 'prior_audit_correction':{'method':'PUT','path':'/api/v1/credit/{credit_id}',
                     'status':credit.status_code,'body':credit.json(),'note':'existing role rejection; no guard added this batch'}}
             if os.environ.get('NON_LABOR_BATCH1_REPORT'):
@@ -149,10 +149,11 @@ def test_batch_report_admin_all_fifteen_and_remaining_stage_untouched(tmp_path, 
     asyncio.run(run())
 
 
-def test_guard_first_exactly_fifteen_routes_and_all_business_code_unchanged():
+def test_guard_first_all_approved_routes_and_all_business_code_unchanged():
+    from tests.test_non_labor_batch2_writes import CASES as BATCH2
     guarded=[r for r in app.routes if isinstance(r,APIRoute)
         and any(d.call is require_non_labor for d in r.dependant.dependencies)]
-    expected={(method,'/api/v1'+template) for method,template,_,_ in CASES}
+    expected={(method,'/api/v1'+template) for method,template,_,_ in CASES+BATCH2}
     assert {(method,r.path) for r in guarded for method in r.methods}==expected
     for r in guarded:
         assert r.dependant.dependencies[0].call is require_non_labor

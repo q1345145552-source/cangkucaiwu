@@ -32,7 +32,7 @@ class PlanCreate(BaseModel):
     plan_name: str; planned_date: str; bill_ids: List[int]; remark: Optional[str] = None
     save_as_template: bool = False; template_name: Optional[str] = None
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_non_labor)])
 async def list_bills(
     page: int = 1, page_size: int = 20, supplier_id: int = None,
     status: str = None, month: str = None, start_date: str = None, end_date: str = None,
@@ -592,7 +592,7 @@ async def payable_stats(start_date: str = None, end_date: str = None,
     }
 
 # === Plans ===
-@router.get("/plans")
+@router.get("/plans", dependencies=[Depends(require_non_labor)])
 async def list_plans(current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -619,7 +619,7 @@ async def list_plans(current_user: User = Depends(check_staff_permission(_PLAN_P
 
     return {"data": [{"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_ids": p.bill_ids, "bill_attachment": p.bill_attachment, "remark": p.remark} for p in plans]}
 
-@router.post("/plans")
+@router.post("/plans", dependencies=[Depends(require_non_labor)])
 async def create_plan(req: PlanCreate, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)),
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
@@ -679,7 +679,7 @@ async def cashflow_prediction(current_user: User = Depends(check_staff_permissio
     return {"total_pending_payable": float(total_pending), "predicted_outflow": float(total_pending)}
 
 # === Batch export ===
-@router.get("/batch-export")
+@router.get("/batch-export", dependencies=[Depends(require_non_labor)])
 async def batch_export(supplier_id: int = None, start_date: str = None, end_date: str = None,
                        status: str = None, bill_ids: str = None,
                        current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db)):

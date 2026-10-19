@@ -274,7 +274,7 @@ async def export_reimbursements(
 
 DEFAULT_REIMB_CATEGORIES = ["交通费", "餐饮费", "办公用品", "通讯费", "差旅费", "水电费", "维修费", "其他"]
 
-@router.get("/categories")
+@router.get("/categories", dependencies=[Depends(require_non_labor)])
 async def list_reimb_categories(current_user: User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db),
                                 _perm=Depends(check_staff_permission("报销管理"))):
@@ -328,7 +328,7 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
                    "review_status": i.review_status} for i in items],
     }
 
-@router.put("/{reimb_id}")
+@router.put("/{reimb_id}", dependencies=[Depends(require_non_labor)])
 async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depends(get_current_user),
                      db: AsyncSession = Depends(get_db),
                      _perm=Depends(check_staff_permission("报销管理"))):
@@ -411,7 +411,7 @@ async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_u
                           operation_type="delete", before=before, warehouse_id=wh_id)
     return {"message": "删除成功"}
 
-@router.post("/{reimb_id}/submit")
+@router.post("/{reimb_id}/submit", dependencies=[Depends(require_non_labor)])
 async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db),
                        _perm=Depends(check_staff_permission("报销管理"))):
