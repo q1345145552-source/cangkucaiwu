@@ -14,6 +14,7 @@ from app.core.timezone import thai_now, thai_today
 from app.services.flow_rules import fund_available
 from app.services.data_history import record_history
 from app.services.employee_advance_expense import create_advance_expense, delete_advance_expense
+from app.services.employee_advance_limit import check_advance_limit
 from math import isfinite
 from pydantic import BaseModel
 from datetime import datetime, date
@@ -72,6 +73,7 @@ async def create_advance(
     else:
         emp = (await db.execute(
             select(Employee).where(Employee.id == req.employee_id, Employee.warehouse_id == wh_id, Employee.is_deleted == False)
+            .with_for_update()  # 同一员工的登记串行校验，防止并发绕过额度。
         )).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "员工不存在")
@@ -95,6 +97,8 @@ async def create_advance(
         currency = fund_account.currency or "THB"
     elif req.source not in ("supervisor", "fund"):
         raise HTTPException(400, "预支来源无效")
+
+    limit_check = await check_advance_limit(db, emp, req.amount, currency, adv_dt)
 
     approval_status = AdvanceApprovalStatus.APPROVED.value
     if current_user.role == Role.SUPERVISOR:
@@ -150,7 +154,10 @@ async def create_advance(
 
     await create_advance_expense(db, adv, current_user)
 
-    return {"message": "预支记录已创建", "id": adv.id, **_approval_fields(adv)}
+    message = "预支记录已创建"
+    if limit_check.get("warning"):
+        message += "；" + limit_check["warning"]
+    return {"message": message, "id": adv.id, **_approval_fields(adv), "limit_check": limit_check}
 
 
 @router.get("/recipients")

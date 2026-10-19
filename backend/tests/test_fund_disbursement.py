@@ -1,6 +1,7 @@
 """逐笔拨付只记一次成本/资金，后续开销只记录，真实请求和隔离数据库。"""
 from tests.financial_reversal_test_support import without_disabled_gate
 import asyncio
+import ast
 from contextlib import asynccontextmanager
 from datetime import date, datetime
 from decimal import Decimal
@@ -275,7 +276,21 @@ def test_new_fund_employee_advance_dedup_is_read_only_payroll_and_reimbursement_
     root = Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py", "backend/app/api/v1/employee_advance.py",
         "backend/app/services/employee_advance_expense.py", "backend/app/api/v1/reimbursement.py", "backend/app/services/reimbursement_payment.py"):
-        assert without_disabled_gate((root / path).read_text()).encode() == subprocess.check_output(["git", "show", f"ee327fa:{path}"], cwd=root)
+        current = without_disabled_gate((root / path).read_text())
+        old = subprocess.check_output(["git", "show", f"ee327fa:{path}"], cwd=root, text=True)
+        if path.endswith("/employee_advance.py"):
+            # 后续仅登记增加工资额度校验，其他预支动作仍逐函数保持原样。
+            def other_functions(source):
+                return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name != "create_advance"}
+            assert other_functions(current) == other_functions(old)
+            def fund_block(source):
+                create = next(n for n in ast.parse(source).body if isinstance(n, ast.AsyncFunctionDef) and n.name == "create_advance")
+                return next(ast.dump(n, include_attributes=False) for n in create.body
+                    if isinstance(n, ast.If) and ast.unparse(n.test) == "req.source == 'fund' and fund_account")
+            assert fund_block(current) == fund_block(old)
+        else:
+            assert current == old
 
 
 def test_all_warehouse_admin_review_uses_request_warehouse_not_primary(tmp_path, monkeypatch):

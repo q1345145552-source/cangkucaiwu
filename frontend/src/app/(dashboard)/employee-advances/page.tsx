@@ -89,11 +89,11 @@ export default function EmployeeAdvancePage() {
     if (form.source === "fund" && !form.fund_account_id) { toast("error", "请选择备用金账户"); return; }
     try {
       const [kind, id] = recipient.split(":");
-      await api.post("/employee-advances", { ...form, amount: amt,
+      const result = await api.post<{ message?: string }>("/employee-advances", { ...form, amount: amt,
         employee_id: kind === "employee" ? Number(id) : undefined,
         user_id: kind === "user" ? Number(id) : undefined,
       });
-      toast("success", "预支记录已创建");
+      toast("success", result.message || "预支记录已创建");
       setShowForm(false);
       setRecipient("");
       loadRefs();

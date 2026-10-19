@@ -233,11 +233,14 @@ def test_expense_failure_rolls_back_both_sides(tmp_path, monkeypatch, action, so
 
 def test_fund_advance_only_one_cost_preserves_currency_and_no_second_company_flow(tmp_path, monkeypatch):
     async def run():
+        from app.models.recharge import ExchangeRate
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
             await supervisor_self(f)
             async with f() as db:
                 db.add(ExpenseFund(id=8, warehouse_id=1, employee_id=1, amount=5000, remaining_balance=5000,
                     currency="CNY", receive_date=datetime(2026, 9, 30), purpose="测试"))
+                db.add(ExchangeRate(warehouse_id=1, from_currency="CNY", to_currency="THB", rate=5,
+                    effective_from=datetime(2026, 9, 30)))
                 await db.commit()
             r = await c.post(BASE, headers=auth(4), json={**BODY, "source": "fund", "fund_account_id": 8})
             assert r.status_code == 200 and r.json()["approval_status"] == "pending", r.text

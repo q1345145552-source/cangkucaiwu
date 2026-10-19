@@ -121,4 +121,13 @@ def test_original_handlers_and_calculations_are_byte_identical_after_removing_on
     for path in ("backend/app/services/payroll_expense.py", "backend/app/services/reimbursement_payment.py",
                  "backend/app/services/account_balances.py", "backend/app/api/v1/employee_advance.py",
                  "backend/app/api/v1/expense_fund.py", "backend/app/api/v1/clock_in.py"):
-        assert (root / path).read_bytes() == subprocess.check_output(["git", "show", "14a0198:" + path], cwd=root)
+        current = (root / path).read_text()
+        old = subprocess.check_output(["git", "show", "14a0198:" + path], cwd=root, text=True)
+        if path.endswith("/employee_advance.py"):
+            # 后续登记额度校验不改变删除、审批和其他原预支动作。
+            def other_functions(source):
+                return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name != "create_advance"}
+            assert other_functions(current) == other_functions(old)
+        else:
+            assert current == old
