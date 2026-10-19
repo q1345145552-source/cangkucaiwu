@@ -33,6 +33,8 @@ async def backfill_advance_categories(conn):
 async def create_advance_expense(db, advance, operator):
     if not advance.expense_tracking_enabled or advance.approval_status != AdvanceApprovalStatus.APPROVED.value:
         return None
+    if advance.funding_source in ("cash_advance", "expense_fund"):
+        return None
     if advance.expense_record_id is not None:
         raise HTTPException(400, "该预支已记入运营支出")
     employee = (await db.execute(select(Employee).where(
@@ -56,7 +58,8 @@ async def create_advance_expense(db, advance, operator):
     if category.status != "active":
         raise HTTPException(400, "员工预支支出分类已停用")
     expense = ExpenseRecord(warehouse_id=advance.warehouse_id, category_id=category.id,
-        account_id=None, amount=advance.amount, currency=advance.currency or "THB",
+        account_id=advance.payment_account_id if advance.funding_source == "company_account" else None,
+        amount=advance.amount, currency=advance.currency or "THB",
         expense_date=datetime.combine(advance.advance_date, time.min),
         remark=f"{employee.name} 预支（预支单 #{advance.id}）", approved_by=operator.id)
     db.add(expense)

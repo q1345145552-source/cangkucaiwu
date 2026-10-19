@@ -109,10 +109,11 @@ async def lock_advance(db, r, advance_id, amount):
     if advance.status != "confirmed": raise HTTPException(400, "只能使用已确认的垫款单")
     if advance.currency != (r.currency or "THB").upper(): raise HTTPException(400, "垫款单币种与报销单不一致")
     from app.services.cash_advance_payroll import payroll_usage_totals
-    from app.services.cash_advance_usage import reimbursement_usage_totals
+    from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
     wages = (await payroll_usage_totals(db, [advance]))[advance.id]
     expenses = (await reimbursement_usage_totals(db, [advance]))[advance.id]
-    if amount > advance.amount - advance.repaid_amount or amount > advance.amount - wages - expenses:
+    advances = (await employee_advance_usage_totals(db, [advance]))[advance.id]
+    if amount > advance.amount - advance.repaid_amount or amount > advance.amount - wages - expenses - advances:
         raise HTTPException(400, "垫款单剩余金额不足")
     return advance
 

@@ -13,7 +13,7 @@ from app.models import User, SalaryTemplate
 from app.models.employee_advance import EmployeeAdvance
 from app.core.security import hash_password
 from tests.test_round2_permissions import auth
-from tests.test_round3_permissions import hr_environment
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment
 from tests.test_employee_advance_expense import BODY, supervisor_self
 
 

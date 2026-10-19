@@ -275,7 +275,7 @@ async def list_expense(
         "amount": r.amount, "currency": r.currency,
         "payroll_record_id": payroll_map.get(r.id),
         "cash_advance_id": reimbursement_map[r.id][1] if r.id in reimbursement_map else cash_advance_map.get(r.id),
-        "funding_source": ("expense_fund" if advance_map[r.id].source == "fund" else "unknown") if r.id in advance_map else reimbursement_map[r.id][2] if r.id in reimbursement_map else "cash_advance" if cash_advance_map.get(r.id) is not None else "company_account",
+        "funding_source": (advance_map[r.id].funding_source or ("expense_fund" if advance_map[r.id].source == "fund" else "unknown")) if r.id in advance_map else reimbursement_map[r.id][2] if r.id in reimbursement_map else "cash_advance" if cash_advance_map.get(r.id) is not None else "company_account",
         "reimbursement_id": reimbursement_map[r.id][0] if r.id in reimbursement_map else None,
         "employee_advance_id": advance_map[r.id].id if r.id in advance_map else None,
         "employee_id": advance_map[r.id].employee_id if r.id in advance_map else None,
@@ -669,9 +669,12 @@ async def ledger(
             SELECT er.expense_date AS date_val, er.amount, COALESCE(er.currency, 'THB') AS currency,
                    'expense' AS flow_type, 'manual' AS source, '手工收支' AS source_label,
                    COALESCE(iec2.name, '') || COALESCE(' - ' || er.remark, '') AS remark,
-                   'EX-' || er.id AS ref_no, er.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 8 AS sort_ord
+                   'EX-' || er.id AS ref_no, er.id AS raw_id, 'active' AS ledger_status,
+                   ea_account.account_name AS account_name, ea.payment_account_id AS account_id, 8 AS sort_ord
             FROM expense_records er
             LEFT JOIN income_expense_categories iec2 ON er.category_id = iec2.id
+            LEFT JOIN employee_advances ea ON ea.expense_record_id=er.id AND ea.funding_source='company_account'
+            LEFT JOIN payment_accounts ea_account ON ea_account.id=ea.payment_account_id AND ea_account.warehouse_id=er.warehouse_id
             WHERE {wh_cond('er')} AND {date_cond('er', 'expense_date')}
               AND NOT EXISTS (
                   SELECT 1 FROM payroll_records pr

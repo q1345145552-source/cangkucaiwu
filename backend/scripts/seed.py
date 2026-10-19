@@ -124,6 +124,22 @@ async def _migrate_employee_advance_expenses(conn):
             raise
 
 
+async def _migrate_employee_advance_funding(conn):
+    """仅加可空来源、垫款和付款账户列；不回填任何老数据。"""
+    from sqlalchemy import text
+    for name, statement in (
+        ("funding_source", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS funding_source VARCHAR(20)"),
+        ("cash_advance_id", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS cash_advance_id INTEGER REFERENCES cash_advances(id)"),
+        ("payment_account_id", "ALTER TABLE employee_advances ADD COLUMN IF NOT EXISTS payment_account_id INTEGER REFERENCES payment_accounts(id)"),
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 员工预支资金来源 {name} 失败：{exc}")
+            raise
+
+
 async def _migrate_employee_advance_void_columns(conn):
     """仅加可空留痕列；老记录不变，每列独立保存点，可重复运行。"""
     from sqlalchemy import text
@@ -331,6 +347,7 @@ async def seed():
         await _migrate_advance_approval_columns(conn)
         await _migrate_employee_advance_expenses(conn)
         await _migrate_employee_advance_void_columns(conn)
+        await _migrate_employee_advance_funding(conn)
         await _migrate_fund_disbursements(conn)
         await _migrate_makeup_quota_column(conn)
         await _migrate_makeup_batches(conn)

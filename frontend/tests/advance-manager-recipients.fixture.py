@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'backend'))
 import pytest, uvicorn
 from sqlalchemy import event, select
-from tests.test_round3_permissions import hr_environment
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment
 from app.models import User, UserWarehouse, Employee
 from app.core.security import hash_password
 from app.main import app

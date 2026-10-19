@@ -32,6 +32,10 @@ class EmployeeAdvance(Base):
     half = Column(String(20), nullable=False, default="first_half")  # first_half / second_half
     source = Column(String(20), nullable=False, default="supervisor")  # supervisor / fund
     fund_account_id = Column(Integer, ForeignKey("expense_funds.id"), nullable=True)
+    # NULL 保留旧记录，不推断旧付款账户或补记资金。
+    funding_source = Column(String(20), nullable=True)  # company_account / cash_advance / expense_fund
+    cash_advance_id = Column(Integer, ForeignKey("cash_advances.id"), nullable=True)
+    payment_account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=True)
     remark = Column(String(500), nullable=True)
     operator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     deducted_amount = Column(Float, default=0)

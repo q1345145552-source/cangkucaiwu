@@ -14,6 +14,7 @@ from app.models.payroll import PayrollRecord
 from app.models.income_expense import ExpenseRecord
 from app.models.reimbursement_payment import ReimbursementPayment
 from app.models.expense_fund import ExpenseFundDisbursement
+from app.models.employee_advance import EmployeeAdvance
 
 _PERMISSION = MENU_PERMISSIONS_BY_KEY["accounts"].label
 
@@ -65,6 +66,10 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
     if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能修改自己仓库的账户")
     if req.currency.upper() != (a.currency or "THB").upper():
+        if (await db.execute(select(EmployeeAdvance.id).where(
+            EmployeeAdvance.payment_account_id == a.id,
+        ).limit(1))).first():
+            raise HTTPException(400, "该账户有关联员工预支记录，不能修改币种")
         active_repayment = (await db.execute(select(CashAdvanceRepayment.id).where(
             CashAdvanceRepayment.account_id == a.id, CashAdvanceRepayment.status == "active",
         ).limit(1))).first()
@@ -110,6 +115,8 @@ async def delete_account(account_id: int, current_user: User = Depends(check_sta
     if not a: raise HTTPException(404, "账户不存在")
     if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能删除自己仓库的账户")
+    if (await db.execute(select(EmployeeAdvance.id).where(EmployeeAdvance.payment_account_id == a.id).limit(1))).first():
+        raise HTTPException(400, "该账户有关联员工预支记录，不能删除，请停用")
     if (await db.execute(select(CashAdvanceRepayment.id).where(CashAdvanceRepayment.account_id == a.id).limit(1))).first():
         raise HTTPException(400, "该账户有关联的垫款归还记录，不能删除，请停用")
     if (await db.execute(select(ReimbursementPayment.id).where(ReimbursementPayment.payment_account_id == a.id).limit(1))).first():

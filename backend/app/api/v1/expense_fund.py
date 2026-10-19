@@ -460,6 +460,13 @@ async def batch_review(
         fund_wh = (await db.execute(select(ExpenseFund.warehouse_id).where(ExpenseFund.id == item.fund_id))).scalar_one_or_none()
         if fund_wh is None or fund_wh not in wh_ids:
             continue
+        # 新预支的资金事实只能随预支作废撤回，不能从开销审核绕过预支权限。
+        from app.models.employee_advance import EmployeeAdvance
+        if (await db.execute(select(EmployeeAdvance.id).where(
+            EmployeeAdvance.fund_item_id == item_id, EmployeeAdvance.funding_source == "expense_fund",
+            EmployeeAdvance.not_voided(),
+        ).limit(1))).first():
+            raise HTTPException(400, "员工预支关联开销请在员工预支中处理")
         # 与报销付款/撤销按相同顺序锁行；原扣款、退款金额和审批规则不变。
         linked_reimb = None
         if item.category == "报销":

@@ -1,6 +1,6 @@
 from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount
 from app.services.cash_advance_payroll import lock_payroll_advance, payroll_usage_totals, usage_amounts, PAYROLL_CURRENCY
-from app.services.cash_advance_usage import reimbursement_usage_totals
+from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
@@ -1652,11 +1652,12 @@ async def payroll_cash_advance_sources(
     ).order_by(CashAdvance.advance_date.desc(), CashAdvance.id.desc()))).scalars().all()
     used = await payroll_usage_totals(db, advances)
     other = await reimbursement_usage_totals(db, advances)
+    employee_advances = await employee_advance_usage_totals(db, advances)
     return {"currency": PAYROLL_CURRENCY, "data": [{
         "id": a.id, "payer_name": a.payer_name, "advance_date": a.advance_date.isoformat(),
         "amount": float(a.amount), "currency": a.currency,
         "outstanding_amount": float(a.amount - a.repaid_amount),
-        **usage_amounts(a, used[a.id], other[a.id]),
+        **usage_amounts(a, used[a.id], other[a.id], employee_advances[a.id]),
     } for a in advances]}
 
 

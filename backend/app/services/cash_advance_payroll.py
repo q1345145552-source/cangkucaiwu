@@ -29,14 +29,15 @@ async def payroll_usage_totals(db, advances):
     return totals
 
 
-def usage_amounts(advance, used, reimbursement_used=Decimal("0")):
+def usage_amounts(advance, used, reimbursement_used=Decimal("0"), employee_advance_used=Decimal("0")):
     outstanding = max(advance.amount - advance.repaid_amount, Decimal("0"))
     unused = max(advance.amount - used, Decimal("0"))
-    available = max(min(outstanding, advance.amount - used - reimbursement_used), Decimal("0"))
+    available = max(min(outstanding, advance.amount - used - reimbursement_used - employee_advance_used), Decimal("0"))
     return {
         "payroll_used_amount": float(used),
         "payroll_unused_amount": float(unused),
-        "reimbursement_used_amount": float(reimbursement_used), "total_used_amount": float(used + reimbursement_used),
+        "reimbursement_used_amount": float(reimbursement_used), "employee_advance_used_amount": float(employee_advance_used),
+        "total_used_amount": float(used + reimbursement_used + employee_advance_used),
         "available_amount": float(available) if advance.status == "confirmed" else 0.0,
         "payroll_available_amount": float(available) if advance.status == "confirmed" and advance.currency == PAYROLL_CURRENCY else 0.0,
     }
@@ -51,9 +52,10 @@ async def payroll_usage(db, advance):
         PayrollRecord.disbursed.is_(True), PayrollRecord.voided.is_not(True),
     ).order_by(PayrollRecord.id.desc()))).all()
     used = sum((Decimal(str(r.net_pay)).quantize(Decimal("0.01")) for r, _ in rows), Decimal("0.00"))
-    from app.services.cash_advance_usage import reimbursement_usage_totals
+    from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
     other = (await reimbursement_usage_totals(db, [advance]))[advance.id]
-    return {**usage_amounts(advance, used, other), "data": [{
+    advances = (await employee_advance_usage_totals(db, [advance]))[advance.id]
+    return {**usage_amounts(advance, used, other, advances), "data": [{
         "payroll_record_id": r.id, "employee_name": name or "", "period": r.period,
         "settle_start_date": r.settle_start_date.isoformat() if r.settle_start_date else None,
         "settle_end_date": r.settle_end_date.isoformat() if r.settle_end_date else None,
@@ -79,8 +81,9 @@ async def lock_payroll_advance(db, warehouse_id, advance_id, records):
     if total > advance.amount - advance.repaid_amount:
         raise HTTPException(400, "垫款单剩余金额不足")
     used = (await payroll_usage_totals(db, [advance]))[advance.id]
-    from app.services.cash_advance_usage import reimbursement_usage_totals
+    from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
     other = (await reimbursement_usage_totals(db, [advance]))[advance.id]
-    if total > advance.amount - used - other:
+    advances = (await employee_advance_usage_totals(db, [advance]))[advance.id]
+    if total > advance.amount - used - other - advances:
         raise HTTPException(400, "垫款单剩余金额不足")
     return advance

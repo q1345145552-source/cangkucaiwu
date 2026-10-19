@@ -12,7 +12,7 @@ function todayStr(): string {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
 
-const SOURCE_LABELS: Record<string, string> = { supervisor: "主管垫付", fund: "备用金" };
+const SOURCE_LABELS: Record<string, string> = { company_account: "公司账户", cash_advance: "垫款单", expense_fund: "备用金" };
 const STATUS_LABELS: Record<string, string> = { unpaid: "待结算", partial: "部分结清", deducted: "已随工资结清", voided: "已作废" };
 
 export default function EmployeeAdvancePage() {
@@ -24,9 +24,14 @@ export default function EmployeeAdvancePage() {
   const [recipients, setRecipients] = useState<any[]>([]);
   const [recipient, setRecipient] = useState("");
   const [fundAccounts, setFundAccounts] = useState<any[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
+  const [cashAdvances, setCashAdvances] = useState<any[]>([]);
+  const [fundingLoading, setFundingLoading] = useState(false);
+  const [fundingError, setFundingError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ employee_id: 0, amount: "", advance_date: todayStr(), source: "supervisor", fund_account_id: 0, remark: "" });
+  const [form, setForm] = useState({ employee_id: 0, amount: "", advance_date: todayStr(), funding_source: "", payment_account_id: 0, cash_advance_id: 0, currency: "THB", fund_account_id: 0, remark: "" });
   const [filterEmp, setFilterEmp] = useState(0);
   const [filterPeriod, setFilterPeriod] = useState("");
 
@@ -80,16 +85,45 @@ export default function EmployeeAdvancePage() {
       setRecipients(rr.data || []);
       const er = await api.get<any>("/employees?page_size=200&active_only=true");
       setEmployees(er.data || []);
-      const fr = await api.get<any>("/expense-fund/accounts");
-      setFundAccounts(fr.data || []);
+      await loadFundingOptions();
     } catch {}
   }
 
+  async function loadFundingOptions() {
+    setFundingLoading(true); setFundingError("");
+    try {
+      const r = await api.get<any>("/employee-advances/funding-options");
+      setPaymentAccounts(r.accounts || []); setCashAdvances(r.cash_advances || []); setFundAccounts(r.funds || []);
+    } catch (err: any) {
+      setPaymentAccounts([]); setCashAdvances([]); setFundAccounts([]);
+      setFundingError(err.message || "加载资金来源失败");
+    } finally { setFundingLoading(false); }
+  }
+
+  function chooseFunding(source: string, currency = form.currency) {
+    const accounts = paymentAccounts.filter(a => a.currency === currency);
+    const preferred = accounts.find(a => a.account_type === "cash" || a.account_name.includes("现金")) || accounts[0];
+    const fund = fundAccounts.find(a => a.currency === currency);
+    setForm({ ...form, funding_source: source, currency,
+      payment_account_id: source === "company_account" ? preferred?.id || 0 : 0,
+      cash_advance_id: 0, fund_account_id: source === "expense_fund" ? fund?.id || 0 : 0 });
+  }
+
   async function handleCreate() {
+    if (saving) return;
+    if (!form.funding_source) { toast("error", "请选择资金来源"); return; }
+    if (fundingLoading || fundingError) { toast("error", fundingError || "资金来源加载中，请稍候"); return; }
     if (!recipient) { toast("error", "请选择员工"); return; }
     const amt = parseFloat(form.amount);
     if (!amt || amt <= 0) { toast("error", "请填写预支金额"); return; }
-    if (form.source === "fund" && !form.fund_account_id) { toast("error", "请选择备用金账户"); return; }
+    const selected = form.funding_source === "company_account" ? paymentAccounts.find(a => a.id === form.payment_account_id)
+      : form.funding_source === "cash_advance" ? cashAdvances.find(a => a.id === form.cash_advance_id)
+      : fundAccounts.find(a => a.id === form.fund_account_id);
+    if (!selected) { toast("error", form.funding_source === "company_account" ? "请选择公司付款账户" : form.funding_source === "cash_advance" ? "请选择垫款单" : "请选择备用金账户"); return; }
+    if (selected.currency !== form.currency) { toast("error", "资金来源币种与预支不一致"); return; }
+    const available = form.funding_source === "company_account" ? selected.current_balance : form.funding_source === "cash_advance" ? selected.available_amount : selected.available;
+    if (amt > available) { toast("error", form.funding_source === "company_account" ? "公司账户余额不足" : form.funding_source === "cash_advance" ? "垫款单剩余金额不足" : "超出备用金可用余额"); return; }
+    setSaving(true);
     try {
       const [kind, id] = recipient.split(":");
       const result = await api.post<{ message?: string }>("/employee-advances", { ...form, amount: amt,
@@ -100,9 +134,10 @@ export default function EmployeeAdvancePage() {
       setShowForm(false);
       setRecipient("");
       loadRefs();
-      setForm({ employee_id: 0, amount: "", advance_date: todayStr(), source: "supervisor", fund_account_id: 0, remark: "" });
+      setForm({ employee_id: 0, amount: "", advance_date: todayStr(), funding_source: "", payment_account_id: 0, cash_advance_id: 0, currency: "THB", fund_account_id: 0, remark: "" });
       load();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
+    finally { setSaving(false); }
   }
 
   async function handleVoid() {
@@ -124,7 +159,7 @@ export default function EmployeeAdvancePage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><DollarSign size={24}/>员工预支</h1>
-        {canWrite && (<button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+        {canWrite && (<button onClick={() => { setShowForm(true); void loadFundingOptions(); }} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
           <Plus size={16}/> 记预支
         </button>)}
       </div>
@@ -209,7 +244,7 @@ export default function EmployeeAdvancePage() {
                       {r.is_voided ? "已作废" : STATUS_LABELS[r.status] || r.status}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center">{SOURCE_LABELS[r.source] || r.source}</td>
+                  <td className="px-3 py-3 text-center">{r.funding_source_label || SOURCE_LABELS[r.funding_source || "company_account"]}</td>
                   <td className="px-3 py-3 text-center whitespace-nowrap">{r.approval_status_label || r.approval_status}</td>
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-gray-500 max-w-32 truncate" title={r.remark}>{r.remark || "-"}</td>
@@ -252,12 +287,52 @@ export default function EmployeeAdvancePage() {
       </div>}
       {/* 记预支弹窗 */}
       {canWrite && showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { if (!saving) setShowForm(false); }}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <DollarSign size={20} /><span className="font-semibold">记预支</span>
             </div>
             <div className="p-5 space-y-4">
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">资金来源</label>
+                <select aria-label="资金来源" disabled={fundingLoading || !!fundingError} className="form-input py-2.5 w-full" value={form.funding_source} onChange={e => chooseFunding(e.target.value)}>
+                  <option value="">请选择资金来源</option>
+                  <option value="company_account">公司账户</option><option value="cash_advance">垫款单</option><option value="expense_fund">备用金</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">币种</label>
+                <select aria-label="预支币种" className="form-input py-2.5 w-full" value={form.currency} onChange={e => chooseFunding(form.funding_source, e.target.value)}>
+                  <option value="THB">泰铢 THB</option><option value="CNY">人民币 CNY</option>
+                </select>
+              </div>
+              {fundingLoading && <p className="text-sm text-gray-500">资金来源加载中...</p>}
+              {fundingError && <div className="text-sm text-red-600">{fundingError}<button type="button" className="ml-2 underline" onClick={loadFundingOptions}>重试</button></div>}
+              {form.funding_source === "company_account" && <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">公司付款账户</label>
+                <select aria-label="公司付款账户" className="form-input py-2.5 w-full" value={form.payment_account_id || ""} onChange={e => setForm({ ...form, payment_account_id: +e.target.value })}>
+                  <option value="">请选择公司付款账户</option>
+                  {paymentAccounts.filter(a => a.currency === form.currency).map(a => <option key={a.id} value={a.id}>{a.account_name} · 可用 {a.current_balance.toLocaleString()} {a.currency}</option>)}
+                </select>
+                {!fundingLoading && !paymentAccounts.some(a => a.currency === form.currency) && <p className="text-sm text-amber-600 mt-1">还没有同币种的可用公司账户，请先到收款账户里建立</p>}
+              </div>}
+              {form.funding_source === "cash_advance" && <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">垫款单</label>
+                <select aria-label="垫款单" className="form-input py-2.5 w-full" value={form.cash_advance_id || ""} onChange={e => setForm({ ...form, cash_advance_id: +e.target.value })}>
+                  <option value="">请选择已确认的垫款单</option>
+                  {cashAdvances.filter(a => a.currency === form.currency).map(a => <option key={a.id} value={a.id}>#{a.id} {a.payer_name} · 剩余可用 {a.available_amount.toLocaleString()} {a.currency}</option>)}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">使用垫款额度，公司账户不扣款，本次不记运营支出</p>
+              </div>}
+              {form.funding_source === "expense_fund" && <div>
+                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">备用金账户</label>
+                <select aria-label="备用金账户" className="form-input py-2.5 w-full" value={form.fund_account_id || ""} onChange={e => setForm({ ...form, fund_account_id: +e.target.value })}>
+                  <option value="">请选择备用金账户</option>
+                  {fundAccounts.filter(a => a.currency === form.currency).map(a => <option key={a.id} value={a.id}>{a.employee_name || `账户${a.id}`} · 可用 {a.available.toLocaleString()} {a.currency}</option>)}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">本仓备用金可用余额 {fundAccounts.filter(a => a.currency === form.currency).reduce((sum, a) => sum + a.available, 0).toLocaleString()} {form.currency}；本次只记备用金开销，不重复记运营支出</p>
+              </div>}
+              <p className="text-xs text-gray-500">待审批的预支，在老板审批通过后扣款或占用垫款额度</p>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">员工</label>
                 <select className="form-input py-2.5 w-full" aria-label="预支对象" value={recipient} onChange={e => setRecipient(e.target.value)}>
@@ -274,29 +349,13 @@ export default function EmployeeAdvancePage() {
                 <input type="date" className="form-input py-2.5 w-full" value={form.advance_date} onChange={e => setForm({ ...form, advance_date: e.target.value })} />
               </div>
               <div>
-                <label className="form-label text-sm font-medium text-gray-600 mb-1 block">来源</label>
-                <select className="form-input py-2.5 w-full" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}>
-                  <option value="supervisor">主管垫付</option>
-                  <option value="fund">备用金</option>
-                </select>
-              </div>
-              {form.source === "fund" && (
-                <div>
-                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">备用金账户</label>
-                  <select className="form-input py-2.5 w-full" value={form.fund_account_id || ""} onChange={e => setForm({ ...form, fund_account_id: +e.target.value })}>
-                    <option value="">请选择账户</option>
-                    {fundAccounts.map((f: any) => <option key={f.id} value={f.id}>{f.employee_name || `账户${f.id}`} ({f.currency || "THB"})</option>)}
-                  </select>
-                </div>
-              )}
-              <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">备注</label>
                 <input className="form-input py-2.5 w-full" value={form.remark} onChange={e => setForm({ ...form, remark: e.target.value })} placeholder="可选" />
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">提交</button>
+              <button disabled={saving} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button disabled={saving || fundingLoading || !!fundingError} onClick={handleCreate} className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{saving ? "提交中..." : "提交"}</button>
             </div>
           </div>
         </div>

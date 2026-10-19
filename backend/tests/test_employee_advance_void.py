@@ -18,14 +18,15 @@ import app.api.v1.payroll as payroll
 import app.services.employee_advance_expense as expenses
 from tests.test_employee_advance_expense import BODY, supervisor_self
 from tests.test_round2_permissions import auth, set_perms
-from tests.test_round3_permissions import hr_environment, snapshot
+from tests.test_round3_permissions import snapshot
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment, funding_body
 from tests.test_round18_advance_review import add, calculate, prepare_work, period_record
 
 BASE = "/api/v1/employee-advances"
 
 
 async def create(client, uid=1, **extra):
-    response = await client.post(BASE, headers=auth(uid), json={**BODY, **extra})
+    response = await client.post(BASE, headers=auth(uid), json=funding_body(BODY, extra))
     assert response.status_code == 200, response.text
     return response.json()
 

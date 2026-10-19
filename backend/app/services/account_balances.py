@@ -6,6 +6,7 @@ from app.models.income_expense import ExpenseRecord
 from app.models.payroll import PayrollRecord
 from app.models.reimbursement_payment import ReimbursementPayment
 from app.models.expense_fund import ExpenseFundDisbursement
+from app.models.employee_advance import EmployeeAdvance
 
 
 async def current_account_balances(db, accounts):
@@ -39,4 +40,12 @@ async def current_account_balances(db, accounts):
     ).group_by(ExpenseFundDisbursement.payment_account_id))).all()
     for account_id, amount in disbursements:
         amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount))
+    advances = (await db.execute(select(EmployeeAdvance.payment_account_id, func.sum(EmployeeAdvance.amount)).join(
+        ExpenseRecord, ExpenseRecord.id == EmployeeAdvance.expense_record_id,
+    ).where(EmployeeAdvance.payment_account_id.in_([a.id for a in accounts]),
+        EmployeeAdvance.funding_source == "company_account", EmployeeAdvance.approval_status == "approved",
+        EmployeeAdvance.not_voided(), ExpenseRecord.warehouse_id == EmployeeAdvance.warehouse_id,
+    ).group_by(EmployeeAdvance.payment_account_id))).all()
+    for account_id, amount in advances:
+        amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount)).quantize(Decimal("0.01"))
     return {a.id: Decimal(str(a.opening_balance or 0)) - Decimal(str(amounts.get(a.id) or 0)) for a in accounts}

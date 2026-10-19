@@ -1,0 +1,223 @@
+{
+  "before": {
+    "balance": 20000.0,
+    "expenses": 0,
+    "expense_amount": 0,
+    "fund_available": 10000.0,
+    "ledger_count": 2
+  },
+  "company": {
+    "balance": 19000.0,
+    "expenses": 1,
+    "expense_amount": 1000.0,
+    "fund_available": 10000.0,
+    "ledger_count": 3,
+    "cash_used": 0.0,
+    "cash_available": 10000.0,
+    "cash_outstanding": 10000.0,
+    "advances": [
+      {
+        "id": 1,
+        "amount": 1000.0,
+        "funding_source": "company_account",
+        "approval_status": "approved",
+        "expense_record_id": 1,
+        "payment_account_id": 1,
+        "cash_advance_id": null,
+        "fund_account_id": null
+      }
+    ]
+  },
+  "cash": {
+    "balance": 19000.0,
+    "expenses": 1,
+    "expense_amount": 1000.0,
+    "fund_available": 10000.0,
+    "ledger_count": 3,
+    "cash_used": 1000.0,
+    "cash_available": 9000.0,
+    "cash_outstanding": 10000.0,
+    "advances": [
+      {
+        "id": 2,
+        "amount": 1000.0,
+        "funding_source": "cash_advance",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": 1,
+        "fund_account_id": null
+      },
+      {
+        "id": 1,
+        "amount": 1000.0,
+        "funding_source": "company_account",
+        "approval_status": "approved",
+        "expense_record_id": 1,
+        "payment_account_id": 1,
+        "cash_advance_id": null,
+        "fund_account_id": null
+      }
+    ]
+  },
+  "fund": {
+    "balance": 19000.0,
+    "expenses": 1,
+    "expense_amount": 1000.0,
+    "fund_available": 9000.0,
+    "ledger_count": 3,
+    "cash_used": 1000.0,
+    "cash_available": 9000.0,
+    "cash_outstanding": 10000.0,
+    "advances": [
+      {
+        "id": 3,
+        "amount": 1000.0,
+        "funding_source": "expense_fund",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": null,
+        "fund_account_id": 1
+      },
+      {
+        "id": 2,
+        "amount": 1000.0,
+        "funding_source": "cash_advance",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": 1,
+        "fund_account_id": null
+      },
+      {
+        "id": 1,
+        "amount": 1000.0,
+        "funding_source": "company_account",
+        "approval_status": "approved",
+        "expense_record_id": 1,
+        "payment_account_id": 1,
+        "cash_advance_id": null,
+        "fund_account_id": null
+      }
+    ]
+  },
+  "denials": [
+    {
+      "status": 400,
+      "detail": "垫款单剩余金额不足"
+    },
+    {
+      "status": 400,
+      "detail": "垫款单币种与预支不一致"
+    },
+    {
+      "status": 400,
+      "detail": "请选择资金来源"
+    }
+  ],
+  "pending": {
+    "balance": 19000.0,
+    "expenses": 1,
+    "expense_amount": 1000.0,
+    "fund_available": 9000.0,
+    "ledger_count": 3,
+    "cash_used": 1000.0,
+    "cash_available": 9000.0,
+    "cash_outstanding": 10000.0,
+    "advances": [
+      {
+        "id": 4,
+        "amount": 1000.0,
+        "funding_source": "cash_advance",
+        "approval_status": "pending",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": 1,
+        "fund_account_id": null
+      },
+      {
+        "id": 3,
+        "amount": 1000.0,
+        "funding_source": "expense_fund",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": null,
+        "fund_account_id": 1
+      },
+      {
+        "id": 2,
+        "amount": 1000.0,
+        "funding_source": "cash_advance",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": 1,
+        "fund_account_id": null
+      },
+      {
+        "id": 1,
+        "amount": 1000.0,
+        "funding_source": "company_account",
+        "approval_status": "approved",
+        "expense_record_id": 1,
+        "payment_account_id": 1,
+        "cash_advance_id": null,
+        "fund_account_id": null
+      }
+    ]
+  },
+  "approved": {
+    "balance": 19000.0,
+    "expenses": 1,
+    "expense_amount": 1000.0,
+    "fund_available": 9000.0,
+    "ledger_count": 3,
+    "cash_used": 2000.0,
+    "cash_available": 8000.0,
+    "cash_outstanding": 10000.0,
+    "advances": [
+      {
+        "id": 4,
+        "amount": 1000.0,
+        "funding_source": "cash_advance",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": 1,
+        "fund_account_id": null
+      },
+      {
+        "id": 3,
+        "amount": 1000.0,
+        "funding_source": "expense_fund",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": null,
+        "fund_account_id": 1
+      },
+      {
+        "id": 2,
+        "amount": 1000.0,
+        "funding_source": "cash_advance",
+        "approval_status": "approved",
+        "expense_record_id": null,
+        "payment_account_id": null,
+        "cash_advance_id": 1,
+        "fund_account_id": null
+      },
+      {
+        "id": 1,
+        "amount": 1000.0,
+        "funding_source": "company_account",
+        "approval_status": "approved",
+        "expense_record_id": 1,
+        "payment_account_id": 1,
+        "cash_advance_id": null,
+        "fund_account_id": null
+      }
+    ]
+  }
+}

@@ -1,24 +1,23 @@
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from app.database import get_db
 from app.models.employee_advance import EmployeeAdvance, AdvanceApprovalStatus, ADVANCE_APPROVAL_LABELS
 from app.services.attendance_population import employee_account_roles
 from app.models.employee import Employee
 from app.models.user import User
-from app.models.expense_fund import ExpenseFund, ExpenseFundItem, ReviewStatus
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
-from app.core.timezone import thai_now, thai_today
-from app.services.flow_rules import fund_available
+from app.core.timezone import thai_now
 from app.services.data_history import record_history
-from app.services.employee_advance_expense import create_advance_expense, delete_advance_expense
+from app.services.employee_advance_expense import delete_advance_expense
 from app.services.employee_advance_limit import check_advance_limit
+from app.services.employee_advance_funding import SOURCES, apply_advance_funding, validate_funding, funding_options
 from math import isfinite
 from pydantic import BaseModel
-from datetime import datetime, date
-from typing import Optional, List, Literal
+from datetime import datetime
+from typing import Optional, Literal
 import json
 
 router = APIRouter()
@@ -32,6 +31,11 @@ def _approval_fields(advance):
         "reviewed_at": advance.reviewed_at.isoformat() if advance.reviewed_at else None,
         "reject_reason": advance.reject_reason,
         "expense_record_id": advance.expense_record_id,
+        "funding_source": advance.funding_source,
+        "funding_source_label": SOURCES.get(advance.funding_source or "company_account", advance.funding_source),
+        "cash_advance_id": advance.cash_advance_id,
+        "payment_account_id": advance.payment_account_id,
+        "fund_account_id": advance.fund_account_id,
     }
 
 
@@ -46,7 +50,11 @@ class AdvanceCreate(BaseModel):
     user_id: Optional[int] = None
     amount: float
     advance_date: str  # YYYY-MM-DD
-    source: str  # supervisor / fund
+    source: Optional[str] = None  # 保留原字段；新单必须另外选择 funding_source
+    funding_source: Optional[str] = None
+    payment_account_id: Optional[int] = None
+    cash_advance_id: Optional[int] = None
+    currency: Optional[Literal["THB", "CNY"]] = None
     fund_account_id: Optional[int] = None
     remark: Optional[str] = None
 
@@ -91,19 +99,9 @@ async def create_advance(
     period = adv_dt.strftime("%Y-%m")
     half = "first_half" if adv_dt.day <= 15 else "second_half"
 
-    currency = "THB"
-    fund_account = None
-    if req.source == "fund":
-        if not req.fund_account_id:
-            raise HTTPException(400, "请选择备用金账户")
-        fund_account = (await db.execute(
-            select(ExpenseFund).where(ExpenseFund.id == req.fund_account_id, ExpenseFund.warehouse_id == wh_id)
-        )).scalar_one_or_none()
-        if not fund_account:
-            raise HTTPException(404, "备用金账户不存在")
-        currency = fund_account.currency or "THB"
-    elif req.source not in ("supervisor", "fund"):
-        raise HTTPException(400, "预支来源无效")
+    currency, _ = await validate_funding(db, req.funding_source, wh_id, req.amount,
+        currency=req.currency, payment_account_id=req.payment_account_id,
+        cash_advance_id=req.cash_advance_id, fund_account_id=req.fund_account_id)
 
     limit_check = await check_advance_limit(db, emp, req.amount, currency, adv_dt)
 
@@ -122,8 +120,11 @@ async def create_advance(
         advance_date=adv_dt,
         period=period,
         half=half,
-        source=req.source,
-        fund_account_id=req.fund_account_id if req.source == "fund" else None,
+        source="fund" if req.funding_source == "expense_fund" else "supervisor",
+        funding_source=req.funding_source,
+        payment_account_id=req.payment_account_id if req.funding_source == "company_account" else None,
+        cash_advance_id=req.cash_advance_id if req.funding_source == "cash_advance" else None,
+        fund_account_id=req.fund_account_id if req.funding_source == "expense_fund" else None,
         remark=req.remark,
         operator_id=current_user.id,
         deducted_amount=0,
@@ -134,37 +135,25 @@ async def create_advance(
     db.add(adv)
     await db.flush()
 
-    # 备用金联动：来源选备用金账户时，自动记一笔开销
-    if req.source == "fund" and fund_account:
-        spent_regular = float((await db.execute(
-            select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
-                ExpenseFundItem.fund_id == fund_account.id,
-                ExpenseFundItem.category != "报销",
-                ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
-            )
-        )).scalar() or 0)
-        available = fund_available(fund_account.remaining_balance, spent_regular)
-        if req.amount > available:
-            raise HTTPException(400, f"超出备用金可用余额（可用 {available:,.2f}）")
-        fund_item = ExpenseFundItem(
-            fund_id=fund_account.id,
-            expense_date=datetime.combine(adv_dt, datetime.min.time()),
-            category="预支工资",
-            amount=req.amount,
-            currency=currency,
-            description=f"预支工资 {emp.name}",
-            review_status=ReviewStatus.APPROVED.value,
-        )
-        db.add(fund_item)
-        await db.flush()
-        adv.fund_item_id = fund_item.id
-
-    await create_advance_expense(db, adv, current_user)
+    await apply_advance_funding(db, adv, current_user)
 
     message = "预支记录已创建"
     if limit_check.get("warning"):
         message += "；" + limit_check["warning"]
     return {"message": message, "id": adv.id, **_approval_fields(adv), "limit_check": limit_check}
+
+
+@router.get("/funding-options")
+async def list_funding_options(
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无此操作权限")
+    wh_id = get_wh_id(current_user)
+    if not wh_id:
+        raise HTTPException(400, "请先选择仓库")
+    return await funding_options(db, wh_id)
 
 
 @router.get("/recipients")
@@ -422,7 +411,7 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
     advance.reviewed_at = thai_now()
     advance.reject_reason = reason if action == "reject" else None
     if action == "approve":
-        await create_advance_expense(db, advance, current_user)
+        await apply_advance_funding(db, advance, current_user)
     await record_history(db, module="employee_advances", record_id=advance.id,
         operator=current_user, operation_type=action, before=before,
         after={"amount": advance.amount, **_approval_fields(advance)}, warehouse_id=wh_id)

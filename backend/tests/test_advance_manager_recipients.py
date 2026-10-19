@@ -13,7 +13,8 @@ from app.models.data_change_history import DataChangeHistory
 import app.api.v1.payroll as payroll
 import app.services.advance_recipients as recipients
 from tests.test_round2_permissions import auth, set_perms
-from tests.test_round3_permissions import hr_environment, snapshot
+from tests.test_round3_permissions import snapshot
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment, funding_body
 from tests.test_round15_employee_self import enable
 
 async def options(c, uid=1):
@@ -23,7 +24,7 @@ async def options(c, uid=1):
 
 async def create(c, *, uid=1, **target):
     return await c.post('/api/v1/employee-advances', headers=auth(uid), json={
-        'amount': 100, 'advance_date': '2026-10-16', 'source': 'supervisor', **target,
+        'amount': 100, 'advance_date': '2026-10-16', 'funding_source': 'company_account', 'payment_account_id': 1, **target,
     })
 
 async def employee_count(factory):
@@ -126,8 +127,8 @@ def test_rejected_targets_and_rollback(tmp_path,monkeypatch,invalid):
                 async with f() as db:(await db.get(User,4)).is_active=False;await db.commit()
             if invalid=='both':target={'user_id':4,'employee_id':1}
             if invalid=='neither':target={}
-            if invalid=='bad_source':target['source']='invalid'
-            if invalid=='bad_fund':target.update(source='fund',fund_account_id=999)
+            if invalid=='bad_source':target['funding_source']='invalid'
+            if invalid=='bad_fund':target.update(funding_source='expense_fund',fund_account_id=999)
             before=await employee_count(f)
             r=await create(c,**target);assert r.status_code in (400,404,409),r.text
             assert await employee_count(f)==before
@@ -194,10 +195,10 @@ def test_unchanged_review_and_payroll_math():
     root=Path(__file__).resolve().parents[2]
     # 允许后续已授权的工资资金来源和预支支出联动；工资计算本身仍严格比较。
     funding_changes = {'list_payroll', 'batch_disburse_payroll', 'disburse_payroll', 'revoke_disbursement', '_disbursement_funding', 'payroll_cash_advance_sources'}
-    for name,changed in [('employee_advance',{'create_advance','list_advance_recipients','_approval_fields','delete_advance','_review_advance','_void_fields','_advance_voider','list_advances','advance_summary','my_debt'}),('payroll',{'_prepare_payroll'} | funding_changes)]:
+    for name,changed in [('employee_advance',{'create_advance','list_funding_options','list_advance_recipients','_approval_fields','delete_advance','_review_advance','_void_fields','_advance_voider','list_advances','advance_summary','my_debt'}),('payroll',{'_prepare_payroll'} | funding_changes)]:
         path=f'backend/app/api/v1/{name}.py'
         def funcs(s):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-        before=funcs(subprocess.check_output(['git','show','cbaddcb:'+path],cwd=root,text=True));after=funcs(without_advance_void_query((root/path).read_text()))
+        before=funcs(subprocess.check_output(['git','show','3e19093:'+path],cwd=root,text=True));after=funcs((root/path).read_text())
         assert {k:v for k,v in before.items() if k not in changed}=={k:v for k,v in after.items() if k not in changed}
 
 

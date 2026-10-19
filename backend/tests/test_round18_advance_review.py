@@ -12,7 +12,8 @@ from app.models.data_change_history import DataChangeHistory
 import app.api.v1.employee_advance as advance_api
 import app.api.v1.payroll as payroll
 from tests.test_round2_permissions import auth,set_perms
-from tests.test_round3_permissions import hr_environment,snapshot
+from tests.test_round3_permissions import snapshot
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment
 
 async def add(factory,status='pending',amount=100,wid=1,eid=1):
  async with factory() as db:
@@ -186,7 +187,7 @@ def test_supervisor_self_advance_end_to_end(tmp_path,monkeypatch):
      for session,hour in ((1,9),(2,12),(3,13),(4,18)):
       db.add(ClockInRecord(user_id=4,warehouse_id=1,clock_date=date(2026,10,day),session=session,clocked_in_at=datetime(2026,10,day,hour),status='normal'))
     await db.commit()
-   r=await c.post('/api/v1/employee-advances',headers=auth(4),json={'employee_id':1,'amount':100,'advance_date':'2026-10-16','source':'supervisor'})
+   r=await c.post('/api/v1/employee-advances',headers=auth(4),json={'employee_id':1,'amount':100,'advance_date':'2026-10-16','funding_source':'company_account','payment_account_id':1})
    assert r.status_code==200 and r.json()['approval_status']=='pending',r.text
    aid=r.json()['id'];await calculate(c);first=await period_record(factory)
    assert first.net_pay==800 and first.advance_deduction==0

@@ -19,7 +19,8 @@ from app.services.employee_advance_limit import monthly_salary_standard
 import app.api.v1.payroll as payroll
 from tests.test_employee_advance_expense import BODY, supervisor_self
 from tests.test_round2_permissions import auth
-from tests.test_round3_permissions import hr_environment, snapshot
+from tests.test_round3_permissions import snapshot
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment, funding_body
 from tests.test_round18_advance_review import add, calculate, period_record, prepare_work
 
 BASE = "/api/v1/employee-advances"
@@ -33,7 +34,7 @@ async def salary(factory, kind="monthly", amount=10000):
 
 
 async def create(client, amount, uid=1, **extra):
-    return await client.post(BASE, headers=auth(uid), json={**BODY, "amount": amount, **extra})
+    return await client.post(BASE, headers=auth(uid), json=funding_body(BODY, {"amount": amount, **extra}))
 
 
 async def advances_and_costs(factory):

@@ -19,6 +19,10 @@ interface ReimbursementUsage {
   reimbursement_used_amount: number;
   data: { payment_id: number; reimbursement_id: number; employee_name: string; amount: number; currency: string; paid_at: string; paid_by_name: string }[];
 }
+interface EmployeeAdvanceUsage {
+  employee_advance_used_amount: number;
+  data: { employee_advance_id: number; employee_name: string; amount: number; currency: string; advance_date: string }[];
+}
 const money = (value: number) => value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const time = (value: string) => new Date(value).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok", hour12: false });
 
@@ -30,13 +34,15 @@ export default function CashAdvanceRepaymentHistory({ advance, canRevoke, onClos
   const [loan, setLoan] = useState(advance);
   const [payrollUsage, setPayrollUsage] = useState<PayrollUsage | null>(null);
   const [reimbursementUsage, setReimbursementUsage] = useState<ReimbursementUsage | null>(null);
+  const [employeeAdvanceUsage, setEmployeeAdvanceUsage] = useState<EmployeeAdvanceUsage | null>(null);
   async function load() {
     setLoading(true); setError("");
     try {
-      const result = await api.get<{ data: Repayment[]; advance: RepaymentAdvance; active_count: number; payroll_usage?: PayrollUsage; reimbursement_usage?: ReimbursementUsage }>(`/cash-advances/${advance.id}/repayments`);
+      const result = await api.get<{ data: Repayment[]; advance: RepaymentAdvance; active_count: number; payroll_usage?: PayrollUsage; reimbursement_usage?: ReimbursementUsage; employee_advance_usage?: EmployeeAdvanceUsage }>(`/cash-advances/${advance.id}/repayments`);
       setRows(result.data); setLoan(result.advance); setActiveCount(result.active_count);
       setPayrollUsage(result.payroll_usage || null);
       setReimbursementUsage(result.reimbursement_usage || null);
+      setEmployeeAdvanceUsage(result.employee_advance_usage || null);
     } catch (err: any) { setError(err.message || "归还记录加载失败"); }
     finally { setLoading(false); }
   }
@@ -67,10 +73,16 @@ export default function CashAdvanceRepaymentHistory({ advance, canRevoke, onClos
         </section>}
         {!loading && !error && reimbursementUsage && <section className="border rounded-lg p-3 space-y-2 text-sm" aria-label="报销使用记录">
           <h3 className="font-semibold">已用于报销 {money(reimbursementUsage.reimbursement_used_amount)} {loan.currency}</h3>
-          <p className="text-xs text-gray-500">工资和报销共用可用额度，使用垫款不减少剩余未还。</p>
+          <p className="text-xs text-gray-500">工资、报销和预支共用可用额度，使用垫款不减少剩余未还。</p>
           {!reimbursementUsage.data.length ? <p className="text-gray-500">暂无报销使用记录</p> : reimbursementUsage.data.map(row => <div key={row.payment_id} className="border-t pt-2 space-y-1">
             <p>报销单 #{row.reimbursement_id} · {row.employee_name} · {money(row.amount)} {row.currency}</p>
             <p className="text-xs text-gray-500">{row.paid_by_name} · {time(row.paid_at)}</p>
+          </div>)}
+        </section>}
+        {!loading && !error && !!employeeAdvanceUsage?.data.length && <section className="border rounded-lg p-3 space-y-2 text-sm" aria-label="员工预支使用记录">
+          <h3 className="font-semibold">已用于员工预支 {money(employeeAdvanceUsage.employee_advance_used_amount)} {loan.currency}</h3>
+          {!employeeAdvanceUsage.data.length ? <p className="text-gray-500">暂无员工预支使用记录</p> : employeeAdvanceUsage.data.map(row => <div key={row.employee_advance_id} className="border-t pt-2">
+            <p>预支单 #{row.employee_advance_id} · {row.employee_name} · {money(row.amount)} {row.currency} · {row.advance_date}</p>
           </div>)}
         </section>}
         {loading ? <p>加载中...</p> : error ? <div><p className="text-red-600">{error}</p><button type="button" onClick={load} className="btn-secondary">重试</button></div> : !rows.length ? <p className="text-gray-500">暂无归还记录</p> : rows.map(row => <article key={row.id} className="border rounded-lg p-3 space-y-2 text-sm">

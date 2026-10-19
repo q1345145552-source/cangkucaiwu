@@ -15,7 +15,7 @@ interface Advance {
   reject_reason: string | null; created_by_name: string; created_at: string;
   reviewed_by_name: string | null; reviewed_at: string | null;
   payroll_used_amount: number; payroll_available_amount: number;
-  reimbursement_used_amount: number; available_amount: number;
+  reimbursement_used_amount: number; employee_advance_used_amount?: number; available_amount: number;
 }
 interface Payer { id: number; name: string; username: string; role: string }
 interface CurrencyAmount { currency: string; amount: number }
@@ -148,7 +148,7 @@ export default function CashAdvancesPage() {
           <td className="px-4 py-3">{row.advance_date}</td><td className="px-4 py-3">{row.payer_name}</td><td className="px-4 py-3">{money(row.amount)} {currencyName(row.currency)}</td><td className="px-4 py-3">{row.purpose_label}</td>
           <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${STATUS_STYLES[row.status]}`}>{row.status_label}</span>{row.reject_reason && <p className="whitespace-normal max-w-48 text-xs text-red-600 mt-2">{row.reject_reason}</p>}</td>
           <td className="px-4 py-3">{money(row.outstanding_amount)} {currencyName(row.currency)}</td>
-          <td className="px-4 py-3"><p>工资 {money(row.payroll_used_amount || 0)} · 报销 {money(row.reimbursement_used_amount || 0)} {currencyName(row.currency)}</p><p className="text-xs text-gray-500 mt-1">可用 {money(row.available_amount || 0)}</p></td>
+          <td className="px-4 py-3"><p>工资 {money(row.payroll_used_amount || 0)} · 报销 {money(row.reimbursement_used_amount || 0)} {currencyName(row.currency)}</p>{!!row.employee_advance_used_amount && <p>用于员工预支 {money(row.employee_advance_used_amount)} {currencyName(row.currency)}</p>}<p className="text-xs text-gray-500 mt-1">可用 {money(row.available_amount || 0)}</p></td>
           <td className="px-4 py-3"><p className="whitespace-normal max-w-56">{row.description || "—"}</p>{row.voucher_path && <a href={`/${row.voucher_path}`} onClick={event => event.stopPropagation()} target="_blank" rel="noreferrer" className="text-blue-600">查看凭证</a>}</td>
           <td className="px-4 py-3" onClick={event => event.stopPropagation()}><div className="flex gap-3">
             {canReview && row.status === "pending" && <><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></>}

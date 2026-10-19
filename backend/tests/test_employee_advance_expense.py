@@ -20,11 +20,12 @@ from app.models.payroll import PayrollRecord
 from app.services import employee_advance_expense as service
 from app.services import cost_funds_debt as report
 from tests.test_round2_permissions import auth, set_perms
-from tests.test_round3_permissions import hr_environment, snapshot
+from tests.test_round3_permissions import snapshot
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment, funding_body
 import app.api.v1.payroll as payroll
 
 BASE = "/api/v1/employee-advances"
-BODY = {"employee_id": 1, "amount": 1000, "advance_date": "2026-10-16", "source": "supervisor"}
+BODY = {"employee_id": 1, "amount": 1000, "advance_date": "2026-10-16", "source": "supervisor", "funding_source": "company_account", "payment_account_id": 1}
 
 
 async def expenses(f):
@@ -62,7 +63,7 @@ def test_self_pending_approve_once_and_payroll_never_writes_expense(tmp_path, mo
             eid = approved.json()["expense_record_id"]
             rows = await expenses(f)
             assert len(rows) == 1 and rows[0].id == eid and rows[0].amount == 1000
-            assert rows[0].warehouse_id == 1 and rows[0].currency == "THB" and rows[0].account_id is None
+            assert rows[0].warehouse_id == 1 and rows[0].currency == "THB" and rows[0].account_id == 1
             assert rows[0].expense_date == datetime(2026, 10, 16) and "员工1" in rows[0].remark and "预支" in rows[0].remark
             async with f() as db:
                 cat = await db.get(IncomeExpenseCategory, rows[0].category_id)
@@ -161,7 +162,7 @@ def test_legacy_approved_pending_rejected_never_backfilled(tmp_path, monkeypatch
 def test_delete_linked_cost_and_history_and_protect_manual_edits(tmp_path, monkeypatch, source):
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
-            body = {**BODY, "source": source}
+            body = funding_body(BODY, {"source": source})
             if source == "fund":
                 async with f() as db:
                     db.add(ExpenseFund(id=8, warehouse_id=1, employee_id=1, amount=5000, remaining_balance=5000,
@@ -171,11 +172,12 @@ def test_delete_linked_cost_and_history_and_protect_manual_edits(tmp_path, monke
             r = await c.post(BASE, headers=auth(1), json=body)
             assert r.status_code == 200, r.text
             aid, eid = r.json()["id"], r.json()["expense_record_id"]
-            denied = await c.delete(f"/api/v1/income-expense/expense/{eid}", headers=auth(1))
-            assert denied.status_code == 400 and denied.json()["detail"] == "预支联动支出请在员工预支模块处理"
-            denied = await c.put(f"/api/v1/income-expense/expense/{eid}", headers=auth(1), data={
-                "category_id": (await expenses(f))[0].category_id, "account_id": 1, "amount": 3000, "expense_date": "2026-10-16"})
-            assert denied.status_code == 400 and "预支联动支出" in denied.text
+            if source != "fund":
+                denied = await c.delete(f"/api/v1/income-expense/expense/{eid}", headers=auth(1))
+                assert denied.status_code == 400 and denied.json()["detail"] == "预支联动支出请在员工预支模块处理"
+                denied = await c.put(f"/api/v1/income-expense/expense/{eid}", headers=auth(1), data={
+                    "category_id": (await expenses(f))[0].category_id, "account_id": 1, "amount": 3000, "expense_date": "2026-10-16"})
+                assert denied.status_code == 400 and "预支联动支出" in denied.text
             removed = await c.request("DELETE", f"{BASE}/{aid}", headers=auth(1), json={"void_reason": "测试作废"})
             assert removed.status_code == 200, removed.text
             assert len(await expenses(f)) == 0
@@ -184,7 +186,7 @@ def test_delete_linked_cost_and_history_and_protect_manual_edits(tmp_path, monke
                 if source == "fund":
                     assert (await db.execute(select(func.count()).select_from(ExpenseFundItem))).scalar_one() == 0
                 logs = (await db.execute(select(DataChangeHistory).where(DataChangeHistory.module == "expense"))).scalars().all()
-                assert [r.operation_type for r in logs] == ["create", "delete"]
+                assert [r.operation_type for r in logs] == ([] if source == "fund" else ["create", "delete"])
                 assert all((r.after_data if r.operation_type == "create" else r.before_data)["employee_advance_id"] == aid for r in logs)
     asyncio.run(run())
 
@@ -195,7 +197,7 @@ def test_expense_failure_rolls_back_both_sides(tmp_path, monkeypatch, action, so
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
             aid = None
-            body = {**BODY, "source": source}
+            body = funding_body(BODY, {"source": source})
             if source == "fund":
                 async with f() as db:
                     db.add(ExpenseFund(id=8, warehouse_id=1, employee_id=1, amount=5000, remaining_balance=5000,
@@ -213,7 +215,12 @@ def test_expense_failure_rolls_back_both_sides(tmp_path, monkeypatch, action, so
             async def broken(db, **kwargs):
                 await db.flush()
                 raise HTTPException(500, "模拟支出日志失败")
-            monkeypatch.setattr(service, "record_history", broken)
+            if source == "fund":
+                import app.api.v1.employee_advance as advance_api
+                import app.services.employee_advance_funding as advance_funding
+                monkeypatch.setattr(advance_api if action == "delete" else advance_funding, "record_history", broken)
+            else:
+                monkeypatch.setattr(service, "record_history", broken)
             if action == "create": r = await c.post(BASE, headers=auth(1), json=body)
             elif action == "approve": r = await c.post(f"{BASE}/{aid}/approve", headers=auth(1))
             else: r = await c.request("DELETE", f"{BASE}/{aid}", headers=auth(1), json={"void_reason": "测试回滚"})
@@ -231,7 +238,7 @@ def test_expense_failure_rolls_back_both_sides(tmp_path, monkeypatch, action, so
     asyncio.run(run())
 
 
-def test_fund_advance_only_one_cost_preserves_currency_and_no_second_company_flow(tmp_path, monkeypatch):
+def test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow(tmp_path, monkeypatch):
     async def run():
         from app.models.recharge import ExchangeRate
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
@@ -242,22 +249,26 @@ def test_fund_advance_only_one_cost_preserves_currency_and_no_second_company_flo
                 db.add(ExchangeRate(warehouse_id=1, from_currency="CNY", to_currency="THB", rate=5,
                     effective_from=datetime(2026, 9, 30)))
                 await db.commit()
-            r = await c.post(BASE, headers=auth(4), json={**BODY, "source": "fund", "fund_account_id": 8})
+            r = await c.post(BASE, headers=auth(4), json=funding_body(BODY, {"source": "fund", "fund_account_id": 8}))
             assert r.status_code == 200 and r.json()["approval_status"] == "pending", r.text
             aid = r.json()["id"]
             async with f() as db:
                 a = await db.get(EmployeeAdvance, aid)
-                assert a.fund_item_id
+                assert a.fund_item_id is None
                 q = report.cost_query(db, [1])
                 assert not (await db.execute(select(q))).all()  # 未通过的也不能从备用金合并进成本。
             r = await c.post(f"{BASE}/{aid}/approve", headers=auth(1))
             assert r.status_code == 200, r.text
             rows = await expenses(f)
-            assert len(rows) == 1 and rows[0].currency == "CNY" and rows[0].amount == 1000
+            assert len(rows) == 0
+            async with f() as db:
+                a = await db.get(EmployeeAdvance, aid)
+                item = await db.get(ExpenseFundItem, a.fund_item_id)
+                assert item.currency == "CNY" and item.amount == 1000
             async with f() as db:
                 q = report.cost_query(db, [1])
                 costs = (await db.execute(select(q))).mappings().all()
-                # 第二轮钱包口径：原预支写入还在，新备用金用途不再进入成本合计。
+                # 资金来源轮：新备用金预支只记开销台账，不再生成成本记录。
                 assert costs == []
                 q = report.flow_query(db, [1])
                 flows = (await db.execute(select(q))).mappings().all()
@@ -269,9 +280,15 @@ def test_fund_advance_only_one_cost_preserves_currency_and_no_second_company_flo
 
 def test_payroll_frontend_and_unrelated_write_code_unchanged():
     root = Path(__file__).resolve().parents[2]
-    for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py",
-        "backend/app/api/v1/reimbursement.py"):
-        assert without_advance_void_query(without_disabled_gate((root / path).read_text())).encode() == subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root)
+    for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py", "backend/app/api/v1/reimbursement.py"):
+        old = subprocess.check_output(["git", "show", f"3e19093:{path}"], cwd=root).decode()
+        if path.endswith("/payroll.py"):
+            def funcs(text):
+                return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(text).body
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name != "payroll_cash_advance_sources"}
+            assert funcs((root / path).read_text()) == funcs(old)
+        else:
+            assert (root / path).read_text() == old
     # 两轮仅扩充联动行的只读说明，排版和其他交互保持原样。
     path = "frontend/src/app/(dashboard)/operating/page.tsx"
     old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()
