@@ -151,9 +151,10 @@ def test_batch_report_admin_all_fifteen_and_original_credit_rejection(tmp_path, 
 
 def test_guard_first_all_approved_routes_and_all_business_code_unchanged():
     from tests.test_non_labor_batch2_writes import CASES as BATCH2
+    from tests.test_non_labor_read_group1 import CASES as READ_GROUP1
     guarded=[r for r in app.routes if isinstance(r,APIRoute)
         and any(d.call is require_non_labor for d in r.dependant.dependencies)]
-    expected={(method,'/api/v1'+template) for method,template,_,_ in CASES+BATCH2}
+    expected={(method,'/api/v1'+template) for method,template,_,_ in CASES+BATCH2+READ_GROUP1}
     assert {(method,r.path) for r in guarded for method in r.methods}==expected
     for r in guarded:
         assert r.dependant.dependencies[0].call is require_non_labor

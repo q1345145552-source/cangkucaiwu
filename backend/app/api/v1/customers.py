@@ -13,7 +13,7 @@ _PERMISSION = MENU_PERMISSIONS_BY_KEY["customers"].label
 
 router = APIRouter()
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_non_labor)])
 async def list_customers(
     page: int = 1, page_size: int = 20, search: str = None,
     credit_status: str = None,
@@ -70,7 +70,7 @@ async def create_customer(req: CustomerCreate, current_user: User = Depends(chec
     c = Customer(warehouse_id=wh_id, **{k:v for k,v in req.model_dump().items() if k != "warehouse_id"})
     db.add(c); await db.flush(); return {"id": c.id, "message": "创建成功"}
 
-@router.get("/{customer_id}")
+@router.get("/{customer_id}", dependencies=[Depends(require_non_labor)])
 async def get_customer(customer_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
     c = result.scalar_one_or_none()

@@ -1,0 +1,304 @@
+{
+  "environment": "isolated SQLite; synthetic data; not production",
+  "labor": [
+    {
+      "method": "GET",
+      "path": "/api/v1/users",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/stats",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/pending-tasks",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/warehouse-summary",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/1",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/accounts",
+      "labor": {
+        "status": 403,
+        "body": {
+          "detail": "无权访问"
+        }
+      }
+    }
+  ],
+  "shared_page_results": [
+    {
+      "role": "supervisor",
+      "only_permission": "充值申报",
+      "page_status": 200,
+      "customer_status": 200,
+      "customer_options": [
+        {
+          "id": 1,
+          "name": "客户1",
+          "warehouse_id": 1
+        },
+        {
+          "id": 3,
+          "name": "客户3",
+          "warehouse_id": 1
+        }
+      ]
+    },
+    {
+      "role": "staff",
+      "only_permission": "运营收支",
+      "page_status": 200,
+      "accounts_status": 200,
+      "account_options": [
+        {
+          "id": 1,
+          "name": "账户1",
+          "warehouse_id": 1,
+          "current_balance": 10000.0
+        }
+      ]
+    },
+    {
+      "role": "supervisor",
+      "only_permission": "账期管理",
+      "list_status": 200,
+      "dashboard_status": 200,
+      "alerts_status": 200,
+      "customer_status": 200,
+      "customers": [
+        {
+          "id": 1,
+          "name": "客户1"
+        },
+        {
+          "id": 3,
+          "name": "客户3"
+        }
+      ]
+    },
+    {
+      "role": "staff",
+      "only_permission": "到账流水",
+      "page_status": 200,
+      "customer_status": 200
+    }
+  ],
+  "management_role_results": [
+    {
+      "user_id": 1,
+      "role": "warehouse_admin",
+      "responses": [
+        {
+          "path": "/api/v1/users",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/stats",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/pending-tasks",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/warehouse-summary",
+          "status": 500
+        },
+        {
+          "path": "/api/v1/customers",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/customers/1",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/accounts",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "user_id": 3,
+      "role": "staff",
+      "responses": [
+        {
+          "path": "/api/v1/users",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/stats",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/pending-tasks",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/warehouse-summary",
+          "status": 500
+        },
+        {
+          "path": "/api/v1/customers",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/customers/1",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/accounts",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "user_id": 4,
+      "role": "supervisor",
+      "responses": [
+        {
+          "path": "/api/v1/users",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/stats",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/pending-tasks",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/warehouse-summary",
+          "status": 500
+        },
+        {
+          "path": "/api/v1/customers",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/customers/1",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/accounts",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "user_id": 2,
+      "role": "super_admin",
+      "responses": [
+        {
+          "path": "/api/v1/users",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/dashboard/stats",
+          "status": 403
+        },
+        {
+          "path": "/api/v1/dashboard/pending-tasks",
+          "status": 403
+        },
+        {
+          "path": "/api/v1/dashboard/warehouse-summary",
+          "status": 403
+        },
+        {
+          "path": "/api/v1/customers",
+          "status": 403
+        },
+        {
+          "path": "/api/v1/customers/1",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/accounts",
+          "status": 403
+        }
+      ]
+    }
+  ],
+  "dashboard_stats_before_and_after": {
+    "before": {
+      "total_recharge_month": 100.0,
+      "total_incoming_month": 100.0,
+      "unmatched_count": 1,
+      "pending_market_review": 0,
+      "pending_group_orders": 1,
+      "pending_expense_fund_reviews": 1,
+      "pending_reimbursements": 1
+    },
+    "after": {
+      "total_recharge_month": 100.0,
+      "total_incoming_month": 100.0,
+      "unmatched_count": 1,
+      "pending_market_review": 0,
+      "pending_group_orders": 1,
+      "pending_expense_fund_reviews": 1,
+      "pending_reimbursements": 1
+    },
+    "evidence": "Exact baseline-vs-guard HTTP comparison in same isolated database"
+  },
+  "known_existing_failure": {
+    "path": "/api/v1/dashboard/warehouse-summary",
+    "before_status": 500,
+    "after_status": 500,
+    "cause": "MissingGreenlet on current_user.warehouse lazy loading; original query unchanged"
+  },
+  "browser_shared_results": {
+    "recharge_customer_selected": "客户1",
+    "operating_account_selected": "账户1",
+    "credit_customer_selected": "客户1",
+    "no_forms_submitted": true
+  }
+}

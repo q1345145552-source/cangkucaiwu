@@ -260,9 +260,10 @@ def test_batch_report_all_ten_and_automatic_writes(tmp_path,monkeypatch):
 def test_only_ten_requested_decorators_added_and_handlers_unchanged():
     from tests.non_labor_test_support import without_non_labor_guard
     from tests.test_non_labor_guard import CASES as BATCH1
+    from tests.test_non_labor_read_group1 import CASES as READ_GROUP1
     guarded=[r for r in app.routes if isinstance(r,APIRoute)
         and any(d.call is require_non_labor for d in r.dependant.dependencies)]
-    expected={(method,'/api/v1'+template) for method,template,_,_ in BATCH1+CASES}
+    expected={(method,'/api/v1'+template) for method,template,_,_ in BATCH1+CASES+READ_GROUP1}
     assert {(method,r.path) for r in guarded for method in r.methods}==expected
     for route in guarded:
         assert route.dependant.dependencies[0].call is require_non_labor

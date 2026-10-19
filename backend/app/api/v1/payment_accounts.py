@@ -20,7 +20,7 @@ _PERMISSION = MENU_PERMISSIONS_BY_KEY["accounts"].label
 
 router = APIRouter()
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_non_labor)])
 async def list_accounts(current_user: User = Depends(check_staff_permission_any(
         _PERMISSION,
         MENU_PERMISSIONS_BY_KEY["payroll"].label,

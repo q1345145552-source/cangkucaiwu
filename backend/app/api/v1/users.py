@@ -9,7 +9,7 @@ from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
 from app.models.warehouse import Warehouse
 from app.core.security import hash_password
-from app.core.permissions import get_current_user, require_role, Role, ROLE_HIERARCHY, check_staff_permission
+from app.core.permissions import get_current_user, require_role, Role, ROLE_HIERARCHY, check_staff_permission, require_non_labor
 from app.core.menu_registry import MENU_PERMISSIONS, MENU_PERMISSIONS_BY_KEY
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services.data_history import record_history
@@ -26,7 +26,7 @@ def _attendance_fields(user: User) -> dict:
     }
 
 
-@router.get("", response_model=dict)
+@router.get("", response_model=dict, dependencies=[Depends(require_non_labor)])
 async def list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),

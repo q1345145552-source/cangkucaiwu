@@ -11,7 +11,7 @@ from app.models.expense_approval import ExpenseApproval
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_non_labor
 from app.core.timezone import thai_now, thai_today
 from app.services.procurement_payments import procurement_payment_rows, procurement_payment_totals
 from datetime import datetime, date, timedelta
@@ -23,7 +23,7 @@ def _wh_filter(query, model, current_user):
         return query.where(model.warehouse_id.in_(get_wh_ids(current_user)))
     return query
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(require_non_labor)])
 async def dashboard_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -78,7 +78,7 @@ async def dashboard_stats(current_user: User = Depends(get_current_user), db: As
         "pending_reimbursements": pending_reimbursement,
     }
 
-@router.get("/pending-tasks")
+@router.get("/pending-tasks", dependencies=[Depends(require_non_labor)])
 async def pending_tasks(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -142,7 +142,7 @@ async def pending_tasks(current_user: User = Depends(get_current_user), db: Asyn
 
     return {"data": tasks}
 
-@router.get("/warehouse-summary")
+@router.get("/warehouse-summary", dependencies=[Depends(require_non_labor)])
 async def warehouse_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

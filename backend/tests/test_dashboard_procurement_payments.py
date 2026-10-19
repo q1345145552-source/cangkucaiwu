@@ -180,6 +180,6 @@ def test_payable_balances_ledger_and_all_other_dashboard_functions_unchanged():
             if path.endswith('/dashboard.py'):
                 # Round 4 excluded voided advances from the existing boss todo.
                 source = source.replace('EmployeeAdvance.not_voided(),', '')
-            return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
+            return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(without_non_labor_guard(source)).body
                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in allowed}
         assert functions((root / path).read_text()) == functions(subprocess.check_output(["git", "show", "7dbf327:" + path], cwd=root, text=True))
