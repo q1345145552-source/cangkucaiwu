@@ -26,6 +26,7 @@ async def rows(factory,model):
 
 
 @pytest.mark.parametrize('uid',[1,4])
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
@@ -145,6 +146,7 @@ def test_failed_expense_rolls_back_whole_payment(tmp_path,monkeypatch,batch):
  asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_failed_revocation_rolls_back_expense_and_payroll(tmp_path,monkeypatch):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):

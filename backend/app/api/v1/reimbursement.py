@@ -8,6 +8,7 @@ from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCate
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus
 from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission
+from app.core.financial_reversals import reject_disabled_financial_reversal
 from app.services.data_history import record_history
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
@@ -494,7 +495,7 @@ async def payment_history(reimb_id: int, current_user: User = Depends(get_curren
     return {"data": [{**payments.payment_dict(p), "can_revoke": p.status == "active" and current_user.role == Role.WAREHOUSE_ADMIN} for p in rows],
         "total": len(rows), "status": r.status, "is_legacy_payment": r.status == "paid" and not rows}
 
-@router.post("/{reimb_id}/revoke-payment")
+@router.post("/{reimb_id}/revoke-payment", dependencies=[Depends(reject_disabled_financial_reversal)])
 async def revoke_payment(reimb_id: int, req: RevokePayment | None = None, current_user: User = Depends(get_current_user),
                          db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
     if current_user.role != Role.WAREHOUSE_ADMIN: raise HTTPException(403, "只有仓库管理员可以撤销报销付款")

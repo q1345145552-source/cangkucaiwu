@@ -90,6 +90,7 @@ def money(v): return Decimal(str(v)).quantize(Decimal('.01'))
 def block(data, cur="THB"): return next(x for x in data["currencies"] if x["currency"] == cur)
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_original_formula_balances_and_non_cost_repayment_stays_red(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c, aid):

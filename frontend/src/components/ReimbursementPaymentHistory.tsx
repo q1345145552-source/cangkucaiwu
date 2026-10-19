@@ -1,4 +1,5 @@
 "use client";
+import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import SafeImage from "@/components/SafeImage";
@@ -47,9 +48,9 @@ export default function ReimbursementPaymentHistory({ reimbursementId, onChange 
       <p>付款人：{p.paid_by_name} · {when(p.paid_at)}</p>
       {p.payment_voucher_path && <a href={`/${p.payment_voucher_path}`} target="_blank" rel="noreferrer" className="inline-block text-blue-600"><SafeImage src={`/${p.payment_voucher_path}`} alt="付款凭证" className="max-w-full max-h-32 object-contain rounded border mb-1" />查看付款凭证</a>}
       {p.status === "revoked" && <p className="text-gray-500 break-words">{p.revoked_by_name} 于 {p.revoked_at ? when(p.revoked_at) : "—"} 撤销：{p.revoke_reason}</p>}
-      {p.can_revoke && <button className="block text-red-600" onClick={() => { setTarget(p); setReason(""); }}>撤销付款</button>}
+      {FINANCIAL_REVERSALS_ENABLED && p.can_revoke && <button className="block text-red-600" onClick={() => { setTarget(p); setReason(""); }}>撤销付款</button>}
     </article>)}
-    {target && <div role="alertdialog" aria-modal="true" aria-labelledby="reimbursement-revoke-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3" onClick={e => e.stopPropagation()}>
+    {FINANCIAL_REVERSALS_ENABLED && target && <div role="alertdialog" aria-modal="true" aria-labelledby="reimbursement-revoke-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3" onClick={e => e.stopPropagation()}>
       <form onSubmit={e => { e.preventDefault(); void revoke(); }} className="bg-white rounded-xl p-5 w-full max-w-sm max-h-[90dvh] overflow-y-auto space-y-4">
         <h3 id="reimbursement-revoke-title" className="font-semibold">确认撤销这笔报销付款吗？</h3>
         <p className="text-sm">成本撤回，公司账户付款恢复余额并保留已冲销流水；垫款或备用金按原来源恢复。</p>

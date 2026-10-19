@@ -1,4 +1,5 @@
 "use client";
+import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -79,12 +80,12 @@ export default function CashAdvanceRepaymentHistory({ advance, canRevoke, onClos
           {row.description && <p className="break-words">说明：{row.description}</p>}
           <a href={`/${row.voucher_path}`} target="_blank" rel="noreferrer" className="inline-block text-blue-600"><SafeImage src={`/${row.voucher_path}`} alt="归还凭证照片" className="max-w-full max-h-32 object-contain rounded border mb-1" />查看归还凭证照片</a>
           {row.status === "revoked" && <p className="text-gray-500 break-words">{row.revoked_by_name} 于 {row.revoked_at ? time(row.revoked_at) : "—"} 撤销：{row.revoke_reason}</p>}
-          {canRevoke && row.status === "active" && <button type="button" disabled={revoking} onClick={() => { setTarget(row); setReason(""); }} className="block text-red-600">撤销这一笔</button>}
+          {FINANCIAL_REVERSALS_ENABLED && canRevoke && row.status === "active" && <button type="button" disabled={revoking} onClick={() => { setTarget(row); setReason(""); }} className="block text-red-600">撤销这一笔</button>}
         </article>)}
       </div>
       <div className="px-5 py-4 border-t flex justify-end shrink-0"><button type="button" disabled={revoking} onClick={onClose} className="btn-secondary">关闭</button></div>
     </div>
-    {target && <div role="alertdialog" aria-modal="true" aria-labelledby="revoke-repayment-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3">
+    {FINANCIAL_REVERSALS_ENABLED && target && <div role="alertdialog" aria-modal="true" aria-labelledby="revoke-repayment-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3">
       <form onSubmit={event => { event.preventDefault(); void revoke(); }} className="bg-white rounded-xl p-5 w-full max-w-sm max-h-[90dvh] overflow-y-auto space-y-4">
         <h3 id="revoke-repayment-title" className="font-semibold">确认撤销这一笔归还吗？</h3><p className="text-sm">{money(target.amount)} {target.currency} 将退回原账户，流水保留冲销记录。</p>
         <label className="block text-sm">撤销原因<textarea aria-label="撤销归还原因" className="form-input mt-1" rows={3} maxLength={500} value={reason} disabled={revoking} onChange={event => setReason(event.target.value)} /></label>

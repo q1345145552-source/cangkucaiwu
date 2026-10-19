@@ -5,6 +5,7 @@ from datetime import date, datetime
 import json
 from pathlib import Path
 import subprocess
+from tests.financial_reversal_test_support import without_disabled_gate
 
 from fastapi import HTTPException
 import pytest
@@ -267,7 +268,7 @@ def test_payroll_frontend_and_unrelated_write_code_unchanged():
     root = Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py",
         "backend/app/api/v1/reimbursement.py"):
-        assert (root / path).read_bytes() == subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root)
+        assert without_disabled_gate((root / path).read_text()).encode() == subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root)
     # 两轮仅扩充联动行的只读说明，排版和其他交互保持原样。
     path = "frontend/src/app/(dashboard)/operating/page.tsx"
     old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()

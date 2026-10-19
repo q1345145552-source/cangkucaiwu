@@ -1,4 +1,5 @@
 """逐笔拨付只记一次成本/资金，后续开销只记录，真实请求和隔离数据库。"""
+from tests.financial_reversal_test_support import without_disabled_gate
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import date, datetime
@@ -274,7 +275,7 @@ def test_new_fund_employee_advance_dedup_is_read_only_payroll_and_reimbursement_
     root = Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py", "backend/app/api/v1/employee_advance.py",
         "backend/app/services/employee_advance_expense.py", "backend/app/api/v1/reimbursement.py", "backend/app/services/reimbursement_payment.py"):
-        assert (root / path).read_bytes() == subprocess.check_output(["git", "show", f"ee327fa:{path}"], cwd=root)
+        assert without_disabled_gate((root / path).read_text()).encode() == subprocess.check_output(["git", "show", f"ee327fa:{path}"], cwd=root)
 
 
 def test_all_warehouse_admin_review_uses_request_warehouse_not_primary(tmp_path, monkeypatch):

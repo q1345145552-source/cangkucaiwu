@@ -1,4 +1,5 @@
 "use client";
+import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import SafeImage from "@/components/SafeImage";
@@ -789,7 +790,7 @@ export default function PayrollPage() {
                           <Banknote size={14}/>发放
                         </button>
                       )}
-                      {!r.voided && r.disbursed && canOperate && (
+                      {FINANCIAL_REVERSALS_ENABLED && !r.voided && r.disbursed && canOperate && (
                         <button onClick={() => openRevokeModal(r)} disabled={disbursing === r.id}
                           className="text-orange-500 hover:text-orange-700 text-xs font-medium inline-flex items-center gap-1"
                           title="撤销发放">
@@ -1033,7 +1034,7 @@ export default function PayrollPage() {
       )}
 
       {/* 撤销发放 Modal */}
-      {revokeModal && (
+      {FINANCIAL_REVERSALS_ENABLED && revokeModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRevokeModal(null)}>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">

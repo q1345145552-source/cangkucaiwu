@@ -94,6 +94,7 @@ async def usage(c, aid):
     return r.json()
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -145,6 +146,7 @@ def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -186,6 +188,7 @@ def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_fund_path_does_not_deduct_twice_and_revoke_repay_refund_once(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -251,6 +254,7 @@ def test_validation_no_partial_money_changes(tmp_path, monkeypatch, kind):
 
 
 @pytest.mark.parametrize("source", ["company_account", "cash_advance", "expense_fund"])
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_payment_and_revoke_failures_rollback_everything(tmp_path, monkeypatch, source):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -278,6 +282,7 @@ def test_payment_and_revoke_failures_rollback_everything(tmp_path, monkeypatch, 
 
 
 @pytest.mark.parametrize("uid", [3, 4, 5, 2])
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_only_warehouse_admin_can_revoke(tmp_path, monkeypatch, uid):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -312,6 +317,7 @@ def test_cny_account_and_advance_are_independent_from_thb(tmp_path, monkeypatch)
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_fund_review_auto_payment_history_and_single_refund_after_reject_or_revoke(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -355,6 +361,7 @@ def test_fund_review_auto_payment_history_and_single_refund_after_reject_or_revo
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_reason(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -410,6 +417,7 @@ def test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_ba
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_decimal_item_sums_and_partially_approved_total_used_for_payment(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):

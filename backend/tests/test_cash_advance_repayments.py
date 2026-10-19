@@ -115,6 +115,7 @@ def test_full_repayment_money_ledger_and_costs_exactly_unchanged(tmp_path, monke
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -149,6 +150,7 @@ def test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance(tmp_p
 
 
 @pytest.mark.parametrize("uid", [2, 3, 4, 5])
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_admin_only_repayment_upload_accounts_and_revoke(tmp_path, monkeypatch, uid):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -206,6 +208,7 @@ def test_pending_rejected_inactive_cross_warehouse_and_currency_are_blocked(tmp_
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_full_reversal_inactive_account_and_multiple_payments(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -222,6 +225,7 @@ def test_full_reversal_inactive_account_and_multiple_payments(tmp_path, monkeypa
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_history_failure_rolls_back_repayment_and_revoke(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):

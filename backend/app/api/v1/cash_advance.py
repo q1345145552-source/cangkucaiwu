@@ -12,6 +12,7 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+from app.core.financial_reversals import reject_disabled_financial_reversal
 from app.core.permissions import Role, check_staff_permission, get_current_user, get_wh_id
 from app.core.timezone import thai_now, thai_today
 from app.database import get_db
@@ -360,7 +361,7 @@ async def repay_advance(advance_id: int, req: RepaymentRequest, user=Depends(_re
     return result
 
 
-@router.post("/repayments/{repayment_id}/revoke")
+@router.post("/repayments/{repayment_id}/revoke", dependencies=[Depends(reject_disabled_financial_reversal)])
 async def revoke_repayment(repayment_id: int, req: RevokeRepaymentRequest | None = None, user=Depends(_repayer), db: AsyncSession = Depends(get_db)):
     wid = _warehouse(user)
     reason = ((req.reason if req else None) or "").strip()

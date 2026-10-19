@@ -63,6 +63,7 @@ async def usage(c, aid):
     return r.json()
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (f, c):
@@ -123,6 +124,7 @@ def test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke(tmp_path, m
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (f, c):
@@ -173,6 +175,7 @@ def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (f, c):
@@ -230,6 +233,7 @@ def test_batch_aggregate_budget_and_atomic_rollback(tmp_path, monkeypatch, fail)
     asyncio.run(run())
 
 
+@pytest.mark.usefixtures("retained_reversal_code")
 def test_failed_revoke_restores_cost_usage_and_loan_link(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (f, c):

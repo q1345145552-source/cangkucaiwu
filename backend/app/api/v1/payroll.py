@@ -6,6 +6,7 @@ from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.services.attendance_population import employee_account_roles
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
+from app.core.financial_reversals import reject_disabled_financial_reversal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
@@ -2078,7 +2079,7 @@ async def disburse_payroll(
     }
 
 
-@router.post("/{record_id}/revoke-disbursement")
+@router.post("/{record_id}/revoke-disbursement", dependencies=[Depends(reject_disabled_financial_reversal)])
 async def revoke_disbursement(
     record_id: int,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),

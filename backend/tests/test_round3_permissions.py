@@ -140,7 +140,10 @@ def test_all_hr_endpoints(tmp_path,monkeypatch,method,path,module,body,uid,grant
                 await set_perms(factory,uid,permissions)
             before=await snapshot(factory)
             response=await call(client,method,path,body,uid)
-            if uid in (3,4) and not granted:
+            if path.endswith('/revoke-disbursement'):
+                assert response.status_code == 400 and response.json()['detail'] == '撤销功能已停用 请用负数冲销记录处理'
+                assert await snapshot(factory) == before
+            elif uid in (3,4) and not granted:
                 assert response.status_code==403,response.text
                 assert response.json()['detail'].startswith('无此操作权限'),response.text
                 assert await snapshot(factory)==before
@@ -330,7 +333,8 @@ def test_hr_warehouse_isolation(tmp_path,monkeypatch,uid):
                 ('POST','/payroll/batch-recalc',{'record_ids':[1,10],'mode':'void','void_reason':'越权'}),
             ]:
                 response=await call(client,method,path,body,uid)
-                assert response.status_code in (403,404),(method,path,response.text)
+                expected_statuses = (400,) if path.endswith('/revoke-disbursement') else (403,404)
+                assert response.status_code in expected_statuses,(method,path,response.text)
                 assert await snapshot(factory)==before
             # 列表、汇总、导出及周期批量操作始终只取本仓；伪造header无效。
             response=await client.get('/api/v1/employees',headers={**auth(uid),'X-Warehouse-ID':'2'})
