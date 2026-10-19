@@ -40,7 +40,7 @@ async def environment(tmp_path, monkeypatch):
 async def approved(c, **fields):
     r = await create(c, payer_id=4, **fields); assert r.status_code == 200, r.text
     aid = r.json()["id"]
-    r = await c.post(f"{URL}/{aid}/confirm", headers=auth(1)); assert r.status_code == 200, r.text
+    assert r.json()["status"] == "confirmed" and r.json()["reviewed_by_id"] == 1
     return aid
 
 
@@ -188,7 +188,8 @@ def test_pending_rejected_inactive_cross_warehouse_and_currency_are_blocked(tmp_
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             path = await voucher(c)
-            pending = (await create(c)).json()["id"]
+            await set_perms(f, 4, ["垫款单"])
+            pending = (await create(c, 4)).json()["id"]
             r = await repay(c, pending, path); assert r.status_code == 400 and "不能归还" in r.json()["detail"]
             await c.post(f"{URL}/{pending}/reject", headers=auth(1), json={"reject_reason": "未确认"})
             assert (await repay(c, pending, path)).status_code == 400

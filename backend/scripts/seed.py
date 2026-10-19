@@ -280,6 +280,32 @@ async def _migrate_cash_advance_repayments(conn):
             raise
 
 
+async def _migrate_cash_advance_documents(conn):
+    """用途关联只加结构，不回填旧垫款或改动任何业务单据。"""
+    from sqlalchemy import text
+    statements = (
+        ("amount_difference_note", "ALTER TABLE cash_advances ADD COLUMN IF NOT EXISTS amount_difference_note VARCHAR(2000)"),
+        ("cash_advance_documents", """CREATE TABLE IF NOT EXISTS cash_advance_documents (
+            id SERIAL PRIMARY KEY, cash_advance_id INTEGER NOT NULL REFERENCES cash_advances(id),
+            warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+            document_type VARCHAR(30) NOT NULL CONSTRAINT ck_cash_advance_document_type
+                CHECK (document_type IN ('payroll','payable','reimbursement','employee_advance')),
+            document_id INTEGER NOT NULL, document_number VARCHAR(100) NOT NULL,
+            title VARCHAR(300) NOT NULL, document_date DATE, amount NUMERIC(14,2) NOT NULL,
+            currency VARCHAR(10) NOT NULL,
+            CONSTRAINT uq_cash_advance_document UNIQUE(cash_advance_id, document_type, document_id)
+        )"""),
+        ("documents_index", "CREATE INDEX IF NOT EXISTS ix_cash_advance_documents_advance ON cash_advance_documents(cash_advance_id)"),
+    )
+    for name, statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 垫款关联单据 {name} 失败：{exc}")
+            raise
+
+
 async def _migrate_payroll_cash_advance_link(conn):
     """只加工资资金来源关联；垫款成本允许没有公司账户，不回填历史单。"""
     from sqlalchemy import text
@@ -354,6 +380,7 @@ async def seed():
         await _migrate_payroll_expense_link(conn)
         await _migrate_cash_advances(conn)
         await _migrate_cash_advance_currency(conn)
+        await _migrate_cash_advance_documents(conn)
         await _migrate_cash_advance_repayments(conn)
         await _migrate_payroll_cash_advance_link(conn)
         await _migrate_reimbursement_payments(conn)

@@ -1,5 +1,5 @@
 """个人替公司垫款的债务登记；不产生工资扣款、成本或资金流水。"""
-from sqlalchemy import Column, Integer, String, Date, DateTime, Numeric, ForeignKey, CheckConstraint, Index
+from sqlalchemy import Column, Integer, String, Date, DateTime, Numeric, ForeignKey, CheckConstraint, Index, UniqueConstraint
 from app.database import Base
 from app.core.timezone import thai_now
 
@@ -36,3 +36,24 @@ class CashAdvance(Base):
     reviewed_by_name = Column(String(100), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     reject_reason = Column(String(500), nullable=True)
+    amount_difference_note = Column(String(2000), nullable=True)
+
+
+class CashAdvanceDocument(Base):
+    """垫款用途的单据快照；关联本身不代表已付款，也不占用垫款额度。"""
+    __tablename__ = "cash_advance_documents"
+    __table_args__ = (
+        UniqueConstraint("cash_advance_id", "document_type", "document_id", name="uq_cash_advance_document"),
+        CheckConstraint("document_type IN ('payroll','payable','reimbursement','employee_advance')", name="ck_cash_advance_document_type"),
+        Index("ix_cash_advance_documents_advance", "cash_advance_id"),
+    )
+    id = Column(Integer, primary_key=True)
+    cash_advance_id = Column(Integer, ForeignKey("cash_advances.id"), nullable=False)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False)
+    document_type = Column(String(30), nullable=False)
+    document_id = Column(Integer, nullable=False)
+    document_number = Column(String(100), nullable=False)
+    title = Column(String(300), nullable=False)
+    document_date = Column(Date, nullable=True)
+    amount = Column(Numeric(14, 2), nullable=False)
+    currency = Column(String(10), nullable=False)

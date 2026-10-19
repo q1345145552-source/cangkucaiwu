@@ -77,7 +77,8 @@ def test_permission_matrix(tmp_path, monkeypatch, uid, grant):
                 if uid in (3, 4) and not grant: assert "无此操作权限" in r.json()["detail"]
             up = await c.post(URL + "/voucher", headers=auth(uid), files={"file": ("receipt.png", png(), "image/png")})
             assert up.status_code == (200 if uid == 1 or uid == 4 and grant else 403), up.text
-            row = (await create(c)).json()
+            await set_perms(factory, 4, ["垫款单"])
+            row = (await create(c, 4)).json()
             for action, data in (("confirm", {}), ("reject", {"reject_reason": "不实垫款"})):
                 r = await c.post(f'{URL}/{row["id"]}/{action}', headers=auth(uid), json=data)
                 if uid == 1:
@@ -90,7 +91,8 @@ def test_permission_matrix(tmp_path, monkeypatch, uid, grant):
 def test_rejection_and_terminal_states(tmp_path, monkeypatch):
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
-            row = (await create(c)).json(); aid = row["id"]
+            await set_perms(factory, 4, ["垫款单"])
+            row = (await create(c, 4)).json(); aid = row["id"]
             for body in (None, {}, {"reject_reason": None}, {"reject_reason": " \n "}):
                 r = await c.post(f"{URL}/{aid}/reject", headers=auth(1), **({"json": body} if body is not None else {}))
                 assert r.status_code == 400 and r.json()["detail"] == "请填写驳回原因"
@@ -144,11 +146,12 @@ def test_warehouse_isolation_for_every_read_write_and_payer(tmp_path, monkeypatc
 
 def test_filters_named_payers_precise_grouping_and_pending_exclusion(tmp_path, monkeypatch):
     async def run():
-        async with hr_environment(tmp_path, monkeypatch) as (_, _, c):
+        async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
             for fields in [dict(payer_name="张师傅", amount="0.10"), dict(payer_name="张师傅", amount="0.20"), dict(payer_id=4, amount="4000"), dict(payer_id=4, amount="3000", advance_date="2026-10-17")]:
                 row = (await create(c, **fields)).json()
-                assert (await c.post(f'{URL}/{row["id"]}/confirm', headers=auth(1))).status_code == 200
-            await create(c, payer_name="待确认的人", amount="999")
+                assert row["status"] == "confirmed" and row["reviewed_by_id"] == 1
+            await set_perms(factory, 4, ["垫款单"])
+            await create(c, 4, payer_name="待确认的人", amount="999")
             s = (await c.get(URL + "/summary", headers=auth(1))).json()
             assert s["payer_count"] == 2 and s["total_outstanding"] == 7000.3
             assert [g["outstanding_amount"] for g in s["data"]] == [0.3, 7000]
@@ -162,7 +165,8 @@ def test_filters_named_payers_precise_grouping_and_pending_exclusion(tmp_path, m
 def test_history_failure_rolls_back_registration_and_confirmation(tmp_path, monkeypatch):
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
-            aid = (await create(c)).json()["id"]
+            await set_perms(factory, 4, ["垫款单"])
+            aid = (await create(c, 4)).json()["id"]
             async def fail(db, **kwargs): raise HTTPException(500, "模拟日志失败")
             monkeypatch.setattr(api, "record_history", fail)
             assert (await create(c)).status_code == 500

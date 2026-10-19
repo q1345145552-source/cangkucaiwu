@@ -1,0 +1,343 @@
+{
+  "date": "2026-10-19",
+  "environment": "local isolated database",
+  "initial_supervisor_registration": {
+    "id": 1,
+    "warehouse_id": 1,
+    "payer_id": 4,
+    "payer_name": "supervisor",
+    "advance_date": "2026-10-19",
+    "amount": 7000.0,
+    "currency": "THB",
+    "purpose": "salary",
+    "purpose_label": "工资",
+    "description": "十月两期工资垫付",
+    "voucher_path": null,
+    "status": "pending",
+    "status_label": "待确认",
+    "repaid_amount": 0.0,
+    "outstanding_amount": 0.0,
+    "created_by_id": 4,
+    "created_by_name": "supervisor",
+    "created_at": "2026-10-19T22:51:24.189198+07:00",
+    "reviewed_by_id": null,
+    "reviewed_by_name": null,
+    "reviewed_at": null,
+    "reject_reason": null,
+    "amount_difference_note": null,
+    "linked_documents": [
+      {
+        "id": 1,
+        "document_type": "payroll",
+        "document_type_label": "工资单",
+        "document_id": 2,
+        "document_number": "工资单 #2",
+        "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+        "document_date": "2026-10-15",
+        "amount": 3000.0,
+        "currency": "THB"
+      },
+      {
+        "id": 2,
+        "document_type": "payroll",
+        "document_type_label": "工资单",
+        "document_id": 4,
+        "document_number": "工资单 #4",
+        "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+        "document_date": "2026-10-31",
+        "amount": 4000.0,
+        "currency": "THB"
+      }
+    ],
+    "linked_documents_total": 7000.0,
+    "can_edit": true
+  },
+  "amount_difference_rejected": {
+    "status_code": 400,
+    "body": {
+      "detail": "垫款金额与关联单据合计不一致，请填写差额备注"
+    }
+  },
+  "current_records": [
+    {
+      "id": 1,
+      "amount": 6000.0,
+      "currency": "THB",
+      "status": "pending",
+      "payer_name": "supervisor",
+      "description": "十月两期工资垫付",
+      "amount_difference_note": "差额1000泰铢另行结算",
+      "reviewed_by_id": null,
+      "reviewed_at": null
+    },
+    {
+      "id": 2,
+      "amount": 600.0,
+      "currency": "THB",
+      "status": "confirmed",
+      "payer_name": "warehouse_admin",
+      "description": "临时购买耗材，无供应商单据",
+      "amount_difference_note": null,
+      "reviewed_by_id": 1,
+      "reviewed_at": "2026-10-19 22:53:46.298546"
+    }
+  ],
+  "linked_documents": [
+    {
+      "id": 2,
+      "warehouse_id": 1,
+      "payer_id": 1,
+      "payer_name": "warehouse_admin",
+      "advance_date": "2026-10-19",
+      "amount": 600.0,
+      "currency": "THB",
+      "purpose": "expense",
+      "purpose_label": "费用",
+      "description": "临时购买耗材，无供应商单据",
+      "voucher_path": null,
+      "status": "confirmed",
+      "status_label": "已确认",
+      "repaid_amount": 0.0,
+      "outstanding_amount": 600.0,
+      "created_by_id": 1,
+      "created_by_name": "warehouse_admin",
+      "created_at": "2026-10-19T22:53:46.298546",
+      "reviewed_by_id": 1,
+      "reviewed_by_name": "warehouse_admin",
+      "reviewed_at": "2026-10-19T22:53:46.298546",
+      "reject_reason": null,
+      "amount_difference_note": null,
+      "payroll_used_amount": 0.0,
+      "payroll_unused_amount": 600.0,
+      "reimbursement_used_amount": 0.0,
+      "employee_advance_used_amount": 0.0,
+      "total_used_amount": 0.0,
+      "available_amount": 600.0,
+      "payroll_available_amount": 600.0,
+      "linked_documents": [],
+      "linked_documents_total": 0.0,
+      "can_edit": true
+    },
+    {
+      "id": 1,
+      "warehouse_id": 1,
+      "payer_id": 4,
+      "payer_name": "supervisor",
+      "advance_date": "2026-10-19",
+      "amount": 6000.0,
+      "currency": "THB",
+      "purpose": "salary",
+      "purpose_label": "工资",
+      "description": "十月两期工资垫付",
+      "voucher_path": null,
+      "status": "pending",
+      "status_label": "待确认",
+      "repaid_amount": 0.0,
+      "outstanding_amount": 0.0,
+      "created_by_id": 4,
+      "created_by_name": "supervisor",
+      "created_at": "2026-10-19T22:51:24.189198",
+      "reviewed_by_id": null,
+      "reviewed_by_name": null,
+      "reviewed_at": null,
+      "reject_reason": null,
+      "amount_difference_note": "差额1000泰铢另行结算",
+      "payroll_used_amount": 0.0,
+      "payroll_unused_amount": 6000.0,
+      "reimbursement_used_amount": 0.0,
+      "employee_advance_used_amount": 0.0,
+      "total_used_amount": 0.0,
+      "available_amount": 0.0,
+      "payroll_available_amount": 0.0,
+      "linked_documents": [
+        {
+          "id": 1,
+          "document_type": "payroll",
+          "document_type_label": "工资单",
+          "document_id": 2,
+          "document_number": "工资单 #2",
+          "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+          "document_date": "2026-10-15",
+          "amount": 3000.0,
+          "currency": "THB"
+        },
+        {
+          "id": 2,
+          "document_type": "payroll",
+          "document_type_label": "工资单",
+          "document_id": 4,
+          "document_number": "工资单 #4",
+          "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+          "document_date": "2026-10-31",
+          "amount": 4000.0,
+          "currency": "THB"
+        }
+      ],
+      "linked_documents_total": 7000.0,
+      "can_edit": true
+    }
+  ],
+  "candidate_options": {
+    "payroll": {
+      "data": [
+        {
+          "document_type": "payroll",
+          "document_type_label": "工资单",
+          "document_id": 4,
+          "document_number": "工资单 #4",
+          "title": "员工1 · 2026-10 · 2026-10-16至2026-10-31",
+          "document_date": "2026-10-31",
+          "amount": 4000.0,
+          "currency": "THB",
+          "status": "confirmed",
+          "detail": {
+            "period": "2026-10",
+            "settle_start_date": "2026-10-16",
+            "settle_end_date": "2026-10-31",
+            "gross_pay": 0.0,
+            "net_pay": 4000.0,
+            "disbursed": false,
+            "voided": false
+          }
+        },
+        {
+          "document_type": "payroll",
+          "document_type_label": "工资单",
+          "document_id": 2,
+          "document_number": "工资单 #2",
+          "title": "员工1 · 2026-10 · 2026-10-01至2026-10-15",
+          "document_date": "2026-10-15",
+          "amount": 3000.0,
+          "currency": "THB",
+          "status": "confirmed",
+          "detail": {
+            "period": "2026-10",
+            "settle_start_date": "2026-10-01",
+            "settle_end_date": "2026-10-15",
+            "gross_pay": 1600.0,
+            "net_pay": 3000.0,
+            "disbursed": false,
+            "voided": false
+          }
+        }
+      ],
+      "total": 2,
+      "page": 1,
+      "page_size": 50
+    },
+    "payable": {
+      "data": [
+        {
+          "document_type": "payable",
+          "document_type_label": "应付账单",
+          "document_id": 31,
+          "document_number": "AP-31",
+          "title": "供应商",
+          "document_date": "2026-10-01",
+          "amount": 2000.0,
+          "currency": "THB",
+          "status": "partially_paid",
+          "detail": {
+            "total_amount": 2500.0,
+            "paid_amount": 500.0,
+            "due_date": "2026-10-30"
+          }
+        }
+      ],
+      "total": 1,
+      "page": 1,
+      "page_size": 50
+    },
+    "reimbursement": {
+      "data": [
+        {
+          "document_type": "reimbursement",
+          "document_type_label": "报销",
+          "document_id": 31,
+          "document_number": "报销单 #31",
+          "title": "supervisor",
+          "document_date": "2026-10-10",
+          "amount": 1000.0,
+          "currency": "THB",
+          "status": "approved",
+          "detail": {
+            "total_amount": 1000.0,
+            "funding_source": null
+          }
+        }
+      ],
+      "total": 1,
+      "page": 1,
+      "page_size": 50
+    },
+    "employee_advance": {
+      "data": [
+        {
+          "document_type": "employee_advance",
+          "document_type_label": "预支",
+          "document_id": 36,
+          "document_number": "预支单 #36",
+          "title": "员工1",
+          "document_date": "2026-10-10",
+          "amount": 1000.0,
+          "currency": "THB",
+          "status": "unpaid",
+          "detail": {
+            "total_amount": 1000.0,
+            "settled_amount": 0,
+            "approval_status": "pending"
+          }
+        },
+        {
+          "document_type": "employee_advance",
+          "document_type_label": "预支",
+          "document_id": 32,
+          "document_number": "预支单 #32",
+          "title": "员工1",
+          "document_date": "2026-10-10",
+          "amount": 800.0,
+          "currency": "THB",
+          "status": "partial",
+          "detail": {
+            "total_amount": 1000.0,
+            "settled_amount": 200.0,
+            "approval_status": "approved"
+          }
+        },
+        {
+          "document_type": "employee_advance",
+          "document_type_label": "预支",
+          "document_id": 31,
+          "document_number": "预支单 #31",
+          "title": "员工1",
+          "document_date": "2026-10-10",
+          "amount": 1000.0,
+          "currency": "THB",
+          "status": "unpaid",
+          "detail": {
+            "total_amount": 1000.0,
+            "settled_amount": 0,
+            "approval_status": "approved"
+          }
+        }
+      ],
+      "total": 3,
+      "page": 1,
+      "page_size": 50
+    }
+  },
+  "business_rows_unchanged": true,
+  "unchanged_table_counts": {
+    "payroll_records": 5,
+    "reimbursements": 4,
+    "reimbursement_items": 0,
+    "expense_funds": 0,
+    "expense_fund_items": 0,
+    "expense_records": 0,
+    "income_records": 0,
+    "employee_advances": 6,
+    "payable_bills": 1,
+    "clock_in_records": 0,
+    "employees": 2
+  }
+}

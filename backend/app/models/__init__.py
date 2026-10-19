@@ -23,7 +23,7 @@ from app.models.salary_template import SalaryTemplate
 from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.expense_approval import ExpenseApproval
-from app.models.cash_advance import CashAdvance
+from app.models.cash_advance import CashAdvance, CashAdvanceDocument
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.reimbursement_payment import ReimbursementPayment
 
@@ -46,6 +46,7 @@ __all__ = [
     "DeductionTemplate", "EmployeeDeduction", "EmployeeFixedDeduction",
     "ExpenseApproval",
     "CashAdvance",
+    "CashAdvanceDocument",
     "CashAdvanceRepayment",
     "ReimbursementPayment",
 ]

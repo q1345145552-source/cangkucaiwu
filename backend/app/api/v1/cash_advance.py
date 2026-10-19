@@ -25,6 +25,7 @@ from app.services.data_history import record_history
 from app.services.account_balances import current_account_balances
 from app.services.cash_advance_payroll import payroll_usage_totals, usage_amounts, payroll_usage
 from app.services.cash_advance_usage import reimbursement_usage_totals, reimbursement_usage, employee_advance_usage_totals, employee_advance_usage
+from app.services import cash_advance_documents as documents
 
 router = APIRouter()
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
@@ -71,6 +72,11 @@ def _user_in_warehouse(wid):
     )))
 
 
+class DocumentReference(BaseModel):
+    document_type: Literal["payroll", "payable", "reimbursement", "employee_advance"]
+    document_id: int = Field(gt=0)
+
+
 class CashAdvanceCreate(BaseModel):
     payer_id: int | None = Field(default=None, gt=0)
     payer_name: str | None = Field(default=None, max_length=100)
@@ -80,8 +86,10 @@ class CashAdvanceCreate(BaseModel):
     purpose: Literal["salary", "purchase", "expense", "other"]
     description: str | None = Field(default=None, max_length=2000)
     voucher_path: str | None = Field(default=None, max_length=500)
+    linked_documents: list[DocumentReference] = Field(default_factory=list, max_length=200)
+    amount_difference_note: str | None = Field(default=None, max_length=2000)
 
-    @field_validator("payer_name", "description", "voucher_path")
+    @field_validator("payer_name", "description", "voucher_path", "amount_difference_note")
     @classmethod
     def trim(cls, value):
         return value.strip() or None if value is not None else None
@@ -106,7 +114,47 @@ def _serialize(row):
         "reviewed_by_id": row.reviewed_by_id, "reviewed_by_name": row.reviewed_by_name,
         "reviewed_at": row.reviewed_at.isoformat() if row.reviewed_at else None,
         "reject_reason": row.reject_reason,
+        "amount_difference_note": row.amount_difference_note,
     }
+
+
+async def _used_ids(db, ids):
+    """已执行过资金使用/归还的单据不再允许编辑，即使相关记录后来已作废。"""
+    from app.models.payroll import PayrollRecord
+    from app.models.reimbursement_payment import ReimbursementPayment
+    from app.models.employee_advance import EmployeeAdvance
+    used = set()
+    for model, condition in (
+        (CashAdvanceRepayment, True), (ReimbursementPayment, True),
+        (PayrollRecord, PayrollRecord.disbursed.is_(True)),
+        (EmployeeAdvance, EmployeeAdvance.approval_status == "approved"),
+    ):
+        used.update((await db.execute(select(model.cash_advance_id).where(
+            model.cash_advance_id.in_(ids), condition))).scalars().all())
+    return used
+
+
+def _can_edit(row, user, used):
+    return (row.id not in used and row.repaid_amount == 0 and
+        (row.status == "pending" and user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) or
+         row.status == "confirmed" and user.role == Role.WAREHOUSE_ADMIN))
+
+
+async def _with_documents(db, row, user):
+    links = (await documents.links_map(db, [row]))[row.id]
+    return {**_serialize(row), "linked_documents": links,
+        "linked_documents_total": float(sum((documents.money(d["amount"]) for d in links), Decimal(0))),
+        "can_edit": _can_edit(row, user, await _used_ids(db, [row.id]))}
+
+
+@router.get("/document-options")
+async def document_options(
+    document_type: Literal["payroll", "payable", "reimbursement", "employee_advance"],
+    currency: Literal["THB", "CNY"] = "THB", search: str = Query(default="", max_length=100),
+    page: int = Query(default=1, ge=1), page_size: int = Query(default=50, ge=1, le=100),
+    user=Depends(_creator), db: AsyncSession = Depends(get_db),
+):
+    return await documents.options(db, _warehouse(user), document_type, currency, search.strip(), page, page_size)
 
 
 @router.get("/payers")
@@ -167,7 +215,11 @@ async def list_advances(
     used = await payroll_usage_totals(db, rows)
     other = await reimbursement_usage_totals(db, rows)
     advances = await employee_advance_usage_totals(db, rows)
-    return {"data": [{**_serialize(r), **usage_amounts(r, used[r.id], other[r.id], advances[r.id])} for r in rows],
+    linked = await documents.links_map(db, rows)
+    used_ids = await _used_ids(db, [r.id for r in rows]) if rows else set()
+    return {"data": [{**_serialize(r), **usage_amounts(r, used[r.id], other[r.id], advances[r.id]),
+        "linked_documents": linked[r.id], "linked_documents_total": float(sum((documents.money(d["amount"]) for d in linked[r.id]), Decimal(0))),
+        "can_edit": _can_edit(r, user, used_ids)} for r in rows],
             "total": total, "page": page, "page_size": page_size}
 
 
@@ -186,9 +238,7 @@ async def upload_voucher(file: UploadFile = File(...), user=Depends(_creator)):
     return {"path": result["path"], "thumb_path": result["thumb_path"]}
 
 
-@router.post("")
-async def create_advance(req: CashAdvanceCreate, user=Depends(_creator), db: AsyncSession = Depends(get_db)):
-    wid = _warehouse(user)
+async def _validate_payer(req, user, wid, db):
     payer_id, payer_name = req.payer_id, req.payer_name
     if payer_id is not None:
         payer = (await db.execute(select(User).where(User.id == payer_id, _user_in_warehouse(wid),
@@ -201,16 +251,57 @@ async def create_advance(req: CashAdvanceCreate, user=Depends(_creator), db: Asy
         parts = req.voucher_path.split("/")
         if len(parts) != 5 or parts[:2] != ["uploads", str(wid)] or parts[3] != "cash-advances" or any(p in ("", ".", "..") or "\\" in p for p in parts):
             raise HTTPException(400, "凭证照片不属于当前仓库的垫款单")
+    return payer_id, payer_name
+
+
+@router.post("")
+async def create_advance(req: CashAdvanceCreate, user=Depends(_creator), db: AsyncSession = Depends(get_db)):
+    wid = _warehouse(user)
+    payer_id, payer_name = await _validate_payer(req, user, wid, db)
+    linked = await documents.resolve(db, wid, req.currency, req.linked_documents)
+    documents.validate_difference(req.amount, linked, req.amount_difference_note)
+    confirmed = user.role == Role.WAREHOUSE_ADMIN
+    now = thai_now()
     row = CashAdvance(warehouse_id=wid, payer_id=payer_id, payer_name=payer_name,
         advance_date=req.advance_date, amount=req.amount, currency=req.currency, purpose=req.purpose,
-        description=req.description, voucher_path=req.voucher_path, status="pending", repaid_amount=0,
-        created_by_id=user.id, created_by_name=user.display_name, created_at=thai_now())
+        description=req.description, voucher_path=req.voucher_path, status="confirmed" if confirmed else "pending", repaid_amount=0,
+        amount_difference_note=req.amount_difference_note,
+        reviewed_by_id=user.id if confirmed else None, reviewed_by_name=user.display_name if confirmed else None,
+        reviewed_at=now if confirmed else None, created_by_id=user.id, created_by_name=user.display_name, created_at=now)
     db.add(row)
     await db.flush()
-    result = _serialize(row)
+    await documents.save_links(db, row, linked)
+    result = await _with_documents(db, row, user)
     await record_history(db, module="cash_advances", record_id=row.id, operator=user,
         operation_type="create", after=result, warehouse_id=wid)
     return result
+
+
+@router.put("/{advance_id}")
+async def edit_advance(advance_id: int, req: CashAdvanceCreate, user=Depends(_creator), db: AsyncSession = Depends(get_db)):
+    wid = _warehouse(user)
+    row = (await db.execute(select(CashAdvance).where(CashAdvance.id == advance_id,
+        CashAdvance.warehouse_id == wid).with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
+    if row is None: raise HTTPException(404, "垫款单不存在或不属于当前仓库")
+    if not _can_edit(row, user, await _used_ids(db, [row.id])):
+        raise HTTPException(400, "仅待确认单可由主管或管理员编辑；未使用且未归还的已确认单仅管理员可编辑")
+    before = await _with_documents(db, row, user)
+    payer_id, payer_name = await _validate_payer(req, user, wid, db)
+    linked = await documents.resolve(db, wid, req.currency, req.linked_documents)
+    documents.validate_difference(req.amount, linked, req.amount_difference_note)
+    for key in ("advance_date", "amount", "currency", "purpose", "description", "voucher_path", "amount_difference_note"):
+        setattr(row, key, getattr(req, key))
+    row.payer_id, row.payer_name = payer_id, payer_name
+    await documents.save_links(db, row, linked)
+    result = await _with_documents(db, row, user)
+    await record_history(db, module="cash_advances", record_id=row.id, operator=user,
+        operation_type="update", before=before, after=result, warehouse_id=wid)
+    return result
+
+
+@router.get("/{advance_id}/documents/{link_id}")
+async def linked_document_detail(advance_id: int, link_id: int, user=Depends(_reader), db: AsyncSession = Depends(get_db)):
+    return await documents.view_document(db, _warehouse(user), advance_id, link_id)
 
 
 async def _review(advance_id, reason, user, db):
