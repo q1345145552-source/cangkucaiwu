@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Numeric, true
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -54,9 +54,31 @@ class ExpenseFundItem(Base):
     review_status = Column(String(20), default=ReviewStatus.PENDING.value)
     review_remark = Column(String(500), nullable=True)
     review_action = Column(String(20), nullable=True)
+    # 新开销只记台账；迁移显式保留旧开销原有的成本展示口径。
+    cost_record_only = Column(Boolean, nullable=False, default=True, server_default=true())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     fund = relationship("ExpenseFund", back_populates="items")
+
+
+class ExpenseFundDisbursement(Base):
+    """逐笔拨付事实；不再用备用金账户的累计金额冒充每次付款。"""
+    __tablename__ = "expense_fund_disbursements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    fund_id = Column(Integer, ForeignKey("expense_funds.id"), nullable=False, index=True)
+    amount = Column(Numeric(14, 2), nullable=False)
+    currency = Column(String(5), nullable=False)
+    disbursed_date = Column(DateTime, nullable=False)
+    payment_account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=False, index=True)
+    account_name = Column(String(100), nullable=False)
+    expense_record_id = Column(Integer, ForeignKey("expense_records.id"), nullable=False, unique=True, index=True)
+    recharge_request_id = Column(Integer, ForeignKey("fund_recharge_requests.id"), nullable=True, unique=True, index=True)
+    operator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    operator_name = Column(String(100), nullable=False)
+    remark = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class SystemSetting(Base):

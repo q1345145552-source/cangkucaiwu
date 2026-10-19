@@ -253,8 +253,8 @@ def test_fund_advance_only_one_cost_preserves_currency_and_no_second_company_flo
             async with f() as db:
                 q = report.cost_query(db, [1])
                 costs = (await db.execute(select(q))).mappings().all()
-                assert len(costs) == 1 and float(costs[0]["amount"]) == 1000
-                assert costs[0]["funding_source"] == "expense_fund" and costs[0]["category_name"] == "员工预支"
+                # 第二轮钱包口径：原预支写入还在，新备用金用途不再进入成本合计。
+                assert costs == []
                 q = report.flow_query(db, [1])
                 flows = (await db.execute(select(q))).mappings().all()
                 assert len(flows) == 1 and flows[0]["source"] == "expense_fund" and float(flows[0]["amount"]) == 5000
@@ -266,13 +266,12 @@ def test_fund_advance_only_one_cost_preserves_currency_and_no_second_company_flo
 def test_payroll_frontend_and_unrelated_write_code_unchanged():
     root = Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py",
-        "backend/app/api/v1/reimbursement.py", "backend/app/api/v1/expense_fund.py",
-        "backend/app/services/account_balances.py"):
+        "backend/app/api/v1/reimbursement.py"):
         assert (root / path).read_bytes() == subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root)
-    # 前端仅把新预支联动行的只读说明改成准确文案，排版和交互保持原样。
+    # 两轮仅扩充联动行的只读说明，排版和其他交互保持原样。
     path = "frontend/src/app/(dashboard)/operating/page.tsx"
     old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()
-    assert (root / path).read_text() == old.replace("备用金只读明细</span>", '{row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span>')
+    assert (root / path).read_text() == old.replace("备用金只读明细</span>", '{row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span>')
     path = "frontend/src/app/(dashboard)/reports/cost-funds-debt/page.tsx"
     old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()
     assert (root / path).read_text() == old.replace(': `备用金开销 #${row.source_id}`}', ': row.source === "expense" ? row.remark || "备用金支付" : `备用金开销 #${row.source_id}`}')

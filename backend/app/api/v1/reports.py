@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.recharge import RechargeDeclaration, IncomingFlow, ReconciliationResult
 from app.models.income_expense import IncomeRecord, ExpenseRecord
+from app.services.fund_disbursement import cost_record_filter
 from app.models.expense_fund import ExpenseFund
 from app.models.reimbursement import Reimbursement
 from app.models.payable import PayableBill
@@ -115,7 +116,7 @@ async def report_previews(
 
     # 3. 收支报表
     iq = select(func.coalesce(func.sum(IncomeRecord.amount), 0))
-    eq = select(func.coalesce(func.sum(ExpenseRecord.amount), 0))
+    eq = select(func.coalesce(func.sum(ExpenseRecord.amount), 0)).where(cost_record_filter())
     iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
     iq = _apply_date(iq, IncomeRecord.income_date, start_date, end_date)
     eq = _apply_date(eq, ExpenseRecord.expense_date, start_date, end_date)
@@ -210,7 +211,7 @@ async def income_expense_report(start_date: str = None, end_date: str = None, wa
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_ids = get_wh_ids(current_user)
-    iq = select(IncomeRecord); eq = select(ExpenseRecord)
+    iq = select(IncomeRecord); eq = select(ExpenseRecord).where(cost_record_filter())
     rq = select(RechargeDeclaration)  # 充值申报也作为收入来源
     iq = iq.where(IncomeRecord.warehouse_id.in_(wh_ids)); eq = eq.where(ExpenseRecord.warehouse_id.in_(wh_ids))
     rq = rq.where(RechargeDeclaration.warehouse_id.in_(wh_ids))

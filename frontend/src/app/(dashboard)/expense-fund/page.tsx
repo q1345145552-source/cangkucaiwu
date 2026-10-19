@@ -35,6 +35,12 @@ export default function ExpenseFundPage() {
   const [topUpAccount, setTopUpAccount] = useState<any>(null);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [topUpReason, setTopUpReason] = useState("");
+  const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
+  const [paymentAccountId, setPaymentAccountId] = useState("");
+  const [topUpDate, setTopUpDate] = useState("");
+  const [topUpBusy, setTopUpBusy] = useState(false);
+  const [rechargeReviewId, setRechargeReviewId] = useState<number | null>(null);
+  const [disbursements, setDisbursements] = useState<Record<number, any[]>>({});
   const [showExpense, setShowExpense] = useState(false);
   const [expenseAccount, setExpenseAccount] = useState<any>(null);
   const [itemForm, setItemForm] = useState({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: "THB", description: "" });
@@ -97,6 +103,7 @@ export default function ExpenseFundPage() {
       setItemsLoading(prev => ({ ...prev, [acc.id]: false }));
     }
     loadRechargeHistory(acc);
+    loadDisbursements(acc.id);
   }
 
   async function doCreate() {
@@ -109,13 +116,31 @@ export default function ExpenseFundPage() {
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
-  function openTopUp(acc: any) { setTopUpAccount(acc); setTopUpAmount(""); setTopUpReason(""); setShowTopUp(true); }
+  async function openTopUp(acc: any, request?: any) {
+    setTopUpAccount(acc); setTopUpAmount(request ? String(request.amount) : ""); setTopUpReason("");
+    setRechargeReviewId(request?.id ?? null);
+    setTopUpDate(new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }));
+    setPaymentAccountId(""); setPaymentAccounts([]); setShowTopUp(true);
+    if (isAdmin) {
+      try {
+        const r = await api.get<any>("/expense-fund/payment-accounts");
+        const matching = (r.data || []).filter((a: any) => (a.currency || "THB") === (acc.currency || "THB"));
+        setPaymentAccounts(matching);
+        setPaymentAccountId(String((matching.find((a: any) => a.account_type === "cash") || matching[0])?.id || ""));
+      } catch (err: any) { toast("error", err.message || "付款账户加载失败"); }
+    }
+  }
   async function doTopUp() {
-    if (!topUpAccount || !topUpAmount) return;
+    if (!topUpAccount || !topUpAmount || topUpBusy) return;
+    if (isAdmin && !paymentAccountId) { toast("error", "请选择备用金拨付账户"); return; }
+    setTopUpBusy(true);
     try {
       if (isAdmin) {
         // 管理员直接充值
-        const r = await api.post(`/expense-fund/accounts/${topUpAccount.id}/topup`, { amount: +topUpAmount });
+        const fields = { payment_account_id: +paymentAccountId, receive_date: topUpDate };
+        const r = rechargeReviewId !== null
+          ? await api.post("/expense-fund/recharge/review", { request_id: rechargeReviewId, action: "approve", ...fields })
+          : await api.post(`/expense-fund/accounts/${topUpAccount.id}/topup`, { amount: +topUpAmount, ...fields });
         toast("success", r.message || "充值成功");
       } else {
         // 财务提交充值申请
@@ -124,13 +149,16 @@ export default function ExpenseFundPage() {
       }
       setShowTopUp(false); setTopUpAmount(""); setTopUpReason(""); setTopUpReason("");
       loadAccounts();
-      if (expandedId === topUpAccount.id) toggleExpand(topUpAccount);
+      loadDisbursements(topUpAccount.id);
+      setRechargeHistory({});
+      if (rechargeReviewId !== null) loadRechargeRequests();
     } catch (err: any) { toast("error", err.message || "充值失败"); }
+    finally { setTopUpBusy(false); }
   }
 
   function openExpense(acc: any) {
     setExpenseAccount(acc);
-    setItemForm({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: "THB", description: "" });
+    setItemForm({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: acc.currency || "THB", description: "" });
     setReceiptFile(null);
     setShowExpense(true);
   }
@@ -150,7 +178,10 @@ export default function ExpenseFundPage() {
       }
       toast("success", "开销添加成功");
       setShowExpense(false);
-      if (expandedId === expenseAccount.id) toggleExpand(expenseAccount);
+      loadAccounts();
+      const updated = await api.get<any>(`/expense-fund/accounts/${expenseAccount.id}/items`);
+      setItems(prev => ({ ...prev, [expenseAccount.id]: updated.data || [] }));
+      loadDisbursements(expenseAccount.id);
     } catch (err: any) { toast("error", err.message || "添加失败"); }
   }
 
@@ -220,11 +251,15 @@ export default function ExpenseFundPage() {
     setRechargeLoading(false);
   }
   async function approveRecharge(reqId: number) {
+    const request = rechargeData.find(r => r.id === reqId);
+    if (request) await openTopUp({ id: request.fund_id, employee_name: request.applicant_name,
+      currency: request.currency, current_balance: request.current_balance, available: request.available, fund_limit: request.fund_limit }, request);
+  }
+  async function loadDisbursements(id: number) {
     try {
-      await api.post("/expense-fund/recharge/review", { request_id: reqId, action: "approve" });
-      toast("success", "充值申请已通过");
-      loadRechargeRequests();
-    } catch (err: any) { toast("error", err.message || "审核失败"); }
+      const r = await api.get<any>(`/expense-fund/accounts/${id}/disbursements`);
+      setDisbursements(prev => ({ ...prev, [id]: r.data || [] }));
+    } catch (err: any) { toast("error", err.message || "拨付记录加载失败"); }
   }
   function rejectRecharge(reqId: number) {
     const reason = prompt("请输入驳回原因");
@@ -248,7 +283,7 @@ export default function ExpenseFundPage() {
   }
 
   // ====== Stats ======
-  const totalBalanceByCurrency = accounts.reduce((m: Record<string, number>, a: any) => { const c = a.currency || "THB"; m[c] = (m[c] || 0) + (a.current_balance || 0); return m; }, {});
+  const totalBalanceByCurrency = accounts.reduce((m: Record<string, number>, a: any) => { const c = a.currency || "THB"; m[c] = (m[c] || 0) + (a.available ?? a.current_balance ?? 0); return m; }, {});
   const totalSpentByCurrency = accounts.reduce((m: Record<string, number>, a: any) => { Object.entries(a.spent_by_currency || {}).forEach(([c, v]: [string, any]) => { m[c] = (m[c] || 0) + (v || 0); }); return m; }, {});
   const lowCount = accounts.filter((a: any) => a.is_low).length;
 
@@ -347,9 +382,9 @@ export default function ExpenseFundPage() {
                   {accounts.map((acc: any) => {
                     const isExpanded = expandedId === acc.id;
                     const accItems = items[acc.id] || [];
-                    const accSpentTotal = accItems.filter((i: any) => i.review_status !== "rejected").reduce((s: number, i: any) => s + (i.amount || 0), 0);
+                    const accSpentTotal = acc.total_spent ?? accItems.filter((i: any) => i.review_status !== "rejected").reduce((s: number, i: any) => s + (i.amount || 0), 0);
                     const accPendingSpent = accItems.filter((i: any) => i.review_status === "pending").reduce((s: number, i: any) => s + (i.amount || 0), 0);
-                    const accAvailable = Math.max(0, (acc.current_balance || 0) - accPendingSpent);
+                    const accAvailable = acc.available ?? Math.max(0, (acc.current_balance || 0) - accPendingSpent);
                     return (
                       <>
                         <tr key={acc.id} className={`border-b hover:bg-gray-50/50 cursor-pointer transition-colors ${acc.is_low ? "bg-red-50/30" : ""}`} onClick={() => toggleExpand(acc)}>
@@ -403,7 +438,9 @@ export default function ExpenseFundPage() {
                                         <td className="px-2 py-1.5">{it.category}</td>
                                         <td className="px-2 py-1.5 text-right font-mono">{it.currency === "CNY" ? "¥" : "฿"}{it.amount?.toLocaleString()}</td>
                                         <td className="px-2 py-1.5 text-center"><span className={`px-1 py-0.5 rounded text-[10px] ${it.currency === "CNY" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"}`}>{it.currency || "THB"}</span></td>
-                                        <td className="px-2 py-1.5 text-gray-500">{it.description}</td>
+                                        <td className="px-2 py-1.5 text-gray-500">{it.description}
+                                          {(it.disbursement_sources || []).map((p: any, index: number) => <div key={index} className="text-[10px] text-gray-400">{p.label} · {fmtMoney(p.amount, it.currency)}</div>)}
+                                        </td>
                                         <td className="px-2 py-1.5 text-center">
                                           <span className={`px-1.5 py-0.5 rounded text-[10px] ${it.review_status === "approved" ? "bg-green-50 text-green-600" : it.review_status === "rejected" ? "bg-red-50 text-red-600" : "bg-yellow-50 text-yellow-600"}`}>
                                             {it.review_status === "approved" ? "已通过" : it.review_status === "rejected" ? "已驳回" : "待审核"}
@@ -415,6 +452,15 @@ export default function ExpenseFundPage() {
                                 </table>
                                 </div>
                               )}
+                              <div className="border-t border-gray-200 mt-3 pt-3 text-xs">
+                                <div className="font-medium text-gray-500 mb-2">拨付记录</div>
+                                {(disbursements[acc.id] || []).map((d: any) => <details key={d.id} className="bg-white rounded-md border border-gray-100 p-2 mb-2">
+                                  <summary className="cursor-pointer">拨付 #{d.id} · {d.disbursed_date} · {fmtMoney(d.amount, d.currency)} · {d.account_name} · 支出 #{d.expense_record_id}</summary>
+                                  <div className="mt-1 text-gray-500">经办：{d.operator_name}，已用 {fmtMoney(d.used_amount, d.currency)}</div>
+                                  {(d.items || []).map((it: any) => <div key={it.item_id} className="mt-1 text-gray-500">开销 #{it.item_id} · {it.expense_date} · {it.description} · 本笔使用 {fmtMoney(it.amount, d.currency)}</div>)}
+                                </details>)}
+                                {!disbursements[acc.id]?.length && <div className="text-gray-400">暂无逐笔拨付记录，历史余额保留原记录</div>}
+                              </div>
                               {/* Recharge history */}
                               <div className="border-t border-gray-200 mt-3 pt-3">
                                 <div className="flex items-center gap-2 mb-2">
@@ -492,27 +538,6 @@ export default function ExpenseFundPage() {
             </div>
           )}
 
-          {/* Top-up modal */}
-          {showTopUp && (
-            <div className="modal-overlay z-50" onClick={() => setShowTopUp(false)}>
-              <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="bg-green-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2"><ArrowUp size={18} /><h2 className="font-semibold">充值备用金</h2><button onClick={() => setShowTopUp(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none">&times;</button></div>
-                <div className="p-5 space-y-4">
-                  <div className="bg-green-50 rounded-lg p-3">
-                    <div className="text-xs text-green-600 mb-1">{topUpAccount?.employee_name}</div>
-                    <div className="flex items-center justify-between text-sm"><span className="text-gray-500">当前余额</span><span className="font-bold text-green-700">{fmtMoney(topUpAccount?.current_balance, topUpAccount?.currency)}</span></div>
-                    <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">{fmtMoney(topUpAccount?.fund_limit || 5000, topUpAccount?.currency)}</span></div>{!isAdmin && (<div className="mt-3"><label className="form-label text-xs">充值事由</label><input className="form-input text-sm" value={topUpReason} onChange={e => setTopUpReason(e.target.value)} placeholder="请输入充值原因" /></div>)}
-                  </div>
-                  <div><label className="form-label">充值金额</label><input type="number" className="form-input text-lg font-bold" value={topUpAmount} onChange={e => setTopUpAmount(e.target.value)} placeholder="输入金额" autoFocus /></div>
-                </div>
-                <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-                  <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm">取消</button>
-                  <button onClick={doTopUp} className="btn-primary text-sm bg-green-600 hover:bg-green-700">确认充值</button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Expense modal */}
           {showExpense && (
             <div className="modal-overlay z-50" onClick={() => { setShowExpense(false); setReceiptFile(null); }}>
@@ -520,7 +545,7 @@ export default function ExpenseFundPage() {
                 <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2"><FileText size={18} /><h2 className="font-semibold">添加开销 - {expenseAccount?.employee_name}</h2><button onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button></div>
                 <div className="p-5 space-y-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">账户余额</div><div className="text-sm font-bold text-blue-700">{fmtMoney(expenseAccount?.current_balance, expenseAccount?.currency)}</div></div>
+                    <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">累计拨付</div><div className="text-sm font-bold text-blue-700">{fmtMoney(expenseAccount?.total_topped_up, expenseAccount?.currency)}</div></div>
                     <div className="bg-gray-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-gray-400">可用余额</div><div className="text-sm font-bold text-gray-700">{fmtMoney(Math.max(0, (expenseAccount?.available ?? expenseAccount?.current_balance ?? 0)), expenseAccount?.currency)}</div></div>
                   </div>
                   <div><label className="form-label">日期</label><input type="date" className="form-input" value={itemForm.expense_date} onChange={e => setItemForm({ ...itemForm, expense_date: e.target.value })} /></div>
@@ -546,6 +571,33 @@ export default function ExpenseFundPage() {
           )}
         </>
       )}
+
+      {/* Top-up modal */}
+      {showTopUp && (
+        <div className="modal-overlay z-50" onClick={() => setShowTopUp(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-green-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2"><ArrowUp size={18} /><h2 className="font-semibold">充值备用金</h2><button onClick={() => setShowTopUp(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none">&times;</button></div>
+            <div className="p-5 space-y-4">
+              <div className="bg-green-50 rounded-lg p-3">
+                <div className="text-xs text-green-600 mb-1">{topUpAccount?.employee_name}</div>
+                <div className="flex items-center justify-between text-sm"><span className="text-gray-500">当前余额</span><span className="font-bold text-green-700">{fmtMoney(topUpAccount?.available ?? topUpAccount?.current_balance, topUpAccount?.currency)}</span></div>
+                <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">{fmtMoney(topUpAccount?.fund_limit || 5000, topUpAccount?.currency)}</span></div>{!isAdmin && (<div className="mt-3"><label className="form-label text-xs">充值事由</label><input className="form-input text-sm" value={topUpReason} onChange={e => setTopUpReason(e.target.value)} placeholder="请输入充值原因" /></div>)}
+              </div>
+              <div><label className="form-label">充值金额</label><input type="number" className="form-input text-lg font-bold" value={topUpAmount} onChange={e => setTopUpAmount(e.target.value)} placeholder="输入金额" autoFocus readOnly={rechargeReviewId !== null} /></div>
+              {isAdmin && <>
+                <div><label className="form-label">拨付日期</label><input aria-label="拨付日期" type="date" className="form-input" value={topUpDate} onChange={e => setTopUpDate(e.target.value)} /></div>
+                <div><label className="form-label">公司付款账户</label><select aria-label="公司付款账户" className="form-input" value={paymentAccountId} onChange={e => setPaymentAccountId(e.target.value)}><option value="">请选择备用金拨付账户</option>{paymentAccounts.map(a => <option key={a.id} value={a.id}>{a.account_name}（{fmtMoney(a.current_balance, a.currency)}）</option>)}</select>
+                {!paymentAccounts.length && <p className="text-xs text-red-500 mt-1">没有同币种可用账户，请先到收款账户中建立或启用账户</p>}</div>
+              </>}
+            </div>
+            <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm">取消</button>
+              <button onClick={doTopUp} disabled={topUpBusy || (isAdmin && !paymentAccounts.length)} className="btn-primary text-sm bg-green-600 hover:bg-green-700">{topUpBusy ? "提交中…" : "确认充值"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* ========== REVIEW TAB ========== */}
       {tab === "review" && (

@@ -5,6 +5,7 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.income_expense import ExpenseRecord
 from app.models.payroll import PayrollRecord
 from app.models.reimbursement_payment import ReimbursementPayment
+from app.models.expense_fund import ExpenseFundDisbursement
 
 
 async def current_account_balances(db, accounts):
@@ -31,5 +32,11 @@ async def current_account_balances(db, accounts):
         ReimbursementPayment.funding_source == "company_account", ReimbursementPayment.status == "active",
     ).group_by(ReimbursementPayment.payment_account_id))).all()
     for account_id, amount in reimbursements:
+        amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount))
+    disbursements = (await db.execute(select(ExpenseFundDisbursement.payment_account_id,
+        func.sum(ExpenseFundDisbursement.amount)).where(
+        ExpenseFundDisbursement.payment_account_id.in_([a.id for a in accounts])
+    ).group_by(ExpenseFundDisbursement.payment_account_id))).all()
+    for account_id, amount in disbursements:
         amounts[account_id] = Decimal(str(amounts.get(account_id) or 0)) + Decimal(str(amount))
     return {a.id: Decimal(str(a.opening_balance or 0)) - Decimal(str(amounts.get(a.id) or 0)) for a in accounts}

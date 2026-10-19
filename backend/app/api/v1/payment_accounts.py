@@ -13,6 +13,7 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.payroll import PayrollRecord
 from app.models.income_expense import ExpenseRecord
 from app.models.reimbursement_payment import ReimbursementPayment
+from app.models.expense_fund import ExpenseFundDisbursement
 
 _PERMISSION = MENU_PERMISSIONS_BY_KEY["accounts"].label
 
@@ -113,4 +114,6 @@ async def delete_account(account_id: int, current_user: User = Depends(check_sta
         raise HTTPException(400, "该账户有关联的垫款归还记录，不能删除，请停用")
     if (await db.execute(select(ReimbursementPayment.id).where(ReimbursementPayment.payment_account_id == a.id).limit(1))).first():
         raise HTTPException(400, "该账户有关联报销付款记录，不能删除，请停用")
+    if (await db.execute(select(ExpenseFundDisbursement.id).where(ExpenseFundDisbursement.payment_account_id == a.id).limit(1))).first():
+        raise HTTPException(400, "该账户有关联备用金拨付记录，不能删除，请停用")
     await db.delete(a); await db.flush(); return {"message": "删除成功"}

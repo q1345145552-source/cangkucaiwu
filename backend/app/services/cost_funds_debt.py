@@ -11,7 +11,8 @@ from app.models.cash_advance import CashAdvance
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.customer import PaymentAccount
 from app.models.employee_advance import EmployeeAdvance
-from app.models.expense_fund import ExpenseFund, ExpenseFundItem
+from app.models.expense_fund import ExpenseFund, ExpenseFundItem, ExpenseFundDisbursement
+from app.services.fund_disbursement import cost_record_filter
 from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory, IncomeRecord
 from app.models.payable import PayableBill
 from app.models.payroll import PayrollRecord
@@ -55,7 +56,7 @@ def currency(column):
 
 
 def cost_query(db, warehouse_ids):
-    e, c, p, r, a = ExpenseRecord, IncomeExpenseCategory, PayrollRecord, Reimbursement, EmployeeAdvance
+    e, c, p, r, a, d = ExpenseRecord, IncomeExpenseCategory, PayrollRecord, Reimbursement, EmployeeAdvance, ExpenseFundDisbursement
     category = case((or_(c.name.in_(["员工工资", "工资"]), p.id.is_not(None)), "员工工资"), else_=c.name)
     source = case((or_(r.cash_advance_id.is_not(None), p.cash_advance_id.is_not(None)), "cash_advance"),
         (a.source == "fund", "expense_fund"),
@@ -67,20 +68,22 @@ def cost_query(db, warehouse_ids):
         amount(e.amount).label("amount"), currency(e.currency).label("currency"),
         e.account_id.label("account_id"), e.remark.label("remark"), e.voucher.label("voucher"),
         source.label("funding_source"), func.coalesce(r.cash_advance_id, p.cash_advance_id).label("cash_advance_id"),
-        r.id.label("reimbursement_id"), p.id.label("payroll_record_id"), a.id.is_not(None).label("is_read_only"),
+        r.id.label("reimbursement_id"), p.id.label("payroll_record_id"), or_(a.id.is_not(None), d.id.is_not(None)).label("is_read_only"),
         a.id.label("employee_advance_id"), a.employee_id.label("employee_id"),
+        d.id.label("fund_disbursement_id"), d.fund_id.label("fund_id"),
     ).join(c, and_(c.id == e.category_id, c.warehouse_id == e.warehouse_id)).outerjoin(
         p, and_(p.expense_record_id == e.id, p.warehouse_id == e.warehouse_id),
     ).outerjoin(r, and_(r.expense_record_id == e.id, r.warehouse_id == e.warehouse_id)).outerjoin(
-        a, and_(a.expense_record_id == e.id, a.warehouse_id == e.warehouse_id)).where(
-        e.warehouse_id.in_(warehouse_ids), c.type == "expense", c.category_group == "operating")
+        a, and_(a.expense_record_id == e.id, a.warehouse_id == e.warehouse_id)).outerjoin(
+        d, and_(d.expense_record_id == e.id, d.warehouse_id == e.warehouse_id)).where(
+        e.warehouse_id.in_(warehouse_ids), c.type == "expense", c.category_group == "operating", cost_record_filter(e))
     f, i = ExpenseFund, ExpenseFundItem
     funds = select(
         (-i.id).label("id"), literal("fund_item").label("source"), i.id.label("source_id"), f.warehouse_id,
         day(db, i.expense_date), literal(None), literal("备用金开销"), amount(i.amount), currency(i.currency),
         literal(None), i.description, i.receipt, literal("expense_fund"), literal(None),
-        literal(None), literal(None), literal(True), literal(None), literal(None),
-    ).join(f, f.id == i.fund_id).where(f.warehouse_id.in_(warehouse_ids), i.review_status == "approved",
+        literal(None), literal(None), literal(True), literal(None), literal(None), literal(None), literal(None),
+    ).join(f, f.id == i.fund_id).where(f.warehouse_id.in_(warehouse_ids), i.review_status == "approved", i.cost_record_only.is_(False),
         # 新预支只在审批通过后由 ExpenseRecord 计一次；旧备用金记录原样保留。
         ~select(a.id).where(a.fund_item_id == i.id, a.expense_tracking_enabled.is_(True),
             a.warehouse_id == f.warehouse_id).exists())
@@ -112,7 +115,7 @@ async def cost_list(db, warehouse_ids, start, end, *, page=1, page_size=25, cate
         "date": str(r["date"]), "account_name": accounts.get(r["account_id"], "备用金" if r["source"] == "fund_item" else "不使用公司账户"),
         "is_read_only": bool(r["is_read_only"])} for r in rows]
     return {"data": data, "total": total, "page": page, "page_size": page_size,
-        "totals_by_currency": await cost_totals(db, q, filters), "cost_basis": "运营支出及已通过备用金开销（只读合并）"}
+        "totals_by_currency": await cost_totals(db, q, filters), "cost_basis": "运营支出及保留的历史备用金开销；新开销只记台账"}
 
 
 def flow_query(db, warehouse_ids):
@@ -136,7 +139,8 @@ def flow_query(db, warehouse_ids):
     ).outerjoin(p, and_(p.expense_record_id == er.id, p.warehouse_id == er.warehouse_id)).where(
         r.id.is_(None), or_(p.id.is_(None), and_(p.cash_advance_id.is_(None), p.disbursed.is_(True), p.voided.is_not(True))),
         ~select(EmployeeAdvance.id).where(EmployeeAdvance.expense_record_id == er.id,
-            EmployeeAdvance.source == "fund").exists())
+            EmployeeAdvance.source == "fund").exists(),
+        ~select(ExpenseFundDisbursement.id).where(ExpenseFundDisbursement.expense_record_id == er.id).exists())
     rp, cr = ReimbursementPayment, CashAdvanceRepayment
     reimbursements = row(rp, rp.paid_at, rp.amount, rp.currency, "expense", "reimbursement", "报销付款",
         account=rp.payment_account_id, account_name=rp.account_name, status=rp.status, reference="RB-P-",
@@ -151,9 +155,15 @@ def flow_query(db, warehouse_ids):
         r.status == "paid", r.funding_source.is_(None), or_(r.is_fund_linked.is_(None), r.is_fund_linked != "1"))
     payable = row(PayableBill, PayableBill.paid_at, PayableBill.paid_amount, PayableBill.currency,
         "expense", "payable", "应付付款（未指定账户）", reference="PB-", remark=PayableBill.bill_number).where(PayableBill.paid_amount > 0)
-    fund = row(ExpenseFund, ExpenseFund.receive_date, ExpenseFund.amount, ExpenseFund.currency,
-        "expense", "expense_fund", "备用金领用（未指定账户）", non_cost=True, reference="EF-", remark=ExpenseFund.purpose).where(ExpenseFund.amount > 0)
-    raw = union_all(incomes, expenses, reimbursements, returns, incoming, legacy, payable, fund).subquery("raw_company_flows")
+    already = select(func.coalesce(func.sum(ExpenseFundDisbursement.amount), 0)).where(
+        ExpenseFundDisbursement.fund_id == ExpenseFund.id).scalar_subquery()
+    old_amount = ExpenseFund.amount - already
+    fund = row(ExpenseFund, ExpenseFund.receive_date, old_amount, ExpenseFund.currency,
+        "expense", "expense_fund", "备用金领用（未指定账户）", non_cost=True, reference="EF-", remark=ExpenseFund.purpose).where(old_amount > 0)
+    d = ExpenseFundDisbursement
+    disbursements = row(d, d.disbursed_date, d.amount, d.currency, "expense", "expense_fund", "备用金拨付",
+        account=d.payment_account_id, account_name=d.account_name, reference="EFD-", remark=d.remark)
+    raw = union_all(incomes, expenses, reimbursements, returns, incoming, legacy, payable, fund, disbursements).subquery("raw_company_flows")
     a = PaymentAccount
     valid = and_(a.id.is_not(None), a.warehouse_id.in_(warehouse_ids), currency(a.currency) == raw.c.currency)
     # 无账户、旧错误账户或跨币种账户记录不能被悄悄分摊进真实账户。
@@ -287,9 +297,9 @@ async def report(db, warehouse_ids, start, end):
         .where(flows.c.date.is_(None), flows.c.status == "active").group_by(flows.c.currency, flows.c.source_label))).all()
     return {"start_date": start.isoformat(), "end_date": end.isoformat(), "warehouse_ids": warehouse_ids, "currencies": blocks,
         "balance_anchor_date": anchor.isoformat(), "notes": [
-            "成本为运营支出加已通过的备用金开销，同一笔关联备用金报销只计一次；未通过的备用金开销不计成本。",
+            "新备用金在拨付时计成本，后续开销只记台账；保留已按旧口径计入的历史备用金开销，不回填旧拨付。",
             "公司资金流水不含充值申报（申报不等于到账）、垫款付款或备用金二次开销；归还垫款和领用备用金计真实流出，另列差异解释。",
             "期初按当前月初登记余额及现存有效流水前推/回推；系统没有历史月初余额快照，历史余额请结合银行账单核对。",
             "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。",
-            "未指定账户的历史收付单列，不猜测账户；备用金领用金额沿用现有累计金额，旧数据未记录逐次付款账户/日期。"],
+            "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"],
         "undated_flows": [{"currency": c, "source": source, "count": count, "amount": float(money(value))} for c, source, count, value in undated]}

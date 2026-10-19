@@ -124,6 +124,39 @@ async def _migrate_employee_advance_expenses(conn):
             raise
 
 
+async def _migrate_fund_disbursements(conn):
+    """老开销保留原口径；新拨付逐笔记账，不回填历史拨付或支出。"""
+    from sqlalchemy import text
+    statements = (
+        ("cost_record_only", "ALTER TABLE expense_fund_items ADD COLUMN IF NOT EXISTS cost_record_only BOOLEAN"),
+        ("legacy_item_basis", "UPDATE expense_fund_items SET cost_record_only=false WHERE cost_record_only IS NULL"),
+        ("new_item_default", "ALTER TABLE expense_fund_items ALTER COLUMN cost_record_only SET DEFAULT true"),
+        ("item_not_null", "ALTER TABLE expense_fund_items ALTER COLUMN cost_record_only SET NOT NULL"),
+        ("disbursements", """CREATE TABLE IF NOT EXISTS expense_fund_disbursements (
+            id SERIAL PRIMARY KEY, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
+            fund_id INTEGER NOT NULL REFERENCES expense_funds(id),
+            amount NUMERIC(14,2) NOT NULL CHECK(amount > 0), currency VARCHAR(5) NOT NULL,
+            disbursed_date TIMESTAMP NOT NULL,
+            payment_account_id INTEGER NOT NULL REFERENCES payment_accounts(id), account_name VARCHAR(100) NOT NULL,
+            expense_record_id INTEGER NOT NULL REFERENCES expense_records(id),
+            recharge_request_id INTEGER REFERENCES fund_recharge_requests(id),
+            operator_id INTEGER REFERENCES users(id), operator_name VARCHAR(100) NOT NULL,
+            remark VARCHAR(500), created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )"""),
+        ("expense_unique", "CREATE UNIQUE INDEX IF NOT EXISTS ix_expense_fund_disbursements_expense_record_id ON expense_fund_disbursements(expense_record_id)"),
+        ("request_unique", "CREATE UNIQUE INDEX IF NOT EXISTS ix_expense_fund_disbursements_recharge_request_id ON expense_fund_disbursements(recharge_request_id)"),
+        ("fund_index", "CREATE INDEX IF NOT EXISTS ix_expense_fund_disbursements_fund_id ON expense_fund_disbursements(fund_id)"),
+        ("warehouse_date_index", "CREATE INDEX IF NOT EXISTS ix_fund_disbursements_warehouse_date ON expense_fund_disbursements(warehouse_id,disbursed_date)"),
+    )
+    for name, statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"迁移 备用金拨付 {name} 失败：{exc}")
+            raise
+
+
 async def _migrate_payroll_expense_link(conn):
     from sqlalchemy import text
     for name, statement in (
@@ -281,6 +314,7 @@ async def seed():
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)
         await _migrate_employee_advance_expenses(conn)
+        await _migrate_fund_disbursements(conn)
         await _migrate_makeup_quota_column(conn)
         await _migrate_makeup_batches(conn)
         await _migrate_payroll_expense_link(conn)
@@ -1111,6 +1145,11 @@ async def initialize():
         async with conn.begin_nested():
             advance_categories = await backfill_advance_categories(conn)
     print(f"员工预支支出分类迁移完成，新增分类数：{advance_categories}")
+    from app.services.fund_disbursement import backfill_fund_disbursement_categories
+    async with _get_engine().begin() as conn:
+        async with conn.begin_nested():
+            fund_categories = await backfill_fund_disbursement_categories(conn)
+    print(f"备用金拨付支出分类迁移完成，新增分类数：{fund_categories}")
     from app.services.permission_migrations import run_permission_migrations
     async with _get_engine().begin() as conn:
         changed = await run_permission_migrations(conn)

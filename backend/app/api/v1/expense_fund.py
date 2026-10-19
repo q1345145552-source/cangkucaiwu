@@ -4,7 +4,8 @@ from sqlalchemy import select, func
 from datetime import datetime
 import os, uuid
 from app.database import get_db
-from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus, SystemSetting, FundRechargeRequest
+from app.models.expense_fund import ExpenseFund, ExpenseFundItem, FundStatus, ReviewStatus, SystemSetting, FundRechargeRequest, ExpenseFundDisbursement
+from app.services.fund_disbursement import create_disbursement, disbursement_fields, fund_sources, validate_amount
 from app.models.user import User
 from app.models.reimbursement import Reimbursement, ReimbStatus
 from app.models.warehouse import Warehouse
@@ -44,6 +45,7 @@ async def ensure_account(db: AsyncSession, warehouse_id: int, employee_id: int, 
 class TopUpReq(BaseModel):
     amount: float
     receive_date: str = None
+    payment_account_id: Optional[int] = None
 
 class FundItemCreate(BaseModel):
     expense_date: str; category: str; amount: float; description: str
@@ -66,6 +68,8 @@ class RechargeRequestReview(BaseModel):
     request_id: int
     action: str  # approve / reject
     remark: str = ""
+    payment_account_id: Optional[int] = None
+    receive_date: Optional[str] = None
 
 class CreateAccountReq(BaseModel):
     employee_id: int
@@ -167,6 +171,10 @@ async def list_accounts(
         spent_rows = (await db.execute(spent_q)).all()
         spent_by_currency = {r.currency or "THB": float(r.total or 0) for r in spent_rows}
         total_spent = round(sum(spent_by_currency.values()), 2)
+        spent_regular = float((await db.execute(select(func.coalesce(func.sum(ExpenseFundItem.amount), 0)).where(
+            ExpenseFundItem.fund_id == a.id, ExpenseFundItem.category != "报销",
+            ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+        ))).scalar() or 0)
         result.append({
             "id": a.id, "employee_id": a.employee_id,
             "employee_name": umap.get(a.employee_id, ""),
@@ -175,7 +183,7 @@ async def list_accounts(
             "current_balance": (a.remaining_balance or 0),
             "total_spent": total_spent,
             "spent_by_currency": spent_by_currency,
-            "available": max(0, (a.remaining_balance or 0) - total_spent),
+            "available": max(0, (a.remaining_balance or 0) - spent_regular),
             "fund_limit": a.fund_limit or 5000,
             "alert_threshold": a.alert_threshold or 500,
             "is_low": (a.remaining_balance or 0) <= (a.alert_threshold or 500),
@@ -184,6 +192,42 @@ async def list_accounts(
 
 
 # ==== Top Up (充值) ====
+@router.get("/payment-accounts")
+async def disbursement_accounts(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("备用金管理"))):
+    from app.models.customer import PaymentAccount
+    from app.services.account_balances import current_account_balances
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    rows = (await db.execute(select(PaymentAccount).where(
+        PaymentAccount.warehouse_id.in_(get_wh_ids(current_user)),
+        (PaymentAccount.status == "active") | PaymentAccount.status.is_(None),
+    ).order_by(PaymentAccount.id))).scalars().all()
+    balances = await current_account_balances(db, rows)
+    return {"data": [{"id": r.id, "account_name": r.account_name, "account_type": r.account_type,
+        "currency": r.currency or "THB", "current_balance": float(balances[r.id])} for r in rows]}
+
+
+@router.get("/accounts/{account_id}/disbursements")
+async def list_disbursements(account_id: int, current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("备用金管理"))):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权限")
+    fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id,
+        ExpenseFund.warehouse_id.in_(get_wh_ids(current_user))))).scalar_one_or_none()
+    if fund is None:
+        raise HTTPException(404, "备用金账户不存在")
+    rows, sources = await fund_sources(db, fund)
+    items = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.fund_id == fund.id))).scalars().all()
+    data = []
+    for row in reversed(rows):
+        used = [{"item_id": item.id, "amount": p["amount"], "expense_date": item.expense_date.date().isoformat(),
+            "description": item.description, "review_status": item.review_status, "receipt": item.receipt}
+            for item in items for p in sources.get(item.id, []) if p["disbursement_id"] == row.id]
+        data.append({**disbursement_fields(row), "items": used, "used_amount": round(sum(i["amount"] for i in used), 2)})
+    return {"data": data, "total": len(data), "allocation_basis": "先拨先用；旧资金原拨付编号缺失时明确显示历史余额"}
+
+
 @router.post("/accounts/{account_id}/topup")
 async def topup_account(
     account_id: int, req: TopUpReq,
@@ -197,7 +241,7 @@ async def topup_account(
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
-    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
+    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id).with_for_update())).scalar_one_or_none()
     if not account:
         raise HTTPException(404, "账户不存在")
     if account.warehouse_id not in get_wh_ids(current_user):
@@ -205,22 +249,15 @@ async def topup_account(
     if req.amount is None or req.amount <= 0:
         raise HTTPException(400, "充值金额必须大于0")
 
+    validate_amount(req.amount)
     new_balance = (account.remaining_balance or 0) + req.amount
     limit = account.fund_limit or 5000
     if new_balance > limit:
         raise HTTPException(400, f"超出账户上限（{limit:,.0f}），当前余额 {account.remaining_balance:,.0f}，最多可充 {limit - (account.remaining_balance or 0):,.0f}")
 
-    account.remaining_balance = new_balance
-    account.amount = (account.amount or 0) + req.amount  # 累计充值总额
-    if req.receive_date:
-        account.receive_date = datetime.fromisoformat(req.receive_date)
-    await db.flush()
-
-    return {
-        "message": f"充值成功",
-        "new_balance": account.remaining_balance,
-        "total_topped_up": account.amount,
-    }
+    result = await create_disbursement(db, account, req.amount, req.payment_account_id,
+        current_user, receive_date=req.receive_date)
+    return {"message": "充值成功，已记入运营支出", **result}
 
 
 # ==== Items (开销) ====
@@ -243,6 +280,7 @@ async def list_items(
         ExpenseFundItem.fund_id == account_id,
     ).order_by(ExpenseFundItem.expense_date.desc()))
     items = result.scalars().all()
+    _, sources = await fund_sources(db, account)
     return {"data": [{
         "id": i.id, "fund_id": i.fund_id,
         "expense_date": i.expense_date.isoformat() if i.expense_date else None,
@@ -250,6 +288,7 @@ async def list_items(
         "description": i.description, "receipt": i.receipt,
         "review_status": i.review_status,
         "review_remark": i.review_remark, "review_action": i.review_action,
+        "cost_record_only": i.cost_record_only, "disbursement_sources": sources.get(i.id, []),
     } for i in items]}
 
 @router.post("/accounts/{account_id}/items")
@@ -263,13 +302,15 @@ async def add_item(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
 
-    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
+    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id).with_for_update())).scalar_one_or_none()
     if not account:
         raise HTTPException(404, "账户不存在")
     if account.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库的备用金账户")
     if req.amount is None or req.amount <= 0:
         raise HTTPException(400, "开销金额必须大于0")
+    if (req.currency or "THB") != (account.currency or "THB"):
+        raise HTTPException(400, "开销币种必须与备用金账户一致")
 
     # 超支守卫：常规开销（非报销）不得超过备用金里的现金余额
     # （报销类开销走报销流程，创建时已扣减 remaining_balance，这里不重复限制）
@@ -293,7 +334,9 @@ async def add_item(
     )
     db.add(i)
     await db.flush()
-    return {"id": i.id, "message": "开销记录添加成功"}
+    _, sources = await fund_sources(db, account)
+    return {"id": i.id, "message": "开销记录添加成功", "cost_record_only": True,
+            "disbursement_sources": sources.get(i.id, [])}
 
 
 # ==== Upload Receipt ====
@@ -535,6 +578,11 @@ async def list_recharge_requests(
     total = (await db.execute(count_q)).scalar()
     rows = (await db.execute(query.order_by(FundRechargeRequest.created_at.desc()).offset((page-1)*page_size).limit(page_size))).all()
 
+    fund_ids = {fund.id for _, fund, _, _ in rows}
+    regular_spent = dict((await db.execute(select(ExpenseFundItem.fund_id, func.sum(ExpenseFundItem.amount)).where(
+        ExpenseFundItem.fund_id.in_(fund_ids), ExpenseFundItem.category != "报销",
+        ExpenseFundItem.review_status != ReviewStatus.REJECTED.value,
+    ).group_by(ExpenseFundItem.fund_id))).all()) if fund_ids else {}
     result = []
     for rr, fund, applicant, wh in rows:
         result.append({
@@ -544,6 +592,7 @@ async def list_recharge_requests(
             "amount": rr.amount, "reason": rr.reason or "", "status": rr.status,
             "currency": fund.currency or "THB",
             "current_balance": fund.remaining_balance,
+            "available": max(0, (fund.remaining_balance or 0) - float(regular_spent.get(fund.id, 0))),
             "fund_limit": fund.fund_limit,
             "review_remark": rr.review_remark or "",
             "reviewer_id": rr.reviewer_id,
@@ -566,7 +615,7 @@ async def review_recharge_request(
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无审核权限")
 
-    rr = (await db.execute(select(FundRechargeRequest).where(FundRechargeRequest.id == req.request_id))).scalar_one_or_none()
+    rr = (await db.execute(select(FundRechargeRequest).where(FundRechargeRequest.id == req.request_id).with_for_update())).scalar_one_or_none()
     if not rr:
         raise HTTPException(404, "申请不存在")
     if rr.status != "pending":
@@ -582,14 +631,15 @@ async def review_recharge_request(
         rr.review_remark = ""
         rr.reviewed_at = datetime.utcnow()
 
-        # Increase the fund balance
-        fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == rr.fund_id))).scalar_one_or_none()
-        if fund:
-            fund.remaining_balance = (fund.remaining_balance or 0) + rr.amount
-            fund.amount = (fund.amount or 0) + rr.amount
+        fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == rr.fund_id,
+            ExpenseFund.warehouse_id == rr.warehouse_id).with_for_update())).scalar_one_or_none()
+        if fund is None:
+            raise HTTPException(404, "备用金账户不存在")
+        result = await create_disbursement(db, fund, rr.amount, req.payment_account_id,
+            current_user, receive_date=req.receive_date, request_id=rr.id)
 
         await db.flush()
-        return {"message": "充值申请已通过，余额已更新"}
+        return {"message": "充值申请已通过，已记入运营支出", **result}
 
     elif req.action == "reject":
         rr.status = "rejected"

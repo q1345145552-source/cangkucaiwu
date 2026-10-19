@@ -1,6 +1,8 @@
 from app.services.payroll_expense import require_manual_expense
 from app.services.reimbursement_payment import require_manual_reimbursement_expense
 from app.services.employee_advance_expense import require_manual_advance_expense
+from app.services.fund_disbursement import cost_record_filter, require_manual_disbursement_expense
+from app.models.expense_fund import ExpenseFundDisbursement
 from app.models.employee_advance import EmployeeAdvance
 from app.models.reimbursement import Reimbursement
 from app.models.payroll import PayrollRecord
@@ -198,7 +200,7 @@ async def list_expense(
         return await projection.cost_list(db, get_wh_ids(current_user), start, end,
             page=max(page, 1), page_size=min(max(page_size, 1), 200), category_id=category_id,
             cost_category=cost_category, account_id=account_id, currency_code=currency)
-    query = select(ExpenseRecord); count_q = select(func.count(ExpenseRecord.id))
+    query = select(ExpenseRecord).where(cost_record_filter()); count_q = select(func.count(ExpenseRecord.id)).where(cost_record_filter())
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
         count_q = count_q.where(ExpenseRecord.warehouse_id.in_(get_wh_ids(current_user)))
@@ -261,6 +263,11 @@ async def list_expense(
         EmployeeAdvance.warehouse_id.in_(get_wh_ids(current_user)),
     ))).scalars().all() if expense_ids else []
     advance_map = {row.expense_record_id: row for row in advance_rows}
+    fund_rows = (await db.execute(select(ExpenseFundDisbursement).where(
+        ExpenseFundDisbursement.expense_record_id.in_(expense_ids),
+        ExpenseFundDisbursement.warehouse_id.in_(get_wh_ids(current_user)),
+    ))).scalars().all() if expense_ids else []
+    fund_map = {row.expense_record_id: row for row in fund_rows}
 
     return {"data": [{
         "id": r.id, "warehouse_id": r.warehouse_id, "category_id": r.category_id,
@@ -272,7 +279,9 @@ async def list_expense(
         "reimbursement_id": reimbursement_map[r.id][0] if r.id in reimbursement_map else None,
         "employee_advance_id": advance_map[r.id].id if r.id in advance_map else None,
         "employee_id": advance_map[r.id].employee_id if r.id in advance_map else None,
-        "is_read_only": r.id in advance_map,
+        "is_read_only": r.id in advance_map or r.id in fund_map,
+        "fund_disbursement_id": fund_map[r.id].id if r.id in fund_map else None,
+        "fund_id": fund_map[r.id].fund_id if r.id in fund_map else None,
         "expense_date": r.expense_date.isoformat() if r.expense_date else None,
         "voucher": r.voucher, "remark": r.remark,
         "category_name": cat_map.get(r.category_id, ""),
@@ -374,6 +383,7 @@ async def update_expense(
     await require_manual_expense(db, expense_id)
     await require_manual_reimbursement_expense(db, expense_id)
     await require_manual_advance_expense(db, expense_id)
+    await require_manual_disbursement_expense(db, expense_id)
 
     before = {
         "amount": r.amount, "currency": r.currency,
@@ -486,6 +496,7 @@ async def delete_expense(
     await require_manual_expense(db, expense_id)
     await require_manual_reimbursement_expense(db, expense_id)
     await require_manual_advance_expense(db, expense_id)
+    await require_manual_disbursement_expense(db, expense_id)
 
     before = {
         "amount": r.amount, "currency": r.currency,
@@ -578,13 +589,21 @@ async def ledger(
     # 3. 备用金领用
     if not source or source == "expense_fund":
         unions.append(f"""
-            SELECT ef.receive_date AS date_val, ef.amount, 'THB' AS currency, 'expense' AS flow_type,
+            SELECT ef.receive_date AS date_val, ef.amount - COALESCE((SELECT sum(fd.amount) FROM expense_fund_disbursements fd WHERE fd.fund_id=ef.id),0) AS amount, 'THB' AS currency, 'expense' AS flow_type,
                    'expense_fund' AS source, '备用金领用' AS source_label,
                    '领用人: ' || COALESCE(u.display_name, '') || ' (' || COALESCE(ef.purpose, '') || ')' AS remark,
                    'EF-' || ef.id AS ref_no, ef.id AS raw_id, 'active' AS ledger_status, CAST(NULL AS VARCHAR(100)) AS account_name, CAST(NULL AS INTEGER) AS account_id, 3 AS sort_ord
             FROM expense_funds ef
             LEFT JOIN users u ON ef.employee_id = u.id
-            WHERE {wh_cond('ef')} AND ef.amount > 0 AND {date_cond('ef', 'receive_date')}
+            WHERE {wh_cond('ef')} AND ef.amount - COALESCE((SELECT sum(fd.amount) FROM expense_fund_disbursements fd WHERE fd.fund_id=ef.id),0) > 0 AND {date_cond('ef', 'receive_date')}
+        """)
+        unions.append(f"""
+            SELECT fd.disbursed_date AS date_val, fd.amount, fd.currency, 'expense' AS flow_type,
+                   'expense_fund' AS source, '备用金拨付' AS source_label, fd.remark,
+                   'EFD-' || fd.id AS ref_no, fd.id AS raw_id, 'active' AS ledger_status,
+                   fd.account_name, fd.payment_account_id AS account_id, 3 AS sort_ord
+            FROM expense_fund_disbursements fd
+            WHERE {wh_cond('fd')} AND {date_cond('fd', 'disbursed_date')}
         """)
 
     # 4. 备用金开销
@@ -597,7 +616,7 @@ async def ledger(
             FROM expense_fund_items efi
             JOIN expense_funds ef2 ON efi.fund_id = ef2.id
             LEFT JOIN users u2 ON ef2.employee_id = u2.id
-            WHERE {wh_cond('ef2')} AND {date_cond('efi', 'expense_date')}
+            WHERE {wh_cond('ef2')} AND {date_cond('efi', 'expense_date')} AND efi.cost_record_only=false
         """)
 
     # 5. 历史报销保留原口径；新付款按付款记录只计公司账户路径，撤销留痕。
@@ -660,6 +679,7 @@ async def ledger(
               )
               AND NOT EXISTS (SELECT 1 FROM reimbursements rb2 WHERE rb2.expense_record_id=er.id)
               AND NOT EXISTS (SELECT 1 FROM employee_advances ea WHERE ea.expense_record_id=er.id AND ea.source='fund')
+              AND NOT EXISTS (SELECT 1 FROM expense_fund_disbursements fd2 WHERE fd2.expense_record_id=er.id)
         """)
 
     # 垫款归还是资金流出，不写 ExpenseRecord；撤销留在流水中显示已冲销。
@@ -916,7 +936,7 @@ async def monthly_summary(start_date: str = None, end_date: str = None, category
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     iq = select(func.sum(IncomeRecord.amount))
-    eq = select(func.sum(ExpenseRecord.amount))
+    eq = select(func.sum(ExpenseRecord.amount)).where(cost_record_filter())
     if start_date:
         iq = iq.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
         eq = eq.where(ExpenseRecord.expense_date >= datetime.strptime(start_date, "%Y-%m-%d"))
@@ -935,7 +955,7 @@ async def monthly_summary(start_date: str = None, end_date: str = None, category
 
     # 按币种汇总（复用同样的过滤条件）
     iq_by = select(IncomeRecord.currency, func.sum(IncomeRecord.amount)).group_by(IncomeRecord.currency)
-    eq_by = select(ExpenseRecord.currency, func.sum(ExpenseRecord.amount)).group_by(ExpenseRecord.currency)
+    eq_by = select(ExpenseRecord.currency, func.sum(ExpenseRecord.amount)).where(cost_record_filter()).group_by(ExpenseRecord.currency)
     if start_date:
         iq_by = iq_by.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
         eq_by = eq_by.where(ExpenseRecord.expense_date >= datetime.strptime(start_date, "%Y-%m-%d"))
@@ -1034,6 +1054,7 @@ async def operating_dashboard(
                 ExpenseRecord.expense_date >= bs_dt,
                 ExpenseRecord.expense_date < be_dt,
                 IncomeExpenseCategory.category_group == "operating",
+                cost_record_filter(),
             )
         )).scalar() or 0
         inc = float(inc); exp = float(exp)
@@ -1065,6 +1086,7 @@ async def operating_dashboard(
             ExpenseRecord.expense_date >= range_start_dt,
             ExpenseRecord.expense_date < range_end_dt,
             IncomeExpenseCategory.category_group == "operating",
+            cost_record_filter(),
         ).group_by(ExpenseRecord.currency)
     )).all()
     income_by_currency = {c: float(v) for c, v in income_by_cur_rows}

@@ -435,7 +435,7 @@ export default function OperatingPage() {
                     </button>
                   ) : <span className="text-gray-300">无</span>;
                 } },
-              ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span> : (
+              ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span> : (
                   <div className="flex items-center gap-2">
                     <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
                     <button onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
