@@ -210,10 +210,11 @@ def assert_record_dict_only_adds_makeup_batch_id(before_src, after_src):
 
 
 def test_single_makeup_function_and_unrelated_business_unchanged():
+    from tests.full_day_leave_test_support import before_full_day_guards
     root = Path(__file__).resolve().parents[2]
     filename = "backend/app/api/v1/clock_in.py"
     original = subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root, text=True)
-    current = (root / filename).read_text()
+    current = before_full_day_guards((root / filename).read_text())
     functions = lambda s: {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(s).body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     old, new = functions(original), functions(current)
     for key in old:
@@ -222,12 +223,13 @@ def test_single_makeup_function_and_unrelated_business_unchanged():
     for filename in ("backend/app/api/v1/attendance.py", "backend/app/api/v1/payroll.py", "backend/app/services/schedule.py"):
         baseline = subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root)
         if filename.endswith("/payroll.py"):
-            # 后续允许发放选择垫款；工资计算及其他函数仍严格守住补卡前的版本。
-            changed = {"list_payroll", "batch_disburse_payroll", "disburse_payroll", "revoke_disbursement", "_disbursement_funding", "payroll_cash_advance_sources"}
-            before_funcs, after_funcs = functions(baseline), functions((root / filename).read_text())
-            assert {k: v for k, v in before_funcs.items() if k not in changed} == {k: v for k, v in after_funcs.items() if k not in changed}
+            # 后续资金来源、预支审批和文字轮次已验收。与本轮前版本比较所有函数，
+            # 只剥离新增的全天假工时归零，继续严格保护工资公式、补卡和付款。
+            baseline = subprocess.check_output(["git", "show", "6f9243b:" + filename], cwd=root)
+            before_funcs, after_funcs = functions(baseline), functions(before_full_day_guards((root / filename).read_text()))
+            assert before_funcs == after_funcs
         else:
-            assert (root / filename).read_bytes() == baseline
+            assert ast.dump(ast.parse(before_full_day_guards((root / filename).read_text()))) == ast.dump(ast.parse(baseline))
 
     # 本轮只给唯一清单追加垫款单；其余菜单仍与补卡前相同。
     registry = "backend/app/core/menu_registry.py"

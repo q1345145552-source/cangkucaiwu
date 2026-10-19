@@ -1,0 +1,352 @@
+{
+  "environment": "local isolated HTTP/database fixtures; no production access",
+  "test_day": "2026-10-16",
+  "verified_at": "2026-10-20 Asia/Bangkok",
+  "blocked": [
+    {
+      "language": "zh",
+      "status": 400,
+      "body": {
+        "detail": "今日已请全天假 不能打卡"
+      }
+    },
+    {
+      "language": "th",
+      "status": 400,
+      "body": {
+        "detail": "วันนี้ลาเต็มวันแล้ว ไม่สามารถลงเวลาได้"
+      }
+    },
+    {
+      "language": "my",
+      "status": 400,
+      "body": {
+        "detail": "ယနေ့ တစ်နေ့လုံး ခွင့်ယူထားသဖြင့် အလုပ်ချိန်မှတ်တမ်းတင်၍ မရပါ"
+      }
+    },
+    {
+      "language": "zh",
+      "status": 400,
+      "body": {
+        "detail": "今日已请全天假 不能打卡"
+      }
+    },
+    {
+      "language": "th",
+      "status": 400,
+      "body": {
+        "detail": "วันนี้ลาเต็มวันแล้ว ไม่สามารถลงเวลาได้"
+      }
+    },
+    {
+      "language": "my",
+      "status": 400,
+      "body": {
+        "detail": "ယနေ့ တစ်နေ့လုံး ခွင့်ယူထားသဖြင့် အလုပ်ချိန်မှတ်တမ်းတင်၍ မရပါ"
+      }
+    },
+    {
+      "language": "zh",
+      "status": 400,
+      "body": {
+        "detail": "今日已请全天假 不能打卡"
+      }
+    },
+    {
+      "language": "th",
+      "status": 400,
+      "body": {
+        "detail": "วันนี้ลาเต็มวันแล้ว ไม่สามารถลงเวลาได้"
+      }
+    },
+    {
+      "language": "my",
+      "status": 400,
+      "body": {
+        "detail": "ယနေ့ တစ်နေ့လုံး ခွင့်ယူထားသဖြင့် အလုပ်ချိန်မှတ်တမ်းတင်၍ မရပါ"
+      }
+    }
+  ],
+  "allowed": [
+    {
+      "duration": "morning",
+      "status": "approved",
+      "response": {
+        "message": "早上上班打卡成功",
+        "session": 1,
+        "clocked_in_at": "2026-10-16T09:00:00",
+        "status": "normal",
+        "penalty_amount": 0,
+        "photo_path": null
+      }
+    },
+    {
+      "duration": "afternoon",
+      "status": "approved",
+      "response": {
+        "message": "早上上班打卡成功",
+        "session": 1,
+        "clocked_in_at": "2026-10-16T09:00:00",
+        "status": "normal",
+        "penalty_amount": 0,
+        "photo_path": null
+      }
+    },
+    {
+      "duration": "hours",
+      "status": "approved",
+      "response": {
+        "message": "早上上班打卡成功",
+        "session": 1,
+        "clocked_in_at": "2026-10-16T09:00:00",
+        "status": "normal",
+        "penalty_amount": 0,
+        "photo_path": null
+      }
+    },
+    {
+      "duration": "full",
+      "status": "pending",
+      "response": {
+        "message": "早上上班打卡成功",
+        "session": 1,
+        "clocked_in_at": "2026-10-16T09:00:00",
+        "status": "normal",
+        "penalty_amount": 0,
+        "photo_path": null
+      }
+    },
+    {
+      "duration": "full",
+      "status": "rejected",
+      "response": {
+        "message": "早上上班打卡成功",
+        "session": 1,
+        "clocked_in_at": "2026-10-16T09:00:00",
+        "status": "normal",
+        "penalty_amount": 0,
+        "photo_path": null
+      }
+    }
+  ],
+  "zero_hours": [
+    {
+      "template": "hourly",
+      "punches": 2,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 2,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 3.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "daily",
+      "punches": 2,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 2,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 3.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "monthly",
+      "punches": 2,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 2,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 3.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "hourly",
+      "punches": 4,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 4,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 8.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00",
+          "13:00",
+          "18:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "daily",
+      "punches": 4,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 4,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 8.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00",
+          "13:00",
+          "18:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    },
+    {
+      "template": "monthly",
+      "punches": 4,
+      "calendar": {
+        "date": "2026-10-16",
+        "employee_id": 1,
+        "employee_name": "员工1",
+        "status": "leave",
+        "status_label": "请假",
+        "session_count": 4,
+        "has_late": false,
+        "leave_hours": null,
+        "clock_hours": 8.0,
+        "work_hours": 0.0,
+        "detail": ""
+      },
+      "daily": {
+        "day": 16,
+        "date": "2026-10-16",
+        "status": "leave",
+        "attendance": 0.0,
+        "hours": 0.0,
+        "times": [
+          "09:00",
+          "12:00",
+          "13:00",
+          "18:00"
+        ]
+      },
+      "base_pay": 0.0,
+      "net_pay": 0.0
+    }
+  ],
+  "approval": [
+    {
+      "message": "已批准",
+      "warning": "该员工当天已有打卡记录 请确认是否需要处理",
+      "clocked_dates": [
+        "2026-10-16"
+      ]
+    }
+  ],
+  "display_text": {
+    "zh": "今日已请全天假",
+    "my": "ယနေ့ တစ်နေ့လုံး ခွင့်ယူထားသည်",
+    "th": "วันนี้ลาเต็มวันแล้ว"
+  },
+  "preservation": {
+    "existing_payroll_rows_unchanged": true,
+    "original_punches_unchanged": true,
+    "leave_data_not_rewritten_by_calculation": true,
+    "half_day_hourly_early_departure_services_byte_identical_to_base": true,
+    "no_schema_migration": true
+  },
+  "verification": {
+    "backend_tests_passed": 199,
+    "new_tests_passed": 26,
+    "attendance_regression_passed": 136,
+    "payroll_funding_regression_passed": 37,
+    "frontend_component_test": "passed",
+    "production_build": "passed",
+    "browser_mobile_width": 390,
+    "browser_my_and_th": "four disabled grey buttons; corresponding language shown",
+    "browser_approval_warning": "alert opened; approval completed; original punch retained"
+  }
+}

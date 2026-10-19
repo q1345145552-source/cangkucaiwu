@@ -123,6 +123,7 @@
   "afternoon_shift": "中午休息结束",
   "evening_shift": "下午下班",
   "clock_page_title": "打卡签到",
+  "clock_full_day_leave": "今日已请全天假",
   "clock_completed_today": "今日已完成 {count}/4",
   "clock_photo_confirm": "打卡拍照确认",
   "clock_retake": "重新拍照",

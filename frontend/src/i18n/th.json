@@ -123,6 +123,7 @@
   "afternoon_shift": "หมดพักเที่ยง",
   "evening_shift": "เลิกงาน",
   "clock_page_title": "ลงเวลาเข้างาน",
+  "clock_full_day_leave": "วันนี้ลาเต็มวันแล้ว",
   "clock_completed_today": "วันนี้ทำแล้ว {count}/4",
   "clock_photo_confirm": "ยืนยันภาพถ่ายลงเวลา",
   "clock_retake": "ถ่ายใหม่",

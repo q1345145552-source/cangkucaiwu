@@ -2,6 +2,7 @@ from app.services.payroll_expense import payment_account, create_payroll_expense
 from app.services.cash_advance_payroll import lock_payroll_advance, payroll_usage_totals, usage_amounts, PAYROLL_CURRENCY
 from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
+from app.services.full_day_leave import full_day_net_hours
 from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.services.attendance_population import employee_account_roles
@@ -752,6 +753,7 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
                 if tt == "monthly":
                     lv = max(1.0 - att, 0.0)
 
+            hours = full_day_net_hours(lt_info, hours)
             work_hours_total += hours
             attendance_days_total += att
             leave_days_count += lv

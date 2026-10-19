@@ -6,6 +6,11 @@
 from fastapi import Request
 
 MESSAGES = {
+    "full_day_leave_cannot_clock": {
+        "zh": "今日已请全天假 不能打卡",
+        "th": "วันนี้ลาเต็มวันแล้ว ไม่สามารถลงเวลาได้",
+        "my": "ယနေ့ တစ်နေ့လုံး ခွင့်ယူထားသဖြင့် အလုပ်ချိန်မှတ်တမ်းတင်၍ မရပါ",
+    },
     # 打卡相关
     "only_labor_can_clock": {
         "zh": "只有仓库劳工可以使用打卡功能",

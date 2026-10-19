@@ -212,6 +212,7 @@
   "reset": "ပြန်လည်သတ်မှတ်ရန်",
   "thailand": "ထိုင်း",
   "clock_page_title": "အလုပ်ဝင်ချိန်မှတ်ခြင်း",
+  "clock_full_day_leave": "ယနေ့ တစ်နေ့လုံး ခွင့်ယူထားသည်",
   "clock_completed_today": "ယနေ့ပြီးစီး {count}/4",
   "clock_photo_confirm": "အလုပ်ဝင်ချိန်ဓာတ်ပုံအတည်ပြုရန်",
   "clock_retake": "ပြန်ရိုက်ရန်",

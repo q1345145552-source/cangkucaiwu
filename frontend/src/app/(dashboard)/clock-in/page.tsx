@@ -46,6 +46,7 @@ export default function ClockInPage() {
   const { t, locale, setLocale } = useI18n(true);
   const router = useRouter();
   const [completed, setCompleted] = useState<Record<number, any>>({});
+  const [fullDayLeave, setFullDayLeave] = useState(false);
   const [sessionTimes, setSessionTimes] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
@@ -66,6 +67,7 @@ export default function ClockInPage() {
     try {
       const r = await api.get<any>("/clock-in/today");
       setCompleted(r.completed || {});
+      setFullDayLeave(Boolean(r.full_day_leave));
       const tm: Record<number, string> = {};
       (r.sessions || []).forEach((s: any) => { tm[s.session] = s.time; });
       setSessionTimes(tm);
@@ -82,6 +84,7 @@ export default function ClockInPage() {
   const penaltyOne = penalty.late_one_amount != null ? Math.round(penalty.late_one_amount) : null;
 
   function triggerCamera(session: number) {
+    if (fullDayLeave) return;
     setCurrentSession(session);
     setPreviewPhoto(null);
     cameraInputRef.current?.click();
@@ -98,7 +101,7 @@ export default function ClockInPage() {
   }
 
   async function confirmClockIn() {
-    if (!previewPhoto || !currentSession) return;
+    if (fullDayLeave || !previewPhoto || !currentSession) return;
     setLoading(prev => ({ ...prev, [currentSession!]: true }));
     try {
       const formData = new FormData();
@@ -120,6 +123,7 @@ export default function ClockInPage() {
         loadToday();
       } else {
         toast("error", r.detail || t("clock_in_failed"));
+        loadToday();
       }
     } catch {
       toast("error", t("network_error"));
@@ -179,6 +183,7 @@ export default function ClockInPage() {
           <span className="text-xs text-blue-400 ml-1">{t("thailand")}</span>
         </div>
         <p className="text-sm text-gray-400">{t("clock_completed_today").replace("{count}", String(completedCount))}</p>
+        {fullDayLeave && <p role="status" className="text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-2">{t("clock_full_day_leave")}</p>}
       </div>
 
       {/* Photo Preview Modal */}
@@ -199,7 +204,7 @@ export default function ClockInPage() {
                 <button onClick={cancelPhoto} className="flex-1 py-3 border rounded-xl text-base active:bg-gray-100">
                   {t("clock_retake")}
                 </button>
-                <button onClick={confirmClockIn} disabled={loading[currentSession!]}
+                <button onClick={confirmClockIn} disabled={fullDayLeave || loading[currentSession!]}
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-base font-semibold active:bg-blue-700 disabled:opacity-50">
                   {loading[currentSession!] ? t("clock_submitting") : t("clock_confirm")}
                 </button>
@@ -256,7 +261,7 @@ export default function ClockInPage() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-400 mt-1">{t("clock_tap_to_clock")}</p>
+                    <p className="text-xs text-gray-400 mt-1">{t(fullDayLeave ? "clock_full_day_leave" : "clock_tap_to_clock")}</p>
                   )}
                 </div>
 
@@ -278,9 +283,9 @@ export default function ClockInPage() {
                 ) : (
                   <button
                     onClick={() => triggerCamera(session)}
-                    disabled={isActive}
-                    className="flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-sm transition-all active:scale-95 bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200 disabled:opacity-70"
-                    title={t("clock_take_photo")}
+                    disabled={fullDayLeave || isActive}
+                    className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-sm transition-all active:scale-95 disabled:opacity-70 ${fullDayLeave ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200"}`}
+                    title={t(fullDayLeave ? "clock_full_day_leave" : "clock_take_photo")}
                   >
                     <Camera size={22} />
                   </button>

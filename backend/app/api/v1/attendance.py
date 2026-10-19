@@ -1,4 +1,5 @@
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
+from app.services.full_day_leave import full_day_net_hours, full_day_clock_warning
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
@@ -265,7 +266,8 @@ async def admin_record_leave(
         created += 1
         cur += timedelta(days=1)
     await db.flush()
-    return {"message": f"已代录 {created} 条请假，跳过 {skipped} 天", "created": created, "skipped": skipped}
+    warning = await full_day_clock_warning(db, emp, start, end) if req.duration_type == "full" else {}
+    return {"message": f"已代录 {created} 条请假，跳过 {skipped} 天", "created": created, "skipped": skipped, **warning}
 
 @router.get("/leaves")
 async def list_leaves(
@@ -335,7 +337,12 @@ async def approve_leave(leave_id: int, current_user: User = Depends(check_staff_
     lr.reviewed_by = current_user.id
     lr.reviewed_at = thai_now()
     await db.flush()
-    return {"message": "已批准"}
+    warning = {}
+    if (lr.duration_type or "full") == "full":
+        employee = await db.get(Employee, lr.employee_id)
+        if employee is not None and employee.warehouse_id == lr.warehouse_id:
+            warning = await full_day_clock_warning(db, employee, lr.leave_date, lr.leave_date)
+    return {"message": "已批准", **warning}
 
 @router.put("/leaves/{leave_id}/reject")
 async def reject_leave(leave_id: int, reason: str = Form(None), current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)), db: AsyncSession = Depends(get_db)):
@@ -759,7 +766,7 @@ async def get_calendar(
                 "has_late": has_late,
                 "leave_hours": leave_hours_val if (status_name_db == "hours_leave" or (net_hourly_hours is not None and is_half_day_leave(leave_map.get((e.id, dt))))) else None,
                 "clock_hours": round(clock_hours, 2),
-                "work_hours": net_hourly_hours if net_hourly_hours is not None else round(max(clock_hours - leave_hours_val, 0.0), 2),
+                "work_hours": full_day_net_hours(leave_map.get((e.id, dt)), net_hourly_hours if net_hourly_hours is not None else round(max(clock_hours - leave_hours_val, 0.0), 2)),
                 "detail": "",
             }
             if (e.id, dt) in absence_map:

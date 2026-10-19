@@ -298,10 +298,11 @@ def test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost(tmp_pat
 
 def test_no_payroll_calculation_or_other_financial_module_changes():
     from tests.financial_reversal_test_support import without_advance_void_query
+    from tests.full_day_leave_test_support import before_full_day_guards
     root = Path(__file__).resolve().parents[2]
     name = "backend/app/api/v1/payroll.py"
     old = subprocess.check_output(["git", "show", "0a845c3:" + name], cwd=root, text=True)
-    new = without_advance_void_query((root / name).read_text())
+    new = before_full_day_guards(without_advance_void_query((root / name).read_text()))
     def calculations(source):
         return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
             if isinstance(n, ast.AsyncFunctionDef) and n.name in ("_prepare_payroll", "_compute_employee_records", "_calc_payroll", "_recalc_or_void_one", "calculate_payroll")}

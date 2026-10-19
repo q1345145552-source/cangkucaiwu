@@ -216,6 +216,7 @@ export default function AttendancePage() {
         notified_at: proxyNotifiedAt || undefined,
       });
       toast("success", r.message || t("submit_ok"));
+      if (r.warning) window.alert(r.warning);
       setShowProxyLeaveForm(false);
       setProxyEmpId(0); setProxyStartDate(""); setProxyEndDate("");
       setProxyType("sick"); setProxyDuration("full"); setProxyHours(""); setProxyReason("");
@@ -225,7 +226,7 @@ export default function AttendancePage() {
   }
 
   async function approveLeave(id: number) {
-    try { await api.put(`/attendance/leaves/${id}/approve`, {}); toast("success", t("att_approved_success")); loadLeaves(); loadCalendar(); }
+    try { const r = await api.put<any>(`/attendance/leaves/${id}/approve`, {}); toast("success", t("att_approved_success")); if (r.warning) window.alert(r.warning); loadLeaves(); loadCalendar(); }
     catch { toast("error", t("operation_failed")); }
   }
 

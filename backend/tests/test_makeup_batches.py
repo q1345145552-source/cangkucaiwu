@@ -191,10 +191,11 @@ def test_batch_and_records_rollback_together(tmp_path, monkeypatch, operation):
 
 
 def test_first_round_logic_and_quota_unchanged_except_batch_link():
+    from tests.full_day_leave_test_support import before_full_day_guards
     root = Path(__file__).resolve().parents[2]
     filename = "backend/app/api/v1/clock_in.py"
     old = ast.parse(subprocess.check_output(["git", "show", "f8a4341:" + filename], cwd=root, text=True))
-    new = ast.parse((root / filename).read_text())
+    new = ast.parse(before_full_day_guards((root / filename).read_text()))
     funcs = lambda tree: {n.name: copy.deepcopy(n) for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     previous, current = funcs(old), funcs(new)
     for name in previous:

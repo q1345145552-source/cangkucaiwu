@@ -10,6 +10,7 @@ from app.core.timezone import thai_now, thai_today, THAI_TZ
 from app.core.messages import t, get_request_lang, session_label
 from app.services.image_utils import thumb_path_of
 from app.services.schedule import get_session_times, get_work_schedule
+from app.services.full_day_leave import approved_full_day_today
 from datetime import datetime, date, time, timedelta
 from pydantic import BaseModel, Field, StrictInt
 from typing import Optional, List
@@ -77,6 +78,9 @@ async def clock_in(
 
     today = thai_today()
     now = thai_now()
+
+    if await approved_full_day_today(db, current_user, today):
+        raise HTTPException(400, t("full_day_leave_cannot_clock", lang))
 
     si = SESSIONS[session]
     label = session_label(session, lang)
@@ -221,6 +225,7 @@ async def get_today(
         "sessions": [{"session": s, "label": session_label(s, lang), "time": session_times[s].strftime("%H:%M")}
                       for s in (1, 2, 3, 4)],
         "completed": completed,
+        "full_day_leave": await approved_full_day_today(db, current_user, today),
         "hourly_rate": hourly_rate,
         "late_half_amount": late_half_amount,
         "late_one_amount": late_one_amount,
