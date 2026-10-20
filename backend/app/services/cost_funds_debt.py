@@ -48,6 +48,7 @@ def cost_query(db, warehouse_ids):
     approval_link = select(ExpenseApproval.id).where(ExpenseApproval.warehouse_id == q.c.warehouse_id,
         ExpenseApproval.expense_record_id == e.id).exists()
     return select(linked_id.label("id"), linked_source.label("source"), linked_id.label("source_id"),
+        q.c.source.label("wallet_source"), q.c.source_label, q.c.ref_no, q.c.status, q.c.account_name,
         q.c.warehouse_id, q.c.date, func.coalesce(q.c.category_id, e.category_id).label("category_id"), q.c.category_name,
         q.c.amount, q.c.currency, q.c.account_id, q.c.remark, e.voucher,
         literal("company_account").label("funding_source"), q.c.cash_advance_id,

@@ -1,0 +1,344 @@
+{
+  "baseline_commit": "8ca4df09dbb6d7e3e96d2b4e7780de09422d2ba5",
+  "deployed": false,
+  "migration": false,
+  "before": {
+    "receipt_only": {
+      "list": {
+        "data": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 20
+      },
+      "summary": {
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "income_by_currency": {
+          "THB": 1000.0
+        },
+        "expense_by_currency": {},
+        "net_by_currency": {
+          "THB": 1000.0
+        },
+        "total_income": 1000.0,
+        "total_expense": 0,
+        "net": 1000.0
+      }
+    }
+  },
+  "after": {
+    "receipt_only": {
+      "list": {
+        "data": [
+          {
+            "id": "incoming-1",
+            "warehouse_id": 1,
+            "date": "2026-10-20",
+            "amount": 1000.0,
+            "currency": "THB",
+            "type": "income",
+            "source": "incoming",
+            "source_label": "到账流水",
+            "account_id": 1,
+            "status": "active",
+            "ref_no": "FL-1",
+            "remark": "ACTUAL-RECEIPT-1000",
+            "category_name": "到账收入",
+            "category_id": null,
+            "is_internal_transfer": false,
+            "cash_advance_id": null,
+            "account_name": "测试现金1",
+            "is_non_cost_flow": false,
+            "source_id": 1,
+            "voucher": null,
+            "record_timestamp": "2026-10-20T00:00:00",
+            "customer_id": null,
+            "supplier_id": null,
+            "is_read_only": true,
+            "record_category": "到账收入",
+            "customer_name": "测试客户",
+            "supplier_name": "",
+            "category_group": "operating",
+            "display_category": "到账收入",
+            "source_link": "/incoming",
+            "income_date": "2026-10-20T00:00:00"
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+        "totals_by_currency": {
+          "THB": 1000.0
+        },
+        "scope": "company_wallet",
+        "cost_basis": "公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计"
+      },
+      "summary": {
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "income_by_currency": {
+          "THB": 1000.0
+        },
+        "expense_by_currency": {},
+        "net_by_currency": {
+          "THB": 1000.0
+        },
+        "total_income": 1000.0,
+        "total_expense": 0,
+        "net": 1000.0,
+        "scope": "company_wallet",
+        "basis": "公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计"
+      }
+    },
+    "manual_plus_receipt": {
+      "total": 1200.0,
+      "rows": [
+        {
+          "id": "incoming-1",
+          "warehouse_id": 1,
+          "date": "2026-10-20",
+          "amount": 1000.0,
+          "currency": "THB",
+          "type": "income",
+          "source": "incoming",
+          "source_label": "到账流水",
+          "account_id": 1,
+          "status": "active",
+          "ref_no": "FL-1",
+          "remark": "ACTUAL-RECEIPT-1000",
+          "category_name": "到账收入",
+          "category_id": null,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试现金1",
+          "is_non_cost_flow": false,
+          "source_id": 1,
+          "voucher": null,
+          "record_timestamp": "2026-10-20T00:00:00",
+          "customer_id": null,
+          "supplier_id": null,
+          "is_read_only": true,
+          "record_category": "到账收入",
+          "customer_name": "测试客户",
+          "supplier_name": "",
+          "category_group": "operating",
+          "display_category": "到账收入",
+          "source_link": "/incoming",
+          "income_date": "2026-10-20T00:00:00"
+        },
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "date": "2026-10-20",
+          "amount": 200.0,
+          "currency": "THB",
+          "type": "income",
+          "source": "manual",
+          "source_label": "手工收入",
+          "account_id": 1,
+          "status": "active",
+          "ref_no": "IN-1",
+          "remark": "MANUAL-200",
+          "category_name": "业务收款",
+          "category_id": 1,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试现金1",
+          "is_non_cost_flow": false,
+          "source_id": 1,
+          "voucher": null,
+          "record_timestamp": "2026-10-20T00:00:00",
+          "customer_id": null,
+          "supplier_id": null,
+          "is_read_only": false,
+          "record_category": "其他支出",
+          "customer_name": "",
+          "supplier_name": "",
+          "category_group": "operating",
+          "display_category": "业务收款",
+          "source_link": "",
+          "income_date": "2026-10-20T00:00:00"
+        }
+      ],
+      "pages": [
+        "incoming-1",
+        1
+      ],
+      "export_rows": 2
+    },
+    "receipt_links": {
+      "declaration_only": 0,
+      "receipt_with_two_matches_and_credit_link": 1000,
+      "rows": 1,
+      "internal_transfer_excluded": 300,
+      "customer": "测试客户"
+    },
+    "income_filter_contract": {
+      "scenarios": 18,
+      "unfiltered": {
+        "THB": 1240,
+        "CNY": 50
+      },
+      "explicit_history": {
+        "THB": 2040,
+        "CNY": 50
+      },
+      "other_warehouse": 999,
+      "read_writes": 0,
+      "super_labor": 403
+    },
+    "expense_sources": {
+      "expense": 1540,
+      "rows": 6,
+      "fund_disbursement": 1000,
+      "fund_spend_excluded": 200,
+      "reimbursement": 80,
+      "cash_advance_repayment": 300,
+      "advance_funded_salary_excluded": 700,
+      "paid_part_of_voided_bill": 100,
+      "manual": 60,
+      "revoked_excluded": 140,
+      "pending_rejected_voided_advances_excluded": 36
+    }
+  },
+  "native_postgres": {
+    "tests": 40,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "management_guard": {
+    "routes": 329,
+    "requests": 658,
+    "business_queries": 0
+  },
+  "frontend": {
+    "test_files": 5,
+    "production_build_exit": 0,
+    "typecheck_before": 89,
+    "typecheck_after": 89,
+    "typecheck_exit": 2,
+    "new_diagnostics": 0
+  },
+  "default_range": "current Thai month start through today; explicit historical dates retain all historical sources",
+  "browser": {
+    "income": {
+      "dates": [
+        "2026-10-01",
+        "2026-10-20"
+      ],
+      "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n收付款管理\n\n公司钱包实际收付款，内部转账不计收支\n\n收入: ฿1,200\n支出: ฿300\n净额: ฿900\n导出\n新建记录\n收款\n付款\n至\n日期\t类别\t账户\t对象\t金额\t币种\t备注\t来源\n2026-10-20\t到账收入\t测试现金1\t测试客户\t฿1,000\tTHB\tACTUAL-RECEIPT-1000\t\n到账流水 FL-1\n业务联动，只读\n\n2026-10-20\t业务收款\t测试现金1\t测试客户\t฿200\tTHB\tMANUAL-200\t\n手工收入 IN-1"
+    },
+    "incomeDownload": "/Users/xiongliu/Downloads/wallet_income_2026-10-01_2026-10-20.xlsx",
+    "sourceNavigation": {
+      "url": "http://127.0.0.1:18182/incoming",
+      "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n到账流水\n录入到账流水\n到账日期\n金额\n币种\n泰铢 (THB)\n人民币 (CNY)\n收款账户 *\n请选择账户\n测试现金1（THB）\n付款方\n选择客户\n测试客户\n付款方式\n银行转账\n支付宝\n微信\nPromptPay\n备注\n截图 非必填\n录入\n下载模板\n批量导入Excel\n到账日期\t金额\t币种\t付款方\t付款方式\t匹配状态\t录入人\t截图\n2026-10-20\t1,000\tTHB\t测试客户\t-\t未匹配\t测试账号1\t\n补传截图"
+    },
+    "expense": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n收付款管理\n\n公司钱包实际收付款，内部转账不计收支\n\n收入: ฿1,200\n支出: ฿300\n净额: ฿900\n导出\n新建记录\n收款\n付款\n至\n日期\t类别\t账户\t对象\t金额\t币种\t备注\t来源\n2026-10-20\t运营费用\t测试现金1\t\t฿300\tTHB\tCOMPANY-EXPENSE-300\t\n公司账户支出 EX-1",
+    "expenseDownload": "/Users/xiongliu/Downloads/wallet_expense_2026-10-01_2026-10-20.xlsx",
+    "mobile": {
+      "tableScrolls": [
+        {
+          "content": 628,
+          "left": 238,
+          "width": 390
+        }
+      ],
+      "text": "测试仓1\n测\n收付款管理\n\n公司钱包实际收付款，内部转账不计收支\n\n收入: ฿1,200\n支出: ฿300\n净额: ฿900\n导出\n新建记录\n收款\n付款\n至\n日期\t类别\t账户\t对象\t金额\t币种\t备注\t来源\n2026-10-20\t到账收入\t测试现金1\t测试客户\t฿1,000\tTHB\tACTUAL-RECEIPT-1000\t\n到账流水 FL-1\n业务联动，只读\n\n2026-10-20\t业务收款\t测试现金1\t测试客户\t฿200\tTHB\tMANUAL-200\t\n手工收入 IN-1",
+      "width": 390
+    },
+    "mobileSourceUrl": "http://127.0.0.1:18182/incoming",
+    "finalIncome": {
+      "dates": [
+        "2026-10-01",
+        "2026-10-20"
+      ],
+      "text": "海外仓财务管理系统\n海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n收付款管理\n\n公司钱包实际收付款，内部转账不计收支\n\n收入: ฿1,200\n支出: ฿300\n净额: ฿900\n导出\n新建记录\n收款\n付款\n至\n日期\t类别\t账户\t对象\t金额\t币种\t备注\t来源\n2026-10-20\t到账收入\t测试现金1\t测试客户\t฿1,000\tTHB\tACTUAL-RECEIPT-1000\t\n到账流水 FL-1\n业务联动，只读\n\n2026-10-20\t业务收款\t测试现金1\t测试客户\t฿200\tTHB\tMANUAL-200\t\n手工收入 IN-1"
+    }
+  },
+  "browser_exports": {
+    "income": {
+      "rows": 2,
+      "total": 1200,
+      "currency": "THB",
+      "data": [
+        [
+          "日期",
+          "分类",
+          "物品说明",
+          "金额",
+          "币种",
+          "账户",
+          "来源",
+          "关联单号",
+          "对象"
+        ],
+        [
+          "2026-10-20",
+          "到账收入",
+          "ACTUAL-RECEIPT-1000",
+          1000,
+          "THB",
+          "测试现金1",
+          "到账流水",
+          "FL-1",
+          "测试客户"
+        ],
+        [
+          "2026-10-20",
+          "业务收款",
+          "MANUAL-200",
+          200,
+          "THB",
+          "测试现金1",
+          "手工收入",
+          "IN-1",
+          "测试客户"
+        ]
+      ]
+    },
+    "expense": {
+      "rows": 1,
+      "total": 300,
+      "currency": "THB",
+      "data": [
+        [
+          "日期",
+          "分类",
+          "物品说明",
+          "金额",
+          "币种",
+          "账户",
+          "来源",
+          "关联单号",
+          "对象"
+        ],
+        [
+          "2026-10-20",
+          "运营费用",
+          "COMPANY-EXPENSE-300",
+          300,
+          "THB",
+          "测试现金1",
+          "公司账户支出",
+          "EX-1",
+          null
+        ]
+      ]
+    }
+  },
+  "database_after_browser": {
+    "incoming_flows": 1,
+    "income_records": 1,
+    "expense_records": 1,
+    "payroll_records": 0,
+    "employee_advances": 0,
+    "cash_advance_repayments": 0,
+    "incoming_total": 1000.0,
+    "manual_income_total": 200.0,
+    "manual_expense_total": 300.0,
+    "opening_balance": 0.0,
+    "computed_wallet_balance": 900.0
+  },
+  "artifact_directory": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第5轮收支明细合计-20261020"
+}

@@ -195,12 +195,15 @@ def test_invalid_month_year_and_dates_are_clear_400_without_new_contract(tmp_pat
                 ({'month':'2026-09','start_date':'2026-09-20'},0),({'month':'2027-12'},0),({'month':'2024-02'},0),({'month':'9999-12'},0)]:
                 r=await client.get('/api/v1/income-expense/expense',headers=auth(1),params=params)
                 assert r.status_code==200 and expense_total('/income-expense/expense',r.json())==amount,(params,r.text)
-            all_time=await client.get('/api/v1/income-expense/expense',headers=auth(1))
+            # Round 5 aligns no-date records with the page and summary's current-month default.
+            current=await client.get('/api/v1/income-expense/expense',headers=auth(1))
+            assert current.status_code==200 and expense_total('/income-expense/expense',current.json())==300
+            all_time=await client.get('/api/v1/income-expense/expense',headers=auth(1),params={'start_date':'1900-01-01'})
             assert all_time.status_code==200 and expense_total('/income-expense/expense',all_time.json())==500
             summary=await client.get('/api/v1/income-expense/monthly-summary',headers=auth(1))
             assert summary.status_code==200 and summary.json()['start_date']=='2026-10-01' and summary.json()['end_date']=='2026-10-20' and expense_total('/income-expense/monthly-summary',summary.json())==300
             actual('invalid_inputs',results)
-            actual('defaults_and_intersection',{'unfiltered_expense':500,'default_summary_october_to_today':300,'month_and_dates':'intersection; disjoint is 400','future_leap_max_year':200})
+            actual('defaults_and_intersection',{'unfiltered_expense':300,'explicit_history':500,'default_summary_october_to_today':300,'month_and_dates':'intersection; disjoint is 400','future_leap_max_year':200})
     asyncio.run(run())
 
 

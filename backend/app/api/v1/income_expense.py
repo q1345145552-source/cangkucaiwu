@@ -84,56 +84,17 @@ async def list_income(
     category_group: str = None,
     currency: str = None,
     search: str = None,
+    source: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission_any("运营收支", "其他收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(IncomeRecord); count_q = select(func.count(IncomeRecord.id))
-    if category_group:
-        query = query.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id)
-        query = query.where(IncomeExpenseCategory.category_group == category_group)
-        count_q = count_q.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id)
-        count_q = count_q.where(IncomeExpenseCategory.category_group == category_group)
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
-        count_q = count_q.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
-    from app.services.wallet import day
-    start, end = money_period(month, start_date, end_date, year=year, default_start=date.min, default_end=date.max)
-    filters = [day(db, IncomeRecord.income_date) >= start, day(db, IncomeRecord.income_date) <= end]
-    query = query.where(*filters)
-    count_q = count_q.where(*filters)
-    if account_id:
-        query = query.where(IncomeRecord.account_id == account_id)
-        count_q = count_q.where(IncomeRecord.account_id == account_id)
-    total = (await db.execute(count_q)).scalar()
-    result = await db.execute(query.order_by(IncomeRecord.income_date.desc()).offset((page-1)*page_size).limit(page_size))
-    records = result.scalars().all()
-
-    cat_ids = {r.category_id for r in records}
-    acc_ids = {r.account_id for r in records}
-    cust_ids = {r.customer_id for r in records if r.customer_id}
-    cat_map = {}; acc_map = {}; cust_map = {}
-    if cat_ids:
-        cats = (await db.execute(select(IncomeExpenseCategory).where(IncomeExpenseCategory.id.in_(cat_ids)))).scalars().all()
-        cat_map = {c.id: c.name for c in cats}
-    if acc_ids:
-        accs = (await db.execute(select(PaymentAccount).where(PaymentAccount.id.in_(acc_ids)))).scalars().all()
-        acc_map = {a.id: a.account_name for a in accs}
-    if cust_ids:
-        custs = (await db.execute(select(Customer).where(Customer.id.in_(cust_ids)))).scalars().all()
-        cust_map = {c.id: c.company_name for c in custs}
-
-    return {"data": [{
-        "id": r.id, "warehouse_id": r.warehouse_id, "category_id": r.category_id,
-        "account_id": r.account_id, "customer_id": r.customer_id,
-        "amount": r.amount, "currency": r.currency,
-        "income_date": r.income_date.isoformat() if r.income_date else None,
-        "voucher": r.voucher, "remark": r.remark,
-        "category_name": cat_map.get(r.category_id, ""),
-        "account_name": acc_map.get(r.account_id, ""),
-        "customer_name": cust_map.get(r.customer_id, ""),
-    } for r in records], "total": total, "page": page, "page_size": page_size}
+    from app.services.money_records import records,record_period
+    start, end = record_period(start_date,end_date,month=month,year=year)
+    return await records(db,get_wh_ids(current_user),'income',start,end,page=max(page,1),page_size=min(max(page_size,1),200),
+        account_id=account_id,customer_id=customer_id,category_id=category_id,category_group=category_group,
+        currency=currency,search=search,source=source)
 
 @router.post("/income")
 async def create_income(req: IncomeRecordCreate, current_user: User = Depends(get_current_user),
@@ -199,17 +160,33 @@ async def list_expense(
     start_date: str = None, end_date: str = None,
     category_group: str = None,
     currency: str = None,
+    customer_id: int = None, supplier_id: int = None, source: str = None, search: str = None,
     cost_view: Literal["records", "unified"] = "records", cost_category: str | None = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("运营收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    from app.services import cost_funds_debt as projection
-    start, end = money_period(month, start_date, end_date, year=year, default_start=date(1900,1,1), default_end=date.max)
-    return await projection.cost_list(db, get_wh_ids(current_user), start, end,
-        page=max(page, 1), page_size=min(max(page_size, 1), 200), category_id=category_id,
-        cost_category=cost_category, account_id=account_id, currency_code=currency)
+    from app.services.money_records import records,record_period
+    start, end = record_period(start_date,end_date,month=month,year=year)
+    return await records(db,get_wh_ids(current_user),'expense',start,end,page=max(page,1),page_size=min(max(page_size,1),200),
+        category_id=category_id,category_group=category_group,cost_category=cost_category,account_id=account_id,
+        customer_id=customer_id,supplier_id=supplier_id,currency=currency,source=source,search=search)
+
+@router.get("/expense/export", dependencies=[Depends(require_non_labor)])
+async def export_expense(month: str = None, year: str = None, start_date: str = None, end_date: str = None,
+                         category_id: int = None, category_group: str = None, cost_category: str = None,
+                         account_id: int = None, customer_id: int = None, supplier_id: int = None,
+                         currency: str = None, source: str = None, search: str = None,
+                         current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                         _perm=Depends(check_staff_permission("运营收支"))):
+    if current_user.role == Role.SUPER_ADMIN:
+        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    from app.services.money_records import record_period
+    start,end=record_period(start_date,end_date,month=month,year=year)
+    return await export_money_records(db,get_wh_ids(current_user),'expense',start,end,category_id=category_id,
+        category_group=category_group,cost_category=cost_category,account_id=account_id,customer_id=customer_id,
+        supplier_id=supplier_id,currency=currency,source=source,search=search)
 
 @router.post("/expense")
 async def create_expense(
@@ -511,88 +488,58 @@ async def export_income(
     currency: str = None,
     search: str = None,
     category_id: int = None,
+    account_id: int = None, customer_id: int = None, source: str = None,
     start_date: str = None,
     end_date: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("其他收支")),
+    _perm=Depends(check_staff_permission_any("运营收支", "其他收支")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(IncomeRecord)
-    if current_user.role != Role.SUPER_ADMIN:
-        query = query.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
-    from app.services.wallet import day
-    start, end = money_period(month, start_date, end_date, year=year, default_start=date.min, default_end=date.max)
-    query = query.where(day(db, IncomeRecord.income_date) >= start, day(db, IncomeRecord.income_date) <= end)
-    if category_group:
-        query = query.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id)
-        query = query.where(IncomeExpenseCategory.category_group == category_group)
-    if currency:
-        query = query.where(IncomeRecord.currency == currency)
-    if search:
-        query = query.where(IncomeRecord.remark.ilike(f"%{search}%"))
-    if category_id:
-        query = query.where(IncomeRecord.category_id == category_id)
-    result = await db.execute(query.order_by(IncomeRecord.income_date.desc()))
-    records = result.scalars().all()
+    from app.services.money_records import record_period
+    start, end = record_period(start_date,end_date,month=month,year=year)
+    return await export_money_records(db,get_wh_ids(current_user),'income',start,end,category_group=category_group,
+        category_id=category_id,account_id=account_id,customer_id=customer_id,currency=currency,source=source,search=search)
 
-    cat_ids = {r.category_id for r in records}
-    acc_ids = {r.account_id for r in records}
-    cat_map = {}; acc_map = {}
-    if cat_ids:
-        cats = (await db.execute(select(IncomeExpenseCategory).where(IncomeExpenseCategory.id.in_(cat_ids)))).scalars().all()
-        cat_map = {c.id: c.name for c in cats}
-    if acc_ids:
-        accs = (await db.execute(select(PaymentAccount).where(PaymentAccount.id.in_(acc_ids)))).scalars().all()
-        acc_map = {a.id: a.account_name for a in accs}
 
+async def export_money_records(db,warehouse_ids,kind,start,end,**filters):
+    from app.services.money_records import records
     from fastapi.responses import StreamingResponse
     import openpyxl
     from io import BytesIO
-
+    result=await records(db,warehouse_ids,kind,start,end,export=True,**filters)
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "其他收入"
-    ws.append(["日期", "分类", "物品说明", "金额", "币种", "账户"])
-    for r in records:
-        ws.append([
-            r.income_date.strftime("%Y-%m-%d") if r.income_date else "",
-            cat_map.get(r.category_id, ""),
-            r.remark or "",
-            r.amount,
-            r.currency,
-            acc_map.get(r.account_id, ""),
-        ])
+    ws.title = ("其他收入" if filters.get('category_group') == 'other' else "公司钱包收入") if kind == 'income' else "公司钱包支出"
+    ws.append(["日期", "分类", "物品说明", "金额", "币种", "账户", "来源", "关联单号", "对象"])
+    for r in result['data']:
+        ws.append([r['date'],r['category_name'],r['remark'] or '',r['amount'],r['currency'],r.get('account_name',''),
+            r['source_label'],r['ref_no'],r.get('customer_name') or r.get('supplier_name') or ''])
     output = BytesIO()
     wb.save(output)
     output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            headers={"Content-Disposition": "attachment; filename=other_income.xlsx"})
+                            headers={"Content-Disposition": f"attachment; filename={'other_income' if kind == 'income' else 'wallet_expense'}.xlsx"})
 
 # ==== Monthly Summary ====
 @router.get("/monthly-summary", dependencies=[Depends(require_non_labor)])
 async def monthly_summary(start_date: str = None, end_date: str = None, category_group: str = None,
                           month: str = None, year: str = None,
+                          account_id: int = None, customer_id: int = None, supplier_id: int = None,
+                          category_id: int = None, currency: str = None, source: str = None, search: str = None,
+                          cost_category: str = None,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
                           _perm=Depends(check_staff_permission_any("运营收支", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    from app.services.wallet import totals, grouped_totals
+    from app.services.money_records import summary
     from app.services.cost_funds_debt import dates
     start, end = dates(start_date, end_date, month=month, year=year)
-    if category_group == "other":
-        from app.services.wallet import flow_query
-        q = flow_query(db, get_wh_ids(current_user))
-        rows = (await db.execute(select(q.c.currency, q.c.type, func.sum(q.c.amount)).join(
-            IncomeExpenseCategory, IncomeExpenseCategory.id == q.c.category_id).where(q.c.date >= start,
-            q.c.date <= end, q.c.source == "manual", IncomeExpenseCategory.category_group == "other",
-            q.c.status == "active").group_by(q.c.currency, q.c.type))).all()
-    else:
-        rows = await totals(db, get_wh_ids(current_user), start, end)
-    result = grouped_totals(rows)
-    return {"start_date": start.isoformat(), "end_date": end.isoformat(), **result}
+    return await summary(db,get_wh_ids(current_user),start,end,category_group=category_group,
+        category_id=category_id,account_id=account_id,customer_id=customer_id,supplier_id=supplier_id,
+        currency=currency,source=source,search=search,cost_category=cost_category)
 # ==== Operating Dashboard ====
 @router.get("/operating-dashboard", dependencies=[Depends(require_non_labor)])
 async def operating_dashboard(

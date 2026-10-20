@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
@@ -57,6 +57,19 @@ export default function IncomeExpensePage() {
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
+  async function handleExport() {
+    try {
+      const headers: Record<string,string> = { Authorization: `Bearer ${getToken()}` };
+      const warehouse = getActiveWarehouseId();
+      if (warehouse !== null) headers["X-Warehouse-ID"] = warehouse;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/income-expense/${tab}/export?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`, { headers });
+      if (!res.ok) throw new Error((await res.json()).detail || "导出失败");
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a"); a.href = url; a.download = `wallet_${tab}_${dateRange.start_date}_${dateRange.end_date}.xlsx`; a.click(); URL.revokeObjectURL(url);
+      toast("success", "导出成功");
+    } catch (err: any) { toast("error", err.message || "导出失败"); }
+  }
+
   const columns = [
     { key: tab === "income" ? "income_date" : "expense_date", label: "日期", render: (v: string) => v?.slice(0,10) },
     { key: "category_name", label: "类别" },
@@ -65,6 +78,7 @@ export default function IncomeExpensePage() {
     { key: "amount", label: "金额", render: (v: number, row: any) => fmtMoney(v, row.currency) },
     { key: "currency", label: "币种" },
     { key: "remark", label: "备注" },
+    { key: "ref_no", label: "来源", render: (_: string, row: any) => <div className="text-xs whitespace-nowrap">{row.source_link ? <a href={row.source_link} className="text-primary hover:underline">{row.source_label} {row.ref_no}</a> : <span>{row.source_label} {row.ref_no}</span>}{row.is_read_only && <div className="text-gray-400">业务联动，只读</div>}</div> },
   ];
 
   return (
@@ -72,13 +86,14 @@ export default function IncomeExpensePage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="page-title">{t("income_expense")}</h1>
+          <p className="text-xs text-gray-500 mt-1">公司钱包实际收付款，内部转账不计收支</p>
           <div className="flex gap-6 mt-2 text-sm flex-wrap">
             <span className="text-green-600">收入: {fmtMoneyByCurrency(totals.income_by_currency)}</span>
             <span className="text-red-600">支出: {fmtMoneyByCurrency(totals.expense_by_currency)}</span>
             <span className={totals.net >= 0 ? "text-blue-600" : "text-red-600"}>净额: {(() => { const all = new Set([...Object.keys(totals.income_by_currency || {}), ...Object.keys(totals.expense_by_currency || {})]); const m: any = {}; all.forEach((c: string) => m[c] = (totals.income_by_currency?.[c] || 0) - (totals.expense_by_currency?.[c] || 0)); return fmtMoneyByCurrency(m); })()}</span>
           </div>
         </div>
-        <button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary">新建记录</button>
+        <div className="flex gap-2 shrink-0"><button onClick={handleExport} className="btn-secondary whitespace-nowrap">导出</button><button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary whitespace-nowrap">新建记录</button></div>
       </div>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="bg-white rounded-lg p-1 flex"><button onClick={() => { setTab("income"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "income" ? "bg-primary text-white" : ""}`}>收款</button><button onClick={() => { setTab("expense"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "expense" ? "bg-primary text-white" : ""}`}>付款</button></div>

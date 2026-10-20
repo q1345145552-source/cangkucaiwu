@@ -1,0 +1,122 @@
+第5轮：旧收支页明细、合计、导出统一公司钱包范围，完成后停止，不部署。
+基准为已验收并推送的第4轮8ca4df09dbb6d7e3e96d2b4e7780de09422d2ba5。
+本轮只读投影修复，没有数据库迁移，不修改已有资金记录，不重算工资。
+
+修前真实复现。
+在专用本机PostgreSQL隔离库，账户期初0，实际录入到账1000。
+原GET /income-expense/monthly-summary收入1000，但GET /income-expense/income返回0条。
+两个接口均200，错误是来源不一致，不是接口报错。
+合计已经使用wallet.flow_query，收入明细及原收入Excel却只读IncomeRecord手工收入表。
+支出明细已用钱包支出的cost_query，但分类组和部分筛选未统一到合计。
+修前JSON与断言失败记录已经保存在本轮原始证据目录。
+
+本轮口径。
+旧收支页明确显示“公司钱包实际收付款，内部转账不计收支”。
+复用已有wallet.flow_query和cost_query，不另建流水表，不把实际收款改成发货收入。
+新增money_records公共读取服务，列表、筛选全集合计、收入和支出Excel都调用同一套投影及筛选。
+业务付款沿用原有效状态，内部转账在这张收支页的明细、合计和导出中都排除。
+资金流水页保留原本能查看内部转账的功能，本轮没有把内部转账记录删除。
+只有申报、尚未实际到账的仍不算收入。
+同一到账关联充值申报、对账和账期回款，仍只是一条到账事实。
+客户使用正式关联编号查询，不按名字猜测；多条对账关联不扩张收入行数。
+垫款出资的工资不在出资时重记公司支出，归还沿用现有钱包来源。
+备用金拨付只计一次，后续开销不再重复计公司支出。
+各币种分别返回，不把泰铢和人民币直接相加。
+
+默认日期范围的明确变更。
+旧API无日期时，明细查全历史、monthly-summary查本月，这也是范围不一致。
+本轮旧收支列表、合计及两个导出，无日期时统一为泰国本月1日至今天，和现有页面默认一致。
+历史数据不删除、不补写；传明确历史日期范围仍能完整查到。
+第4轮保留各API旧默认的处理，到了第5轮因统一范围改为上述同一默认，历史验收报告不追改。
+第4轮的YYYY-MM契约、自然月上下界、泰国日期、跨年和无效参数400规则全部保留。
+本轮回归中默认本月支出300，显式历史范围支出500，两者都做了断言。
+资金流水、其他报表的原默认范围不在本轮改动里；跨页面比较必须使用同一明确期间。
+
+接口及兼容。
+GET /income-expense/income：增加实际到账明细，原手工收入仍在。
+GET /income-expense/expense：沿用钱包支出，补齐同源筛选。
+GET /income-expense/monthly-summary：使用与明细相同的仓库、日期、币种、账户、来源、分类、分类组、客户、供应商、搜索及成本分类条件。
+GET /income-expense/income/export：同源收入导出，沿用现有地址与文件名兼容。
+新增GET /income-expense/expense/export：补齐这张收支页的同源支出导出，使用运营收支权限及非劳工守卫。
+收入导出权限与收入列表保持一致，主管和财务仍须有相应运营收支或其他收支权限。
+返回保留原日期、金额、币种、账户、客户、备注等字段，手工收入原时间戳格式也保留。
+增加source、source_id、source_label、ref_no、source_link和is_read_only，避免不同来源同编号混淆。
+手工收入编号仍为整数，到账显示独立来源编号，如incoming-1和FL-1。
+业务联动明细标只读，原业务写入、付款、撤销和归还接口均未改。
+Excel保留原前六列，后面增加来源、关联单号和对象。
+其他收入页面按other分类组导出时仍保留原工作表标题“其他收入”。
+
+实际收入数字。
+期初0，实际到账1000：合计1000，明细一条1000，可追到账流水FL-1。
+再新增手工收入200：合计1200，明细两条1000和200，Excel两条1200。
+page_size=1时，两页各一条，两个分页返回的筛选全集合计仍为1200。
+仅申报未到账：列表0条、合计0、Excel0条。
+同笔到账再关联两条对账匹配及一条账期回款，收入仍1000、明细仍一条，没有变成重复收入。
+公司账户之间转账300，不增加这张收支页的收入或支出。
+
+筛选核验。
+同仓当期测试数据THB1240、CNY50，共4条；币种分开。
+只选THB得到1240共3条，只选CNY得到50共1条。
+只选人民币账户得到CNY50，选外仓账户得到0。
+只选到账来源得到THB1000共1条，只选手工来源得到THB240和CNY50共3条。
+运营分类组得到THB1200和CNY50共3条，其他分类组得到THB40共1条。
+具体分类、备注、来源名称、付款人、正式客户编号和空结果均逐项核验。
+18种收入筛选，每一种都比较明细条数、币种合计和实际Excel内容，全部一致。
+不传日期时列表、合计和导出同为当月THB1240、CNY50；明确起始1900年时历史THB2040、CNY50共5条仍在。
+跨仓测试999不混入本仓，本仓响应不包含外仓标记；外仓管理员能看自己的999。
+授权主管、财务读取及导出正常，劳工和超管普通业务入口仍403。
+读取测试SQL跟踪没有INSERT、UPDATE或DELETE。
+
+实际支出数字。
+公司手工支出60、备用金拨付1000、报销付款80、归还垫款300、采购实际付款100，共1540，六条明细。
+备用金后续开销200不重复增加支出，报销原关联支出不重复出现。
+垫款资金发的工资700不在出资时重复出现，归还300只出现一笔。
+已作废应付账单中实际付过的100仍保留，未付余额不算。
+已冲销的报销90和垫款归还50均不计有效支出。
+未发放工资900、待审批和驳回及作废预支合计36均不算有效支出。
+运营分类组1500、其他分类组40；来源、账户、供应商、采购分类及搜索逐项比较明细、合计、Excel，一致。
+
+前端与真实浏览器。
+只在原收付款页面增加钱包口径说明、来源列和导出按钮，保留原日期、收付款切换及表格结构。
+来源显示“到账流水 FL-1”“手工收入 IN-1”，联动行显示“业务联动，只读”。
+点来源打开相应模块，仍遵守目标模块原有权限，不会自动额外授予权限。
+导出携带当前起止日期、登录授权及当前仓库，收入与支出分别导出筛选全集，不限当前页。
+本机18180后端、18181生产构建前端、18182同源代理，都只监听127.0.0.1。
+使用虚构测试账号，浏览器实际看到收入1200、支出300、净收付900。
+浏览器实际下载收入Excel两条合计1200、支出Excel一条300，读取下载文件核对通过。
+390宽度手机可见合计与按钮，表格横向滚动能看到来源，到账来源链接实际点开成功。
+浏览器操作之后，库里仍仅原到账1条1000、手工收入1条200、支出1条300，账户期初0，计算余额900。
+没有新增工资单、预支或垫款归还；筛选、导出、来源跳转没有写资金记录。
+
+实际运行命令。
+PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres MONEY_RECORD_TEST_REPORT=/tmp/round5-after.json MONTH_RANGE_TEST_REPORT=/tmp/round5-month-regression.json MANAGEMENT_TEST_REPORT=/tmp/round5-management-regression.json /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_money_record_scope.py backend/tests/test_money_month_range.py backend/tests/test_management_access.py backend/tests/test_expense_approval_payment.py backend/tests/test_incoming_operations.py -q --junitxml=/tmp/round5-all-native.xml
+最终40项，0失败、0错误、0跳过，包含本轮4项及前四轮36项。
+管理入口随新支出导出从328增至329，两名劳工逐条共658次调用均403，进入业务查询0次。
+原超管跨仓市场与拼单专用例外的回归通过，本轮未改这些代码。
+NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node frontend/tests/money-record-scope.test.cjs
+同样运行 frontend/tests/money-month-range.test.cjs、frontend/tests/incoming-operations.test.cjs、frontend/tests/expense-approval-payment.test.cjs、frontend/tests/labor-language.test.cjs。
+五个前端测试文件均退出0，覆盖实际页面处理函数、导出授权和仓库、来源只读及日期旧响应保护。
+在 /tmp/wallet-build-o6qsx2gz 运行 PATH=/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH NEXT_TELEMETRY_DISABLED=1 /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/next/dist/bin/next build。
+生产构建退出0，原ignoreBuildErrors设置未改。
+修改前及最终构建后分别运行 /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/typescript/bin/tsc --noEmit --incremental false。
+独立类型检查均退出2，既有诊断89到89，按文件与诊断内容的多重集合比较新增0，不宣称全量类型检查已通过。
+git diff --check通过。
+
+改动文件。
+backend/app/services/money_records.py：统一公司钱包明细、筛选、分页、默认期间和合计读取。
+backend/app/services/cost_funds_debt.py：为现有钱包支出投影增加来源与账户描述字段，计算公式不变。
+backend/app/api/v1/income_expense.py：旧收入、支出、合计及导出接共同读取服务，补齐支出导出。
+backend/tests/test_money_record_scope.py：本轮真实PostgreSQL验收。
+backend/tests/test_money_month_range.py：保留月份边界测试，明确本轮统一默认期间及历史可查。
+backend/tests/test_management_access.py：新导出入口也纳入逐条管理权限拦截盘点。
+frontend/src/app/(dashboard)/income-expense/page.tsx：口径说明、来源只读显示及同范围导出。
+frontend/tests/money-record-scope.test.cjs：实际页面与导出处理函数测试。
+docs/第5轮收支明细合计验收.txt和docs/第5轮收支明细合计实际结果.json：验收材料。
+
+未做和遗留。
+第6轮其他收入页面的币种展示、换算和顶部合计专门问题尚未开始；其前端本轮没改，不宣称已完成。
+本轮公共读取服务会正确应用币种条件，这是统一本轮列表与合计必需的筛选，不等于其他收入页面问题全部修好。
+未改主仪表盘、客户发货或应收，不改变现有实际到账及付款业务，不连接生产，不部署。
+临时浏览器页、前后端和代理已关闭，专用schema正常清理，临时PostgreSQL已停止。
+原始修前修后JSON、JUnit、构建与类型日志、浏览器截图和下载Excel保存在 /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第5轮收支明细合计-20261020。
+本轮代码与报告同一提交，具体提交及远程核对见最终回复和该目录commit-receipt.json。
