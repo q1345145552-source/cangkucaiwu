@@ -218,15 +218,17 @@ async def incoming_summary(start_date: str = None, end_date: str = None, warehou
 # ===== 3. 收支报表 =====
 @router.get("/income-expense", dependencies=[Depends(require_non_labor)])
 async def income_expense_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
+                                 month: str = None, year: str = None,
                                  current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_ids = get_wh_ids(current_user)
     from app.services.wallet import flow_query, grouped_totals
-    from app.services.cost_funds_debt import dates
+    from app.services.money_period import money_period
     wh_ids = [warehouse_id] if warehouse_id in wh_ids else wh_ids
     if warehouse_id and warehouse_id not in get_wh_ids(current_user): raise HTTPException(403, "无权访问其他仓库")
-    start, end = dates(start_date or "1900-01-01", end_date or "9999-12-31")
+    from datetime import date
+    start, end = money_period(month, start_date, end_date, year=year, default_start=date(1900,1,1), default_end=date.max)
     q = flow_query(db, wh_ids)
     rows = (await db.execute(select(q).where(q.c.date >= start, q.c.date <= end,
         q.c.status == "active", q.c.is_internal_transfer.is_(False)).order_by(q.c.date.desc()))).mappings().all()

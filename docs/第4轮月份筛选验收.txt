@@ -1,0 +1,90 @@
+第4轮：月份筛选串月，完成本轮后停止，不部署。
+基准：本地 main 和远程 main 均为 19fd3ac365251fba90c3feb2d457b581ac33917e。
+这次修的是金额误算成500，不是HTTP状态500。
+真实 PostgreSQL 修前复现：同仓同币种，9月200、10月300，仅传month=2026-09返回两条共500，HTTP200。
+修后同一场景：month=2026-09一条200，month=2026-10一条300，均HTTP200。
+明确传9月1日至30日与仅传9月的完整JSON一致，10月同样一致。
+
+原因及修复。
+旧支出列表只把月份转换为起始日，终止日仍是9999-12-31，所以后续月份被算进来。
+新增公共money_period解析，YYYY-MM包含年份，生成完整自然月首日和末日。
+沿用泰国业务日期，未带时区的业务日期按原值，带时区的付款时间沿用wallet.day转换为Asia/Bangkok日期。
+月份和日期同时传时取交集，不相交返回400，不会扩大月份范围。
+独立year参数不是原接口约定，明确返回400，提示改用month=YYYY-MM，不能静默忽略年份。
+无效月份、零年份、无效日期、倒序日期、空日期均400中文提示。
+不传月份时保留调用方原默认范围，不把全部历史列表改成默认本月。
+完整月份包括未来月；闰年2月和9999年12月均可正常查询，不计算10000年。
+
+统一的查询入口。
+GET /income-expense/income 与 /income-expense/income/export。
+GET /income-expense/expense 与 /income-expense/monthly-summary。
+GET /income-expense/ledger 与 /income-expense/ledger/export。
+GET /income-expense/operating-dashboard，即运营收支的汇总接口，不是主仪表盘改版。
+GET /reports/income-expense。
+GET /reports/cost-funds-debt，以及其 /costs、/flows、/advances。
+已有查询来源、仓库、币种、分类、账户、分页和权限保持原规则。
+其他报表预览未新增月份参数，原日期区间继续使用，不宣称所有报表都支持month。
+
+前端。
+现有收付款页面原本就同时传start_date/end_date，继续用原来的两个日期输入框。
+真实浏览器发现快速改日期时旧响应会晚到，覆盖新范围，补了请求序号保护。
+只接受最后一次筛选结果，列表和合计一起更新，不再被旧响应覆盖。
+没有改布局、菜单、翻页控件或新增主仪表盘月份选择器。
+实际页面处理函数测试包含故意延迟9月响应、先返回10月，再释放9月，最终列表和合计仍为300。
+
+实际核验数字。
+8个列表或汇总入口，9月均200、10月均300，与明确日期区间完全一致，共16组。
+SQL跟踪这些读取没有INSERT、UPDATE或DELETE。
+月末23:59:59.999999仍算当月，下月00:00:00只算次月。
+UTC 16:59:59.999999换算泰国23:59:59.999999，UTC17:00换算泰国次日00:00。
+数据库会话分别设UTC、Asia/Bangkok、America/Los_Angeles，结果均相同。
+跨年场景12月400、次年1月500，明确12月31日至1月1日合计900。
+2025年9月900、2026年9月200、2027年9月800，年份互不混入。
+同仓9月泰铢200与人民币50分开，不相加；外仓999不混入，本仓管理员、授权主管和财务结果一致。
+每页1条时两页合计仍是全集THB200、CNY50，账户和分类筛选有效。
+撤权财务、劳工、超管依原规则403。
+19组无效参数乘12个入口，共228次请求全部400，均有中文detail。
+收入末日23:59:59.999999的80包含在列表及Excel，下月零点90排除，收入导出1条、对应流水导出2条。
+
+浏览器实测。
+本机隔离后端18180，生产构建前端18181，同源代理18182，仅监听127.0.0.1。
+测试账号及两笔金额均为专门创建的虚构数据，不是生产账号或生产数据。
+桌面实际选择9月1日至30日，支出合计200，明细SEPTEMBER-200一条。
+桌面切到10月1日至31日，支出合计300，明细OCTOBER-300一条。
+390宽度手机切回9月，支出200，日期能选，表格按原样横向滚动。
+快速逐段改日期也能返回最后一次有效范围的结果。
+只读查库后仍是原两条200和300，账户期初仍10000，工资单、预支、到账、手工收入均0条，没有因筛选写入资金数据。
+日期输入过程中暂时空白或无效的请求会被后端400拒绝，完成有效日期后可继续查询。
+
+实际运行命令。
+PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres MONTH_RANGE_TEST_REPORT=/tmp/round4-after.json MANAGEMENT_TEST_REPORT=/tmp/round4-management-regression.json /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_money_month_range.py backend/tests/test_management_access.py backend/tests/test_expense_approval_payment.py backend/tests/test_incoming_operations.py -q --junitxml=/tmp/round4-all-native.xml
+结果36项，0失败，0错误，0跳过，其中月份6项，前三轮回归30项。
+NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node frontend/tests/money-month-range.test.cjs
+同样命令分别运行 frontend/tests/incoming-operations.test.cjs、frontend/tests/expense-approval-payment.test.cjs、frontend/tests/labor-language.test.cjs。
+四个前端测试文件均退出0，月份测试直接运行现有页面处理函数。
+在 /tmp/wallet-build-o6qsx2gz 内运行 PATH=/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH NEXT_TELEMETRY_DISABLED=1 /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/next/dist/bin/next build。
+生产编译退出0；项目原有ignoreBuildErrors设置未改变。
+编译前及编译完成后分别运行 /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/typescript/bin/tsc --noEmit --incremental false。
+独立类型检查均退出2，既有诊断89到89，按文件及诊断内容多重集合比较新增0。
+中途一次类型检查与构建清理.next/types碰撞，输出48条临时缺文件；该结果不作为验收，构建完成后重新独立检查，最终仍89条原有诊断。
+git diff --check通过。
+
+改动文件。
+backend/app/services/money_period.py：公共只读年月与日期范围解析。
+backend/app/services/cost_funds_debt.py：原dates入口调用公共解析，业务投影不变。
+backend/app/api/v1/income_expense.py：列表、汇总及导出采用统一范围。
+backend/app/api/v1/reports.py：旧收支报表采用相同范围。
+backend/app/api/v1/cost_funds_debt.py：三张账及下钻读取采用相同范围。
+backend/tests/test_money_month_range.py：真实PostgreSQL月份、时区、跨年及隔离验证。
+frontend/src/app/(dashboard)/income-expense/page.tsx：防止旧日期响应覆盖新结果。
+frontend/tests/money-month-range.test.cjs：实际页面处理函数及乱序响应验证。
+docs/第4轮月份筛选验收.txt与docs/第4轮月份筛选实际结果.json：本轮报告。
+
+边界与遗留。
+没有数据库迁移，没有改已有数据，不改实际到账及付款口径，不重算工资。
+前三轮到账并发防重、小额费用付款、劳工管理入口及超管跨仓共享例外回归通过。
+主仪表盘月份选择、仓库汇总、旧收支明细来源统一、其他收入币种属于后续轮次，不在本轮扩改。
+生产未连接，未部署，也未宣称线上已有本轮效果。
+临时浏览器页、测试前后端及代理已关闭，专用schema正常清理，本轮启动的临时PostgreSQL已停止。
+原始JSON、JUnit、构建、类型检查及浏览器截图保存在 /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第4轮月份边界-20261020。
+本轮代码和上述验收报告同一提交，具体提交号及远程核对结果见最终回复和该目录commit-receipt.json。

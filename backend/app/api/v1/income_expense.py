@@ -11,7 +11,7 @@ from typing import Optional, List, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from app.database import get_db
 from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpenseCategory, IncomeExpenseType, CategoryStatus
 from app.models.customer import Customer, PaymentAccount
@@ -21,6 +21,7 @@ from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
 from app.services.data_history import record_history
+from app.services.money_period import money_period
 
 async def validate_manual_money(db, wid, account_id, category_id, currency, kind, value):
     from app.services.wallet import lock_account
@@ -76,7 +77,7 @@ async def create_category(req: CategoryCreate, current_user: User = Depends(get_
 # ==== Income ====
 @router.get("/income")
 async def list_income(
-    page: int = 1, page_size: int = 20, month: str = None,
+    page: int = 1, page_size: int = 20, month: str = None, year: str = None,
     start_date: str = None, end_date: str = None,
     account_id: int = None, customer_id: int = None,
     category_id: int = None,
@@ -97,16 +98,11 @@ async def list_income(
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
         count_q = count_q.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
-    if month:
-        query = query.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
-        count_q = count_q.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
-    if start_date:
-        query = query.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
-        count_q = count_q.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
-    if end_date:
-        end_next = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-        query = query.where(IncomeRecord.income_date < end_next)
-        count_q = count_q.where(IncomeRecord.income_date < end_next)
+    from app.services.wallet import day
+    start, end = money_period(month, start_date, end_date, year=year, default_start=date.min, default_end=date.max)
+    filters = [day(db, IncomeRecord.income_date) >= start, day(db, IncomeRecord.income_date) <= end]
+    query = query.where(*filters)
+    count_q = count_q.where(*filters)
     if account_id:
         query = query.where(IncomeRecord.account_id == account_id)
         count_q = count_q.where(IncomeRecord.account_id == account_id)
@@ -198,7 +194,7 @@ async def delete_income(income_id: int, current_user: User = Depends(get_current
 # ==== Expense ====
 @router.get("/expense", dependencies=[Depends(require_non_labor)])
 async def list_expense(
-    page: int = 1, page_size: int = 20, month: str = None,
+    page: int = 1, page_size: int = 20, month: str = None, year: str = None,
     category_id: int = None, account_id: int = None,
     start_date: str = None, end_date: str = None,
     category_group: str = None,
@@ -210,7 +206,7 @@ async def list_expense(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from app.services import cost_funds_debt as projection
-    start, end = projection.dates(start_date or (f"{month}-01" if month else "1900-01-01"), end_date or "9999-12-31")
+    start, end = money_period(month, start_date, end_date, year=year, default_start=date(1900,1,1), default_end=date.max)
     return await projection.cost_list(db, get_wh_ids(current_user), start, end,
         page=max(page, 1), page_size=min(max(page_size, 1), 200), category_id=category_id,
         cost_category=cost_category, account_id=account_id, currency_code=currency)
@@ -444,6 +440,7 @@ async def ledger(
     page: int = 1, page_size: int = 30,
     start_date: str = None,
     end_date: str = None,
+    month: str = None, year: str = None,
     source: str = None,
     flow_type: str = None,
     flow_scope: Literal["all", "company"] = "all", account_id: int | None = None,
@@ -459,7 +456,7 @@ async def ledger(
     wid = get_wh_id(current_user)
     if getattr(current_user, "_all_warehouses", False) or wid is None:
         raise HTTPException(400, "请先选择一个仓库")
-    start, end = projection.dates(start_date or "1900-01-01", end_date or date.max.isoformat())
+    start, end = money_period(month, start_date, end_date, year=year, default_start=date(1900,1,1), default_end=date.max)
     result = await projection.flow_list(db, [wid], start, end,
         page=max(page, 1), page_size=min(max(page_size, 1), 100000), account_id=account_id,
         currency_code=currency, source=source, flow_type=flow_type, unassigned=unassigned)
@@ -470,6 +467,7 @@ async def ledger(
 @router.get("/ledger/export", dependencies=[Depends(require_non_labor)])
 async def ledger_export(
     start_date: str = None, end_date: str = None, source: str = None, flow_type: str = None,
+    month: str = None, year: str = None,
     account_id: int | None = None, currency: Literal["THB", "CNY"] | None = None, unassigned: bool = False,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -478,7 +476,7 @@ async def ledger_export(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # Reuse same aggregation logic
-    r = await ledger(page=1, page_size=99999, start_date=start_date, end_date=end_date, source=source, flow_type=flow_type, flow_scope="company", account_id=account_id, currency=currency, unassigned=unassigned, current_user=current_user, db=db)
+    r = await ledger(page=1, page_size=99999, start_date=start_date, end_date=end_date, month=month, year=year, source=source, flow_type=flow_type, flow_scope="company", account_id=account_id, currency=currency, unassigned=unassigned, current_user=current_user, db=db)
     data = r.get("data", [])
 
     wb = __import__('openpyxl').Workbook()
@@ -508,6 +506,7 @@ async def ledger_export(
 @router.get("/income/export")
 async def export_income(
     month: str = None,
+    year: str = None,
     category_group: str = None,
     currency: str = None,
     search: str = None,
@@ -523,8 +522,9 @@ async def export_income(
     query = select(IncomeRecord)
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(IncomeRecord.warehouse_id.in_(get_wh_ids(current_user)))
-    if month:
-        query = query.where(func.to_char(IncomeRecord.income_date, 'YYYY-MM') == month)
+    from app.services.wallet import day
+    start, end = money_period(month, start_date, end_date, year=year, default_start=date.min, default_end=date.max)
+    query = query.where(day(db, IncomeRecord.income_date) >= start, day(db, IncomeRecord.income_date) <= end)
     if category_group:
         query = query.join(IncomeExpenseCategory, IncomeRecord.category_id == IncomeExpenseCategory.id)
         query = query.where(IncomeExpenseCategory.category_group == category_group)
@@ -534,10 +534,6 @@ async def export_income(
         query = query.where(IncomeRecord.remark.ilike(f"%{search}%"))
     if category_id:
         query = query.where(IncomeRecord.category_id == category_id)
-    if start_date:
-        query = query.where(IncomeRecord.income_date >= datetime.strptime(start_date, "%Y-%m-%d"))
-    if end_date:
-        query = query.where(IncomeRecord.income_date <= datetime.strptime(end_date, "%Y-%m-%d"))
     result = await db.execute(query.order_by(IncomeRecord.income_date.desc()))
     records = result.scalars().all()
 
@@ -577,6 +573,7 @@ async def export_income(
 # ==== Monthly Summary ====
 @router.get("/monthly-summary", dependencies=[Depends(require_non_labor)])
 async def monthly_summary(start_date: str = None, end_date: str = None, category_group: str = None,
+                          month: str = None, year: str = None,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
                           _perm=Depends(check_staff_permission_any("运营收支", "其他收支"))):
@@ -584,7 +581,7 @@ async def monthly_summary(start_date: str = None, end_date: str = None, category
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from app.services.wallet import totals, grouped_totals
     from app.services.cost_funds_debt import dates
-    start, end = dates(start_date, end_date)
+    start, end = dates(start_date, end_date, month=month, year=year)
     if category_group == "other":
         from app.services.wallet import flow_query
         q = flow_query(db, get_wh_ids(current_user))
@@ -601,6 +598,7 @@ async def monthly_summary(start_date: str = None, end_date: str = None, category
 async def operating_dashboard(
     start_date: str = None,
     end_date: str = None,
+    month: str = None, year: str = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("运营收支")),
@@ -612,23 +610,8 @@ async def operating_dashboard(
 
     today = thai_today()
 
-    # 默认时间范围：当月 1 号到当天
-    if start_date:
-        try:
-            start = datetime.strptime(start_date, "%Y-%m-%d").date()
-        except Exception:
-            raise HTTPException(400, "开始日期格式错误，应为 YYYY-MM-DD")
-    else:
-        start = date(today.year, today.month, 1)
-    if end_date:
-        try:
-            end = datetime.strptime(end_date, "%Y-%m-%d").date()
-        except Exception:
-            raise HTTPException(400, "结束日期格式错误，应为 YYYY-MM-DD")
-    else:
-        end = today
-    if start > end:
-        raise HTTPException(400, "开始日期不能晚于结束日期")
+    start, end = money_period(month, start_date, end_date, year=year,
+        default_start=today.replace(day=1), default_end=today)
 
     wh_ids = get_wh_ids(current_user)
     from app.services.wallet import flow_query, grouped_totals

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
@@ -14,6 +14,7 @@ export default function IncomeExpensePage() {
   const [tab, setTab] = useState("income");
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const loadVersion = useRef(0);
   const now = new Date();
   const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -24,13 +25,17 @@ export default function IncomeExpensePage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: "", remark: "" });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); }, [page, tab, dateRange]);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); return () => { loadVersion.current += 1; }; }, [page, tab, dateRange]);
 
   async function load() {
+    const version = ++loadVersion.current;
     const ep = tab === "income" ? "/income-expense/income" : "/income-expense/expense";
-    const res = await api.get<any>(`${ep}?page=${page}&page_size=25&start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
+    const [res, s] = await Promise.all([
+      api.get<any>(`${ep}?page=${page}&page_size=25&start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`),
+      api.get<any>(`/income-expense/monthly-summary?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`),
+    ]);
+    if (version !== loadVersion.current) return;
     setData(res.data); setTotal(res.total);
-    const s = await api.get<any>(`/income-expense/monthly-summary?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
     setTotals(s);
   }
 

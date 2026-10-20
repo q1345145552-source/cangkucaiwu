@@ -29,16 +29,10 @@ def money(value):
     return Decimal(str(value or 0)).quantize(CENT)
 
 
-def dates(start=None, end=None):
+def dates(start=None, end=None, *, month=None, year=None):
+    from app.services.money_period import money_period
     today = thai_today()
-    try:
-        start = date.fromisoformat(str(start)) if start else today.replace(day=1)
-        end = date.fromisoformat(str(end)) if end else today
-    except ValueError:
-        raise HTTPException(400, "日期格式错误，应为 YYYY-MM-DD")
-    if start > end:
-        raise HTTPException(400, "开始日期不能晚于结束日期")
-    return start, end
+    return money_period(month, start, end, year=year, default_start=today.replace(day=1), default_end=today)
 
 
 from app.services.wallet import day, flow_query

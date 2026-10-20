@@ -1,0 +1,487 @@
+{
+  "baseline_commit": "19fd3ac365251fba90c3feb2d457b581ac33917e",
+  "deployment": false,
+  "bug_before": {
+    "2026-09": {
+      "THB": 500.0
+    },
+    "2026-10": {
+      "THB": 300.0
+    }
+  },
+  "native_postgres": {
+    "tests": 36,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "actual": {
+    "month_only": {
+      "2026-09": {
+        "data": [
+          {
+            "id": 1,
+            "source": "expense",
+            "source_id": 1,
+            "warehouse_id": 1,
+            "date": "2026-09-15",
+            "category_id": 1,
+            "category_name": "月界测试",
+            "amount": 200.0,
+            "currency": "THB",
+            "account_id": 1,
+            "remark": "SEPTEMBER-200",
+            "voucher": null,
+            "funding_source": "company_account",
+            "cash_advance_id": null,
+            "reimbursement_id": null,
+            "payroll_record_id": null,
+            "is_read_only": false,
+            "employee_advance_id": null,
+            "employee_id": null,
+            "fund_disbursement_id": null,
+            "fund_id": null,
+            "expense_date": "2026-09-15",
+            "account_name": "测试现金1"
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+        "totals_by_currency": {
+          "THB": 200.0
+        },
+        "cost_basis": "按实际收付日期统计公司支出；垫款归还才计支出，备用金拨付只计一次，内部转账不计收支"
+      },
+      "2026-10": {
+        "data": [
+          {
+            "id": 2,
+            "source": "expense",
+            "source_id": 2,
+            "warehouse_id": 1,
+            "date": "2026-10-15",
+            "category_id": 1,
+            "category_name": "月界测试",
+            "amount": 300.0,
+            "currency": "THB",
+            "account_id": 1,
+            "remark": "OCTOBER-300",
+            "voucher": null,
+            "funding_source": "company_account",
+            "cash_advance_id": null,
+            "reimbursement_id": null,
+            "payroll_record_id": null,
+            "is_read_only": false,
+            "employee_advance_id": null,
+            "employee_id": null,
+            "fund_disbursement_id": null,
+            "fund_id": null,
+            "expense_date": "2026-10-15",
+            "account_name": "测试现金1"
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+        "totals_by_currency": {
+          "THB": 300.0
+        },
+        "cost_basis": "按实际收付日期统计公司支出；垫款归还才计支出，备用金拨付只计一次，内部转账不计收支"
+      }
+    },
+    "list_summary_reports": {
+      "data": [
+        {
+          "month": "2026-09",
+          "path": "/income-expense/expense",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-09",
+          "path": "/income-expense/monthly-summary",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-09",
+          "path": "/income-expense/ledger",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-09",
+          "path": "/income-expense/operating-dashboard",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-09",
+          "path": "/reports/income-expense",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-09",
+          "path": "/reports/cost-funds-debt",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-09",
+          "path": "/reports/cost-funds-debt/costs",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-09",
+          "path": "/reports/cost-funds-debt/flows",
+          "status": 200,
+          "expense": 200,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/income-expense/expense",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/income-expense/monthly-summary",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/income-expense/ledger",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/income-expense/operating-dashboard",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/reports/income-expense",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/reports/cost-funds-debt",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/reports/cost-funds-debt/costs",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        },
+        {
+          "month": "2026-10",
+          "path": "/reports/cost-funds-debt/flows",
+          "status": 200,
+          "expense": 300,
+          "explicit_range_equal": true
+        }
+      ],
+      "writes": 0
+    },
+    "thai_calendar_utc_year_boundaries": {
+      "data": [
+        {
+          "server_timezone": "UTC",
+          "month": "2025-09",
+          "expense": 900
+        },
+        {
+          "server_timezone": "UTC",
+          "month": "2026-09",
+          "expense": 200
+        },
+        {
+          "server_timezone": "UTC",
+          "month": "2026-10",
+          "expense": 300
+        },
+        {
+          "server_timezone": "UTC",
+          "month": "2026-12",
+          "expense": 400
+        },
+        {
+          "server_timezone": "UTC",
+          "month": "2027-01",
+          "expense": 500
+        },
+        {
+          "server_timezone": "UTC",
+          "month": "2027-09",
+          "expense": 800
+        },
+        {
+          "server_timezone": "Asia/Bangkok",
+          "month": "2025-09",
+          "expense": 900
+        },
+        {
+          "server_timezone": "Asia/Bangkok",
+          "month": "2026-09",
+          "expense": 200
+        },
+        {
+          "server_timezone": "Asia/Bangkok",
+          "month": "2026-10",
+          "expense": 300
+        },
+        {
+          "server_timezone": "Asia/Bangkok",
+          "month": "2026-12",
+          "expense": 400
+        },
+        {
+          "server_timezone": "Asia/Bangkok",
+          "month": "2027-01",
+          "expense": 500
+        },
+        {
+          "server_timezone": "Asia/Bangkok",
+          "month": "2027-09",
+          "expense": 800
+        },
+        {
+          "server_timezone": "America/Los_Angeles",
+          "month": "2025-09",
+          "expense": 900
+        },
+        {
+          "server_timezone": "America/Los_Angeles",
+          "month": "2026-09",
+          "expense": 200
+        },
+        {
+          "server_timezone": "America/Los_Angeles",
+          "month": "2026-10",
+          "expense": 300
+        },
+        {
+          "server_timezone": "America/Los_Angeles",
+          "month": "2026-12",
+          "expense": 400
+        },
+        {
+          "server_timezone": "America/Los_Angeles",
+          "month": "2027-01",
+          "expense": 500
+        },
+        {
+          "server_timezone": "America/Los_Angeles",
+          "month": "2027-09",
+          "expense": 800
+        }
+      ],
+      "cross_year_two_days": 900,
+      "utc_165959_999999": "Thai previous day 23:59:59.999999",
+      "utc_170000": "Thai next day 00:00:00"
+    },
+    "scope_currency_pages": {
+      "THB": 200,
+      "CNY": 50,
+      "other_warehouse_own_total": 999,
+      "pages": [
+        {
+          "data": [
+            {
+              "id": 3,
+              "source": "expense",
+              "source_id": 3,
+              "warehouse_id": 1,
+              "date": "2026-09-20",
+              "category_id": 1,
+              "category_name": "月界测试",
+              "amount": 50.0,
+              "currency": "CNY",
+              "account_id": 3,
+              "remark": null,
+              "voucher": null,
+              "funding_source": "company_account",
+              "cash_advance_id": null,
+              "reimbursement_id": null,
+              "payroll_record_id": null,
+              "is_read_only": false,
+              "employee_advance_id": null,
+              "employee_id": null,
+              "fund_disbursement_id": null,
+              "fund_id": null,
+              "expense_date": "2026-09-20",
+              "account_name": "CNY cash"
+            }
+          ],
+          "total": 2,
+          "page": 1,
+          "page_size": 1,
+          "totals_by_currency": {
+            "CNY": 50.0,
+            "THB": 200.0
+          },
+          "cost_basis": "按实际收付日期统计公司支出；垫款归还才计支出，备用金拨付只计一次，内部转账不计收支"
+        },
+        {
+          "data": [
+            {
+              "id": 1,
+              "source": "expense",
+              "source_id": 1,
+              "warehouse_id": 1,
+              "date": "2026-09-15",
+              "category_id": 1,
+              "category_name": "月界测试",
+              "amount": 200.0,
+              "currency": "THB",
+              "account_id": 1,
+              "remark": "SEPTEMBER-200",
+              "voucher": null,
+              "funding_source": "company_account",
+              "cash_advance_id": null,
+              "reimbursement_id": null,
+              "payroll_record_id": null,
+              "is_read_only": false,
+              "employee_advance_id": null,
+              "employee_id": null,
+              "fund_disbursement_id": null,
+              "fund_id": null,
+              "expense_date": "2026-09-15",
+              "account_name": "测试现金1"
+            }
+          ],
+          "total": 2,
+          "page": 2,
+          "page_size": 1,
+          "totals_by_currency": {
+            "CNY": 50.0,
+            "THB": 200.0
+          },
+          "cost_basis": "按实际收付日期统计公司支出；垫款归还才计支出，备用金拨付只计一次，内部转账不计收支"
+        }
+      ],
+      "revoked_labor_super": 403
+    },
+    "defaults_and_intersection": {
+      "unfiltered_expense": 500,
+      "default_summary_october_to_today": 300,
+      "month_and_dates": "intersection; disjoint is 400",
+      "future_leap_max_year": 200
+    },
+    "income_export_last_day": {
+      "included": "2026-09-30 23:59:59.999999",
+      "amount": 80,
+      "excluded": "2026-10-01 00:00:00",
+      "income_rows": 1,
+      "ledger_rows": 2
+    }
+  },
+  "invalid_inputs": {
+    "requests": 228,
+    "endpoints": 12,
+    "all_400": true,
+    "example_messages": [
+      "月份格式错误，应为 YYYY-MM，例如 2026-09",
+      "月份格式错误，应为有效的 YYYY-MM",
+      "不支持单独的 year 参数，请使用 month=YYYY-MM 指定年月",
+      "日期格式错误，应为 YYYY-MM-DD",
+      "日期格式错误，应为有效的 YYYY-MM-DD",
+      "开始日期不能晚于结束日期",
+      "日期范围与所选月份不重合"
+    ]
+  },
+  "frontend": {
+    "handler_test_files": 4,
+    "build_exit": 0,
+    "typecheck_before": 89,
+    "typecheck_after": 89,
+    "typecheck_exit": 2,
+    "new_diagnostics": 0,
+    "late_old_response_does_not_replace_new_range": true
+  },
+  "browser": {
+    "september": {
+      "dates": [
+        "2026-09-01",
+        "2026-09-30"
+      ],
+      "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n收付款管理\n收入: -\n支出: ฿200\n净额: ฿-200\n新建记录\n收款\n付款\n至\n日期\t类别\t账户\t对象\t金额\t币种\t备注\n2026-09-15\t月界测试\t测试现金1\t-\t฿200\tTHB\tSEPTEMBER-200"
+    },
+    "october": {
+      "dates": [
+        "2026-10-01",
+        "2026-10-31"
+      ],
+      "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n收付款管理\n收入: -\n支出: ฿300\n净额: ฿-300\n新建记录\n收款\n付款\n至\n日期\t类别\t账户\t对象\t金额\t币种\t备注\n2026-10-15\t月界测试\t测试现金1\t-\t฿300\tTHB\tOCTOBER-300"
+    },
+    "mobile": {
+      "dates": [
+        "2026-09-01",
+        "2026-09-30"
+      ],
+      "text": "测试仓1\n测\n收付款管理\n收入: -\n支出: ฿200\n净额: ฿-200\n新建记录\n收款\n付款\n至\n日期\t类别\t账户\t对象\t金额\t币种\t备注\n2026-09-15\t月界测试\t测试现金1\t-\t฿200\tTHB\tSEPTEMBER-200",
+      "width": 390
+    }
+  },
+  "database_after_browser": {
+    "expenses": [
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "amount": 200.0,
+        "expense_date": "2026-09-15 12:00:00",
+        "currency": "THB",
+        "remark": "SEPTEMBER-200"
+      },
+      {
+        "id": 2,
+        "warehouse_id": 1,
+        "amount": 300.0,
+        "expense_date": "2026-10-15 12:00:00",
+        "currency": "THB",
+        "remark": "OCTOBER-300"
+      }
+    ],
+    "accounts": [
+      {
+        "id": 1,
+        "opening_balance": 10000.0,
+        "currency": "THB"
+      },
+      {
+        "id": 2,
+        "opening_balance": 0.0,
+        "currency": "THB"
+      }
+    ],
+    "income_records": 0,
+    "payroll_records": 0,
+    "employee_advances": 0,
+    "incoming_flows": 0
+  },
+  "artifact_directory": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第4轮月份边界-20261020"
+}
