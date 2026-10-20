@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
+import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
-import { Plus, DollarSign, Pencil, Trash2, TrendingUp, RefreshCw, Download, Search } from "lucide-react";
+import { Plus, DollarSign, Pencil, Trash2, TrendingUp, Download, Search } from "lucide-react";
 
 const CATEGORY_GROUP = "other";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -15,16 +16,14 @@ export default function OtherIncomePage() {
   const now = new Date();
   const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const [monthTotal, setMonthTotal] = useState(0);
+  const [totalsByCurrency, setTotalsByCurrency] = useState<Record<string, number>>({});
+  const loadVersion = useRef(0);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: new Date().toISOString().slice(0, 10), remark: "" });
-  // 展示货币（只有两种）
-  const [displayCurrency, setDisplayCurrency] = useState<"THB" | "CNY">("THB");
-  const [rateCNYtoTHB, setRateCNYtoTHB] = useState(5.0);
   // 筛选
   const [currencyFilter, setCurrencyFilter] = useState("");
   const [searchText, setSearchText] = useState("");
@@ -32,30 +31,32 @@ export default function OtherIncomePage() {
   const [dateStart, setDateStart] = useState(`${curMonth}-01`);
   const [dateEnd, setDateEnd] = useState(todayStr);
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); loadSummary(); loadRate(); }, [page, currencyFilter, searchText, catFilter, dateStart, dateEnd]);
+  useEffect(() => { if (!getToken()) { router.push("/login"); return; } loadRefs(); }, []);
+  useEffect(() => { load(); return () => { loadVersion.current += 1; }; }, [page, currencyFilter, searchText, catFilter, dateStart, dateEnd]);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("page", String(page)); params.set("page_size", "25");
-      params.set("category_group", CATEGORY_GROUP);
-      params.set("start_date", dateStart);
-      params.set("end_date", dateEnd);
-      if (currencyFilter) params.set("currency", currencyFilter);
-      if (searchText) params.set("search", searchText);
-      if (catFilter) params.set("category_id", String(catFilter));
-      const res = await api.get<any>(`/income-expense/income?${params.toString()}`);
-      setData(res.data); setTotal(res.total);
-    } catch (err) { console.error("加载失败:", err); }
-    setLoading(false);
+  function filterParams() {
+    const params = new URLSearchParams({ category_group: CATEGORY_GROUP, start_date: dateStart, end_date: dateEnd });
+    if (currencyFilter) params.set("currency", currencyFilter);
+    if (searchText) params.set("search", searchText);
+    if (catFilter) params.set("category_id", String(catFilter));
+    return params;
   }
 
-  async function loadSummary() {
+  async function load() {
+    const version = ++loadVersion.current;
+    setLoading(true);
     try {
-      const s = await api.get<any>(`/income-expense/monthly-summary?start_date=${dateStart}&end_date=${dateEnd}&category_group=${CATEGORY_GROUP}`);
-      setMonthTotal(s.total_income || 0);
-    } catch {}
+      const params = filterParams();
+      params.set("page", String(page)); params.set("page_size", "25");
+      const res = await api.get<any>(`/income-expense/income?${params.toString()}`);
+      if (version !== loadVersion.current) return;
+      setData(res.data); setTotal(res.total); setTotalsByCurrency(res.totals_by_currency || {});
+    } catch (err: any) {
+      if (version === loadVersion.current) {
+        setData([]); setTotal(0); setTotalsByCurrency({});
+        toast("error", err.message || "加载失败");
+      }
+    } finally { if (version === loadVersion.current) setLoading(false); }
   }
 
   async function loadRefs() {
@@ -67,43 +68,30 @@ export default function OtherIncomePage() {
     } catch {}
   }
 
-  async function loadRate() {
-    try {
-      const r = await api.get<any>("/rates/query?from_currency=CNY&to_currency=THB");
-      setRateCNYtoTHB(r.rate || 5.0);
-    } catch { setRateCNYtoTHB(5.0); }
+  function validAccount() {
+    const account = accounts.find((a: any) => a.id === form.account_id);
+    if (!account) { toast("error", "请选择收款账户"); return false; }
+    if (account.status && account.status !== "active") { toast("error", "收款账户已停用"); return false; }
+    if ((account.currency || "THB") !== form.currency) { toast("error", "收款账户币种必须与收入币种一致"); return false; }
+    return true;
   }
-
-  // 换算：始终按展示货币显示
-  function displayAmount(row: any): number {
-    const amt = row.amount || 0;
-    const cur = row.currency || "THB";
-    if (displayCurrency === "THB") return cur === "THB" ? amt : +(amt * rateCNYtoTHB).toFixed(2);
-    else return cur === "CNY" ? amt : +(amt / rateCNYtoTHB).toFixed(2);
-  }
-
-  function displayMonthTotal(): number {
-    // monthTotal is always in THB (sum of all amounts), convert if needed
-    if (displayCurrency === "THB") return monthTotal;
-    return +(monthTotal / rateCNYtoTHB).toFixed(2);
-  }
-
-  function symbol() { return displayCurrency === "THB" ? "฿" : "¥"; }
 
   async function handleCreate() {
+    if (!validAccount()) return;
     try {
       await api.post("/income-expense/income", { ...form, amount: form.amount || 0, income_date: form.date, currency: form.currency });
       toast("success", "创建成功");
-      resetForm(); load(); loadSummary();
+      resetForm(); load();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
   async function handleEdit() {
     if (!editing) return;
+    if (!validAccount()) return;
     try {
       await api.put(`/income-expense/income/${editing.id}`, { ...form, amount: form.amount || 0, income_date: form.date, currency: form.currency, category_id: form.category_id, account_id: form.account_id });
       toast("success", "更新成功");
-      resetForm(); load(); loadSummary();
+      resetForm(); load();
     } catch (err: any) { toast("error", err.message || "更新失败"); }
   }
 
@@ -112,28 +100,27 @@ export default function OtherIncomePage() {
     try {
       await api.delete(`/income-expense/income/${id}`);
       toast("success", "删除成功");
-      load(); loadSummary();
+      load();
     } catch (err: any) { toast("error", err.message || "删除失败"); }
   }
 
   async function handleExport() {
     try {
-      const params = new URLSearchParams();
-      params.set("category_group", CATEGORY_GROUP);
-      params.set("start_date", dateStart);
-      params.set("end_date", dateEnd);
-      if (currencyFilter) params.set("currency", currencyFilter);
-      if (searchText) params.set("search", searchText);
-      if (catFilter) params.set("category_id", String(catFilter));
+      const params = filterParams();
       const token = getToken();
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      const warehouse = getActiveWarehouseId();
+      if (warehouse !== null) headers["X-Warehouse-ID"] = warehouse;
       const res = await fetch(`${API_URL}/income-expense/income/export?${params.toString()}`, {
-        headers: { "Authorization": `Bearer ${token}` },
+        headers,
       });
+      if (!res.ok) throw new Error((await res.json()).detail || "导出失败");
       const blob = await res.blob();
-      const a = document.createElement("a"); a.href = window.URL.createObjectURL(blob);
-      a.download = `other_income_${displayCurrency}.xlsx`; a.click();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url;
+      a.download = `other_income_${currencyFilter || "all"}_${dateStart}_${dateEnd}.xlsx`; a.click(); window.URL.revokeObjectURL(url);
       toast("success", "导出成功");
-    } catch { toast("error", "导出失败"); }
+    } catch (err: any) { toast("error", err.message || "导出失败"); }
   }
 
   function resetForm() {
@@ -169,11 +156,6 @@ export default function OtherIncomePage() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="page-title">其他收入</h1>
         <div className="flex items-center gap-2">
-          {/* 展示切换 */}
-          <div className="flex bg-white rounded-lg border p-0.5 mr-2">
-            <button onClick={() => { setDisplayCurrency("THB"); loadRate(); }} className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${displayCurrency === "THB" ? "bg-blue-600 text-white shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>显示为泰铢</button>
-            <button onClick={() => { setDisplayCurrency("CNY"); loadRate(); }} className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${displayCurrency === "CNY" ? "bg-blue-600 text-white shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>显示为人民币</button>
-          </div>
           <button onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
             <Plus size={16} />新建收入
           </button>
@@ -187,11 +169,11 @@ export default function OtherIncomePage() {
             <TrendingUp size={22} className="text-green-600" />
           </div>
           <div>
-            <div className="text-sm text-gray-400">当月其他收入合计<span className="text-blue-500 ml-1">（{displayCurrency === "THB" ? "泰铢" : "人民币"}）</span></div>
-            <div className="text-2xl font-bold text-green-700">{symbol()}{displayMonthTotal().toLocaleString()}</div>
+            <div className="text-sm text-gray-400">筛选范围其他收入合计</div>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-1">{(currencyFilter ? [currencyFilter] : ["THB", "CNY"]).map(c => <div key={c}><span className="text-xs text-gray-400">{c === "THB" ? "泰铢 THB" : "人民币 CNY"}</span><div className="text-2xl font-bold text-green-700">{fmtMoney(totalsByCurrency[c] || 0, c)}</div></div>)}</div>
           </div>
           <div className="ml-auto text-xs text-gray-400 flex items-center gap-1">
-            <RefreshCw size={12} /> CNY→THB 汇率: {rateCNYtoTHB}
+            按币种分别统计，不换算
           </div>
         </div>
       </div>
@@ -224,9 +206,9 @@ export default function OtherIncomePage() {
           </div>
           <div className="flex-1 min-w-[150px]">
             <label className="form-label text-xs">搜索</label>
-            <input type="text" className="form-input text-sm" placeholder="物品说明关键词" value={searchText} onChange={e => setSearchText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { setPage(1); load(); } }} />
+            <input type="text" className="form-input text-sm" placeholder="物品说明关键词" value={searchText} onChange={e => { setSearchText(e.target.value); setPage(1); }} onKeyDown={e => { if (e.key === "Enter") { if (page === 1) load(); else setPage(1); } }} />
           </div>
-          <button onClick={() => { setPage(1); load(); }} className="btn-primary flex items-center gap-1.5 text-sm h-[38px]">
+          <button onClick={() => { if (page === 1) load(); else setPage(1); }} className="btn-primary flex items-center gap-1.5 text-sm h-[38px]">
             <Search size={15} />查询
           </button>
           <button onClick={resetFilters} className="btn-secondary flex items-center gap-1.5 text-sm h-[38px]">重置</button>
@@ -265,7 +247,7 @@ export default function OtherIncomePage() {
                       <td className="px-4 py-3">{row.income_date?.slice(0, 10)}</td>
                       <td className="px-4 py-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">{row.category_name}</span></td>
                       <td className="px-4 py-3 text-gray-600 max-w-[200px] truncate">{row.remark || "-"}</td>
-                      <td className="px-4 py-3 text-right font-medium text-green-600">{symbol()}{displayAmount(row).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right font-medium text-green-600">{fmtMoney(row.amount, row.currency || "THB")}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${row.currency === "CNY" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"}`}>
                           {row.currency || "THB"}
@@ -310,10 +292,10 @@ export default function OtherIncomePage() {
               <div><label className="form-label">分类</label><select className="form-input" value={form.category_id} onChange={e => setForm({...form, category_id: +e.target.value})}><option value={0}>选择分类</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               <div><label className="form-label">物品说明</label><input className="form-input" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} placeholder="例如：纸壳500kg、旧货架2个" /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({...form, amount: e.target.value === "" ? "" : +e.target.value})} /></div>
-                <div><label className="form-label">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
+                <div><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
+                <div><label className="form-label">币种</label><select className="form-input" value={form.currency} onChange={e => { const currency = e.target.value; setForm({...form, currency, account_id: accounts.find((a: any) => a.id === form.account_id && (a.currency || "THB") === currency) ? form.account_id : 0}); }}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
               </div>
-              <div><label className="form-label">收款账户</label><select className="form-input" value={form.account_id} onChange={e => setForm({...form, account_id: +e.target.value})}><option value={0}>选择账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name}</option>)}</select></div>
+              <div><label className="form-label">收款账户</label><select className="form-input" value={form.account_id} onChange={e => setForm({...form, account_id: +e.target.value})}><option value={0}>选择账户</option>{accounts.filter((a: any) => (a.currency || "THB") === form.currency && (!a.status || a.status === "active")).map((a: any) => <option key={a.id} value={a.id}>{a.account_name}（{a.currency || "THB"}）</option>)}</select></div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => resetForm()} className="btn-secondary">取消</button>

@@ -1,0 +1,240 @@
+{
+  "baseline_commit": "104d54042c9fc97818ce5fb9b2576f8d56914543",
+  "deployed": false,
+  "database_migration": false,
+  "production_backend_changed": false,
+  "actual_postgres": {
+    "two_currencies": {
+      "all": {
+        "CNY": 200.0,
+        "THB": 100.0
+      },
+      "rows": 2,
+      "mixed_scalar": null,
+      "filtered": {
+        "THB": {
+          "rows": 1,
+          "amount": 100
+        },
+        "CNY": {
+          "rows": 1,
+          "amount": 200
+        }
+      },
+      "page_size_1_currencies": [
+        "CNY",
+        "THB"
+      ],
+      "export_rows": 2,
+      "source": "money_records"
+    },
+    "filters_and_expense": {
+      "income": {
+        "THB": 100,
+        "CNY": 200
+      },
+      "expense": {
+        "THB": 20,
+        "CNY": 30
+      },
+      "scenarios": 11,
+      "foreign_warehouse": 999,
+      "excluded_pending_rejected_voided": 33,
+      "unreceived_declaration_excluded": 777,
+      "writes_on_reads": 0,
+      "labor_and_super": 403
+    },
+    "account_validation": {
+      "blocked": [
+        {
+          "params": {
+            "currency": "CNY"
+          },
+          "status": 400,
+          "detail": "账户币种不一致"
+        },
+        {
+          "params": {
+            "account_id": 2
+          },
+          "status": 400,
+          "detail": "账户不存在或不属于当前仓库"
+        },
+        {
+          "params": {
+            "account_id": 4
+          },
+          "status": 400,
+          "detail": "账户已停用"
+        },
+        {
+          "params": {
+            "category_id": 4
+          },
+          "status": 400,
+          "detail": "收支分类不存在或不属于当前仓库"
+        }
+      ],
+      "bad_edit": 400,
+      "bad_edit_retains": {
+        "THB": 100
+      },
+      "valid_edit": {
+        "CNY": 200
+      },
+      "labor_super_create": 403
+    }
+  },
+  "native_postgres_suite": {
+    "tests": 43,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "frontend": {
+    "test_files": 6,
+    "production_build_exit": 0,
+    "typecheck_exit": 2,
+    "typecheck_before": 89,
+    "typecheck_after": 88,
+    "new_diagnostics": 0,
+    "resolved": 1
+  },
+  "browser_before": {
+    "all": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n显示为泰铢\n显示为人民币\n新建收入\n当月其他收入合计（泰铢）\n฿0\nCNY→THB 汇率: 5\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n2 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tCNY-200\t฿1,000\tCNY\tCNY-200\t\n\n2026-10-20\t其他收入测试\tTHB-100\t฿100\tTHB\tTHB-100\t",
+    "thb": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n显示为泰铢\n显示为人民币\n新建收入\n当月其他收入合计（泰铢）\n฿0\nCNY→THB 汇率: 5\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n1 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tTHB-100\t฿100\tTHB\tTHB-100\t"
+  },
+  "browser_after": {
+    "before": {
+      "all": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n显示为泰铢\n显示为人民币\n新建收入\n当月其他收入合计（泰铢）\n฿0\nCNY→THB 汇率: 5\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n2 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tCNY-200\t฿1,000\tCNY\tCNY-200\t\n\n2026-10-20\t其他收入测试\tTHB-100\t฿100\tTHB\tTHB-100\t",
+      "thb": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n显示为泰铢\n显示为人民币\n新建收入\n当月其他收入合计（泰铢）\n฿0\nCNY→THB 汇率: 5\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n1 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tTHB-100\t฿100\tTHB\tTHB-100\t"
+    },
+    "after": {
+      "all": {
+        "tableRows": 2,
+        "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n新建收入\n筛选范围其他收入合计\n泰铢 THB\n฿100\n人民币 CNY\n¥200\n按币种分别统计，不换算\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n2 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tCNY-200\t¥200\tCNY\tCNY-200\t\n\n2026-10-20\t其他收入测试\tTHB-100\t฿100\tTHB\tTHB-100\t"
+      },
+      "thb": {
+        "tableRows": 1,
+        "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n新建收入\n筛选范围其他收入合计\n泰铢 THB\n฿100\n按币种分别统计，不换算\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n1 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tTHB-100\t฿100\tTHB\tTHB-100\t"
+      },
+      "cny": {
+        "tableRows": 1,
+        "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n新建收入\n筛选范围其他收入合计\n人民币 CNY\n¥200\n按币种分别统计，不换算\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n1 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tCNY-200\t¥200\tCNY\tCNY-200\t"
+      }
+    },
+    "allDownload": "/Users/xiongliu/Downloads/other_income_all_2026-10-01_2026-10-20.xlsx",
+    "thbDownload": "/Users/xiongliu/Downloads/other_income_THB_2026-10-01_2026-10-20.xlsx",
+    "cnyDownload": "/Users/xiongliu/Downloads/other_income_CNY_2026-10-01_2026-10-20.xlsx",
+    "pagination": {
+      "first": {
+        "tableRows": 25,
+        "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n新建收入\n筛选范围其他收入合计\n泰铢 THB\n฿26\n人民币 CNY\n¥2\n按币种分别统计，不换算\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n27 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-09-15\t其他收入测试\tSEPT-CNY-2\t¥2\tCNY\tSEPT-CNY-2\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-28\t฿1\tTHB\tSEPT-PAGE-28\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-27\t฿1\tTHB\tSEPT-PAGE-27\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-26\t฿1\tTHB\tSEPT-PAGE-26\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-25\t฿1\tTHB\tSEPT-PAGE-25\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-24\t฿1\tTHB\tSEPT-PAGE-24\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-23\t฿1\tTHB\tSEPT-PAGE-23\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-22\t฿1\tTHB\tSEPT-PAGE-22\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-21\t฿1\tTHB\tSEPT-PAGE-21\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-20\t฿1\tTHB\tSEPT-PAGE-20\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-19\t฿1\tTHB\tSEPT-PAGE-19\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-18\t฿1\tTHB\tSEPT-PAGE-18\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-17\t฿1\tTHB\tSEPT-PAGE-17\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-16\t฿1\tTHB\tSEPT-PAGE-16\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-15\t฿1\tTHB\tSEPT-PAGE-15\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-14\t฿1\tTHB\tSEPT-PAGE-14\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-13\t฿1\tTHB\tSEPT-PAGE-13\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-12\t฿1\tTHB\tSEPT-PAGE-12\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-11\t฿1\tTHB\tSEPT-PAGE-11\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-10\t฿1\tTHB\tSEPT-PAGE-10\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-9\t฿1\tTHB\tSEPT-PAGE-9\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-8\t฿1\tTHB\tSEPT-PAGE-8\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-7\t฿1\tTHB\tSEPT-PAGE-7\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-6\t฿1\tTHB\tSEPT-PAGE-6\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-5\t฿1\tTHB\tSEPT-PAGE-5\t\n共 27 条，第 1/2 页\n上一页\n下一页"
+      },
+      "second": {
+        "tableRows": 2,
+        "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n测试仓1\n中文\n测\n测试账号1\n其他收入\n新建收入\n筛选范围其他收入合计\n泰铢 THB\n฿26\n人民币 CNY\n¥2\n按币种分别统计，不换算\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n27 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-09-15\t其他收入测试\tSEPT-PAGE-4\t฿1\tTHB\tSEPT-PAGE-4\t\n\n2026-09-15\t其他收入测试\tSEPT-PAGE-3\t฿1\tTHB\tSEPT-PAGE-3\t\n共 27 条，第 2/2 页\n上一页\n下一页"
+      }
+    },
+    "pagedDownload": "/Users/xiongliu/Downloads/other_income_all_2026-09-01_2026-09-30.xlsx",
+    "mobile": {
+      "all": {
+        "bodyWidth": 390,
+        "text": "测试仓1\n测\n其他收入\n新建收入\n筛选范围其他收入合计\n泰铢 THB\n฿100\n人民币 CNY\n¥200\n按币种分别统计，不换算\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n2 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tCNY-200\t¥200\tCNY\tCNY-200\t\n\n2026-10-20\t其他收入测试\tTHB-100\t฿100\tTHB\tTHB-100\t",
+        "width": 390
+      },
+      "cny": {
+        "tableRows": 1,
+        "text": "测试仓1\n测\n其他收入\n新建收入\n筛选范围其他收入合计\n人民币 CNY\n¥200\n按币种分别统计，不换算\n开始日期\n结束日期\n币种\n全部\nTHB\nCNY\n分类\n全部分类\n其他收入测试\n搜索\n查询\n重置\n导出Excel\n1 条记录\n日期\t分类\t物品说明\t金额\t币种\t备注\t操作\n2026-10-20\t其他收入测试\tCNY-200\t¥200\tCNY\tCNY-200\t"
+      },
+      "accountForm": [
+        {
+          "options": [
+            {
+              "text": "选择分类",
+              "value": "0"
+            },
+            {
+              "text": "其他收入测试",
+              "value": "1"
+            }
+          ],
+          "value": "0"
+        },
+        {
+          "options": [
+            {
+              "text": "THB 泰铢",
+              "value": "THB"
+            },
+            {
+              "text": "CNY 人民币",
+              "value": "CNY"
+            }
+          ],
+          "value": "CNY"
+        },
+        {
+          "options": [
+            {
+              "text": "选择账户",
+              "value": "0"
+            },
+            {
+              "text": "人民币现金（CNY）",
+              "value": "3"
+            }
+          ],
+          "value": "0"
+        }
+      ]
+    },
+    "mobileDownload": "/Users/xiongliu/Downloads/other_income_CNY_2026-10-01_2026-10-20 (1).xlsx"
+  },
+  "browser_exports": {
+    "october-all": {
+      "rows": 2,
+      "totals_by_currency": {
+        "CNY": 200,
+        "THB": 100
+      }
+    },
+    "october-thb": {
+      "rows": 1,
+      "totals_by_currency": {
+        "THB": 100
+      }
+    },
+    "october-cny": {
+      "rows": 1,
+      "totals_by_currency": {
+        "CNY": 200
+      }
+    },
+    "september-all-pages": {
+      "rows": 27,
+      "totals_by_currency": {
+        "CNY": 2,
+        "THB": 26
+      }
+    },
+    "mobile-cny": {
+      "rows": 1,
+      "totals_by_currency": {
+        "CNY": 200
+      }
+    }
+  },
+  "database_after_browser": {
+    "income_records": 29,
+    "expense_records": 0,
+    "incoming_flows": 0,
+    "payroll_records": 0,
+    "employee_advances": 0,
+    "income_by_currency": {
+      "THB": 126.0,
+      "CNY": 202.0
+    }
+  },
+  "artifact_directory": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第6轮其他收入币种-20261020"
+}
