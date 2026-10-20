@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
+import OperatingReport from "@/components/OperatingReport";
 import WarehouseSummary from "@/components/WarehouseSummary";
 import { TrendingUp, TrendingDown, FileText, PiggyBank, Receipt, CreditCard, Clock, AlertTriangle, Download } from "lucide-react";
 
@@ -17,6 +18,7 @@ const reportTypes = [
   { key: "reimbursement", label: "报销报表", icon: <Receipt size={24} />, color: "text-teal-600 bg-teal-50" },
   { key: "credit", label: "账期报表", icon: <Clock size={24} />, color: "text-yellow-600 bg-yellow-50" },
   { key: "reconciliation-diff", label: "对账差异", icon: <AlertTriangle size={24} />, color: "text-pink-600 bg-pink-50" },
+  { key: "operations", label: "经营情况（独立）", icon: <FileText size={24} />, color: "text-cyan-600 bg-cyan-50" },
 ];
 
 const columnConfig: Record<string, string[]> = {
@@ -65,29 +67,61 @@ export default function ReportsPage() {
   const curMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
+  const reportRequest=useRef(0),previewRequest=useRef(0);
+  const [scopeRevision,setScopeRevision]=useState(0);
   const [selected, setSelected] = useState("");
   const [data, setData] = useState<any>(null);
   const [dateRange, setDateRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<Record<string, any>>({});
 
-  useEffect(() => { if (!getToken()) router.push("/login"); loadPreviews(); }, []);
-  useEffect(() => { loadPreviews(); if (selected) loadReport(selected); }, [dateRange]);
+  useEffect(() => {
+    if (!getToken()) router.push("/login");
+    const q=new URLSearchParams(window.location.search);
+    if(q.get("view")==="operations"){
+      setSelected("operations");
+      if(q.get("start_date")&&q.get("end_date"))setDateRange({start_date:q.get("start_date")!,end_date:q.get("end_date")!});
+    }
+    loadPreviews();
+  }, []);
+  useEffect(()=>{
+    if(selected==="operations")window.history.replaceState(window.history.state,"",`/reports?${new URLSearchParams({view:"operations",...dateRange})}`);
+  },[selected,dateRange]);
+  useEffect(() => { loadPreviews(); if (selected && selected !== "operations") loadReport(selected); }, [dateRange,scopeRevision]);
+
+  useEffect(()=>{
+    const change=()=>{reportRequest.current++;previewRequest.current++;setData(null);setPreviews({});setLoading(false);setScopeRevision(n=>n+1);};
+    window.addEventListener("warehouse-changed",change);window.addEventListener("auth-user-refreshed",change);
+    return()=>{reportRequest.current++;previewRequest.current++;window.removeEventListener("warehouse-changed",change);window.removeEventListener("auth-user-refreshed",change);};
+  },[]);
 
   async function loadPreviews() {
+    const id=++previewRequest.current;
     try {
       const r = await api.get<any>(`/reports/previews?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
-      setPreviews(r.previews || {});
+      if(id===previewRequest.current)setPreviews(r.previews || {});
     } catch {}
   }
 
+  function openOperatingReport() {
+    const month = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Bangkok",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).slice(0,7);
+    const [y,m]=month.split("-").map(Number);
+    reportRequest.current++;setSelected("operations");setData(null);setLoading(false);
+    setDateRange({start_date:`${month}-01`,end_date:`${month}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`});
+  }
+
   async function loadReport(key: string) {
-    setSelected(key); setLoading(true);
+    const query=new URLSearchParams(window.location.search);
+    if(query.get("view")==="operations"){
+      query.delete("view");query.delete("start_date");query.delete("end_date");
+      window.history.replaceState(window.history.state,"",`/reports${query.size?`?${query}`:""}`);
+    }
+    const id=++reportRequest.current;setSelected(key);setData(null);setLoading(true);
     try {
       const r = await api.get<any>(`/reports/${key}?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
-      setData(r);
-    } catch { setData(null); }
-    setLoading(false);
+      if(id===reportRequest.current)setData(r);
+    } catch { if(id===reportRequest.current)setData(null); }
+    if(id===reportRequest.current)setLoading(false);
   }
 
   async function exportExcel(key: string) {
@@ -129,14 +163,15 @@ export default function ReportsPage() {
           </div>
           <h1 className="page-title">报表中心</h1>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end">
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end flex-wrap">
+          {selected === "operations" && <label className="text-xs">经营月份<input aria-label="经营月份" type="month" className="form-input text-sm w-36" value={dateRange.start_date.slice(0,7)} onChange={e=>{if(e.target.value){const [y,m]=e.target.value.split("-").map(Number);setDateRange({start_date:`${e.target.value}-01`,end_date:`${e.target.value}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`});}}}/></label>}
           <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
           <span className="text-gray-400 text-xs">至</span>
           <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
         </div>
       </div>
 
-      <WarehouseSummary startDate={dateRange.start_date} endDate={dateRange.end_date} />
+      {selected !== "operations" && <WarehouseSummary startDate={dateRange.start_date} endDate={dateRange.end_date} />}
 
       {/* Report type cards with preview badges */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -144,7 +179,7 @@ export default function ReportsPage() {
           const pv = previews[rt.key];
           const previewText = formatPreview(rt.key, pv);
           return (
-            <button key={rt.key} onClick={() => rt.key === "cost-funds-debt" ? router.push(`/reports/cost-funds-debt?${new URLSearchParams(dateRange)}`) : loadReport(rt.key)}
+            <button key={rt.key} onClick={() => { if(rt.key === "operations"){openOperatingReport();}else if(rt.key === "cost-funds-debt")router.push(`/reports/cost-funds-debt?${new URLSearchParams(dateRange)}`);else loadReport(rt.key); }}
               className={`relative bg-white rounded-2xl p-4 shadow-sm border text-left hover:shadow-md transition-all ${selected === rt.key ? "ring-2 ring-blue-500 border-blue-200" : "border-gray-100"}`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rt.color}`}>{rt.icon}</div>
               <div className="font-semibold text-sm mt-2.5 text-gray-700">{rt.label}</div>
@@ -158,15 +193,17 @@ export default function ReportsPage() {
         })}
       </div>
 
+      {selected === "operations" && <OperatingReport startDate={dateRange.start_date} endDate={dateRange.end_date} />}
+
       {/* Loading */}
-      {loading && (
+      {loading && selected !== "operations" && (
         <div className="bg-white rounded-2xl shadow-sm border p-12 text-center text-gray-400">
           <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />加载中...
         </div>
       )}
 
       {/* Report content */}
-      {data && selected && !loading && (
+      {data && selected && selected !== "operations" && !loading && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Title bar */}
           <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50/50">

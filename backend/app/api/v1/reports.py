@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -366,3 +366,21 @@ async def reconciliation_diff_report(start_date: str = None, end_date: str = Non
     headers = ["月份","状态","差额","处理说明"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "对账差异")
     return {"data": data, "diff_count": diff_count, "total_diff": total_diff}
+
+
+@router.get("/operations")
+async def operating_report(request: Request, month: str = None, start_date: str = None, end_date: str = None,
+    customer_id: int = None, currency: str = None, warehouse_id: int = None,
+    shipment_page: int = Query(1,ge=1), cost_page: int = Query(1,ge=1), page_size: int = Query(20,ge=1,le=200),
+    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
+    from app.services.money_period import money_period
+    from app.services.warehouse_summary import warehouse_scope
+    from app.services.operating_report import report
+    if currency not in (None,'THB','CNY'):raise HTTPException(400,'不支持的币种')
+    scope=await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'),warehouse_id=warehouse_id)
+    today=thai_today()
+    from calendar import monthrange
+    start,end=money_period(month,start_date,end_date,default_start=today.replace(day=1),
+        default_end=today.replace(day=monthrange(today.year,today.month)[1]))
+    return await report(db,[w.id for w in scope],start,end,customer_id=customer_id,currency=currency,
+        shipment_page=shipment_page,cost_page=cost_page,page_size=page_size)

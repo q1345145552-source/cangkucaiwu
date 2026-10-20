@@ -146,7 +146,7 @@ def test_all_registered_management_routes_deny_labor_before_business_queries(tmp
                             assert response.status_code==403 and response.json()=={"detail":"无权访问"},(method,route.path,response.status_code,response.text)
                             outcomes.append(response.status_code)
                         tested.append({"method":method,"path":route.path,"module":route.endpoint.__module__.rsplit('.',1)[-1],"labor_same_and_foreign":outcomes})
-                assert len(tested)==334  # Round 11 adds customer receivables and explicit receipt linking.
+                assert len(tested)==335  # Round 12 adds the independent read-only operating report.
                 for statement in statements:
                     assert not statement.lstrip().upper().startswith(("INSERT","UPDATE","DELETE")),statement
                     assert set(re.findall(r"\b(?:FROM|JOIN)\s+(\w+)",statement,re.I)) <= {"users","user_warehouses"},statement
