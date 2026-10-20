@@ -53,6 +53,7 @@ function PermissionCheckboxes({ permissions, selected, onToggle, loading, error,
 export default function SettingsPage() {
   const { t } = useI18n();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
+  const isLabor = (user as { role?: string } | null)?.role === "warehouse_labor";
   const [tab, setTab] = useState<"profile"|"users"|"rates">("profile");
   const [pw, setPw] = useState({ old: "", new: "" });
   const [pwMsg, setPwMsg] = useState("");
@@ -167,7 +168,7 @@ export default function SettingsPage() {
   }
 
   async function changePassword() {
-    try { await api.post("/auth/change-password", { old_password: pw.old, new_password: pw.new }); setPwMsg("密码修改成功"); setPw({ old: "", new: "" }); }
+    try { await api.post("/auth/change-password", { old_password: pw.old, new_password: pw.new }); setPwMsg(t("password_changed")); setPw({ old: "", new: "" }); }
     catch(e: any) { setPwMsg(e.message); }
   }
 
@@ -304,7 +305,7 @@ export default function SettingsPage() {
       <div className="mb-4">
         <h1 className="page-title">{t("settings")}</h1>
         <div className="flex gap-3 mt-2">
-          <button onClick={()=>setTab("profile")} className={`px-4 py-1.5 rounded text-sm ${tab==="profile"?"bg-primary text-white":"border"}`}>个人设置</button>
+          <button onClick={()=>setTab("profile")} className={`px-4 py-1.5 rounded text-sm ${tab==="profile"?"bg-primary text-white":"border"}`}>{isLabor ? t("settings") : "个人设置"}</button>
           {(user?.role === "super_admin" || user?.role === "warehouse_admin" || user?.role === "supervisor") && (
             <button onClick={()=>setTab("users")} className={`px-4 py-1.5 rounded text-sm ${tab==="users"?"bg-primary text-white":"border"}`}>用户管理</button>
           )}
@@ -330,14 +331,14 @@ export default function SettingsPage() {
           )}
 
           {/* LINE Binding */}
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          {!isLabor && <div className="bg-white rounded-xl p-4 shadow-sm">
             <h3 className="font-semibold mb-3 flex items-center gap-2"><MessageCircle size={18} className="text-green-500"/> 绑定 LINE 账号</h3>
             <div className="flex gap-2">
               <input className="border rounded px-3 py-2 flex-1 text-sm" placeholder="LINE User ID" value={lineId} onChange={e=>setLineId(e.target.value)} />
               <button onClick={bindLine} className="bg-green-500 text-white px-4 py-2 rounded text-sm">绑定</button>
             </div>
             <div className="text-xs text-gray-400 mt-2">绑定后可接收备用金警报、审批通知、逾期提醒等消息</div>
-          </div>
+          </div>}
 
           {/* Change Password */}
           <div className="bg-white rounded-xl p-4 shadow-sm">
@@ -345,7 +346,7 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div><label className="form-label">{t("old_password")}</label><input type="password" className="form-input text-sm" value={pw.old} onChange={e=>setPw({...pw,old:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">{t("new_password")}</label><input type="password" className="form-input text-sm" value={pw.new} onChange={e=>setPw({...pw,new:e.target.value})} autoComplete="new-password" /></div>
-              <button onClick={changePassword} className="btn-primary">修改密码</button>
+              <button onClick={changePassword} className="btn-primary">{t("change_password")}</button>
               {pwMsg && <div className="text-sm text-green-600">{pwMsg}</div>}
             </div>
           </div>

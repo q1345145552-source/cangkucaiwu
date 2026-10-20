@@ -1,6 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ClientShell from "./client-shell";
+import th from "@/i18n/th.json";
+import my from "@/i18n/my.json";
+
+// This small synchronous script runs before hydration so labor never sees a Chinese splash.
+const employeeSplash = `try {
+  if (JSON.parse(localStorage.getItem("user") || "null")?.role === "warehouse_labor") {
+    const saved = localStorage.getItem("employee-locale") || localStorage.getItem("locale");
+    const names = ${JSON.stringify({th: th.app_name, my: my.app_name}).replace(/</g, "\\u003c")};
+    const language = saved === "th" ? "th" : "my";
+    const splash = document.querySelector("#app-splash .app-splash-title");
+    if (splash) splash.textContent = names[language];
+    document.title = names[language];
+    document.documentElement.lang = language;
+  }
+} catch {}`;
 
 export const metadata: Metadata = {
   title: "海外仓财务管理系统",
@@ -35,13 +50,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh">
+    <html lang="zh" suppressHydrationWarning>
       <body className="min-h-screen bg-gray-50">
         {/* 首屏加载画面：打开应用/刷新时显示，客户端加载完成后由 client-shell 淡出 */}
         <div id="app-splash" className="app-splash" aria-hidden="true">
-          <div className="app-splash-title">海外仓财务管理系统</div>
+          <div className="app-splash-title" suppressHydrationWarning>海外仓财务管理系统</div>
           <div className="app-splash-spinner" />
         </div>
+        <script dangerouslySetInnerHTML={{ __html: employeeSplash }} />
         <ClientShell>{children}</ClientShell>
       </body>
     </html>

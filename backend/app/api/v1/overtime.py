@@ -475,7 +475,7 @@ async def dispute_overtime(
     from app.services.image_utils import save_image
     ext = file.filename.split(".")[-1].lower() if file.filename else "jpg"
     today_str = thai_today().strftime("%Y-%m-%d")
-    abs_subdir = os.path.join("/app/uploads", str(wh_id), today_str, "overtime_disputes")
+    abs_subdir = os.path.join(os.environ.get("UPLOAD_DIR", "/app/uploads"), str(wh_id), today_str, "overtime_disputes")
     rel_subdir = f"uploads/{wh_id}/{today_str}/overtime_disputes"
     fname = f"{uuid.uuid4().hex}.{ext}"
     result = save_image(content, abs_subdir, rel_subdir, fname)
@@ -880,7 +880,7 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
 
 async def _find_employee_for_user(db: AsyncSession, wh_id: int, user: User):
     """登录用户 → 员工档案：优先绑定账号(user_id)，姓名兜底。"""
-    if attendance_supervisor(user):
+    if employee_view(user):
         return getattr(user, "_attendance_employee", None)
     emp = (await db.execute(
         select(Employee).where(

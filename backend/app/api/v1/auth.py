@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -11,6 +12,27 @@ from app.core.permissions import get_current_user
 from app.schemas.auth import LoginRequest, TokenResponse, ChangePasswordRequest
 
 router = APIRouter()
+
+
+class AttachmentSession(BaseModel):
+    clear: bool = False
+
+
+@router.post("/attachment-session")
+async def attachment_session(req: AttachmentSession, request: Request, response: Response,
+    user=Depends(get_current_user)):
+    """Only existing image/file requests may use this HttpOnly cookie; API writes still require Bearer."""
+    import time
+    from app.api.secure_uploads import COOKIE
+    from app.core.security import decode_token
+    if req.clear:
+        response.delete_cookie(COOKIE,path="/uploads")
+    else:
+        token = request.headers["Authorization"][7:]
+        payload = decode_token(token)
+        response.set_cookie(COOKIE,token,httponly=True,samesite="lax",path="/uploads",
+            secure=request.url.scheme=="https",max_age=max(0,int(payload["exp"]-time.time())))
+    return {"ok":True}
 
 def _build_warehouses_list(db_result) -> list:
     warehouses = []

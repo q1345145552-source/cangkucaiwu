@@ -11,6 +11,7 @@ from typing import Optional, List
 from datetime import datetime
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+from app.core.shared_platform import publication_warehouse
 
 _GROUP_ORDER_PERMISSION = MENU_PERMISSIONS_BY_KEY["group_order"].label
 
@@ -20,6 +21,7 @@ class GOCreate(BaseModel):
     item_name: str; specification: Optional[str] = None
     target_quantity: int; target_price: float; deadline: str
     reason: Optional[str] = None
+    warehouse_id: Optional[int] = None
 
 class JoinRequest(BaseModel):
     quantity: int; delivery_address: Optional[str] = None
@@ -34,7 +36,7 @@ class CancelRequest(BaseModel):
 
 STATUS_CN = {"open": "开放中", "closed": "已截止", "completed": "已完成", "cancelled": "已取消"}
 
-async def _get_participant_details(db: AsyncSession, go_id: int):
+async def _get_participant_details(db: AsyncSession, go_id: int, viewer: User):
     """获取拼单的参与仓库明细"""
     ps = (await db.execute(
         select(GroupOrderParticipant).where(GroupOrderParticipant.group_order_id == go_id)
@@ -48,7 +50,7 @@ async def _get_participant_details(db: AsyncSession, go_id: int):
     items = [{
         "id": p.id, "warehouse_id": p.warehouse_id,
         "warehouse_name": wh_map.get(p.warehouse_id, ""),
-        "quantity": p.quantity, "delivery_address": p.delivery_address or "",
+        "quantity": p.quantity, "delivery_address": (p.delivery_address or "") if viewer.role == Role.SUPER_ADMIN or p.warehouse_id in get_wh_ids(viewer) else "",
         "created_at": p.created_at.isoformat() if p.created_at else None,
     } for p in ps]
     return items, total_qty, len({p.warehouse_id for p in ps})
@@ -61,8 +63,6 @@ async def list_group_orders(
     db: AsyncSession = Depends(get_db),
 ):
     """所有开放的拼单对所有仓库可见，浏览阶段不限制"""
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(GroupOrder); count_q = select(func.count(GroupOrder.id))
     if status:
         query = query.where(GroupOrder.status == status)
@@ -117,12 +117,9 @@ async def list_group_orders(
 @router.post("")
 async def create_group_order(req: GOCreate, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                               db: AsyncSession = Depends(get_db)):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "仅仓库管理员可发起")
+    wh_id = await publication_warehouse(db, current_user, req.warehouse_id)
     o = GroupOrder(
-        warehouse_id=get_wh_id(current_user), item_name=req.item_name,
+        warehouse_id=wh_id, item_name=req.item_name,
         specification=req.specification, target_quantity=req.target_quantity,
         target_price=req.target_price, deadline=datetime.fromisoformat(req.deadline),
         reason=req.reason, initiator_id=current_user.id,
@@ -174,9 +171,7 @@ async def list_participants(go_id: int, current_user: User = Depends(check_staff
     go = (await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))).scalar_one_or_none()
     if not go:
         raise HTTPException(404, "拼单不存在")
-    if current_user.role != Role.SUPER_ADMIN and go.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "无权查看其他仓库的拼单")
-    items, total_qty, wh_count = await _get_participant_details(db, go_id)
+    items, total_qty, wh_count = await _get_participant_details(db, go_id, current_user)
     return {"data": items, "total_quantity": total_qty, "warehouse_count": wh_count}
 
 
@@ -185,8 +180,6 @@ async def list_participants(go_id: int, current_user: User = Depends(check_staff
 async def history(
     page: int = 1, page_size: int = 50,
     current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)), db: AsyncSession = Depends(get_db)):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(GroupOrder).where(
         GroupOrder.status.in_([GroupOrderStatus.COMPLETED.value, GroupOrderStatus.CANCELLED.value])
     ).order_by(GroupOrder.created_at.desc())
@@ -204,7 +197,7 @@ async def history(
 
     data = []
     for o in orders:
-        participants, total_qty, wh_count = await _get_participant_details(db, o.id)
+        participants, total_qty, wh_count = await _get_participant_details(db, o.id, current_user)
         savings = 0
         if o.final_price and o.target_price and o.final_price < o.target_price:
             savings = (o.target_price - o.final_price) * total_qty
@@ -236,7 +229,7 @@ async def get_order_detail(go_id: int, current_user: User = Depends(check_staff_
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
-    items, total_qty, wh_count = await _get_participant_details(db, go_id)
+    items, total_qty, wh_count = await _get_participant_details(db, go_id, current_user)
     wh = (await db.execute(select(Warehouse).where(Warehouse.id == o.warehouse_id))).scalar_one_or_none()
     return {
         "id": o.id, "warehouse_id": o.warehouse_id,
@@ -257,6 +250,8 @@ async def get_order_detail(go_id: int, current_user: User = Depends(check_staff_
 @router.put("/{go_id}/close")
 async def close_order(go_id: int, current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                       db: AsyncSession = Depends(get_db)):
+    if current_user.role != Role.SUPER_ADMIN:
+        raise HTTPException(403, "只有超级管理员可以管理拼单")
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
@@ -269,7 +264,7 @@ async def close_order(go_id: int, current_user: User = Depends(check_staff_permi
     o.status = GroupOrderStatus.CLOSED.value
     await db.flush()
     # Return summary
-    items, total_qty, wh_count = await _get_participant_details(db, go_id)
+    items, total_qty, wh_count = await _get_participant_details(db, go_id, current_user)
     total_amount = total_qty * (o.target_price or 0)
     return {
         "message": "拼单已截止",
@@ -288,6 +283,8 @@ async def close_order(go_id: int, current_user: User = Depends(check_staff_permi
 async def complete_order(go_id: int, req: CompleteRequest,
                          current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
+    if current_user.role != Role.SUPER_ADMIN:
+        raise HTTPException(403, "只有超级管理员可以管理拼单")
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")
@@ -307,6 +304,8 @@ async def complete_order(go_id: int, req: CompleteRequest,
 async def cancel_order(go_id: int, req: CancelRequest,
                         current_user: User = Depends(check_staff_permission(_GROUP_ORDER_PERMISSION)),
                         db: AsyncSession = Depends(get_db)):
+    if current_user.role != Role.SUPER_ADMIN:
+        raise HTTPException(403, "只有超级管理员可以管理拼单")
     result = await db.execute(select(GroupOrder).where(GroupOrder.id == go_id))
     o = result.scalar_one_or_none()
     if not o: raise HTTPException(404, "拼单不存在")

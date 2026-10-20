@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from app.core.route_access import ManagementRouter as APIRouter
 from app.api.v1 import auth, users, dashboard, customers, warehouses, payment_accounts, suppliers
 from app.api.v1 import recharge, incoming, reconciliation, income_expense
 from app.api.v1 import expense_fund, reimbursement, payable, credit, market, group_order, reports, cost_funds_debt

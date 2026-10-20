@@ -21,6 +21,8 @@ const STATUS_BG: Record<string, string> = {
 
 export default function GroupOrderPage() {
   const router = useRouter(); const { user } = useAuth(); const { toast } = useToast();
+  const isSuperAdmin = (user as {role?:string} | null)?.role === "super_admin";
+  const [warehouses, setWarehouses] = useState<{id:number;name:string}[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [tab, setTab] = useState<"active" | "history">("active");
@@ -28,7 +30,7 @@ export default function GroupOrderPage() {
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ item_name: "", specification: "", target_quantity: "", target_price: "", deadline: "", reason: "" });
+  const [createForm, setCreateForm] = useState({ item_name: "", specification: "", target_quantity: "", target_price: "", deadline: "", reason: "", warehouse_id: "" });
 
   // Join modal
   const [showJoin, setShowJoin] = useState(false);
@@ -54,6 +56,13 @@ export default function GroupOrderPage() {
   const [expandedHistory, setExpandedHistory] = useState<Set<number>>(new Set());
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); }, [tab]);
+  useEffect(() => {
+    if (isSuperAdmin) api.get<any>("/warehouses").then(r => {
+      const options = (r.data || []).filter((w: any) => w.is_active);
+      setWarehouses(options);
+      setCreateForm(old => ({...old, warehouse_id: old.warehouse_id || String(options[0]?.id || "")}));
+    }).catch(() => toast("error", "发布来源仓库加载失败"));
+  }, [isSuperAdmin]);
 
   async function load() {
     setLoading(true);
@@ -70,6 +79,7 @@ export default function GroupOrderPage() {
   }
 
   async function handleCreate() {
+    if (!createForm.warehouse_id) { toast("error", "请选择发布来源仓库"); return; }
     if (!createForm.item_name || !createForm.target_quantity || !createForm.target_price || !createForm.deadline) {
       toast("error", "请填写完整信息"); return;
     }
@@ -78,10 +88,11 @@ export default function GroupOrderPage() {
         ...createForm,
         target_quantity: Number(createForm.target_quantity),
         target_price: Number(createForm.target_price),
+        warehouse_id: Number(createForm.warehouse_id),
       });
       toast("success", "拼单发起成功");
       setShowCreate(false);
-      setCreateForm({ item_name: "", specification: "", target_quantity: "", target_price: "", deadline: "", reason: "" });
+      setCreateForm(old => ({ item_name: "", specification: "", target_quantity: "", target_price: "", deadline: "", reason: "", warehouse_id: old.warehouse_id }));
       load();
     } catch (err: any) { toast("error", err.message || "发起失败"); }
   }
@@ -156,8 +167,7 @@ export default function GroupOrderPage() {
     } catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
-  const isSuperAdmin = user?.role === "super_admin";
-  const isAdmin = user?.role === "super_admin" || user?.role === "warehouse_admin";
+  const isAdmin = isSuperAdmin;
 
   return (
     <>
@@ -252,7 +262,7 @@ export default function GroupOrderPage() {
                         <button onClick={() => openDetail(o.id)} className="flex-1 btn-secondary text-xs py-1.5">
                           查看详情
                         </button>
-                        {o.status === "open" && user?.role !== "staff" && (
+                        {o.status === "open" && !isSuperAdmin && (
                           <button onClick={(e) => { e.stopPropagation(); openJoin(o); }} className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs py-1.5 font-medium transition-colors">
                             参与拼单
                           </button>
@@ -416,6 +426,7 @@ export default function GroupOrderPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2"><label className="form-label">发布来源仓库（各仓均可见）</label><select className="form-input" value={createForm.warehouse_id} onChange={e=>setCreateForm({...createForm,warehouse_id:e.target.value})}><option value="">请选择来源仓库</option>{warehouses.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select></div>
                 <div className="col-span-2"><label className="form-label">物品名称 <span className="text-red-400">*</span></label><input className="form-input" value={createForm.item_name} onChange={e => setCreateForm({ ...createForm, item_name: e.target.value })} placeholder="如: 快递袋" /></div>
                 <div className="col-span-2"><label className="form-label">规格</label><input className="form-input" value={createForm.specification} onChange={e => setCreateForm({ ...createForm, specification: e.target.value })} placeholder="如: 一打80个" /></div>
                 <div><label className="form-label">目标数量 <span className="text-red-400">*</span></label><input type="number" className="form-input" value={createForm.target_quantity} onChange={e => setCreateForm({ ...createForm, target_quantity: e.target.value })} placeholder="100" min="1" /></div>

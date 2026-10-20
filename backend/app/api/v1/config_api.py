@@ -48,7 +48,7 @@ async def get_attendance_times(current_user: User = Depends(get_current_user), d
     """
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     schedule = await get_work_schedule(db, get_wh_id(current_user))
     return {field: schedule[field] for field in ("morning_start", "noon_break_start", "noon_break_end", "afternoon_end")}

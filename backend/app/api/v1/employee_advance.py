@@ -283,20 +283,13 @@ async def my_debt(
     if not wh_id:
         return {"total_by_currency": [], "data": []}
 
-    emp = (await db.execute(
-        select(Employee).where(Employee.warehouse_id == wh_id, Employee.user_id == current_user.id, Employee.is_deleted == False)
-    )).scalar_one_or_none()
-    if attendance_supervisor(current_user):
-        emp = current_user._attendance_employee
-    if not emp:
-        emp = (await db.execute(
-            select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
-        )).scalar_one_or_none()
+    emp = current_user._attendance_employee
     if not emp:
         return {"total_by_currency": [], "data": []}
 
     advances = (await db.execute(
-        select(EmployeeAdvance).where(EmployeeAdvance.employee_id == emp.id, EmployeeAdvance.status != "deducted", EmployeeAdvance.not_voided())
+        select(EmployeeAdvance).where(EmployeeAdvance.employee_id == emp.id, EmployeeAdvance.warehouse_id == wh_id,
+            EmployeeAdvance.status != "deducted", EmployeeAdvance.not_voided())
     )).scalars().all()
 
     by_currency = {}

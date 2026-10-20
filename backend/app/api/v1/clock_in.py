@@ -89,7 +89,7 @@ async def clock_in(
     existing = (await db.execute(
         select(ClockInRecord).where(
             ClockInRecord.user_id == current_user.id,
-            ClockInRecord.warehouse_id == get_wh_id(current_user) if attendance_supervisor(current_user) else True,
+            ClockInRecord.warehouse_id == get_wh_id(current_user),
             ClockInRecord.clock_date == today,
             ClockInRecord.session == session,
         )
@@ -163,7 +163,7 @@ async def get_today(
     records = (await db.execute(
         select(ClockInRecord).where(
             ClockInRecord.user_id == current_user.id,
-            ClockInRecord.warehouse_id == get_wh_id(current_user) if attendance_supervisor(current_user) else True,
+            ClockInRecord.warehouse_id == get_wh_id(current_user),
             ClockInRecord.clock_date == today,
         ).order_by(ClockInRecord.session)
     )).scalars().all()
@@ -182,6 +182,7 @@ async def get_today(
     wh_id = get_wh_id(current_user)
     if wh_id:
         from app.models.employee import Employee
+
         from app.models.salary_template import SalaryTemplate
         from app.models.deduction_template import DeductionTemplate
         import calendar as _cal
@@ -241,7 +242,7 @@ async def list_records(
     from app.models.employee import Employee
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
     # Determine warehouse scope
@@ -254,10 +255,7 @@ async def list_records(
         # 劳工：优先绑定账号，兜底按显示名+仓库匹配（只能看到自己）
         cond = Employee.user_id == current_user.id
         cond = or_(cond, and_(Employee.name == current_user.display_name, Employee.warehouse_id == wh_id) if wh_id else Employee.name == current_user.display_name)
-        if attendance_supervisor(current_user):
-            emp_q = emp_q.where(Employee.id == current_user.attendance_employee_id, Employee.warehouse_id == wh_id)
-        else:
-            emp_q = emp_q.where(cond)
+        emp_q = emp_q.where(Employee.id == current_user._attendance_employee.id, Employee.warehouse_id == wh_id)
     elif active_wh:
         emp_q = emp_q.where(Employee.warehouse_id == active_wh)
     emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
@@ -268,7 +266,7 @@ async def list_records(
         query = query.where(ClockInRecord.user_id == current_user.id)
     elif active_wh:
         query = query.where(ClockInRecord.warehouse_id == active_wh)
-    if employee_view(current_user) and attendance_supervisor(current_user):
+    if employee_view(current_user):
         query = query.where(ClockInRecord.warehouse_id == active_wh)
     if start_date:
         query = query.where(ClockInRecord.clock_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
@@ -813,6 +811,7 @@ async def export_records(
 
 @router.get("/photos")
 async def get_photos(
+    request: Request,
     employee_id: int = Query(...),
     date: str = Query(...),
     current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
@@ -822,11 +821,13 @@ async def get_photos(
     try:
         if current_user.role == Role.SUPER_ADMIN:
             raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.WAREHOUSE_LABOR):
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR):
             raise HTTPException(403, "无权限查看打卡照片")
 
         from app.models.employee import Employee
 
+        if employee_view(current_user) and employee_id != current_user._attendance_employee.id:
+            raise HTTPException(403, "只能查看自己的打卡照片")
         # Try employee_id first, then fallback to user_id lookup
         emp = (await db.execute(
             select(Employee).where(Employee.id == employee_id)
@@ -873,6 +874,7 @@ async def get_photos(
             records = (await db.execute(
                 select(ClockInRecord).where(
                     ClockInRecord.user_id == uid,
+                    ClockInRecord.warehouse_id == emp.warehouse_id,
                     ClockInRecord.clock_date == target_date,
                 ).order_by(ClockInRecord.session)
             )).scalars().all()
@@ -881,7 +883,7 @@ async def get_photos(
         for r in records:
             sessions_data[r.session] = {
                 "session": r.session,
-                "label": SESSIONS.get(r.session, {}).get("label", ""),
+                "label": session_label(r.session, get_request_lang(request)),
                 "clocked_in_at": r.clocked_in_at.isoformat() if r.clocked_in_at else None,
                 "status": r.status,
                 "penalty_amount": r.penalty_amount,
@@ -896,7 +898,7 @@ async def get_photos(
             else:
                 all_sessions.append({
                     "session": s,
-                    "label": SESSIONS.get(s, {}).get("label", ""),
+                    "label": session_label(s, get_request_lang(request)),
                     "clocked_in_at": None,
                     "status": "missing",
                     "penalty_amount": 0,

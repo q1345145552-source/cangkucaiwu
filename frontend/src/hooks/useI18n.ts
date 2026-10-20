@@ -17,6 +17,8 @@ function ensureMy() {
 export type Locale = "zh" | "th" | "my";
 
 export function useI18n(employeeView = false) {
+  const [laborView, setLaborView] = useState(false);
+  const employeeOnly = employeeView || laborView;
   const [locale, setLocaleState] = useState<Locale>(employeeView ? "my" : "zh");
   const [, forceUpdate] = useState(0);
 
@@ -31,12 +33,16 @@ export function useI18n(employeeView = false) {
 
   // Role-based default: check on mount
   useEffect(() => {
-    const saved = (employeeView ? localStorage.getItem("employee-locale") || localStorage.getItem("locale") : localStorage.getItem("locale")) as Locale | null;
-    if (saved && (saved === "th" || saved === "my" || (!employeeView && saved === "zh"))) {
+    let labor = false;
+    try { labor = JSON.parse(localStorage.getItem("user") || "null")?.role === "warehouse_labor"; } catch {}
+    setLaborView(labor);
+    const restricted = employeeView || labor;
+    const saved = (restricted ? localStorage.getItem("employee-locale") || localStorage.getItem("locale") : localStorage.getItem("locale")) as Locale | null;
+    if (saved && (saved === "th" || saved === "my" || (!restricted && saved === "zh"))) {
       setLocaleState(saved);
       return;
     }
-    if (employeeView) { setLocaleState("my"); return; }
+    if (restricted) { setLocaleState("my"); return; }
     // If no saved preference, check role from localStorage
     const stored = localStorage.getItem("user");
     if (stored) {
@@ -55,32 +61,40 @@ export function useI18n(employeeView = false) {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail && (detail.locale === "zh" || detail.locale === "th" || detail.locale === "my")) {
-        setLocaleState(detail.locale);
+        if (!employeeOnly || detail.locale !== "zh") setLocaleState(detail.locale);
       }
     };
     window.addEventListener(employeeView ? "employee-locale-changed" : "locale-changed", handler);
     return () => window.removeEventListener(employeeView ? "employee-locale-changed" : "locale-changed", handler);
-  }, [employeeView]);
+  }, [employeeView, employeeOnly]);
 
   const setLocale = useCallback((l: Locale) => {
-    if (employeeView && l === "zh") return;
+    if (employeeOnly && l === "zh") return;
     setLocaleState(l);
+    if (laborView) {
+      localStorage.setItem("employee-locale", l);
+      localStorage.setItem("locale", l);
+      window.dispatchEvent(new CustomEvent("employee-locale-changed", { detail: { locale: l } }));
+      window.dispatchEvent(new CustomEvent("locale-changed", { detail: { locale: l } }));
+      return;
+    }
     localStorage.setItem(employeeView ? "employee-locale" : "locale", l);
     window.dispatchEvent(new CustomEvent(employeeView ? "employee-locale-changed" : "locale-changed", { detail: { locale: l } }));
-  }, [employeeView]);
+  }, [employeeView, employeeOnly, laborView]);
 
   const t = useCallback(
     (key: string): string => {
-      return _all[locale]?.[key] || _all.zh[key] || key;
+      const effective = employeeOnly && locale === "zh" ? "my" : locale;
+      return _all[effective]?.[key] || (employeeOnly ? _all.th[key] : _all.zh[key]) || key;
     },
-    [locale]
+    [locale, employeeOnly]
   );
 
   const toggleLocale = useCallback(() => {
     if (locale === "zh") setLocale("th");
     else if (locale === "th") setLocale("my");
-    else setLocale(employeeView ? "th" : "zh");
-  }, [locale, setLocale, employeeView]);
+    else setLocale(employeeOnly ? "th" : "zh");
+  }, [locale, setLocale, employeeOnly]);
 
   return { t, locale, setLocale, toggleLocale };
 }

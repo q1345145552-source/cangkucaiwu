@@ -157,6 +157,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [menuPermissions, setMenuPermissions] = useState<MenuPermission[]>([]);
+  useEffect(() => {
+    if (user?.role === "warehouse_labor") document.title = t("app_name");
+  }, [user?.role, locale, t, pathname]);
+  const laborPageAllowed = user?.role !== "warehouse_labor" ||
+    ["/clock-in", "/attendance", "/overtime", "/my-payslip", "/settings"].includes(pathname);
+  useEffect(() => {
+    if (user?.role === "warehouse_labor" && !laborPageAllowed) router.replace("/clock-in");
+  }, [user?.role, laborPageAllowed]);
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
@@ -169,6 +177,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = getToken();
     if (!token) { router.push("/login"); return; }
+    api.post("/auth/attachment-session", {}).catch(() => {});
     
     // Try stored user first
     const stored = localStorage.getItem("user");
@@ -231,7 +240,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [pathname]);
 
-  const logout = () => {
+  const logout = async () => {
+    await api.post("/auth/attachment-session", { clear: true }).catch(() => {});
     localStorage.clear();
     router.push("/login");
   };
@@ -247,7 +257,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     ] });
   }
   const settingsItem = navItems.find(item => item.key === "settings_group")?.children?.find(item => item.key === "settings");
-  const showUsersManagement = user?.role === "warehouse_labor" || (settingsItem && hasAccess(settingsItem, user, menuPermissions));
+  const showUsersManagement = user?.role !== "warehouse_labor" && settingsItem && hasAccess(settingsItem, user, menuPermissions);
   
   // Sidebar content
   const sidebarContent = (
@@ -296,6 +306,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </nav>
     </aside>
   );
+
+  // Do not render a default Chinese/management shell before the saved role and locale are loaded.
+  if (!user || !laborPageAllowed) return null;
 
   return (
     <div className="flex min-h-screen">
@@ -440,7 +453,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
           <div key={pathname + '-' + selectedWhId} className="animate-fade-in">
-            {children}
+            {user && laborPageAllowed ? children : null}
           </div>
           <BackToTop />
         </main>

@@ -1,0 +1,4160 @@
+{
+  "management_labor_inventory": {
+    "routes": 328,
+    "requests": 656,
+    "business_queries": 0,
+    "data": [
+      {
+        "method": "GET",
+        "path": "/api/v1/users",
+        "module": "users",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/users/permissions",
+        "module": "users",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/users",
+        "module": "users",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/users/{user_id}",
+        "module": "users",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/users/{user_id}",
+        "module": "users",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/dashboard/stats",
+        "module": "dashboard",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/dashboard/pending-tasks",
+        "module": "dashboard",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/dashboard/warehouse-summary",
+        "module": "dashboard",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/dashboard/trends",
+        "module": "dashboard",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/dashboard/cockpit",
+        "module": "dashboard",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/dashboard/boss-todos",
+        "module": "dashboard",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/customers",
+        "module": "customers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/customers",
+        "module": "customers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/customers/{customer_id}",
+        "module": "customers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/customers/{customer_id}",
+        "module": "customers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/customers/{customer_id}",
+        "module": "customers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/warehouses",
+        "module": "warehouses",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/warehouses",
+        "module": "warehouses",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/warehouses/{warehouse_id}",
+        "module": "warehouses",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/accounts/transfers",
+        "module": "payment_accounts",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/accounts",
+        "module": "payment_accounts",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/accounts",
+        "module": "payment_accounts",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/accounts/{account_id}",
+        "module": "payment_accounts",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/accounts/{account_id}/toggle-status",
+        "module": "payment_accounts",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/accounts/{account_id}",
+        "module": "payment_accounts",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/categories",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/categories",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/import-template/products",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/import-template/logistics",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/import/products",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/import/logistics",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/{supplier_id}/import/products",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/{supplier_id}/import/logistics",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/{supplier_id}/products",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/{supplier_id}/products",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/suppliers/{supplier_id}/products/{product_id}",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/{supplier_id}/purchase-order",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/price-threshold",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/suppliers/price-threshold",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/price-stats",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/price-trend",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/price-anomalies",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/non-lowest-records",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/non-lowest-summary",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/purchase-approval-threshold",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/suppliers/purchase-approval-threshold",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/purchase-approvals",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/suppliers/purchase-approvals/{po_id}/approve",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/suppliers/purchase-approvals/{po_id}/reject",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/purchase-orders",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/purchase-orders/{po_id}/receive",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/purchase-orders/{po_id}/mark-sent",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/purchase-orders/{po_id}/receipt",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/purchase-orders/{po_id}/mark-shipped",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/purchase-orders/{po_id}/pdf",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/purchase-receipt-discrepancies",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/concentration-threshold",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/suppliers/concentration-threshold",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/concentration",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/concentration-trend",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/{supplier_id}/logistics-prices",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/{supplier_id}/logistics-prices",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/suppliers/{supplier_id}/logistics-prices/{price_id}",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/compare-prices",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/compare-logistics",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/ai-compare",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/suppliers/{supplier_id}",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/suppliers/{supplier_id}",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/procurement-summary",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/{supplier_id}",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/{supplier_id}/ai-evaluation",
+        "module": "suppliers",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/recharge",
+        "module": "recharge",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/recharge",
+        "module": "recharge",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/recharge/{recharge_id}",
+        "module": "recharge",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/recharge/{recharge_id}",
+        "module": "recharge",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/recharge/{recharge_id}",
+        "module": "recharge",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/incoming",
+        "module": "incoming",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/incoming",
+        "module": "incoming",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/incoming/by-request/{request_key}",
+        "module": "incoming",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/incoming/{incoming_id}/screenshot",
+        "module": "incoming",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/incoming/{incoming_id}/screenshot",
+        "module": "incoming",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/incoming/batch-import",
+        "module": "incoming",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/incoming/template",
+        "module": "incoming",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reconciliation/unmatched",
+        "module": "reconciliation",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reconciliation/manual-match",
+        "module": "reconciliation",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reconciliation/unmatch",
+        "module": "reconciliation",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reconciliation/results",
+        "module": "reconciliation",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reconciliation/export",
+        "module": "reconciliation",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/categories",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/income-expense/categories",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/income",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/income-expense/income",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/income-expense/income/{income_id}",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/income-expense/income/{income_id}",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/expense",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/income-expense/expense",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/income-expense/expense/{expense_id}",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/income-expense/expense/{expense_id}",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/ledger",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/ledger/export",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/income/export",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/monthly-summary",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/income-expense/operating-dashboard",
+        "module": "income_expense",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/accounts",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/employees",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/accounts",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/payment-accounts",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/disbursements",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/topup",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/items",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/items/{item_id}",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/items/{item_id}",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/items",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/upload-receipt",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/accounts/{account_id}/items/{item_id}/upload-receipt",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/review/pending",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/review/batch",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/recharge/request",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/recharge/requests",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/recharge/review",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/settings",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-fund/settings",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/balance",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-fund/alert",
+        "module": "expense_fund",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reimbursement/payment-sources",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reimbursement/payment-voucher",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reimbursement",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reimbursement",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reimbursement/export",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reimbursement/categories",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reimbursement/{reimb_id}",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/reimbursement/{reimb_id}",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/reimbursement/{reimb_id}",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reimbursement/{reimb_id}/submit",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reimbursement/{reimb_id}/review",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reimbursement/{reimb_id}/pay",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reimbursement/{reimb_id}/payments",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reimbursement/{reimb_id}/revoke-payment",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/reimbursement/categories",
+        "module": "reimbursement",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable/{bill_id}/upload-voucher",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable/{bill_id}/upload-attachment",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/{bill_id}/pay",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/{bill_id}/confirm",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/{bill_id}/void",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/{bill_id}",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/stats",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/plans",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable/plans",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/cashflow-prediction",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/batch-export",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/supplier-statement",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/plan-templates",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/payable/plan-templates/{template_id}",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/timeline",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/plans/{plan_id}/execute",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/plans/{plan_id}/detail",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable/plans/{plan_id}/upload-attachment",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/plans/export",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/monthly-order",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable/monthly-order",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payable/trend",
+        "module": "payable",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/credit",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/credit",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/credit/{credit_id}",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/credit/{credit_id}/detail",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/credit/{credit_id}/shipment",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/credit/{credit_id}/payment",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/credit/dashboard",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/credit/assessment",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/credit/assessment/export",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/credit/alerts",
+        "module": "credit",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/market/image",
+        "module": "market",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/market",
+        "module": "market",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/market",
+        "module": "market",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/market/review-list",
+        "module": "market",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/market/{item_id}/review",
+        "module": "market",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/market/{item_id}/purchase",
+        "module": "market",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/market/{item_id}/confirm",
+        "module": "market",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/group-order",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/group-order",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/group-order/{go_id}/join",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/group-order/{go_id}/participants",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/group-order/history",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/group-order/{go_id}",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/group-order/{go_id}/close",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/group-order/{go_id}/complete",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/group-order/{go_id}/cancel",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/group-order/participant/{participant_id}/ban",
+        "module": "group_order",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/cost-funds-debt",
+        "module": "cost_funds_debt",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/cost-funds-debt/costs",
+        "module": "cost_funds_debt",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/cost-funds-debt/flows",
+        "module": "cost_funds_debt",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/cost-funds-debt/advances",
+        "module": "cost_funds_debt",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/previews",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/recharge-summary",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/incoming-summary",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/income-expense",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/payable",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/expense-fund",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/reimbursement",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/credit",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/reports/reconciliation-diff",
+        "module": "reports",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/upload",
+        "module": "upload",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/upload/recharge-screenshot",
+        "module": "upload",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/settings/boss-contact",
+        "module": "settings_api",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/settings/boss-contact",
+        "module": "settings_api",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/settings/logs",
+        "module": "settings_api",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/settings/backup",
+        "module": "settings_api",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/config/attendance-times",
+        "module": "config_api",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/config/work-schedule",
+        "module": "config_api",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/config/work-schedule",
+        "module": "config_api",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/rates",
+        "module": "exchange_rates",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/rates",
+        "module": "exchange_rates",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/rates/query",
+        "module": "exchange_rates",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employees/max-limit",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/employees/max-limit",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employees",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employees",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/employees/{employee_id}",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employees/{employee_id}/resign",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/employees/{employee_id}",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employees/bind-existing-accounts",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employees/batch-set-templates",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employees/{employee_id}/photo",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employees/{employee_id}/passport-photo",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employees/{employee_id}/work-permit-photo",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employees/{employee_id}/summary",
+        "module": "employees",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/clock-in/makeup",
+        "module": "clock_in",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/clock-in/batch-makeup",
+        "module": "clock_in",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/clock-in/makeup-batches",
+        "module": "clock_in",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/clock-in/makeup-batches/{batch_id}/revoke",
+        "module": "clock_in",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/clock-in/makeup-count",
+        "module": "clock_in",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/clock-in/records/export",
+        "module": "clock_in",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/attendance/leaves/admin-record",
+        "module": "attendance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/attendance/leaves/{leave_id}/approve",
+        "module": "attendance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/attendance/leaves/{leave_id}/reject",
+        "module": "attendance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/attendance/rest-days",
+        "module": "attendance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/attendance/rest-days/{rest_day_id}",
+        "module": "attendance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/attendance/absences",
+        "module": "attendance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/attendance/absences/{absence_id}",
+        "module": "attendance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/overtime",
+        "module": "overtime",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/overtime/{task_id}/verify",
+        "module": "overtime",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/overtime/limit",
+        "module": "overtime",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/overtime/{overtime_id}",
+        "module": "overtime",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/calculate",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/preview",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/single-settle",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payroll",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payroll/summary",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payroll/export",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/{record_id}/confirm",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/confirm-all",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/batch-confirm",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payroll/cash-advance-sources",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/batch-disburse",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/batch-delete",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/{record_id}/recalc",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/batch-recalc",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/payroll/{record_id}",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/payroll/period/{period}",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/{record_id}/disburse",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payroll/{record_id}/revoke-disbursement",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payroll/settlement-progress",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/payroll/{record_id}",
+        "module": "payroll",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/history/operators",
+        "module": "history",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/history",
+        "module": "history",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/history/export",
+        "module": "history",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/efficiency/summary",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/efficiency/trend",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/efficiency/compare",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/efficiency/daily-orders",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/efficiency/order-count",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/efficiency/standard",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/efficiency/standards",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/efficiency/standard",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/efficiency/manual-hour",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/efficiency/manual-hour",
+        "module": "efficiency",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employee-advances",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employee-advances/funding-options",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employee-advances/recipients",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employee-advances",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employee-advances/summary",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/employee-advances/{advance_id}",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employee-advances/{advance_id}/approve",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employee-advances/{advance_id}/reject",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employee-advances/{advance_id}",
+        "module": "employee_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/salary-templates",
+        "module": "salary_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/salary-templates",
+        "module": "salary_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/salary-templates/{template_id}",
+        "module": "salary_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/salary-templates/{template_id}",
+        "module": "salary_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/deduction-templates",
+        "module": "deduction_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/deduction-templates",
+        "module": "deduction_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/deduction-templates/{template_id}",
+        "module": "deduction_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/deduction-templates/{template_id}",
+        "module": "deduction_template",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employee-deductions",
+        "module": "employee_deduction",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employee-deductions",
+        "module": "employee_deduction",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/employee-deductions/{deduction_id}",
+        "module": "employee_deduction",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/employee-deductions/fixed",
+        "module": "employee_deduction",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/employee-deductions/fixed",
+        "module": "employee_deduction",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/employee-deductions/fixed/{deduction_id}",
+        "module": "employee_deduction",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/employee-deductions/fixed/{deduction_id}",
+        "module": "employee_deduction",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-approvals",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-approvals",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-approvals/summary",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/expense-approvals/threshold",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/expense-approvals/threshold",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/expense-approvals/{approval_id}",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-approvals/{approval_id}/approve",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-approvals/{approval_id}/reject",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/expense-approvals/{approval_id}/pay",
+        "module": "expense_approval",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/cash-advances/document-options",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/cash-advances/payers",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/cash-advances/summary",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/cash-advances",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/cash-advances/voucher",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/cash-advances",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/cash-advances/{advance_id}",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/cash-advances/{advance_id}/documents/{link_id}",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/cash-advances/{advance_id}/confirm",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/cash-advances/{advance_id}/reject",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/cash-advances/repayment-accounts",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/cash-advances/repayment-voucher",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/cash-advances/{advance_id}/repayments",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/cash-advances/{advance_id}/repayments",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/cash-advances/repayments/{repayment_id}/revoke",
+        "module": "cash_advance",
+        "labor_same_and_foreign": [
+          403,
+          403
+        ]
+      }
+    ]
+  },
+  "super_admin": {
+    "business_denied": 296,
+    "platform_reads": 6
+  },
+  "office_positive_and_revoke": {
+    "admin_granted_finance_granted_supervisor": [
+      {
+        "user": 1,
+        "path": "/users",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/customers",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/accounts",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/suppliers",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/recharge",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/incoming",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/reconciliation/results",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/income-expense/expense",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/income-expense/ledger",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/expense-fund/accounts",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/reimbursement",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/payable",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/payable/plans",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/credit",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/market",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/group-order",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/reports/previews",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/reports/income-expense",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/reports/cost-funds-debt",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/settings/logs",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/config/work-schedule",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/rates",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/employees",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/clock-in/records",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/attendance/calendar",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/attendance/leaves",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/attendance/rest-days",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/overtime",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/payroll",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/history",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/efficiency/standard",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/employee-advances",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/salary-templates",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/deduction-templates",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/employee-deductions",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/expense-approvals",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "path": "/cash-advances",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/users",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/customers",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/accounts",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/suppliers",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/recharge",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/incoming",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/reconciliation/results",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/income-expense/expense",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/income-expense/ledger",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/expense-fund/accounts",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/reimbursement",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/payable",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/payable/plans",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/credit",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/market",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/group-order",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/reports/previews",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/reports/income-expense",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/reports/cost-funds-debt",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/settings/logs",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/config/work-schedule",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/rates",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/employees",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/clock-in/records",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/attendance/calendar",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/attendance/leaves",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/attendance/rest-days",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/overtime",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/payroll",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/history",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/efficiency/standard",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/employee-advances",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/salary-templates",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/deduction-templates",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/employee-deductions",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/expense-approvals",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "path": "/cash-advances",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/users",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/customers",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/accounts",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/suppliers",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/recharge",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/incoming",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/reconciliation/results",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/income-expense/expense",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/income-expense/ledger",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/expense-fund/accounts",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/reimbursement",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/payable",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/payable/plans",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/credit",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/market",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/group-order",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/reports/previews",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/reports/income-expense",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/reports/cost-funds-debt",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/settings/logs",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/config/work-schedule",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/rates",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/employees",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/clock-in/records",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/attendance/calendar",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/attendance/leaves",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/attendance/rest-days",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/overtime",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/payroll",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/history",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/efficiency/standard",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/employee-advances",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/salary-templates",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/deduction-templates",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/employee-deductions",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/expense-approvals",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "path": "/cash-advances",
+        "status": 200
+      }
+    ],
+    "ungranted_requests": 74
+  },
+  "employee_self": {
+    "reads": [
+      {
+        "path": "/clock-in/today",
+        "status": 200
+      },
+      {
+        "path": "/clock-in/records",
+        "status": 200
+      },
+      {
+        "path": "/attendance/calendar",
+        "status": 200
+      },
+      {
+        "path": "/attendance/leaves",
+        "status": 200
+      },
+      {
+        "path": "/attendance/rest-days",
+        "status": 200
+      },
+      {
+        "path": "/overtime",
+        "status": 200
+      },
+      {
+        "path": "/overtime/pending",
+        "status": 200
+      },
+      {
+        "path": "/overtime/monthly-hours",
+        "status": 200
+      },
+      {
+        "path": "/overtime/limit",
+        "status": 200
+      },
+      {
+        "path": "/payroll/my-payslip",
+        "status": 200
+      },
+      {
+        "path": "/employee-advances/my-debt",
+        "status": 200
+      }
+    ],
+    "foreign_and_same_warehouse_photos": 403,
+    "clock": {
+      "message": "กะเช้า ลงเวลาสำเร็จ",
+      "session": 1,
+      "clocked_in_at": "2026-10-20T09:00:00+07:00",
+      "status": "normal",
+      "penalty_amount": 0,
+      "photo_path": "uploads/1/2026-10-20/clockin/af0fdea93bfb4da2969fe0386ea421a6.jpg"
+    },
+    "leave": {
+      "message": "ยื่นขอลาแล้ว รออนุมัติ",
+      "id": 3
+    },
+    "confirm": {
+      "message": "加班确认成功，已挣 50 泰铢",
+      "earned_amount": 50.0,
+      "confirmed_at": "2026-10-20T09:00:00+07:00"
+    },
+    "dispute": {
+      "message": "ยื่นข้อโต้แย้งแล้ว",
+      "dispute_time": "2026-10-20T09:00:00+07:00"
+    }
+  },
+  "office_positive_writes": {
+    "writes": [
+      {
+        "user": 1,
+        "method": "PUT",
+        "path": "/employees/1",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "method": "PUT",
+        "path": "/customers/1",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "method": "PUT",
+        "path": "/accounts/1",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "method": "PUT",
+        "path": "/salary-templates/1",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "method": "PUT",
+        "path": "/deduction-templates/1",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "method": "PUT",
+        "path": "/efficiency/standard",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "method": "PUT",
+        "path": "/suppliers/1",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "method": "PUT",
+        "path": "/employees/1",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "method": "PUT",
+        "path": "/customers/1",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "method": "PUT",
+        "path": "/accounts/1",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "method": "PUT",
+        "path": "/salary-templates/1",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "method": "PUT",
+        "path": "/deduction-templates/1",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "method": "PUT",
+        "path": "/efficiency/standard",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "method": "PUT",
+        "path": "/suppliers/1",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "method": "PUT",
+        "path": "/employees/1",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "method": "PUT",
+        "path": "/customers/1",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "method": "PUT",
+        "path": "/accounts/1",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "method": "PUT",
+        "path": "/salary-templates/1",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "method": "PUT",
+        "path": "/deduction-templates/1",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "method": "PUT",
+        "path": "/efficiency/standard",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "method": "PUT",
+        "path": "/suppliers/1",
+        "status": 200
+      }
+    ],
+    "upload_and_private_preview": 3,
+    "revoked_writes": 16
+  },
+  "attachments": {
+    "anonymous": 401,
+    "own_labor": 200,
+    "different_labor_same_warehouse": 403,
+    "cross_warehouse": 403,
+    "super_admin_business_photo": 403,
+    "permission_revoked": 403,
+    "attendance_supervisor_own_without_management_permission": 200,
+    "http_only_file_session": true,
+    "public_nginx_alias_removed": true
+  },
+  "attendance_supervisor_self": {
+    "reads": 11,
+    "clock": 200,
+    "leave": 200,
+    "confirm": 200,
+    "dispute": 200,
+    "management_permissions": [],
+    "disabled_with_same_token": 403,
+    "admin_super_finance_personal_payslip": 403
+  },
+  "legacy_employee_binding": {
+    "unique_username_phone": 200,
+    "ambiguous_unbound_name": 403,
+    "formal_same_name_other_account_only_own": 200
+  },
+  "mixed_warehouse_batches": [
+    {
+      "path": "/employees/batch-set-templates",
+      "status": 403,
+      "body": {
+        "detail": "包含无权操作的员工"
+      }
+    },
+    {
+      "path": "/payroll/batch-confirm",
+      "status": 403,
+      "body": {
+        "detail": "包含无权操作的记录"
+      }
+    },
+    {
+      "path": "/payroll/batch-disburse",
+      "status": 403,
+      "body": {
+        "detail": "包含无权操作的记录"
+      }
+    },
+    {
+      "path": "/payroll/batch-delete",
+      "status": 403,
+      "body": {
+        "detail": "包含无权操作的记录"
+      }
+    },
+    {
+      "path": "/clock-in/batch-makeup",
+      "status": 404,
+      "body": {
+        "detail": "员工不存在或不属于当前仓库"
+      }
+    },
+    {
+      "path": "/overtime",
+      "status": 400,
+      "body": {
+        "detail": "部分员工不存在或已离职"
+      }
+    }
+  ],
+  "shared_selectors": [
+    {
+      "user": 3,
+      "permission": "充值申报",
+      "path": "/customers",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "到账流水",
+      "path": "/customers",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "账期管理",
+      "path": "/customers",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "运营收支",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "其他收支",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "费用审批",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "工资",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "应付账款",
+      "path": "/suppliers",
+      "status": 200
+    },
+    {
+      "user": 3,
+      "permission": "付款计划",
+      "path": "/suppliers",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "充值申报",
+      "path": "/customers",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "到账流水",
+      "path": "/customers",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "账期管理",
+      "path": "/customers",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "运营收支",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "其他收支",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "费用审批",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "工资",
+      "path": "/accounts",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "应付账款",
+      "path": "/suppliers",
+      "status": 200
+    },
+    {
+      "user": 4,
+      "permission": "付款计划",
+      "path": "/suppliers",
+      "status": 200
+    }
+  ],
+  "office_cross_warehouse_details_and_writes": [
+    {
+      "user": 1,
+      "method": "GET",
+      "path": "/customers/2",
+      "status": 403
+    },
+    {
+      "user": 1,
+      "method": "PUT",
+      "path": "/customers/2",
+      "status": 403
+    },
+    {
+      "user": 1,
+      "method": "PUT",
+      "path": "/accounts/2",
+      "status": 403
+    },
+    {
+      "user": 1,
+      "method": "PUT",
+      "path": "/suppliers/2",
+      "status": 403
+    },
+    {
+      "user": 1,
+      "method": "GET",
+      "path": "/employees/2/summary",
+      "status": 404
+    },
+    {
+      "user": 1,
+      "method": "PUT",
+      "path": "/employees/2",
+      "status": 403
+    },
+    {
+      "user": 1,
+      "method": "GET",
+      "path": "/payroll/2",
+      "status": 404
+    },
+    {
+      "user": 1,
+      "method": "GET",
+      "path": "/reimbursement/2",
+      "status": 403
+    },
+    {
+      "user": 1,
+      "method": "GET",
+      "path": "/expense-fund/accounts/2/items",
+      "status": 403
+    },
+    {
+      "user": 1,
+      "method": "GET",
+      "path": "/cash-advances/2/repayments",
+      "status": 404
+    },
+    {
+      "user": 1,
+      "method": "GET",
+      "path": "/employee-advances/2",
+      "status": 404
+    },
+    {
+      "user": 1,
+      "method": "PUT",
+      "path": "/salary-templates/2",
+      "status": 404
+    },
+    {
+      "user": 1,
+      "method": "PUT",
+      "path": "/deduction-templates/2",
+      "status": 404
+    },
+    {
+      "user": 3,
+      "method": "GET",
+      "path": "/customers/2",
+      "status": 403
+    },
+    {
+      "user": 3,
+      "method": "PUT",
+      "path": "/customers/2",
+      "status": 403
+    },
+    {
+      "user": 3,
+      "method": "PUT",
+      "path": "/accounts/2",
+      "status": 403
+    },
+    {
+      "user": 3,
+      "method": "PUT",
+      "path": "/suppliers/2",
+      "status": 403
+    },
+    {
+      "user": 3,
+      "method": "GET",
+      "path": "/employees/2/summary",
+      "status": 404
+    },
+    {
+      "user": 3,
+      "method": "PUT",
+      "path": "/employees/2",
+      "status": 403
+    },
+    {
+      "user": 3,
+      "method": "GET",
+      "path": "/payroll/2",
+      "status": 404
+    },
+    {
+      "user": 3,
+      "method": "GET",
+      "path": "/reimbursement/2",
+      "status": 403
+    },
+    {
+      "user": 3,
+      "method": "GET",
+      "path": "/expense-fund/accounts/2/items",
+      "status": 403
+    },
+    {
+      "user": 3,
+      "method": "GET",
+      "path": "/cash-advances/2/repayments",
+      "status": 404
+    },
+    {
+      "user": 3,
+      "method": "GET",
+      "path": "/employee-advances/2",
+      "status": 404
+    },
+    {
+      "user": 3,
+      "method": "PUT",
+      "path": "/salary-templates/2",
+      "status": 404
+    },
+    {
+      "user": 3,
+      "method": "PUT",
+      "path": "/deduction-templates/2",
+      "status": 404
+    },
+    {
+      "user": 4,
+      "method": "GET",
+      "path": "/customers/2",
+      "status": 403
+    },
+    {
+      "user": 4,
+      "method": "PUT",
+      "path": "/customers/2",
+      "status": 403
+    },
+    {
+      "user": 4,
+      "method": "PUT",
+      "path": "/accounts/2",
+      "status": 403
+    },
+    {
+      "user": 4,
+      "method": "PUT",
+      "path": "/suppliers/2",
+      "status": 403
+    },
+    {
+      "user": 4,
+      "method": "GET",
+      "path": "/employees/2/summary",
+      "status": 404
+    },
+    {
+      "user": 4,
+      "method": "PUT",
+      "path": "/employees/2",
+      "status": 403
+    },
+    {
+      "user": 4,
+      "method": "GET",
+      "path": "/payroll/2",
+      "status": 404
+    },
+    {
+      "user": 4,
+      "method": "GET",
+      "path": "/reimbursement/2",
+      "status": 403
+    },
+    {
+      "user": 4,
+      "method": "GET",
+      "path": "/expense-fund/accounts/2/items",
+      "status": 403
+    },
+    {
+      "user": 4,
+      "method": "GET",
+      "path": "/cash-advances/2/repayments",
+      "status": 404
+    },
+    {
+      "user": 4,
+      "method": "GET",
+      "path": "/employee-advances/2",
+      "status": 404
+    },
+    {
+      "user": 4,
+      "method": "PUT",
+      "path": "/salary-templates/2",
+      "status": 404
+    },
+    {
+      "user": 4,
+      "method": "PUT",
+      "path": "/deduction-templates/2",
+      "status": 404
+    }
+  ],
+  "shared_platform": {
+    "super_without_primary_warehouse_explicit_origin": 200,
+    "other_roles_publication_and_moderation": 403,
+    "cross_warehouse_approved_list_and_image": 200,
+    "before_approval_image": 403,
+    "labor_image": 403,
+    "anonymous_image": 401,
+    "revoked_market_permission": 403,
+    "private_business_file_as_market_image": 403,
+    "cross_warehouse_join_quantities": [
+      2,
+      3
+    ],
+    "total_quantity": 5,
+    "other_warehouse_addresses_and_buyer_contact_hidden": true,
+    "super_ordinary_business_still_denied": 403
+  }
+}

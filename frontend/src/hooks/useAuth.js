@@ -54,7 +54,8 @@ export function AuthProvider({ children }) {
     }
   }
 
-  function doLogout() {
+  async function doLogout() {
+    await api.post("/auth/attachment-session", { clear: true }).catch(() => {});
     clearToken();
     setUser(null);
     router.push("/login");

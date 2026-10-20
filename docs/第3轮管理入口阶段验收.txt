@@ -1,0 +1,181 @@
+历史阶段记录，当前最终结果以第3轮管理入口验收.txt 为准。
+用户已确认两项规则并完成收尾，以下未完成描述只代表当时阶段。
+
+第 3 轮管理入口收口阶段交付，2026-10-20，Asia/Bangkok。
+当前结论：可独立完成部分已实现并验证，但全轮尚未完成。
+两项业务规则待用户答复，不进入第 4 轮，不部署生产。
+本轮没有新提交，没有推送；基于本地 main 的 35dea42 保留未提交工作区。
+最后的排期询问没有明确取消或暂停第 3 轮，本次没有重新排期或实施其他轮次。
+
+实际路由与保护范围。
+按注册 APIRoute 的“方法 + 路径”盘点，排除框架自动文档接口，包含根路径与健康检查。
+修改前 348 个入口，修改后 350 个入口，新增 1 个附件会话工具接口和 1 个受保护附件读取接口。
+管理入口共 327 个，全部叠加统一非劳工守卫，先拦劳工，再执行原权限和仓库检查。
+显式统一守卫覆盖从 44 个增加到 327 个，新增统一覆盖 283 个。
+283 个不能解释成 283 个新漏洞，因为其中包含原有 20 个工资专用守卫和其他旧角色保护。
+管理入口包含普通业务 309 个、平台管理 15 个、暂保留原超管审核规则 3 个。
+员工自助或管理共用入口 16 个，账号工具 4 个，受保护附件读取 1 个，公开根路径及健康检查 2 个，总计 350 个。
+完整方法、路径、模块、访问种类和改前清单见第3轮管理入口收口路由清单.json。
+没有新增中文功能权限，复用唯一菜单权限清单，因此无需新增补权迁移或数据库字段。
+
+已完成的访问边界。
+管理 API 的劳工守卫在业务查询之前执行，伪造 view=self、仓库、员工、用户编号和批量编号均不能绕过。
+超管普通业务入口统一拒绝，用户、仓库、系统设置、修改日志等原平台规则继续保留。
+本人查询优先使用账号与员工档案的正式绑定，旧档案仅接受本仓唯一且未绑定别人的用户名或姓名兜底。
+同名、外仓、其他账号绑定的档案不会被借用。
+劳工本人、纳入考勤主管本人的考勤和照片按本人档案及仓库限制，工资与预支不再用姓名直接取别人的记录。
+管理端共享客户、账户、供应商等读取仍保留任一既有业务权限放行的规则。
+授权财务的管理考勤与打卡记录正向访问已接通，配置仅开放四个必要打卡时点，不改变完整配置中心财务只读规则。
+没有修改工资、考勤、人效或收付计算公式，没有自动重算工资，没有改动历史数据。
+
+附件保护。
+原 nginx 静态公开附件入口及后端公开静态目录改为真实附件记录归属检查。
+未登录 401，本人合法附件 200，其他劳工、越仓、撤权及超管业务附件 403。
+劳工只能读取本人的打卡、请假和加班异议凭证。
+纳入考勤主管无管理权限时也可读取本人凭证，不能借此读取别人的凭证。
+未关联业务的通用上传用本地私有所有者元信息支持上传者预览，不增加数据库字段。
+文件会话是 HttpOnly、SameSite=Lax、限 /uploads 的 Cookie，不把令牌放进图片地址。
+API 写入仍要求 Bearer，文件 Cookie 不能认证管理 API。
+正常退出时两个现有退出入口都清理文件会话，真实浏览器退出后访问旧图片返回请先登录。
+已公开缓存或下载到外部的历史文件不能靠本次代码追回。
+本机没有 nginx 二进制，未声称已经做 nginx -t；实际浏览器链路使用本机转发代理，不代替生产 nginx 部署验收。
+
+员工手机端实际操作。
+测试账号 Somchai 的账号编号为 5，员工档案编号为 1，仓库编号为 1。
+同仓另一名同名员工编号 3 绑定账号 6，外仓同名员工编号 2 绑定账号 8，故意同名验证身份边界。
+手机 390×844，四个员工菜单地址保持 attendance、overtime、clock-in、my-payslip，用户菜单没有账号管理入口。
+本人实际打卡成功，当日显示 1/4，记录账号 5、仓库 1、时点 1、时间 09:00、状态 normal。
+本人提交 2026-10-22 一小时请假成功，档案 1、仓库 1、状态 pending。
+本人确认加班任务 1 成功，金额 50 THB，任务 3 带照片异议提交成功且记录泰语原因。
+外仓任务 2 仍未确认、未异议，外仓打卡和请假记录未变。
+本人工资单只返回测试单 1、净工资 400 THB；本人预支 100 THB；同名外仓测试单 2 保持 400 THB。
+400 是隔离库预置工资单，不冒称这次重新计算了工资。
+缅甸语四页、泰语四页共 8 组均等待实际对应语言内容加载后采集，正文汉字数为 0，页面宽度和文档宽度均为 390。
+发现并修正了岗位中文、旧中文语言偏好、启动画面与切页标题的中文残留。
+加班异议上传目录改为沿用 UPLOAD_DIR，默认生产目录不变，本机隔离目录实际上传成功。
+劳工直接输入 customers 管理地址会回到 clock-in，不挂载管理页面。
+劳工 settings 只显示本人密码设置，LINE 管理及账号管理入口不向劳工显示；未实际修改任何密码。
+财务测试账号 3 的员工页面显示本仓两名员工和新建、编辑等入口，编辑弹框可打开，管理考勤与打卡记录两名员工可读。
+财务界面未提交员工修改，实际正常写入和撤权在 PostgreSQL HTTP 测试中验证。
+原始浏览器采集中保留了修复过程的旧结果与尚未加载完的尝试，不把这些过程结果当作最终通过。
+最终语言验收仅使用最终手机八组语言检查.json 中的 8 组，逐项核对对应语言文字。
+
+原生 PostgreSQL 实际结果。
+最终组合 29 项测试，0 失败、0 错误、0 跳过，其中本轮 11 项、前两轮 18 项。
+两名劳工对 327 个管理入口逐一真实请求，共 654 次 403，detail 均为无权访问。
+SQL 监听断言这些劳工请求只查询 users 与 user_warehouses，业务表查询 0 次，写入 0 次。
+管理员、授权财务、授权主管各 37 个读接口，合计 111 次 200；撤销主管财务权限后 74 次 403。
+管理员、授权财务、授权主管各 7 个正常业务写入，合计 21 次 200，另有各 1 次上传及私有预览成功。
+取消两角色权限后上述 7 个写入及上传合计 16 次 403。
+共享客户、账户、供应商选择器按单项权限组合验证 18 次 200，不包含外仓敏感标记。
+普通超管业务入口 309 次 403，平台读入口抽查 6 次 200。
+外仓详情与修改共 39 次拒绝，另 3 次外仓照片拒绝，外仓原值不变。
+6 个混合仓库批量操作全部拒绝，工资状态、模板等未发生部分写入。
+劳工本人 11 个读取及本人照片、打卡、请假、加班确认和异议均成功，伪造员工和仓库编号不扩大范围。
+纳入考勤主管在管理权限全空时同样 11 个本人读取及打卡、请假、确认、异议成功；关闭开关后同一令牌 403。
+管理员、超管、财务不能借员工自助工资接口读他人个人工资。
+旧档案唯一用户名匹配能读本人；存在多个未绑定同名档案时 403；另一个正式绑定账号仍只读自己。
+前两轮到账并发、截图失败补传及费用并发事务回归全部保留。
+同一笔到账 1000 的并发与重试仍只有 1 笔、余额 1000；独立第二笔同额到账后 2 笔、余额 2000。
+公司费用 200：账户 1000→800，只 1 笔；备用金费用 200：备用金 1000→800，只 1 笔，重复和并发不再扣。
+垫款工资及报销用款合计 9000 时公司账户 20000 不动、钱包支出 0；归还 9000 后账户 11000、钱包付款 9000 仅 1 笔。
+上述用款业务记录仍为 9000，欠垫款由 10000→1000，保留既有钱包投影口径，没有新增第二笔钱包支出。
+新库、旧库升级和重复启动在前两轮迁移回归中实际执行，未增加本轮数据库迁移。
+
+前端与检查结果。
+生产构建成功，保留完整构建日志；Next 配置原本跳过类型错误，因此另行跑完整类型检查。
+完整类型检查基线 101 条，本次 101 条，按文件和诊断内容含重复次数比较，新增 0 条。
+类型检查退出码仍为 2，不能报告成全量类型检查通过。
+实际多语言启动脚本与 useI18n 测试通过，拒绝劳工保存或切换中文，保留管理端中文。
+前两轮实际到账页面与费用付款页面处理函数测试通过。
+未跑完整历史源码冻结测试集合，未宣称全项目所有旧测试通过。
+未连接生产数据库，未查生产历史金额，未做生产写入或部署。
+
+仍待用户决定，不能宣称本轮全部通过。
+问题一：市场与拼单现有业务支持浏览其他仓已审核商品、参加其他仓拼单，与严格仅本仓规则冲突。
+当前保留原交易查询和参与规则，没有擅自收紧或扩展跨仓交易；劳工已经拒绝，管理角色仍需原权限。
+私有附件采取拒绝越仓的安全默认，因此跨仓市场商品图片目前可能被 403；若决定保留跨仓交易，需要另行实现仅已审核公开商品图片的安全例外并验证引用，不能直接公开整个附件目录。
+问题二：旧超管专用商品审核列表 GET /market/review-list、商品审核 PUT /market/{item_id}/review、拼单禁参与 PUT /group-order/participant/{participant_id}/ban 与超管不做业务规则冲突。
+当前 3 个入口保留原超管专用规则，没有转给主管、财务或仓库管理员；劳工仍 403。
+需用户决定这三项继续作为平台审核保留给超管，还是移交相应仓库管理员，再完成归属、权限和正反向验证。
+两项未决之前保留工作区不提交、不推送，以免把已知尚未完成的市场图片和审核政策当作成品发布。
+
+本轮按模块的管理保护数如下。
+users：5 个管理入口。
+dashboard：6 个管理入口。
+customers：5 个管理入口。
+warehouses：3 个管理入口。
+payment_accounts：6 个管理入口。
+suppliers：48 个管理入口。
+recharge：5 个管理入口。
+incoming：7 个管理入口。
+reconciliation：5 个管理入口。
+income_expense：15 个管理入口。
+expense_fund：21 个管理入口。
+reimbursement：15 个管理入口。
+payable：24 个管理入口。
+credit：10 个管理入口。
+market：6 个管理入口。
+group_order：10 个管理入口。
+cost_funds_debt：4 个管理入口。
+reports：9 个管理入口。
+upload：2 个管理入口。
+settings_api：4 个管理入口。
+config_api：3 个管理入口。
+exchange_rates：3 个管理入口。
+employees：13 个管理入口。
+clock_in：6 个管理入口。
+attendance：7 个管理入口。
+overtime：4 个管理入口。
+payroll：20 个管理入口。
+history：3 个管理入口。
+efficiency：10 个管理入口。
+employee_advance：9 个管理入口。
+salary_template：4 个管理入口。
+deduction_template：4 个管理入口。
+employee_deduction：7 个管理入口。
+expense_approval：9 个管理入口。
+cash_advance：15 个管理入口。
+
+改动文件如下，均为本轮范围。
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/core/route_access.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/secure_uploads.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/router.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/main.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/core/employee_access.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/attendance.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/clock_in.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/overtime.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/payroll.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/employee_advance.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/config_api.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/auth.py
+/Users/xiongliu/Desktop/海外仓财务系统/backend/app/api/v1/upload.py
+/Users/xiongliu/Desktop/海外仓财务系统/frontend/src/components/layout/DashboardLayout.tsx
+/Users/xiongliu/Desktop/海外仓财务系统/frontend/src/hooks/useAuth.js
+/Users/xiongliu/Desktop/海外仓财务系统/frontend/src/hooks/useI18n.ts
+/Users/xiongliu/Desktop/海外仓财务系统/frontend/src/app/layout.tsx
+/Users/xiongliu/Desktop/海外仓财务系统/frontend/src/app/(dashboard)/attendance/page.tsx
+/Users/xiongliu/Desktop/海外仓财务系统/frontend/src/app/(dashboard)/settings/page.tsx
+/Users/xiongliu/Desktop/海外仓财务系统/nginx/default.conf
+/Users/xiongliu/Desktop/海外仓财务系统/nginx/default-https.conf.template
+/Users/xiongliu/Desktop/海外仓财务系统/backend/tests/test_management_access.py
+/Users/xiongliu/Desktop/海外仓财务系统/frontend/tests/labor-language.test.cjs
+/Users/xiongliu/Desktop/海外仓财务系统/docs/第3轮管理入口收口路由清单.json
+/Users/xiongliu/Desktop/海外仓财务系统/docs/第3轮管理入口实际结果.json
+/Users/xiongliu/Desktop/海外仓财务系统/docs/第3轮手机四页语言检查.json
+/Users/xiongliu/Desktop/海外仓财务系统/docs/第3轮管理入口阶段验收.txt
+
+实际执行的关键命令如下。
+PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres MANAGEMENT_TEST_REPORT=/tmp/round3-management-actual.json /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_management_access.py backend/tests/test_expense_approval_payment.py backend/tests/test_incoming_operations.py -q --junitxml=/tmp/round3-all-native-final.xml
+在 /tmp/wallet-build-o6qsx2gz 执行 node node_modules/next/dist/bin/next build。
+同目录独立执行 node node_modules/typescript/bin/tsc --noEmit --incremental false。
+NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules node frontend/tests/labor-language.test.cjs。
+NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules node frontend/tests/incoming-operations.test.cjs。
+NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules node frontend/tests/expense-approval-payment.test.cjs。
+原生 PostgreSQL 仅监听 127.0.0.1:55437，HTTP 测试使用随机隔离 schema，浏览器使用 18182 本机转发到 18180 后端及 18181 前端。
+所有浏览器操作使用真实 IAB 页面，未在生产账号或生产数据库造数。
+原始 XML、测试日志、构建日志、类型对比、路由清单、浏览器 DOM 和截图保存在以下目录。
+/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第3轮劳工接口收口-20261020
+
+清理结果：本轮临时前端 18181、后端 18180、转发 18182 及 PostgreSQL 55437 均已停止，后端退出时清理浏览器隔离 schema，未停止用户或生产服务。

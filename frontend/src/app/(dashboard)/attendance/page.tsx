@@ -60,7 +60,7 @@ export default function AttendancePage() {
   const isSuperAdmin = role === "super_admin";
   const canApprove = !employeeView && (role === "warehouse_admin" || role === "supervisor"); // 管理员/主管
   const canSelfLeave = role === "warehouse_labor" || role === "staff" || (employeeView && role === "supervisor" && user?.attendance_enabled); // 劳工/财务
-  const canViewRecords = role === "warehouse_admin" || role === "supervisor" || role === "warehouse_labor"; // 管理员/主管/劳工
+  const canViewRecords = role === "warehouse_admin" || role === "supervisor" || role === "staff" || role === "warehouse_labor";
   const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
 
   // 自定义日期范围（默认当月 1 号到当天）
@@ -132,7 +132,7 @@ export default function AttendancePage() {
   useEffect(() => { if (!getToken()) router.push("/login"); loadCalendar(); loadLeaves(); loadRestDays(); }, [dateRange, employeeView, user?.id]);
 
   useEffect(() => {
-    if (!employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor")) {
+    if (!employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor" || user?.role === "staff")) {
       api.get<any>("/config/attendance-times").then(r => {
         setScheduleTimes({
           1: r.morning_start || "09:00",
@@ -345,7 +345,9 @@ export default function AttendancePage() {
                 <tr key={emp.id} className="border-t hover:bg-gray-50/30">
                   <td className="px-3 py-2 font-medium text-gray-700 text-xs whitespace-nowrap">
                     {emp.name}
-                    <div className="text-gray-400 font-normal">{emp.position}</div>
+                    <div className="text-gray-400 font-normal">{employeeView || role === "warehouse_labor"
+                      ? (({ "仓库劳工": t("role_warehouse_labor"), "仓库主管": t("role_supervisor"), "仓库管理员": t("role_warehouse_admin") } as Record<string,string>)[emp.position] || (/[\u3400-\u9fff]/.test(emp.position || "") ? "" : emp.position))
+                      : emp.position}</div>
                   </td>
                   {dateList.map((d) => {
                     const dt = d.date;

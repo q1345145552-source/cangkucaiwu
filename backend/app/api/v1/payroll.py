@@ -2183,17 +2183,7 @@ async def my_payslip(
 
     from app.models.employee import Employee
 
-    # Find employee record matching this user（排除已删除）
-    if attendance_supervisor(current_user):
-        emp = current_user._attendance_employee
-    else:
-        emp = (await db.execute(
-            select(Employee).where(
-                Employee.warehouse_id == wh_id,
-                Employee.name == current_user.display_name,
-                Employee.is_deleted == False,
-            )
-        )).scalar_one_or_none()
+    emp = current_user._attendance_employee
     if not emp:
         return {"data": [], "message": "未找到员工档案"}
 

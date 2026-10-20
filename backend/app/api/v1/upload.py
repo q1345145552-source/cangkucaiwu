@@ -11,7 +11,7 @@ from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
 router = APIRouter()
 
-UPLOAD_DIR = "/app/uploads"
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
 
 def get_upload_path(user, subdir: str = "") -> str:
     today = thai_now().strftime("%Y-%m-%d")
@@ -39,6 +39,10 @@ async def upload_file(
     rel_subdir = f"uploads/{wh_id}/{today}"
     fname = f"{uuid.uuid4().hex}.{ext}"
     result = save_image(content, abs_subdir, rel_subdir, fname)
+    from app.api.secure_uploads import mark_temporary_upload
+    mark_temporary_upload(result["path"],current_user)
+    if result.get("thumb_path"):
+        mark_temporary_upload(result["thumb_path"],current_user)
     return {"path": result["path"], "thumb_path": result["thumb_path"], "filename": file.filename, "size": result["size"]}
 
 @router.post("/recharge-screenshot", dependencies=[Depends(require_non_labor)])
