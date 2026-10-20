@@ -206,7 +206,7 @@ def test_company_expense_approval_uses_chosen_account_and_actual_payment_day_onc
             assert rows['data'][0]['category_name']=='运营支出'
             assert (await views(c,start_date='2026-09-01',end_date='2026-09-30'))['company_expense']==0
             r=await c.post(f'/api/v1/expense-approvals/{a["id"]}/pay',headers=auth(1),json={'voucher_base64':image,'payment_account_id':1})
-            assert r.status_code==400
+            assert r.status_code==200 and r.json()['already_paid']
             assert (await views(c))['company_expense']==1000
     asyncio.run(run())
 

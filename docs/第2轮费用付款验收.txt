@@ -1,0 +1,82 @@
+第2轮：小额费用付款确认及备用金扣款（2026-10-20）
+基线为2dc9f91，仅执行原十二轮计划的第2轮，不进入第3轮，不部署生产。
+
+修复结果
+金额不超过门槛时只免审批，状态进入approved待付款，不生成支出、不扣公司账户、不扣备用金，不虚构审批人或付款人。
+实际付款仍只有仓库管理员能确认，付款凭证必填，公司来源必须选择本仓有效同币种账户。
+付款锁定费用申请，再锁定公司账户或备用金；状态、付款人、付款时间、支出或备用金开销、修改日志在同一数据库事务内提交。
+公司账户实际付款生成现有ExpenseRecord，现有钱包查询同步显示一笔流水并计算余额；使用实际付款日，不使用申请日代替。
+备用金付款复用fund_available_amount和原开销台账，生成一笔已审核开销并减少可用余额，不再新增公司支出或公司流水，不另扣一次remaining_balance。
+同一申请付款后重试返回200、already_paid=true和原付款编号、时间及凭证，不再写账；企图更换付款账户返回409。
+新增fund_item_id精确关联备用金开销及唯一索引，避免用金额或用途文字猜关联。
+主管、财务读取和提交须有后端清单中的费用审批权限；审批、驳回及付款仍仅仓库管理员，超管禁业务、劳工禁管理，仓库隔离保留。
+申请修改、审批和驳回也锁定同一条申请，避免并发状态覆盖已付款结果。
+前端展示待付款、实际付款人及泰国时间，更新看板，上传付款凭证；公司与备用金分别提交对应账户信息，防止双击，付款失败可以重试。
+未改变全局排版、菜单、其他页面或工资计算。
+
+真实PostgreSQL 16.2结果
+仅使用127.0.0.1:55437原生PostgreSQL临时进程，每例独立schema，完整启动测试使用独立新建数据库；没有连接生产。
+门槛500，公司账户1000，提交200：approved待付款，余额1000，支出0条，有效付款0条，流水0条，付款人及时间均空。
+管理员确认：余额800，钱包支出200，支出1条、流水1条、付款日志1条；payer_id=1，paid_at=2026-10-20T12:00:00+07:00。
+申请日期为9月30日，实际付款10月20日，流水日期为10月20日。
+再顺序重试3次，仍余额800、支出200、流水1条，返回同一编号、时间和凭证；更换账户409。
+公司账户和备用金两条路各10个真实并发确认：每组1次首次付款、9次复用既有结果，未重复记账。
+备用金1000，提交200时可用1000；确认后800，已审核开销1条，关联fund_item_id有值，凭证为实际付款凭证。
+备用金确认后公司账户不变，无新增公司支出及公司流水；测试的初始备用金是已拨付余额，不把开销再算第二次。
+两张不同700元费用并发争用同一1000元账户或备用金：各一笔成功、一笔400余额不足，剩300，不透支。
+待审批600元及驳回费用调用付款均400，不扣任何资金。
+在支出或备用金开销已经flush后故意让写日志失败，HTTP500；申请恢复待付款，付款人、时间、支出、开销关联全部为空，余额及流水回到付款前。
+模拟凭证保存失败返回400，同样不扣资金；恢复后重试成功。
+主管、财务、劳工、超管调用付款403，外仓管理员访问本仓申请404；无权限主管和财务读取、提交403；外仓账户、错币种、缺账户、缺凭证400。
+
+垫款回归及口径说明
+公司账户初始20000，已确认垫款10000；用垫款发工资7000和付报销2000，原业务发生额9000，公司钱包流出0，公司余额20000，欠款10000。
+归还9000后，公司余额11000，钱包新增一笔9000，欠款1000；原工资7000及报销2000均未改，业务发生额仍9000，没有重复生成ExpenseRecord。
+业务发生额不是公司钱包流出；目前名为成本的只读报表沿用钱包支出口径，并无独立权责成本账，本轮未改成另一套成本算法。
+已算工资单不自动重算，三个已停用的财务撤销接口未恢复。
+
+迁移及历史
+seed.py新增_migrate_expense_approval_payment，fund_item_id可空，ALTER TABLE和唯一索引均IF NOT EXISTS，每条独立保存点，失败终止启动。
+新库、模拟旧库、重复执行及故意DDL失败后的保存点恢复通过。
+完整seed.py新建数据库、旧库升级、再次启动退出码均0；旧completed记录123元状态、金额、付款人、时间和空关联均未改变。
+新增只读脚本backend/scripts/audit_expense_approval_payments.py，显式连接，事务SET TRANSACTION READ ONLY；列出旧completed、缺付款元数据或关联的疑点，不推断历史付款、不补账。
+隔离历史样例核查列出1条123元旧completed疑点，没有新增支出、流水或开销。
+生产历史异常笔数和金额本轮未查询，不能据此认定线上没有异常。
+
+前端实操
+真实浏览器390×844，登录合成仓库管理员test-1，提交公司200元，数据库余额1000、有效付款0；上传自建PNG并确认后余额800、支出200、一笔流水。
+再提交备用金200元，提交时备用金1000；实际确认后800、一笔开销，公司余额仍800、公司流水仍一笔200。
+页面看板已付款400包含公司200和备用金200，不等于公司钱包本次流出400；本次公司钱包仅流出200。
+列表显示两条实际付款人及泰国时间，凭证可打开；390宽度下页面宽度390，无整页横向溢出，表格保留原有局部横向滚动。
+付款弹框可见金额、账户、凭证及确认按钮；截图保存在本次交付目录，临时浏览器视口在验证后恢复。
+
+实际验证命令
+PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres EXPENSE_PAYMENT_TEST_REPORT=/tmp/fee-round2-actual.json /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_expense_approval_payment.py -q --junitxml=/tmp/fee-round2-postgres-tests.xml
+结果12项通过，0失败，0跳过。
+PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres INCOMING_TEST_REPORT=/tmp/fee-round2-incoming-actual.json /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_incoming_operations.py -q --junitxml=/tmp/fee-round2-incoming-postgres.xml
+第1轮到账防重、并发、截图失败恢复、私有附件及迁移回归6项通过，0失败，0跳过。
+PYTHONPATH=backend /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_wallet_basis.py backend/tests/test_wallet_integrity.py backend/tests/test_non_labor_guard.py backend/tests/test_non_labor_batch2_writes.py backend/tests/test_non_labor_read_group1.py -q --junitxml=/tmp/fee-round2-wallet-regression.xml
+钱包及权限回归288项通过，0失败，0跳过；原重复付款断言改为200且already_paid，金额仍严格断言只计一次。
+PYTHONPATH=backend /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_config_center_access.py -k 'not only_config_access_changed_business_tail_identical' -q --junitxml=/tmp/fee-round2-config-regression.xml
+配置中心行为回归13项通过；旧轮次要求整段费用源码不变的冻结断言未用于本轮已授权修改，未修改该旧断言来掩盖变更。
+NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node frontend/tests/expense-approval-payment.test.cjs
+实际费用页面处理函数通过免审批待付款、账户及凭证校验、两种付款参数、双击防护、失败重试、丢失响应重试、付款人时间及权限按钮检查。
+同样运行frontend/tests/incoming-operations.test.cjs，第1轮实际页面状态机回归通过。
+构建目录/tmp/wallet-build-o6qsx2gz复制本轮frontend/src，PATH=/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH NEXT_TELEMETRY_DISABLED=1 node node_modules/next/dist/bin/next build，退出码0。
+同目录运行node node_modules/typescript/bin/tsc --noEmit --incremental false，改前101条、改后101条，新增0条；不宣称全量类型检查无错误或全项目旧套件全绿。
+
+改动文件共10个
+backend/app/api/v1/expense_approval.py
+backend/app/models/expense_approval.py
+backend/scripts/seed.py
+backend/scripts/audit_expense_approval_payments.py
+backend/tests/test_expense_approval_payment.py
+backend/tests/test_wallet_integrity.py
+frontend/src/app/(dashboard)/expense-approvals/page.tsx
+frontend/tests/expense-approval-payment.test.cjs
+docs/第2轮费用付款验收.txt
+docs/第2轮费用付款实际数字.json
+
+未完成及边界
+未部署生产、未对生产写测试数据、未查询或修复生产历史异常，没有开始第3轮。
+保留用户原有未跟踪目录.deploy/，未读取、修改或提交其中内容。

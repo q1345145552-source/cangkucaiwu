@@ -7,10 +7,10 @@ from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.customer import PaymentAccount
 from app.models.expense_fund import SystemSetting, ExpenseFund, ExpenseFundItem, ReviewStatus
 from app.models.user import User
-from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission_any, check_staff_permission
+from app.core.permissions import get_wh_id, get_wh_ids, Role, check_staff_permission_any, check_staff_permission
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.core.config_access import ensure_config_editor
-from app.core.timezone import thai_now, thai_today
+from app.core.timezone import thai_now, thai_today, THAI_TZ
 from pydantic import BaseModel, Field
 from datetime import datetime, date
 from decimal import Decimal
@@ -22,6 +22,8 @@ router = APIRouter()
 PAYMENT_METHODS = ("alipay", "wechat", "bank_transfer", "company_account", "cash")
 FUND_SOURCES = ("fund", "company")
 THRESHOLD_KEY = "expense_approval_threshold"
+EXEMPT_NOTE = "金额未超过审批门槛，免审批，待付款"
+expense_user = check_staff_permission(MENU_PERMISSIONS_BY_KEY["expense_approval"].label)
 
 
 def _check_submit_role(current_user: User):
@@ -102,9 +104,15 @@ def _save_voucher(wh_id, data_url: str) -> Optional[str]:
 
 
 async def _generate_operating_expense(db: AsyncSession, appr: ExpenseApproval):
-    """不超过门槛：直接完成，并生成一笔运营支出。"""
+    """实际公司付款才生成支出；余额和流水统一由这条付款事实投影。"""
     if appr.fund_source == "fund":
         return  # 已在备用金拨付时计过公司支出
+    from app.services.wallet import lock_account, positive_money
+    from app.services.account_balances import current_account_balances
+    account = await lock_account(db, appr.warehouse_id, appr.payment_account_id, appr.currency or "THB")
+    value = positive_money(appr.amount)
+    if (await current_account_balances(db, [account]))[account.id] < value:
+        raise HTTPException(400, "公司账户余额不足")
     # 找运营支出类别，没有则建一个
     cat = (await db.execute(
         select(IncomeExpenseCategory).where(
@@ -119,20 +127,14 @@ async def _generate_operating_expense(db: AsyncSession, appr: ExpenseApproval):
         db.add(cat)
         await db.flush()
 
-    from app.services.wallet import lock_account, positive_money
-    from app.services.account_balances import current_account_balances
-    account = await lock_account(db, appr.warehouse_id, appr.payment_account_id, appr.currency or "THB")
-    value = positive_money(appr.amount)
-    if (await current_account_balances(db, [account]))[account.id] < value:
-        raise HTTPException(400, "公司账户余额不足")
     expense = ExpenseRecord(
         warehouse_id=appr.warehouse_id,
         category_id=cat.id,
         account_id=account.id,
         amount=appr.amount,
         currency=appr.currency or "THB",
-        expense_date=appr.paid_at.replace(tzinfo=None) if appr.paid_at else datetime.combine(appr.expense_date, datetime.min.time()),
-        voucher=appr.voucher_path,
+        expense_date=appr.paid_at.replace(tzinfo=None),
+        voucher=appr.payment_voucher,
         remark=f"[费用审批#{appr.id}] {appr.purpose}",
     )
     db.add(expense)
@@ -149,29 +151,42 @@ async def _link_fund(db: AsyncSession, appr: ExpenseApproval):
             ExpenseFund.warehouse_id == appr.warehouse_id,
             ExpenseFund.status == "active",
             func.coalesce(ExpenseFund.currency, "THB") == (appr.currency or "THB"),
-        ).order_by(ExpenseFund.id.asc()).with_for_update()
+        ).order_by(ExpenseFund.id.asc()).with_for_update().execution_options(populate_existing=True)
     )).scalars().first()
     if not fund:
         raise HTTPException(400, "没有可用的同币种备用金")
     from app.services.employee_advance_funding import fund_available_amount
     if await fund_available_amount(db, fund) < Decimal(str(appr.amount)):
         raise HTTPException(400, "备用金余额不足")
-    db.add(ExpenseFundItem(
+    item = ExpenseFundItem(
         fund_id=fund.id,
         expense_date=thai_now().replace(tzinfo=None),
         category="费用支出",
         amount=appr.amount,
         currency=appr.currency or "THB",
         description=appr.purpose,
-        receipt=appr.voucher_path,
+        receipt=appr.payment_voucher,
         review_status=ReviewStatus.APPROVED.value, cost_record_only=True,
-    ))
+    )
+    db.add(item)
+    await db.flush()
+    appr.fund_item_id = item.id
+
+
+def _payment_result(a: ExpenseApproval, *, already_paid=False):
+    paid_at = (a.paid_at.replace(tzinfo=THAI_TZ) if a.paid_at and a.paid_at.tzinfo is None else a.paid_at)
+    return {"id": a.id, "status": a.status, "message": "该申请已付款，请勿重复付款" if already_paid else "已付款",
+        "already_paid": already_paid, "payer_id": a.payer_id,
+        "paid_at": paid_at.astimezone(THAI_TZ).isoformat() if paid_at else None,
+        "payment_account_id": a.payment_account_id, "expense_record_id": a.expense_record_id,
+        "fund_item_id": a.fund_item_id, "payment_voucher": a.payment_voucher,
+        "ledger_ref_no": f"EX-{a.expense_record_id}" if a.expense_record_id else None}
 
 
 @router.post("")
 async def create_approval(
     req: ApprovalCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(expense_user),
     db: AsyncSession = Depends(get_db),
 ):
     _check_submit_role(current_user)
@@ -179,8 +194,8 @@ async def create_approval(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
-    if req.amount <= 0:
-        raise HTTPException(400, "金额必须大于0")
+    from app.services.wallet import positive_money
+    positive_money(req.amount)
     purpose = (req.purpose or "").strip()
     if not purpose:
         raise HTTPException(400, "请填写用途说明")
@@ -199,8 +214,8 @@ async def create_approval(
     voucher_path = _save_voucher(wh_id, req.voucher_base64) if req.voucher_base64 else None
 
     threshold = await _get_threshold(db, wh_id)
-    # 门槛判断：超过门槛待审批，不超过直接完成
-    status = "pending" if req.amount > threshold else "completed"
+    # 免审批只进入待付款，不代表钱已经付出。
+    status = "pending" if req.amount > threshold else "approved"
 
     a = ExpenseApproval(
         warehouse_id=wh_id,
@@ -213,21 +228,18 @@ async def create_approval(
         payment_method=req.payment_method,
         fund_source=req.fund_source, payment_account_id=req.payment_account_id if req.fund_source == "company" else None,
         status=status,
+        approval_note=EXEMPT_NOTE if status == "approved" else None,
     )
     db.add(a)
     await db.flush()
 
-    if status == "completed":
-        await _generate_operating_expense(db, a)
-
-    await db.flush()
-    return {"id": a.id, "status": status, "message": "费用已提交" if status == "pending" else "费用已生效"}
+    return {"id": a.id, "status": status, "message": "费用已提交，等待审批" if status == "pending" else "免审批，等待确认付款"}
 
 
 @router.get("")
 async def list_approvals(
     status: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(expense_user),
     db: AsyncSession = Depends(get_db),
 ):
     _check_submit_role(current_user)
@@ -263,12 +275,13 @@ async def list_approvals(
             "voucher_path": r.voucher_path,
             "payment_method": r.payment_method,
             "fund_source": r.fund_source, "payment_account_id": r.payment_account_id, "expense_record_id": r.expense_record_id,
+            "fund_item_id": r.fund_item_id,
             "status": r.status,
             "approver_id": r.approver_id,
             "approver_name": user_map.get(r.approver_id, ""),
             "approved_at": r.approved_at.isoformat() if r.approved_at else None,
             "approval_note": r.approval_note,
-            "payer_name": user_map.get(r.payer_id, ""),
+            "payer_id": r.payer_id, "payer_name": user_map.get(r.payer_id, ""),
             "paid_at": r.paid_at.isoformat() if r.paid_at else None,
             "payment_voucher": r.payment_voucher,
             "created_at": r.created_at.isoformat() if r.created_at else None,
@@ -279,7 +292,7 @@ async def list_approvals(
 
 @router.get("/summary")
 async def approval_summary(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(expense_user),
     db: AsyncSession = Depends(get_db),
 ):
     """页面看板：待审批笔数 / 已批准待付款笔数 / 本月已付款金额按币种。"""
@@ -351,7 +364,7 @@ async def set_threshold(
 async def update_approval(
     approval_id: int,
     req: ApprovalUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(expense_user),
     db: AsyncSession = Depends(get_db),
 ):
     """申请人修改（待审批/已驳回），改完重新提交 → 状态回到待审批。"""
@@ -362,6 +375,7 @@ async def update_approval(
 
     a = (await db.execute(
         select(ExpenseApproval).where(ExpenseApproval.id == approval_id, ExpenseApproval.warehouse_id == wh_id)
+        .with_for_update().execution_options(populate_existing=True)
     )).scalar_one_or_none()
     if not a:
         raise HTTPException(404, "费用申请不存在")
@@ -416,7 +430,7 @@ async def update_approval(
 @router.post("/{approval_id}/approve")
 async def approve_approval(
     approval_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(expense_user),
     db: AsyncSession = Depends(get_db),
 ):
     _check_manage_role(current_user)
@@ -425,6 +439,7 @@ async def approve_approval(
         raise HTTPException(400, "请先选择仓库")
     a = (await db.execute(
         select(ExpenseApproval).where(ExpenseApproval.id == approval_id, ExpenseApproval.warehouse_id == wh_id)
+        .with_for_update().execution_options(populate_existing=True)
     )).scalar_one_or_none()
     if not a:
         raise HTTPException(404, "费用申请不存在")
@@ -441,7 +456,7 @@ async def approve_approval(
 async def reject_approval(
     approval_id: int,
     req: RejectRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(expense_user),
     db: AsyncSession = Depends(get_db),
 ):
     _check_manage_role(current_user)
@@ -450,6 +465,7 @@ async def reject_approval(
         raise HTTPException(400, "请先选择仓库")
     a = (await db.execute(
         select(ExpenseApproval).where(ExpenseApproval.id == approval_id, ExpenseApproval.warehouse_id == wh_id)
+        .with_for_update().execution_options(populate_existing=True)
     )).scalar_one_or_none()
     if not a:
         raise HTTPException(404, "费用申请不存在")
@@ -467,7 +483,7 @@ async def reject_approval(
 async def pay_approval(
     approval_id: int,
     req: PayRequest = PayRequest(),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(expense_user),
     db: AsyncSession = Depends(get_db),
 ):
     _check_manage_role(current_user)
@@ -479,8 +495,18 @@ async def pay_approval(
     )).scalar_one_or_none()
     if not a:
         raise HTTPException(404, "费用申请不存在")
+    if a.status == "paid":
+        if req.payment_account_id is not None and req.payment_account_id != a.payment_account_id:
+            raise HTTPException(409, "该申请已付款，不能更换付款账户")
+        return _payment_result(a, already_paid=True)
     if a.status != "approved":
         raise HTTPException(400, "只有已批准的申请可以付款")
+    if a.expense_record_id is not None or a.fund_item_id is not None:
+        raise HTTPException(400, "该申请已有记账记录，请先核对")
+    if a.fund_source == "company" and not req.payment_account_id:
+        raise HTTPException(400, "请选择付款账户")
+    if a.fund_source == "fund" and req.payment_account_id is not None:
+        raise HTTPException(400, "备用金付款不应选择公司账户")
 
     # 付款凭证必填
     if not req.voucher_base64:
@@ -488,7 +514,6 @@ async def pay_approval(
     p = _save_voucher(wh_id, req.voucher_base64)
     if not p:
         raise HTTPException(400, "请上传付款凭证")
-    if a.fund_source == "company" and not req.payment_account_id: raise HTTPException(400, "请选择付款账户")
     a.payment_voucher = p
     a.payment_account_id = req.payment_account_id
 
@@ -501,4 +526,8 @@ async def pay_approval(
     await _generate_operating_expense(db, a)
     await _link_fund(db, a)
     await db.flush()
-    return {"id": a.id, "message": "已付款"}
+    from app.services.data_history import record_history
+    await record_history(db, module="expense_approval", record_id=a.id, operator=current_user,
+        operation_type="pay", after={**_payment_result(a), "amount": a.amount,
+            "currency": a.currency, "fund_source": a.fund_source}, warehouse_id=wh_id)
+    return _payment_result(a)

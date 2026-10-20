@@ -46,6 +46,22 @@ async def _migrate_incoming_operations(conn):
             raise
     print("到账防重迁移完成：请求号、请求摘要及私有截图；历史记录不回填")
 
+async def _migrate_expense_approval_payment(conn):
+    """只增加费用付款与备用金开销的精确关联；历史异常不自动补账。"""
+    from sqlalchemy import text
+    for statement in (
+        "ALTER TABLE expense_approvals ADD COLUMN IF NOT EXISTS fund_item_id INTEGER REFERENCES expense_fund_items(id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_expense_approval_fund_item ON expense_approvals(fund_item_id)",
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"费用实际付款迁移失败：{exc}")
+            raise
+    print("费用实际付款迁移完成：备用金开销关联；历史记录不补账")
+
+
 async def _migrate_wallet_basis(conn):
     """只增加收付关联/逐笔表；不补成本、不重算工资、不猜拆历史付款。失败终止启动。"""
     from sqlalchemy import text
@@ -451,6 +467,7 @@ async def seed():
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_incoming_operations(conn)
         await _migrate_wallet_basis(conn)
+        await _migrate_expense_approval_payment(conn)
         await _migrate_audit_ip_location(conn)
         await _migrate_user_attendance_columns(conn)
         await _migrate_advance_approval_columns(conn)

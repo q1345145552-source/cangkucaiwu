@@ -1,12 +1,13 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Date, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
 
 class ExpenseApproval(Base):
-    """费用审批（每仓库独立）。金额超门槛走审批，不超门槛直接完成并生成运营支出。"""
+    """费用审批（每仓库独立）；免审批仍须确认实际付款。"""
     __tablename__ = "expense_approvals"
+    __table_args__ = (Index("uq_expense_approval_fund_item", "fund_item_id", unique=True),)
 
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
@@ -26,6 +27,7 @@ class ExpenseApproval(Base):
     paid_at = Column(DateTime(timezone=True), nullable=True)
     payment_account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=True)
     expense_record_id = Column(Integer, ForeignKey("expense_records.id"), nullable=True)
+    fund_item_id = Column(Integer, ForeignKey("expense_fund_items.id"), nullable=True)
     payment_voucher = Column(String(500), nullable=True, comment="付款凭证")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

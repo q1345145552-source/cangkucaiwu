@@ -4,11 +4,12 @@ import { useEffect, useState, useRef } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useRouter } from "next/navigation";
 import { Receipt, Plus, Edit2, XCircle, CheckCircle, Banknote, Trash2 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "待审批", approved: "已批准", paid: "已付款", rejected: "已驳回", completed: "已完成",
+  pending: "待审批", approved: "待付款", paid: "已付款", rejected: "已驳回", completed: "已完成（历史）",
 };
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700",
@@ -47,6 +48,10 @@ export default function ExpenseApprovalsPage() {
   const [summary, setSummary] = useState<any>({ pending_count: 0, approved_count: 0, paid_by_currency: [] });
   const [payId, setPayId] = useState<number | null>(null);
   const [payVoucherFile, setPayVoucherFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const submitBusy = useRef(false);
+  const payBusy = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const payFileRef = useRef<HTMLInputElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -58,7 +63,8 @@ export default function ExpenseApprovalsPage() {
   }
 
   const role = user?.role;
-  const canSubmit = role === "warehouse_admin" || role === "supervisor" || role === "staff";
+  const hasPermission = useMenuPermission("expense_approval");
+  const canSubmit = hasPermission && (role === "warehouse_admin" || role === "supervisor" || role === "staff");
   const canApprove = role === "warehouse_admin";
   const canSetThreshold = role === "warehouse_admin";
 
@@ -91,6 +97,7 @@ export default function ExpenseApprovalsPage() {
 
   function openCreate() {
     setEditingId(null);
+    setAccountId(0);
     setForm({ amount: "", currency: "THB", purpose: "", expense_date: todayStr(), payment_method: "cash", fund_source: "company" });
     setVoucherFile(null);
     setShowForm(true);
@@ -108,10 +115,13 @@ export default function ExpenseApprovalsPage() {
   }
 
   async function handleSubmit() {
+    if (submitBusy.current) return;
     const amt = parseFloat(form.amount);
     if (!amt || amt <= 0) { toast("error", "请填写金额"); return; }
     if (!form.purpose.trim()) { toast("error", "请填写用途说明"); return; }
     if (form.fund_source === "company" && !accountId) { toast("error", "请选择付款账户"); return; }
+    submitBusy.current = true;
+    setSubmitting(true);
     try {
       let voucher_base64: string | undefined;
       if (voucherFile) {
@@ -127,33 +137,38 @@ export default function ExpenseApprovalsPage() {
         toast("success", r.message || "已重新提交");
       } else {
         const r = await api.post<any>("/expense-approvals", { ...form, amount: amt, voucher_base64, payment_account_id: form.fund_source === "company" ? accountId : null });
-        toast("success", r.status === "completed" ? "费用已直接生效" : "已提交，等待审批");
+        toast("success", r.message || "费用已提交");
       }
       setShowForm(false);
       load();
+      loadSummary();
     } catch (err: any) { toast("error", err.message || "提交失败"); }
+    finally { submitBusy.current = false; setSubmitting(false); }
   }
 
   async function approve(id: number) {
-    try { await api.post(`/expense-approvals/${id}/approve`, {}); toast("success", "已批准"); load(); }
+    try { await api.post(`/expense-approvals/${id}/approve`, {}); toast("success", "已批准，等待确认付款"); load(); loadSummary(); }
     catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
   async function reject(id: number) {
-    try { await api.post(`/expense-approvals/${id}/reject`, { note: rejectNote }); toast("success", "已驳回"); setRejectId(null); setRejectNote(""); load(); }
+    try { await api.post(`/expense-approvals/${id}/reject`, { note: rejectNote }); toast("success", "已驳回"); setRejectId(null); setRejectNote(""); load(); loadSummary(); }
     catch (err: any) { toast("error", err.message || "操作失败"); }
   }
 
   function openPay(id: number) {
-    setPayAccountId(rows.find(r => r.id === id)?.payment_account_id || 0);
+    const row = rows.find(r => r.id === id);
+    setPayAccountId(row?.fund_source === "fund" ? 0 : row?.payment_account_id || 0);
     setPayId(id);
     setPayVoucherFile(null);
   }
 
   async function confirmPay() {
-    if (!payId) return;
+    if (!payId || payBusy.current) return;
     if (rows.find(r => r.id === payId)?.fund_source !== "fund" && !payAccountId) { toast("error", "请选择付款账户"); return; }
     if (!payVoucherFile) { toast("error", "请上传付款凭证"); return; }
+    payBusy.current = true;
+    setPaying(true);
     try {
       const voucher_base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -161,13 +176,15 @@ export default function ExpenseApprovalsPage() {
         reader.onerror = reject;
         reader.readAsDataURL(payVoucherFile);
       });
-      await api.post(`/expense-approvals/${payId}/pay`, { voucher_base64, payment_account_id: payAccountId });
-      toast("success", "已付款");
+      const r = await api.post<any>(`/expense-approvals/${payId}/pay`, { voucher_base64,
+        payment_account_id: rows.find(row => row.id === payId)?.fund_source === "fund" ? null : payAccountId });
+      toast("success", r.message || "已付款");
       setPayId(null);
       setPayVoucherFile(null);
       load();
       loadSummary();
     } catch (err: any) { toast("error", err.message || "付款失败"); }
+    finally { payBusy.current = false; setPaying(false); }
   }
 
   return (
@@ -179,7 +196,7 @@ export default function ExpenseApprovalsPage() {
           <p className="text-2xl font-bold text-amber-600">{summary.pending_count ?? 0}</p>
         </div>
         <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-400">已批准待付款</p>
+          <p className="text-xs text-gray-400">待付款（含免审批）</p>
           <p className="text-2xl font-bold text-blue-600">{summary.approved_count ?? 0}</p>
         </div>
         <div className="bg-white rounded-xl border p-4 md:col-span-2">
@@ -215,7 +232,7 @@ export default function ExpenseApprovalsPage() {
 
       {/* 状态筛选 */}
       <div className="flex gap-2 mb-3 flex-wrap">
-        {[["all", "全部"], ["pending", "待审批"], ["approved", "已批准"], ["paid", "已付款"], ["rejected", "已驳回"], ["completed", "已完成"]].map(([k, label]) => (
+        {[["all", "全部"], ["pending", "待审批"], ["approved", "待付款"], ["paid", "已付款"], ["rejected", "已驳回"], ["completed", "已完成（历史）"]].map(([k, label]) => (
           <button key={k} onClick={() => setFilterStatus(k)}
             className={`px-3 py-1.5 rounded-lg text-sm ${filterStatus === k ? "bg-blue-500 text-white" : "bg-white text-gray-600 border"}`}>
             {label}
@@ -242,7 +259,7 @@ export default function ExpenseApprovalsPage() {
                 <th className="text-center px-3 py-3 font-medium text-gray-500">状态</th>
                 <th className="text-left px-3 py-3 font-medium text-gray-500">审批人</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">申请凭证</th>
-                <th className="text-center px-3 py-3 font-medium text-gray-500">付款凭证</th>
+                <th className="text-center px-3 py-3 font-medium text-gray-500">付款记录</th>
                 <th className="text-center px-3 py-3 font-medium text-gray-500">操作</th>
               </tr>
             </thead>
@@ -257,6 +274,7 @@ export default function ExpenseApprovalsPage() {
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[r.status] || "bg-gray-100 text-gray-600"}`}>
                       {STATUS_LABELS[r.status] || r.status}
                     </span>
+                    {r.approval_note && r.status === "approved" && !r.approver_id && <p className="text-xs text-gray-400 mt-1">{r.approval_note}</p>}
                   </td>
                   <td className="px-3 py-3">{r.approver_name || "-"}</td>
                   <td className="px-3 py-3 text-center">
@@ -265,6 +283,8 @@ export default function ExpenseApprovalsPage() {
                     ) : "-"}
                   </td>
                   <td className="px-3 py-3 text-center">
+                    {r.payer_name && <p className="text-xs">付款人：{r.payer_name}</p>}
+                    {r.paid_at && <p className="text-xs text-gray-500 whitespace-nowrap">{new Date(r.paid_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok", hour12: false })}</p>}
                     {r.payment_voucher ? (
                       <button onClick={() => openPreview(r.payment_voucher)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">查看</button>
                     ) : "-"}
@@ -294,12 +314,13 @@ export default function ExpenseApprovalsPage() {
 
       {/* 提申请/修改弹窗 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { if (!submitting) setShowForm(false); }}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Receipt size={20} /><span className="font-semibold">{editingId ? "修改费用申请" : "提费用申请"}</span>
             </div>
             <div className="p-5 space-y-4">
+              <p className="text-xs text-gray-500">不超过门槛可免审批，仍须仓库管理员确认付款后才记账。</p>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">金额 <span className="text-red-400">*</span></label>
                 <input type="number" step="0.01" className="form-input py-2.5 w-full" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
@@ -349,8 +370,8 @@ export default function ExpenseApprovalsPage() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleSubmit} className="btn-primary text-sm px-6 py-2">提交</button>
+              <button disabled={submitting} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button disabled={submitting} onClick={handleSubmit} className="btn-primary text-sm px-6 py-2">{submitting ? "提交中…" : "提交"}</button>
             </div>
           </div>
         </div>
@@ -379,28 +400,30 @@ export default function ExpenseApprovalsPage() {
 
       {/* 付款弹窗（上传付款凭证） */}
       {payId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setPayId(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { if (!paying) setPayId(null); }}>
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-green-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Banknote size={20} /><span className="font-semibold">确认付款</span>
             </div>
             <div className="p-5 space-y-4">
+              <p className="font-medium">本次付款：{rows.find(r => r.id === payId)?.amount?.toLocaleString()} {rows.find(r => r.id === payId)?.currency}</p>
+              <p className="text-sm text-gray-500">{rows.find(r => r.id === payId)?.fund_source === "fund" ? "从备用金支付并记录开销，不再新增公司支出。" : "确认后从所选公司账户付款，并记入支出。"}</p>
               {rows.find(r => r.id === payId)?.fund_source !== "fund" && <WalletAccountSelect value={payAccountId} onChange={setPayAccountId} currency={rows.find(r => r.id === payId)?.currency || "THB"} />}
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">付款凭证照片 <span className="text-red-400">*</span></label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={() => payFileRef.current?.click()} className="border border-dashed rounded-lg px-4 py-2 text-sm text-gray-400 hover:text-green-500 hover:border-green-300">
                     选择图片
                   </button>
-                  {payVoucherFile && <span className="text-xs text-green-600">{payVoucherFile.name}</span>}
+                  {payVoucherFile && <span className="text-xs text-green-600 break-all">{payVoucherFile.name}</span>}
                 </div>
                 <input ref={payFileRef} type="file" accept="image/*" className="hidden" onChange={e => setPayVoucherFile(e.target.files?.[0] || null)} />
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setPayId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmPay} disabled={!payVoucherFile}
-                className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">确认付款</button>
+              <button disabled={paying} onClick={() => setPayId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={confirmPay} disabled={!payVoucherFile || paying}
+                className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{paying ? "付款中…" : "确认付款"}</button>
             </div>
           </div>
         </div>
