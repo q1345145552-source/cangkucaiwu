@@ -1,4 +1,5 @@
 export interface IncomingPayload {
+  customer_id?: number | null;
   received_date: string; amount: number; currency: string; account_id: number;
   payer_name: string; payment_method: string; remark: string;
 }

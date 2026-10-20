@@ -67,7 +67,7 @@ function harness(s,storage=new Map([['user',JSON.stringify({id:1,warehouse_id:1}
  return {storage,messages,WalletAccountSelect,DataTable,async render(){await new Promise(r=>setTimeout(r,0));for(let i=0;i<20;i++){index=ri=ei=0;const tree=mod.default();if(!effects.length)return tree;effects.splice(0).forEach(fn=>fn());await new Promise(r=>setTimeout(r,0));}throw Error('Effects did not settle');}};
 }
 async function fill(h) {
- let tree=await h.render();change(field(tree,'金额'),'1000');tree=await h.render();change(field(tree,'付款方'),'测试客户');tree=await h.render();
+ let tree=await h.render();change(field(tree,'金额'),'1000');tree=await h.render();change(field(tree,'付款方'),'1');tree=await h.render();
  find(tree,n=>n.type===h.WalletAccountSelect).props.onChange(1);return h.render();
 }
 function selectScreenshot(tree) {
@@ -79,7 +79,7 @@ function selectScreenshot(tree) {
  // Screenshot failure happens after money is saved. Reload can only resume that record.
  let s=server(),h=harness(s),tree=await fill(h);s.flags.uploadFail=true;selectScreenshot(tree);tree=await h.render();
  await button(tree,'录入').props.onClick();tree=await h.render();
- assert.equal(s.rows.length,1);assert.equal(s.writes.length,1);assert(text(tree).includes('到账 #1 已入账，截图待补传'));
+ assert.equal(s.rows.length,1);assert.equal(s.writes.length,1);assert.equal(s.writes[0].customer_id,1);assert(text(tree).includes('到账 #1 已入账，截图待补传'));
  assert(h.messages.some(m=>m[1].includes('已入账')&&m[1].includes('仅补传截图')));
  assert(find(tree,n=>n.type==='fieldset').props.disabled);
  const stored=JSON.parse(h.storage.get('incoming-operation:1:1'));assert.equal(stored.savedId,1);

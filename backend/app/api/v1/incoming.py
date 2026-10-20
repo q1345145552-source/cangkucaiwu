@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Request
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 import hashlib
@@ -13,46 +13,58 @@ from app.models.user import User
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, require_non_labor, check_staff_permission, check_staff_permission_any
 from app.schemas.business import IncomingCreate, IncomingBatchImport
 from app.services.incoming_receipts import create_once, incoming_dict, private_directory, screenshot_path
+from app.services.customer_receivables import receipt_identity_query
+from app.services.warehouse_summary import warehouse_scope
+from app.models.customer import Customer
 
 router = APIRouter()
 
 @router.get("", dependencies=[Depends(require_non_labor)])
 async def list_incoming(
+    request: Request,
+    eligible_for_customer_id: int = None, currency: str = None,
     page: int = 1, page_size: int = 20, month: str = None, status: str = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission_any("到账流水", "账期管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(IncomingFlow); count_q = select(func.count(IncomingFlow.id))
-    query = query.where(IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)))
-    count_q = count_q.where(IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)))
+    scope = [w.id for w in await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))]
+    identity = receipt_identity_query()
+    query = select(IncomingFlow,identity.c.customer_id,identity.c.customer_count).outerjoin(identity,identity.c.flow_id == IncomingFlow.id)
+    query = query.where(IncomingFlow.warehouse_id.in_(scope))
+    if eligible_for_customer_id is not None:
+        customer = await db.get(Customer,eligible_for_customer_id)
+        if not customer or customer.warehouse_id not in scope: raise HTTPException(403,'只能筛选本仓客户的到账')
+        from sqlalchemy import or_
+        query = query.where(or_(identity.c.flow_id.is_(None),identity.c.customer_id == customer.id))
+    if currency is not None: query = query.where(IncomingFlow.currency == currency)
     if month:
         query = query.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
-        count_q = count_q.where(func.to_char(IncomingFlow.received_date, 'YYYY-MM') == month)
     if status:
         query = query.where(IncomingFlow.match_status == status)
-        count_q = count_q.where(IncomingFlow.match_status == status)
-    total = (await db.execute(count_q)).scalar()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     result = await db.execute(query.order_by(IncomingFlow.created_at.desc()).offset((page-1)*page_size).limit(page_size))
-    records = result.scalars().all()
+    joined = result.all()
+    records = [r[0] for r in joined]
     user_ids = list(set(r.entrant_id for r in records if r.entrant_id))
     user_map = {}
     if user_ids:
         users = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
         user_map = {u.id: u.display_name for u in users}
-    return {"data": [incoming_dict(r, user_map.get(r.entrant_id, "")) for r in records],
+    return {"data": [{**incoming_dict(r,user_map.get(r.entrant_id,"")),"resolved_customer_id":cid,
+        "customer_identity_conflict":bool(count and cid is None)} for r,cid,count in joined],
         "total": total, "page": page, "page_size": page_size}
 
 @router.post("")
-async def create_incoming(req: IncomingCreate, current_user: User = Depends(get_current_user),
+async def create_incoming(req: IncomingCreate, request: Request, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
                           _perm=Depends(check_staff_permission("到账流水"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    wh_id = get_wh_id(current_user)
-    if not wh_id:
-        raise HTTPException(400, "无法确定仓库")
+    scope = await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))
+    if len(scope) != 1: raise HTTPException(400,'请先选择一个仓库')
+    wh_id = scope[0].id
     r, created = await create_once(db, req, wh_id, current_user)
     return {**incoming_dict(r), "created": created, "message": "录入成功" if created else "到账已保存，未重复录入"}
 
@@ -117,13 +129,14 @@ async def read_incoming_screenshot(incoming_id: int,
     return FileResponse(path, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
 @router.post("/batch-import")
-async def batch_import(req: IncomingBatchImport, current_user: User = Depends(get_current_user),
+async def batch_import(req: IncomingBatchImport, request: Request, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db),
                        _perm=Depends(check_staff_permission("到账流水"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    wh_id = get_wh_id(current_user)
-    if not wh_id: raise HTTPException(400, "请先选择仓库")
+    scope = await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))
+    if len(scope) != 1: raise HTTPException(400,'请先选择一个仓库')
+    wh_id = scope[0].id
     imported, existing = 0, 0
     context_hash = hashlib.sha256(json.dumps(req.records, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     for index, rec in enumerate(req.records):

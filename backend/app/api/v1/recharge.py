@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime
 from app.database import get_db
-from app.models.recharge import RechargeDeclaration, CurrencyEnum, MatchStatus
+from app.models.recharge import ReconciliationResult, RechargeDeclaration, CurrencyEnum, MatchStatus
 from app.models.customer import Customer
 from app.models.warehouse import Warehouse
 from app.models.user import User
@@ -129,13 +129,16 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
+    result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id).with_for_update().execution_options(populate_existing=True))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
     if r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作自己仓库的数据")
     if req.customer_id:
         await _check_customer_warehouse(db, req.customer_id, r.warehouse_id)
+    linked = (await db.execute(select(ReconciliationResult.id).where(ReconciliationResult.declaration_id==r.id).limit(1))).first()
+    if linked and (req.customer_id!=r.customer_id or req.currency!=r.currency or req.amount!=r.amount):
+        raise HTTPException(400,'已关联到账的申报不能修改客户、币种或金额，请先核对')
     before = {
         "amount": r.amount, "currency": r.currency,
         "declare_date": r.declare_date.isoformat() if r.declare_date else None,
@@ -163,11 +166,13 @@ async def delete_recharge(recharge_id: int,
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id))
+    result = await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == recharge_id).with_for_update().execution_options(populate_existing=True))
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "不存在")
     if r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作自己仓库的数据")
+    if (await db.execute(select(ReconciliationResult.id).where(ReconciliationResult.declaration_id==r.id).limit(1))).first():
+        raise HTTPException(400,'已关联到账的申报不能删除，请先核对')
     wh_id = r.warehouse_id
     before = {
         "amount": r.amount, "currency": r.currency,

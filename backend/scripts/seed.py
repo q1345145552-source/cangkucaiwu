@@ -28,6 +28,21 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_customer_receipt_identity(conn):
+    """只加客户归属列，旧到账和历史回款不按名称或金额自动回填。"""
+    from sqlalchemy import text
+    for statement in (
+        "ALTER TABLE incoming_flows ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id)",
+        "CREATE INDEX IF NOT EXISTS ix_incoming_flows_customer_id ON incoming_flows(customer_id)",
+    ):
+        try:
+            async with conn.begin_nested(): await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"客户到账归属迁移失败：{exc}")
+            raise
+    print("客户到账归属迁移完成；历史资金和客户关系不自动回填")
+
+
 async def _migrate_credit_shipments(conn):
     """只补发货登记元数据；不推断历史单数、币种，不改旧欠款或回款。"""
     from sqlalchemy import text
@@ -509,6 +524,7 @@ async def seed():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_credit_shipments(conn)
+        await _migrate_customer_receipt_identity(conn)
         await _migrate_incoming_operations(conn)
         await _migrate_manual_wallet_operations(conn)
         await _migrate_wallet_basis(conn)

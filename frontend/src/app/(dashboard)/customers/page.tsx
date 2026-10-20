@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
+import CustomerReceivable, { ReceivableSummary } from "@/components/CustomerReceivable";
 import DataTable from "@/components/common/DataTable";
 import { Edit, Trash2 } from "lucide-react";
 
@@ -12,6 +13,7 @@ export default function CustomersPage() {
   const { t } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
+  const [reconciling, setReconciling] = useState<any>(null);
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -69,10 +71,10 @@ export default function CustomersPage() {
 
   async function handleSave() {
     try {
+      const { debt_amount: legacyDebt, ...fields } = form;
       const payload = {
-        ...form,
+        ...fields,
         credit_limit: form.credit_limit === "" ? 0 : +form.credit_limit,
-        debt_amount: form.debt_amount === "" ? 0 : +form.debt_amount,
       };
       if (editingId) {
         await api.put(`/customers/${editingId}`, payload);
@@ -105,12 +107,13 @@ export default function CustomersPage() {
     { key: "contact_person", label: "联系人", hideOnMobile: true },
     { key: "line_id", label: "微信账号", hideOnMobile: true, render: (v: string) => v || "-" },
     { key: "cargo_type", label: "常用货品", hideOnMobile: true, render: (v: string) => cargoTypeLabel(v) },
-    { key: "total_shipments", label: "累计发货", hideOnMobile: true, align: "right" as const },
-    { key: "total_shipping_cost", label: "累计运费", hideOnMobile: true, align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.default_currency) : "-" },
+    { key: "total_shipments", label: "发货单数", hideOnMobile: true, align: "right" as const, render: (_: any,row: any) => { const groups:any[]=Object.values(row.receivables||{});return <span>{groups.reduce((n,p)=>n+(p.order_count||0),0)}{groups.some(p=>p.unknown_order_count_records>0)&&"（含单数未知记录）"}</span>; } },
+    { key: "total_shipping_cost", label: "发货应收", hideOnMobile: true, align: "right" as const, render: (_: any, row: any) => <div>{Object.entries(row.receivables||{}).map(([cur,p]:[string,any])=><div key={cur}>{fmtMoney(p.shipped,cur)}</div>)}</div> },
     { key: "credit_status", label: "账期客户", render: (v: boolean) => v ? <span className="text-green-600 text-xs font-medium">是</span> : <span className="text-gray-400 text-xs">否</span> },
-    { key: "debt_amount", label: "欠款", align: "right" as const, render: (v: number, row: any) => v ? <span className="text-red-500 font-medium">{fmtMoney(v, row.default_currency)}</span> : "-" },
+    { key: "receivables", label: "应收与预收", render: (v: any, row: any) => <div><ReceivableSummary positions={v || {}} />{row.needs_review && <span className="text-amber-700 text-xs">历史待核对</span>}</div> },
     { key: "id", label: "操作", render: (_: any, row: any) => (
       <div className="flex items-center gap-1">
+        <button onClick={() => setReconciling(row)} className="btn-secondary btn-xs">客户对账</button>
         <button onClick={() => openEdit(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>
         <button onClick={() => handleDelete(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />删除</button>
       </div>
@@ -142,6 +145,7 @@ export default function CustomersPage() {
 
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />}
 
+      {reconciling && <div className="modal-overlay" role="dialog" aria-label="客户对账"><div className="bg-white rounded-xl w-full max-w-4xl p-4 max-h-[90dvh] overflow-y-auto"><div className="flex justify-between items-center mb-4"><h2 className="font-semibold">{reconciling.company_name} · 客户对账</h2><button className="btn-secondary" onClick={() => setReconciling(null)}>关闭对账</button></div><CustomerReceivable customerId={reconciling.id} onChanged={load} /></div></div>}
       {/* 新建/编辑弹窗 */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
@@ -241,8 +245,9 @@ export default function CustomersPage() {
                       <input type="number" className="form-input" value={form.credit_limit} onChange={e => setForm({ ...form, credit_limit: e.target.value })} placeholder="授信额度金额" />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">当前欠款</label>
-                      <input type="number" className="form-input" value={form.debt_amount} onChange={e => setForm({ ...form, debt_amount: e.target.value })} placeholder="当前欠款金额" />
+                      <label className="form-label">历史手填欠款（仅保留待核对）</label>
+                      <input readOnly className="form-input bg-gray-100" value={form.debt_amount} />
+                      <p className="text-xs text-gray-500">实际应收与预收请查看客户对账，不在这里手填。</p>
                     </div>
                   </div>
                 )}

@@ -46,7 +46,7 @@ export default function IncomingPage() {
   const today = todayThai();
   const [form, setForm] = useState({
     received_date: today, amount: "", currency: "THB",
-    payer_name: "", payment_method: "银行转账", remark: ""
+    payer_name: "", customer_id: 0, payment_method: "银行转账", remark: ""
   });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCustomers(); }, [page]);
@@ -62,7 +62,7 @@ export default function IncomingPage() {
         if (!restored.requestKey || !restored.payload) throw new Error("无效录入草稿");
         operationRef.current = restored; setOperation(restored);
         const { account_id, amount, ...fields } = restored.payload;
-        setAccountId(account_id); setForm({ ...fields, amount: String(amount) });
+        setAccountId(account_id); setForm({ ...fields, customer_id: fields.customer_id || 0, amount: String(amount) });
         lookup(restored.requestKey).then(saved => {
           if (!active || !saved || operationRef.current?.requestKey !== restored.requestKey) return;
           remember({ ...restored, savedId: saved.id, screenshotPending: restored.screenshotPending && !saved.has_screenshot });
@@ -89,7 +89,7 @@ export default function IncomingPage() {
   function startNext() {
     localStorage.removeItem(storageKey.current);
     operationRef.current = null; setOperation(null); setSelectedFile(null);
-    setForm({ received_date: todayThai(), amount: "", currency: "THB", payer_name: "", payment_method: "银行转账", remark: "" });
+    setForm({ received_date: todayThai(), amount: "", currency: "THB", payer_name: "", customer_id: 0, payment_method: "银行转账", remark: "" });
     if (screenshotFile.current) screenshotFile.current.value = "";
     if (initialScreenshotFile.current) initialScreenshotFile.current.value = "";
   }
@@ -126,7 +126,7 @@ export default function IncomingPage() {
   async function handleCreate() {
     if (busy.current || !storageReady) return;
     if (!operationRef.current) {
-      if (!form.payer_name) { toast("error", "请选择付款方"); return; }
+      if (!form.customer_id) { toast("error", "请选择付款客户，不能仅凭名字关联到账"); return; }
       if (!form.amount || Number(form.amount) <= 0) { toast("error", "请填写大于零的金额"); return; }
       if (!accountId) { toast("error", "请选择收款账户"); return; }
     }
@@ -192,7 +192,7 @@ export default function IncomingPage() {
           </div>
           <div>
             <label className="form-label">金额</label>
-            <input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value === "" ? "" : +e.target.value })} />
+            <input type="number" step="0.01" className="form-input" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
           </div>
           <div>
             <label className="form-label">币种</label>
@@ -204,9 +204,12 @@ export default function IncomingPage() {
           <WalletAccountSelect value={accountId} onChange={setAccountId} currency={form.currency} label="收款账户" />
           <div>
             <label className="form-label">付款方</label>
-            <select className="form-input" value={form.payer_name} onChange={e => setForm({ ...form, payer_name: e.target.value })}>
+            <select className="form-input" aria-label="到账付款客户" value={form.customer_id || ""} onChange={e => {
+              const customer = customers.find(c => c.id === +e.target.value);
+              setForm({ ...form, customer_id: customer?.id || 0, payer_name: customer?.company_name || "" });
+            }}>
               <option value="">选择客户</option>
-              {customers.map((c: any) => <option key={c.id} value={c.company_name}>{c.company_name}</option>)}
+              {customers.map((c: any) => <option key={c.id} value={c.id}>{c.customer_code || `#${c.id}`} · {c.company_name}</option>)}
             </select>
           </div>
           <div>

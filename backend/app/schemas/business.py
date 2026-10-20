@@ -129,6 +129,7 @@ class RechargeResponse(BaseModel):
 
 # ---- Incoming Flow ----
 class IncomingCreate(BaseModel):
+    customer_id: Optional[int] = None
     request_key: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     account_id: Optional[int] = None
     received_date: str; amount: float = Field(gt=0); currency: str = Field("THB", min_length=1, max_length=10)

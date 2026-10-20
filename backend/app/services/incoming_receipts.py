@@ -30,7 +30,7 @@ def incoming_dict(row, entrant_name=""):
         "payer_name": row.payer_name, "payment_method": row.payment_method, "remark": row.remark,
         "match_status": row.match_status or "unmatched", "entrant_name": entrant_name,
         "created_at": row.created_at.isoformat() if row.created_at else None,
-        "request_key": row.request_key, "has_screenshot": bool(row.screenshot)}
+        "request_key": row.request_key, "has_screenshot": bool(row.screenshot), "customer_id": row.customer_id}
 
 
 def request_values(req, context_hash=None):
@@ -42,6 +42,7 @@ def request_values(req, context_hash=None):
     values = {"received_date": when, "amount": float(value), "currency": req.currency,
         "account_id": req.account_id, "payer_name": req.payer_name, "payment_method": req.payment_method,
         "remark": req.remark}
+    if req.customer_id is not None: values["customer_id"] = req.customer_id
     canonical = {**values, "amount": str(value.quantize(Decimal('0.01'))), "received_date": when.isoformat()}
     if context_hash: canonical["batch"] = context_hash
     fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
@@ -59,6 +60,11 @@ async def create_once(db, req, warehouse_id, operator, *, context_hash=None):
         return row, False
     found = await existing()
     if found: return replay(found)
+    if req.customer_id is not None:
+        from app.models.customer import Customer
+        customer = await db.get(Customer, req.customer_id)
+        if not customer or customer.warehouse_id != warehouse_id:
+            raise HTTPException(403, "只能关联本仓库客户的到账")
     await lock_account(db, warehouse_id, req.account_id, req.currency)
     insert = sqlite_insert if db.bind.dialect.name == "sqlite" else postgres_insert
     # 冲突不终止事务；批量中的任何一条失败，之前插入的也可整体回滚。

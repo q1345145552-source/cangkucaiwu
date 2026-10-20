@@ -1,8 +1,9 @@
 "use client";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
+import CustomerReceivable from "@/components/CustomerReceivable";
 import CreditShipments from "@/components/CreditShipments";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ export default function CreditPage() {
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [payment, setPayment] = useState({ amount: "", repayment_date: new Date().toLocaleDateString("en-CA"), account_id: 0, incoming_flow_id: "", mode: "new", request_key: "" });
   const [receipts, setReceipts] = useState<any[]>([]);
+  const paymentBusy=useRef(false), receiptRequest=useRef(0);
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const _now = new Date();
@@ -84,17 +86,23 @@ export default function CreditPage() {
   async function openPayment(row: any) {
     setPaymentFor(row);
     setPayment({ amount: "", repayment_date: _todayStr, account_id: 0, incoming_flow_id: "", mode: "new", request_key: crypto.randomUUID() });
-    try { const r = await api.get<any>("/incoming?page_size=200"); setReceipts(r.data || []); } catch { setReceipts([]); }
+    const generation=++receiptRequest.current;setReceipts([]);
+    try {
+      const rows:any[]=[];let page=1,total=1;
+      while(rows.length<total){const r=await api.get<any>(`/incoming?eligible_for_customer_id=${row.customer_id}&currency=${row.currency || "THB"}&page_size=200&page=${page++}`);rows.push(...r.data);total=r.total;if(!r.data.length)break;}
+      if(generation===receiptRequest.current)setReceipts(rows);
+    } catch { if(generation===receiptRequest.current)setReceipts([]); }
   }
   async function savePayment() {
+    if(paymentBusy.current)return;
     if (!payment.amount || (payment.mode === "new" ? !payment.account_id : !payment.incoming_flow_id)) { toast("error", "请填写金额并选择账户或到账流水"); return; }
-    setPaymentSaving(true);
+    paymentBusy.current=true;setPaymentSaving(true);
     try {
       await api.post(`/credit/${paymentFor.id}/payment`, { amount: +payment.amount, repayment_date: payment.repayment_date, request_key: payment.request_key,
         account_id: payment.mode === "new" ? payment.account_id : null, incoming_flow_id: payment.mode === "existing" ? +payment.incoming_flow_id : null });
       toast("success", "回款已登记，到账只计一次"); setPaymentFor(null); setDetail(null); load(); loadDashboard();
     } catch (err: any) { toast("error", err.message || "登记失败"); }
-    finally { setPaymentSaving(false); }
+    finally { paymentBusy.current=false;setPaymentSaving(false); }
   }
 
   return (
@@ -171,7 +179,7 @@ export default function CreditPage() {
             <AlertTriangle size={15} />逾期预警
           </h3>
           {alerts.map((a: any) => (
-            <div key={a.id} className="text-sm text-red-600 py-0.5">{a.customer_name} — 逾期{a.overdue_days}天 — ฿{a.current_debt?.toLocaleString()}</div>
+            <div key={a.id} className="text-sm text-red-600 py-0.5">{a.customer_name} — 逾期{a.overdue_days}天 — {a.currency === "CNY" ? "¥" : "฿"}{a.current_debt?.toLocaleString()}</div>
           ))}
         </div>
       )}
@@ -253,6 +261,8 @@ export default function CreditPage() {
               <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
             </div>
 
+            <CustomerReceivable customerId={detail.customer_id} onChanged={() => { load(); loadDashboard(); viewDetail(detail.id); }} />
+            <div className="mt-5" />
             {/* 还款/发货记录时间范围 */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <label className="text-xs text-gray-500">记录起止日期</label>
@@ -300,13 +310,13 @@ export default function CreditPage() {
               <div>状态: <span className="font-medium">{detail.status === "active" ? "正常" : detail.status}</span></div>
             </div>
 
-            <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><TrendingUp size={14} className="text-gray-400" />还款记录</h3>
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><TrendingUp size={14} className="text-gray-400" />账期回款登记（同笔到账不重复计实收）</h3>
             <div className="overflow-x-auto touch-pan-x">
             <table className="w-full text-sm mb-4 min-w-[700px]">
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-1.5 px-2 text-gray-500">日期</th><th className="text-right py-1.5 px-2 text-gray-500">金额</th><th className="text-left py-1.5 px-2 text-gray-500">备注</th></tr></thead>
               <tbody>
                 {detail.repayments?.length > 0 ? detail.repayments.map((r: any) => (
-                  <tr key={r.id} className="border-b"><td className="py-1.5 px-2">{r.repayment_date?.slice(0, 10)}</td><td className="py-1.5 px-2 text-right font-mono">{detail.currency === "CNY" ? "¥" : "฿"}{r.amount?.toLocaleString()}</td><td className="py-1.5 px-2 text-gray-500">{r.remark}</td></tr>
+                  <tr key={r.id} className="border-b"><td className="py-1.5 px-2">{r.repayment_date?.slice(0, 10)}</td><td className="py-1.5 px-2 text-right font-mono">{detail.currency === "CNY" ? "¥" : "฿"}{r.amount?.toLocaleString()}</td><td className="py-1.5 px-2 text-gray-500">{r.incoming_flow_id ? `到账 #${r.incoming_flow_id}` : "历史无到账编号，待核对"} · {r.remark}</td></tr>
                 )) : <tr><td colSpan={3} className="py-2 text-center text-gray-400 text-xs">暂无还款记录</td></tr>}
               </tbody>
             </table>

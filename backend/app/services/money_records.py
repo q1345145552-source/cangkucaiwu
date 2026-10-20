@@ -8,6 +8,7 @@ from app.models.recharge import IncomingFlow, RechargeDeclaration, Reconciliatio
 from app.models.supplier import Supplier
 from app.services.cost_funds_debt import cost_query, money
 from app.services.wallet import flow_query, grouped_totals
+from app.services.customer_receivables import receipt_identity_query
 
 BASIS = '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计'
 SOURCE_LINKS = {'incoming':'/incoming', 'payable':'/payable', 'cash_advance_repayment':'/cash-advances',
@@ -23,17 +24,10 @@ def record_query(db, warehouse_ids, kind):
     if kind == 'income':
         q = flow_query(db, warehouse_ids)
         i, incoming = IncomeRecord, IncomingFlow
-        # A receipt can have several reconciliation links; scalar lookups must not multiply money rows.
-        matched_customer = select(func.min(RechargeDeclaration.customer_id)).join(ReconciliationResult,
-            and_(ReconciliationResult.declaration_id == RechargeDeclaration.id,
-                ReconciliationResult.warehouse_id == RechargeDeclaration.warehouse_id)).where(
-            ReconciliationResult.flow_id == q.c.id, ReconciliationResult.warehouse_id == q.c.warehouse_id,
-            ReconciliationResult.match_status.in_(['matched','manual_matched']),
-            RechargeDeclaration.warehouse_id == q.c.warehouse_id).correlate(q).scalar_subquery()
-        credit_customer = select(func.min(CreditCustomer.customer_id)).join(CreditRepayment,
-            CreditRepayment.credit_customer_id == CreditCustomer.id).where(
-            CreditRepayment.incoming_flow_id == q.c.id, CreditCustomer.warehouse_id == q.c.warehouse_id).correlate(q).scalar_subquery()
-        customer = func.coalesce(i.customer_id, case((q.c.source == 'incoming', func.coalesce(matched_customer,credit_customer))))
+        identity = receipt_identity_query()
+        receipt_customer = select(identity.c.customer_id).where(identity.c.flow_id == q.c.id,
+            identity.c.warehouse_id == q.c.warehouse_id).correlate(q).scalar_subquery()
+        customer = func.coalesce(i.customer_id,case((q.c.source == 'incoming',receipt_customer)))
         rows = select(q, q.c.id.label('source_id'), i.voucher,
             func.coalesce(i.income_date,incoming.received_date).label('record_timestamp'),
             customer.label('customer_id'), cast(literal(None),Integer).label('supplier_id'),

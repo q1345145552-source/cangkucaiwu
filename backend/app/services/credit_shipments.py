@@ -75,9 +75,13 @@ async def scoped_credit(db, user, header, credit_id, *, lock=False):
 async def refresh_debt(db, credit):
     from app.api.v1.credit import _compute_debt_and_overdue
     await db.flush()
-    credit.current_debt, credit.overdue_days = await _compute_debt_and_overdue(db, credit.id)
+    from app.services.customer_receivables import legacy_review
+    debt, overdue = await _compute_debt_and_overdue(db, credit.id)
+    review = (await legacy_review(db,[credit.warehouse_id],[credit.customer_id])).get(credit.customer_id,[])
+    # 原字段曾允许手填，无法区分旧缓存与人工期初；统一保留，不反向覆盖历史。
+    # 所有当前应收读取已改用原发货和唯一到账的事实投影。
     await db.flush()
-    return {'current_debt': credit.current_debt, 'overdue_days': credit.overdue_days}
+    return {'current_debt': debt, 'overdue_days':overdue,'needs_review':bool(review)}
 
 
 def values_for(req):
@@ -96,8 +100,11 @@ async def validate_new_value(db, credit, customer, values, old_amount=0):
         CreditShipment.credit_customer_id == credit.id, CreditShipment.currency.is_not(None),
         CreditShipment.currency != values['currency']).limit(1))).first()
     if incompatible: raise HTTPException(409, '已有发货币种不一致，请先核对账期币种')
-    debt, _ = await _compute_debt_and_overdue(db, credit.id)
-    if exceeds_credit_limit(max(debt - old_amount, 0), values['amount'], credit.credit_limit):
+    from app.services.customer_receivables import credit_position
+    position = await credit_position(db,credit)
+    debt = position['shipped']-position['received']
+    proposed = max(debt-old_amount+values['amount'],0)
+    if exceeds_credit_limit(0, proposed, credit.credit_limit):
         raise HTTPException(400, '超出授信额度，请先核对账期额度')
 
 
@@ -134,6 +141,9 @@ async def editable_shipment(db, credit, shipment_id):
     # 现有回款仅关联账期账户，没有逐票核销分配；不猜哪一票已核销。
     if (await db.execute(select(CreditRepayment.id).where(CreditRepayment.credit_customer_id == credit.id).limit(1))).first():
         raise HTTPException(409, '该账期已有回款记录，不能修改或作废发货，请先核对账务')
+    from app.services.customer_receivables import credit_position
+    if (await credit_position(db,credit))['received'] > 0:
+        raise HTTPException(409, '该客户已有实际收款，不能修改或作废发货，请先核对账务')
     return row
 
 

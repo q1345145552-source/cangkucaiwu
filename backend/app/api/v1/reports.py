@@ -172,10 +172,8 @@ async def report_previews(
         previews[key]["preview_by_currency"] = amounts
         previews[key]["preview"] = next(iter(amounts.values())) if len(amounts) == 1 else 0 if not amounts else None
     from app.models.customer import Customer
-    credit_currency = func.coalesce(CreditCustomer.currency, Customer.default_currency, "THB")
-    credit_amounts = {c or "THB": round(float(n or 0), 2) for c,n in (await db.execute(select(
-        credit_currency, func.sum(CreditCustomer.current_debt)).join(Customer, Customer.id == CreditCustomer.customer_id).where(
-        CreditCustomer.warehouse_id.in_(wh_ids)).group_by(credit_currency))).all()}
+    from app.services.customer_receivables import customer_credit_totals
+    credit_amounts = await customer_credit_totals(db,wh_ids)
     previews["credit"]["preview_by_currency"] = credit_amounts
     previews["credit"]["preview"] = next(iter(credit_amounts.values())) if len(credit_amounts) == 1 else None if credit_amounts else 0
     return {"previews": previews, "start_date": start_date, "end_date": end_date}
@@ -329,13 +327,24 @@ async def credit_report(warehouse_id: int = None, format: str = "json",
     if warehouse_id: query = query.where(CreditCustomer.warehouse_id == warehouse_id)
     result = await db.execute(query.order_by(CreditCustomer.created_at.desc()))
     credits = result.scalars().all()
-    data = [{"额度": c.credit_limit or 0, "欠款": c.current_debt or 0,
-             "逾期天数": c.overdue_days or 0, "状态": _(c.status)} for c in credits]
-    total_debt = sum(c.current_debt or 0 for c in credits)
+    from app.services.customer_receivables import positions
+    from app.models.customer import Customer
+    balances = await positions(db,wh_ids,[c.customer_id for c in credits])
+    customers = {c.id:c for c in (await db.execute(select(Customer).where(Customer.id.in_({r.customer_id for r in credits})))).scalars()}
+    data=[]
+    for c in credits:
+        cur = c.currency or (customers[c.customer_id].default_currency if c.customer_id in customers else None) or 'THB'
+        debt=balances.get(c.customer_id,{}).get(cur,{}).get('outstanding',0)
+        data.append({'客户编号':c.customer_id,'币种':cur,'额度':c.credit_limit or 0,'欠款':debt,
+            '逾期天数':c.overdue_days or 0,'状态':_(c.status)})
+    debt_by_currency={}
+    for groups in balances.values():
+        for cur,group in groups.items(): debt_by_currency[cur]=round(debt_by_currency.get(cur,0)+group['outstanding'],2)
+    total_debt = next(iter(debt_by_currency.values())) if len(debt_by_currency)==1 else None if debt_by_currency else 0
     overdue_count = sum(1 for c in credits if (c.overdue_days or 0) > 0)
-    headers = ["额度","欠款","逾期天数","状态"]
+    headers = ["客户编号","币种","额度","欠款","逾期天数","状态"]
     if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "账期报表")
-    return {"data": data, "total_debt": total_debt, "overdue_count": overdue_count}
+    return {"data": data, "total_debt_by_currency":debt_by_currency,"total_debt": total_debt, "overdue_count": overdue_count}
 
 # ===== 8. 对账差异 =====
 @router.get("/reconciliation-diff")
