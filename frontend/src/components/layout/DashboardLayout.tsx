@@ -229,9 +229,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent("warehouse-changed", { detail: { warehouseId: "all" } }));
   };
 
-  // Reset all-warehouses mode when leaving /reports page
+  // Only reports and the dashboard support authorized all-warehouses reads.
   useEffect(() => {
-    if (pathname !== "/reports" && isAllWarehouses) {
+    if (!["/reports", "/dashboard"].includes(pathname) && isAllWarehouses) {
       setIsAllWarehouses(false);
       if (whList.length > 0) {
         setSelectedWhId(whList[0].id);
@@ -350,7 +350,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </button>
                 {showWhSwitcher && (
                   <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-56 py-1 z-50">
-                    {user?.role === "warehouse_admin" && pathname === "/reports" && (
+                    {user?.role === "warehouse_admin" && ["/reports", "/dashboard"].includes(pathname) && (
                       <button
                         onClick={switchAllWarehouses}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] ${
@@ -362,7 +362,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         <span className="text-xs text-amber-400 ml-auto">{t("all")}</span>
                       </button>
                     )}
-                    {user?.role === "warehouse_admin" && pathname === "/reports" && <div className="border-t border-gray-100" />}
+                    {user?.role === "warehouse_admin" && ["/reports", "/dashboard"].includes(pathname) && <div className="border-t border-gray-100" />}
                     {whList.map(wh => (
                       <button
                         key={wh.id}
@@ -452,7 +452,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
-          <div key={pathname + '-' + selectedWhId} className="animate-fade-in">
+          <div key={pathname === "/dashboard" ? pathname : pathname + '-' + selectedWhId} className="animate-fade-in">
             {user && laborPageAllowed ? children : null}
           </div>
           <BackToTop />

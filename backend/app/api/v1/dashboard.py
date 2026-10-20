@@ -170,193 +170,37 @@ def _merge_currency(*lists):
     return [{"currency": c, "amount": round(v, 2)} for c, v in sorted(d.items())]
 
 
+async def _selected_dashboard(request, user, db, month):
+    from app.services.warehouse_summary import warehouse_scope
+    from app.services.dashboard_period import monthly_view
+    warehouses = await warehouse_scope(db, user, request.headers.get('X-Warehouse-ID'))
+    if not warehouses:raise HTTPException(400, "请先选择启用且有权访问的仓库")
+    selected = month if month is not None else thai_today().strftime('%Y-%m')
+    return await monthly_view(db, warehouses, selected)
+
+
 @router.get("/trends")
-async def dashboard_trends(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """三个趋势图数据：资金(30天)、收支(6月)、订单(8周)，按币种分组，按当前仓库统计。"""
+async def dashboard_trends(request: Request, month: str | None = None,
+                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-
-    wh_id = get_wh_id(current_user)
-    if not wh_id:
-        raise HTTPException(400, "请先选择仓库")
-
-    from app.models.income_expense import IncomeRecord, ExpenseRecord, IncomeExpenseCategory
-    from app.models.payable import PayableBill
-    from app.models.supplier import PurchaseOrder, Supplier
-
-    today = thai_today()
-    currencies = ["THB", "CNY"]
-
-    # ── 资金趋势：最近30天（Python 聚合，按币种） ──
-    start_30 = today - timedelta(days=29)
-    day_end = today + timedelta(days=1)
-    recharge_rows = (await db.execute(
-        select(RechargeDeclaration.currency, RechargeDeclaration.declare_date, RechargeDeclaration.amount)
-        .where(RechargeDeclaration.warehouse_id == wh_id,
-               RechargeDeclaration.declare_date >= datetime.combine(start_30, datetime.min.time()),
-               RechargeDeclaration.declare_date < datetime.combine(day_end, datetime.min.time()))
-    )).all()
-    incoming_rows = (await db.execute(
-        select(IncomingFlow.currency, IncomingFlow.received_date, IncomingFlow.amount)
-        .where(IncomingFlow.warehouse_id == wh_id,
-               IncomingFlow.received_date >= datetime.combine(start_30, datetime.min.time()),
-               IncomingFlow.received_date < datetime.combine(day_end, datetime.min.time()))
-    )).all()
-
-    def _date_str(dt):
-        return dt.date().isoformat() if hasattr(dt, "date") else str(dt)[:10]
-
-    def _funds_series(cur):
-        rc = {}
-        for c, dt, amt in recharge_rows:
-            if (c or "THB") == cur:
-                k = _date_str(dt)
-                rc[k] = rc.get(k, 0) + float(amt or 0)
-        ic = {}
-        for c, dt, amt in incoming_rows:
-            if (c or "THB") == cur:
-                k = _date_str(dt)
-                ic[k] = ic.get(k, 0) + float(amt or 0)
-        series = []
-        for i in range(30):
-            d = start_30 + timedelta(days=i)
-            ds = d.isoformat()
-            series.append({"date": ds, "recharge": round(rc.get(ds, 0), 2), "incoming": round(ic.get(ds, 0), 2)})
-        return series
-
-    funds = {c: _funds_series(c) for c in currencies}
-
-    # ── 收支趋势：最近6个月（Python 聚合） ──
-    month_starts = []
-    ym = today.replace(day=1)
-    for _ in range(6):
-        month_starts.append(ym)
-        ym = (ym - timedelta(days=1)).replace(day=1)
-    month_starts.reverse()
-    month_labels = [m.strftime("%Y-%m") for m in month_starts]
-    min_month = month_starts[0]
-    max_month_end = (month_starts[-1].replace(day=28) + timedelta(days=10)).replace(day=1)
-
-    def _month_key(dt):
-        d = dt.date() if hasattr(dt, "date") else dt
-        return d.strftime("%Y-%m")
-
-    from app.services.wallet import flow_query
-    wallet = flow_query(db, [wh_id])
-    actual = (await db.execute(select(wallet.c.currency, wallet.c.date, wallet.c.amount, wallet.c.type).where(
-        wallet.c.date >= min_month, wallet.c.date < max_month_end, wallet.c.status == "active",
-        wallet.c.is_internal_transfer.is_(False)))).all()
-    income_rec_rows = [(c, d, n) for c, d, n, kind in actual if kind == "income"]
-    expense_rec_rows = [(c, d, n) for c, d, n, kind in actual if kind == "expense"]
-    recharge_month_rows, bill_month_rows = [], []
-    def _ie_series(cur):
-        inc = {}
-        for c, dt, amt in list(income_rec_rows) + list(recharge_month_rows):
-            if (c or "THB") == cur:
-                k = _month_key(dt)
-                inc[k] = inc.get(k, 0) + float(amt or 0)
-        exp = {}
-        for c, dt, amt in list(expense_rec_rows) + list(bill_month_rows):
-            if (c or "THB") == cur:
-                k = _month_key(dt)
-                exp[k] = exp.get(k, 0) + float(amt or 0)
-        series = []
-        for m in month_labels:
-            series.append({"month": m, "income": round(inc.get(m, 0), 2), "expense": round(exp.get(m, 0), 2)})
-        return series
-
-    income_expense = {c: _ie_series(c) for c in currencies}
-
-    # ── 订单趋势：最近8周（采购单数量，Python 分桶） ──
-    this_monday = today - timedelta(days=today.weekday())
-    week_starts = [this_monday - timedelta(weeks=i) for i in range(7, -1, -1)]
-    from app.core.timezone import THAI_TZ
-    po_rows = (await db.execute(
-        select(PurchaseOrder.currency, PurchaseOrder.created_at)
-        .where(PurchaseOrder.warehouse_id == wh_id,
-               PurchaseOrder.created_at >= datetime.combine(week_starts[0], datetime.min.time()))
-    )).all()
-
-    def _week_key(dt):
-        if dt is None:
-            return None
-        d = dt
-        if getattr(d, "tzinfo", None) is not None:
-            d = d.astimezone(THAI_TZ).replace(tzinfo=None)
-        d = d.date() if hasattr(d, "date") else d
-        return d - timedelta(days=d.weekday())
-
-    def _orders_series(cur):
-        cnt = {}
-        for c, dt in po_rows:
-            if (c or "THB") == cur:
-                wk = _week_key(dt)
-                if wk is not None:
-                    cnt[str(wk)] = cnt.get(str(wk), 0) + 1
-        series = []
-        for ws in week_starts:
-            series.append({"week_start": ws.isoformat(), "count": cnt.get(str(ws), 0)})
-        return series
-
-    orders = {c: _orders_series(c) for c in currencies}
-
-    # ── 两个占比环形图数据 ──
-    month_start = today.replace(day=1)
-    if today.month == 12:
-        next_month = today.replace(year=today.year + 1, month=1, day=1)
-    else:
-        next_month = today.replace(month=today.month + 1, day=1)
-
-    from app.services.cost_funds_debt import cost_query
-    costs = cost_query(db, [wh_id])
-    cat_rows = (await db.execute(select(costs.c.currency, costs.c.amount, costs.c.category_name).where(
-        costs.c.date >= month_start, costs.c.date < next_month))).all()
-    procurement = procurement_payment_rows(db, [wh_id])
-    sup_rows = (await db.execute(
-        select(procurement.c.currency, procurement.c.amount, Supplier.name)
-        .join(Supplier, procurement.c.supplier_id == Supplier.id)
-        .where(procurement.c.payment_date >= month_start,
-               procurement.c.payment_date < next_month)
-    )).all()
-
-    advance_purchase_rows = (await db.execute(select(wallet.c.currency, wallet.c.amount).where(
-        wallet.c.date >= month_start, wallet.c.date < next_month, wallet.c.source == "cash_advance_repayment",
-        wallet.c.category_name == "采购", wallet.c.status == "active"))).all()
-    sup_rows = list(sup_rows) + [(cur, value, "垫款归还（未指定供应商）") for cur, value in advance_purchase_rows]
-
-    def _group_by_name(rows, cur):
-        d = {}
-        for c, amt, name in rows:
-            if (c or "THB") == cur:
-                nm = name or "未分类"
-                d[nm] = d.get(nm, 0) + float(amt or 0)
-        return [{"name": n, "amount": round(v, 2)} for n, v in sorted(d.items(), key=lambda x: -x[1])]
-
-    expense_categories = {c: _group_by_name(cat_rows, c) for c in currencies}
-    procurement_suppliers = {c: _group_by_name(sup_rows, c) for c in currencies}
-
-    return {
-        "funds": funds,
-        "income_expense": income_expense,
-        "orders": orders,
-        "expense_categories": expense_categories,
-        "procurement_suppliers": procurement_suppliers,
-    }
+    return (await _selected_dashboard(request,current_user,db,month))['trends']
 
 
 @router.get("/cockpit")
-async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def dashboard_cockpit(request: Request, month: str | None = None,
+                            current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """老板驾驶舱：钱 + 人 + 待办，全部按当前选中仓库统计，按币种分组。"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
-    wh_id = get_wh_id(current_user)
-    if not wh_id:
-        raise HTTPException(400, "请先选择仓库")
+    view = await _selected_dashboard(request,current_user,db,month)
+    wh_ids = [w['id'] for w in view['warehouses']]
+    from app.services.wallet import day
 
     from app.models.income_expense import ExpenseRecord
     from app.models.payable import PayableBill
@@ -369,56 +213,16 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     from app.models.supplier import PurchaseOrder, ProcurementPriceAnomaly, ProcurementNonLowestRecord
 
     today = thai_today()
-    month_start = today.replace(day=1)
-    if today.month == 12:
-        next_month = today.replace(year=today.year + 1, month=1, day=1)
-    else:
-        next_month = today.replace(month=today.month + 1, day=1)
-    month_str = today.strftime("%Y-%m")
-
-    # ── 钱 ──
-    # 本月收入（公司实际收款）
-    from app.services.wallet import totals as wallet_totals
-    wallet_rows = await wallet_totals(db, [wh_id], month_start, next_month - timedelta(days=1))
-    income_rows = [(c, n) for c, kind, n in wallet_rows if kind == "income"]
-    declaration_rows = (await db.execute(select(RechargeDeclaration.currency, func.sum(RechargeDeclaration.amount)).where(
-        RechargeDeclaration.warehouse_id == wh_id, RechargeDeclaration.declare_date >= month_start,
-        RechargeDeclaration.declare_date < next_month).group_by(RechargeDeclaration.currency))).all()
-    # 本月到账合计
-    incoming_rows = (await db.execute(
-        select(IncomingFlow.currency, func.coalesce(func.sum(IncomingFlow.amount), 0))
-        .where(IncomingFlow.warehouse_id == wh_id,
-               IncomingFlow.received_date >= month_start,
-               IncomingFlow.received_date < next_month)
-        .group_by(IncomingFlow.currency)
-    )).all()
-    # 未对账笔数
-    unmatched_recharge = (await db.execute(
-        select(func.count(RechargeDeclaration.id)).where(
-            RechargeDeclaration.warehouse_id == wh_id,
-            RechargeDeclaration.match_status == MatchStatus.UNMATCHED.value,
-        )
-    )).scalar() or 0
-    from app.services.cost_funds_debt import cost_query
-    costs = cost_query(db, [wh_id])
-    op_rows = (await db.execute(select(costs.c.currency, func.sum(costs.c.amount)).where(
-        costs.c.date >= month_start, costs.c.date < next_month, costs.c.category_name != "采购",
-    ).group_by(costs.c.currency))).all()
-    procurement_paid_rows = await procurement_payment_totals(db, [wh_id], month_start, next_month - timedelta(days=1))
-    expense_rows = _merge_currency([(c, n) for c, kind, n in wallet_rows if kind == "expense"])
-    income_list = _merge_currency(income_rows)
-    expense_list = expense_rows
-    # 盈亏 = 收入 - 支出（按币种）
-    inc_map = {x["currency"]: x["amount"] for x in income_list}
-    exp_map = {x["currency"]: x["amount"] for x in expense_list}
-    all_cur = set(inc_map) | set(exp_map)
-    profit_list = [{"currency": c, "amount": round(inc_map.get(c, 0) - exp_map.get(c, 0), 2)} for c in sorted(all_cur)]
+    month_start = date.fromisoformat(view['period']['start_date'])
+    month_end = date.fromisoformat(view['period']['end_date'])
+    month_str = view['period']['month']
+    procurement_paid_rows = [(r['currency'],r['amount']) for r in view['month_card']['procurement_expense']]
 
     # 待收（账期客户欠款）按客户默认币种
     recv_rows = (await db.execute(
         select(Customer.default_currency, func.coalesce(func.sum(CreditCustomer.current_debt), 0))
         .join(Customer, CreditCustomer.customer_id == Customer.id)
-        .where(CreditCustomer.warehouse_id == wh_id, CreditCustomer.current_debt.isnot(None))
+        .where(CreditCustomer.warehouse_id.in_(wh_ids), CreditCustomer.current_debt.isnot(None))
         .group_by(Customer.default_currency)
     )).all()
     receivable = _merge_currency(recv_rows)
@@ -427,7 +231,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     payable_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
         .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
-        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided",
+        .where(PayableBill.warehouse_id.in_(wh_ids), PayableBill.status != "paid", PayableBill.status != "voided",
                (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
         .group_by(PayableBill.currency)
     )).all()
@@ -437,7 +241,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     overdue_rows = (await db.execute(
         select(PayableBill.currency, func.coalesce(func.sum(PayableBill.amount - func.coalesce(PayableBill.paid_amount, 0)), 0))
         .outerjoin(PurchaseOrder, PayableBill.purchase_order_id == PurchaseOrder.id)
-        .where(PayableBill.warehouse_id == wh_id, PayableBill.status != "paid", PayableBill.status != "voided", func.date(PayableBill.due_date) < today,
+        .where(PayableBill.warehouse_id.in_(wh_ids), PayableBill.status != "paid", PayableBill.status != "voided", func.date(PayableBill.due_date) < today,
                (PayableBill.purchase_order_id.is_(None)) | (PurchaseOrder.status == "confirmed"))
         .group_by(PayableBill.currency)
     )).all()
@@ -446,7 +250,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 账户余额
     from app.services.account_balances import current_account_balances
     payaccts = (await db.execute(select(PaymentAccount).where(
-        PaymentAccount.warehouse_id == wh_id, PaymentAccount.status == "active",
+        PaymentAccount.warehouse_id.in_(wh_ids), PaymentAccount.status == "active",
     ))).scalars().all()
     payacct_balances = await current_account_balances(db, payaccts)
     payacct_totals = {}
@@ -456,71 +260,70 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     payacct_rows = list(payacct_totals.items())
     fund_rows = (await db.execute(
         select(ExpenseFund.currency, func.coalesce(func.sum(ExpenseFund.remaining_balance), 0))
-        .where(ExpenseFund.warehouse_id == wh_id, ExpenseFund.status == "active")
+        .where(ExpenseFund.warehouse_id.in_(wh_ids), ExpenseFund.status == "active")
         .group_by(ExpenseFund.currency)
     )).all()
 
     # 本月采购异常
     price_anomaly = (await db.execute(
         select(func.count(ProcurementPriceAnomaly.id))
-        .where(ProcurementPriceAnomaly.warehouse_id == wh_id,
-               ProcurementPriceAnomaly.created_at >= month_start,
-               ProcurementPriceAnomaly.created_at < next_month)
+        .where(ProcurementPriceAnomaly.warehouse_id.in_(wh_ids),
+               day(db,ProcurementPriceAnomaly.created_at) >= month_start,
+               day(db,ProcurementPriceAnomaly.created_at) <= month_end)
     )).scalar() or 0
     non_lowest = (await db.execute(
         select(func.count(ProcurementNonLowestRecord.id))
-        .where(ProcurementNonLowestRecord.warehouse_id == wh_id,
-               ProcurementNonLowestRecord.created_at >= month_start,
-               ProcurementNonLowestRecord.created_at < next_month)
+        .where(ProcurementNonLowestRecord.warehouse_id.in_(wh_ids),
+               day(db,ProcurementNonLowestRecord.created_at) >= month_start,
+               day(db,ProcurementNonLowestRecord.created_at) <= month_end)
     )).scalar() or 0
 
     # ── 人 ──
     # 今日出勤
     expected = (await db.execute(
         select(func.count(Employee.id)).where(
-            Employee.warehouse_id == wh_id,
+            Employee.warehouse_id.in_(wh_ids),
             Employee.status != "resigned",
             Employee.is_deleted == False,
         )
     )).scalar() or 0
     present = (await db.execute(
         select(func.count(func.distinct(ClockInRecord.user_id))).where(
-            ClockInRecord.warehouse_id == wh_id,
+            ClockInRecord.warehouse_id.in_(wh_ids),
             ClockInRecord.clock_date == today,
         )
     )).scalar() or 0
     absent = (await db.execute(
         select(func.count(Absence.id)).where(
-            Absence.warehouse_id == wh_id,
+            Absence.warehouse_id.in_(wh_ids),
             Absence.absence_date == today,
         )
     )).scalar() or 0
 
-    # 本月人效（复用效率模块月汇总；用 savepoint 隔离，失败不影响其余统计）
-    efficiency = None
-    try:
-        from app.api.v1.efficiency import _aggregate_month
-        async with db.begin_nested():
-            em = await _aggregate_month(db, wh_id, month_str)
-            efficiency = {
-                "person_times": em.get("person_times", 0),
-                "order_count": em.get("order_count", 0),
-                "efficiency": em.get("efficiency", 0),
-                "standard": em.get("standard", 0),
-                "below_standard": bool(em.get("below_standard", False)),
-            }
-    except Exception:
-        efficiency = {"person_times": 0, "order_count": 0, "efficiency": 0, "standard": 0, "below_standard": False}
+    # Reuse the existing period calculation, clipped to this calendar month.
+    # Its weekly caller's full-week convention must not spill into another selected month.
+    from app.api.v1.efficiency import _compute_week
+    efficiency_by_warehouse = []
+    for wh in view['warehouses']:
+        item = {'warehouse_id':wh['id'],'warehouse_name':wh['name']}
+        try:
+            async with db.begin_nested():
+                em = await _compute_week(db,wh['id'],month_start,month_end,include_employees=False)
+                item.update({key:em[key] for key in ('person_times','order_count','efficiency','standard','below_standard')})
+        except Exception:
+            item['error'] = '人效加载失败，未将异常当作零'
+        efficiency_by_warehouse.append(item)
+    efficiency = efficiency_by_warehouse[0] if len(efficiency_by_warehouse)==1 and 'error' not in efficiency_by_warehouse[0] else None
 
     # 待办数量
     leave_pending = (await db.execute(
         select(func.count(LeaveRequest.id)).where(
-            LeaveRequest.warehouse_id == wh_id, LeaveRequest.status == "pending"
+            LeaveRequest.warehouse_id.in_(wh_ids), LeaveRequest.status == "pending"
         )
     )).scalar() or 0
     overtime_pending = (await db.execute(
         select(func.count(OvertimeTask.id)).where(
-            OvertimeTask.warehouse_id == wh_id, OvertimeTask.status == "pending"
+            OvertimeTask.warehouse_id.in_(wh_ids), OvertimeTask.status == "pending"
         )
     )).scalar() or 0
     ef_pending = (await db.execute(
@@ -528,29 +331,29 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
             ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id
         ).where(
             ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
-            ExpenseFund.warehouse_id == wh_id,
+            ExpenseFund.warehouse_id.in_(wh_ids),
         )
     )).scalar() or 0
     rb_pending = (await db.execute(
         select(func.count(Reimbursement.id)).where(
-            Reimbursement.warehouse_id == wh_id, Reimbursement.status == ReimbStatus.PENDING.value
+            Reimbursement.warehouse_id.in_(wh_ids), Reimbursement.status == ReimbStatus.PENDING.value
         )
     )).scalar() or 0
     market_pending = (await db.execute(
         select(func.count(MarketItem.id)).where(
-            MarketItem.warehouse_id == wh_id, MarketItem.status == "pending"
+            MarketItem.warehouse_id.in_(wh_ids), MarketItem.status == "pending"
         )
     )).scalar() or 0
     group_pending = (await db.execute(
         select(func.count(GroupOrder.id)).where(
-            GroupOrder.warehouse_id == wh_id, GroupOrder.status == GroupOrderStatus.OPEN.value
+            GroupOrder.warehouse_id.in_(wh_ids), GroupOrder.status == GroupOrderStatus.OPEN.value
         )
     )).scalar() or 0
     expense_approval_pending = 0
     if current_user.role == Role.WAREHOUSE_ADMIN:
         expense_approval_pending = (await db.execute(
             select(func.count(ExpenseApproval.id)).where(
-                ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "pending"
+                ExpenseApproval.warehouse_id.in_(wh_ids), ExpenseApproval.status == "pending"
             )
         )).scalar() or 0
 
@@ -560,7 +363,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 采购审批待办（超门槛 → status=pending）
     po_rows = (await db.execute(
         select(PurchaseOrder.id, PurchaseOrder.order_number, PurchaseOrder.total_amount)
-        .where(PurchaseOrder.warehouse_id == wh_id, PurchaseOrder.status == "pending")
+        .where(PurchaseOrder.warehouse_id.in_(wh_ids), PurchaseOrder.status == "pending")
         .order_by(PurchaseOrder.created_at.desc()).limit(20)
     )).all()
     for pid, order_no, total in po_rows:
@@ -570,7 +373,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 账单待确认（收货有差异）
     bill_rows = (await db.execute(
         select(PayableBill.id, PayableBill.bill_number, PayableBill.amount, PayableBill.confirmed_amount)
-        .where(PayableBill.warehouse_id == wh_id,
+        .where(PayableBill.warehouse_id.in_(wh_ids),
                PayableBill.status != "voided",
                ((PayableBill.need_boss_confirm == "true") | ((PayableBill.confirmed_amount.isnot(None)) & (PayableBill.confirmed_amount != PayableBill.amount))))
         .order_by(PayableBill.created_at.desc()).limit(20)
@@ -583,7 +386,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
         select(LeaveRequest.id, Employee.name)
         .join(Employee, LeaveRequest.employee_id == Employee.id)
         .where(
-            LeaveRequest.warehouse_id == wh_id,
+            LeaveRequest.warehouse_id.in_(wh_ids),
             LeaveRequest.status == "pending",
             Employee.is_deleted == False,
             Employee.status != "resigned",
@@ -596,7 +399,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 加班待确认
     ot_rows = (await db.execute(
         select(OvertimeTask.id, OvertimeTask.date)
-        .where(OvertimeTask.warehouse_id == wh_id, OvertimeTask.status == "pending")
+        .where(OvertimeTask.warehouse_id.in_(wh_ids), OvertimeTask.status == "pending")
         .order_by(OvertimeTask.created_at.desc()).limit(20)
     )).all()
     for oid, odate in ot_rows:
@@ -608,7 +411,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
         .join(ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id)
         .join(User, ExpenseFund.employee_id == User.id)
         .where(ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
-               ExpenseFund.warehouse_id == wh_id)
+               ExpenseFund.warehouse_id.in_(wh_ids))
         .order_by(ExpenseFundItem.created_at.desc()).limit(20)
     )).all()
     for iid, uname in ef_rows:
@@ -618,7 +421,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     rb_rows = (await db.execute(
         select(Reimbursement.id, User.display_name)
         .join(User, Reimbursement.employee_id == User.id)
-        .where(Reimbursement.warehouse_id == wh_id, Reimbursement.status == ReimbStatus.PENDING.value)
+        .where(Reimbursement.warehouse_id.in_(wh_ids), Reimbursement.status == ReimbStatus.PENDING.value)
         .order_by(Reimbursement.created_at.desc()).limit(20)
     )).all()
     for rid, uname in rb_rows:
@@ -628,7 +431,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     m_rows = (await db.execute(
         select(MarketItem.id, MarketItem.name, User.display_name)
         .join(User, MarketItem.uploader_id == User.id)
-        .where(MarketItem.warehouse_id == wh_id, MarketItem.status == "pending")
+        .where(MarketItem.warehouse_id.in_(wh_ids), MarketItem.status == "pending")
         .order_by(MarketItem.created_at.desc()).limit(20)
     )).all()
     for mid, mname, uname in m_rows:
@@ -637,7 +440,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
     # 待拼单
     g_rows = (await db.execute(
         select(GroupOrder.id, GroupOrder.item_name)
-        .where(GroupOrder.warehouse_id == wh_id, GroupOrder.status == GroupOrderStatus.OPEN.value)
+        .where(GroupOrder.warehouse_id.in_(wh_ids), GroupOrder.status == GroupOrderStatus.OPEN.value)
         .order_by(GroupOrder.created_at.desc()).limit(20)
     )).all()
     for gid, gname in g_rows:
@@ -648,21 +451,17 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
         ea_rows = (await db.execute(
             select(ExpenseApproval.id, User.display_name)
             .join(User, ExpenseApproval.applicant_id == User.id)
-            .where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "pending")
+            .where(ExpenseApproval.warehouse_id.in_(wh_ids), ExpenseApproval.status == "pending")
             .order_by(ExpenseApproval.created_at.desc()).limit(20)
         )).all()
         for aid, aname in ea_rows:
             todos.append({"type": "expense_approval", "description": f"{aname} 的费用申请待审批", "link": "/expense-approvals", "id": aid})
 
     return {
+        "period": view["period"], "warehouses":view["warehouses"], "trends":view["trends"],
+        "realtime_at":thai_now().isoformat(),
         "finance": {
-            "month": {
-                "income": income_list,
-                "operating_expense": _merge_currency(op_rows),
-                "procurement_expense": _merge_currency(procurement_paid_rows),
-                "expense": expense_list,
-                "profit": profit_list,
-            },
+            "month": view['month_card'],
             "receivable_payable": {
                 "receivable": receivable,
                 "payable": payable,
@@ -677,15 +476,12 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
                 "price_anomaly_count": price_anomaly,
                 "non_lowest_count": non_lowest,
             },
-            "recharge_reconciliation": {
-                "recharge": _merge_currency(declaration_rows),
-                "incoming": _merge_currency(incoming_rows),
-                "unmatched_count": unmatched_recharge,
-            },
+            "recharge_reconciliation": view['recharge_reconciliation'],
         },
         "people": {
             "attendance": {"expected": expected, "present": present, "absent": absent},
             "efficiency": efficiency,
+            "efficiency_by_warehouse": efficiency_by_warehouse,
             "todos": {
                 "leave_pending": leave_pending,
                 "overtime_pending": overtime_pending,
@@ -701,7 +497,7 @@ async def dashboard_cockpit(current_user: User = Depends(get_current_user), db: 
 
 
 @router.get("/boss-todos")
-async def boss_todos(response: Response, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def boss_todos(request: Request, response: Response, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     from app.models.employee import Employee
     from app.models.employee_advance import EmployeeAdvance, AdvanceApprovalStatus
     from app.models.overtime import OvertimeTask, OvertimeAssignment
@@ -713,7 +509,8 @@ async def boss_todos(response: Response, current_user: User = Depends(get_curren
         return empty
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无此操作权限")
-    wh_ids = get_wh_ids(current_user)
+    from app.services.warehouse_summary import warehouse_scope
+    wh_ids = [w.id for w in await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))]
     if not wh_ids:
         return empty
     advance_rows = (await db.execute(select(EmployeeAdvance, Employee.name).join(

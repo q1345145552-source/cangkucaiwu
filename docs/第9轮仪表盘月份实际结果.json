@@ -1,0 +1,1193 @@
+{
+  "round": 9,
+  "base": "8dfc03f608f1c76927825d30da3838e3d4720244",
+  "before": {
+    "2026-09": {
+      "status": 200,
+      "month_card": {
+        "income": [
+          {
+            "currency": "CNY",
+            "amount": 70.0
+          },
+          {
+            "currency": "THB",
+            "amount": 700.0
+          }
+        ],
+        "operating_expense": [
+          {
+            "currency": "CNY",
+            "amount": 30.0
+          },
+          {
+            "currency": "THB",
+            "amount": 300.0
+          }
+        ],
+        "procurement_expense": [],
+        "expense": [
+          {
+            "currency": "CNY",
+            "amount": 30.0
+          },
+          {
+            "currency": "THB",
+            "amount": 300.0
+          }
+        ],
+        "profit": [
+          {
+            "currency": "CNY",
+            "amount": 40.0
+          },
+          {
+            "currency": "THB",
+            "amount": 400.0
+          }
+        ]
+      },
+      "funds_first_date": "2026-09-21",
+      "income_expense_months": [
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ]
+    },
+    "2026-10": {
+      "status": 200,
+      "month_card": {
+        "income": [
+          {
+            "currency": "CNY",
+            "amount": 70.0
+          },
+          {
+            "currency": "THB",
+            "amount": 700.0
+          }
+        ],
+        "operating_expense": [
+          {
+            "currency": "CNY",
+            "amount": 30.0
+          },
+          {
+            "currency": "THB",
+            "amount": 300.0
+          }
+        ],
+        "procurement_expense": [],
+        "expense": [
+          {
+            "currency": "CNY",
+            "amount": 30.0
+          },
+          {
+            "currency": "THB",
+            "amount": 300.0
+          }
+        ],
+        "profit": [
+          {
+            "currency": "CNY",
+            "amount": 40.0
+          },
+          {
+            "currency": "THB",
+            "amount": 400.0
+          }
+        ]
+      },
+      "funds_first_date": "2026-09-21",
+      "income_expense_months": [
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ]
+    }
+  },
+  "native": {
+    "months": {
+      "2026-09": {
+        "period": {
+          "month": "2026-09",
+          "start_date": "2026-09-01",
+          "end_date": "2026-09-30",
+          "timezone": "Asia/Bangkok"
+        },
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 100.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1000.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 10.0
+            },
+            {
+              "currency": "THB",
+              "amount": 200.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 90.0
+            },
+            {
+              "currency": "THB",
+              "amount": 800.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 90.0
+            },
+            {
+              "currency": "THB",
+              "amount": 800.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 10.0
+            },
+            {
+              "currency": "THB",
+              "amount": 200.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          },
+          "expense_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          }
+        },
+        "chart_days": 30,
+        "chart_income": 1000.0,
+        "chart_expense": 200.0
+      },
+      "2026-10": {
+        "period": {
+          "month": "2026-10",
+          "start_date": "2026-10-01",
+          "end_date": "2026-10-31",
+          "timezone": "Asia/Bangkok"
+        },
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 70.0
+            },
+            {
+              "currency": "THB",
+              "amount": 700.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 30.0
+            },
+            {
+              "currency": "THB",
+              "amount": 300.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 40.0
+            },
+            {
+              "currency": "THB",
+              "amount": 400.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 40.0
+            },
+            {
+              "currency": "THB",
+              "amount": 400.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 30.0
+            },
+            {
+              "currency": "THB",
+              "amount": 300.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          },
+          "expense_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          }
+        },
+        "chart_days": 31,
+        "chart_income": 700.0,
+        "chart_expense": 300.0
+      }
+    },
+    "warehouses": {
+      "all": {
+        "2026-09": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 150.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1500.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 15.0
+            },
+            {
+              "currency": "THB",
+              "amount": 250.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 135.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1250.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 135.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1250.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 15.0
+            },
+            {
+              "currency": "THB",
+              "amount": 250.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          },
+          "expense_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          }
+        },
+        "2026-10": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 160.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1600.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 39.0
+            },
+            {
+              "currency": "THB",
+              "amount": 390.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 121.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1210.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 121.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1210.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 39.0
+            },
+            {
+              "currency": "THB",
+              "amount": 390.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          },
+          "expense_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          }
+        }
+      },
+      "granted_office_b_income_thb": 500,
+      "office_all": 403,
+      "old_token_revoked": 403,
+      "labor_super": 403,
+      "foreign_inactive_bad": 403
+    },
+    "boundaries": {
+      "monthly": {
+        "2026-09": {
+          "income_thb": 1011,
+          "expense_thb": 210,
+          "net_thb": 801
+        },
+        "2026-10": {
+          "income_thb": 713,
+          "expense_thb": 311,
+          "net_thb": 402
+        },
+        "2026-12": {
+          "income_thb": 250,
+          "expense_thb": 0,
+          "net_thb": 250
+        },
+        "2027-01": {
+          "income_thb": 350,
+          "expense_thb": 0,
+          "net_thb": 350
+        },
+        "2024-02": {
+          "income_thb": 0,
+          "expense_thb": 0,
+          "net_thb": 0
+        },
+        "2028-01": {
+          "income_thb": 0,
+          "expense_thb": 0,
+          "net_thb": 0
+        }
+      },
+      "invalid": 400,
+      "empty": 0,
+      "utc_before_17Z_in_september": 10,
+      "utc_at_17Z_in_october": 11
+    },
+    "realtime_and_efficiency": {
+      "month_efficiency": {
+        "2026-09": {
+          "warehouse_id": 1,
+          "warehouse_name": "测试仓1",
+          "person_times": 1.0,
+          "order_count": 0,
+          "efficiency": 0.0,
+          "standard": 450.0,
+          "below_standard": true
+        },
+        "2026-10": {
+          "warehouse_id": 1,
+          "warehouse_name": "测试仓1",
+          "person_times": 1.0,
+          "order_count": 0,
+          "efficiency": 0.0,
+          "standard": 450.0,
+          "below_standard": true
+        }
+      },
+      "pending_advance_a": 1,
+      "pending_advance_b": 1,
+      "pending_all": 2,
+      "pending_does_not_add_wallet_expense": true
+    },
+    "signed_and_failure": {
+      "original_expense_thb": 300,
+      "adjustment_thb": -50,
+      "expense_thb": 250,
+      "net_thb": 450,
+      "injected_fault": 500
+    },
+    "procurement": {
+      "2026-09": {
+        "procurement_paid_thb": 200,
+        "expense_card_thb": 200,
+        "supplier_chart_thb": 200,
+        "order_count": 1,
+        "price_anomaly": 1,
+        "non_lowest": 1
+      },
+      "2026-10": {
+        "procurement_paid_thb": 300,
+        "expense_card_thb": 300,
+        "supplier_chart_thb": 300,
+        "order_count": 2,
+        "price_anomaly": 2,
+        "non_lowest": 2
+      }
+    }
+  },
+  "browser": {
+    "financial_rows": {
+      "incoming_flows": 8,
+      "expense_records": 8,
+      "recharge_declarations": 1,
+      "account_transfers": 1,
+      "payroll_records": 0
+    },
+    "amounts_by_currency": {
+      "income": {
+        "THB": 3100.0,
+        "CNY": 310.0
+      },
+      "expense": {
+        "THB": 640.0,
+        "CNY": 54.0
+      }
+    },
+    "monthly_admin": {
+      "admin-1-2026-09": {
+        "status": 200,
+        "period": {
+          "month": "2026-09",
+          "start_date": "2026-09-01",
+          "end_date": "2026-09-30",
+          "timezone": "Asia/Bangkok"
+        },
+        "warehouses": [
+          {
+            "id": 1,
+            "name": "测试仓1"
+          }
+        ],
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 100.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1000.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 10.0
+            },
+            {
+              "currency": "THB",
+              "amount": 200.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 90.0
+            },
+            {
+              "currency": "THB",
+              "amount": 800.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 90.0
+            },
+            {
+              "currency": "THB",
+              "amount": 800.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 10.0
+            },
+            {
+              "currency": "THB",
+              "amount": 200.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          },
+          "expense_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          }
+        },
+        "chart_totals": {
+          "CNY": {
+            "income": 100.0,
+            "expense": 10.0
+          },
+          "THB": {
+            "income": 1000.0,
+            "expense": 200.0
+          }
+        }
+      },
+      "admin-2-2026-09": {
+        "status": 200,
+        "period": {
+          "month": "2026-09",
+          "start_date": "2026-09-01",
+          "end_date": "2026-09-30",
+          "timezone": "Asia/Bangkok"
+        },
+        "warehouses": [
+          {
+            "id": 2,
+            "name": "测试仓2"
+          }
+        ],
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 50.0
+            },
+            {
+              "currency": "THB",
+              "amount": 500.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 5.0
+            },
+            {
+              "currency": "THB",
+              "amount": 50.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 45.0
+            },
+            {
+              "currency": "THB",
+              "amount": 450.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 45.0
+            },
+            {
+              "currency": "THB",
+              "amount": 450.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 5.0
+            },
+            {
+              "currency": "THB",
+              "amount": 50.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          },
+          "expense_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          }
+        },
+        "chart_totals": {
+          "CNY": {
+            "income": 50.0,
+            "expense": 5.0
+          },
+          "THB": {
+            "income": 500.0,
+            "expense": 50.0
+          }
+        }
+      },
+      "admin-all-2026-09": {
+        "status": 200,
+        "period": {
+          "month": "2026-09",
+          "start_date": "2026-09-01",
+          "end_date": "2026-09-30",
+          "timezone": "Asia/Bangkok"
+        },
+        "warehouses": [
+          {
+            "id": 1,
+            "name": "测试仓1"
+          },
+          {
+            "id": 2,
+            "name": "测试仓2"
+          },
+          {
+            "id": 3,
+            "name": "空仓"
+          }
+        ],
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 150.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1500.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 15.0
+            },
+            {
+              "currency": "THB",
+              "amount": 250.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 135.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1250.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 135.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1250.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 15.0
+            },
+            {
+              "currency": "THB",
+              "amount": 250.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          },
+          "expense_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          }
+        },
+        "chart_totals": {
+          "CNY": {
+            "income": 150.0,
+            "expense": 15.0
+          },
+          "THB": {
+            "income": 1500.0,
+            "expense": 250.0
+          }
+        }
+      },
+      "admin-1-2026-10": {
+        "status": 200,
+        "period": {
+          "month": "2026-10",
+          "start_date": "2026-10-01",
+          "end_date": "2026-10-31",
+          "timezone": "Asia/Bangkok"
+        },
+        "warehouses": [
+          {
+            "id": 1,
+            "name": "测试仓1"
+          }
+        ],
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 70.0
+            },
+            {
+              "currency": "THB",
+              "amount": 700.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 30.0
+            },
+            {
+              "currency": "THB",
+              "amount": 300.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 40.0
+            },
+            {
+              "currency": "THB",
+              "amount": 400.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 40.0
+            },
+            {
+              "currency": "THB",
+              "amount": 400.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 30.0
+            },
+            {
+              "currency": "THB",
+              "amount": 300.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          },
+          "expense_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          }
+        },
+        "chart_totals": {
+          "CNY": {
+            "income": 70.0,
+            "expense": 30.0
+          },
+          "THB": {
+            "income": 700.0,
+            "expense": 300.0
+          }
+        }
+      },
+      "admin-2-2026-10": {
+        "status": 200,
+        "period": {
+          "month": "2026-10",
+          "start_date": "2026-10-01",
+          "end_date": "2026-10-31",
+          "timezone": "Asia/Bangkok"
+        },
+        "warehouses": [
+          {
+            "id": 2,
+            "name": "测试仓2"
+          }
+        ],
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 90.0
+            },
+            {
+              "currency": "THB",
+              "amount": 900.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 9.0
+            },
+            {
+              "currency": "THB",
+              "amount": 90.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 81.0
+            },
+            {
+              "currency": "THB",
+              "amount": 810.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 81.0
+            },
+            {
+              "currency": "THB",
+              "amount": 810.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 9.0
+            },
+            {
+              "currency": "THB",
+              "amount": 90.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          },
+          "expense_count_by_currency": {
+            "CNY": 1,
+            "THB": 1
+          }
+        },
+        "chart_totals": {
+          "CNY": {
+            "income": 90.0,
+            "expense": 9.0
+          },
+          "THB": {
+            "income": 900.0,
+            "expense": 90.0
+          }
+        }
+      },
+      "admin-all-2026-10": {
+        "status": 200,
+        "period": {
+          "month": "2026-10",
+          "start_date": "2026-10-01",
+          "end_date": "2026-10-31",
+          "timezone": "Asia/Bangkok"
+        },
+        "warehouses": [
+          {
+            "id": 1,
+            "name": "测试仓1"
+          },
+          {
+            "id": 2,
+            "name": "测试仓2"
+          },
+          {
+            "id": 3,
+            "name": "空仓"
+          }
+        ],
+        "card": {
+          "income": [
+            {
+              "currency": "CNY",
+              "amount": 160.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1600.0
+            }
+          ],
+          "expense": [
+            {
+              "currency": "CNY",
+              "amount": 39.0
+            },
+            {
+              "currency": "THB",
+              "amount": 390.0
+            }
+          ],
+          "net": [
+            {
+              "currency": "CNY",
+              "amount": 121.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1210.0
+            }
+          ],
+          "profit": [
+            {
+              "currency": "CNY",
+              "amount": 121.0
+            },
+            {
+              "currency": "THB",
+              "amount": 1210.0
+            }
+          ],
+          "operating_expense": [
+            {
+              "currency": "CNY",
+              "amount": 39.0
+            },
+            {
+              "currency": "THB",
+              "amount": 390.0
+            }
+          ],
+          "procurement_expense": [
+            {
+              "currency": "CNY",
+              "amount": 0.0
+            },
+            {
+              "currency": "THB",
+              "amount": 0.0
+            }
+          ],
+          "income_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          },
+          "expense_count_by_currency": {
+            "CNY": 2,
+            "THB": 2
+          }
+        },
+        "chart_totals": {
+          "CNY": {
+            "income": 160.0,
+            "expense": 39.0
+          },
+          "THB": {
+            "income": 1600.0,
+            "expense": 390.0
+          }
+        }
+      }
+    },
+    "office_statuses": {
+      "staff-1-2026-09": 200,
+      "staff-2-2026-09": 200,
+      "staff-all-2026-09": 403,
+      "supervisor-1-2026-09": 200,
+      "supervisor-2-2026-09": 200,
+      "supervisor-all-2026-09": 403,
+      "staff-1-2026-10": 200,
+      "staff-2-2026-10": 200,
+      "staff-all-2026-10": 403,
+      "supervisor-1-2026-10": 200,
+      "supervisor-2-2026-10": 200,
+      "supervisor-all-2026-10": 403
+    }
+  },
+  "tests": {
+    "native_postgresql": {
+      "tests": "59",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "34.489"
+    },
+    "legacy_read_guards": {
+      "tests": "71",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "16.925"
+    },
+    "frontend_files_passed": [
+      "dashboard-month",
+      "boss-todos",
+      "warehouse-summary",
+      "manual-wallet",
+      "other-income-currency",
+      "money-record-scope",
+      "money-month-range",
+      "incoming-operations",
+      "expense-approval-payment",
+      "labor-language"
+    ],
+    "build_exit": 0,
+    "typecheck_exit": 2,
+    "typecheck_before": 88,
+    "typecheck_after": 85,
+    "new_type_diagnostics": [],
+    "optional_legacy_menu_matrix": "专用18080夹具连接未成功，不计通过；保留尝试日志。"
+  },
+  "cleanup": {
+    "temporary_browser_schema_removed": true,
+    "closed_ports": {
+      "18180": true,
+      "18181": true,
+      "18182": true
+    },
+    "own_postgresql_stopped": true
+  },
+  "migrations": [],
+  "production_deployed": false,
+  "next_round_started": false,
+  "limitations": [
+    "原reports/previews其他卡片切单仓仍不变，本轮不混改。",
+    "即时余额及待收待付并非历史月末快照，页面已标即时。",
+    "原有85条全量类型诊断仍在。"
+  ],
+  "artifacts": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第9轮仪表盘月份-20261020"
+}

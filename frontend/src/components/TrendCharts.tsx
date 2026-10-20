@@ -18,17 +18,20 @@ function niceMax(vals: number[]): number {
   return m;
 }
 
-export function LineChart({ labels, datasets, valuePrefix = "" }: {
+export function LineChart({ labels, datasets, valuePrefix = "", signed = false }: {
   labels: string[];
   datasets: TrendDataset[];
   valuePrefix?: string;
+  signed?: boolean;
 }) {
   const W = 620, H = 220, padL = 46, padR = 14, padT = 14, padB = 30;
   const [hover, setHover] = useState<number | null>(null);
 
   const maxVal = niceMax(datasets.flatMap(d => d.values));
+  const minVal = signed && datasets.some(d => d.values.some(v => v < 0)) ? -niceMax(datasets.flatMap(d => d.values.map(v => -v))) : 0;
+  const ticks = [minVal, (minVal + maxVal) / 2, maxVal];
   const x = (i: number) => padL + (labels.length <= 1 ? 0 : (i * (W - padL - padR)) / (labels.length - 1));
-  const y = (v: number) => padT + (H - padT - padB) * (1 - v / maxVal);
+  const y = (v: number) => padT + (H - padT - padB) * (maxVal - v) / (maxVal - minVal);
   const path = (values: number[]) => values.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
 
   function onMove(e: React.MouseEvent<SVGSVGElement>) {
@@ -46,8 +49,8 @@ export function LineChart({ labels, datasets, valuePrefix = "" }: {
     <div className="relative">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
         {/* 网格线 */}
-        {[0, 0.5, 1].map(f => (
-          <line key={f} x1={padL} x2={W - padR} y1={y(maxVal * f)} y2={y(maxVal * f)} stroke="#e5e7eb" strokeWidth={1} />
+        {ticks.map(value => (
+          <line key={value} x1={padL} x2={W - padR} y1={y(value)} y2={y(value)} stroke="#e5e7eb" strokeWidth={1} />
         ))}
         {/* 折线 */}
         {datasets.map(d => (
@@ -76,9 +79,9 @@ export function LineChart({ labels, datasets, valuePrefix = "" }: {
           );
         })}
         {/* y 轴标签 */}
-        {[0, 0.5, 1].map(f => (
-          <text key={f} x={padL - 6} y={y(maxVal * f) + 3} textAnchor="end" fontSize={9} fill="#9ca3af">
-            {valuePrefix}{Math.round(maxVal * f).toLocaleString()}
+        {ticks.map(value => (
+          <text key={value} x={padL - 6} y={y(value) + 3} textAnchor="end" fontSize={9} fill="#9ca3af">
+            {valuePrefix}{Math.round(value).toLocaleString()}
           </text>
         ))}
       </svg>

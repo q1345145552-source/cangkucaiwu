@@ -241,7 +241,7 @@ def test_warehouse_summary_old_lazy_loading_failure_reproduced_without_query_cha
     asyncio.run(run())
 
 
-def test_existing_guards_remain_first_and_round8_only_changes_summary():
+def test_existing_guards_remain_first_and_round9_only_changes_dashboard_period():
     from tests.non_labor_test_support import without_non_labor_guard
     from tests.test_non_labor_guard import CASES as BATCH1
     from tests.test_non_labor_batch2_writes import CASES as BATCH2
@@ -256,10 +256,10 @@ def test_existing_guards_remain_first_and_round8_only_changes_summary():
     root=Path(__file__).resolve().parents[2]
     for name in ('users','dashboard','customers','payment_accounts'):
         path='backend/app/api/v1/'+name+'.py'
-        old=subprocess.check_output(['git','show','356fe2435cdef8e7d089e7e12a184586a8020a4b:'+path],cwd=root,text=True)
+        old=subprocess.check_output(['git','show','8dfc03f608f1c76927825d30da3838e3d4720244:'+path],cwd=root,text=True)
         def protected(source):
             tree=ast.parse(source)
             tree.body=[n for n in tree.body if not isinstance(n,(ast.Import,ast.ImportFrom))
-                and not (name=='dashboard' and isinstance(n,ast.AsyncFunctionDef) and n.name=='warehouse_summary')]
+                and not (name=='dashboard' and isinstance(n,ast.AsyncFunctionDef) and n.name in ('_selected_dashboard','dashboard_cockpit','dashboard_trends','boss_todos'))]
             return ast.unparse(tree)
         assert protected((root/path).read_text())==protected(old),path

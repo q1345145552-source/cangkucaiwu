@@ -19,10 +19,11 @@ function text(n){if(n==null)return '';if(typeof n!=='object')return String(n);re
  for(let role of ['warehouse_admin','supervisor','staff']){
   let h=harness(role),tree=await h.render();assert(text(tree).includes('待批预支 3 笔'),text(tree));assert(text(tree).includes('待核实加班 2 条'));
   assert.deepEqual(nodes(tree).filter(n=>n.props?.href).map(n=>n.props.href),['/employee-advances?approval_status=pending','/overtime?pending_verification=true']);
+  assert(text(tree).includes('待办（即时）'));h.set(4,2);await h.listeners['warehouse-changed']();tree=await h.render();assert(text(tree).includes('待批预支 4 笔'));
   h.set(2,1);await h.listeners.focus();tree=await h.render();assert(text(tree).includes('待批预支 2 笔'));assert(text(tree).includes('待核实加班 1 条'));
   h.set(0,0);await h.listeners.pageshow();tree=await h.render();assert(text(tree).includes('暂无待办'));
   h.fail();await h.listeners.visibilitychange();tree=await h.render();assert(text(tree).includes('网络失败'));assert(!text(tree).includes('暂无待办'));
-  h.cleanup();assert.equal(Object.keys(h.listeners).length,0);count+=5;
+  h.cleanup();assert.equal(Object.keys(h.listeners).length,0);count+=6;
  }
  for(let role of ['super_admin','warehouse_labor']){let h=harness(role);assert.equal(await h.render(),null);assert.equal(h.calls,0);count++;}
  // Existing write handlers are identical to round 19; new review calls reuse existing APIs.
@@ -30,7 +31,7 @@ function text(n){if(n==null)return '';if(typeof n!=='object')return String(n);re
  for(let file of ['employee-advances','overtime']){
   let name=`frontend/src/app/(dashboard)/${file}/page.tsx`;
   function functions(s){let out={};let sf=ts.createSourceFile(name,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['load','review','handleCreate','loadRefs','EmployeeAdvancePage','OvertimePage'].includes(n.name.text))out[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return out;}
-  assert.deepEqual(functions(fs.readFileSync(path.join(root,name),'utf8')),functions(execFileSync('git',['show','e950142:'+name],{cwd:root,encoding:'utf8'})));count++;
+  assert.deepEqual(functions(fs.readFileSync(path.join(root,name),'utf8')),functions(execFileSync('git',['show','8dfc03f608f1c76927825d30da3838e3d4720244:'+name],{cwd:root,encoding:'utf8'})));count++;
  }
  console.log(`Boss todos: ${count} checks passed`);
 })().catch(e=>{console.error(e);process.exit(1)});

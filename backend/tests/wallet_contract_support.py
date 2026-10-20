@@ -6,6 +6,7 @@ WALLET_FUNCTIONS = {
     'list_expense', 'ledger', 'ledger_export', 'monthly_summary', 'operating_dashboard',
     'dashboard_cockpit', 'dashboard_trends', 'pay_bill', 'execute_plan', 'update_bill',
     'warehouse_summary',
+    '_selected_dashboard', 'boss_todos',
     'plan_detail', 'record_repayment', 'list_credit_customers', 'credit_detail', 'list_accounts', 'create_account', 'update_account', 'delete_account', 'create_transfer',
     '_disbursement_funding', 'batch_disburse_payroll', 'disburse_payroll',
 }
