@@ -18,6 +18,7 @@ function harness(){
   if(route.includes('categories')||route==='/accounts')return{data:[]};
   return{data:route.includes('/expense?')?[{id:3,amount:300,currency:'THB'}]:rows,total:route.includes('/expense?')?1:2};}};
  const imports={react,'@/lib/api':{api,getToken:()=> 'synthetic-test-token',getActiveWarehouseId:()=> '1'},
+ '@/lib/manualWallet':{pendingWalletOperation:()=>null,submitWalletOperation:async()=>({})},
  '@/hooks/useAuth':{useAuth:()=>({user:{role:'warehouse_admin'}})},'@/hooks/useI18n':{useI18n:()=>({t:k=>k})},
  '@/components/ui/Toast':{useToast:()=>({toast:(...args)=>messages.push(args)})},'@/components/common/DataTable':{__esModule:true,default:DataTable},
  '@/lib/currency':{fmtMoney:(n,c)=>`${c} ${n}`,fmtMoneyByCurrency:v=>JSON.stringify(v)},'next/navigation':{useRouter:()=>({push(){}})}};

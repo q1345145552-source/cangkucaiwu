@@ -19,6 +19,7 @@ function harness(){
  const mod={exports:{}};
  const src=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src/app/(dashboard)/income-expense/page.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  const imports={react,'@/lib/api':{api,getToken:()=> 'synthetic-token'},'@/hooks/useAuth':{useAuth:()=>({user:{id:1,role:'warehouse_admin'}})},
+ '@/lib/manualWallet':{pendingWalletOperation:()=>null,submitWalletOperation:async()=>({})},
  '@/hooks/useI18n':{useI18n:()=>({t:k=>k})},'@/components/ui/Toast':{useToast:()=>({toast(){}})},
  '@/components/common/DataTable':{__esModule:true,default:DataTable},'@/lib/currency':{fmtMoney:(v,c)=>`${c} ${v}`,fmtMoneyByCurrency:v=>JSON.stringify(v)},
  'next/navigation':{useRouter:()=>({push(){}})}};

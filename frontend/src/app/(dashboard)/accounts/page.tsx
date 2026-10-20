@@ -1,5 +1,7 @@
 "use client";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { useAuth } from "@/hooks/useAuth";
+import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
 import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
@@ -8,11 +10,14 @@ import { useRouter } from "next/navigation";
 import { Edit, Trash2, Power, PowerOff } from "lucide-react";
 
 export default function AccountsPage() {
-  const canWriteWallet = useMenuPermission("accounts");
+  const hasWalletPermission = useMenuPermission("accounts");
+  const { user } = useAuth() as { user: { role: string } | null };
+  const canWriteWallet = hasWalletPermission && ["warehouse_admin", "supervisor", "staff"].includes(user?.role || "");
+  const canCreateAccount = canWriteWallet && ["warehouse_admin", "supervisor"].includes(user?.role || "");
   const { toast } = useToast(); const router = useRouter();
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferring, setTransferring] = useState(false);
-  const [transfer, setTransfer] = useState({ from_account_id: "", to_account_id: "", amount: "", transfer_date: "", remark: "", request_key: "" });
+  const [transfer, setTransfer] = useState({ from_account_id: "", to_account_id: "", amount: "", transfer_date: "", remark: "" });
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -54,7 +59,7 @@ export default function AccountsPage() {
   }
 
   async function handleSave() {
-    const payload = { ...form, opening_balance: form.opening_balance === "" ? 0 : +form.opening_balance };
+    const payload = { ...form, account_number: form.account_type === "cash" ? form.account_number || "-" : form.account_number, opening_balance: form.opening_balance === "" ? 0 : +form.opening_balance };
     try {
       if (editingId) {
         await api.put(`/accounts/${editingId}`, payload);
@@ -83,17 +88,26 @@ export default function AccountsPage() {
   async function saveTransfer() {
     setTransferring(true);
     try {
-      await api.post("/accounts/transfers", { ...transfer, from_account_id: +transfer.from_account_id, to_account_id: +transfer.to_account_id, amount: +transfer.amount });
+      await submitWalletOperation("transfer", transfer);
       toast("success", "内部转账已记录，不计收入支出"); setShowTransfer(false); load();
     } catch (err: any) { toast("error", err.message || "转账登记失败"); }
     finally { setTransferring(false); }
   }
 
-  const typeLabels: Record<string, string> = { bank: "银行", alipay: "支付宝", wechat: "微信" };
+  function openTransfer() {
+    try {
+      const pending = pendingWalletOperation("transfer")?.payload;
+      setTransfer(pending ? { from_account_id: String(pending.from_account_id), to_account_id: String(pending.to_account_id), amount: String(pending.amount), transfer_date: pending.transfer_date, remark: pending.remark || "" } : { from_account_id: "", to_account_id: "", amount: "", transfer_date: new Date().toLocaleDateString("en-CA"), remark: "" });
+      if (pending) toast("error", "已恢复上一笔结果待确认的转账，请重试，不要另建");
+      setShowTransfer(true);
+    } catch (err: any) { toast("error", err.message); }
+  }
+
+  const typeLabels: Record<string, string> = { cash: "现金", bank: "银行", alipay: "支付宝", wechat: "微信" };
   const currencyLabels: Record<string, string> = { THB: "泰铢", CNY: "人民币" };
 
   const columns = [
-    { key: "account_name", label: "账户名称" },
+    { key: "account_name", label: "账户名称", render: (v: string, row: any) => <span>{v}{row.account_type === "cash" && <small className="ml-1 text-gray-400">现金</small>}</span> },
     { key: "account_holder", label: "账户持有人", hideOnMobile: true, render: (v: string) => v || "-" },
     { key: "account_type", label: "类型", hideOnMobile: true, render: (v: string) => typeLabels[v] || v },
     { key: "bank_name", label: "开户银行", hideOnMobile: true, render: (v: string) => v || "-" },
@@ -107,7 +121,7 @@ export default function AccountsPage() {
       </span>
     )},
     { key: "id", label: "操作", render: (_: any, row: any) => (
-      <div className="flex items-center gap-1">
+      canWriteWallet && <div className="flex items-center gap-1">
         <button onClick={() => handleToggleStatus(row)} className={`btn-xs flex items-center gap-0.5 ${row.status === "active" ? "text-orange-600 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"} px-2 py-1 rounded`} title={row.status === "active" ? "停用" : "启用"}>
           {row.status === "active" ? <PowerOff size={12} /> : <Power size={12} />}
         </button>
@@ -121,7 +135,7 @@ export default function AccountsPage() {
     <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="page-title">收款账户</h1>
-        <div className="flex gap-2">{canWriteWallet && <button className="btn-secondary" onClick={() => { setTransfer({ from_account_id: "", to_account_id: "", amount: "", transfer_date: new Date().toLocaleDateString("en-CA"), remark: "", request_key: crypto.randomUUID() }); setShowTransfer(true); }}>内部转账</button>}<button onClick={openCreate} className="btn-primary">新建账户</button></div>
+        <div className="flex gap-2">{canWriteWallet && <button className="btn-secondary" onClick={openTransfer}>内部转账</button>}{canCreateAccount && <button onClick={openCreate} className="btn-primary">新建账户</button>}</div>
       </div>
 
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : (
@@ -151,6 +165,7 @@ export default function AccountsPage() {
                   <div className="form-group">
                     <label className="form-label">类型 <span className="text-red-400">*</span></label>
                     <select className="form-input" value={form.account_type} onChange={e => setForm({ ...form, account_type: e.target.value })}>
+                      <option value="cash">现金</option>
                       <option value="bank">银行</option>
                       <option value="alipay">支付宝</option>
                       <option value="wechat">微信</option>
@@ -185,7 +200,7 @@ export default function AccountsPage() {
               )}
 
               {/* 非银行类型的账号 */}
-              {form.account_type !== "bank" && (
+              {form.account_type !== "bank" && form.account_type !== "cash" && (
                 <div>
                   <div className="text-sm font-semibold text-gray-400 pb-2 border-b mb-3">账户信息</div>
                   <div className="form-group">
@@ -232,7 +247,7 @@ export default function AccountsPage() {
       )}
       {showTransfer && <div className="modal-overlay"><div className="modal-sm p-5 max-h-[90dvh] overflow-y-auto">
         <h2 className="text-lg font-semibold mb-3">内部转账</h2><p className="text-xs text-gray-500 mb-3">仅用于同仓库、同币种账户之间的真实调拨，不计公司收入和支出。</p>
-        {(["from_account_id", "to_account_id"] as const).map((key, i) => <div className="form-group" key={key}><label className="form-label">{i ? "转入账户" : "转出账户"}</label><select className="form-input" value={transfer[key]} onChange={e => setTransfer({ ...transfer, [key]: e.target.value })}><option value="">请选择</option>{data.filter(a => a.status !== "inactive").map(a => <option key={a.id} value={a.id}>{a.account_name}（{a.currency}）</option>)}</select></div>)}
+        {(["from_account_id", "to_account_id"] as const).map((key, i) => { const source = data.find(a => a.id === +transfer.from_account_id); return <div className="form-group" key={key}><label className="form-label">{i ? "转入账户" : "转出账户"}</label><select className="form-input" value={transfer[key]} onChange={e => { const next = { ...transfer, [key]: e.target.value }; if (!i) { const from = data.find(a => a.id === +e.target.value), to = data.find(a => a.id === +transfer.to_account_id); if (!from || !to || from.id === to.id || (from.currency || "THB") !== (to.currency || "THB") || from.warehouse_id !== to.warehouse_id) next.to_account_id = ""; } setTransfer(next); }}><option value="">请选择</option>{data.filter(a => (!a.status || a.status === "active") && (!i || !source || (a.id !== source.id && (a.currency || "THB") === (source.currency || "THB") && a.warehouse_id === source.warehouse_id))).map(a => <option key={a.id} value={a.id}>{a.account_name}（{a.currency}）</option>)}</select></div>; })}
         <div className="form-group"><label className="form-label">日期</label><input type="date" className="form-input" value={transfer.transfer_date} onChange={e => setTransfer({ ...transfer, transfer_date: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={transfer.amount} onChange={e => setTransfer({ ...transfer, amount: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">备注</label><input className="form-input" value={transfer.remark} onChange={e => setTransfer({ ...transfer, remark: e.target.value })} /></div>

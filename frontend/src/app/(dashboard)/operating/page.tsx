@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import SafeImage from "@/components/SafeImage";
 import { thumbPathOf } from "@/lib/image";
+import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
 import { TrendingUp, TrendingDown, Plus, DollarSign, Minus, ArrowUp, ArrowDown } from "lucide-react";
 
 function todayStr(): string {
@@ -156,36 +157,24 @@ export default function OperatingPage() {
     if (!form.category_id) { toast("error", "请选择类别"); return; }
     if (!form.account_id) { toast("error", "请选择账户"); return; }
     try {
-      const fd = new FormData();
-      fd.append("category_id", String(form.category_id));
-      fd.append("account_id", String(form.account_id));
-      fd.append("amount", String(form.amount || 0));
-      fd.append("currency", form.currency || "THB");
-      fd.append("expense_date", form.date);
-      if (form.remark) fd.append("remark", form.remark);
-      if (voucherFiles.length) voucherFiles.forEach(f => fd.append("files", f));
-
-      const headers: Record<string, string> = {};
-      const token = getToken();
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const whId = getActiveWarehouseId();
-      if (whId !== null) headers["X-Warehouse-ID"] = whId;
-
-      const res = await fetch("/api/v1/income-expense/expense", {
-        method: "POST", headers, body: fd,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        let msg = err.detail || "录入失败";
-        if (Array.isArray(err.detail)) msg = err.detail.map((e: any) => e.msg).join("; ");
-        throw new Error(msg);
-      }
-      toast("success", "支出录入成功");
+      const result = await submitWalletOperation("expense", { ...form, amount: form.amount || 0, expense_date: form.date }, voucherFiles);
+      toast("success", result.message || "支出录入成功");
       setShowForm(false);
       setForm({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: todayStr(), remark: "" });
       clearVoucher();
       loadExpenses(); loadDashboard();
     } catch (err: any) { toast("error", err.message || "录入失败"); }
+  }
+
+  function openCreate() {
+    try {
+      const pending = pendingWalletOperation("expense")?.payload;
+      if (pending) {
+        setForm({ category_id: pending.category_id, account_id: pending.account_id, amount: String(pending.amount), currency: pending.currency, date: pending.expense_date, remark: pending.remark || "" });
+        toast("error", "已恢复上一笔结果待确认的付款，请重试核对；需要凭证时请重新选择照片");
+      }
+      loadRefs(); setShowForm(true);
+    } catch (err: any) { toast("error", err.message); }
   }
 
   // ===== 编辑 =====
@@ -368,7 +357,7 @@ export default function OperatingPage() {
             <span className="text-gray-400 text-xs">至</span>
             <input type="date" value={dateRange.end_date} onChange={e => { setDateRange({ ...dateRange, end_date: e.target.value }); setExpPage(1); }} className="form-input text-sm w-[140px]" />
           </div>
-          {queryReady && !reportView && <button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary flex items-center gap-1.5 text-sm">
+          {queryReady && !reportView && <button onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
             <Plus size={16} />录入支出
           </button>}
         </div>

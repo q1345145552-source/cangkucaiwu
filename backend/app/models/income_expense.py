@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -26,6 +26,7 @@ class IncomeExpenseCategory(Base):
 
 class IncomeRecord(Base):
     __tablename__ = "income_records"
+    __table_args__ = (Index('uq_manual_income_operation','warehouse_id','request_key',unique=True),)
 
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
@@ -38,6 +39,8 @@ class IncomeRecord(Base):
     voucher = Column(String(500), nullable=True)
     remark = Column(String(500), nullable=True)
     confirmed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    request_key = Column(String(64), nullable=True)
+    request_fingerprint = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     category = relationship("IncomeExpenseCategory", foreign_keys=[category_id])
@@ -46,6 +49,7 @@ class IncomeRecord(Base):
 
 class ExpenseRecord(Base):
     __tablename__ = "expense_records"
+    __table_args__ = (Index('uq_manual_expense_operation','warehouse_id','request_key',unique=True),)
 
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
@@ -58,6 +62,8 @@ class ExpenseRecord(Base):
     voucher = Column(Text, nullable=True)  # 多张凭证路径，JSON 数组字符串（兼容旧单路径字符串）
     remark = Column(String(500), nullable=True)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    request_key = Column(String(64), nullable=True)
+    request_fingerprint = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     category = relationship("IncomeExpenseCategory", foreign_keys=[category_id])

@@ -19,7 +19,7 @@ export default function WalletAccountSelect({ value, onChange, currency = "THB",
   useEffect(() => {
     if (loading) return;
     if (!available.some(a => a.id === value)) {
-      const first = available.find(a => /现金/.test(a.account_name)) || available[0];
+      const first = available.find(a => a.account_type === "cash") || available.find(a => /现金/.test(a.account_name)) || available[0];
       onChange(first?.id || 0);
     }
   }, [accounts, currency, loading]);

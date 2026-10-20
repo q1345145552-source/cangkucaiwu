@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
+import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
 import { useRouter } from "next/navigation";
 import { Plus, DollarSign, Pencil, Trash2, TrendingUp, Download, Search } from "lucide-react";
 
@@ -79,8 +80,8 @@ export default function OtherIncomePage() {
   async function handleCreate() {
     if (!validAccount()) return;
     try {
-      await api.post("/income-expense/income", { ...form, amount: form.amount || 0, income_date: form.date, currency: form.currency });
-      toast("success", "创建成功");
+      const result = await submitWalletOperation("income", { ...form, amount: form.amount || 0, income_date: form.date, currency: form.currency });
+      toast("success", result.message || "创建成功");
       resetForm(); load();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
@@ -130,8 +131,11 @@ export default function OtherIncomePage() {
 
   function openCreate() {
     loadRefs();
+    let pending: any;
+    try { pending = pendingWalletOperation("income")?.payload; } catch (err: any) { toast("error", err.message); return; }
     setEditing(null);
-    setForm({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: new Date().toISOString().slice(0, 10), remark: "" });
+    setForm(pending ? { category_id: pending.category_id, account_id: pending.account_id, amount: String(pending.amount), currency: pending.currency, date: pending.income_date, remark: pending.remark || "" } : { category_id: 0, account_id: 0, amount: "", currency: "THB", date: new Date().toISOString().slice(0, 10), remark: "" });
+    if (pending) toast("error", "已恢复上一笔结果待确认的收款，请重试，不要另建");
     setShowForm(true);
   }
 

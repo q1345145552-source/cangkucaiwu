@@ -7,6 +7,7 @@ import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
+import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
 
 export default function IncomeExpensePage() {
   const { t } = useI18n();
@@ -49,12 +50,23 @@ export default function IncomeExpensePage() {
   }
 
   async function handleCreate() {
-    const ep = tab === "income" ? "/income-expense/income" : "/income-expense/expense";
     try {
-      await api.post(ep, { ...form, amount: form.amount || 0, [tab === "income" ? "income_date" : "expense_date"]: form.date });
-      toast("success", "创建成功");
+      const result = await submitWalletOperation(tab === "income" ? "income" : "expense", { ...form, amount: form.amount || 0, [tab === "income" ? "income_date" : "expense_date"]: form.date });
+      toast("success", result.message || "创建成功");
       setShowForm(false); load();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
+  }
+
+  function openCreate() {
+    try {
+      const kind = tab === "income" ? "income" : "expense";
+      const pending = pendingWalletOperation(kind)?.payload;
+      if (pending) {
+        setForm({ category_id: pending.category_id, account_id: pending.account_id, amount: String(pending.amount), currency: pending.currency, date: pending[`${kind}_date`], remark: pending.remark || "" });
+        toast("error", "已恢复上一笔结果待确认的收付，请重试，不要另建");
+      }
+      loadRefs(); setShowForm(true);
+    } catch (err: any) { toast("error", err.message); }
   }
 
   async function handleExport() {
@@ -93,7 +105,7 @@ export default function IncomeExpensePage() {
             <span className={totals.net >= 0 ? "text-blue-600" : "text-red-600"}>净额: {(() => { const all = new Set([...Object.keys(totals.income_by_currency || {}), ...Object.keys(totals.expense_by_currency || {})]); const m: any = {}; all.forEach((c: string) => m[c] = (totals.income_by_currency?.[c] || 0) - (totals.expense_by_currency?.[c] || 0)); return fmtMoneyByCurrency(m); })()}</span>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0"><button onClick={handleExport} className="btn-secondary whitespace-nowrap">导出</button><button onClick={() => { loadRefs(); setShowForm(true); }} className="btn-primary whitespace-nowrap">新建记录</button></div>
+        <div className="flex gap-2 shrink-0"><button onClick={handleExport} className="btn-secondary whitespace-nowrap">导出</button><button onClick={openCreate} className="btn-primary whitespace-nowrap">新建记录</button></div>
       </div>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="bg-white rounded-lg p-1 flex"><button onClick={() => { setTab("income"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "income" ? "bg-primary text-white" : ""}`}>收款</button><button onClick={() => { setTab("expense"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "expense" ? "bg-primary text-white" : ""}`}>付款</button></div>

@@ -1,0 +1,202 @@
+{
+  "round": 7,
+  "base_commit": "e3f970f26647c01ccdcc7d820a2646747a8fdf8e",
+  "production_deployed": false,
+  "next_round_started": false,
+  "native_postgresql": {
+    "primary": {
+      "cash_start": 0,
+      "after_receipt": 1000,
+      "after_payment": 800,
+      "after_transfer": {
+        "3": 500.0,
+        "4": 300.0
+      },
+      "total_funds": 800,
+      "income": 1000,
+      "expense": 200,
+      "ledger_rows": 4,
+      "internal_rows": 2
+    },
+    "manual_idempotency": {
+      "concurrency_each": 10,
+      "retries_each": 3,
+      "first_income_rows": 1,
+      "first_expense_rows": 1,
+      "first_balance": 800,
+      "independent_income_rows": 2,
+      "independent_expense_rows": 2,
+      "final_balance": 1600,
+      "changed_payload": 409
+    },
+    "atomicity": {
+      "transfer_concurrency": 10,
+      "first_transfer_rows": 1,
+      "first_balances": {
+        "3": 700,
+        "4": 300
+      },
+      "second_independent_balances": {
+        "3": 400,
+        "4": 600
+      },
+      "after_two_injected_failures": {
+        "3": 400,
+        "4": 600
+      },
+      "transfer_rows": 2,
+      "expense_rows": 0,
+      "insufficient_payment": 400
+    },
+    "guards": {
+      "missing_cash_operation": 400,
+      "foreign_currency_inactive": 400,
+      "labor_super": 403,
+      "revoked_supervisor": 403,
+      "cash_unchanged": 0
+    },
+    "transfer_key_collision": {
+      "simultaneous_disjoint_pairs": 2,
+      "responses": [
+        200,
+        409
+      ],
+      "transfer_rows": 1,
+      "total_funds": 2000,
+      "balances": {
+        "3": 1000.0,
+        "4": 0.0,
+        "5": 900.0,
+        "6": 100.0
+      }
+    },
+    "migration": {
+      "new_run_twice": true,
+      "old_upgrade_twice": true,
+      "new_connection_restart": true,
+      "historical": {
+        "income_records": 1,
+        "expense_records": 1
+      },
+      "old_keys_null": true,
+      "amounts": [
+        1000,
+        200
+      ]
+    }
+  },
+  "browser_synthetic_warehouses": {
+    "1": {
+      "accounts": [
+        {
+          "id": 3,
+          "name": "前台钱箱",
+          "type": "cash",
+          "currency": "THB",
+          "balance": 500.0
+        },
+        {
+          "id": 4,
+          "name": "公司银行",
+          "type": "bank",
+          "currency": "THB",
+          "balance": 300.0
+        }
+      ],
+      "incoming_rows": 1,
+      "expense_rows": 1,
+      "transfer_rows": 1,
+      "income": {
+        "THB": 1000.0
+      },
+      "expense": {
+        "THB": 200.0
+      },
+      "ledger_rows": 4,
+      "internal_transfer_legs": 2
+    },
+    "2": {
+      "accounts": [
+        {
+          "id": 5,
+          "name": "手机钱箱",
+          "type": "cash",
+          "currency": "THB",
+          "balance": 500.0
+        },
+        {
+          "id": 6,
+          "name": "手机银行",
+          "type": "bank",
+          "currency": "THB",
+          "balance": 300.0
+        }
+      ],
+      "incoming_rows": 1,
+      "expense_rows": 1,
+      "transfer_rows": 1,
+      "income": {
+        "THB": 1000.0
+      },
+      "expense": {
+        "THB": 200.0
+      },
+      "ledger_rows": 4,
+      "internal_transfer_legs": 2
+    }
+  },
+  "native_tests": {
+    "tests": "49",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "34.444"
+  },
+  "frontend_test_files": [
+    "manual-wallet",
+    "other-income-currency",
+    "money-record-scope",
+    "money-month-range",
+    "incoming-operations",
+    "expense-approval-payment",
+    "labor-language"
+  ],
+  "build_exit_code": 0,
+  "typecheck": {
+    "exit_code": 2,
+    "before": 88,
+    "after": 88,
+    "new_diagnostics": []
+  },
+  "cleanup": {
+    "temporary_browser_schema_removed": true,
+    "local_test_ports_closed": {
+      "18180": true,
+      "18181": true,
+      "18182": true
+    },
+    "own_postgresql_stopped": true
+  },
+  "migration": {
+    "income_records": [
+      "request_key",
+      "request_fingerprint"
+    ],
+    "expense_records": [
+      "request_key",
+      "request_fingerprint"
+    ],
+    "unique_indexes": [
+      "uq_manual_income_operation",
+      "uq_manual_expense_operation"
+    ],
+    "history_backfilled": false
+  },
+  "limitations": [
+    "旧非现金调用不传请求号保持兼容，不宣称其具有幂等保证。",
+    "原手工编辑和删除路径不在本轮改造范围。",
+    "旧全量类型诊断88条仍在，本轮新增0。",
+    "未连接生产或部署，第8至12轮未开始。"
+  ],
+  "artifacts": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第7轮现金收付款-20261020"
+}

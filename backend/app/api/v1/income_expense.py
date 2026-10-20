@@ -26,7 +26,7 @@ from app.services.money_period import money_period
 async def validate_manual_money(db, wid, account_id, category_id, currency, kind, value):
     from app.services.wallet import lock_account
     from decimal import Decimal, InvalidOperation
-    await lock_account(db, wid, account_id, currency)
+    account=await lock_account(db, wid, account_id, currency)
     category = (await db.execute(select(IncomeExpenseCategory).where(IncomeExpenseCategory.id == category_id,
         IncomeExpenseCategory.warehouse_id == wid, IncomeExpenseCategory.type == kind))).scalar_one_or_none()
     if category is None: raise HTTPException(400, "收支分类不存在或不属于当前仓库")
@@ -34,6 +34,7 @@ async def validate_manual_money(db, wid, account_id, category_id, currency, kind
         n = Decimal(str(value))
         if not n.is_finite() or n == 0 or abs(n) >= Decimal("1000000000000") or n != n.quantize(Decimal("0.01")): raise ValueError
     except (ValueError, InvalidOperation): raise HTTPException(400, "金额必须非零且最多两位小数")
+    return account
 
 
 OPERATING_NAMES = ["仓储费", "操作费", "增值服务费", "工资", "电费", "网费", "房租", "耗材", "物流运费", "快递费", "保险费", "税费"]
@@ -104,15 +105,23 @@ async def create_income(req: IncomeRecordCreate, current_user: User = Depends(ge
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    await validate_manual_money(db, get_wh_id(current_user), req.account_id, req.category_id, req.currency, "income", req.amount)
-    r = IncomeRecord(
+    try:when=datetime.fromisoformat(req.income_date)
+    except ValueError:raise HTTPException(400,'收款日期格式错误')
+    values=dict(
         warehouse_id=get_wh_id(current_user), category_id=req.category_id,
         account_id=req.account_id, customer_id=req.customer_id,
         amount=req.amount, currency=req.currency,
-        income_date=datetime.fromisoformat(req.income_date),
+        income_date=when,
         voucher=req.voucher, remark=req.remark, confirmed_by=current_user.id,
     )
-    db.add(r); await db.flush(); return {"id": r.id, "message": "收款记录创建成功"}
+    from app.services.manual_wallet import prepare,insert_once,lookup
+    old=await lookup(db,'income',values,req.request_key)
+    if old:return {'id':old.id,'created':False,'message':'收款记录已保存，请勿重复录入'}
+    account=await validate_manual_money(db, get_wh_id(current_user), req.account_id, req.category_id, req.currency, "income", req.amount)
+    old,fingerprint=await prepare(db,'income',values,req.request_key,account=account)
+    if old:return {'id':old.id,'created':False,'message':'收款记录已保存，请勿重复录入'}
+    r,created=await insert_once(db,'income',values,req.request_key,fingerprint)
+    return {'id':r.id,'created':created,'message':'收款记录创建成功' if created else '收款记录已保存，请勿重复录入'}
 
 # ==== Income Edit / Delete ====
 @router.put("/income/{income_id}", dependencies=[Depends(require_non_labor)])
@@ -197,6 +206,7 @@ async def create_expense(
     expense_date: str = Form(...),
     supplier_id: Optional[int] = Form(None),
     remark: Optional[str] = Form(None),
+    request_key: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -209,7 +219,16 @@ async def create_expense(
 
     wh_id = get_wh_id(current_user)
 
-    await validate_manual_money(db, wh_id, account_id, category_id, currency, "expense", amount)
+    try:when=datetime.fromisoformat(expense_date)
+    except ValueError:raise HTTPException(400,'付款日期格式错误')
+    values=dict(warehouse_id=wh_id,category_id=category_id,account_id=account_id,supplier_id=supplier_id,
+        amount=amount,currency=currency,expense_date=when,remark=remark,approved_by=current_user.id)
+    from app.services.manual_wallet import prepare,insert_once,lookup
+    old=await lookup(db,'expense',values,request_key)
+    if old:return {'id':old.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':old.voucher}
+    account=await validate_manual_money(db, wh_id, account_id, category_id, currency, "expense", amount)
+    old,fingerprint=await prepare(db,'expense',values,request_key,account=account)
+    if old:return {'id':old.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':old.voucher}
     # 凭证图片（可选，可多张）：保存到 uploads 目录，路径以 JSON 数组写入 voucher 字段
     import os, uuid, json
     from app.services.image_utils import save_image
@@ -237,21 +256,14 @@ async def create_expense(
 
     voucher_field = json.dumps(voucher_paths, ensure_ascii=False) if voucher_paths else None
 
-    r = ExpenseRecord(
-        warehouse_id=wh_id, category_id=category_id,
-        account_id=account_id, supplier_id=supplier_id,
-        amount=amount, currency=currency,
-        expense_date=datetime.fromisoformat(expense_date),
-        voucher=voucher_field, remark=remark, approved_by=current_user.id,
-    )
-    db.add(r); await db.flush()
-    await record_history(db, module="expense", record_id=r.id, operator=current_user,
+    r,created=await insert_once(db,'expense',{**values,'voucher':voucher_field},request_key,fingerprint)
+    if created:await record_history(db, module="expense", record_id=r.id, operator=current_user,
                           operation_type="create", after={
                               "amount": amount, "currency": currency,
                               "expense_date": expense_date, "category_id": category_id,
                               "account_id": account_id, "remark": remark, "voucher": voucher_field,
                           }, warehouse_id=wh_id)
-    return {"id": r.id, "message": "付款记录创建成功", "voucher": voucher_field}
+    return {"id": r.id, "created":created,"message": "付款记录创建成功" if created else '付款记录已保存，请勿重复录入', "voucher": r.voucher}
 
 @router.put("/expense/{expense_id}")
 async def update_expense(

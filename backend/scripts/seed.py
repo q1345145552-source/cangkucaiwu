@@ -46,6 +46,23 @@ async def _migrate_incoming_operations(conn):
             raise
     print("到账防重迁移完成：请求号、请求摘要及私有截图；历史记录不回填")
 
+
+async def _migrate_manual_wallet_operations(conn):
+    """只加可空请求标识；旧手工收支金额、日期和凭证不回填。"""
+    from sqlalchemy import text
+    for table, index in [('income_records','uq_manual_income_operation'),('expense_records','uq_manual_expense_operation')]:
+        for statement in (
+            f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS request_key VARCHAR(64)',
+            f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS request_fingerprint VARCHAR(64)',
+            f'CREATE UNIQUE INDEX IF NOT EXISTS {index} ON {table}(warehouse_id,request_key)',
+        ):
+            try:
+                async with conn.begin_nested():await conn.execute(text(statement))
+            except Exception as exc:
+                print(f'现金手工收付防重迁移失败：{exc}')
+                raise
+    print('现金手工收付防重迁移完成；历史收支不回填')
+
 async def _migrate_expense_approval_payment(conn):
     """只增加费用付款与备用金开销的精确关联；历史异常不自动补账。"""
     from sqlalchemy import text
@@ -466,6 +483,7 @@ async def seed():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_incoming_operations(conn)
+        await _migrate_manual_wallet_operations(conn)
         await _migrate_wallet_basis(conn)
         await _migrate_expense_approval_payment(conn)
         await _migrate_audit_ip_location(conn)

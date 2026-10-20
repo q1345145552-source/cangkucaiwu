@@ -29,6 +29,7 @@ function harness(){
   async post(route,payload){writes.push({route,payload});rows.push({...payload,id:1000+rows.length,amount:Number(payload.amount)});return{id:rows.at(-1).id};},
   async put(route,payload){writes.push({route,payload});return{};},async delete(){throw Error('Not needed in currency test');}};
  const imports={react,'@/lib/api':{api,getToken:()=> 'synthetic-token',getActiveWarehouseId:()=> '1'},'@/lib/currency':currency,
+  '@/lib/manualWallet':{pendingWalletOperation:()=>null,submitWalletOperation:(kind,payload)=>api.post('/income-expense/'+kind,payload)},
   '@/components/ui/Toast':{useToast:()=>({toast:(...args)=>messages.push(args)})},'next/navigation':{useRouter:()=>({push(){}})}};
  class FixedDate extends Date{constructor(...args){super(...(args.length?args:['2026-10-20T12:00:00+07:00']));}}
  const page=compile('../src/app/(dashboard)/other-income-expense/page.tsx',imports,{Date:FixedDate,URLSearchParams,process:{env:{}},

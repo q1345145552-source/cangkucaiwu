@@ -184,6 +184,7 @@ class ExchangeRateResponse(BaseModel):
 
 # ---- Income Records ----
 class IncomeRecordCreate(BaseModel):
+    request_key: Optional[str] = Field(default=None,min_length=1,max_length=64,pattern=r'^[A-Za-z0-9_-]+$')
     category_id: int; account_id: int; customer_id: Optional[int] = None
     amount: float = Field(gt=0); currency: str = "THB"; income_date: str
     voucher: Optional[str] = None; remark: Optional[str] = None

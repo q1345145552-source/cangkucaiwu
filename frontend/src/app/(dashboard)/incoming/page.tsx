@@ -212,6 +212,7 @@ export default function IncomingPage() {
           <div>
             <label className="form-label">付款方式</label>
             <select className="form-input" value={form.payment_method} onChange={e => setForm({ ...form, payment_method: e.target.value })}>
+              <option value="现金">现金</option>
               <option value="银行转账">银行转账</option>
               <option value="支付宝">支付宝</option>
               <option value="微信">微信</option>

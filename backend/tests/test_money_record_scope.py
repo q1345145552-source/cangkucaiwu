@@ -69,7 +69,7 @@ def test_real_receipt_is_visible_in_legacy_records_and_summary(tmp_path,monkeypa
                 db.add(IncomeExpenseCategory(id=1,warehouse_id=1,type='income',name='业务收款',category_group='operating'))
                 await db.commit()
             r=await client.post('/api/v1/income-expense/income',headers=auth(1),json={'category_id':1,'account_id':1,
-                'amount':200,'income_date':'2026-10-20','currency':'THB','remark':'MANUAL-200'})
+                'amount':200,'income_date':'2026-10-20','currency':'THB','remark':'MANUAL-200','request_key':'round5-manual-200'})
             assert r.status_code==200,r.text
             all_rows,summary,sheet=await check_scope(client,'income',{'THB':1200},2)
             pages=[]

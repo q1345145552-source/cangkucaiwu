@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import uuid
 from contextlib import asynccontextmanager
 from datetime import date,datetime
 from io import BytesIO
@@ -46,7 +47,7 @@ async def other_environment(tmp_path,mp):
 
 async def create(client,amount,currency,account,uid=1):
     r=await client.post('/api/v1/income-expense/income',headers=auth(uid),json={'category_id':1,'account_id':account,
-        'amount':amount,'currency':currency,'income_date':'2026-10-20','remark':currency+'-'+str(amount)})
+        'amount':amount,'currency':currency,'income_date':'2026-10-20','remark':currency+'-'+str(amount),'request_key':uuid.uuid4().hex})
     assert r.status_code==200,r.text
     return r.json()['id']
 
