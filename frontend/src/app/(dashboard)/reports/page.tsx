@@ -4,6 +4,7 @@ import { api, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
+import WarehouseSummary from "@/components/WarehouseSummary";
 import { TrendingUp, TrendingDown, FileText, PiggyBank, Receipt, CreditCard, Clock, AlertTriangle, Download } from "lucide-react";
 
 const reportTypes = [
@@ -134,6 +135,8 @@ export default function ReportsPage() {
           <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
         </div>
       </div>
+
+      <WarehouseSummary startDate={dateRange.start_date} endDate={dateRange.end_date} />
 
       {/* Report type cards with preview badges */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

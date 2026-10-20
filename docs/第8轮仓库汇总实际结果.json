@@ -1,0 +1,631 @@
+{
+  "round": 8,
+  "base": "356fe2435cdef8e7d089e7e12a184586a8020a4b",
+  "before": {
+    "base": "356fe2435cdef8e7d089e7e12a184586a8020a4b",
+    "responses": [
+      {
+        "user_id": 1,
+        "status": 500,
+        "body": "Internal Server Error"
+      },
+      {
+        "user_id": 3,
+        "status": 500,
+        "body": "Internal Server Error"
+      },
+      {
+        "user_id": 4,
+        "status": 500,
+        "body": "Internal Server Error"
+      },
+      {
+        "user_id": 2,
+        "status": 403,
+        "body": "{\"detail\":\"超级管理员请使用各仓库管理员账号操作\"}"
+      },
+      {
+        "user_id": 5,
+        "status": 403,
+        "body": "{\"detail\":\"无权访问\"}"
+      }
+    ],
+    "exception": {
+      "type": "MissingGreenlet",
+      "message": "greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)"
+    }
+  },
+  "after_native": {
+    "amounts": {
+      "1": {
+        "warehouse_ids": [
+          1
+        ],
+        "warehouses": [
+          {
+            "id": 1,
+            "name": "测试仓1",
+            "income": {
+              "CNY": 50.0,
+              "THB": 100.0
+            },
+            "expense": {
+              "CNY": 5.0,
+              "THB": 20.0
+            },
+            "net": {
+              "CNY": 45.0,
+              "THB": 80.0
+            },
+            "income_count": 2,
+            "expense_count": 2
+          }
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 50.0,
+            "THB": 100.0
+          },
+          "expense_by_currency": {
+            "CNY": 5.0,
+            "THB": 20.0
+          },
+          "net_by_currency": {
+            "CNY": 45.0,
+            "THB": 80.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "2": {
+        "warehouse_ids": [
+          2
+        ],
+        "warehouses": [
+          {
+            "id": 2,
+            "name": "测试仓2",
+            "income": {
+              "CNY": 70.0,
+              "THB": 200.0
+            },
+            "expense": {
+              "CNY": 7.0,
+              "THB": 40.0
+            },
+            "net": {
+              "CNY": 63.0,
+              "THB": 160.0
+            },
+            "income_count": 2,
+            "expense_count": 2
+          }
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 70.0,
+            "THB": 200.0
+          },
+          "expense_by_currency": {
+            "CNY": 7.0,
+            "THB": 40.0
+          },
+          "net_by_currency": {
+            "CNY": 63.0,
+            "THB": 160.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "all": {
+        "warehouse_ids": [
+          1,
+          2,
+          3
+        ],
+        "warehouses": [
+          {
+            "id": 1,
+            "name": "测试仓1",
+            "income": {
+              "CNY": 50.0,
+              "THB": 100.0
+            },
+            "expense": {
+              "CNY": 5.0,
+              "THB": 20.0
+            },
+            "net": {
+              "CNY": 45.0,
+              "THB": 80.0
+            },
+            "income_count": 2,
+            "expense_count": 2
+          },
+          {
+            "id": 2,
+            "name": "测试仓2",
+            "income": {
+              "CNY": 70.0,
+              "THB": 200.0
+            },
+            "expense": {
+              "CNY": 7.0,
+              "THB": 40.0
+            },
+            "net": {
+              "CNY": 63.0,
+              "THB": 160.0
+            },
+            "income_count": 2,
+            "expense_count": 2
+          },
+          {
+            "id": 3,
+            "name": "空仓",
+            "income": {},
+            "expense": {},
+            "net": {},
+            "income_count": 0,
+            "expense_count": 0
+          }
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 120.0,
+            "THB": 300.0
+          },
+          "expense_by_currency": {
+            "CNY": 12.0,
+            "THB": 60.0
+          },
+          "net_by_currency": {
+            "CNY": 108.0,
+            "THB": 240.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 4,
+          "expense_count": 4
+        }
+      }
+    },
+    "office": {
+      "positive": [
+        {
+          "user": 3,
+          "warehouse": 1,
+          "status": 200,
+          "income_thb": 100
+        },
+        {
+          "user": 3,
+          "warehouse": 2,
+          "status": 200,
+          "income_thb": 200
+        },
+        {
+          "user": 4,
+          "warehouse": 1,
+          "status": 200,
+          "income_thb": 100
+        },
+        {
+          "user": 4,
+          "warehouse": 2,
+          "status": 200,
+          "income_thb": 200
+        }
+      ],
+      "old_token_removed_membership": 403,
+      "removed_report_permission": 403,
+      "office_all": 403
+    },
+    "guards": {
+      "forged": [
+        {
+          "options": {
+            "header": 5
+          },
+          "status": 403,
+          "body": {
+            "detail": "无权访问所选仓库"
+          }
+        },
+        {
+          "options": {
+            "header": 4
+          },
+          "status": 403,
+          "body": {
+            "detail": "无权访问所选仓库"
+          }
+        },
+        {
+          "options": {
+            "header": "bad"
+          },
+          "status": 403,
+          "body": {
+            "detail": "无权访问所选仓库"
+          }
+        },
+        {
+          "options": {
+            "warehouse_id": 5
+          },
+          "status": 403,
+          "body": {
+            "detail": "无权访问所选仓库"
+          }
+        },
+        {
+          "options": {
+            "warehouse_ids": [
+              1,
+              5
+            ]
+          },
+          "status": 403,
+          "body": {
+            "detail": "无权访问所选仓库"
+          }
+        },
+        {
+          "options": {
+            "header": 1,
+            "warehouse_id": 2
+          },
+          "status": 403,
+          "body": {
+            "detail": "仓库筛选与当前仓库不一致"
+          }
+        },
+        {
+          "options": {
+            "header": "all",
+            "warehouse_ids": [
+              1,
+              4
+            ]
+          },
+          "status": 403,
+          "body": {
+            "detail": "无权访问所选仓库"
+          }
+        }
+      ],
+      "super_labor": 403,
+      "valid_admin_batch": 200,
+      "empty_warehouse": {
+        "data": [
+          {
+            "warehouse_id": 3,
+            "warehouse_name": "空仓",
+            "income_by_currency": {},
+            "expense_by_currency": {},
+            "net_by_currency": {},
+            "total_income": 0,
+            "total_expense": 0,
+            "net": 0,
+            "income_count_by_currency": {},
+            "expense_count_by_currency": {},
+            "income_count": 0,
+            "expense_count": 0,
+            "recharge_total_by_currency": {},
+            "incoming_total_by_currency": {},
+            "recharge_total": 0,
+            "incoming_total": 0,
+            "unmatched_count": 0
+          }
+        ],
+        "warehouse_count": 1,
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "totals": {
+          "income_by_currency": {},
+          "expense_by_currency": {},
+          "net_by_currency": {},
+          "total_income": 0,
+          "total_expense": 0,
+          "net": 0,
+          "income_count": 0,
+          "expense_count": 0
+        },
+        "basis": "公司钱包实际收付，内部转账不计收支；充值申报另列，不计实收"
+      },
+      "unassigned": {
+        "data": [],
+        "warehouse_count": 0,
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "totals": {
+          "income_by_currency": {},
+          "expense_by_currency": {},
+          "net_by_currency": {},
+          "total_income": 0,
+          "total_expense": 0,
+          "net": 0,
+          "income_count": 0,
+          "expense_count": 0
+        },
+        "basis": "公司钱包实际收付，内部转账不计收支；充值申报另列，不计实收"
+      }
+    },
+    "dates_and_failure": {
+      "legacy_declaration_informational_only": 999,
+      "income_thb": 100,
+      "unmatched": 1,
+      "september_income": 0,
+      "invalid_date": 400,
+      "injected_read_error": 500
+    }
+  },
+  "browser_and_data": {
+    "financial_rows": {
+      "incoming_flows": 4,
+      "expense_records": 4,
+      "recharge_declarations": 2,
+      "account_transfers": 1,
+      "payroll_records": 0
+    },
+    "amounts": {
+      "incoming": {
+        "THB": 300.0,
+        "CNY": 120.0
+      },
+      "expenses": {
+        "THB": 60.0,
+        "CNY": 12.0
+      }
+    },
+    "responses": {
+      "admin-1": {
+        "status": 200,
+        "warehouse_ids": [
+          1
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 50.0,
+            "THB": 100.0
+          },
+          "expense_by_currency": {
+            "CNY": 5.0,
+            "THB": 20.0
+          },
+          "net_by_currency": {
+            "CNY": 45.0,
+            "THB": 80.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "admin-2": {
+        "status": 200,
+        "warehouse_ids": [
+          2
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 70.0,
+            "THB": 200.0
+          },
+          "expense_by_currency": {
+            "CNY": 7.0,
+            "THB": 40.0
+          },
+          "net_by_currency": {
+            "CNY": 63.0,
+            "THB": 160.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "admin-all": {
+        "status": 200,
+        "warehouse_ids": [
+          1,
+          2,
+          3
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 120.0,
+            "THB": 300.0
+          },
+          "expense_by_currency": {
+            "CNY": 12.0,
+            "THB": 60.0
+          },
+          "net_by_currency": {
+            "CNY": 108.0,
+            "THB": 240.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 4,
+          "expense_count": 4
+        }
+      },
+      "staff-1": {
+        "status": 200,
+        "warehouse_ids": [
+          1
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 50.0,
+            "THB": 100.0
+          },
+          "expense_by_currency": {
+            "CNY": 5.0,
+            "THB": 20.0
+          },
+          "net_by_currency": {
+            "CNY": 45.0,
+            "THB": 80.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "staff-2": {
+        "status": 200,
+        "warehouse_ids": [
+          2
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 70.0,
+            "THB": 200.0
+          },
+          "expense_by_currency": {
+            "CNY": 7.0,
+            "THB": 40.0
+          },
+          "net_by_currency": {
+            "CNY": 63.0,
+            "THB": 160.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "staff-all": {
+        "status": 403,
+        "body": {
+          "detail": "无权汇总全部仓库"
+        }
+      },
+      "supervisor-1": {
+        "status": 200,
+        "warehouse_ids": [
+          1
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 50.0,
+            "THB": 100.0
+          },
+          "expense_by_currency": {
+            "CNY": 5.0,
+            "THB": 20.0
+          },
+          "net_by_currency": {
+            "CNY": 45.0,
+            "THB": 80.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "supervisor-2": {
+        "status": 200,
+        "warehouse_ids": [
+          2
+        ],
+        "totals": {
+          "income_by_currency": {
+            "CNY": 70.0,
+            "THB": 200.0
+          },
+          "expense_by_currency": {
+            "CNY": 7.0,
+            "THB": 40.0
+          },
+          "net_by_currency": {
+            "CNY": 63.0,
+            "THB": 160.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "income_count": 2,
+          "expense_count": 2
+        }
+      },
+      "supervisor-all": {
+        "status": 403,
+        "body": {
+          "detail": "无权汇总全部仓库"
+        }
+      }
+    }
+  },
+  "tests": {
+    "native": {
+      "tests": "53",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "35.121"
+    },
+    "legacy_read_guards": {
+      "tests": "71",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "time": "16.338"
+    },
+    "frontend_files_passed": [
+      "warehouse-summary",
+      "manual-wallet",
+      "other-income-currency",
+      "money-record-scope",
+      "money-month-range",
+      "incoming-operations",
+      "expense-approval-payment",
+      "labor-language"
+    ],
+    "production_build_exit": 0,
+    "typecheck_exit": 2,
+    "typecheck_before": 88,
+    "typecheck_after": 88,
+    "new_type_diagnostics": []
+  },
+  "cleanup": {
+    "browser_schema_removed": true,
+    "closed_ports": {
+      "18180": true,
+      "18181": true,
+      "18182": true
+    },
+    "own_postgresql_stopped": true
+  },
+  "migrations": [],
+  "production_deployed": false,
+  "next_round_started": false,
+  "remaining_outside_this_round": [
+    "原reports/previews多仓卡片仍按全部授权仓预览，切单仓不变；本轮各仓概况已按当前仓库切换，未混改其他报表范围。",
+    "原有88条全量类型诊断仍在。"
+  ],
+  "artifacts": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第8轮仓库汇总-20261020"
+}

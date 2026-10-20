@@ -116,8 +116,8 @@ def test_other_roles_exact_original_results_and_original_failure(tmp_path,monkey
                     results.append((response.status_code,response_data(response)))
             assert results[0]==results[1],results
             if uid==2:
-                expected=200 if case[1] in ('/users','/customers/{customer_id}') else 403
-            elif case[1]=='/dashboard/warehouse-summary':expected=500
+                expected=200 if case[1]=='/users' else 403
+            elif case[1]=='/dashboard/warehouse-summary':expected=403 if uid in (3,4) and not granted else 200
             elif uid in (3,4) and not granted and not case[1].startswith('/dashboard/'):expected=403
             else:expected=200
             assert response.status_code==expected,(case,uid,response.text)
@@ -217,8 +217,8 @@ def test_shared_page_requests_and_complete_report(tmp_path,monkeypatch):
             report={'environment':'isolated SQLite; synthetic data; not production','labor':rows,
                 'shared_page_requests':checks,'other_roles':management,'admin_dashboard_stats':r.json(),
                 'admin_dashboard_stats_before':baseline.json(),
-                'known_existing_failure':{'path':'/api/v1/dashboard/warehouse-summary','before_status':500,
-                    'after_status':500,'cause':'MissingGreenlet on current_user.warehouse lazy loading; original query unchanged'}}
+                'known_fixed_failure':{'path':'/api/v1/dashboard/warehouse-summary','before_status':500,
+                    'after_status':200,'cause':'第8轮改为显式授权仓库查询；真实PostgreSQL验收见test_warehouse_summary.py'}}
             if os.environ.get('NON_LABOR_READ1_REPORT'):
                 Path(os.environ['NON_LABOR_READ1_REPORT']).write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     asyncio.run(run())
@@ -234,14 +234,14 @@ def test_warehouse_summary_old_lazy_loading_failure_reproduced_without_query_cha
         namespace=vars(dashboard).copy()
         exec(compile(ast.Module(body=[node],type_ignores=[]),'original_warehouse_summary','exec'),namespace)
         async with environment(tmp_path,monkeypatch) as (_,factory,_):
-            for function in (namespace['warehouse_summary'],dashboard.warehouse_summary):
+            for function in (namespace['warehouse_summary'],):
                 async with factory() as db:
                     user=await db.get(User,1)
                     with pytest.raises(MissingGreenlet):await function(current_user=user,db=db)
     asyncio.run(run())
 
 
-def test_only_seven_requested_read_guards_added_all_queries_unchanged():
+def test_existing_guards_remain_first_and_round8_only_changes_summary():
     from tests.non_labor_test_support import without_non_labor_guard
     from tests.test_non_labor_guard import CASES as BATCH1
     from tests.test_non_labor_batch2_writes import CASES as BATCH2
@@ -250,11 +250,16 @@ def test_only_seven_requested_read_guards_added_all_queries_unchanged():
     expected={(method,'/api/v1'+template) for method,template,_,_ in BATCH1+BATCH2+CASES}
     from tests.wallet_contract_support import WALLET_GUARDED_ROUTES
     expected.update(WALLET_GUARDED_ROUTES)
-    assert {(method,r.path) for r in routes for method in r.methods}==expected
+    # 第3轮已收口其余管理路由；旧7条仍必须在，不能再断言只有旧清单。
+    assert expected <= {(method,r.path) for r in routes for method in r.methods}
     assert all(r.dependant.dependencies[0].call is require_non_labor for r in routes)
     root=Path(__file__).resolve().parents[2]
     for name in ('users','dashboard','customers','payment_accounts'):
         path='backend/app/api/v1/'+name+'.py'
-        old=subprocess.check_output(['git','show','c04f7a4:'+path],cwd=root,text=True)
-        from tests.wallet_contract_support import without_wallet_contract_changes
-        assert without_wallet_contract_changes(without_non_labor_guard((root/path).read_text())) == without_wallet_contract_changes(without_non_labor_guard(old)),path
+        old=subprocess.check_output(['git','show','356fe2435cdef8e7d089e7e12a184586a8020a4b:'+path],cwd=root,text=True)
+        def protected(source):
+            tree=ast.parse(source)
+            tree.body=[n for n in tree.body if not isinstance(n,(ast.Import,ast.ImportFrom))
+                and not (name=='dashboard' and isinstance(n,ast.AsyncFunctionDef) and n.name=='warehouse_summary')]
+            return ast.unparse(tree)
+        assert protected((root/path).read_text())==protected(old),path

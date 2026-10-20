@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
@@ -143,28 +143,21 @@ async def pending_tasks(current_user: User = Depends(get_current_user), db: Asyn
     return {"data": tasks}
 
 @router.get("/warehouse-summary", dependencies=[Depends(require_non_labor)])
-async def warehouse_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def warehouse_summary(request: Request, warehouse_id: int | None = None,
+                            warehouse_ids: list[int] | None = Query(None),
+                            start_date: str | None = None, end_date: str | None = None,
+                            month: str | None = None,
+                            current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role != Role.SUPER_ADMIN:
-        wh = current_user.warehouse
-        if not wh:
-            return {"data": []}
-        rq = (await db.execute(select(func.sum(RechargeDeclaration.amount)).where(RechargeDeclaration.warehouse_id == wh.id))).scalar() or 0
-        iq = (await db.execute(select(func.sum(IncomingFlow.amount)).where(IncomingFlow.warehouse_id == wh.id))).scalar() or 0
-        uq = (await db.execute(select(func.count(RechargeDeclaration.id)).where(
-            RechargeDeclaration.warehouse_id == wh.id, RechargeDeclaration.match_status == 'unmatched'))).scalar() or 0
-        return {"data": [{"warehouse_id": wh.id, "warehouse_name": wh.name, "recharge_total": float(rq), "incoming_total": float(iq), "unmatched_count": uq}]}
-
-    warehouses = (await db.execute(select(Warehouse).where(Warehouse.is_active == True))).scalars().all()
-    result = []
-    for wh in warehouses:
-        rq = (await db.execute(select(func.sum(RechargeDeclaration.amount)).where(RechargeDeclaration.warehouse_id == wh.id))).scalar() or 0
-        iq = (await db.execute(select(func.sum(IncomingFlow.amount)).where(IncomingFlow.warehouse_id == wh.id))).scalar() or 0
-        uq = (await db.execute(select(func.count(RechargeDeclaration.id)).where(
-            RechargeDeclaration.warehouse_id == wh.id, RechargeDeclaration.match_status == 'unmatched'))).scalar() or 0
-        result.append({"warehouse_id": wh.id, "warehouse_name": wh.name, "recharge_total": float(rq), "incoming_total": float(iq), "unmatched_count": uq})
-    return {"data": result}
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "无权访问")
+    from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
+    if current_user.role in (Role.SUPERVISOR, Role.STAFF) and MENU_PERMISSIONS_BY_KEY['reports'].label not in (current_user.extra_permissions or []):
+        raise HTTPException(403, "无此操作权限，需要: 报表中心")
+    from app.services.warehouse_summary import warehouse_scope, summarize
+    warehouses = await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'), warehouse_id, warehouse_ids)
+    return await summarize(db, warehouses, start_date, end_date, month)
 
 
 def _merge_currency(*lists):

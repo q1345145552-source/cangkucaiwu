@@ -1,0 +1,98 @@
+第8轮仓库汇总接口报错已完成本轮实现和隔离验证，停等协调验收，不部署，不进入第9轮。
+基准是已验收的356fe2435cdef8e7d089e7e12a184586a8020a4b。
+本轮是HTTP500异常修复，不是前轮月份金额串月问题，没有改月份算法。
+
+修前真实复现。
+在当前基准代码和真实本机PostgreSQL隔离库，管理员test-1、财务test-3、主管test-4调用GET /api/v1/dashboard/warehouse-summary均返回500，正文Internal Server Error。
+开启测试异常捕获后得到MissingGreenlet，具体原因是wh = current_user.warehouse触发异步ORM延迟加载。
+普通业务超管原来403“超级管理员请使用各仓库管理员账号操作”，劳工原来403“无权访问”，本轮保留这两条限制。
+修前原始记录及异常保存为round8-before.json，不以猜测或历史口头报告代替复现。
+另外发现原实现只按账号主仓库查询，不读取当前选择，且超管分支已被前面的403阻断，无法作为合法多仓汇总入口。
+
+修复范围。
+原接口地址不变，改为明确await查询启用且已授权的Warehouse，不读取User.warehouse关系。
+读取每次认证从数据库重载的仓库范围，不相信令牌里缓存的角色、权限或仓库编号。
+管理员可看当前单仓，也可用原X-Warehouse-ID: all看自己已授权的全部启用仓库，不能扩大到其他仓库。
+主管和财务需要现有“报表中心”权限，只能切换获授权的单仓，不能使用all或批量多仓冒充管理员。
+支持warehouse_id或重复warehouse_ids筛选，先逐个校验，再查询金额，混入一个无权或停用仓就整批403。
+明确传入的非法仓库、伪造编号、无效表头和表头与筛选不一致都403，不静默退回主仓库后假装成功。
+停用仓不能指定查询，在全仓结果中排除；拒绝提示不包含仓名或金额。
+有授权但没有业务的空仓正常200、0笔、0金额；无归属仓且不指定仓库时保持data为空的正常契约，指定无权仓则403。
+正常账号管理取消全部仓库会同步清空主仓，旧令牌也不能恢复归属；保留原认证对旧单仓账号的主仓兼容，没有改全局认证函数。
+
+金额口径。
+只读复用app.services.wallet.flow_query的原钱包事实，不建立平行账，不写业务记录。
+实际到账和手工实收才算收入，实际付款才算支出，内部转账不计收支；工资、预支、备用金、垫款等去重规则沿用已有钱包服务。
+按仓库、币种、收入或支出聚合金额和笔数，泰铢和人民币分开，净收支也分别计算。
+旧recharge_total、incoming_total、unmatched_count字段仍返回，增加分币种字段和钱包收支合计，不删旧字段。
+充值申报仍单独作为信息项保留，不能把它加进实收收入。
+旧单值字段遇混合币种返回空而不是直接相加，新增界面只用分币种字段。
+不传日期保持原汇总全期间语义，返回0001-01-01到9999-12-31；前端明确传报表中心当前日期范围。
+日期和month使用第4轮现有money_period，不复制日期算法，不增加第9轮仪表盘月份选择。
+没有catch数据库错误后返回0，故意注入读取失败仍500，只有真正空范围才返回零。
+
+真实PostgreSQL数字。
+A仓泰铢收入100、支出20、净收支80；人民币收入50、支出5、净收支45。
+B仓泰铢收入200、支出40、净收支160；人民币收入70、支出7、净收支63。
+A仓收入2笔、支出2笔，B仓收入2笔、支出2笔；币种各1笔收入和1笔支出。
+合法全仓泰铢收入300、支出60、净收支240；人民币收入120、支出12、净收支108。
+合法全仓收入4笔、支出4笔，含空仓0笔；停用仓和未授权仓不出现在结果里。
+两仓各有充值申报999，合计1998没有混入钱包收入300泰铢和120人民币。
+A仓另有内部转账10，未增加收入、支出或净收支。
+使用两个单仓管理员调用原monthly-summary，收入和支出分别与A仓、B仓汇总完全一致。
+汇总请求的SQL跟踪无INSERT、UPDATE或DELETE。
+主管和财务各看A仓返回100泰铢、B仓返回200泰铢，均200；直接调all均403。
+保留同一个令牌，数据库移除其B仓授权后请求B仓403；移除报表中心权限后请求A仓403。
+外仓5、停用仓4、坏表头、混合批量1和5、表头1却指定2、全仓中混入停用4，七种请求均403，正文没有外仓名字和金额。
+管理员合法批量1和2返回200，空仓3返回200、0笔、0金额；取消管理员所有仓库及主仓后200且data为空，伪造仓1仍403。
+无效日期、倒置区间、无效month均400，不再产生500。
+
+前端配套。
+原前端没有任何地方调用warehouse-summary，只有已有“各仓概况”字典词条，本轮没有把旧页面宣称为已经可用。
+在现有报表中心日期范围下接入一个“各仓概况”区块，使用原仓库切换器和现有权限，不加菜单或新的权限名。
+显示当前范围每仓收入、支出、净收支和笔数，再显示本次授权范围合计，不称经营利润。
+切仓或认证信息刷新先清空旧金额再读取；请求编号和卸载清理共同防止旧仓库慢响应覆盖新仓库。
+失败显示“仓库汇总加载失败”及具体原因和重试按钮，不显示旧仓金额，也不把失败当0。
+电脑管理员A仓、B仓、全仓均实测，数字与上述数据库一致，截图和页面原文已保存。
+390宽手机管理员重复A仓、B仓、全仓切换，金额和笔数一致；空仓显示0，停用仓显示“仓库汇总加载失败：无权访问所选仓库”，没有零合计。
+手机财务登录后只见A、B授权仓切换选项，没有总仓选项；实测A仓收入100泰铢、B仓200泰铢。
+电脑主管也实测A仓100泰铢、B仓200泰铢，人民币仍各自50、70，不混币种。
+界面只读切换后，测试库到账4条、支出4条、申报2条、内部转账1条、工资0条保持不变。
+复核实际数据仍是收入THB300及CNY120、支出THB60及CNY12，没有修改历史记录或重算工资。
+
+本轮另发现但未混改的旧问题。
+同一个多仓账号在报表中心下方原有“到账汇总”“收支报表”等预览卡片，仍使用原reports/previews和get_wh_ids全部授权仓范围，切换单仓不改变那些预览数字。
+在本轮虚构数据中，这些原卡片在选A仓时仍显示THB300及CNY120的到账预览，而本轮各仓概况正确显示A仓THB100及CNY50。
+这是另一组既有查询范围问题，不是本轮各仓概况接口或金额算法，本轮没有改预览接口、其他报表卡片、全局get_wh_ids或菜单。
+因此只验收本轮各仓概况，不能宣称整个报表中心的所有卡片都已经按单仓切换一致；此项交协调单独排定，不隐瞒、不通过隐藏卡片掩盖。
+
+实际测试命令。
+在根目录运行PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres WAREHOUSE_SUMMARY_TEST_REPORT=/tmp/round8-after.json CASH_WALLET_TEST_REPORT=/tmp/round8-cash-regression.json OTHER_CURRENCY_TEST_REPORT=/tmp/round8-currency-regression.json MONEY_RECORD_TEST_REPORT=/tmp/round8-record-regression.json MONTH_RANGE_TEST_REPORT=/tmp/round8-month-regression.json MANAGEMENT_TEST_REPORT=/tmp/round8-management-regression.json /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_warehouse_summary.py backend/tests/test_cash_wallet.py backend/tests/test_other_income_currency.py backend/tests/test_money_record_scope.py backend/tests/test_money_month_range.py backend/tests/test_management_access.py backend/tests/test_expense_approval_payment.py backend/tests/test_incoming_operations.py -q --junitxml=/tmp/round8-all-native.xml。
+真实PostgreSQL共53项，0失败、0错误、0跳过，35.121秒，包括本轮4项和前七轮49项。
+到账和现金并发防重、付款失败回滚、月份、分币种、手工明细与合计、权限及仓库隔离回归通过。
+管理端329个入口、劳工本仓和外仓658次请求仍全部403；劳工和纳入考勤主管的本人打卡、考勤、请假、加班、工资单及附件回归通过。
+市场拼单的超管专用发布审核及合法跨仓共享仍通过，没有改这两个模块。
+运行PYTHONPATH=backend /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_non_labor_read_group1.py -q --junitxml=/tmp/round8-read-guards.xml，旧读取权限71项0失败、0错误、0跳过，16.338秒。
+同步更新旧测试对该接口500的过时预期，历史版本MissingGreenlet仍单独复现，不删除历史证据。
+旧测试里超管客户详情200和“仅有最早7条守卫”的断言已被第3轮真实保护取代，本轮只修测试预期，生产角色限制没有放宽。
+未改函数的源码保护基准改为本轮开始的356fe24，除warehouse_summary以外，users、dashboard、customers、payment_accounts的原函数保持一致。
+在frontend目录用NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node逐个运行tests/warehouse-summary.test.cjs、tests/manual-wallet.test.cjs、tests/other-income-currency.test.cjs、tests/money-record-scope.test.cjs、tests/money-month-range.test.cjs、tests/incoming-operations.test.cjs、tests/expense-approval-payment.test.cjs、tests/labor-language.test.cjs。
+八个前端测试文件均退出0，新增测试执行实际汇总组件，覆盖分币种、切仓清空、慢旧响应忽略、权限撤销、错误不当零、重试和合法空范围。
+在/tmp/wallet-build-o6qsx2gz运行PATH=/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH NEXT_TELEMETRY_DISABLED=1 /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/next/dist/bin/next build，退出0。
+编译保留项目原ignoreBuildErrors设置，独立类型检查前后均运行node node_modules/typescript/bin/tsc --noEmit --incremental false，均退出2，原88条诊断保持88条，本轮新增0。
+git diff --check通过。
+
+文件与边界。
+backend/app/api/v1/dashboard.py只替换warehouse_summary函数及必要的请求类型导入，其他仪表盘函数不改。
+backend/app/services/warehouse_summary.py负责授权仓范围和基于原钱包的只读汇总。
+frontend/src/components/WarehouseSummary.tsx为报表中心汇总区块和请求状态保护。
+frontend/src/app/(dashboard)/reports/page.tsx仅导入并放入该区块，不改原卡片、接口或业务操作。
+backend/tests/test_warehouse_summary.py为真实PostgreSQL数字、仓库授权、旧令牌、日期和错误验收。
+backend/tests/test_non_labor_read_group1.py及backend/tests/wallet_contract_support.py更新已被合法修改的汇总函数验收范围，保留其他管理端保护。
+frontend/tests/warehouse-summary.test.cjs为实际组件行为测试。
+docs/第8轮仓库汇总验收.txt及docs/第8轮仓库汇总实际结果.json为报告和数字。
+没有新增字段、数据表、迁移或权限，不改任何写接口、付款日期规则、工资算法或历史流水。
+没有连接生产、没有部署，第9至12轮未开始。
+临时浏览器页、前后端、代理均关闭，临时schema自动清理，自行启动的隔离PostgreSQL已停止，未删除其数据文件。
+原始异常、JUnit、日志、电脑手机截图、各角色响应及数据库快照保存于/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第8轮仓库汇总-20261020。
+本轮代码和报告同一提交，具体提交号及推送核对见最终回复与该目录commit-receipt.json。
