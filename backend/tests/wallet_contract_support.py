@@ -22,4 +22,6 @@ WALLET_GUARDED_ROUTES = {
     ('POST','/api/v1/accounts/transfers'),
     *[('GET','/api/v1/income-expense'+path) for path in ('/expense','/ledger','/ledger/export','/monthly-summary','/operating-dashboard')],
     ('GET','/api/v1/reports/income-expense'), ('GET','/api/v1/reports/previews'), ('GET','/api/v1/incoming'),
+    ('GET','/api/v1/incoming/by-request/{request_key}'),
+    ('POST','/api/v1/incoming/{incoming_id}/screenshot'), ('GET','/api/v1/incoming/{incoming_id}/screenshot'),
 }

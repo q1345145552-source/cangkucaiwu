@@ -28,6 +28,24 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_incoming_operations(conn):
+    """旧到账不补请求号或附件；唯一约束保证多进程并发重试不重复入账。"""
+    from sqlalchemy import text
+    statements = (
+        "ALTER TABLE incoming_flows ADD COLUMN IF NOT EXISTS request_key VARCHAR(64)",
+        "ALTER TABLE incoming_flows ADD COLUMN IF NOT EXISTS request_fingerprint VARCHAR(64)",
+        "ALTER TABLE incoming_flows ADD COLUMN IF NOT EXISTS screenshot VARCHAR(100)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_incoming_operation ON incoming_flows(warehouse_id, request_key)",
+    )
+    for statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"到账防重迁移失败：{exc}")
+            raise
+    print("到账防重迁移完成：请求号、请求摘要及私有截图；历史记录不回填")
+
 async def _migrate_wallet_basis(conn):
     """只增加收付关联/逐笔表；不补成本、不重算工资、不猜拆历史付款。失败终止启动。"""
     from sqlalchemy import text
@@ -431,6 +449,7 @@ async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_incoming_operations(conn)
         await _migrate_wallet_basis(conn)
         await _migrate_audit_ip_location(conn)
         await _migrate_user_attendance_columns(conn)

@@ -1,4 +1,4 @@
-import asyncio, base64, json, tempfile
+import asyncio, base64, json, tempfile, uuid
 from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import date, datetime
@@ -28,6 +28,7 @@ async def get(c,path,**params):
  return r.json()
 
 async def post(c,path,**kwargs):
+ if path=='/incoming': kwargs['json'].setdefault('request_key',uuid.uuid4().hex)
  r=await c.post('/api/v1'+path,headers=auth(1),**kwargs)
  assert r.status_code==200,(path,r.status_code,r.text)
  return r.json()

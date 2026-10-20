@@ -129,12 +129,15 @@ class RechargeResponse(BaseModel):
 
 # ---- Incoming Flow ----
 class IncomingCreate(BaseModel):
+    request_key: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     account_id: Optional[int] = None
-    received_date: str; amount: float = Field(gt=0); currency: str = "THB"
-    payer_name: Optional[str] = None; payment_method: Optional[str] = None
-    remark: Optional[str] = None
+    received_date: str; amount: float = Field(gt=0); currency: str = Field("THB", min_length=1, max_length=10)
+    payer_name: Optional[str] = Field(None, max_length=200)
+    payment_method: Optional[str] = Field(None, max_length=30)
+    remark: Optional[str] = Field(None, max_length=500)
 
 class IncomingBatchImport(BaseModel):
+    request_key: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     records: List[dict]
 
 class IncomingResponse(BaseModel):

@@ -1,5 +1,6 @@
 """跨模块金额、付款归期、账户归属、事务回滚和权限的真实 HTTP 验收。"""
 import asyncio
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -105,7 +106,7 @@ def test_account_opening_anchor_does_not_roll_with_month_and_warehouse_currency_
     async def run():
         from app.services.account_balances import balances_at
         async with clean(tmp_path, monkeypatch) as (f,c):
-            receipt=await c.post('/api/v1/incoming',headers=auth(1),json={'received_date':'2026-10-20','amount':500,'account_id':1,'currency':'THB'})
+            receipt=await c.post('/api/v1/incoming',headers=auth(1),json={'request_key':uuid.uuid4().hex,'received_date':'2026-10-20','amount':500,'account_id':1,'currency':'THB'})
             assert receipt.status_code==200,receipt.text
             async with f() as db:
                 account=await db.get(PaymentAccount,1);account.opening_balance_date=date(2026,10,1);await db.commit()
@@ -115,7 +116,7 @@ def test_account_opening_anchor_does_not_roll_with_month_and_warehouse_currency_
                 assert (await balances_at(db,[account],date(2026,11,1)))[1]==10500
                 assert (await balances_at(db,[account],date(2026,12,1)))[1]==10500
             for body in ({'account_id':2,'currency':'THB'},{'account_id':1,'currency':'CNY'},{'currency':'THB'}):
-                r=await c.post('/api/v1/incoming',headers=auth(1),json={'received_date':'2026-10-20','amount':500,**body})
+                r=await c.post('/api/v1/incoming',headers=auth(1),json={'request_key':uuid.uuid4().hex,'received_date':'2026-10-20','amount':500,**body})
                 assert r.status_code==400
             r=await c.post('/api/v1/income-expense/income',headers=auth(1),json={'category_id':80,'account_id':2,'amount':100,'currency':'THB','income_date':'2026-10-20'})
             assert r.status_code==400
@@ -126,12 +127,12 @@ def test_incoming_batch_owns_accounts_and_rolls_back_whole_import(tmp_path, monk
     async def run():
         async with clean(tmp_path, monkeypatch) as (f,c):
             item={'received_date':'2026-10-20','amount':100,'currency':'THB','account_id':1}
-            r=await c.post('/api/v1/incoming/batch-import',headers=auth(1),json={'records':[item,{**item,'account_id':2}]})
+            r=await c.post('/api/v1/incoming/batch-import',headers=auth(1),json={'request_key':uuid.uuid4().hex,'records':[item,{**item,'account_id':2}]})
             assert r.status_code==400
             async with f() as db: assert (await db.execute(select(func.count(IncomingFlow.id)))).scalar_one()==0
-            r=await c.post('/api/v1/incoming/batch-import',headers=auth(1),json={'records':[{**item,'warehouse_id':2}]})
+            r=await c.post('/api/v1/incoming/batch-import',headers=auth(1),json={'request_key':uuid.uuid4().hex,'records':[{**item,'warehouse_id':2}]})
             assert r.status_code==403
-            r=await c.post('/api/v1/incoming/batch-import',headers=auth(1),json={'records':[item]})
+            r=await c.post('/api/v1/incoming/batch-import',headers=auth(1),json={'request_key':uuid.uuid4().hex,'records':[item]})
             assert r.status_code==200,r.text
             assert (await views(c))['cash_current_api']==10100
     asyncio.run(run())

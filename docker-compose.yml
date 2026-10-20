@@ -45,9 +45,11 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       # 启动时解析 nginx 容器 IP，只信任这一代理，不使用 * 或整个容器网段。
       TRUSTED_PROXY_HOSTS: nginx
+      INCOMING_ATTACHMENT_DIR: /app/incoming-private
     # 生产环境使用镜像内代码，不挂载宿主源码（仅持久化上传目录）
     volumes:
       - uploads:/app/uploads
+      - incoming_private:/app/incoming-private
     command: >
       sh -c "python scripts/seed.py && exec python scripts/start_server.py"
 
@@ -65,3 +67,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  incoming_private:

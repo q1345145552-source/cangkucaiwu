@@ -1,0 +1,89 @@
+{
+  "same_operation": {
+    "concurrent_requests": 10,
+    "sequential_retries": 3,
+    "after_same_request": {
+      "count": 1,
+      "balance": 1000.0
+    },
+    "after_independent_same_amount": {
+      "count": 2,
+      "balance": 2000.0
+    }
+  },
+  "batch_and_conflict": {
+    "missing_key": 422,
+    "same_key_changed_amount": 409,
+    "repeated_batch_new_records": 0,
+    "changed_batch": 409,
+    "failed_batch": 400,
+    "final": {
+      "count": 3,
+      "balance": 3000.0
+    }
+  },
+  "screenshot": {
+    "failure_status": 500,
+    "failure_message": "截图保存失败；到账已入账，请仅补传截图",
+    "recovered_id": 1,
+    "upload_success": 200,
+    "own_read": 200,
+    "foreign_read_write": 403,
+    "ungranted_staff_supervisor": 403,
+    "public_read": 404,
+    "after_retry": {
+      "count": 1,
+      "balance": 1000.0
+    }
+  },
+  "migration_new": {
+    "repeat_runs": 2,
+    "fields": 3,
+    "legacy_amount_preserved": null
+  },
+  "migration_old": {
+    "repeat_runs": 2,
+    "fields": 3,
+    "legacy_amount_preserved": 123
+  },
+  "full_startup": {
+    "new_database": {
+      "exit_code": 0
+    },
+    "legacy_upgrade": {
+      "exit_code": 0
+    },
+    "restart": {
+      "exit_code": 0
+    },
+    "legacy_receipts_preserved": 1,
+    "legacy_amount_preserved": 50000.0
+  },
+  "browser_390": {
+    "count": 2,
+    "amount": 2000.0,
+    "screenshots": 1,
+    "account_balance": 2000.0
+  },
+  "base_commit": "65946a7989f386f03b6eb10bea19cb291b3f9639",
+  "scope": "第1轮；隔离 PostgreSQL 16.2；无生产部署或生产数据操作",
+  "type_comparison": {
+    "before": 101,
+    "after": 101,
+    "new": []
+  },
+  "tests": {
+    "postgres": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "wallet_permissions_regression": {
+      "tests": 288,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  }
+}

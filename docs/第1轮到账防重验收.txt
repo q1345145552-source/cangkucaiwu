@@ -1,0 +1,62 @@
+第1轮：到账防重及截图保存状态（2026-10-20）
+基线：GitHub main与本地同为65946a7，开始时只有用户已有未跟踪目录.deploy/，本轮未读取或改动它。仅第1轮，不执行第2至12轮，不部署生产。
+
+实现
+1. 入账请求必须携带稳定request_key，按仓库建立数据库唯一索引。原始到账内容存SHA256摘要；相同请求重试返回原编号，改金额等内容返回409，不按金额或日期去猜同一笔。
+2. 批量导入同样要求批次request_key，行号派生稳定操作号，整批摘要防止相同批号改内容。任意一行校验失败全部回滚。
+3. 前端发出请求前按账号/仓库保存未完成操作；断网重试和刷新复用原号，先保存已入账编号再上传截图。截图失败明确提示到账已入账，只补传；已保存记录可在列表补传、更换和查看截图。
+4. 截图改走POST/GET /incoming/{incoming_id}/screenshot，不再调用充值申报截图接口。新增GET /incoming/by-request/{request_key}恢复原记录。三个新管理接口叠加非劳工守卫，保留到账权限和仓库检查；超管禁业务。
+5. 新截图保存在独立私有目录，通过鉴权接口读取，缓存为private,no-store。不向公共/uploads暴露新截图，也不改同号充值申报的图片。
+6. 390宽度下调整本轮上传区域换行和fieldset最小宽度，页面宽度为390，无横向溢出；未改全局排版、菜单或其他页面。
+
+迁移与部署边界
+incoming_flows新增request_key VARCHAR(64)、request_fingerprint VARCHAR(64)、screenshot VARCHAR(100)，都允许旧记录留空；uq_incoming_operation唯一索引包含warehouse_id/request_key。seed.py逐条IF NOT EXISTS、独立保存点，失败停止启动。
+新库、旧库升级、重复启动及故意DDL失败后的保存点恢复均在真实PostgreSQL验证；旧金额123和旧记录未变。
+docker-compose.yml仅给backend新增incoming_private持久卷和INCOMING_ATTACHMENT_DIR=/app/incoming-private；nginx不挂载这张私有卷。未删除或更换原数据卷。
+前后端须配套部署：直接调用单笔/批量到账API的新客户端必须提供request_key。旧记录不补请求号，不猜历史重复到账，不改工资或其他记账口径。
+
+实际数字
+账户初始0，10个真实并发HTTP请求强制同时到达，再顺序重试3次：只1条到账，余额1000，只有1次created=true。
+独立第二个请求号、同日期同金额1000：允许第2条，余额2000。
+同请求号改金额：409。缺少请求号：422。整批重试新增0条；相同批号改行数409；跨仓账户导致整批400回滚。
+截图模拟磁盘失败返回500且正文明确“到账已入账，请仅补传截图”：到账仍1条、余额1000；补传200、查看200，仍1条/1000。
+外仓、劳工、超管读写截图403，外仓按操作号查询404、到账列表0条；匿名读取被拒，公共/uploads路径404。
+390宽度真实浏览器：首次图片失败后显示已入账，刷新恢复到账#1，只补传成功，独立再录1000后数据库2条、2000、1张截图，账户余额2000。查看截图弹框正常。
+
+测试证据
+真实PostgreSQL 16.2通过独立临时进程启动，仅127.0.0.1:55437；每个用例建立并清理独立schema。没有连接生产数据库。
+PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres INCOMING_TEST_REPORT=/tmp/incoming-round1-actual.json python -m pytest backend/tests/test_incoming_operations.py -q
+结果：6项通过，0失败，0跳过。
+PYTHONPATH=backend python -m pytest backend/tests/test_wallet_basis.py backend/tests/test_wallet_integrity.py backend/tests/test_non_labor_guard.py backend/tests/test_non_labor_batch2_writes.py backend/tests/test_non_labor_read_group1.py -q
+结果：288项通过，0失败，0跳过。原测试只补齐新请求号输入及新增守卫清单，未放宽金额或权限断言。
+NODE_PATH=<隔离node_modules> node frontend/tests/incoming-operations.test.cjs
+结果：实际页面处理函数和提交状态机通过截图失败、刷新恢复、丢失响应、双击、独立同金额、校验失败恢复、已有行补传及仓库请求头检查。
+最终前端生产编译通过。全量类型诊断基线101条、修后101条，新增0条；全项目旧套件不在本轮宣称全绿。
+
+本轮未新增菜单权限，无补权迁移需求。剩余小额费用、月份筛选、其他收入币种、现金入口及旧收支页问题等待后续轮次，不在本轮修改。
+
+改动文件（15个）
+backend/app/api/v1/incoming.py
+backend/app/models/recharge.py
+backend/app/schemas/business.py
+backend/app/services/incoming_receipts.py
+backend/scripts/seed.py
+backend/tests/test_incoming_operations.py
+backend/tests/test_wallet_basis.py
+backend/tests/test_wallet_integrity.py
+backend/tests/wallet_contract_support.py
+docker-compose.yml
+frontend/src/app/(dashboard)/incoming/page.tsx
+frontend/src/lib/incomingSubmission.ts
+frontend/tests/incoming-operations.test.cjs
+docs/第1轮到账防重实际数字.json
+docs/第1轮到账防重验收.txt
+
+使用的实际运行环境命令
+后端解释器：/tmp/employee-advance-expense-py312/bin/python
+前端流程：NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node frontend/tests/incoming-operations.test.cjs
+编译工作目录：/tmp/wallet-build-o6qsx2gz（复制本轮frontend源码，依赖独立于项目），NEXT_TELEMETRY_DISABLED=1 node node_modules/next/dist/bin/next build
+类型检查：同目录 node node_modules/typescript/bin/tsc --noEmit --incremental false；对照本轮改动前输出。
+补充负向验收：501字备注在入账前422拒绝、无新增到账；主管/财务取消到账权限后，截图读取、补传及按操作号恢复均403。
+
+完整启动额外验收：在独立新建数据库完整运行scripts/seed.py；随后删除本轮3个字段模拟旧库，再运行启动脚本升级，最后重复启动。三次进程退出码均为0，原有1条样例到账50000保持不变，新增字段仍为空。该数据库已在测试结束清理。
