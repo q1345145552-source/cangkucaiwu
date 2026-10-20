@@ -4,6 +4,7 @@ import { api, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
+import { operatingEntriesEnabled } from "@/lib/retiredEntries";
 import OperatingReport from "@/components/OperatingReport";
 import WarehouseSummary from "@/components/WarehouseSummary";
 import { TrendingUp, TrendingDown, FileText, PiggyBank, Receipt, CreditCard, Clock, AlertTriangle, Download } from "lucide-react";
@@ -78,14 +79,14 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!getToken()) router.push("/login");
     const q=new URLSearchParams(window.location.search);
-    if(q.get("view")==="operations"){
+    if(operatingEntriesEnabled && q.get("view")==="operations"){
       setSelected("operations");
       if(q.get("start_date")&&q.get("end_date"))setDateRange({start_date:q.get("start_date")!,end_date:q.get("end_date")!});
     }
     loadPreviews();
   }, []);
   useEffect(()=>{
-    if(selected==="operations")window.history.replaceState(window.history.state,"",`/reports?${new URLSearchParams({view:"operations",...dateRange})}`);
+    if(operatingEntriesEnabled && selected==="operations")window.history.replaceState(window.history.state,"",`/reports?${new URLSearchParams({view:"operations",...dateRange})}`);
   },[selected,dateRange]);
   useEffect(() => { loadPreviews(); if (selected && selected !== "operations") loadReport(selected); }, [dateRange,scopeRevision]);
 
@@ -104,6 +105,7 @@ export default function ReportsPage() {
   }
 
   function openOperatingReport() {
+    if (!operatingEntriesEnabled) return;
     const month = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Bangkok",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).slice(0,7);
     const [y,m]=month.split("-").map(Number);
     reportRequest.current++;setSelected("operations");setData(null);setLoading(false);
@@ -111,6 +113,7 @@ export default function ReportsPage() {
   }
 
   async function loadReport(key: string) {
+    if (key === "operations" && !operatingEntriesEnabled) return;
     const query=new URLSearchParams(window.location.search);
     if(query.get("view")==="operations"){
       query.delete("view");query.delete("start_date");query.delete("end_date");
@@ -164,7 +167,7 @@ export default function ReportsPage() {
           <h1 className="page-title">报表中心</h1>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end flex-wrap">
-          {selected === "operations" && <label className="text-xs">经营月份<input aria-label="经营月份" type="month" className="form-input text-sm w-36" value={dateRange.start_date.slice(0,7)} onChange={e=>{if(e.target.value){const [y,m]=e.target.value.split("-").map(Number);setDateRange({start_date:`${e.target.value}-01`,end_date:`${e.target.value}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`});}}}/></label>}
+          {operatingEntriesEnabled && selected === "operations" && <label className="text-xs">经营月份<input aria-label="经营月份" type="month" className="form-input text-sm w-36" value={dateRange.start_date.slice(0,7)} onChange={e=>{if(e.target.value){const [y,m]=e.target.value.split("-").map(Number);setDateRange({start_date:`${e.target.value}-01`,end_date:`${e.target.value}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`});}}}/></label>}
           <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
           <span className="text-gray-400 text-xs">至</span>
           <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
@@ -175,7 +178,7 @@ export default function ReportsPage() {
 
       {/* Report type cards with preview badges */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {reportTypes.map((rt) => {
+        {reportTypes.filter(rt => operatingEntriesEnabled || rt.key !== "operations").map((rt) => {
           const pv = previews[rt.key];
           const previewText = formatPreview(rt.key, pv);
           return (
@@ -193,7 +196,7 @@ export default function ReportsPage() {
         })}
       </div>
 
-      {selected === "operations" && <OperatingReport startDate={dateRange.start_date} endDate={dateRange.end_date} />}
+      {operatingEntriesEnabled && selected === "operations" && <OperatingReport startDate={dateRange.start_date} endDate={dateRange.end_date} />}
 
       {/* Loading */}
       {loading && selected !== "operations" && (

@@ -1,0 +1,346 @@
+{
+  "/reports/income-expense": {
+    "data": [
+      {
+        "类型": "支出",
+        "日期": "2026-09-03",
+        "金额": 400.0,
+        "币种": "THB",
+        "备注": "公司账户支出"
+      },
+      {
+        "类型": "支出",
+        "日期": "2026-09-03",
+        "金额": 50.0,
+        "币种": "CNY",
+        "备注": "公司账户支出"
+      },
+      {
+        "类型": "收入",
+        "日期": "2026-09-02",
+        "金额": 1000.0,
+        "币种": "THB",
+        "备注": "手工收入"
+      },
+      {
+        "类型": "收入",
+        "日期": "2026-09-02",
+        "金额": 200.0,
+        "币种": "CNY",
+        "备注": "手工收入"
+      }
+    ],
+    "income_by_currency": {
+      "THB": 1000.0,
+      "CNY": 200.0
+    },
+    "expense_by_currency": {
+      "THB": 400.0,
+      "CNY": 50.0
+    },
+    "net_by_currency": {
+      "THB": 600.0,
+      "CNY": 150.0
+    },
+    "total_income": null,
+    "total_expense": null,
+    "net": null,
+    "total_income_by_currency": {
+      "THB": 1000.0,
+      "CNY": 200.0
+    },
+    "total_expense_by_currency": {
+      "THB": 400.0,
+      "CNY": 50.0
+    },
+    "recharge_income_by_currency": {},
+    "other_income_by_currency": {
+      "THB": 1000.0,
+      "CNY": 200.0
+    }
+  },
+  "/reports/cost-funds-debt": {
+    "start_date": "2026-09-01",
+    "end_date": "2026-09-30",
+    "warehouse_ids": [
+      1
+    ],
+    "currencies": [
+      {
+        "currency": "CNY",
+        "symbol": "¥",
+        "costs": {
+          "data": [
+            {
+              "name": "员工工资",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "报销",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "采购",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "备用金拨付",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "运营支出",
+              "count": 1,
+              "amount": 50.0
+            }
+          ],
+          "count": 1,
+          "total": 50.0
+        },
+        "funds": {
+          "data": [
+            {
+              "account_id": 3,
+              "account_name": "测试人民币现金",
+              "opening_balance": 1000.0,
+              "inflow": 200.0,
+              "outflow": 50.0,
+              "closing_balance": 1150.0,
+              "status": "active"
+            }
+          ],
+          "total": {
+            "opening_balance": 1000.0,
+            "inflow": 200.0,
+            "outflow": 50.0,
+            "closing_balance": 1150.0
+          },
+          "unassigned": {
+            "inflow": 0.0,
+            "outflow": 0.0
+          }
+        },
+        "debt": {
+          "data": [],
+          "total": {
+            "amount": 0.0,
+            "repaid_amount": 0.0,
+            "outstanding_amount": 0.0
+          }
+        },
+        "reconciliation": {
+          "cost_total": 50.0,
+          "company_outflow": 50.0,
+          "difference": 0.0,
+          "cash_advance_cost": 0.0,
+          "expense_fund_cost": 0.0,
+          "non_company_cost": 0.0,
+          "unreconciled_difference": 0.0,
+          "balanced": true,
+          "non_cost_outflows": [],
+          "details": [],
+          "detail_count": 0
+        }
+      },
+      {
+        "currency": "THB",
+        "symbol": "฿",
+        "costs": {
+          "data": [
+            {
+              "name": "员工工资",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "报销",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "采购",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "备用金拨付",
+              "count": 0,
+              "amount": 0.0
+            },
+            {
+              "name": "运营支出",
+              "count": 1,
+              "amount": 400.0
+            }
+          ],
+          "count": 1,
+          "total": 400.0
+        },
+        "funds": {
+          "data": [
+            {
+              "account_id": 1,
+              "account_name": "测试现金1",
+              "opening_balance": 10000.0,
+              "inflow": 1000.0,
+              "outflow": 400.0,
+              "closing_balance": 10600.0,
+              "status": "active"
+            }
+          ],
+          "total": {
+            "opening_balance": 10000.0,
+            "inflow": 1000.0,
+            "outflow": 400.0,
+            "closing_balance": 10600.0
+          },
+          "unassigned": {
+            "inflow": 0.0,
+            "outflow": 0.0
+          }
+        },
+        "debt": {
+          "data": [],
+          "total": {
+            "amount": 0.0,
+            "repaid_amount": 0.0,
+            "outstanding_amount": 0.0
+          }
+        },
+        "reconciliation": {
+          "cost_total": 400.0,
+          "company_outflow": 400.0,
+          "difference": 0.0,
+          "cash_advance_cost": 0.0,
+          "expense_fund_cost": 0.0,
+          "non_company_cost": 0.0,
+          "unreconciled_difference": 0.0,
+          "balanced": true,
+          "non_cost_outflows": [],
+          "details": [],
+          "detail_count": 0
+        }
+      }
+    ],
+    "balance_anchor_date": "2026-10-01",
+    "notes": [
+      "采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。",
+      "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。",
+      "备用金在拨付时计一次支出，后续开销和备用金报销仅记录使用；原记录保留，不重复合计。",
+      "收入只认实际到账和收款；垫款业务不先记公司支出，归还垫款当天按用途记支出。内部转账只影响各账户余额，不计公司收入支出。",
+      "账户按保存的期初日期与同一套有效流水推算；旧累计付款和未指定账户单列，历史余额仍需结合银行账单核对。",
+      "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。",
+      "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"
+    ],
+    "undated_flows": []
+  },
+  "/income-expense/ledger": {
+    "data": [
+      {
+        "id": 2,
+        "warehouse_id": 1,
+        "date": "2026-09-03",
+        "amount": 50.0,
+        "currency": "CNY",
+        "type": "expense",
+        "source": "manual",
+        "source_label": "公司账户支出",
+        "account_id": 3,
+        "status": "active",
+        "ref_no": "EX-2",
+        "remark": null,
+        "category_name": "运营支出",
+        "category_id": 2,
+        "is_internal_transfer": false,
+        "cash_advance_id": null,
+        "account_name": "测试人民币现金",
+        "is_non_cost_flow": false,
+        "status_label": "有效"
+      },
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "date": "2026-09-03",
+        "amount": 400.0,
+        "currency": "THB",
+        "type": "expense",
+        "source": "manual",
+        "source_label": "公司账户支出",
+        "account_id": 1,
+        "status": "active",
+        "ref_no": "EX-1",
+        "remark": null,
+        "category_name": "运营支出",
+        "category_id": 2,
+        "is_internal_transfer": false,
+        "cash_advance_id": null,
+        "account_name": "测试现金1",
+        "is_non_cost_flow": false,
+        "status_label": "有效"
+      },
+      {
+        "id": 2,
+        "warehouse_id": 1,
+        "date": "2026-09-02",
+        "amount": 200.0,
+        "currency": "CNY",
+        "type": "income",
+        "source": "manual",
+        "source_label": "手工收入",
+        "account_id": 3,
+        "status": "active",
+        "ref_no": "IN-2",
+        "remark": null,
+        "category_name": "其他支出",
+        "category_id": 1,
+        "is_internal_transfer": false,
+        "cash_advance_id": null,
+        "account_name": "测试人民币现金",
+        "is_non_cost_flow": false,
+        "status_label": "有效"
+      },
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "date": "2026-09-02",
+        "amount": 1000.0,
+        "currency": "THB",
+        "type": "income",
+        "source": "manual",
+        "source_label": "手工收入",
+        "account_id": 1,
+        "status": "active",
+        "ref_no": "IN-1",
+        "remark": null,
+        "category_name": "其他支出",
+        "category_id": 1,
+        "is_internal_transfer": false,
+        "cash_advance_id": null,
+        "account_name": "测试现金1",
+        "is_non_cost_flow": false,
+        "status_label": "有效"
+      }
+    ],
+    "total": 4,
+    "page": 1,
+    "page_size": 30,
+    "income_by_currency": {
+      "CNY": 200.0,
+      "THB": 1000.0
+    },
+    "expense_by_currency": {
+      "CNY": 50.0,
+      "THB": 400.0
+    },
+    "total_income": null,
+    "total_expense": null,
+    "net": null,
+    "flow_scope": "company",
+    "card_income": null,
+    "card_expense": null,
+    "card_net": null
+  }
+}

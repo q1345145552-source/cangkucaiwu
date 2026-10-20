@@ -1,3 +1,4 @@
+from app.core.retired_entries import require_operating_entries_enabled
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -368,7 +369,7 @@ async def reconciliation_diff_report(start_date: str = None, end_date: str = Non
     return {"data": data, "diff_count": diff_count, "total_diff": total_diff}
 
 
-@router.get("/operations")
+@router.get("/operations", dependencies=[Depends(require_operating_entries_enabled)])
 async def operating_report(request: Request, month: str = None, start_date: str = None, end_date: str = None,
     customer_id: int = None, currency: str = None, warehouse_id: int = None,
     shipment_page: int = Query(1,ge=1), cost_page: int = Query(1,ge=1), page_size: int = Query(20,ge=1,le=200),

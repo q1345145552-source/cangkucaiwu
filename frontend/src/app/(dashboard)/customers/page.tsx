@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
 import { useRouter } from "next/navigation";
+import { operatingEntriesEnabled } from "@/lib/retiredEntries";
 import CustomerReceivable, { ReceivableSummary } from "@/components/CustomerReceivable";
 import DataTable from "@/components/common/DataTable";
 import { Edit, Trash2 } from "lucide-react";
@@ -113,12 +114,12 @@ export default function CustomersPage() {
     { key: "receivables", label: "应收与预收", render: (v: any, row: any) => <div><ReceivableSummary positions={v || {}} />{row.needs_review && <span className="text-amber-700 text-xs">历史待核对</span>}</div> },
     { key: "id", label: "操作", render: (_: any, row: any) => (
       <div className="flex items-center gap-1">
-        <button onClick={() => setReconciling(row)} className="btn-secondary btn-xs">客户对账</button>
+        {operatingEntriesEnabled && <button onClick={() => setReconciling(row)} className="btn-secondary btn-xs">客户对账</button>}
         <button onClick={() => openEdit(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>
         <button onClick={() => handleDelete(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />删除</button>
       </div>
     )},
-  ];
+  ].filter(column => operatingEntriesEnabled || !["total_shipments", "total_shipping_cost", "receivables"].includes(column.key));
 
   return (
     <>
@@ -145,7 +146,7 @@ export default function CustomersPage() {
 
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />}
 
-      {reconciling && <div className="modal-overlay" role="dialog" aria-label="客户对账"><div className="bg-white rounded-xl w-full max-w-4xl p-4 max-h-[90dvh] overflow-y-auto"><div className="flex justify-between items-center mb-4"><h2 className="font-semibold">{reconciling.company_name} · 客户对账</h2><button className="btn-secondary" onClick={() => setReconciling(null)}>关闭对账</button></div><CustomerReceivable customerId={reconciling.id} onChanged={load} /></div></div>}
+      {operatingEntriesEnabled && reconciling && <div className="modal-overlay" role="dialog" aria-label="客户对账"><div className="bg-white rounded-xl w-full max-w-4xl p-4 max-h-[90dvh] overflow-y-auto"><div className="flex justify-between items-center mb-4"><h2 className="font-semibold">{reconciling.company_name} · 客户对账</h2><button className="btn-secondary" onClick={() => setReconciling(null)}>关闭对账</button></div><CustomerReceivable customerId={reconciling.id} onChanged={load} /></div></div>}
       {/* 新建/编辑弹窗 */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
@@ -247,7 +248,7 @@ export default function CustomersPage() {
                     <div className="form-group">
                       <label className="form-label">历史手填欠款（仅保留待核对）</label>
                       <input readOnly className="form-input bg-gray-100" value={form.debt_amount} />
-                      <p className="text-xs text-gray-500">实际应收与预收请查看客户对账，不在这里手填。</p>
+                      {operatingEntriesEnabled && <p className="text-xs text-gray-500">实际应收与预收请查看客户对账，不在这里手填。</p>}
                     </div>
                   </div>
                 )}

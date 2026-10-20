@@ -26,6 +26,25 @@ def actual(name, value):
     if os.environ.get('CREDIT_SHIPMENT_TEST_REPORT'):
         Path(os.environ['CREDIT_SHIPMENT_TEST_REPORT']).write_text(json.dumps(REPORT,ensure_ascii=False,indent=2,default=str))
 
+@pytest.fixture(autouse=True)
+def retained_entries():
+    """仅本模块及显式导入此 fixture 的历史测试验证保留的实现。
+
+    生产入口仍无条件封闭；test_retired_operating_entries 不使用此 override。
+    """
+    from app.core.retired_entries import require_operating_entries_enabled
+    sentinel = object()
+    old = app.dependency_overrides.get(require_operating_entries_enabled, sentinel)
+    app.dependency_overrides[require_operating_entries_enabled] = lambda: None
+    try:
+        yield
+    finally:
+        if old is sentinel:
+            app.dependency_overrides.pop(require_operating_entries_enabled, None)
+        else:
+            app.dependency_overrides[require_operating_entries_enabled] = old
+
+
 @asynccontextmanager
 async def shipments_environment(tmp_path, monkeypatch):
     async with environment(tmp_path, monkeypatch) as (engine, factory, client):

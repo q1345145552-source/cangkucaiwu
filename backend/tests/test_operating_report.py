@@ -15,7 +15,7 @@ from app.models.employee_advance import EmployeeAdvance
 from app.models.cash_advance import CashAdvance
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from tests.test_customer_receivables import ship,receive
-from tests.test_credit_shipments import shipments_environment,payload,wallet
+from tests.test_credit_shipments import retained_entries, shipments_environment,payload,wallet
 from tests.test_incoming_operations import URL,body
 from tests.test_round2_permissions import auth
 pytestmark=pytest.mark.skipif(not URL,reason='Requires explicit loopback PostgreSQL')

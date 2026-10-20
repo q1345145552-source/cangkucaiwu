@@ -17,6 +17,7 @@ from app.services.money_period import money_period
 from app.models.recharge import IncomingFlow
 from pydantic import BaseModel, Field
 from datetime import date
+from app.core.retired_entries import require_operating_entries_enabled
 
 router = APIRouter()
 
@@ -32,7 +33,7 @@ async def _scoped_customer(db, user, header, customer_id):
     return customer
 
 
-@router.get("/{customer_id}/receivables")
+@router.get("/{customer_id}/receivables", dependencies=[Depends(require_operating_entries_enabled)])
 async def customer_receivables(customer_id: int, request: Request, month: str = None,
     start_date: str = None, end_date: str = None,
     current_user: User = Depends(check_staff_permission_any(_PERMISSION, MENU_PERMISSIONS_BY_KEY["credit"].label)),
@@ -52,7 +53,7 @@ async def customer_receivables(customer_id: int, request: Request, month: str = 
         'refund_workflow_supported':False}
 
 
-@router.post("/{customer_id}/receipts/link")
+@router.post("/{customer_id}/receipts/link", dependencies=[Depends(require_operating_entries_enabled)])
 async def link_customer_receipt(customer_id: int, req: CustomerReceiptLink, request: Request,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["credit"].label)),
     db: AsyncSession = Depends(get_db)):

@@ -10,7 +10,7 @@ from app.models import Customer, PaymentAccount, IncomingFlow
 from app.models.credit import CreditCustomer, CreditRepayment
 from app.models.recharge import RechargeDeclaration, ReconciliationResult
 from app.services.customer_receivables import positions
-from tests.test_credit_shipments import shipments_environment, payload, wallet
+from tests.test_credit_shipments import retained_entries, shipments_environment, payload, wallet
 from tests.test_incoming_operations import body, URL
 from tests.test_round2_permissions import auth
 

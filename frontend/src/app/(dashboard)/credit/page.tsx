@@ -1,5 +1,6 @@
 "use client";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { operatingEntriesEnabled } from "@/lib/retiredEntries";
 import CustomerReceivable from "@/components/CustomerReceivable";
 import CreditShipments from "@/components/CreditShipments";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
@@ -123,9 +124,9 @@ export default function CreditPage() {
         </button>
       </div>
 
-      <CreditShipments onChanged={() => { load(); loadDashboard(); loadAlerts(); setDetail(null); }} onSource={row => {
+      {operatingEntriesEnabled && <CreditShipments onChanged={() => { load(); loadDashboard(); loadAlerts(); setDetail(null); }} onSource={row => {
         const range = { start_date: row.ship_date, end_date: row.ship_date }; setDetailRange(range); viewDetail(row.credit_customer_id, range);
-      }} />
+      }} />}
 
       {/* Dashboard cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
@@ -261,7 +262,7 @@ export default function CreditPage() {
               <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
             </div>
 
-            <CustomerReceivable customerId={detail.customer_id} onChanged={() => { load(); loadDashboard(); viewDetail(detail.id); }} />
+            {operatingEntriesEnabled && <CustomerReceivable customerId={detail.customer_id} onChanged={() => { load(); loadDashboard(); viewDetail(detail.id); }} />}
             <div className="mt-5" />
             {/* 还款/发货记录时间范围 */}
             <div className="flex flex-wrap items-center gap-2 mb-4">

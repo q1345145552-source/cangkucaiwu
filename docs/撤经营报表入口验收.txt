@@ -1,0 +1,156 @@
+撤经营报表入口验收（2026-10-20）
+
+范围：撤入口，不删除业务实现，不改数据库，不部署生产。
+测试使用本机独立 PostgreSQL schema、合成账号和合成金额，不是线上账。
+基线：f647cbef639c887d544c45ebf5ef1347886525cf。
+
+入口：原来左侧没有独立经营报表菜单，入口是报表中心的“经营情况（独立）”卡片；现已对所有角色隐藏。
+旧地址 /reports?view=operations 只显示原报表中心，不加载经营报表。
+客户档案隐藏发货单数、发货应收、应收与预收列及客户对账按钮；账期页隐藏发货登记和客户应收组件。
+保留原账期管理及其历史记录、回款登记；没有改其他菜单。
+
+接口：以下 7 个端点增加外层拦截，原函数主体完全未变。
+管理员、有权限主管和财务调用均为 403，正文：{"detail":"经营报表及客户应收、发货录入功能已停用"}。
+超管和劳工也保持 403（先由原有角色守卫拒绝）。
+GET /api/v1/reports/operations -> 403 {"detail": "经营报表及客户应收、发货录入功能已停用"}
+GET /api/v1/customers/1/receivables -> 403 {"detail": "经营报表及客户应收、发货录入功能已停用"}
+POST /api/v1/customers/1/receipts/link -> 403 {"detail": "经营报表及客户应收、发货录入功能已停用"}
+GET /api/v1/credit/shipments -> 403 {"detail": "经营报表及客户应收、发货录入功能已停用"}
+POST /api/v1/credit/1/shipment -> 403 {"detail": "经营报表及客户应收、发货录入功能已停用"}
+PUT /api/v1/credit/1/shipment/1 -> 403 {"detail": "经营报表及客户应收、发货录入功能已停用"}
+POST /api/v1/credit/1/shipment/1/void -> 403 {"detail": "经营报表及客户应收、发货录入功能已停用"}
+
+六种角色共 42 次直接调用全部 403，拦截阶段数据库写入 0 次。
+老发货仍为 1 条、2 单、900 泰铢、active；客户历史累计字段仍为 2 和 900，数据库没有改。
+
+金额对照，日期 2026-09-01 至 2026-09-30，撤前与撤后逐字段相等：
+钱包/收支报表：泰铢收入 1000 -> 1000，支出 400 -> 400，净收支 600 -> 600。
+钱包/收支报表：人民币收入 200 -> 200，支出 50 -> 50，净收支 150 -> 150。
+三张账：泰铢成本 400 -> 400，流入 1000 -> 1000，流出 400 -> 400，期末余额 10600 -> 10600，垫款欠款 0 -> 0。
+三张账：人民币成本 50 -> 50，流入 200 -> 200，流出 50 -> 50，期末余额 1150 -> 1150，垫款欠款 0 -> 0。
+资金流水 4 条 -> 4 条，三张账两币种对账差异均为 0 -> 0。
+基线 JSON 是添加接口拦截前实际读取后保存的完整响应，本次对比不是只比汇总。
+
+真实浏览器菜单（主管和财务均使用所有可勾权限的合成账号，纳入考勤关闭）：
+
+仓库管理员，共 35 个叶子菜单，无经营报表：
+1. 仪表盘（/dashboard）
+2. 修改日志（/modification-logs）
+3. 配置中心（/config-center）
+4. 系统设置（/settings）
+5. 操作日志（/audit-logs）
+6. 客户档案（/customers）
+7. 仓库档案（/warehouses）
+8. 收款账户（/accounts）
+9. 充值申报（/recharge）
+10. 到账流水（/incoming）
+11. 对账中心（/reconciliation）
+12. 运营收支（/operating）
+13. 费用审批（/expense-approvals）
+14. 其他收入（/other-income-expense）
+15. 备用金管理（/expense-fund）
+16. 报销管理（/reimbursement）
+17. 垫款单（/cash-advances）
+18. 账期管理（/credit）
+19. 报表中心（/reports）
+20. 资金流水总览（/ledger）
+21. 供应商档案（/suppliers）
+22. 应付账款（/payable）
+23. 付款计划（/payment-plans）
+24. 供应商采购分析（/concentration）
+25. 商品展示区（/market）
+26. 拼单功能（/group-order）
+27. 员工档案（/employees）
+28. 薪资模板（/salary-templates）
+29. 扣款模板（/deduction-templates）
+30. 员工扣款（/employee-deductions）
+31. 工作考勤（/attendance）
+32. 加班管理（/overtime）
+33. 工资管理（/payroll）
+34. 员工预支（/employee-advances）
+35. 人效管理（/labor-efficiency）
+
+主管，共 34 个叶子菜单，无经营报表：
+1. 仪表盘（/dashboard）
+2. 修改日志（/modification-logs）
+3. 配置中心（/config-center）
+4. 客户档案（/customers）
+5. 收款账户（/accounts）
+6. 充值申报（/recharge）
+7. 到账流水（/incoming）
+8. 对账中心（/reconciliation）
+9. 运营收支（/operating）
+10. 费用审批（/expense-approvals）
+11. 其他收入（/other-income-expense）
+12. 备用金管理（/expense-fund）
+13. 报销管理（/reimbursement）
+14. 垫款单（/cash-advances）
+15. 账期管理（/credit）
+16. 报表中心（/reports）
+17. 资金流水总览（/ledger）
+18. 供应商档案（/suppliers）
+19. 应付账款（/payable）
+20. 付款计划（/payment-plans）
+21. 供应商采购分析（/concentration）
+22. 商品展示区（/market）
+23. 拼单功能（/group-order）
+24. 员工档案（/employees）
+25. 薪资模板（/salary-templates）
+26. 扣款模板（/deduction-templates）
+27. 员工扣款（/employee-deductions）
+28. 工作考勤（/attendance）
+29. 加班管理（/overtime）
+30. 工资管理（/payroll）
+31. 员工预支（/employee-advances）
+32. 人效管理（/labor-efficiency）
+33. 系统设置（/settings）
+34. 操作日志（/audit-logs）
+
+财务，共 34 个叶子菜单，无经营报表：
+1. 仪表盘（/dashboard）
+2. 修改日志（/modification-logs）
+3. 配置中心（/config-center）
+4. 客户档案（/customers）
+5. 收款账户（/accounts）
+6. 充值申报（/recharge）
+7. 到账流水（/incoming）
+8. 对账中心（/reconciliation）
+9. 运营收支（/operating）
+10. 费用审批（/expense-approvals）
+11. 其他收入（/other-income-expense）
+12. 备用金管理（/expense-fund）
+13. 报销管理（/reimbursement）
+14. 垫款单（/cash-advances）
+15. 账期管理（/credit）
+16. 报表中心（/reports）
+17. 资金流水总览（/ledger）
+18. 供应商档案（/suppliers）
+19. 应付账款（/payable）
+20. 付款计划（/payment-plans）
+21. 供应商采购分析（/concentration）
+22. 商品展示区（/market）
+23. 拼单功能（/group-order）
+24. 员工档案（/employees）
+25. 薪资模板（/salary-templates）
+26. 扣款模板（/deduction-templates）
+27. 员工扣款（/employee-deductions）
+28. 工作考勤（/attendance）
+29. 加班管理（/overtime）
+30. 工资管理（/payroll）
+31. 员工预支（/employee-advances）
+32. 人效管理（/labor-efficiency）
+33. 系统设置（/settings）
+34. 操作日志（/audit-logs）
+
+三角色分别真实登录、展开全部菜单、打开报表中心完成核验；浏览器旧经营书签不再挂载经营报表。
+报表中心仍有：成本资金欠款、充值汇总、到账汇总、收支报表、应付报表、备用金报表、报销报表、账期报表、对账差异。
+客户档案正常，保留新建/编辑/删除；界面不再显示上述累计列和客户对账。
+390×844 手机宽度核对客户档案、报表中心与旧书签，截图已保存。
+
+回归：三角色客户列表/详情、充值、到账、账户、应付、报表预览、支出列表、三张账及原账期列表全部 200，共 30 个读取检查。
+154 项后端测试通过，失败 0、跳过 0；其中新封闭测试不覆盖掉拦截器，旧发货/应收/经营测试仅在各自测试模块临时替换拦截器，用于核对保留实现没有损坏。
+12 组前端检查通过，包括旧经营书签无法打开、客户列和账期组件隐藏、保留组件及钱包相关回归。
+生产构建通过，生成 50 个页面；独立全量类型检查仍有原有 84 条诊断，本次新增 0。
+未运行依赖旧 18080 专用账号 fixture 的两套历史菜单联调脚本；本次三角色菜单由当前独立库真实登录及展开核验代替。
+没有修改数据库模型或启动迁移；没有改钱包、三张账或收支报表的计算主体。
+没有连接线上数据库或部署生产；线上页面在后续部署此提交后才会变化。

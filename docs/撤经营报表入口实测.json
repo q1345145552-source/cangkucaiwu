@@ -1,0 +1,1553 @@
+{
+  "blocked": [
+    {
+      "user_id": 1,
+      "method": "GET",
+      "path": "/reports/operations",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 1,
+      "method": "GET",
+      "path": "/customers/1/receivables",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 1,
+      "method": "POST",
+      "path": "/customers/1/receipts/link",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 1,
+      "method": "GET",
+      "path": "/credit/shipments",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 1,
+      "method": "POST",
+      "path": "/credit/1/shipment",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 1,
+      "method": "PUT",
+      "path": "/credit/1/shipment/1",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 1,
+      "method": "POST",
+      "path": "/credit/1/shipment/1/void",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 2,
+      "method": "GET",
+      "path": "/reports/operations",
+      "status": 403,
+      "body": {
+        "detail": "超级管理员请使用各仓库管理员账号操作"
+      }
+    },
+    {
+      "user_id": 2,
+      "method": "GET",
+      "path": "/customers/1/receivables",
+      "status": 403,
+      "body": {
+        "detail": "超级管理员请使用各仓库管理员账号操作"
+      }
+    },
+    {
+      "user_id": 2,
+      "method": "POST",
+      "path": "/customers/1/receipts/link",
+      "status": 403,
+      "body": {
+        "detail": "超级管理员请使用各仓库管理员账号操作"
+      }
+    },
+    {
+      "user_id": 2,
+      "method": "GET",
+      "path": "/credit/shipments",
+      "status": 403,
+      "body": {
+        "detail": "超级管理员请使用各仓库管理员账号操作"
+      }
+    },
+    {
+      "user_id": 2,
+      "method": "POST",
+      "path": "/credit/1/shipment",
+      "status": 403,
+      "body": {
+        "detail": "超级管理员请使用各仓库管理员账号操作"
+      }
+    },
+    {
+      "user_id": 2,
+      "method": "PUT",
+      "path": "/credit/1/shipment/1",
+      "status": 403,
+      "body": {
+        "detail": "超级管理员请使用各仓库管理员账号操作"
+      }
+    },
+    {
+      "user_id": 2,
+      "method": "POST",
+      "path": "/credit/1/shipment/1/void",
+      "status": 403,
+      "body": {
+        "detail": "超级管理员请使用各仓库管理员账号操作"
+      }
+    },
+    {
+      "user_id": 3,
+      "method": "GET",
+      "path": "/reports/operations",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 3,
+      "method": "GET",
+      "path": "/customers/1/receivables",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 3,
+      "method": "POST",
+      "path": "/customers/1/receipts/link",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 3,
+      "method": "GET",
+      "path": "/credit/shipments",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 3,
+      "method": "POST",
+      "path": "/credit/1/shipment",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 3,
+      "method": "PUT",
+      "path": "/credit/1/shipment/1",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 3,
+      "method": "POST",
+      "path": "/credit/1/shipment/1/void",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 4,
+      "method": "GET",
+      "path": "/reports/operations",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 4,
+      "method": "GET",
+      "path": "/customers/1/receivables",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 4,
+      "method": "POST",
+      "path": "/customers/1/receipts/link",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 4,
+      "method": "GET",
+      "path": "/credit/shipments",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 4,
+      "method": "POST",
+      "path": "/credit/1/shipment",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 4,
+      "method": "PUT",
+      "path": "/credit/1/shipment/1",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 4,
+      "method": "POST",
+      "path": "/credit/1/shipment/1/void",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 5,
+      "method": "GET",
+      "path": "/reports/operations",
+      "status": 403,
+      "body": {
+        "detail": "无权访问"
+      }
+    },
+    {
+      "user_id": 5,
+      "method": "GET",
+      "path": "/customers/1/receivables",
+      "status": 403,
+      "body": {
+        "detail": "无权访问"
+      }
+    },
+    {
+      "user_id": 5,
+      "method": "POST",
+      "path": "/customers/1/receipts/link",
+      "status": 403,
+      "body": {
+        "detail": "无权访问"
+      }
+    },
+    {
+      "user_id": 5,
+      "method": "GET",
+      "path": "/credit/shipments",
+      "status": 403,
+      "body": {
+        "detail": "无权访问"
+      }
+    },
+    {
+      "user_id": 5,
+      "method": "POST",
+      "path": "/credit/1/shipment",
+      "status": 403,
+      "body": {
+        "detail": "无权访问"
+      }
+    },
+    {
+      "user_id": 5,
+      "method": "PUT",
+      "path": "/credit/1/shipment/1",
+      "status": 403,
+      "body": {
+        "detail": "无权访问"
+      }
+    },
+    {
+      "user_id": 5,
+      "method": "POST",
+      "path": "/credit/1/shipment/1/void",
+      "status": 403,
+      "body": {
+        "detail": "无权访问"
+      }
+    },
+    {
+      "user_id": 7,
+      "method": "GET",
+      "path": "/reports/operations",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 7,
+      "method": "GET",
+      "path": "/customers/1/receivables",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 7,
+      "method": "POST",
+      "path": "/customers/1/receipts/link",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 7,
+      "method": "GET",
+      "path": "/credit/shipments",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 7,
+      "method": "POST",
+      "path": "/credit/1/shipment",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 7,
+      "method": "PUT",
+      "path": "/credit/1/shipment/1",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    },
+    {
+      "user_id": 7,
+      "method": "POST",
+      "path": "/credit/1/shipment/1/void",
+      "status": 403,
+      "body": {
+        "detail": "经营报表及客户应收、发货录入功能已停用"
+      }
+    }
+  ],
+  "before": {
+    "/reports/income-expense": {
+      "data": [
+        {
+          "类型": "支出",
+          "日期": "2026-09-03",
+          "金额": 400.0,
+          "币种": "THB",
+          "备注": "公司账户支出"
+        },
+        {
+          "类型": "支出",
+          "日期": "2026-09-03",
+          "金额": 50.0,
+          "币种": "CNY",
+          "备注": "公司账户支出"
+        },
+        {
+          "类型": "收入",
+          "日期": "2026-09-02",
+          "金额": 1000.0,
+          "币种": "THB",
+          "备注": "手工收入"
+        },
+        {
+          "类型": "收入",
+          "日期": "2026-09-02",
+          "金额": 200.0,
+          "币种": "CNY",
+          "备注": "手工收入"
+        }
+      ],
+      "income_by_currency": {
+        "THB": 1000.0,
+        "CNY": 200.0
+      },
+      "expense_by_currency": {
+        "THB": 400.0,
+        "CNY": 50.0
+      },
+      "net_by_currency": {
+        "THB": 600.0,
+        "CNY": 150.0
+      },
+      "total_income": null,
+      "total_expense": null,
+      "net": null,
+      "total_income_by_currency": {
+        "THB": 1000.0,
+        "CNY": 200.0
+      },
+      "total_expense_by_currency": {
+        "THB": 400.0,
+        "CNY": 50.0
+      },
+      "recharge_income_by_currency": {},
+      "other_income_by_currency": {
+        "THB": 1000.0,
+        "CNY": 200.0
+      }
+    },
+    "/reports/cost-funds-debt": {
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-30",
+      "warehouse_ids": [
+        1
+      ],
+      "currencies": [
+        {
+          "currency": "CNY",
+          "symbol": "¥",
+          "costs": {
+            "data": [
+              {
+                "name": "员工工资",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "报销",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "采购",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "备用金拨付",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "运营支出",
+                "count": 1,
+                "amount": 50.0
+              }
+            ],
+            "count": 1,
+            "total": 50.0
+          },
+          "funds": {
+            "data": [
+              {
+                "account_id": 3,
+                "account_name": "测试人民币现金",
+                "opening_balance": 1000.0,
+                "inflow": 200.0,
+                "outflow": 50.0,
+                "closing_balance": 1150.0,
+                "status": "active"
+              }
+            ],
+            "total": {
+              "opening_balance": 1000.0,
+              "inflow": 200.0,
+              "outflow": 50.0,
+              "closing_balance": 1150.0
+            },
+            "unassigned": {
+              "inflow": 0.0,
+              "outflow": 0.0
+            }
+          },
+          "debt": {
+            "data": [],
+            "total": {
+              "amount": 0.0,
+              "repaid_amount": 0.0,
+              "outstanding_amount": 0.0
+            }
+          },
+          "reconciliation": {
+            "cost_total": 50.0,
+            "company_outflow": 50.0,
+            "difference": 0.0,
+            "cash_advance_cost": 0.0,
+            "expense_fund_cost": 0.0,
+            "non_company_cost": 0.0,
+            "unreconciled_difference": 0.0,
+            "balanced": true,
+            "non_cost_outflows": [],
+            "details": [],
+            "detail_count": 0
+          }
+        },
+        {
+          "currency": "THB",
+          "symbol": "฿",
+          "costs": {
+            "data": [
+              {
+                "name": "员工工资",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "报销",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "采购",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "备用金拨付",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "运营支出",
+                "count": 1,
+                "amount": 400.0
+              }
+            ],
+            "count": 1,
+            "total": 400.0
+          },
+          "funds": {
+            "data": [
+              {
+                "account_id": 1,
+                "account_name": "测试现金1",
+                "opening_balance": 10000.0,
+                "inflow": 1000.0,
+                "outflow": 400.0,
+                "closing_balance": 10600.0,
+                "status": "active"
+              }
+            ],
+            "total": {
+              "opening_balance": 10000.0,
+              "inflow": 1000.0,
+              "outflow": 400.0,
+              "closing_balance": 10600.0
+            },
+            "unassigned": {
+              "inflow": 0.0,
+              "outflow": 0.0
+            }
+          },
+          "debt": {
+            "data": [],
+            "total": {
+              "amount": 0.0,
+              "repaid_amount": 0.0,
+              "outstanding_amount": 0.0
+            }
+          },
+          "reconciliation": {
+            "cost_total": 400.0,
+            "company_outflow": 400.0,
+            "difference": 0.0,
+            "cash_advance_cost": 0.0,
+            "expense_fund_cost": 0.0,
+            "non_company_cost": 0.0,
+            "unreconciled_difference": 0.0,
+            "balanced": true,
+            "non_cost_outflows": [],
+            "details": [],
+            "detail_count": 0
+          }
+        }
+      ],
+      "balance_anchor_date": "2026-10-01",
+      "notes": [
+        "采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。",
+        "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。",
+        "备用金在拨付时计一次支出，后续开销和备用金报销仅记录使用；原记录保留，不重复合计。",
+        "收入只认实际到账和收款；垫款业务不先记公司支出，归还垫款当天按用途记支出。内部转账只影响各账户余额，不计公司收入支出。",
+        "账户按保存的期初日期与同一套有效流水推算；旧累计付款和未指定账户单列，历史余额仍需结合银行账单核对。",
+        "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。",
+        "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"
+      ],
+      "undated_flows": []
+    },
+    "/income-expense/ledger": {
+      "data": [
+        {
+          "id": 2,
+          "warehouse_id": 1,
+          "date": "2026-09-03",
+          "amount": 50.0,
+          "currency": "CNY",
+          "type": "expense",
+          "source": "manual",
+          "source_label": "公司账户支出",
+          "account_id": 3,
+          "status": "active",
+          "ref_no": "EX-2",
+          "remark": null,
+          "category_name": "运营支出",
+          "category_id": 2,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试人民币现金",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        },
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "date": "2026-09-03",
+          "amount": 400.0,
+          "currency": "THB",
+          "type": "expense",
+          "source": "manual",
+          "source_label": "公司账户支出",
+          "account_id": 1,
+          "status": "active",
+          "ref_no": "EX-1",
+          "remark": null,
+          "category_name": "运营支出",
+          "category_id": 2,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试现金1",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        },
+        {
+          "id": 2,
+          "warehouse_id": 1,
+          "date": "2026-09-02",
+          "amount": 200.0,
+          "currency": "CNY",
+          "type": "income",
+          "source": "manual",
+          "source_label": "手工收入",
+          "account_id": 3,
+          "status": "active",
+          "ref_no": "IN-2",
+          "remark": null,
+          "category_name": "其他支出",
+          "category_id": 1,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试人民币现金",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        },
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "date": "2026-09-02",
+          "amount": 1000.0,
+          "currency": "THB",
+          "type": "income",
+          "source": "manual",
+          "source_label": "手工收入",
+          "account_id": 1,
+          "status": "active",
+          "ref_no": "IN-1",
+          "remark": null,
+          "category_name": "其他支出",
+          "category_id": 1,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试现金1",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        }
+      ],
+      "total": 4,
+      "page": 1,
+      "page_size": 30,
+      "income_by_currency": {
+        "CNY": 200.0,
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "CNY": 50.0,
+        "THB": 400.0
+      },
+      "total_income": null,
+      "total_expense": null,
+      "net": null,
+      "flow_scope": "company",
+      "card_income": null,
+      "card_expense": null,
+      "card_net": null
+    }
+  },
+  "after": {
+    "/reports/income-expense": {
+      "data": [
+        {
+          "类型": "支出",
+          "日期": "2026-09-03",
+          "金额": 400.0,
+          "币种": "THB",
+          "备注": "公司账户支出"
+        },
+        {
+          "类型": "支出",
+          "日期": "2026-09-03",
+          "金额": 50.0,
+          "币种": "CNY",
+          "备注": "公司账户支出"
+        },
+        {
+          "类型": "收入",
+          "日期": "2026-09-02",
+          "金额": 1000.0,
+          "币种": "THB",
+          "备注": "手工收入"
+        },
+        {
+          "类型": "收入",
+          "日期": "2026-09-02",
+          "金额": 200.0,
+          "币种": "CNY",
+          "备注": "手工收入"
+        }
+      ],
+      "income_by_currency": {
+        "THB": 1000.0,
+        "CNY": 200.0
+      },
+      "expense_by_currency": {
+        "THB": 400.0,
+        "CNY": 50.0
+      },
+      "net_by_currency": {
+        "THB": 600.0,
+        "CNY": 150.0
+      },
+      "total_income": null,
+      "total_expense": null,
+      "net": null,
+      "total_income_by_currency": {
+        "THB": 1000.0,
+        "CNY": 200.0
+      },
+      "total_expense_by_currency": {
+        "THB": 400.0,
+        "CNY": 50.0
+      },
+      "recharge_income_by_currency": {},
+      "other_income_by_currency": {
+        "THB": 1000.0,
+        "CNY": 200.0
+      }
+    },
+    "/reports/cost-funds-debt": {
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-30",
+      "warehouse_ids": [
+        1
+      ],
+      "currencies": [
+        {
+          "currency": "CNY",
+          "symbol": "¥",
+          "costs": {
+            "data": [
+              {
+                "name": "员工工资",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "报销",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "采购",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "备用金拨付",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "运营支出",
+                "count": 1,
+                "amount": 50.0
+              }
+            ],
+            "count": 1,
+            "total": 50.0
+          },
+          "funds": {
+            "data": [
+              {
+                "account_id": 3,
+                "account_name": "测试人民币现金",
+                "opening_balance": 1000.0,
+                "inflow": 200.0,
+                "outflow": 50.0,
+                "closing_balance": 1150.0,
+                "status": "active"
+              }
+            ],
+            "total": {
+              "opening_balance": 1000.0,
+              "inflow": 200.0,
+              "outflow": 50.0,
+              "closing_balance": 1150.0
+            },
+            "unassigned": {
+              "inflow": 0.0,
+              "outflow": 0.0
+            }
+          },
+          "debt": {
+            "data": [],
+            "total": {
+              "amount": 0.0,
+              "repaid_amount": 0.0,
+              "outstanding_amount": 0.0
+            }
+          },
+          "reconciliation": {
+            "cost_total": 50.0,
+            "company_outflow": 50.0,
+            "difference": 0.0,
+            "cash_advance_cost": 0.0,
+            "expense_fund_cost": 0.0,
+            "non_company_cost": 0.0,
+            "unreconciled_difference": 0.0,
+            "balanced": true,
+            "non_cost_outflows": [],
+            "details": [],
+            "detail_count": 0
+          }
+        },
+        {
+          "currency": "THB",
+          "symbol": "฿",
+          "costs": {
+            "data": [
+              {
+                "name": "员工工资",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "报销",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "采购",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "备用金拨付",
+                "count": 0,
+                "amount": 0.0
+              },
+              {
+                "name": "运营支出",
+                "count": 1,
+                "amount": 400.0
+              }
+            ],
+            "count": 1,
+            "total": 400.0
+          },
+          "funds": {
+            "data": [
+              {
+                "account_id": 1,
+                "account_name": "测试现金1",
+                "opening_balance": 10000.0,
+                "inflow": 1000.0,
+                "outflow": 400.0,
+                "closing_balance": 10600.0,
+                "status": "active"
+              }
+            ],
+            "total": {
+              "opening_balance": 10000.0,
+              "inflow": 1000.0,
+              "outflow": 400.0,
+              "closing_balance": 10600.0
+            },
+            "unassigned": {
+              "inflow": 0.0,
+              "outflow": 0.0
+            }
+          },
+          "debt": {
+            "data": [],
+            "total": {
+              "amount": 0.0,
+              "repaid_amount": 0.0,
+              "outstanding_amount": 0.0
+            }
+          },
+          "reconciliation": {
+            "cost_total": 400.0,
+            "company_outflow": 400.0,
+            "difference": 0.0,
+            "cash_advance_cost": 0.0,
+            "expense_fund_cost": 0.0,
+            "non_company_cost": 0.0,
+            "unreconciled_difference": 0.0,
+            "balanced": true,
+            "non_cost_outflows": [],
+            "details": [],
+            "detail_count": 0
+          }
+        }
+      ],
+      "balance_anchor_date": "2026-10-01",
+      "notes": [
+        "采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。",
+        "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。",
+        "备用金在拨付时计一次支出，后续开销和备用金报销仅记录使用；原记录保留，不重复合计。",
+        "收入只认实际到账和收款；垫款业务不先记公司支出，归还垫款当天按用途记支出。内部转账只影响各账户余额，不计公司收入支出。",
+        "账户按保存的期初日期与同一套有效流水推算；旧累计付款和未指定账户单列，历史余额仍需结合银行账单核对。",
+        "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。",
+        "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"
+      ],
+      "undated_flows": []
+    },
+    "/income-expense/ledger": {
+      "data": [
+        {
+          "id": 2,
+          "warehouse_id": 1,
+          "date": "2026-09-03",
+          "amount": 50.0,
+          "currency": "CNY",
+          "type": "expense",
+          "source": "manual",
+          "source_label": "公司账户支出",
+          "account_id": 3,
+          "status": "active",
+          "ref_no": "EX-2",
+          "remark": null,
+          "category_name": "运营支出",
+          "category_id": 2,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试人民币现金",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        },
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "date": "2026-09-03",
+          "amount": 400.0,
+          "currency": "THB",
+          "type": "expense",
+          "source": "manual",
+          "source_label": "公司账户支出",
+          "account_id": 1,
+          "status": "active",
+          "ref_no": "EX-1",
+          "remark": null,
+          "category_name": "运营支出",
+          "category_id": 2,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试现金1",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        },
+        {
+          "id": 2,
+          "warehouse_id": 1,
+          "date": "2026-09-02",
+          "amount": 200.0,
+          "currency": "CNY",
+          "type": "income",
+          "source": "manual",
+          "source_label": "手工收入",
+          "account_id": 3,
+          "status": "active",
+          "ref_no": "IN-2",
+          "remark": null,
+          "category_name": "其他支出",
+          "category_id": 1,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试人民币现金",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        },
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "date": "2026-09-02",
+          "amount": 1000.0,
+          "currency": "THB",
+          "type": "income",
+          "source": "manual",
+          "source_label": "手工收入",
+          "account_id": 1,
+          "status": "active",
+          "ref_no": "IN-1",
+          "remark": null,
+          "category_name": "其他支出",
+          "category_id": 1,
+          "is_internal_transfer": false,
+          "cash_advance_id": null,
+          "account_name": "测试现金1",
+          "is_non_cost_flow": false,
+          "status_label": "有效"
+        }
+      ],
+      "total": 4,
+      "page": 1,
+      "page_size": 30,
+      "income_by_currency": {
+        "CNY": 200.0,
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "CNY": 50.0,
+        "THB": 400.0
+      },
+      "total_income": null,
+      "total_expense": null,
+      "net": null,
+      "flow_scope": "company",
+      "card_income": null,
+      "card_expense": null,
+      "card_net": null
+    }
+  },
+  "read_regression": {
+    "1:/customers": 200,
+    "1:/customers/1": 200,
+    "1:/recharge": 200,
+    "1:/incoming": 200,
+    "1:/accounts": 200,
+    "1:/payable": 200,
+    "1:/reports/previews": 200,
+    "1:/income-expense/expense": 200,
+    "1:/reports/cost-funds-debt": 200,
+    "1:/credit": 200,
+    "3:/customers": 200,
+    "3:/customers/1": 200,
+    "3:/recharge": 200,
+    "3:/incoming": 200,
+    "3:/accounts": 200,
+    "3:/payable": 200,
+    "3:/reports/previews": 200,
+    "3:/income-expense/expense": 200,
+    "3:/reports/cost-funds-debt": 200,
+    "3:/credit": 200,
+    "4:/customers": 200,
+    "4:/customers/1": 200,
+    "4:/recharge": 200,
+    "4:/incoming": 200,
+    "4:/accounts": 200,
+    "4:/payable": 200,
+    "4:/reports/previews": 200,
+    "4:/income-expense/expense": 200,
+    "4:/reports/cost-funds-debt": 200,
+    "4:/credit": 200
+  },
+  "history_kept": true,
+  "blocked_mutation_count": 0,
+  "baseline_commit": "f647cbef639c887d544c45ebf5ef1347886525cf",
+  "menus": {
+    "warehouse_admin": [
+      {
+        "href": "/dashboard",
+        "text": "仪表盘"
+      },
+      {
+        "href": "/modification-logs",
+        "text": "修改日志"
+      },
+      {
+        "href": "/config-center",
+        "text": "配置中心"
+      },
+      {
+        "href": "/settings",
+        "text": "系统设置"
+      },
+      {
+        "href": "/audit-logs",
+        "text": "操作日志"
+      },
+      {
+        "href": "/customers",
+        "text": "客户档案"
+      },
+      {
+        "href": "/warehouses",
+        "text": "仓库档案"
+      },
+      {
+        "href": "/accounts",
+        "text": "收款账户"
+      },
+      {
+        "href": "/recharge",
+        "text": "充值申报"
+      },
+      {
+        "href": "/incoming",
+        "text": "到账流水"
+      },
+      {
+        "href": "/reconciliation",
+        "text": "对账中心"
+      },
+      {
+        "href": "/operating",
+        "text": "运营收支"
+      },
+      {
+        "href": "/expense-approvals",
+        "text": "费用审批"
+      },
+      {
+        "href": "/other-income-expense",
+        "text": "其他收入"
+      },
+      {
+        "href": "/expense-fund",
+        "text": "备用金管理"
+      },
+      {
+        "href": "/reimbursement",
+        "text": "报销管理"
+      },
+      {
+        "href": "/cash-advances",
+        "text": "垫款单"
+      },
+      {
+        "href": "/credit",
+        "text": "账期管理"
+      },
+      {
+        "href": "/reports",
+        "text": "报表中心"
+      },
+      {
+        "href": "/ledger",
+        "text": "资金流水总览"
+      },
+      {
+        "href": "/suppliers",
+        "text": "供应商档案"
+      },
+      {
+        "href": "/payable",
+        "text": "应付账款"
+      },
+      {
+        "href": "/payment-plans",
+        "text": "付款计划"
+      },
+      {
+        "href": "/concentration",
+        "text": "供应商采购分析"
+      },
+      {
+        "href": "/market",
+        "text": "商品展示区"
+      },
+      {
+        "href": "/group-order",
+        "text": "拼单功能"
+      },
+      {
+        "href": "/employees",
+        "text": "员工档案"
+      },
+      {
+        "href": "/salary-templates",
+        "text": "薪资模板"
+      },
+      {
+        "href": "/deduction-templates",
+        "text": "扣款模板"
+      },
+      {
+        "href": "/employee-deductions",
+        "text": "员工扣款"
+      },
+      {
+        "href": "/attendance",
+        "text": "工作考勤"
+      },
+      {
+        "href": "/overtime",
+        "text": "加班管理"
+      },
+      {
+        "href": "/payroll",
+        "text": "工资管理"
+      },
+      {
+        "href": "/employee-advances",
+        "text": "员工预支"
+      },
+      {
+        "href": "/labor-efficiency",
+        "text": "人效管理"
+      }
+    ],
+    "supervisor": [
+      {
+        "href": "/dashboard",
+        "text": "仪表盘"
+      },
+      {
+        "href": "/modification-logs",
+        "text": "修改日志"
+      },
+      {
+        "href": "/config-center",
+        "text": "配置中心"
+      },
+      {
+        "href": "/customers",
+        "text": "客户档案"
+      },
+      {
+        "href": "/accounts",
+        "text": "收款账户"
+      },
+      {
+        "href": "/recharge",
+        "text": "充值申报"
+      },
+      {
+        "href": "/incoming",
+        "text": "到账流水"
+      },
+      {
+        "href": "/reconciliation",
+        "text": "对账中心"
+      },
+      {
+        "href": "/operating",
+        "text": "运营收支"
+      },
+      {
+        "href": "/expense-approvals",
+        "text": "费用审批"
+      },
+      {
+        "href": "/other-income-expense",
+        "text": "其他收入"
+      },
+      {
+        "href": "/expense-fund",
+        "text": "备用金管理"
+      },
+      {
+        "href": "/reimbursement",
+        "text": "报销管理"
+      },
+      {
+        "href": "/cash-advances",
+        "text": "垫款单"
+      },
+      {
+        "href": "/credit",
+        "text": "账期管理"
+      },
+      {
+        "href": "/reports",
+        "text": "报表中心"
+      },
+      {
+        "href": "/ledger",
+        "text": "资金流水总览"
+      },
+      {
+        "href": "/suppliers",
+        "text": "供应商档案"
+      },
+      {
+        "href": "/payable",
+        "text": "应付账款"
+      },
+      {
+        "href": "/payment-plans",
+        "text": "付款计划"
+      },
+      {
+        "href": "/concentration",
+        "text": "供应商采购分析"
+      },
+      {
+        "href": "/market",
+        "text": "商品展示区"
+      },
+      {
+        "href": "/group-order",
+        "text": "拼单功能"
+      },
+      {
+        "href": "/employees",
+        "text": "员工档案"
+      },
+      {
+        "href": "/salary-templates",
+        "text": "薪资模板"
+      },
+      {
+        "href": "/deduction-templates",
+        "text": "扣款模板"
+      },
+      {
+        "href": "/employee-deductions",
+        "text": "员工扣款"
+      },
+      {
+        "href": "/attendance",
+        "text": "工作考勤"
+      },
+      {
+        "href": "/overtime",
+        "text": "加班管理"
+      },
+      {
+        "href": "/payroll",
+        "text": "工资管理"
+      },
+      {
+        "href": "/employee-advances",
+        "text": "员工预支"
+      },
+      {
+        "href": "/labor-efficiency",
+        "text": "人效管理"
+      },
+      {
+        "href": "/settings",
+        "text": "系统设置"
+      },
+      {
+        "href": "/audit-logs",
+        "text": "操作日志"
+      }
+    ],
+    "staff": [
+      {
+        "href": "/dashboard",
+        "text": "仪表盘"
+      },
+      {
+        "href": "/modification-logs",
+        "text": "修改日志"
+      },
+      {
+        "href": "/config-center",
+        "text": "配置中心"
+      },
+      {
+        "href": "/customers",
+        "text": "客户档案"
+      },
+      {
+        "href": "/accounts",
+        "text": "收款账户"
+      },
+      {
+        "href": "/recharge",
+        "text": "充值申报"
+      },
+      {
+        "href": "/incoming",
+        "text": "到账流水"
+      },
+      {
+        "href": "/reconciliation",
+        "text": "对账中心"
+      },
+      {
+        "href": "/operating",
+        "text": "运营收支"
+      },
+      {
+        "href": "/expense-approvals",
+        "text": "费用审批"
+      },
+      {
+        "href": "/other-income-expense",
+        "text": "其他收入"
+      },
+      {
+        "href": "/expense-fund",
+        "text": "备用金管理"
+      },
+      {
+        "href": "/reimbursement",
+        "text": "报销管理"
+      },
+      {
+        "href": "/cash-advances",
+        "text": "垫款单"
+      },
+      {
+        "href": "/credit",
+        "text": "账期管理"
+      },
+      {
+        "href": "/reports",
+        "text": "报表中心"
+      },
+      {
+        "href": "/ledger",
+        "text": "资金流水总览"
+      },
+      {
+        "href": "/suppliers",
+        "text": "供应商档案"
+      },
+      {
+        "href": "/payable",
+        "text": "应付账款"
+      },
+      {
+        "href": "/payment-plans",
+        "text": "付款计划"
+      },
+      {
+        "href": "/concentration",
+        "text": "供应商采购分析"
+      },
+      {
+        "href": "/market",
+        "text": "商品展示区"
+      },
+      {
+        "href": "/group-order",
+        "text": "拼单功能"
+      },
+      {
+        "href": "/employees",
+        "text": "员工档案"
+      },
+      {
+        "href": "/salary-templates",
+        "text": "薪资模板"
+      },
+      {
+        "href": "/deduction-templates",
+        "text": "扣款模板"
+      },
+      {
+        "href": "/employee-deductions",
+        "text": "员工扣款"
+      },
+      {
+        "href": "/attendance",
+        "text": "工作考勤"
+      },
+      {
+        "href": "/overtime",
+        "text": "加班管理"
+      },
+      {
+        "href": "/payroll",
+        "text": "工资管理"
+      },
+      {
+        "href": "/employee-advances",
+        "text": "员工预支"
+      },
+      {
+        "href": "/labor-efficiency",
+        "text": "人效管理"
+      },
+      {
+        "href": "/settings",
+        "text": "系统设置"
+      },
+      {
+        "href": "/audit-logs",
+        "text": "操作日志"
+      }
+    ]
+  },
+  "business_function_bodies_unchanged": {
+    "backend/app/api/v1/credit.py": true,
+    "backend/app/api/v1/customers.py": true,
+    "backend/app/api/v1/reports.py": true
+  },
+  "native_database_only": true,
+  "production_deployed": false,
+  "backend_tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "154",
+    "time": "80.587",
+    "timestamp": "2026-10-20T21:30:22.184753+07:00",
+    "hostname": "XiongdeMac-mini.local"
+  },
+  "frontend_suites_passed": 12,
+  "production_build_passed": true,
+  "typecheck": {
+    "existing": 84,
+    "after": 84,
+    "added": 0
+  }
+}

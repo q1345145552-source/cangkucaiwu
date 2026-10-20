@@ -17,6 +17,7 @@ from app.services.warehouse_summary import warehouse_scope
 from app.services.money_period import money_period
 from app.services.data_history import record_history
 from app.services.customer_receivables import positions, empty_position, credit_position, legacy_review, bind_receipt, overdue_from_position
+from app.core.retired_entries import require_operating_entries_enabled
 
 router = APIRouter()
 
@@ -44,7 +45,7 @@ async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
     return debt,overdue_from_position(position,thai_today())
 
 
-@router.get("/shipments")
+@router.get("/shipments", dependencies=[Depends(require_operating_entries_enabled)])
 async def list_shipments(request: Request, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=200),
                          customer_id: int = None, currency: str = None, month: str = None,
                          start_date: str = None, end_date: str = None, status: str = None,
@@ -233,7 +234,7 @@ async def credit_detail(credit_id: int, request: Request, start_date: str = None
             "currency": currency_of(c, cust)},
     }
 
-@router.post("/{credit_id}/shipment")
+@router.post("/{credit_id}/shipment", dependencies=[Depends(require_operating_entries_enabled)])
 async def create_shipment(credit_id: int, req: ShipmentCreate, request: Request,
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
                           _perm=Depends(check_staff_permission("账期管理"))):
@@ -244,7 +245,7 @@ async def create_shipment(credit_id: int, req: ShipmentCreate, request: Request,
         'message': '发货记录创建成功' if created else '该次发货已保存，未重复登记'}
 
 
-@router.put("/{credit_id}/shipment/{shipment_id}")
+@router.put("/{credit_id}/shipment/{shipment_id}", dependencies=[Depends(require_operating_entries_enabled)])
 async def update_shipment(credit_id: int, shipment_id: int, req: ShipmentData, request: Request,
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
                           _perm=Depends(check_staff_permission("账期管理"))):
@@ -255,7 +256,7 @@ async def update_shipment(credit_id: int, shipment_id: int, req: ShipmentData, r
     return {**shipment_dict(row, c, cust), **debt, 'message': '发货记录已更新'}
 
 
-@router.post("/{credit_id}/shipment/{shipment_id}/void")
+@router.post("/{credit_id}/shipment/{shipment_id}/void", dependencies=[Depends(require_operating_entries_enabled)])
 async def void_shipment(credit_id: int, shipment_id: int, req: ShipmentVoid, request: Request,
                         current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
                         _perm=Depends(check_staff_permission("账期管理"))):
