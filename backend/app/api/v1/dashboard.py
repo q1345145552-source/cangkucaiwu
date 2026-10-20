@@ -218,12 +218,13 @@ async def dashboard_cockpit(request: Request, month: str | None = None,
     month_str = view['period']['month']
     procurement_paid_rows = [(r['currency'],r['amount']) for r in view['month_card']['procurement_expense']]
 
-    # 待收（账期客户欠款）按客户默认币种
+    # 待收沿用账期币种；旧账期未记录币种时才回退客户默认值。
+    credit_currency = func.coalesce(CreditCustomer.currency, Customer.default_currency, "THB")
     recv_rows = (await db.execute(
-        select(Customer.default_currency, func.coalesce(func.sum(CreditCustomer.current_debt), 0))
+        select(credit_currency, func.coalesce(func.sum(CreditCustomer.current_debt), 0))
         .join(Customer, CreditCustomer.customer_id == Customer.id)
         .where(CreditCustomer.warehouse_id.in_(wh_ids), CreditCustomer.current_debt.isnot(None))
-        .group_by(Customer.default_currency)
+        .group_by(credit_currency)
     )).all()
     receivable = _merge_currency(recv_rows)
 

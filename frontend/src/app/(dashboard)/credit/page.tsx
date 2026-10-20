@@ -1,5 +1,6 @@
 "use client";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
+import CreditShipments from "@/components/CreditShipments";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
@@ -99,12 +100,12 @@ export default function CreditPage() {
   return (
     <>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
           <Clock size={20} className="text-blue-600" />
         </div>
         <div className="flex-1">
-          <h1 className="page-title">账期管理</h1>
+          <h1 className="page-title whitespace-nowrap">账期管理</h1>
         </div>
         <button onClick={doExport} className="btn-secondary text-sm flex items-center gap-1.5">
           <Download size={14} />导出评估报告
@@ -114,19 +115,23 @@ export default function CreditPage() {
         </button>
       </div>
 
+      <CreditShipments onChanged={() => { load(); loadDashboard(); loadAlerts(); setDetail(null); }} onSource={row => {
+        const range = { start_date: row.ship_date, end_date: row.ship_date }; setDetailRange(range); viewDetail(row.credit_customer_id, range);
+      }} />
+
       {/* Dashboard cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="text-xs text-gray-400 mb-1">总欠款</div>
-          <div className="text-xl font-bold text-blue-600">฿{(db.total_debt || 0).toLocaleString()}</div>
+          <div className="text-xl font-bold text-blue-600">{Object.entries(db.currency_totals || {}).map(([cur, v]: [string, any]) => <div key={cur}>{cur === "CNY" ? "¥" : "฿"}{v.total_debt.toLocaleString()}</div>)}</div>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="text-xs text-gray-400 mb-1">总额度</div>
-          <div className="text-xl font-bold text-gray-700">฿{(db.total_credit_limit || 0).toLocaleString()}</div>
+          <div className="text-xl font-bold text-gray-700">{Object.entries(db.currency_totals || {}).map(([cur, v]: [string, any]) => <div key={cur}>{cur === "CNY" ? "¥" : "฿"}{v.total_credit_limit.toLocaleString()}</div>)}</div>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="text-xs text-gray-400 mb-1">额度使用率</div>
-          <div className="text-xl font-bold text-orange-600">{db.utilization_rate || 0}%</div>
+          <div className="text-xl font-bold text-orange-600">{Object.entries(db.currency_totals || {}).map(([cur, v]: [string, any]) => <div key={cur}>{cur} {v.utilization_rate}%</div>)}</div>
         </div>
         <div className="bg-red-50 rounded-2xl shadow-sm border border-red-100 p-4">
           <div className="text-xs text-red-500 mb-1 flex items-center gap-1"><AlertTriangle size={12} />逾期客户</div>
@@ -206,8 +211,8 @@ export default function CreditPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-800">{row.customer_name}{canWriteWallet && <button className="btn-secondary btn-xs ml-2" onClick={e => { e.stopPropagation(); openPayment(row); }}>登记回款</button>}</td>
-                      <td className="px-4 py-3 text-right font-mono text-sm">฿{row.credit_limit?.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono text-sm text-blue-700">฿{row.current_debt?.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right font-mono text-sm">{row.currency === "CNY" ? "¥" : "฿"}{row.credit_limit?.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right font-mono text-sm text-blue-700">{row.currency === "CNY" ? "¥" : "฿"}{row.current_debt?.toLocaleString()}</td>
                       <td className={`px-4 py-3 text-center font-medium ${row.overdue_days > 0 ? "text-red-600" : "text-gray-400"}`}>{row.overdue_days || 0}天</td>
                       <td className="px-4 py-3 text-center text-gray-500">每月{row.repayment_day}号</td>
                       <td className="px-4 py-3 text-center">
@@ -234,7 +239,7 @@ export default function CreditPage() {
       {/* 详情弹窗 */}
       {detail && (
         <div className="modal-overlay z-50" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-2xl p-6 w-[640px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[640px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-lg flex items-center gap-2">
                 {detail.customer_name}
@@ -249,7 +254,7 @@ export default function CreditPage() {
             </div>
 
             {/* 还款/发货记录时间范围 */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
               <label className="text-xs text-gray-500">记录起止日期</label>
               <input type="date" className="form-input text-sm py-1 w-36" value={detailRange.start_date}
                 onChange={e => { const rng = { ...detailRange, start_date: e.target.value }; setDetailRange(rng); viewDetail(detail.id, rng); }} />
@@ -279,7 +284,7 @@ export default function CreditPage() {
                 </div>
                 <div className="bg-blue-50 rounded-xl p-3 text-center">
                   <div className="text-[10px] text-blue-500 mb-0.5">月均还款</div>
-                  <div className="text-sm font-bold text-blue-700">฿{(detail.avg_monthly_repay || 0).toLocaleString()}</div>
+                  <div className="text-sm font-bold text-blue-700">{detail.currency === "CNY" ? "¥" : "฿"}{(detail.avg_monthly_repay || 0).toLocaleString()}</div>
                 </div>
                 <div className="bg-orange-50 rounded-xl p-3 text-center">
                   <div className="text-[10px] text-orange-500 mb-0.5">额度使用率</div>
@@ -289,8 +294,8 @@ export default function CreditPage() {
             )}
 
             <div className="text-sm text-gray-500 mb-4 grid grid-cols-2 gap-2">
-              <div>信用额度: <span className="font-mono font-medium text-gray-700">฿{detail.credit_limit?.toLocaleString()}</span></div>
-              <div>当前欠款: <span className="font-mono font-medium text-blue-700">฿{(detail.current_debt || 0).toLocaleString()}</span></div>
+              <div>信用额度: <span className="font-mono font-medium text-gray-700">{detail.currency === "CNY" ? "¥" : "฿"}{detail.credit_limit?.toLocaleString()}</span></div>
+              <div>当前欠款: <span className="font-mono font-medium text-blue-700">{detail.currency === "CNY" ? "¥" : "฿"}{(detail.current_debt || 0).toLocaleString()}</span></div>
               <div>逾期天数: <span className={`font-medium ${detail.overdue_days > 0 ? "text-red-600" : ""}`}>{detail.overdue_days || 0}天</span></div>
               <div>状态: <span className="font-medium">{detail.status === "active" ? "正常" : detail.status}</span></div>
             </div>
@@ -301,7 +306,7 @@ export default function CreditPage() {
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-1.5 px-2 text-gray-500">日期</th><th className="text-right py-1.5 px-2 text-gray-500">金额</th><th className="text-left py-1.5 px-2 text-gray-500">备注</th></tr></thead>
               <tbody>
                 {detail.repayments?.length > 0 ? detail.repayments.map((r: any) => (
-                  <tr key={r.id} className="border-b"><td className="py-1.5 px-2">{r.repayment_date?.slice(0, 10)}</td><td className="py-1.5 px-2 text-right font-mono">฿{r.amount?.toLocaleString()}</td><td className="py-1.5 px-2 text-gray-500">{r.remark}</td></tr>
+                  <tr key={r.id} className="border-b"><td className="py-1.5 px-2">{r.repayment_date?.slice(0, 10)}</td><td className="py-1.5 px-2 text-right font-mono">{detail.currency === "CNY" ? "¥" : "฿"}{r.amount?.toLocaleString()}</td><td className="py-1.5 px-2 text-gray-500">{r.remark}</td></tr>
                 )) : <tr><td colSpan={3} className="py-2 text-center text-gray-400 text-xs">暂无还款记录</td></tr>}
               </tbody>
             </table>
@@ -313,7 +318,7 @@ export default function CreditPage() {
               <thead><tr className="border-b bg-gray-50"><th className="text-left py-1.5 px-2 text-gray-500">日期</th><th className="text-right py-1.5 px-2 text-gray-500">金额</th><th className="text-left py-1.5 px-2 text-gray-500">订单号</th><th className="text-left py-1.5 px-2 text-gray-500">备注</th></tr></thead>
               <tbody>
                 {detail.shipments?.length > 0 ? detail.shipments.map((s: any) => (
-                  <tr key={s.id} className="border-b"><td className="py-1.5 px-2">{s.ship_date?.slice(0, 10)}</td><td className="py-1.5 px-2 text-right font-mono">฿{s.amount?.toLocaleString()}</td><td className="py-1.5 px-2">{s.order_no}</td><td className="py-1.5 px-2 text-gray-500">{s.remark}</td></tr>
+                  <tr key={s.id} className="border-b"><td className="py-1.5 px-2">{s.ship_date?.slice(0, 10)}</td><td className="py-1.5 px-2 text-right font-mono">{s.currency === "CNY" ? "¥" : "฿"}{s.amount?.toLocaleString()}</td><td className="py-1.5 px-2">{s.order_no} · {s.order_count ?? "未知"}单{s.status === "voided" && " · 已作废"}</td><td className="py-1.5 px-2 text-gray-500">{s.remark}</td></tr>
                 )) : <tr><td colSpan={4} className="py-2 text-center text-gray-400 text-xs">暂无发货记录</td></tr>}
               </tbody>
             </table>

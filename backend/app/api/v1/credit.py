@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
@@ -11,6 +11,11 @@ from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, 
 from app.services.flow_rules import exceeds_credit_limit
 from pydantic import BaseModel
 from typing import Optional
+from app.services.credit_shipments import (ShipmentData, ShipmentCreate, ShipmentVoid, active_shipment,
+    currency_of, shipment_dict, scoped_credit, create_once, refresh_debt, editable_shipment, edit_shipment)
+from app.services.warehouse_summary import warehouse_scope
+from app.services.money_period import money_period
+from app.services.data_history import record_history
 
 router = APIRouter()
 
@@ -29,14 +34,11 @@ class RepaymentCreate(BaseModel):
     account_id: Optional[int] = None
     incoming_flow_id: Optional[int] = None
 
-class ShipmentCreate(BaseModel):
-    ship_date: str; amount: float; order_no: Optional[str] = None; remark: Optional[str] = None
-
 async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
     """Calculate current_debt and overdue_days from shipments and repayments."""
     ship_total = (await db.execute(
         select(func.coalesce(func.sum(CreditShipment.amount), 0))
-        .where(CreditShipment.credit_customer_id == credit_id)
+        .where(CreditShipment.credit_customer_id == credit_id, active_shipment())
     )).scalar() or 0
 
     repay_total = (await db.execute(
@@ -44,7 +46,7 @@ async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
         .where(CreditRepayment.credit_customer_id == credit_id)
     )).scalar() or 0
 
-    current_debt = float(ship_total) - float(repay_total)
+    current_debt = round(float(ship_total) - float(repay_total), 2)
 
     # If fully paid (debt <= 0), overdue_days is always 0
     if current_debt <= 0:
@@ -58,7 +60,7 @@ async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
     )).scalar()
     last_ship = (await db.execute(
         select(CreditShipment.ship_date)
-        .where(CreditShipment.credit_customer_id == credit_id)
+        .where(CreditShipment.credit_customer_id == credit_id, active_shipment())
         .order_by(CreditShipment.ship_date.desc())
     )).scalar()
 
@@ -73,15 +75,50 @@ async def _compute_debt_and_overdue(db: AsyncSession, credit_id: int):
 
     return current_debt, max(overdue_days, 0)
 
+@router.get("/shipments")
+async def list_shipments(request: Request, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=200),
+                         customer_id: int = None, currency: str = None, month: str = None,
+                         start_date: str = None, end_date: str = None, status: str = None,
+                         current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                         _perm=Depends(check_staff_permission("账期管理"))):
+    scope = [w.id for w in await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'))]
+    if currency is not None and currency not in ('THB', 'CNY'): raise HTTPException(400, '不支持的币种')
+    if status not in (None, 'active', 'voided'): raise HTTPException(400, '发货状态无效')
+    start, end = money_period(month, start_date, end_date, default_start=date.min, default_end=date.max)
+    cur = func.coalesce(CreditShipment.currency, CreditCustomer.currency, Customer.default_currency, 'THB')
+    query = select(CreditShipment, CreditCustomer, Customer).join(CreditCustomer,
+        CreditShipment.credit_customer_id == CreditCustomer.id).join(Customer,
+        (Customer.id == CreditCustomer.customer_id) & (Customer.warehouse_id == CreditCustomer.warehouse_id)).where(
+        CreditCustomer.warehouse_id.in_(scope), CreditShipment.ship_date >= datetime.combine(start, datetime.min.time()),
+        CreditShipment.ship_date <= datetime.combine(end, datetime.max.time()))
+    if customer_id is not None: query = query.where(Customer.id == customer_id)
+    if currency is not None: query = query.where(cur == currency)
+    if status is not None: query = query.where(func.coalesce(CreditShipment.status, 'active') == status)
+    all_rows = query.subquery()
+    total = (await db.execute(select(func.count()).select_from(all_rows))).scalar_one()
+    # Amounts only total effective shipments; voided rows remain visible as history.
+    totals_query = query.where(active_shipment()).with_only_columns(cur, func.count(), func.sum(CreditShipment.order_count),
+        func.sum(CreditShipment.amount), func.count().filter(CreditShipment.order_count.is_(None))).group_by(cur)
+    totals = {c: {'record_count': n, 'order_count': orders or 0, 'amount': round(float(amount or 0), 2),
+        'unknown_order_count_records': unknown} for c, n, orders, amount, unknown in (await db.execute(totals_query)).all()}
+    rows = (await db.execute(query.order_by(CreditShipment.ship_date.desc(), CreditShipment.id.desc())
+        .offset((page-1)*page_size).limit(page_size))).all()
+    return {'data': [shipment_dict(row, credit, customer) for row, credit, customer in rows], 'total': total,
+        'page': page, 'page_size': page_size, 'totals_by_currency': totals, 'start_date': str(start), 'end_date': str(end)}
+
+
 @router.get("")
 async def list_credit_customers(
+    request: Request,
     page: int = 1, page_size: int = 20,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("账期管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(CreditCustomer); count_q = select(func.count(CreditCustomer.id))
+    scope = [w.id for w in await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'))]
+    query = select(CreditCustomer).where(CreditCustomer.warehouse_id.in_(scope))
+    count_q = select(func.count(CreditCustomer.id)).where(CreditCustomer.warehouse_id.in_(scope))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(CreditCustomer.warehouse_id.in_(get_wh_ids(current_user)))
         count_q = count_q.where(CreditCustomer.warehouse_id.in_(get_wh_ids(current_user)))
@@ -101,7 +138,7 @@ async def list_credit_customers(
         # Batch shipments sum
         ship_rows = (await db.execute(
             select(CreditShipment.credit_customer_id, func.coalesce(func.sum(CreditShipment.amount), 0))
-            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .where(CreditShipment.credit_customer_id.in_(all_cids), active_shipment())
             .group_by(CreditShipment.credit_customer_id)
         )).all()
         ship_totals = {row[0]: float(row[1]) for row in ship_rows}
@@ -120,7 +157,7 @@ async def list_credit_customers(
         ).subquery()
         last_ship_sub = (
             select(CreditShipment.credit_customer_id, func.max(CreditShipment.ship_date).label("max_date"))
-            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .where(CreditShipment.credit_customer_id.in_(all_cids), active_shipment())
             .group_by(CreditShipment.credit_customer_id)
         ).subquery()
         last_repay_rows = (await db.execute(select(last_repay_sub))).all()
@@ -131,7 +168,7 @@ async def list_credit_customers(
         for cid in all_cids:
             s_total = ship_totals.get(cid, 0)
             r_total = repay_totals.get(cid, 0)
-            debt = s_total - r_total
+            debt = round(s_total - r_total, 2)
             if debt <= 0:
                 debt_map[cid] = (max(debt, 0), 0)
             else:
@@ -148,7 +185,7 @@ async def list_credit_customers(
         debt, overdue = debt_map.get(r.id, (0, 0))
         data.append({
             "id": r.id, "warehouse_id": r.warehouse_id, "customer_id": r.customer_id,
-            "customer_name": cmap.get(r.customer_id, ""), "currency": next((c.default_currency or "THB" for c in custs if c.id == r.customer_id), "THB"),
+            "customer_name": cmap.get(r.customer_id, ""), "currency": r.currency or next((c.default_currency or "THB" for c in custs if c.id == r.customer_id), "THB"),
             "credit_limit": r.credit_limit, "current_debt": debt,
             "overdue_days": overdue, "repayment_day": r.repayment_day,
             "status": r.status, "remark": r.remark,
@@ -157,7 +194,7 @@ async def list_credit_customers(
     return {"data": data, "total": total, "page": page, "page_size": page_size}
 
 @router.post("")
-async def create_credit(req: CreditCreate, current_user: User = Depends(get_current_user),
+async def create_credit(req: CreditCreate, request: Request, current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db),
                         _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
@@ -166,12 +203,14 @@ async def create_credit(req: CreditCreate, current_user: User = Depends(get_curr
         raise HTTPException(403, "无权限")
     if req.credit_limit is not None and req.credit_limit < 0:
         raise HTTPException(400, "信用额度不能为负")
-    wh_id = get_wh_id(current_user)
+    scope = await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'))
+    if len(scope) != 1: raise HTTPException(400, '请先选择一个仓库再开通账期')
+    wh_id = scope[0].id
     # 校验客户属于本仓库
     cust = (await db.execute(select(Customer).where(Customer.id == req.customer_id))).scalar_one_or_none()
     if not cust:
         raise HTTPException(404, "客户不存在")
-    if cust.warehouse_id not in get_wh_ids(current_user):
+    if cust.warehouse_id != wh_id:
         raise HTTPException(403, "只能为本仓库客户开通账期")
     # 去重：同仓库同客户不允许重复建卡（避免欠款/额度被重复统计）
     dup = (await db.execute(select(CreditCustomer).where(
@@ -181,7 +220,7 @@ async def create_credit(req: CreditCreate, current_user: User = Depends(get_curr
     if dup:
         raise HTTPException(400, "该客户已有账期账户，请勿重复创建")
     c = CreditCustomer(
-        warehouse_id=wh_id, customer_id=req.customer_id,
+        warehouse_id=wh_id, customer_id=req.customer_id, currency=cust.default_currency or "THB",
         credit_limit=req.credit_limit, repayment_day=req.repayment_day,
         remark=req.remark, created_by=current_user.id,
     )
@@ -210,32 +249,27 @@ async def update_credit(credit_id: int, req: CreditUpdate,
     await db.flush(); return {"message": "更新成功"}
 
 @router.get("/{credit_id}/detail")
-async def credit_detail(credit_id: int, start_date: str = None, end_date: str = None,
+async def credit_detail(credit_id: int, request: Request, start_date: str = None, end_date: str = None, month: str = None,
                         current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db),
                         _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
-    c = result.scalar_one_or_none()
-    if not c: raise HTTPException(404, "记录不存在")
-    if c.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "只能查看自己仓库的数据")
-    cust = (await db.execute(select(Customer).where(Customer.id == c.customer_id))).scalar_one_or_none()
-
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
-    end_dt = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)) if end_date else None
+    c, cust = await scoped_credit(db, current_user, request.headers.get('X-Warehouse-ID'), credit_id)
+    start, end = money_period(month, start_date, end_date, default_start=date.min, default_end=date.max)
+    start_dt = datetime.combine(start, datetime.min.time())
+    end_dt = datetime.combine(end, datetime.max.time())
 
     # Get repayments（按范围）
     rep_q = select(CreditRepayment).where(CreditRepayment.credit_customer_id == credit_id)
     if start_dt: rep_q = rep_q.where(CreditRepayment.repayment_date >= start_dt)
-    if end_dt: rep_q = rep_q.where(CreditRepayment.repayment_date < end_dt)
+    if end_dt: rep_q = rep_q.where(CreditRepayment.repayment_date <= end_dt)
     reps = (await db.execute(rep_q.order_by(CreditRepayment.created_at.desc()))).scalars().all()
 
     # Get shipments（按范围）
     ship_q = select(CreditShipment).where(CreditShipment.credit_customer_id == credit_id)
     if start_dt: ship_q = ship_q.where(CreditShipment.ship_date >= start_dt)
-    if end_dt: ship_q = ship_q.where(CreditShipment.ship_date < end_dt)
+    if end_dt: ship_q = ship_q.where(CreditShipment.ship_date <= end_dt)
     ships = (await db.execute(ship_q.order_by(CreditShipment.ship_date.desc()))).scalars().all()
 
     # Compute debt/overdue
@@ -247,7 +281,7 @@ async def credit_detail(credit_id: int, start_date: str = None, end_date: str = 
 
     return {
         "id": c.id, "warehouse_id": c.warehouse_id, "customer_id": c.customer_id,
-        "customer_name": cust.company_name if cust else "",
+        "customer_name": cust.company_name if cust else "", "currency": currency_of(c, cust),
         "credit_limit": c.credit_limit, "current_debt": debt,
         "overdue_days": overdue, "repayment_day": c.repayment_day,
         "status": c.status, "remark": c.remark,
@@ -261,50 +295,50 @@ async def credit_detail(credit_id: int, start_date: str = None, end_date: str = 
         "repayments": [{"id": r.id, "repayment_date": r.repayment_date.isoformat() if r.repayment_date else None,
                         "amount": r.amount, "remark": r.remark, "incoming_flow_id": r.incoming_flow_id,
                         "created_at": r.created_at.isoformat() if r.created_at else None} for r in reps],
-        "shipments": [{"id": s.id, "ship_date": s.ship_date.isoformat() if s.ship_date else None,
-                       "order_no": s.order_no, "amount": s.amount, "remark": s.remark,
-                       "created_at": s.created_at.isoformat() if s.created_at else None} for s in ships],
+        "shipments": [shipment_dict(s, c, cust) for s in ships],
+        "shipment_totals": {"record_count": sum((s.status or 'active') == 'active' for s in ships),
+            "order_count": sum(s.order_count or 0 for s in ships if (s.status or 'active') == 'active'),
+            "unknown_order_count_records": sum(s.order_count is None for s in ships if (s.status or 'active') == 'active'),
+            "amount": round(sum(s.amount for s in ships if (s.status or 'active') == 'active'), 2),
+            "currency": currency_of(c, cust)},
     }
 
 @router.post("/{credit_id}/shipment")
-async def create_shipment(credit_id: int, req: ShipmentCreate,
-                          current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db),
+async def create_shipment(credit_id: int, req: ShipmentCreate, request: Request,
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
                           _perm=Depends(check_staff_permission("账期管理"))):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) and current_user.role != Role.STAFF:
-        raise HTTPException(403, "无权限")
-    result = await db.execute(select(CreditCustomer).where(CreditCustomer.id == credit_id))
-    c = result.scalar_one_or_none()
-    if not c: raise HTTPException(404, "账期客户不存在")
-    if c.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "只能操作本仓库的账期客户")
-    if req.amount is None or req.amount <= 0:
-        raise HTTPException(400, "发货金额必须大于0")
-    # 授信额度校验：当前欠款 + 本次发货不得超过额度
-    cur_debt, _ = await _compute_debt_and_overdue(db, credit_id)
-    if exceeds_credit_limit(cur_debt, req.amount, c.credit_limit):
-        raise HTTPException(400, f"超出授信额度：当前欠款 {cur_debt:,.2f} + 本次 {req.amount:,.2f} 超过额度 {c.credit_limit:,.2f}")
+    c, cust = await scoped_credit(db, current_user, request.headers.get('X-Warehouse-ID'), credit_id, lock=True)
+    row, created = await create_once(db, c, cust, req, current_user)
+    debt = await refresh_debt(db, c)
+    return {**shipment_dict(row, c, cust), **debt, 'created': created,
+        'message': '发货记录创建成功' if created else '该次发货已保存，未重复登记'}
 
-    s = CreditShipment(
-        credit_customer_id=credit_id,
-        ship_date=datetime.fromisoformat(req.ship_date),
-        order_no=req.order_no,
-        amount=req.amount,
-        remark=req.remark,
-        entrant_id=current_user.id,
-    )
-    db.add(s)
-    await db.flush()
 
-    # Recompute and update current_debt / overdue_days
-    debt, overdue = await _compute_debt_and_overdue(db, credit_id)
-    c.current_debt = debt
-    c.overdue_days = overdue
-    await db.flush()
+@router.put("/{credit_id}/shipment/{shipment_id}")
+async def update_shipment(credit_id: int, shipment_id: int, req: ShipmentData, request: Request,
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                          _perm=Depends(check_staff_permission("账期管理"))):
+    c, cust = await scoped_credit(db, current_user, request.headers.get('X-Warehouse-ID'), credit_id, lock=True)
+    row = await editable_shipment(db, c, shipment_id)
+    await edit_shipment(db, c, cust, row, req, current_user)
+    debt = await refresh_debt(db, c)
+    return {**shipment_dict(row, c, cust), **debt, 'message': '发货记录已更新'}
 
-    return {"id": s.id, "current_debt": debt, "overdue_days": overdue, "message": "发货记录创建成功"}
+
+@router.post("/{credit_id}/shipment/{shipment_id}/void")
+async def void_shipment(credit_id: int, shipment_id: int, req: ShipmentVoid, request: Request,
+                        current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                        _perm=Depends(check_staff_permission("账期管理"))):
+    if not req.reason.strip(): raise HTTPException(400, '请填写作废原因')
+    c, cust = await scoped_credit(db, current_user, request.headers.get('X-Warehouse-ID'), credit_id, lock=True)
+    row = await editable_shipment(db, c, shipment_id)
+    before = shipment_dict(row, c, cust)
+    row.status, row.voided_by, row.voided_at, row.void_reason = 'voided', current_user.id, thai_now(), req.reason.strip()
+    await record_history(db, module='credit', record_id=row.id, operator=current_user, operation_type='edit',
+        before={'shipment': before}, after={'shipment': shipment_dict(row, c, cust)}, warehouse_id=c.warehouse_id)
+    debt = await refresh_debt(db, c)
+    return {**shipment_dict(row, c, cust), **debt, 'message': '发货记录已作废，历史记录保留'}
+
 
 @router.post("/{credit_id}/payment", dependencies=[Depends(require_non_labor)])
 async def record_repayment(credit_id: int, req: RepaymentCreate,
@@ -324,7 +358,7 @@ async def record_repayment(credit_id: int, req: RepaymentCreate,
     from app.services.wallet import positive_money, money, lock_account
     value = positive_money(req.amount)
     customer = await db.get(Customer, c.customer_id)
-    currency = customer.default_currency or "THB"
+    currency = currency_of(c, customer)
     if req.request_key:
         old = (await db.execute(select(CreditRepayment).where(CreditRepayment.request_key == req.request_key))).scalar_one_or_none()
         if old:
@@ -366,14 +400,15 @@ async def record_repayment(credit_id: int, req: RepaymentCreate,
     return {"id": r.id, "incoming_flow_id": flow.id, "current_debt": debt, "overdue_days": overdue, "message": "还款记录创建成功，已关联到账流水"}
 
 @router.get("/dashboard")
-async def credit_dashboard(current_user: User = Depends(get_current_user),
+async def credit_dashboard(request: Request, current_user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db),
                            _perm=Depends(check_staff_permission("账期管理"))):
     # 全局统计
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # Get all active credit customers for this warehouse and compute debt in realtime (batch)
-    cust_query = select(CreditCustomer)
+    scope = [w.id for w in await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'))]
+    cust_query = select(CreditCustomer).where(CreditCustomer.warehouse_id.in_(scope))
     if current_user.role != Role.SUPER_ADMIN:
         cust_query = cust_query.where(CreditCustomer.warehouse_id.in_(get_wh_ids(current_user)))
     all_credits = (await db.execute(cust_query)).scalars().all()
@@ -386,7 +421,7 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
     if all_cids:
         ship_rows = (await db.execute(
             select(CreditShipment.credit_customer_id, func.coalesce(func.sum(CreditShipment.amount), 0))
-            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .where(CreditShipment.credit_customer_id.in_(all_cids), active_shipment())
             .group_by(CreditShipment.credit_customer_id)
         )).all()
         repay_rows = (await db.execute(
@@ -397,7 +432,7 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
         # 批量取最后发货/还款日期，用于逾期天数计算
         last_ship_rows = (await db.execute(
             select(CreditShipment.credit_customer_id, func.max(CreditShipment.ship_date))
-            .where(CreditShipment.credit_customer_id.in_(all_cids))
+            .where(CreditShipment.credit_customer_id.in_(all_cids), active_shipment())
             .group_by(CreditShipment.credit_customer_id)
         )).all()
         last_repay_rows = (await db.execute(
@@ -436,8 +471,23 @@ async def credit_dashboard(current_user: User = Depends(get_current_user),
         logging.getLogger(__name__).warning(f"评级计算失败: {e}")
         rating_dist = {"A": 0, "B": 0, "C": 0}
 
+    customers = {c.id: c for c in (await db.execute(select(Customer).where(Customer.id.in_({c.customer_id for c in all_credits})))).scalars().all()}
+    currency_totals = {}
+    for c in all_credits:
+        customer = customers.get(c.customer_id)
+        if not customer or customer.warehouse_id != c.warehouse_id: continue
+        cur = currency_of(c, customer)
+        group = currency_totals.setdefault(cur, {'total_debt': 0, 'total_credit_limit': 0})
+        group['total_debt'] += max(ship_map.get(c.id, 0) - repay_map.get(c.id, 0), 0) if all_cids else 0
+        group['total_credit_limit'] += c.credit_limit or 0
+    for group in currency_totals.values():
+        group['total_debt'] = round(group['total_debt'], 2)
+        group['utilization_rate'] = round(group['total_debt'] / group['total_credit_limit'] * 100, 1) if group['total_credit_limit'] else 0
+    # 旧单币种字段兼容；混合币种不能伪装成一个泰铢合计。
+    if len(currency_totals) > 1: total_debt = total_limit = None
+
     return {
-        "total_debt": float(total_debt or 0), "total_credit_limit": float(total_limit or 0),
+        "currency_totals": currency_totals, "total_debt": float(total_debt) if total_debt is not None else None, "total_credit_limit": float(total_limit) if total_limit is not None else None,
         "total_customers": total_cust or 0, "overdue_count": overdue_count,
         "utilization_rate": round(float(total_debt or 0) / float(total_limit or 1) * 100, 1) if total_limit else 0,
         "rating_dist": rating_dist,
@@ -476,7 +526,7 @@ async def _compute_assessment(
         )).scalars().all()
 
         ships = (await db.execute(
-            select(CreditShipment).where(CreditShipment.credit_customer_id == r.id)
+            select(CreditShipment).where(CreditShipment.credit_customer_id == r.id, active_shipment())
             .order_by(CreditShipment.ship_date.asc())
         )).scalars().all()
 
@@ -596,13 +646,14 @@ async def export_assessment(
 
 
 @router.get("/alerts")
-async def credit_alerts(level: str = None, current_user: User = Depends(get_current_user),
+async def credit_alerts(request: Request, level: str = None, current_user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db),
                         _perm=Depends(check_staff_permission("账期管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # 拉取本仓库所有活跃账期客户，批量实时计算欠款/逾期（避免 N+1，且口径与列表页一致）
-    query = select(CreditCustomer).where(CreditCustomer.status == CreditStatus.ACTIVE.value)
+    scope = [w.id for w in await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'))]
+    query = select(CreditCustomer).where(CreditCustomer.status == CreditStatus.ACTIVE.value, CreditCustomer.warehouse_id.in_(scope))
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(CreditCustomer.warehouse_id.in_(get_wh_ids(current_user)))
     records = (await db.execute(query)).scalars().all()
@@ -612,7 +663,7 @@ async def credit_alerts(level: str = None, current_user: User = Depends(get_curr
     if all_cids:
         for cid, total in (await db.execute(
             select(CreditShipment.credit_customer_id, func.coalesce(func.sum(CreditShipment.amount), 0))
-            .where(CreditShipment.credit_customer_id.in_(all_cids)).group_by(CreditShipment.credit_customer_id)
+            .where(CreditShipment.credit_customer_id.in_(all_cids), active_shipment()).group_by(CreditShipment.credit_customer_id)
         )).all():
             ship_map[cid] = float(total)
         for cid, total in (await db.execute(
@@ -622,7 +673,7 @@ async def credit_alerts(level: str = None, current_user: User = Depends(get_curr
             repay_map[cid] = float(total)
         for cid, d in (await db.execute(
             select(CreditShipment.credit_customer_id, func.max(CreditShipment.ship_date))
-            .where(CreditShipment.credit_customer_id.in_(all_cids)).group_by(CreditShipment.credit_customer_id)
+            .where(CreditShipment.credit_customer_id.in_(all_cids), active_shipment()).group_by(CreditShipment.credit_customer_id)
         )).all():
             last_ship_map[cid] = d
         for cid, d in (await db.execute(

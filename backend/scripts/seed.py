@@ -28,6 +28,32 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_credit_shipments(conn):
+    """只补发货登记元数据；不推断历史单数、币种，不改旧欠款或回款。"""
+    from sqlalchemy import text
+    statements = (
+        "ALTER TABLE credit_customers ADD COLUMN IF NOT EXISTS currency VARCHAR(5)",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS order_count INTEGER",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS currency VARCHAR(5)",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS request_key VARCHAR(64)",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS request_fingerprint VARCHAR(64)",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS status VARCHAR(20)",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS voided_by INTEGER REFERENCES users(id)",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ",
+        "ALTER TABLE credit_shipments ADD COLUMN IF NOT EXISTS void_reason VARCHAR(500)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_credit_shipment_request ON credit_shipments(request_key)",
+    )
+    for statement in statements:
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(statement))
+        except Exception as exc:
+            print(f"客户发货登记迁移失败：{exc}")
+            raise
+    print("客户发货登记迁移完成；历史单数、币种、欠款和回款不回填")
+
+
 async def _migrate_incoming_operations(conn):
     """旧到账不补请求号或附件；唯一约束保证多进程并发重试不重复入账。"""
     from sqlalchemy import text
@@ -482,6 +508,7 @@ async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_credit_shipments(conn)
         await _migrate_incoming_operations(conn)
         await _migrate_manual_wallet_operations(conn)
         await _migrate_wallet_basis(conn)

@@ -172,9 +172,10 @@ async def report_previews(
         previews[key]["preview_by_currency"] = amounts
         previews[key]["preview"] = next(iter(amounts.values())) if len(amounts) == 1 else 0 if not amounts else None
     from app.models.customer import Customer
+    credit_currency = func.coalesce(CreditCustomer.currency, Customer.default_currency, "THB")
     credit_amounts = {c or "THB": round(float(n or 0), 2) for c,n in (await db.execute(select(
-        Customer.default_currency, func.sum(CreditCustomer.current_debt)).join(Customer, Customer.id == CreditCustomer.customer_id).where(
-        CreditCustomer.warehouse_id.in_(wh_ids)).group_by(Customer.default_currency))).all()}
+        credit_currency, func.sum(CreditCustomer.current_debt)).join(Customer, Customer.id == CreditCustomer.customer_id).where(
+        CreditCustomer.warehouse_id.in_(wh_ids)).group_by(credit_currency))).all()}
     previews["credit"]["preview_by_currency"] = credit_amounts
     previews["credit"]["preview"] = next(iter(credit_amounts.values())) if len(credit_amounts) == 1 else None if credit_amounts else 0
     return {"previews": previews, "start_date": start_date, "end_date": end_date}

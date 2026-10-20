@@ -1,0 +1,517 @@
+{
+  "round": 10,
+  "baseline": "2a12d5f334e1e2ec943215888db3b78658c93a0e",
+  "native_http": {
+    "three_orders_600": {
+      "response": {
+        "id": 1,
+        "credit_customer_id": 1,
+        "customer_id": 1,
+        "customer_name": "客户A",
+        "warehouse_id": 1,
+        "ship_date": "2026-09-30",
+        "order_no": "ROUND10-A",
+        "order_count": 3,
+        "amount": 600.0,
+        "currency": "THB",
+        "remark": "3单运费，不是三条发货记录",
+        "status": "active",
+        "entrant_id": 1,
+        "created_at": "2026-10-20T12:41:55.787959+00:00",
+        "updated_at": null,
+        "voided_by": null,
+        "voided_at": null,
+        "void_reason": null,
+        "current_debt": 600.0,
+        "overdue_days": 20,
+        "created": true,
+        "message": "发货记录创建成功"
+      },
+      "list": {
+        "data": [
+          {
+            "id": 1,
+            "credit_customer_id": 1,
+            "customer_id": 1,
+            "customer_name": "客户A",
+            "warehouse_id": 1,
+            "ship_date": "2026-09-30",
+            "order_no": "ROUND10-A",
+            "order_count": 3,
+            "amount": 600.0,
+            "currency": "THB",
+            "remark": "3单运费，不是三条发货记录",
+            "status": "active",
+            "entrant_id": 1,
+            "created_at": "2026-10-20T12:41:55.787959+00:00",
+            "updated_at": null,
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+        "totals_by_currency": {
+          "THB": {
+            "record_count": 1,
+            "order_count": 3,
+            "amount": 600.0,
+            "unknown_order_count_records": 0
+          }
+        },
+        "start_date": "2026-09-01",
+        "end_date": "2026-09-30"
+      },
+      "wallet_before": {
+        "incoming_records": 0,
+        "wallet_flow_count": 0,
+        "wallet_income": 0,
+        "wallet_expense": 0,
+        "balance": 0.0
+      },
+      "wallet_after": {
+        "incoming_records": 0,
+        "wallet_flow_count": 0,
+        "wallet_income": 0,
+        "wallet_expense": 0,
+        "balance": 0.0
+      }
+    },
+    "concurrent": {
+      "requests": 10,
+      "sequential_retries": 3,
+      "first_record_ids": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "independent_same_amount_debt": 1200,
+      "credit_limit_parallel_status": [
+        200,
+        400
+      ]
+    },
+    "edit_void": {
+      "after_edit_debt": 450,
+      "after_void_debt": 0,
+      "record_retained": true,
+      "histories": 3,
+      "with_repayment_edit_void": 409
+    },
+    "filters": {
+      "september": {
+        "CNY": {
+          "record_count": 1,
+          "order_count": 3,
+          "amount": 200.0,
+          "unknown_order_count_records": 0
+        },
+        "THB": {
+          "record_count": 1,
+          "order_count": 3,
+          "amount": 600.0,
+          "unknown_order_count_records": 0
+        }
+      },
+      "october_THB": 999,
+      "foreign_999_excluded": true,
+      "old_order_count": null
+    },
+    "roles_and_scope": {
+      "admin": 200,
+      "authorized_staff_supervisor": 200,
+      "without_permission": 403,
+      "labor_superadmin": 403,
+      "foreign_header": 403,
+      "foreign_record_in_parent": 404,
+      "foreign_customer": 403
+    },
+    "migration_failure": {
+      "new_and_old_upgrade_repeated": true,
+      "historical_amount": 123,
+      "historical_order_count": null,
+      "historical_status": null,
+      "failure_record_count": 0,
+      "wallet_flows": 0
+    },
+    "edges": {
+      "staff_create": 200,
+      "supervisor_create": 200,
+      "december": 0.1,
+      "january": 0.2,
+      "debt_after_cents": 0.4,
+      "customer_default_changed_existing_account_still_THB": true,
+      "migration_savepoint_error_outer_transaction_usable": true,
+      "wallet_flow_count": 0
+    }
+  },
+  "browser": {
+    "test_only": true,
+    "shipments": [
+      {
+        "id": 1,
+        "credit_customer_id": 1,
+        "customer_id": 1,
+        "customer_name": "客户A",
+        "warehouse_id": 1,
+        "ship_date": "2026-10-20",
+        "order_no": "UI-A-3-600",
+        "order_count": 3,
+        "amount": 600.0,
+        "currency": "THB",
+        "remark": "隔离界面测试，三单合计六百",
+        "status": "active",
+        "entrant_id": 1,
+        "created_at": "2026-10-20T12:35:22.525364+00:00",
+        "updated_at": null,
+        "voided_by": null,
+        "voided_at": null,
+        "void_reason": null
+      },
+      {
+        "id": 2,
+        "credit_customer_id": 4,
+        "customer_id": 4,
+        "customer_name": "人民币客户",
+        "warehouse_id": 1,
+        "ship_date": "2026-10-20",
+        "order_no": null,
+        "order_count": 2,
+        "amount": 180.0,
+        "currency": "CNY",
+        "remark": "手机人民币测试，与泰铢分开",
+        "status": "voided",
+        "entrant_id": 1,
+        "created_at": "2026-10-20T12:36:09.754056+00:00",
+        "updated_at": "2026-10-20T12:36:14.752147+00:00",
+        "voided_by": 1,
+        "voided_at": "2026-10-20T12:36:29.929662+00:00",
+        "void_reason": "手机测试作废，保留记录"
+      },
+      {
+        "id": 3,
+        "credit_customer_id": 3,
+        "customer_id": 3,
+        "customer_name": "客户B",
+        "warehouse_id": 1,
+        "ship_date": "2026-10-20",
+        "order_no": null,
+        "order_count": 1,
+        "amount": 80.0,
+        "currency": "THB",
+        "remark": "授权主管界面测试",
+        "status": "active",
+        "entrant_id": 4,
+        "created_at": "2026-10-20T12:38:12.568533+00:00",
+        "updated_at": null,
+        "voided_by": null,
+        "voided_at": null,
+        "void_reason": null
+      },
+      {
+        "id": 4,
+        "credit_customer_id": 3,
+        "customer_id": 3,
+        "customer_name": "客户B",
+        "warehouse_id": 1,
+        "ship_date": "2026-10-20",
+        "order_no": null,
+        "order_count": 1,
+        "amount": 50.0,
+        "currency": "THB",
+        "remark": "授权财务手机登记",
+        "status": "active",
+        "entrant_id": 3,
+        "created_at": "2026-10-20T12:39:24.877002+00:00",
+        "updated_at": null,
+        "voided_by": null,
+        "voided_at": null,
+        "void_reason": null
+      }
+    ],
+    "debts": {
+      "2": null,
+      "1": 600.0,
+      "4": 0.0,
+      "3": 130.0
+    },
+    "wallet_flow_count": 0,
+    "incoming_flow_count": 0,
+    "balances": {
+      "1": 0.0,
+      "2": 0.0
+    },
+    "shipment_history_count": 6,
+    "shipment_history": [
+      {
+        "record_id": 1,
+        "operator_id": 1,
+        "operation": "create",
+        "before": null,
+        "after": {
+          "shipment": {
+            "id": 1,
+            "credit_customer_id": 1,
+            "customer_id": 1,
+            "customer_name": "客户A",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": "UI-A-3-600",
+            "order_count": 3,
+            "amount": 600.0,
+            "currency": "THB",
+            "remark": "隔离界面测试，三单合计六百",
+            "status": "active",
+            "entrant_id": 1,
+            "created_at": "2026-10-20T12:35:22.525364+00:00",
+            "updated_at": null,
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        }
+      },
+      {
+        "record_id": 2,
+        "operator_id": 1,
+        "operation": "create",
+        "before": null,
+        "after": {
+          "shipment": {
+            "id": 2,
+            "credit_customer_id": 4,
+            "customer_id": 4,
+            "customer_name": "人民币客户",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": null,
+            "order_count": 2,
+            "amount": 200.0,
+            "currency": "CNY",
+            "remark": "手机人民币测试，与泰铢分开",
+            "status": "active",
+            "entrant_id": 1,
+            "created_at": "2026-10-20T12:36:09.754056+00:00",
+            "updated_at": null,
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        }
+      },
+      {
+        "record_id": 2,
+        "operator_id": 1,
+        "operation": "edit",
+        "before": {
+          "shipment": {
+            "id": 2,
+            "credit_customer_id": 4,
+            "customer_id": 4,
+            "customer_name": "人民币客户",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": null,
+            "order_count": 2,
+            "amount": 200.0,
+            "currency": "CNY",
+            "remark": "手机人民币测试，与泰铢分开",
+            "status": "active",
+            "entrant_id": 1,
+            "created_at": "2026-10-20T12:36:09.754056+00:00",
+            "updated_at": null,
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        },
+        "after": {
+          "shipment": {
+            "id": 2,
+            "credit_customer_id": 4,
+            "customer_id": 4,
+            "customer_name": "人民币客户",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": null,
+            "order_count": 2,
+            "amount": 180.0,
+            "currency": "CNY",
+            "remark": "手机人民币测试，与泰铢分开",
+            "status": "active",
+            "entrant_id": 1,
+            "created_at": "2026-10-20T12:36:09.754056+00:00",
+            "updated_at": "2026-10-20T19:36:14.752147+07:00",
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        }
+      },
+      {
+        "record_id": 2,
+        "operator_id": 1,
+        "operation": "edit",
+        "before": {
+          "shipment": {
+            "id": 2,
+            "credit_customer_id": 4,
+            "customer_id": 4,
+            "customer_name": "人民币客户",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": null,
+            "order_count": 2,
+            "amount": 180.0,
+            "currency": "CNY",
+            "remark": "手机人民币测试，与泰铢分开",
+            "status": "active",
+            "entrant_id": 1,
+            "created_at": "2026-10-20T12:36:09.754056+00:00",
+            "updated_at": "2026-10-20T12:36:14.752147+00:00",
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        },
+        "after": {
+          "shipment": {
+            "id": 2,
+            "credit_customer_id": 4,
+            "customer_id": 4,
+            "customer_name": "人民币客户",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": null,
+            "order_count": 2,
+            "amount": 180.0,
+            "currency": "CNY",
+            "remark": "手机人民币测试，与泰铢分开",
+            "status": "voided",
+            "entrant_id": 1,
+            "created_at": "2026-10-20T12:36:09.754056+00:00",
+            "updated_at": "2026-10-20T12:36:14.752147+00:00",
+            "voided_by": 1,
+            "voided_at": "2026-10-20T19:36:29.929662+07:00",
+            "void_reason": "手机测试作废，保留记录"
+          }
+        }
+      },
+      {
+        "record_id": 3,
+        "operator_id": 4,
+        "operation": "create",
+        "before": null,
+        "after": {
+          "shipment": {
+            "id": 3,
+            "credit_customer_id": 3,
+            "customer_id": 3,
+            "customer_name": "客户B",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": null,
+            "order_count": 1,
+            "amount": 80.0,
+            "currency": "THB",
+            "remark": "授权主管界面测试",
+            "status": "active",
+            "entrant_id": 4,
+            "created_at": "2026-10-20T12:38:12.568533+00:00",
+            "updated_at": null,
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        }
+      },
+      {
+        "record_id": 4,
+        "operator_id": 3,
+        "operation": "create",
+        "before": null,
+        "after": {
+          "shipment": {
+            "id": 4,
+            "credit_customer_id": 3,
+            "customer_id": 3,
+            "customer_name": "客户B",
+            "warehouse_id": 1,
+            "ship_date": "2026-10-20",
+            "order_no": null,
+            "order_count": 1,
+            "amount": 50.0,
+            "currency": "THB",
+            "remark": "授权财务手机登记",
+            "status": "active",
+            "entrant_id": 3,
+            "created_at": "2026-10-20T12:39:24.877002+00:00",
+            "updated_at": null,
+            "voided_by": null,
+            "voided_at": null,
+            "void_reason": null
+          }
+        }
+      }
+    ]
+  },
+  "cleanup": {
+    "temporary_browser_schema_removed": true,
+    "closed_ports": {
+      "18180": true,
+      "18181": true,
+      "18182": true
+    },
+    "own_temporary_postgres_stopped": true,
+    "data_files_deleted": false
+  },
+  "tests": {
+    "junit": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "137",
+        "time": "50.277",
+        "timestamp": "2026-10-20T19:41:54.589573+07:00",
+        "hostname": "XiongdeMac-mini.local"
+      }
+    ],
+    "frontend": {
+      "credit-shipments": 0,
+      "dashboard-month": 0,
+      "boss-todos": 0,
+      "warehouse-summary": 0,
+      "manual-wallet": 0,
+      "other-income-currency": 0,
+      "money-record-scope": 0,
+      "money-month-range": 0,
+      "incoming-operations": 0,
+      "expense-approval-payment": 0,
+      "labor-language": 0
+    },
+    "production_build_exit": 0,
+    "typescript_before": 85,
+    "typescript_after": 85,
+    "typescript_new": 0
+  },
+  "production_deployed": false,
+  "production_data_touched": false,
+  "round11_started": false,
+  "limitations": [
+    "Old customer summary fields not rewritten.",
+    "Any existing account repayment prevents shipment edit/void because no per-shipment allocation exists.",
+    "Legacy reports/previews warehouse scope remains unchanged.",
+    "Full TypeScript check retains 85 existing diagnostics."
+  ]
+}

@@ -1,0 +1,113 @@
+第10轮客户发货记录已实现并完成本机隔离验证，等待协调验收，不部署，不进入第11轮。
+代码基准为第9轮已验收的2a12d5f334e1e2ec943215888db3b78658c93a0e。
+本轮没有访问生产、补历史客户债务、修改历史流水或重算工资。
+
+修前结构和缺口。
+客户档案是customers，账期账户是credit_customers，发货事实已经存在credit_shipments，回款是credit_repayments。
+充值申报recharge_declarations不等于实收，实收仍走incoming_flows，回款可以关联既有到账。
+原POST /credit/{credit_id}/shipment已经存在，并会更新账期应收缓存，但只接日期、金额、订单号和备注。
+原账期页面能查看发货，没有登记入口，也没有订单数、发货币种、防重复请求号或安全编辑作废入口。
+客户档案中的total_shipments、total_shipping_cost及debt_amount是旧汇总字段，本轮不擅自重算或覆盖它们。
+本轮复用既有账期与发货表，没有新建第二套发货或欠款账。
+新发货需要明确选择本仓已有账期账户；未开通的客户先通过现有入口开通，不按客户名猜关联，不自动给客户开账期或授信。
+
+本轮实现。
+原账期管理页增加客户发货记录区，支持月份、客户、币种、状态筛选和分页。
+表格分别显示发货记录编号、实际订单数、应收运费和状态，三单不等于三条发货记录。
+新建填客户、业务日期、正整数订单数、应收运费、币种及可选订单参考号和备注。
+币种从明确选择的账期账户带出，支持THB和CNY，不做换算或跨币种金额相加。
+新增GET /credit/shipments返回同仓范围的发货事实、分页总条数和分币种有效记录数、订单数及应收运费合计。
+原POST /credit/{credit_id}/shipment保留地址，前后端配套增加订单数、币种、请求号等字段。
+新增PUT /credit/{credit_id}/shipment/{shipment_id}编辑未回款发货。
+新增POST /credit/{credit_id}/shipment/{shipment_id}/void作废发货，必填原因，不真删事实。
+账期详情继续展示来源记录，补上订单数、币种和作废状态；从发货详情可打开准确日期的原账期来源。
+已作废记录灰色显示、原因保留，不再提供编辑或作废按钮，不计有效发货金额和订单数。
+原有应收、逾期、评级、提醒等读取发货的位置统一排除作废记录，旧NULL状态仍按有效处理。
+创建、编辑、作废在同一业务事务中写credit修改历史，保留操作者及改动前后，不记录密码令牌。
+发货登记不调用收款、付款、账户扣款、流水或工资服务。
+
+防重复和账务保护。
+每次新登记生成请求号，失败重试沿用原请求号；提交中禁重复点击并有即时锁。
+后端对账期账户加行锁，数据库唯一请求号和摘要保证多进程并发重试只落一条。
+同请求号改内容或用于另一个账期返回409，不返回外账期的原记录内容。
+真正独立的同日期、同金额发货使用新请求号，照常允许。
+授信额度检查与插入在同一账户锁内，不允许并发绕过限额。
+既有回款没有逐票核销分配，无法可靠判断哪张发货已被核销，因此只要该账期有任何回款，就禁止编辑或作废发货。
+已有回款时返回409，该账期已有回款记录，不能修改或作废发货，请先核对账务。
+没有回款的有效记录可编辑或作废，不恢复已作废的旧请求，不擅自删除回款或重分配历史核销。
+
+权限与仓库。
+复用唯一权限清单中的账期管理，不新增权限，也无需新增补权迁移。
+管理员及有账期管理权限的主管、财务可用，劳工、普通业务超管和未授权主管财务仍403。
+新列表、详情、创建、编辑和作废使用明确授权且启用的当前仓库范围，伪造外仓头直接403，不静默回退。
+账期和客户必须通过编号明确关联且同仓；开通账期也补上所选仓与客户仓必须一致的校验。
+带发货ID的动作同时核对该记录属于路径账期，不能借本仓账期操作别的客户记录。
+批量接口本轮未新增，市场和拼单跨仓共享及超管专用管理例外没有改。
+
+字段与迁移。
+credit_customers新增可空currency，作为新账期币种快照。
+credit_shipments新增可空order_count、currency、request_key、request_fingerprint、status、updated_at、voided_by、voided_at、void_reason共9列。
+启动脚本seed.py增加_migrate_credit_shipments，每条ADD COLUMN IF NOT EXISTS及唯一索引语句各自在保存点内运行，失败中止启动，不吞掉失败。
+旧发货单数、币种、状态等列保持NULL，不猜历史单数，不把一条记录默认为一单，不补历史发货。
+旧币种空值沿用既有客户默认币种读取；旧状态空值按有效读取；原金额日期不改。
+旧账期在第一次明确登记或编辑时才固定所选币种，不做启动批量回填。
+新账期已有币种后，即使客户默认币种修改，发货和既有回款使用该账期币种，避免重新解释旧钱款。
+两个已有待收显示查询只兼容读取同一币种快照，分别是仪表盘即时待收和报表原账期预览，不改钱包收支算法、报表日期范围或第8轮预览仓库范围遗留。
+测试发现这两个查询的PostgreSQL分组表达式需要复用同一个绑定表达式，已修正并纳入最终完整回归。
+前后端及启动迁移必须配套部署，本轮没有部署。
+
+真实PostgreSQL数字。
+客户A三单、运费600，只生成一条发货记录，订单数3，应收600。
+登记前后实收记录0、钱包收入0、钱包支出0、资金流水0、账户余额0，完全不变。
+同一请求10并发加3次顺序重试只一条，只有一次created为真。
+独立同日期同金额的第二笔成功，应收累计1200，不误杀真实发货。
+另一账期额度500，同时登记两笔各300，结果一笔200成功、一笔400被拒，没有超额写入。
+未回款发货600编辑为450，应收450；作废后应收0，原记录仍在，创建编辑作废历史共3条。
+已有100回款的账期，编辑和作废均409，回款和发货事实不变。
+九月本仓THB600、CNY200分别显示，客户B十月999不混九月，外仓999不混入本仓。
+分页一条时合计仍是筛选全集，THB600、CNY200不受分页影响。
+日期范围、跨月、未来空月、错误日期、错误月份、不支持币种和非正整数订单数均已验证。
+旧发货订单数仍NULL，界面显示未知，汇总另列未知订单数的历史记录条数。
+2026-12-31的0.10只在十二月，2027-01-01的0.20只在一月，应收0.30不出现浮点尾数。
+主管财务均通过真实HTTP登记；改客户默认币种后，原账期仍为THB，错误币种登记400。
+内外仓劳工、超管、无权限账号以及错账期发货ID的读取写入均被拒。
+新库、旧库升级和重复迁移均成功，旧金额123、旧应收123不变，新列仍NULL。
+在迁移某一列注入SQL错误，保存点回滚后外事务SELECT 1仍成功，迁移错误继续抛出以阻止启动。
+在插入后历史记录步骤注入失败返回500，发货记录数仍0，账户、流水不变。
+
+电脑和手机实际界面。
+虚构管理员在电脑登记客户A三单600，列表出现1条、3单、THB600，账期应收600。
+390宽手机登记人民币两单200，和THB600分别显示，未相加成800。
+手机将人民币200改成180，应收同步180；再作废后人民币应收0，180的原记录仍能看到，原因保留。
+手机点击发货详情再点查看账期来源，打开对应人民币客户、准确日期及180金额的原发货记录。
+授权主管电脑实际登记客户B一单80，授权财务手机实际登记客户B一单50，都成功。
+最终界面测试数据共4条发货，3条有效、1条作废；有效THB三条共5单730，其中客户A一条3单600，客户B两条2单130。
+测试库最终实收0、资金流水0、两个账户余额均0，发货修改历史6条。
+最终构建重新打开并复验手机客户A筛选，显示一条3单600；表格可左右滑动，表单可滚动，保存按钮可见。
+只对本页标题区增加窄屏换行，并为新表格增加左右滑动提示，原导航地址图标顺序未改。
+以上均是本机虚构测试数据，不代表线上真实客户或金额。
+
+实际验证命令与结果。
+根目录运行PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=backend INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres CREDIT_SHIPMENT_TEST_REPORT=/tmp/round10-after.json MANAGEMENT_TEST_REPORT=/tmp/round10-management.json /tmp/employee-advance-expense-py312/bin/python -m pytest backend/tests/test_credit_shipments.py backend/tests/test_dashboard_month.py backend/tests/test_warehouse_summary.py backend/tests/test_cash_wallet.py backend/tests/test_other_income_currency.py backend/tests/test_money_record_scope.py backend/tests/test_money_month_range.py backend/tests/test_management_access.py backend/tests/test_expense_approval_payment.py backend/tests/test_incoming_operations.py backend/tests/test_non_labor_read_group1.py -q --junitxml=/tmp/round10-all.xml。
+最终137项，0失败、0错误、0跳过，50.277秒，其中新发货7项、前九轮真实数据库59项和旧读取权限71项。
+管理入口从329增加为332，劳工本仓及外仓664次实际请求全部403，且没有查询业务数据。
+前九轮到账防重、资金、并发、现金转账、月份、币种、仓库、员工自助及共享平台例外回归通过。
+frontend目录以NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node分别运行tests/credit-shipments.test.cjs、tests/dashboard-month.test.cjs、tests/boss-todos.test.cjs、tests/warehouse-summary.test.cjs、tests/manual-wallet.test.cjs、tests/other-income-currency.test.cjs、tests/money-record-scope.test.cjs、tests/money-month-range.test.cjs、tests/incoming-operations.test.cjs、tests/expense-approval-payment.test.cjs、tests/labor-language.test.cjs，11个文件退出0。
+新前端测试执行实际发货组件，验证记录数与订单数、币种、旧数据未知、表单校验、重复点击、失败重试复用请求号、编辑、原因必填作废、来源入口、迟到旧月份响应和权限按钮。
+在/tmp/wallet-build-o6qsx2gz以PATH=/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH NEXT_TELEMETRY_DISABLED=1 /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node node_modules/next/dist/bin/next build完成最终生产编译，退出0。
+项目原ignoreBuildErrors设置未改，独立node node_modules/typescript/bin/tsc --noEmit --incremental false仍退出2，诊断85到85，新增0，不宣称全量类型检查通过。
+git diff --check通过。
+
+文件与边界。
+backend/app/models/credit.py补既有表字段，backend/scripts/seed.py补幂等保存点迁移。
+backend/app/services/credit_shipments.py负责发货验证、仓库关系、并发防重及留痕。
+backend/app/api/v1/credit.py补发货入口及有效事实读取、币种和所选仓范围，不建立新的回款核销流程。
+backend/app/api/v1/dashboard.py和backend/app/api/v1/reports.py只对既有待收显示使用账期币种快照，不改变月度钱包或旧预览仓库范围。
+frontend/src/components/CreditShipments.tsx为新发货区，frontend/src/app/(dashboard)/credit/page.tsx接入并补币种和本页手机适配。
+backend/tests/test_credit_shipments.py、frontend/tests/credit-shipments.test.cjs为本轮验收，backend/tests/test_management_access.py仅更新新增3入口的精确数量断言，逐入口保护仍执行。
+docs/第10轮客户发货验收.txt和docs/第10轮客户发货实际结果.json为本轮报告。
+客户档案旧静态汇总没有重算，旧回款未重分配，充值到账和账期统一抵扣及预收是第11轮，未进入。
+第8轮其他reports/previews卡片仍按全部授权仓读取、不随单仓选择变化的遗留保留，本轮没有修这个范围问题。
+临时浏览器、前后端、转发服务和自己启动的PostgreSQL都已关闭，隔离schema已自动清理，数据库数据文件未删除。
+原始HTTP数字、JUnit、构建类型日志、浏览器文字和截图保存在/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第10轮客户发货-20261020。
+本轮提交号和远程核对见最终回复及该目录commit-receipt.json。
