@@ -23,7 +23,7 @@ function harness(){
  '@/hooks/useI18n':{useI18n:()=>({t:k=>k})},'@/components/ui/Toast':{useToast:()=>({toast(){}})},
  '@/components/common/DataTable':{__esModule:true,default:DataTable},'@/lib/currency':{fmtMoney:(v,c)=>`${c} ${v}`,fmtMoneyByCurrency:v=>JSON.stringify(v)},
  'next/navigation':{useRouter:()=>({push(){}})}};
- vm.runInNewContext(src,{module:mod,exports:mod.exports,require:n=>imports[n]||require(n),Date,Set,URL,console});
+ vm.runInNewContext(src,{module:mod,exports:mod.exports,require:n=>n==='@/components/InternalTransferSummary'?{__esModule:true,default:()=>null}:imports[n]||require(n),Date,Set,URL,console});
  return{reads,DataTable,flags,held,async render(){await wait();for(let n=0;n<20;n++){index=ri=ei=0;const tree=mod.exports.default();if(!effects.length)return tree;effects.splice(0).forEach(fn=>fn());await wait();}throw Error('Unsettled effects');}};
 }
 (async()=>{

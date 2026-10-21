@@ -56,12 +56,13 @@ async def summarize(db, warehouses, start_date=None, end_date=None, month=None):
         day(db,r.declare_date) >= start,day(db,r.declare_date) <= end,r.match_status == 'unmatched').group_by(r.warehouse_id))).all())
     def amounts(source,wid):return {cur:float(money(value)) for warehouse,cur,value in source if warehouse == wid}
     def legacy_single(values):return next(iter(values.values())) if len(values)==1 else None if values else 0
+    from app.services.internal_transfers import transfer_summary
     result = []
     for wh in warehouses:
         own = [(cur,kind,value) for wid,cur,kind,value,count in rows if wid == wh.id]
         counts = {kind:{cur:count for wid,cur,k,value,count in rows if wid == wh.id and k == kind} for kind in ('income','expense')}
         declared = amounts(declarations,wh.id); received = amounts(incoming,wh.id)
-        result.append({'warehouse_id':wh.id,'warehouse_name':wh.name,**grouped_totals(own),
+        result.append({'internal_transfers':await transfer_summary(db,[wh.id],start,end),'warehouse_id':wh.id,'warehouse_name':wh.name,**grouped_totals(own),
             'income_count_by_currency':counts['income'],'expense_count_by_currency':counts['expense'],
             'income_count':sum(counts['income'].values()),'expense_count':sum(counts['expense'].values()),
             'recharge_total_by_currency':declared,'incoming_total_by_currency':received,
@@ -70,6 +71,6 @@ async def summarize(db, warehouses, start_date=None, end_date=None, month=None):
     all_totals = {}
     for wid,cur,kind,value,count in rows:all_totals[(cur,kind)] = all_totals.get((cur,kind),0) + money(value)
     return {'data':result,'warehouse_count':len(result),'start_date':str(start),'end_date':str(end),
-        'totals':{**grouped_totals([(cur,kind,value) for (cur,kind),value in all_totals.items()]),
+        'totals':{'internal_transfers':await transfer_summary(db,ids,start,end),**grouped_totals([(cur,kind,value) for (cur,kind),value in all_totals.items()]),
             'income_count':sum(r['income_count'] for r in result),'expense_count':sum(r['expense_count'] for r in result)},
         'basis':'公司钱包实际收付，内部转账不计收支；充值申报另列，不计实收'}

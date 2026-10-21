@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),React=require('react');
 const wait=()=>new Promise(r=>setTimeout(r,0));
-function compile(file,imports,extra='',globals={}){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText+extra,{module:m,exports:m.exports,require:n=>imports[n]||require(n),console,...globals});return m.exports;}
+function compile(file,imports,extra='',globals={}){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText+extra,{module:m,exports:m.exports,require:n=>n==='@/components/InternalTransferSummary'?{__esModule:true,default:()=>null}:imports[n]||require(n),console,...globals});return m.exports;}
 const text=n=>n==null||typeof n==='boolean'?'':typeof n==='number'||typeof n==='string'?String(n):Array.isArray(n)?n.map(text).join(''):text(n.props?.children);
 const walk=n=>!n||typeof n!=='object'?[]:Array.isArray(n)?n.flatMap(walk):[n,...walk(n.props?.children)];
 const expand=n=>!n||typeof n!=='object'?n:Array.isArray(n)?n.map(expand):typeof n.type==='function'?expand(n.type(n.props)):{...n,props:{...n.props,children:expand(n.props?.children)}};

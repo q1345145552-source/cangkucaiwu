@@ -104,4 +104,6 @@ async def summary(db,warehouse_ids,start,end,**options):
         q=record_query(db,warehouse_ids,kind);filters=record_filters(q,start,end,**options)
         totals += [(c,kind,n) for c,n in (await db.execute(select(q.c.currency,func.sum(q.c.amount)).where(
             *filters).group_by(q.c.currency))).all()]
-    return {'start_date':str(start),'end_date':str(end),**grouped_totals(totals),'scope':'company_wallet','basis':BASIS}
+    from app.services.internal_transfers import transfer_summary, transfer_record_filters
+    transfers = await transfer_summary(db,warehouse_ids,start,end,**transfer_record_filters(options))
+    return {'internal_transfers':transfers,'start_date':str(start),'end_date':str(end),**grouped_totals(totals),'scope':'company_wallet','basis':BASIS}

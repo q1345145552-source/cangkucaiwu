@@ -29,7 +29,13 @@ async def read(client,path,uid=1,**params):
     return r.json()
 
 
-async def check_scope(client,kind,expected,count,uid=1,**params):
+async def check_scope(client,kind,expected,count,uid=1,denied=False,**params):
+    if denied:
+        assert expected == {} and count == 0
+        for path in (kind, "monthly-summary", kind+"/export"):
+            r=await client.get("/api/v1/income-expense/"+path,headers=auth(uid),params={**RANGE,**params})
+            assert r.status_code==403 and r.json()["detail"]=="无权访问所选账户",(path,r.text)
+        return {"data":[]},{},[]
     listed=await read(client,kind,uid,**params)
     summary=await read(client,'monthly-summary',uid,**params)
     exported=await client.get('/api/v1/income-expense/'+kind+'/export',headers=auth(uid),params={**RANGE,**params})
@@ -131,7 +137,7 @@ def test_income_filters_share_all_rows_summary_and_export_with_no_writes(tmp_pat
             def trace(conn,cursor,statement,*_): statements.append(statement)
             event.listen(engine.sync_engine,'before_cursor_execute',trace)
             scenarios=[({}, {'THB':1240,'CNY':50},4),({'currency':'THB'},{'THB':1240},3),
-                ({'currency':'CNY'},{'CNY':50},1),({'account_id':3},{'CNY':50},1),({'account_id':2},{},0),
+                ({'currency':'CNY'},{'CNY':50},1),({'account_id':3},{'CNY':50},1),({'account_id':2,'denied':True},{},0),
                 ({'source':'incoming'},{'THB':1000},1),({'source':'manual'},{'THB':240,'CNY':50},3),
                 ({'category_id':1},{'THB':200,'CNY':50},2),({'category_group':'other'},{'THB':40},1),
                 ({'category_group':'operating'},{'THB':1200,'CNY':50},3),({'search':'MANUAL-200'},{'THB':200},1),
@@ -197,7 +203,7 @@ def test_expense_business_sources_are_once_only_and_invalid_states_excluded(tmp_
             for filters,total,count in [({'source':'expense_fund'},1000,1),({'source':'cash_advance_repayment'},300,1),
                 ({'source':'payable'},100,1),({'source':'reimbursement'},80,1),({'source':'manual'},60,2),
                 ({'category_group':'operating'},1500,5),({'category_group':'other'},40,1),
-                ({'account_id':2},0,0),({'cost_category':'采购'},100,1),({'search':'manual-1'},20,1),({'supplier_id':1},20,1),({'supplier_id':2},0,0)]:
+                ({'account_id':2,'denied':True},0,0),({'cost_category':'采购'},100,1),({'search':'manual-1'},20,1),({'supplier_id':1},20,1),({'supplier_id':2},0,0)]:
                 await check_scope(client,'expense',{'THB':total} if total else {},count,**filters)
             assert sum(r['amount'] for r in listed['data'])==1540
             actual('expense_sources',{'expense':1540,'rows':6,'fund_disbursement':1000,'fund_spend_excluded':200,'reimbursement':80,

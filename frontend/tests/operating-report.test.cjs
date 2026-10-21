@@ -10,7 +10,7 @@ function setup(file,makeImports,props={},initialSearch=""){
  const retired={exports:{}};
  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/retiredEntries.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:retired.exports,module:retired});
  const m={exports:{}},imports={react,'@/lib/retiredEntries':retired.exports,...makeImports(events)};
- vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>imports[n]||require(n),console,Date,Intl,Number,URLSearchParams,window:{location,history,addEventListener:(n,fn)=>events[n]=fn,removeEventListener:n=>delete events[n]}});
+ vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>n==='@/components/InternalTransferSummary'?{__esModule:true,default:()=>null}:imports[n]||require(n),console,Date,Intl,Number,URLSearchParams,window:{location,history,addEventListener:(n,fn)=>events[n]=fn,removeEventListener:n=>delete events[n]}});
  return{events,props,location,async render(){await wait();for(let n=0;n<20;n++){si=ri=ei=0;const t=m.exports.default(props);if(!effects.length)return t;effects.splice(0).forEach(f=>f());await wait();}throw Error('unsettled effects');}};
 }
 function fixture(month,cid='',currency='',page=1){

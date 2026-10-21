@@ -22,6 +22,7 @@ from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, CategoryCreate
 from app.services.data_history import record_history
 from app.services.money_period import money_period
+from app.services.internal_transfers import selected_wallet_warehouses, transfer_summary, transfer_record_filters, append_transfer_sheet
 
 async def validate_manual_money(db, wid, account_id, category_id, currency, kind, value):
     from app.services.wallet import lock_account
@@ -86,6 +87,7 @@ async def list_income(
     currency: str = None,
     search: str = None,
     source: str = None,
+    selected_ids: list[int] = Depends(selected_wallet_warehouses),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission_any("运营收支", "其他收支")),
 ):
@@ -93,7 +95,7 @@ async def list_income(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from app.services.money_records import records,record_period
     start, end = record_period(start_date,end_date,month=month,year=year)
-    return await records(db,get_wh_ids(current_user),'income',start,end,page=max(page,1),page_size=min(max(page_size,1),200),
+    return await records(db,selected_ids,'income',start,end,page=max(page,1),page_size=min(max(page_size,1),200),
         account_id=account_id,customer_id=customer_id,category_id=category_id,category_group=category_group,
         currency=currency,search=search,source=source)
 
@@ -171,6 +173,7 @@ async def list_expense(
     currency: str = None,
     customer_id: int = None, supplier_id: int = None, source: str = None, search: str = None,
     cost_view: Literal["records", "unified"] = "records", cost_category: str | None = None,
+    selected_ids: list[int] = Depends(selected_wallet_warehouses),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("运营收支")),
 ):
@@ -178,7 +181,7 @@ async def list_expense(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from app.services.money_records import records,record_period
     start, end = record_period(start_date,end_date,month=month,year=year)
-    return await records(db,get_wh_ids(current_user),'expense',start,end,page=max(page,1),page_size=min(max(page_size,1),200),
+    return await records(db,selected_ids,'expense',start,end,page=max(page,1),page_size=min(max(page_size,1),200),
         category_id=category_id,category_group=category_group,cost_category=cost_category,account_id=account_id,
         customer_id=customer_id,supplier_id=supplier_id,currency=currency,source=source,search=search)
 
@@ -187,13 +190,14 @@ async def export_expense(month: str = None, year: str = None, start_date: str = 
                          category_id: int = None, category_group: str = None, cost_category: str = None,
                          account_id: int = None, customer_id: int = None, supplier_id: int = None,
                          currency: str = None, source: str = None, search: str = None,
+                         selected_ids: list[int] = Depends(selected_wallet_warehouses),
                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
                          _perm=Depends(check_staff_permission("运营收支"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from app.services.money_records import record_period
     start,end=record_period(start_date,end_date,month=month,year=year)
-    return await export_money_records(db,get_wh_ids(current_user),'expense',start,end,category_id=category_id,
+    return await export_money_records(db,selected_ids,'expense',start,end,category_id=category_id,
         category_group=category_group,cost_category=cost_category,account_id=account_id,customer_id=customer_id,
         supplier_id=supplier_id,currency=currency,source=source,search=search)
 
@@ -434,6 +438,7 @@ async def ledger(
     flow_type: str = None,
     flow_scope: Literal["all", "company"] = "all", account_id: int | None = None,
     currency: Literal["THB", "CNY"] | None = None, unassigned: bool = False,
+    selected_ids: list[int] = Depends(selected_wallet_warehouses),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["ledger"].label)),
@@ -446,7 +451,7 @@ async def ledger(
     if getattr(current_user, "_all_warehouses", False) or wid is None:
         raise HTTPException(400, "请先选择一个仓库")
     start, end = money_period(month, start_date, end_date, year=year, default_start=date(1900,1,1), default_end=date.max)
-    result = await projection.flow_list(db, [wid], start, end,
+    result = await projection.flow_list(db, selected_ids, start, end,
         page=max(page, 1), page_size=min(max(page_size, 1), 100000), account_id=account_id,
         currency_code=currency, source=source, flow_type=flow_type, unassigned=unassigned)
     result.update(card_income=result["total_income"], card_expense=result["total_expense"], card_net=result["net"])
@@ -458,6 +463,7 @@ async def ledger_export(
     start_date: str = None, end_date: str = None, source: str = None, flow_type: str = None,
     month: str = None, year: str = None,
     account_id: int | None = None, currency: Literal["THB", "CNY"] | None = None, unassigned: bool = False,
+    selected_ids: list[int] = Depends(selected_wallet_warehouses),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["ledger"].label)),
@@ -465,7 +471,7 @@ async def ledger_export(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     # Reuse same aggregation logic
-    r = await ledger(page=1, page_size=99999, start_date=start_date, end_date=end_date, month=month, year=year, source=source, flow_type=flow_type, flow_scope="company", account_id=account_id, currency=currency, unassigned=unassigned, current_user=current_user, db=db)
+    r = await ledger(page=1, page_size=99999, start_date=start_date, end_date=end_date, month=month, year=year, source=source, flow_type=flow_type, flow_scope="company", account_id=account_id, currency=currency, unassigned=unassigned, current_user=current_user, db=db, selected_ids=selected_ids)
     data = r.get("data", [])
 
     wb = __import__('openpyxl').Workbook()
@@ -483,6 +489,7 @@ async def ledger_export(
         ]
         for c, v in enumerate(vals, 1):
             ws.cell(row=i, column=c, value=str(v) if v is not None else "")
+    append_transfer_sheet(wb, r["internal_transfers"])
     output = __import__('io').BytesIO(); wb.save(output); output.seek(0)
     filename = f"ledger_{start_date or 'all'}_{end_date or 'all'}.xlsx"
     return __import__('fastapi').responses.StreamingResponse(
@@ -503,6 +510,7 @@ async def export_income(
     account_id: int = None, customer_id: int = None, source: str = None,
     start_date: str = None,
     end_date: str = None,
+    selected_ids: list[int] = Depends(selected_wallet_warehouses),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission_any("运营收支", "其他收支")),
@@ -511,7 +519,7 @@ async def export_income(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     from app.services.money_records import record_period
     start, end = record_period(start_date,end_date,month=month,year=year)
-    return await export_money_records(db,get_wh_ids(current_user),'income',start,end,category_group=category_group,
+    return await export_money_records(db,selected_ids,'income',start,end,category_group=category_group,
         category_id=category_id,account_id=account_id,customer_id=customer_id,currency=currency,source=source,search=search)
 
 
@@ -528,6 +536,8 @@ async def export_money_records(db,warehouse_ids,kind,start,end,**filters):
     for r in result['data']:
         ws.append([r['date'],r['category_name'],r['remark'] or '',r['amount'],r['currency'],r.get('account_name',''),
             r['source_label'],r['ref_no'],r.get('customer_name') or r.get('supplier_name') or ''])
+    transfers = await transfer_summary(db,warehouse_ids,start,end,**transfer_record_filters(filters))
+    append_transfer_sheet(wb, transfers)
     output = BytesIO()
     wb.save(output)
     output.seek(0)
@@ -541,7 +551,8 @@ async def monthly_summary(start_date: str = None, end_date: str = None, category
                           account_id: int = None, customer_id: int = None, supplier_id: int = None,
                           category_id: int = None, currency: str = None, source: str = None, search: str = None,
                           cost_category: str = None,
-                          current_user: User = Depends(get_current_user),
+                          selected_ids: list[int] = Depends(selected_wallet_warehouses),
+                         current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
                           _perm=Depends(check_staff_permission_any("运营收支", "其他收支"))):
     if current_user.role == Role.SUPER_ADMIN:
@@ -549,7 +560,7 @@ async def monthly_summary(start_date: str = None, end_date: str = None, category
     from app.services.money_records import summary
     from app.services.cost_funds_debt import dates
     start, end = dates(start_date, end_date, month=month, year=year)
-    return await summary(db,get_wh_ids(current_user),start,end,category_group=category_group,
+    return await summary(db,selected_ids,start,end,category_group=category_group,
         category_id=category_id,account_id=account_id,customer_id=customer_id,supplier_id=supplier_id,
         currency=currency,source=source,search=search,cost_category=cost_category)
 # ==== Operating Dashboard ====
@@ -558,6 +569,7 @@ async def operating_dashboard(
     start_date: str = None,
     end_date: str = None,
     month: str = None, year: str = None,
+    selected_ids: list[int] = Depends(selected_wallet_warehouses),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("运营收支")),
@@ -572,7 +584,7 @@ async def operating_dashboard(
     start, end = money_period(month, start_date, end_date, year=year,
         default_start=today.replace(day=1), default_end=today)
 
-    wh_ids = get_wh_ids(current_user)
+    wh_ids = selected_ids
     from app.services.wallet import flow_query, grouped_totals
     from collections import defaultdict
     q = flow_query(db, wh_ids)
@@ -593,5 +605,6 @@ async def operating_dashboard(
             "operating_expense": block["total_expense"], **block})
         cursor = cursor + timedelta(days=1) if granularity == "day" else (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
     result = grouped_totals([(cur, kind, n) for (cur, kind), n in total.items()])
-    return {"data": data, "granularity": granularity, "start_date": start.isoformat(), "end_date": end.isoformat(),
+    transfers = await transfer_summary(db, wh_ids, start, end)
+    return {"internal_transfers": transfers, "data": data, "granularity": granularity, "start_date": start.isoformat(), "end_date": end.isoformat(),
         **result, "total_net": result["net"]}

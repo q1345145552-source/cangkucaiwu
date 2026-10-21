@@ -127,7 +127,10 @@ async def flow_list(db, warehouse_ids, start, end, *, page=1, page_size=30, acco
     single = currency_code or (next(iter(set(inc) | set(exp))) if len(set(inc) | set(exp)) == 1 else None)
     total_income, total_expense = (inc.get(single, 0), exp.get(single, 0)) if single or not (inc or exp) else (None, None)
     # 无单一币种时不提供混币种金额；指定币种下保留原流水页净额颜色。
-    return {"data": data, "total": total, "page": page, "page_size": page_size,
+    from app.services.internal_transfers import transfer_summary
+    transfers = await transfer_summary(db, warehouse_ids, start, end, account_id=account_id, currency=currency_code,
+        source=source, flow_type=flow_type, unassigned=unassigned)
+    return {"data": data, "internal_transfers": transfers, "total": total, "page": page, "page_size": page_size,
         "income_by_currency": inc, "expense_by_currency": exp, "total_income": total_income,
         "total_expense": total_expense, "net": total_income - total_expense if total_income is not None else None, "flow_scope": "company"}
 
@@ -218,7 +221,9 @@ async def report(db, warehouse_ids, start, end):
                 "details": details, "detail_count": len(details)}})
     undated = (await db.execute(select(flows.c.currency, flows.c.source_label, func.count(), func.sum(flows.c.amount))
         .where(flows.c.date.is_(None), flows.c.status == "active").group_by(flows.c.currency, flows.c.source_label))).all()
-    return {"start_date": start.isoformat(), "end_date": end.isoformat(), "warehouse_ids": warehouse_ids, "currencies": blocks,
+    from app.services.internal_transfers import transfer_summary
+    transfers = await transfer_summary(db, warehouse_ids, start, end)
+    return {"internal_transfers": transfers, "start_date": start.isoformat(), "end_date": end.isoformat(), "warehouse_ids": warehouse_ids, "currencies": blocks,
         "balance_anchor_date": anchor.isoformat(), "notes": [
             "采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。",
             "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。",

@@ -1,6 +1,6 @@
 """报表及三张账的只读下钻；不借用业务写权限，不写数据库。"""
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.permissions import Role, check_staff_permission, get_wh_id
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
@@ -10,11 +10,13 @@ from app.services import cost_funds_debt as service
 router = APIRouter()
 
 
-async def report_user(user=Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label))):
+async def report_user(request: Request, db: AsyncSession = Depends(get_db), user=Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label))):
     if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无此操作权限")
     if getattr(user, "_all_warehouses", False) or get_wh_id(user) is None:
         raise HTTPException(400, "请先选择一个仓库")
+    from app.services.warehouse_summary import warehouse_scope
+    await warehouse_scope(db, user, request.headers.get("X-Warehouse-ID"))
     return user
 
 

@@ -97,7 +97,7 @@ def test_other_group_dates_accounts_search_foreign_and_invalid_states(tmp_path,m
             statements=[]
             def trace(conn,cursor,statement,*_):statements.append(statement)
             event.listen(engine.sync_engine,'before_cursor_execute',trace)
-            scenarios=[({'account_id':1},{'THB':100},1),({'account_id':3},{'CNY':200},1),({'account_id':2},{},0),
+            scenarios=[({'account_id':1},{'THB':100},1),({'account_id':3},{'CNY':200},1),({'account_id':2,'denied':True},{},0),
                 ({'category_id':1},{'THB':100,'CNY':200},2),({'category_id':3},{},0),({'category_id':4},{},0),
                 ({'search':'THB-100'},{'THB':100},1),({'search':'CNY-200'},{'CNY':200},1),({'search':'missing'},{},0),
                 ({'start_date':'2026-09-01','end_date':'2026-09-30'},{'THB':50},1),({'end_date':'2026-10-19'},{},0)]

@@ -1,4 +1,5 @@
 "use client";
+import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
@@ -107,6 +108,7 @@ export default function IncomeExpensePage() {
         </div>
         <div className="flex gap-2 shrink-0"><button onClick={handleExport} className="btn-secondary whitespace-nowrap">导出</button><button onClick={openCreate} className="btn-primary whitespace-nowrap">新建记录</button></div>
       </div>
+      <InternalTransferSummary data={totals.internal_transfers} />
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="bg-white rounded-lg p-1 flex"><button onClick={() => { setTab("income"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "income" ? "bg-primary text-white" : ""}`}>收款</button><button onClick={() => { setTab("expense"); setPage(1); }} className={`px-4 py-1.5 rounded text-sm ${tab === "expense" ? "bg-primary text-white" : ""}`}>付款</button></div>
         <input type="date" value={dateRange.start_date} onChange={e => { setDateRange({ ...dateRange, start_date: e.target.value }); setPage(1); }} className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />

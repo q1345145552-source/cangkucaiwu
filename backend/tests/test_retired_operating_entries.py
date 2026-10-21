@@ -57,7 +57,9 @@ def test_closed_routes_all_roles_keep_history_and_wallet(tmp_path, monkeypatch):
             await seed(factory)
             before = await snapshots(client)
             captured = json.loads((Path(__file__).parent / 'fixtures/retired_operating_wallet_before.json').read_text())
-            assert before == captured
+            for value in before.values():
+                assert value["internal_transfers"]["by_currency"] == {}
+            assert {path:{k:v for k,v in value.items() if k != "internal_transfers"} for path,value in before.items()} == captured
             statements = []
             def trace(conn, cursor, statement, *args): statements.append(statement)
             event.listen(engine.sync_engine, 'before_cursor_execute', trace)

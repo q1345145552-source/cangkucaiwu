@@ -1,4 +1,5 @@
 "use client";
+import InternalTransferSummary, { type TransferSummary } from "@/components/InternalTransferSummary";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -15,7 +16,7 @@ interface Block {
   debt: { data: (Totals & { key: string; payer_id: number | null; payer_name: string; count: number })[]; total: Totals };
   reconciliation: { cost_total: number; company_outflow: number; difference: number; cash_advance_cost: number; expense_fund_cost: number; non_company_cost: number; unreconciled_difference: number; balanced: boolean; non_cost_outflows: { name: string; count: number; amount: number }[]; details: Detail[]; detail_count: number };
 }
-interface Report { start_date: string; end_date: string; currencies: Block[]; notes: string[]; balance_anchor_date: string; undated_flows: { currency: string; source: string; count: number; amount: number }[] }
+interface Report { internal_transfers: TransferSummary; start_date: string; end_date: string; currencies: Block[]; notes: string[]; balance_anchor_date: string; undated_flows: { currency: string; source: string; count: number; amount: number }[] }
 function today() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
 function thisMonth() { const end_date = today(); return { start_date: `${end_date.slice(0, 7)}-01`, end_date }; }
 function lastWeek() { const now = new Date(`${today()}T12:00:00+07:00`); const monday = new Date(now); monday.setUTCDate(now.getUTCDate() - (now.getUTCDay() + 6) % 7); const end = new Date(monday); end.setUTCDate(monday.getUTCDate() - 1); const start = new Date(monday); start.setUTCDate(monday.getUTCDate() - 7); return { start_date: start.toISOString().slice(0, 10), end_date: end.toISOString().slice(0, 10) }; }
@@ -47,6 +48,7 @@ export default function CostFundsDebtPage() {
     </div>
     {loading && <p className="text-gray-500 py-8 text-center" role="status">正在核对三张账…</p>}
     {error && <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">{error}<button className="ml-3 underline" onClick={() => setRetry(n => n + 1)}>重试</button></div>}
+    {data && <InternalTransferSummary data={data.internal_transfers} />}
     {data && data.currencies.map(block => {
       const { currency: cur, symbol: sym, costs, funds, debt, reconciliation: r } = block;
       const expanded = open === cur;

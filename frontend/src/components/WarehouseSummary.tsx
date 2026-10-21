@@ -1,9 +1,10 @@
 "use client";
+import InternalTransferSummary, { type TransferSummary } from "@/components/InternalTransferSummary";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { fmtMoneyByCurrency } from "@/lib/currency";
 
-type Totals = { income_by_currency: Record<string, number>; expense_by_currency: Record<string, number>; net_by_currency: Record<string, number>; income_count: number; expense_count: number };
+type Totals = { internal_transfers: TransferSummary; income_by_currency: Record<string, number>; expense_by_currency: Record<string, number>; net_by_currency: Record<string, number>; income_count: number; expense_count: number };
 type Overview = { data: (Totals & { warehouse_id: number; warehouse_name: string })[]; totals: Totals; basis: string };
 
 export default function WarehouseSummary({ startDate, endDate }: { startDate: string; endDate: string }) {
@@ -37,8 +38,8 @@ export default function WarehouseSummary({ startDate, endDate }: { startDate: st
     <h2 className="font-semibold text-gray-700">各仓概况</h2>
     <p className="text-xs text-gray-500">{startDate} 至 {endDate} · 当前所选授权仓库 · 各币种分别统计</p>
     {loading ? <p className="text-sm text-gray-500">仓库汇总加载中...</p> : error ? <div role="alert" className="text-sm text-red-600">{error}<button className="ml-3 underline" onClick={() => setRevision(n => n + 1)}>重试</button></div> : data && <>
-      {data.data.length ? data.data.map(row => <div key={row.warehouse_id} className="border-b border-gray-100 pb-3">{line(row.warehouse_name, row)}</div>) : <p className="text-sm text-gray-500">暂无可查看的启用仓库</p>}
-      {line("合计", data.totals)}<p className="text-xs text-gray-500">{data.basis}</p>
+      {data.data.length ? data.data.map(row => <div key={row.warehouse_id} className="border-b border-gray-100 pb-3">{line(row.warehouse_name, row)}<InternalTransferSummary data={row.internal_transfers} /></div>) : <p className="text-sm text-gray-500">暂无可查看的启用仓库</p>}
+      {line("合计", data.totals)}<InternalTransferSummary data={data.totals.internal_transfers} /><p className="text-xs text-gray-500">{data.basis}</p>
     </>}
   </section>;
 }

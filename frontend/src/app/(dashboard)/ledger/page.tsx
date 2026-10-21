@@ -1,6 +1,7 @@
 "use client";
+import InternalTransferSummary, { type TransferSummary } from "@/components/InternalTransferSummary";
 import { useEffect, useState } from "react";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
@@ -42,6 +43,8 @@ export default function LedgerPage() {
   const [accountFilter, setAccountFilter] = useState(""), [currencyFilter, setCurrencyFilter] = useState("");
   const [unassigned, setUnassigned] = useState(false);
 
+  const [transfers, setTransfers] = useState<TransferSummary>();
+
   // summary cards
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
@@ -64,7 +67,7 @@ export default function LedgerPage() {
   useEffect(() => { if (queryReady) loadData(); }, [page, dateRange, source, flowType, queryReady, reportView, accountFilter, currencyFilter, unassigned]);
 
   async function loadData() {
-    setLoading(true);
+    setLoading(true); setTransfers(undefined);
     try {
       const params = new URLSearchParams({ flow_scope: "company" });
       params.set("page", String(page));
@@ -78,6 +81,7 @@ export default function LedgerPage() {
       if (unassigned) params.set("unassigned", "true");
       const endpoint = reportView ? "/reports/cost-funds-debt/flows" : "/income-expense/ledger";
       const r = await api.get<any>(`${endpoint}?${params.toString()}`);
+      setTransfers(r.internal_transfers);
       setData(r.data || []);
       setTotal(r.total || 0);
       setTotalIncome(r.total_income || 0);
@@ -100,9 +104,12 @@ export default function LedgerPage() {
     if (unassigned) params.set("unassigned", "true");
     const token = getToken();
     const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    const warehouse = getActiveWarehouseId();
+    if (warehouse !== null) headers["X-Warehouse-ID"] = warehouse;
     try {
       const res = await fetch(`${base}/income-expense/ledger/export?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
       if (!res.ok) throw new Error("导出失败");
       const blob = await res.blob();
@@ -172,6 +179,8 @@ export default function LedgerPage() {
           </div>
         </div>
       </div>
+
+      <InternalTransferSummary data={transfers} />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

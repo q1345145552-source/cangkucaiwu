@@ -1,0 +1,865 @@
+{
+  "before": {
+    "/income-expense/monthly-summary": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {},
+        "count_by_currency": {},
+        "total_count": 0
+      }
+    },
+    "/reports/income-expense": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {},
+        "count_by_currency": {},
+        "total_count": 0
+      }
+    },
+    "/income-expense/ledger": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {},
+        "count_by_currency": {},
+        "total_count": 0
+      }
+    },
+    "/reports/cost-funds-debt": {
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {},
+        "count_by_currency": {},
+        "total_count": 0
+      },
+      "currency_blocks": {
+        "CNY": {
+          "cost": 0.0,
+          "company_outflow": 0.0,
+          "difference": 0.0,
+          "closing_balance": 1500.0
+        },
+        "THB": {
+          "cost": 200.0,
+          "company_outflow": 200.0,
+          "difference": 0.0,
+          "closing_balance": 23800.0
+        }
+      }
+    },
+    "/income-expense/operating-dashboard": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {},
+        "count_by_currency": {},
+        "total_count": 0
+      }
+    },
+    "/dashboard/warehouse-summary": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {},
+        "count_by_currency": {},
+        "total_count": 0
+      }
+    },
+    "/dashboard/cockpit": {
+      "income": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 1000.0
+        }
+      ],
+      "expense": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 200.0
+        }
+      ],
+      "net": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 800.0
+        }
+      ],
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {},
+        "count_by_currency": {},
+        "total_count": 0
+      }
+    }
+  },
+  "after_thb10000": {
+    "/income-expense/monthly-summary": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "THB": 1
+        },
+        "total_count": 1
+      }
+    },
+    "/reports/income-expense": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "THB": 1
+        },
+        "total_count": 1
+      }
+    },
+    "/income-expense/ledger": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "THB": 1
+        },
+        "total_count": 1
+      }
+    },
+    "/reports/cost-funds-debt": {
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "THB": 1
+        },
+        "total_count": 1
+      },
+      "currency_blocks": {
+        "CNY": {
+          "cost": 0.0,
+          "company_outflow": 0.0,
+          "difference": 0.0,
+          "closing_balance": 1500.0
+        },
+        "THB": {
+          "cost": 200.0,
+          "company_outflow": 200.0,
+          "difference": 0.0,
+          "closing_balance": 23800.0
+        }
+      }
+    },
+    "/income-expense/operating-dashboard": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "THB": 1
+        },
+        "total_count": 1
+      }
+    },
+    "/dashboard/warehouse-summary": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "THB": 1
+        },
+        "total_count": 1
+      }
+    },
+    "/dashboard/cockpit": {
+      "income": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 1000.0
+        }
+      ],
+      "expense": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 200.0
+        }
+      ],
+      "net": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 800.0
+        }
+      ],
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "THB": 1
+        },
+        "total_count": 1
+      }
+    }
+  },
+  "after_cny200_and_retries": {
+    "/income-expense/monthly-summary": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      }
+    },
+    "/reports/income-expense": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      }
+    },
+    "/income-expense/ledger": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      }
+    },
+    "/reports/cost-funds-debt": {
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      },
+      "currency_blocks": {
+        "CNY": {
+          "cost": 0.0,
+          "company_outflow": 0.0,
+          "difference": 0.0,
+          "closing_balance": 1500.0
+        },
+        "THB": {
+          "cost": 200.0,
+          "company_outflow": 200.0,
+          "difference": 0.0,
+          "closing_balance": 23800.0
+        }
+      }
+    },
+    "/income-expense/operating-dashboard": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      }
+    },
+    "/dashboard/warehouse-summary": {
+      "income_by_currency": {
+        "THB": 1000.0
+      },
+      "expense_by_currency": {
+        "THB": 200.0
+      },
+      "net": 800.0,
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      }
+    },
+    "/dashboard/cockpit": {
+      "income": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 1000.0
+        }
+      ],
+      "expense": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 200.0
+        }
+      ],
+      "net": [
+        {
+          "currency": "CNY",
+          "amount": 0.0
+        },
+        {
+          "currency": "THB",
+          "amount": 800.0
+        }
+      ],
+      "internal_transfers": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      }
+    }
+  },
+  "balance_before": {
+    "3": 20800.0,
+    "4": 3000.0,
+    "5": 1000.0,
+    "6": 500.0
+  },
+  "balance_after": {
+    "3": 10800.0,
+    "4": 13000.0,
+    "5": 800.0,
+    "6": 700.0
+  },
+  "scope_and_exports": {
+    "selected_october": {
+      "/income-expense/monthly-summary": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      },
+      "/reports/income-expense": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      },
+      "/income-expense/ledger": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      },
+      "/reports/cost-funds-debt": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      },
+      "/income-expense/operating-dashboard": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      },
+      "/dashboard/warehouse-summary": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      },
+      "/dashboard/cockpit": {
+        "label": "内部转账",
+        "excluded_from_income_expense": true,
+        "scope_label": "所选仓库及期间的调拨额",
+        "by_currency": {
+          "CNY": 200.0,
+          "THB": 10000.0
+        },
+        "count_by_currency": {
+          "CNY": 1,
+          "THB": 1
+        },
+        "total_count": 2
+      }
+    },
+    "september_thb": 777,
+    "other_warehouse_october_thb": 999,
+    "exports": {
+      "/reports/income-expense": [
+        [
+          "范围",
+          "币种",
+          "笔数",
+          "调拨金额",
+          "说明"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "CNY",
+          1,
+          200,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "THB",
+          1,
+          10000,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ]
+      ],
+      "/income-expense/ledger/export": [
+        [
+          "范围",
+          "币种",
+          "笔数",
+          "调拨金额",
+          "说明"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "CNY",
+          1,
+          200,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "THB",
+          1,
+          10000,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ]
+      ],
+      "/income-expense/income/export": [
+        [
+          "范围",
+          "币种",
+          "笔数",
+          "调拨金额",
+          "说明"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "CNY",
+          1,
+          200,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "THB",
+          1,
+          10000,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ]
+      ],
+      "/income-expense/expense/export": [
+        [
+          "范围",
+          "币种",
+          "笔数",
+          "调拨金额",
+          "说明"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "CNY",
+          1,
+          200,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ],
+        [
+          "所选仓库及期间的调拨额",
+          "THB",
+          1,
+          10000,
+          "不计入收入、支出、净收支或成本；每笔转账只计一次"
+        ]
+      ]
+    },
+    "filtered_export": [
+      [
+        "范围",
+        "币种",
+        "笔数",
+        "调拨金额",
+        "说明"
+      ],
+      [
+        "涉及该账户的调拨额",
+        "CNY",
+        0,
+        0,
+        "不计入收入、支出、净收支或成本；每笔转账只计一次"
+      ],
+      [
+        "涉及该账户的调拨额",
+        "THB",
+        1,
+        10000,
+        "不计入收入、支出、净收支或成本；每笔转账只计一次"
+      ]
+    ]
+  },
+  "guards": [
+    {
+      "path": "/income-expense/monthly-summary",
+      "status": 403,
+      "body": {
+        "detail": "无权访问所选仓库"
+      }
+    },
+    {
+      "path": "/reports/income-expense",
+      "status": 403,
+      "body": {
+        "detail": "无权访问所选仓库"
+      }
+    },
+    {
+      "path": "/income-expense/ledger",
+      "status": 403,
+      "body": {
+        "detail": "无权访问所选仓库"
+      }
+    },
+    {
+      "path": "/reports/cost-funds-debt",
+      "status": 403,
+      "body": {
+        "detail": "无权访问所选仓库"
+      }
+    },
+    {
+      "path": "/income-expense/operating-dashboard",
+      "status": 403,
+      "body": {
+        "detail": "无权访问所选仓库"
+      }
+    },
+    {
+      "path": "/dashboard/warehouse-summary",
+      "status": 403,
+      "body": {
+        "detail": "无权访问所选仓库"
+      }
+    },
+    {
+      "path": "/dashboard/cockpit",
+      "status": 403,
+      "body": {
+        "detail": "无权访问所选仓库"
+      }
+    }
+  ],
+  "browser_observations": [
+    {
+      "page": "wallet",
+      "viewport": "1280x720",
+      "text": "内部转账 （不计入收支）\nTHB ฿10,000（1笔）\nCNY ¥200（1笔）\n\n所选仓库及期间的调拨额；每笔只计一次，不计入收入、支出、净收支或成本。"
+    },
+    {
+      "page": "three-accounts",
+      "viewport": "1280x720",
+      "text": "内部转账 （不计入收支）\nTHB ฿10,000（1笔）\nCNY ¥200（1笔）\n\n所选仓库及期间的调拨额；每笔只计一次，不计入收入、支出、净收支或成本。"
+    },
+    {
+      "page": "income-expense-report",
+      "viewport": "1280x720",
+      "text": "内部转账 （不计入收支）\nTHB ฿10,000（1笔）\nCNY ¥200（1笔）\n\n所选仓库及期间的调拨额；每笔只计一次，不计入收入、支出、净收支或成本。"
+    },
+    {
+      "page": "wallet",
+      "viewport": "390x844",
+      "text": "内部转账 （不计入收支）\nTHB ฿10,000（1笔）\nCNY ¥200（1笔）\n\n所选仓库及期间的调拨额；每笔只计一次，不计入收入、支出、净收支或成本。",
+      "bounds": {
+        "height": 110,
+        "width": 366,
+        "x": 12,
+        "y": 220
+      }
+    },
+    {
+      "page": "three-accounts",
+      "viewport": "390x844",
+      "text": "内部转账 （不计入收支）\nTHB ฿10,000（1笔）\nCNY ¥200（1笔）\n\n所选仓库及期间的调拨额；每笔只计一次，不计入收入、支出、净收支或成本。",
+      "bounds": {
+        "height": 110,
+        "width": 366,
+        "x": 12,
+        "y": 334
+      }
+    },
+    {
+      "page": "income-expense-report",
+      "viewport": "390x844",
+      "text": "内部转账 （不计入收支）\nTHB ฿10,000（1笔）\nCNY ¥200（1笔）\n\n所选仓库及期间的调拨额；每笔只计一次，不计入收入、支出、净收支或成本。",
+      "bounds": {
+        "height": 110,
+        "width": 316,
+        "x": 37,
+        "y": 665
+      }
+    },
+    {
+      "page": "single-account-ledger",
+      "viewport": "390x844",
+      "text": "内部转账 （不计入收支）\nTHB ฿10,000（1笔）\nCNY ¥0（0笔）\n\n涉及该账户的调拨额；每笔只计一次，不计入收入、支出、净收支或成本。"
+    }
+  ],
+  "evidence_directory": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第4轮内部转账-20261021"
+}

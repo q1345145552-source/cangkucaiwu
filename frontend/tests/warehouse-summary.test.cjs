@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),React=require('react');
 const text=x=>x==null||typeof x==='boolean'?'':typeof x==='string'||typeof x==='number'?String(x):Array.isArray(x)?x.map(text).join(''):text(x.props?.children);
 const walk=x=>!x||typeof x!=='object'?[]:Array.isArray(x)?x.flatMap(walk):[x,...walk(x.props?.children)];
-function compile(file,imports,globals={}){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>imports[n]||require(n),console,...globals});return m.exports;}
+function compile(file,imports,globals={}){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>n==='@/components/InternalTransferSummary'?{__esModule:true,default:()=>null}:imports[n]||require(n),console,...globals});return m.exports;}
 const currency=compile('../src/lib/currency.ts',{}),wait=()=>new Promise(r=>setTimeout(r,0));
 function harness(){
  const states=[],refs=[],deps=[],cleanups=[],effects=[],events=new Map(),reads=[],held=[];

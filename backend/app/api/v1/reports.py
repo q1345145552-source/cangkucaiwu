@@ -21,6 +21,8 @@ import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 
+from app.services.internal_transfers import selected_wallet_warehouses, transfer_summary, append_transfer_sheet
+
 router = APIRouter()
 
 STATUS_LABELS = {
@@ -68,7 +70,7 @@ def _sum_by_currency(rows, attr: str = "amount"):
     return out
 
 
-def to_excel(headers, rows, sheet_name="Sheet1"):
+def to_excel(headers, rows, sheet_name="Sheet1", transfers=None):
     wb = Workbook(); ws = wb.active; ws.title = sheet_name
     fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     fw = Font(bold=True, color="FFFFFF")
@@ -76,6 +78,7 @@ def to_excel(headers, rows, sheet_name="Sheet1"):
         c = ws.cell(row=1, column=col, value=h); c.font = fw; c.fill = fill; c.alignment = Alignment(horizontal="center")
     for r, row in enumerate(rows, 2):
         for c, val in enumerate(row, 1): ws.cell(row=r, column=c, value=val)
+    if transfers is not None: append_transfer_sheet(wb, transfers)
     output = io.BytesIO(); wb.save(output); output.seek(0)
     safe_name = _FILENAME_MAP.get(sheet_name, sheet_name.replace(" ", "_"))
     filename = f"{safe_name}_{thai_now().strftime('%Y%m%d')}.xlsx"
@@ -218,15 +221,17 @@ async def incoming_summary(start_date: str = None, end_date: str = None, warehou
 # ===== 3. 收支报表 =====
 @router.get("/income-expense", dependencies=[Depends(require_non_labor)])
 async def income_expense_report(start_date: str = None, end_date: str = None, warehouse_id: int = None, format: str = "json",
-                                 month: str = None, year: str = None,
+                                 month: str = None, year: str = None, request: Request = None,
+                                 selected_ids: list[int] = Depends(selected_wallet_warehouses),
                                  current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reports"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_ids = get_wh_ids(current_user)
+    wh_ids = selected_ids
     from app.services.wallet import flow_query, grouped_totals
     from app.services.money_period import money_period
-    wh_ids = [warehouse_id] if warehouse_id in wh_ids else wh_ids
-    if warehouse_id and warehouse_id not in get_wh_ids(current_user): raise HTTPException(403, "无权访问其他仓库")
+    from app.services.warehouse_summary import warehouse_scope
+    if warehouse_id is not None:
+        wh_ids = [w.id for w in await warehouse_scope(db,current_user,request.headers.get("X-Warehouse-ID"),warehouse_id=warehouse_id)]
     from datetime import date
     start, end = money_period(month, start_date, end_date, year=year, default_start=date(1900,1,1), default_end=date.max)
     q = flow_query(db, wh_ids)
@@ -243,8 +248,9 @@ async def income_expense_report(start_date: str = None, end_date: str = None, wa
             (received if r["source"] == "incoming" else other)[r["currency"]] += float(r["amount"])
     result = grouped_totals([(c, kind, n) for (c, kind), n in totals.items()])
     headers = ["类型", "日期", "金额", "币种", "备注"]
-    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "收支报表")
-    return {"data": data, **result, "total_income_by_currency": result["income_by_currency"],
+    transfers = await transfer_summary(db, wh_ids, start, end)
+    if format == "excel": return to_excel(headers, [[r[h] for h in headers] for r in data], "收支报表", transfers=transfers)
+    return {"data": data, "internal_transfers": transfers, **result, "total_income_by_currency": result["income_by_currency"],
         "total_expense_by_currency": result["expense_by_currency"],
         "recharge_income_by_currency": dict(received), "other_income_by_currency": dict(other)}
 

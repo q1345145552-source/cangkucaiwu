@@ -1,4 +1,5 @@
 "use client";
+import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
@@ -450,6 +451,7 @@ export default function OperatingPage() {
           <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center"><DollarSign size={20} className="text-indigo-600" /></div>
           <div><h2 className="text-base font-semibold text-gray-800">收支对比</h2><span className="text-xs text-gray-400">{dateRange.start_date} ~ {dateRange.end_date}</span></div>
         </div>
+        <InternalTransferSummary data={dashboard?.internal_transfers} />
         {dashboard ? (
           <div className="grid grid-cols-3 gap-5">
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100 shadow-sm">

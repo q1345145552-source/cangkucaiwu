@@ -1,6 +1,7 @@
 "use client";
+import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useRef, useState } from "react";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
@@ -130,9 +131,12 @@ export default function ReportsPage() {
   async function exportExcel(key: string) {
     const token = getToken();
     const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    const warehouse = getActiveWarehouseId();
+    if (warehouse !== null) headers["X-Warehouse-ID"] = warehouse;
     try {
       const res = await fetch(`${base}/reports/${key}?format=excel&start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
       if (!res.ok) throw new Error("导出失败");
       const blob = await res.blob();
@@ -238,6 +242,7 @@ export default function ReportsPage() {
                 <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">总支出</div><div className="text-lg font-bold text-red-700">{fmtMoneyByCurrency(data.total_expense_by_currency)}</div></div>
               </div>
             )}
+            {selected === "income-expense" && <InternalTransferSummary data={data.internal_transfers} />}
             {selected === "payable" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">待付总额</div><div className="text-xl font-bold text-red-700">{fmtMoneyByCurrency(data.total_pending_by_currency)}</div></div>

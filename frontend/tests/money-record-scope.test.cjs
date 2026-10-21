@@ -24,7 +24,7 @@ function harness(){
  '@/lib/currency':{fmtMoney:(n,c)=>`${c} ${n}`,fmtMoneyByCurrency:v=>JSON.stringify(v)},'next/navigation':{useRouter:()=>({push(){}})}};
  const mod={exports:{}};
  const src=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src/app/(dashboard)/income-expense/page.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
- vm.runInNewContext(src,{module:mod,exports:mod.exports,require:n=>imports[n]||require(n),Date,Set,Promise,process:{env:{}},console,
+ vm.runInNewContext(src,{module:mod,exports:mod.exports,require:n=>n==='@/components/InternalTransferSummary'?{__esModule:true,default:()=>null}:imports[n]||require(n),Date,Set,Promise,process:{env:{}},console,
   URL:{createObjectURL:()=> 'blob:isolated-test',revokeObjectURL:url=>assert.equal(url,'blob:isolated-test')},
   document:{createElement:()=>{const a={click(){downloads.push({href:a.href,download:a.download});}};return a;}},
   fetch:async(url,options)=>{exports.push({url,headers:options.headers});return{ok:!flags.fail,json:async()=>({detail:'无此操作权限'}),blob:async()=>({})};}});

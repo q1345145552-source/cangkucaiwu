@@ -1,4 +1,5 @@
 "use client";
+import InternalTransferSummary, { type TransferSummary } from "@/components/InternalTransferSummary";
 import BossTodos from "@/components/BossTodos";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,7 @@ interface CockpitData {
   warehouses: { id: number; name: string }[];
   trends: TrendsData;
   finance: {
-    month: { income: Amount[]; operating_expense: Amount[]; procurement_expense: Amount[]; expense: Amount[]; net: Amount[]; profit: Amount[] };
+    month: { internal_transfers: TransferSummary; income: Amount[]; operating_expense: Amount[]; procurement_expense: Amount[]; expense: Amount[]; net: Amount[]; profit: Amount[] };
     receivable_payable: { receivable: Amount[]; payable: Amount[]; overdue_payable: Amount[] };
     balances: { payment_accounts: Amount[]; expense_funds: Amount[] };
     procurement: { expense: Amount[]; price_anomaly_count: number; non_lowest_count: number };
@@ -172,6 +173,7 @@ function DashboardContent() {
               <div className="flex justify-between"><span className="text-gray-500">所选月支出</span><AmountList items={finance.month.expense} /></div>
               <div className="flex justify-between border-t pt-2"><span className="text-gray-700 font-medium">净收支</span><span className={finance.month.net.some(p => p.amount < 0) ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}><AmountList items={finance.month.net} /></span></div>
             </div>
+            <InternalTransferSummary data={finance.month.internal_transfers} />
           </div>
 
           {/* 待收待付 */}

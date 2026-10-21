@@ -55,8 +55,10 @@ async def monthly_view(db, warehouses, month):
     funds = {c:[{'date':d,'incoming':float(daily[('incoming',c,d)]),
         'other_income':float(daily[('other_income',c,d)]),'recharge':float(daily[('declaration',c,d)])} for d in days] for c in currencies}
     def breakdown(values,c):return [{'name':name,'amount':float(value)} for (cur,name),value in sorted(values.items()) if cur==c and value != 0]
+    from app.services.internal_transfers import transfer_summary
+    transfers = await transfer_summary(db,ids,start,end)
     return {'period':period,'warehouses':[{'id':w.id,'name':w.name} for w in warehouses],
-        'month_card':{'income':amounts('income'),'expense':amounts('expense'),'net':net,'profit':net,
+        'month_card':{'internal_transfers':transfers,'income':amounts('income'),'expense':amounts('expense'),'net':net,'profit':net,
             'operating_expense':amounts('operating'),'procurement_expense':amounts('procurement'),
             'income_count_by_currency':{c:counts[('income',c)] for c in currencies},
             'expense_count_by_currency':{c:counts[('expense',c)] for c in currencies}},
