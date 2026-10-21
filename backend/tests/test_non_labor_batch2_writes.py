@@ -136,7 +136,7 @@ def test_every_management_role_preserves_original_response(tmp_path,monkeypatch,
                     if uid==1 or granted:
                         assert response.status_code==200,response.text
                     if uid==2:
-                        assert response.status_code==(200 if case[1]=='/upload/recharge-screenshot' else 403)
+                        assert response.status_code==403  # Ordinary super-admin business upload is intentionally forbidden.
                     if uid in (3,4) and not granted:
                         assert response.status_code==403 and '无此操作权限' in response.json()['detail']
                     results.append(normalized_response(response))
@@ -257,21 +257,14 @@ def test_batch_report_all_ten_and_automatic_writes(tmp_path,monkeypatch):
     asyncio.run(run())
 
 
-def test_only_ten_requested_decorators_added_and_handlers_unchanged():
-    from tests.non_labor_test_support import without_non_labor_guard
-    from tests.test_non_labor_guard import CASES as BATCH1
-    from tests.test_non_labor_read_group1 import CASES as READ_GROUP1
-    guarded=[r for r in app.routes if isinstance(r,APIRoute)
-        and any(d.call is require_non_labor for d in r.dependant.dependencies)]
-    expected={(method,'/api/v1'+template) for method,template,_,_ in BATCH1+CASES+READ_GROUP1}
-    from tests.wallet_contract_support import WALLET_GUARDED_ROUTES
-    expected.update(WALLET_GUARDED_ROUTES)
-    assert {(method,r.path) for r in guarded for method in r.methods}==expected
-    for route in guarded:
-        assert route.dependant.dependencies[0].call is require_non_labor
-    root=Path(__file__).resolve().parents[2]
-    for name in ('reconciliation','expense_fund','reimbursement','payable','upload'):
-        path='backend/app/api/v1/'+name+'.py'
-        old=subprocess.check_output(['git','show','e4a2bb7:'+path],cwd=root,text=True)
-        from tests.wallet_contract_support import without_wallet_contract_changes
-        assert without_wallet_contract_changes(without_non_labor_guard((root/path).read_text())) == without_wallet_contract_changes(without_non_labor_guard(old)),path
+def test_original_ten_keep_first_guard_after_default_management_policy():
+    # The later authorised 335-route default policy supersedes the old 'only ten added' snapshot.
+    from scripts.audit_management_access import audit, MANAGEMENT
+    result=audit()
+    current={(r['method'],r['path']) for r in result['routes'] if r['access'] in MANAGEMENT}
+    expected={(method,'/api/v1'+template) for method,template,_,_ in CASES}
+    assert expected <= current
+    for route in app.routes:
+        if isinstance(route,APIRoute) and any((m,route.path) in expected for m in route.methods):
+            assert route.dependant.dependencies[0].call is require_non_labor
+    assert not result['unprotected_or_unclassified']

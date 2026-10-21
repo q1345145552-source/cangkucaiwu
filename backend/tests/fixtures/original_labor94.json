@@ -1,0 +1,854 @@
+{
+  "baseline": "9e1c3cb",
+  "source": "第十六轮原始全项目审计；本轮仅提取当时建议收口的94条，不包含请求中的业务数据",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/v1/users",
+      "module": "用户",
+      "function": "list_users",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "系统设置",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/stats",
+      "module": "仪表盘",
+      "function": "dashboard_stats",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/pending-tasks",
+      "module": "仪表盘",
+      "function": "pending_tasks",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dashboard/warehouse-summary",
+      "module": "仪表盘",
+      "function": "warehouse_summary",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers",
+      "module": "客户档案",
+      "function": "list_customers",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "客户档案 / 充值申报 / 到账流水 / 账期管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/{customer_id}",
+      "module": "客户档案",
+      "function": "get_customer",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "客户档案",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/customers/{customer_id}",
+      "module": "客户档案",
+      "function": "update_customer",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "客户档案",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/accounts",
+      "module": "收款账户",
+      "function": "list_accounts",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "收款账户 / 工资 / 运营收支 / 其他收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/accounts/{account_id}",
+      "module": "收款账户",
+      "function": "update_account",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "收款账户",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/accounts/{account_id}/toggle-status",
+      "module": "收款账户",
+      "function": "toggle_account_status",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "收款账户",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/categories",
+      "module": "供应商",
+      "function": "list_categories",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/import-template/products",
+      "module": "供应商",
+      "function": "download_products_template",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/import-template/logistics",
+      "module": "供应商",
+      "function": "download_logistics_template",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/{supplier_id}/products",
+      "module": "供应商",
+      "function": "list_products",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/{supplier_id}/logistics-prices",
+      "module": "供应商",
+      "function": "list_logistics_prices",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers",
+      "module": "供应商",
+      "function": "list_suppliers",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "module": "供应商",
+      "function": "update_supplier",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "module": "供应商",
+      "function": "delete_supplier",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "module": "供应商",
+      "function": "get_supplier",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "供应商管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recharge",
+      "module": "充值申报",
+      "function": "list_recharges",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "充值申报",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/recharge",
+      "module": "充值申报",
+      "function": "create_recharge",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "充值申报",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recharge/{recharge_id}",
+      "module": "充值申报",
+      "function": "get_recharge",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "充值申报",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incoming",
+      "module": "到账流水",
+      "function": "list_incoming",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "到账流水",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incoming/template",
+      "module": "到账流水",
+      "function": "download_template",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "到账流水",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reconciliation/unmatched",
+      "module": "对账中心",
+      "function": "get_unmatched",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "对账",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/reconciliation/unmatch",
+      "module": "对账中心",
+      "function": "unmatch_record",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "对账",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reconciliation/results",
+      "module": "对账中心",
+      "function": "list_results",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "对账",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reconciliation/export",
+      "module": "对账中心",
+      "function": "export_reconciliation",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "对账",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/categories",
+      "module": "运营收支",
+      "function": "list_categories",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "运营收支 / 其他收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/income",
+      "module": "运营收支",
+      "function": "list_income",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "运营收支 / 其他收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/income-expense/income/{income_id}",
+      "module": "运营收支",
+      "function": "update_income",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "其他收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/income-expense/income/{income_id}",
+      "module": "运营收支",
+      "function": "delete_income",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "其他收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/expense",
+      "module": "运营收支",
+      "function": "list_expense",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "运营收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/ledger",
+      "module": "运营收支",
+      "function": "ledger",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "资金流水",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/ledger/export",
+      "module": "运营收支",
+      "function": "ledger_export",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "资金流水",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/income/export",
+      "module": "运营收支",
+      "function": "export_income",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "其他收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/monthly-summary",
+      "module": "运营收支",
+      "function": "monthly_summary",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "运营收支 / 其他收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/income-expense/operating-dashboard",
+      "module": "运营收支",
+      "function": "operating_dashboard",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "运营收支",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/expense-fund/employees",
+      "module": "备用金",
+      "function": "list_employees",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/expense-fund/accounts",
+      "module": "备用金",
+      "function": "list_accounts",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/items",
+      "module": "备用金",
+      "function": "list_items",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/items",
+      "module": "备用金",
+      "function": "add_item",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/expense-fund/recharge/requests",
+      "module": "备用金",
+      "function": "list_recharge_requests",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/expense-fund/settings",
+      "module": "备用金",
+      "function": "fund_settings",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/expense-fund/balance",
+      "module": "备用金",
+      "function": "balance_summary",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/expense-fund/alert",
+      "module": "备用金",
+      "function": "alert_list",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "备用金管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reimbursement",
+      "module": "报销",
+      "function": "list_reimbursements",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报销管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/reimbursement",
+      "module": "报销",
+      "function": "create_reimbursement",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报销管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reimbursement/export",
+      "module": "报销",
+      "function": "export_reimbursements",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报销管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reimbursement/categories",
+      "module": "报销",
+      "function": "list_reimb_categories",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报销管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reimbursement/{reimb_id}",
+      "module": "报销",
+      "function": "get_reimb_detail",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报销管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/reimbursement/{reimb_id}",
+      "module": "报销",
+      "function": "edit_reimb",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报销管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/reimbursement/{reimb_id}/submit",
+      "module": "报销",
+      "function": "submit_reimb",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报销管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable",
+      "module": "应付账款",
+      "function": "list_bills",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "应付账款 / 付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/stats",
+      "module": "应付账款",
+      "function": "payable_stats",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "应付账款",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/plans",
+      "module": "应付账款",
+      "function": "list_plans",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/payable/plans",
+      "module": "应付账款",
+      "function": "create_plan",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/cashflow-prediction",
+      "module": "应付账款",
+      "function": "cashflow_prediction",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/batch-export",
+      "module": "应付账款",
+      "function": "batch_export",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "应付账款",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/supplier-statement",
+      "module": "应付账款",
+      "function": "supplier_statement",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "应付账款",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/plan-templates",
+      "module": "应付账款",
+      "function": "list_templates",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/payable/plan-templates/{template_id}",
+      "module": "应付账款",
+      "function": "delete_template",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/timeline",
+      "module": "应付账款",
+      "function": "payable_timeline",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/payable/plans/{plan_id}/execute",
+      "module": "应付账款",
+      "function": "execute_plan",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/plans/{plan_id}/detail",
+      "module": "应付账款",
+      "function": "plan_detail",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/plans/export",
+      "module": "应付账款",
+      "function": "export_plans",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "付款计划",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/monthly-order",
+      "module": "应付账款",
+      "function": "get_monthly_order",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "应付账款",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/payable/trend",
+      "module": "应付账款",
+      "function": "payable_trend",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "应付账款",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credit",
+      "module": "账期",
+      "function": "list_credit_customers",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "账期管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/credit/{credit_id}",
+      "module": "账期",
+      "function": "update_credit",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "账期管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credit/{credit_id}/detail",
+      "module": "账期",
+      "function": "credit_detail",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "账期管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/credit/{credit_id}/payment",
+      "module": "账期",
+      "function": "record_repayment",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "账期管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credit/dashboard",
+      "module": "账期",
+      "function": "credit_dashboard",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "账期管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credit/alerts",
+      "module": "账期",
+      "function": "credit_alerts",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "账期管理",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/market",
+      "module": "商品展示区",
+      "function": "list_items",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/market/{item_id}/purchase",
+      "module": "商品展示区",
+      "function": "purchase",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/market/{item_id}/confirm",
+      "module": "商品展示区",
+      "function": "confirm_trade",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/group-order",
+      "module": "拼单",
+      "function": "list_group_orders",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "拼单",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/group-order/{go_id}/join",
+      "module": "拼单",
+      "function": "join_group_order",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "拼单",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/group-order/{go_id}/participants",
+      "module": "拼单",
+      "function": "list_participants",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "拼单",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/group-order/history",
+      "module": "拼单",
+      "function": "history",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "拼单",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/group-order/{go_id}",
+      "module": "拼单",
+      "function": "get_order_detail",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "拼单",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/previews",
+      "module": "报表中心",
+      "function": "report_previews",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/recharge-summary",
+      "module": "报表中心",
+      "function": "recharge_summary",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/incoming-summary",
+      "module": "报表中心",
+      "function": "incoming_summary",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/income-expense",
+      "module": "报表中心",
+      "function": "income_expense_report",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/payable",
+      "module": "报表中心",
+      "function": "payable_report",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/expense-fund",
+      "module": "报表中心",
+      "function": "expense_fund_report",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/reimbursement",
+      "module": "报表中心",
+      "function": "reimbursement_report",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/credit",
+      "module": "报表中心",
+      "function": "credit_report",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/reconciliation-diff",
+      "module": "报表中心",
+      "function": "reconciliation_diff_report",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "报表中心",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/upload/recharge-screenshot",
+      "module": "文件上传",
+      "function": "upload_recharge_screenshot",
+      "original_roles": "超管、仓库管理员、主管、财务、劳工",
+      "original_permission": "充值申报 / 到账流水",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rates",
+      "module": "汇率管理",
+      "function": "list_rates",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "系统设置",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rates/query",
+      "module": "汇率管理",
+      "function": "query_rate",
+      "original_roles": "仓库管理员、主管、财务、劳工",
+      "original_permission": "无菜单权限依赖",
+      "original_recommendation": "建议拦截劳工，待用户决定"
+    }
+  ],
+  "original_source_sha256": "813adf89e6f9332a60a2942fdf7836cb478c0e19d71288ccc5d731d8e890817b",
+  "original_registered_count": 344
+}

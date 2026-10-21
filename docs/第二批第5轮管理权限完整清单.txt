@@ -1,0 +1,531 @@
+第二批第5轮：当前全部方法路径与原94条逐项对照。
+基线e392ef6，统一管理守卫提交19fd3ac。
+共358个方法路径，335个管理入口；下列角色说明均保留原有中文权限和仓库归属校验，不代表所有非劳工无条件放行。
+管理入口实测均使用同仓和外仓两名劳工，且给劳工存有全部菜单权限，每条两次403，无422充数。
+
+attendance，7个管理入口。
+POST /api/v1/attendance/absences。写操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/attendance/absences/{absence_id}。写操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/attendance/leaves/admin-record。写操作；劳工403、403；中文权限：请假；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/attendance/leaves/{leave_id}/approve。写操作；劳工403、403；中文权限：请假；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/attendance/leaves/{leave_id}/reject。写操作；劳工403、403；中文权限：请假；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/attendance/rest-days。写操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/attendance/rest-days/{rest_day_id}。写操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+cash_advance，15个管理入口。
+GET /api/v1/cash-advances。读操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/cash-advances。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/cash-advances/document-options。读操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/cash-advances/payers。读操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/cash-advances/repayment-accounts。读操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/cash-advances/repayment-voucher。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/cash-advances/repayments/{repayment_id}/revoke。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/cash-advances/summary。读操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/cash-advances/voucher。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/cash-advances/{advance_id}。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/cash-advances/{advance_id}/confirm。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/cash-advances/{advance_id}/documents/{link_id}。读操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/cash-advances/{advance_id}/reject。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/cash-advances/{advance_id}/repayments。读操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/cash-advances/{advance_id}/repayments。写操作；劳工403、403；中文权限：垫款单；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+clock_in，6个管理入口。
+POST /api/v1/clock-in/batch-makeup。写操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/clock-in/makeup。写操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/clock-in/makeup-batches。读操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/clock-in/makeup-batches/{batch_id}/revoke。写操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/clock-in/makeup-count。读操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/clock-in/records/export。读操作；劳工403、403；中文权限：考勤；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+config_api，3个管理入口。
+GET /api/v1/config/attendance-times。读操作；劳工403、403；中文权限：工资、考勤、请假、配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/config/work-schedule。读操作；劳工403、403；中文权限：配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/config/work-schedule。写操作；劳工403、403；中文权限：配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+cost_funds_debt，4个管理入口。
+GET /api/v1/reports/cost-funds-debt。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/cost-funds-debt/advances。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/cost-funds-debt/costs。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/cost-funds-debt/flows。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+credit，13个管理入口。
+GET /api/v1/credit。读操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/credit。写操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/credit/alerts。读操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/credit/assessment。读操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/credit/assessment/export。读操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/credit/dashboard。读操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/credit/shipments。读操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/credit/{credit_id}。写操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/credit/{credit_id}/detail。读操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/credit/{credit_id}/payment。写操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/credit/{credit_id}/shipment。写操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/credit/{credit_id}/shipment/{shipment_id}。写操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/credit/{credit_id}/shipment/{shipment_id}/void。写操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+customers，7个管理入口。
+GET /api/v1/customers。读操作；劳工403、403；中文权限：充值申报、到账流水、客户档案、账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/customers。写操作；劳工403、403；中文权限：客户档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/customers/{customer_id}。写操作；劳工403、403；中文权限：客户档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/customers/{customer_id}。读操作；劳工403、403；中文权限：客户档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/customers/{customer_id}。写操作；劳工403、403；中文权限：客户档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/customers/{customer_id}/receipts/link。写操作；劳工403、403；中文权限：账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/customers/{customer_id}/receivables。读操作；劳工403、403；中文权限：客户档案、账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+dashboard，6个管理入口。
+GET /api/v1/dashboard/boss-todos。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/dashboard/cockpit。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/dashboard/pending-tasks。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/dashboard/stats。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/dashboard/trends。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/dashboard/warehouse-summary。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+deduction_template，4个管理入口。
+GET /api/v1/deduction-templates。读操作；劳工403、403；中文权限：员工档案、扣款模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/deduction-templates。写操作；劳工403、403；中文权限：扣款模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/deduction-templates/{template_id}。写操作；劳工403、403；中文权限：扣款模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/deduction-templates/{template_id}。写操作；劳工403、403；中文权限：扣款模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+efficiency，10个管理入口。
+GET /api/v1/efficiency/compare。读操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/efficiency/daily-orders。读操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/efficiency/manual-hour。写操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/efficiency/manual-hour。写操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/efficiency/order-count。写操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/efficiency/standard。读操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/efficiency/standard。写操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/efficiency/standards。读操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/efficiency/summary。读操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/efficiency/trend。读操作；劳工403、403；中文权限：人效；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+employee_advance，9个管理入口。
+GET /api/v1/employee-advances。读操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employee-advances。写操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/employee-advances/funding-options。读操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/employee-advances/recipients。读操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/employee-advances/summary。读操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/employee-advances/{advance_id}。写操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/employee-advances/{advance_id}。读操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employee-advances/{advance_id}/approve。写操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employee-advances/{advance_id}/reject。写操作；劳工403、403；中文权限：员工预支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+employee_deduction，7个管理入口。
+GET /api/v1/employee-deductions。读操作；劳工403、403；中文权限：员工扣款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employee-deductions。写操作；劳工403、403；中文权限：员工扣款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/employee-deductions/fixed。读操作；劳工403、403；中文权限：员工扣款、员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employee-deductions/fixed。写操作；劳工403、403；中文权限：员工扣款、员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/employee-deductions/fixed/{deduction_id}。写操作；劳工403、403；中文权限：员工扣款、员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/employee-deductions/fixed/{deduction_id}。写操作；劳工403、403；中文权限：员工扣款、员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/employee-deductions/{deduction_id}。写操作；劳工403、403；中文权限：员工扣款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+employees，13个管理入口。
+GET /api/v1/employees。读操作；劳工403、403；中文权限：加班、员工扣款、员工档案、员工预支、工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employees。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employees/batch-set-templates。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employees/bind-existing-accounts。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/employees/max-limit。读操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/employees/max-limit。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/employees/{employee_id}。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/employees/{employee_id}。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employees/{employee_id}/passport-photo。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employees/{employee_id}/photo。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employees/{employee_id}/resign。写操作；劳工403、403；中文权限：员工档案、工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/employees/{employee_id}/summary。读操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/employees/{employee_id}/work-permit-photo。写操作；劳工403、403；中文权限：员工档案；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+exchange_rates，3个管理入口。
+GET /api/v1/rates。读操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/rates。写操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/rates/query。读操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+expense_approval，9个管理入口。
+GET /api/v1/expense-approvals。读操作；劳工403、403；中文权限：费用审批；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-approvals。写操作；劳工403、403；中文权限：费用审批；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-approvals/summary。读操作；劳工403、403；中文权限：费用审批；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-approvals/threshold。读操作；劳工403、403；中文权限：费用审批、配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/expense-approvals/threshold。写操作；劳工403、403；中文权限：配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/expense-approvals/{approval_id}。写操作；劳工403、403；中文权限：费用审批；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-approvals/{approval_id}/approve。写操作；劳工403、403；中文权限：费用审批；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-approvals/{approval_id}/pay。写操作；劳工403、403；中文权限：费用审批；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-approvals/{approval_id}/reject。写操作；劳工403、403；中文权限：费用审批；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+expense_fund，21个管理入口。
+GET /api/v1/expense-fund/accounts。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/accounts。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/accounts/{account_id}/disbursements。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/accounts/{account_id}/items。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/accounts/{account_id}/items。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/expense-fund/accounts/{account_id}/items/{item_id}。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/expense-fund/accounts/{account_id}/items/{item_id}。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/accounts/{account_id}/items/{item_id}/upload-receipt。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/accounts/{account_id}/topup。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/accounts/{account_id}/upload-receipt。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/alert。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/balance。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/employees。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/payment-accounts。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/recharge/request。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/recharge/requests。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/recharge/review。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/review/batch。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/review/pending。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/expense-fund/settings。读操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/expense-fund/settings。写操作；劳工403、403；中文权限：备用金管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+group_order，10个管理入口。
+GET /api/v1/group-order。读操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+POST /api/v1/group-order。写操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+GET /api/v1/group-order/history。读操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+PUT /api/v1/group-order/participant/{participant_id}/ban。写操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+GET /api/v1/group-order/{go_id}。读操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+PUT /api/v1/group-order/{go_id}/cancel。写操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+PUT /api/v1/group-order/{go_id}/close。写操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+PUT /api/v1/group-order/{go_id}/complete。写操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+POST /api/v1/group-order/{go_id}/join。写操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+GET /api/v1/group-order/{go_id}/participants。读操作；劳工403、403；中文权限：拼单；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+
+history，3个管理入口。
+GET /api/v1/history。读操作；劳工403、403；中文权限：修改日志；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/history/export。读操作；劳工403、403；中文权限：修改日志；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/history/operators。读操作；劳工403、403；中文权限：修改日志；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+income_expense，16个管理入口。
+GET /api/v1/income-expense/categories。读操作；劳工403、403；中文权限：其他收支、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/income-expense/categories。写操作；劳工403、403；中文权限：其他收支、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/expense。读操作；劳工403、403；中文权限：运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/income-expense/expense。写操作；劳工403、403；中文权限：运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/expense/export。读操作；劳工403、403；中文权限：运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/income-expense/expense/{expense_id}。写操作；劳工403、403；中文权限：运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/income-expense/expense/{expense_id}。写操作；劳工403、403；中文权限：运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/income。读操作；劳工403、403；中文权限：其他收支、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/income-expense/income。写操作；劳工403、403；中文权限：其他收支、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/income/export。读操作；劳工403、403；中文权限：其他收支、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/income-expense/income/{income_id}。写操作；劳工403、403；中文权限：其他收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/income-expense/income/{income_id}。写操作；劳工403、403；中文权限：其他收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/ledger。读操作；劳工403、403；中文权限：资金流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/ledger/export。读操作；劳工403、403；中文权限：资金流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/monthly-summary。读操作；劳工403、403；中文权限：其他收支、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/income-expense/operating-dashboard。读操作；劳工403、403；中文权限：运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+incoming，7个管理入口。
+GET /api/v1/incoming。读操作；劳工403、403；中文权限：到账流水、账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/incoming。写操作；劳工403、403；中文权限：到账流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/incoming/batch-import。写操作；劳工403、403；中文权限：到账流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/incoming/by-request/{request_key}。读操作；劳工403、403；中文权限：到账流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/incoming/template。读操作；劳工403、403；中文权限：到账流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/incoming/{incoming_id}/screenshot。读操作；劳工403、403；中文权限：到账流水、账期管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/incoming/{incoming_id}/screenshot。写操作；劳工403、403；中文权限：到账流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+market，7个管理入口。
+GET /api/v1/market。读操作；劳工403、403；中文权限：市场；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+POST /api/v1/market。写操作；劳工403、403；中文权限：市场；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+POST /api/v1/market/image。写操作；劳工403、403；中文权限：市场；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+GET /api/v1/market/review-list。读操作；劳工403、403；中文权限：市场；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+PUT /api/v1/market/{item_id}/confirm。写操作；劳工403、403；中文权限：市场；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+POST /api/v1/market/{item_id}/purchase。写操作；劳工403、403；中文权限：市场；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+PUT /api/v1/market/{item_id}/review。写操作；劳工403、403；中文权限：市场；超管发布、审核及平台管理；授权管理角色查看参与；劳工禁止，订单地址按所属仓隐藏。
+
+overtime，4个管理入口。
+POST /api/v1/overtime。写操作；劳工403、403；中文权限：加班；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/overtime/limit。写操作；劳工403、403；中文权限：加班；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/overtime/{overtime_id}。写操作；劳工403、403；中文权限：加班；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/overtime/{task_id}/verify。写操作；劳工403、403；中文权限：加班；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+payable，24个管理入口。
+GET /api/v1/payable。读操作；劳工403、403；中文权限：付款计划、应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payable。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/batch-export。读操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/cashflow-prediction。读操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/monthly-order。读操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payable/monthly-order。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/plan-templates。读操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/payable/plan-templates/{template_id}。写操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/plans。读操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payable/plans。写操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/plans/export。读操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/plans/{plan_id}/detail。读操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/payable/plans/{plan_id}/execute。写操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payable/plans/{plan_id}/upload-attachment。写操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/stats。读操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/supplier-statement。读操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/timeline。读操作；劳工403、403；中文权限：付款计划；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payable/trend。读操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/payable/{bill_id}。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/payable/{bill_id}/confirm。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/payable/{bill_id}/pay。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payable/{bill_id}/upload-attachment。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payable/{bill_id}/upload-voucher。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/payable/{bill_id}/void。写操作；劳工403、403；中文权限：应付账款；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+payment_accounts，6个管理入口。
+GET /api/v1/accounts。读操作；劳工403、403；中文权限：付款计划、其他收支、到账流水、工资、应付账款、收款账户、账期管理、费用审批、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/accounts。写操作；劳工403、403；中文权限：收款账户；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/accounts/transfers。写操作；劳工403、403；中文权限：收款账户、运营收支；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/accounts/{account_id}。写操作；劳工403、403；中文权限：收款账户；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/accounts/{account_id}。写操作；劳工403、403；中文权限：收款账户；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/accounts/{account_id}/toggle-status。写操作；劳工403、403；中文权限：收款账户；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+payroll，20个管理入口。
+GET /api/v1/payroll。读操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/batch-confirm。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/batch-delete。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/batch-disburse。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/batch-recalc。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/calculate。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payroll/cash-advance-sources。读操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/confirm-all。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payroll/export。读操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/payroll/period/{period}。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/preview。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payroll/settlement-progress。读操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/single-settle。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payroll/summary。读操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/payroll/{record_id}。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/payroll/{record_id}。读操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/{record_id}/confirm。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/{record_id}/disburse。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/{record_id}/recalc。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/payroll/{record_id}/revoke-disbursement。写操作；劳工403、403；中文权限：工资；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+recharge，5个管理入口。
+GET /api/v1/recharge。读操作；劳工403、403；中文权限：充值申报；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/recharge。写操作；劳工403、403；中文权限：充值申报；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/recharge/{recharge_id}。写操作；劳工403、403；中文权限：充值申报；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/recharge/{recharge_id}。读操作；劳工403、403；中文权限：充值申报；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/recharge/{recharge_id}。写操作；劳工403、403；中文权限：充值申报；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+reconciliation，5个管理入口。
+GET /api/v1/reconciliation/export。读操作；劳工403、403；中文权限：对账；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reconciliation/manual-match。写操作；劳工403、403；中文权限：对账；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reconciliation/results。读操作；劳工403、403；中文权限：对账；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reconciliation/unmatch。写操作；劳工403、403；中文权限：对账；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reconciliation/unmatched。读操作；劳工403、403；中文权限：对账；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+reimbursement，15个管理入口。
+GET /api/v1/reimbursement。读操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reimbursement。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reimbursement/categories。读操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reimbursement/categories。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reimbursement/export。读操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reimbursement/payment-sources。读操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reimbursement/payment-voucher。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/reimbursement/{reimb_id}。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reimbursement/{reimb_id}。读操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/reimbursement/{reimb_id}。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reimbursement/{reimb_id}/pay。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reimbursement/{reimb_id}/payments。读操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reimbursement/{reimb_id}/review。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reimbursement/{reimb_id}/revoke-payment。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/reimbursement/{reimb_id}/submit。写操作；劳工403、403；中文权限：报销管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+reports，10个管理入口。
+GET /api/v1/reports/credit。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/expense-fund。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/income-expense。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/incoming-summary。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/operations。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/payable。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/previews。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/recharge-summary。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/reconciliation-diff。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/reports/reimbursement。读操作；劳工403、403；中文权限：报表中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+salary_template，4个管理入口。
+GET /api/v1/salary-templates。读操作；劳工403、403；中文权限：员工档案、薪资模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/salary-templates。写操作；劳工403、403；中文权限：薪资模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/salary-templates/{template_id}。写操作；劳工403、403；中文权限：薪资模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/salary-templates/{template_id}。写操作；劳工403、403；中文权限：薪资模板；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+settings_api，4个管理入口。
+POST /api/v1/settings/backup。写操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/settings/boss-contact。读操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/settings/boss-contact。写操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/settings/logs。读操作；劳工403、403；中文权限：操作日志；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+suppliers，48个管理入口。
+GET /api/v1/suppliers。读操作；劳工403、403；中文权限：付款计划、供应商管理、应付账款、拼单、采购分析；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/ai-compare。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/categories。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/categories。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/compare-logistics。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/compare-prices。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/concentration。读操作；劳工403、403；中文权限：采购分析；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/concentration-threshold。读操作；劳工403、403；中文权限：配置中心、采购分析；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/suppliers/concentration-threshold。写操作；劳工403、403；中文权限：配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/concentration-trend。读操作；劳工403、403；中文权限：采购分析；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/import-template/logistics。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/import-template/products。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/import/logistics。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/import/products。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/non-lowest-records。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/non-lowest-summary。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/price-anomalies。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/price-stats。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/price-threshold。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/suppliers/price-threshold。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/price-trend。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/procurement-summary。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/purchase-approval-threshold。读操作；劳工403、403；中文权限：供应商管理、配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/suppliers/purchase-approval-threshold。写操作；劳工403、403；中文权限：配置中心；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/purchase-approvals。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/suppliers/purchase-approvals/{po_id}/approve。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/suppliers/purchase-approvals/{po_id}/reject。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/purchase-orders。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/purchase-orders/{po_id}/mark-sent。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/purchase-orders/{po_id}/mark-shipped。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/purchase-orders/{po_id}/pdf。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/purchase-orders/{po_id}/receipt。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/purchase-orders/{po_id}/receive。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/purchase-receipt-discrepancies。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/suppliers/{supplier_id}。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/{supplier_id}。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/suppliers/{supplier_id}。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/{supplier_id}/ai-evaluation。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/{supplier_id}/import/logistics。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/{supplier_id}/import/products。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/{supplier_id}/logistics-prices。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/{supplier_id}/logistics-prices。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/suppliers/{supplier_id}/logistics-prices/{price_id}。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/suppliers/{supplier_id}/products。读操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/{supplier_id}/products。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/suppliers/{supplier_id}/products/{product_id}。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/suppliers/{supplier_id}/purchase-order。写操作；劳工403、403；中文权限：供应商管理；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+upload，2个管理入口。
+POST /api/v1/upload。写操作；劳工403、403；中文权限：人效、付款计划、供应商管理、修改日志、充值申报、其他收支、到账流水、加班、员工扣款、员工档案、员工预支、垫款单、备用金管理、客户档案、对账、工资、市场、应付账款、扣款模板、报表中心、报销管理、拼单、操作日志、收款账户、系统设置、考勤、薪资模板、请假、账期管理、费用审批、资金流水、运营收支、配置中心、采购分析；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/upload/recharge-screenshot。写操作；劳工403、403；中文权限：充值申报、到账流水；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+users，5个管理入口。
+GET /api/v1/users。读操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/users。写操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+GET /api/v1/users/permissions。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+DELETE /api/v1/users/{user_id}。写操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/users/{user_id}。写操作；劳工403、403；中文权限：系统设置；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+warehouses，3个管理入口。
+GET /api/v1/warehouses。读操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+POST /api/v1/warehouses。写操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+PUT /api/v1/warehouses/{warehouse_id}。写操作；劳工403、403；中文权限：本接口没有可勾菜单要求，仍受原角色限制；先拒绝劳工，再执行原角色、中文权限和仓库归属检查。
+
+保留的23个合法例外。
+其中16个本人/管理共用入口按本人归属分支检查，4个认证/本人资料/改密/附件会话工具，1个受保护附件读取，2个首页健康检查。
+GET /。首页或健康检查。
+GET /api/v1/attendance/calendar。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/attendance/leaves。本人及管理共用，按本人身份或管理权限分支检查。
+POST /api/v1/attendance/leaves。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/attendance/rest-days。本人及管理共用，按本人身份或管理权限分支检查。
+POST /api/v1/auth/attachment-session。登录、本人资料、改密或仅附件会话工具。
+POST /api/v1/auth/change-password。登录、本人资料、改密或仅附件会话工具。
+POST /api/v1/auth/login。登录、本人资料、改密或仅附件会话工具。
+GET /api/v1/auth/me。登录、本人资料、改密或仅附件会话工具。
+POST /api/v1/clock-in。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/clock-in/photos。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/clock-in/records。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/clock-in/today。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/employee-advances/my-debt。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/overtime。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/overtime/limit。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/overtime/monthly-hours。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/overtime/pending。本人及管理共用，按本人身份或管理权限分支检查。
+POST /api/v1/overtime/{overtime_id}/confirm。本人及管理共用，按本人身份或管理权限分支检查。
+POST /api/v1/overtime/{task_id}/dispute。本人及管理共用，按本人身份或管理权限分支检查。
+GET /api/v1/payroll/my-payslip。本人及管理共用，按本人身份或管理权限分支检查。
+GET /health。首页或健康检查。
+GET /uploads/{file_path:path}。文件身份、仓库及实际业务关联检查。
+
+原94条逐项对照。
+GET /api/v1/users。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；users，仍须原角色/中文权限/仓库校验。
+GET /api/v1/dashboard/stats。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；dashboard，仍须原角色/中文权限/仓库校验。
+GET /api/v1/dashboard/pending-tasks。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；dashboard，仍须原角色/中文权限/仓库校验。
+GET /api/v1/dashboard/warehouse-summary。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；dashboard，仍须原角色/中文权限/仓库校验。
+GET /api/v1/customers。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；customers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/customers/{customer_id}。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；customers，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/customers/{customer_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；customers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/accounts。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payment_accounts，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/accounts/{account_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payment_accounts，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/accounts/{account_id}/toggle-status。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payment_accounts，仍须原角色/中文权限/仓库校验。
+GET /api/v1/suppliers/categories。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/suppliers/import-template/products。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/suppliers/import-template/logistics。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/suppliers/{supplier_id}/products。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/suppliers/{supplier_id}/logistics-prices。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/suppliers。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/suppliers/{supplier_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+DELETE /api/v1/suppliers/{supplier_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/suppliers/{supplier_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；suppliers，仍须原角色/中文权限/仓库校验。
+GET /api/v1/recharge。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；recharge，仍须原角色/中文权限/仓库校验。
+POST /api/v1/recharge。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；recharge，仍须原角色/中文权限/仓库校验。
+GET /api/v1/recharge/{recharge_id}。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；recharge，仍须原角色/中文权限/仓库校验。
+GET /api/v1/incoming。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；incoming，仍须原角色/中文权限/仓库校验。
+GET /api/v1/incoming/template。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；incoming，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reconciliation/unmatched。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reconciliation，仍须原角色/中文权限/仓库校验。
+POST /api/v1/reconciliation/unmatch。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reconciliation，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reconciliation/results。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reconciliation，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reconciliation/export。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reconciliation，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/categories。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/income。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/income-expense/income/{income_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+DELETE /api/v1/income-expense/income/{income_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/expense。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/ledger。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/ledger/export。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/income/export。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/monthly-summary。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/income-expense/operating-dashboard。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；income_expense，仍须原角色/中文权限/仓库校验。
+GET /api/v1/expense-fund/employees。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+GET /api/v1/expense-fund/accounts。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+GET /api/v1/expense-fund/accounts/{account_id}/items。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+POST /api/v1/expense-fund/accounts/{account_id}/items。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+GET /api/v1/expense-fund/recharge/requests。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+GET /api/v1/expense-fund/settings。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+GET /api/v1/expense-fund/balance。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+GET /api/v1/expense-fund/alert。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；expense_fund，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reimbursement。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reimbursement，仍须原角色/中文权限/仓库校验。
+POST /api/v1/reimbursement。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reimbursement，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reimbursement/export。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reimbursement，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reimbursement/categories。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reimbursement，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reimbursement/{reimb_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reimbursement，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/reimbursement/{reimb_id}。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reimbursement，仍须原角色/中文权限/仓库校验。
+POST /api/v1/reimbursement/{reimb_id}/submit。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reimbursement，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/stats。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/plans。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+POST /api/v1/payable/plans。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/cashflow-prediction。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/batch-export。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/supplier-statement。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/plan-templates。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+DELETE /api/v1/payable/plan-templates/{template_id}。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/timeline。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/payable/plans/{plan_id}/execute。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/plans/{plan_id}/detail。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/plans/export。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/monthly-order。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/payable/trend。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；payable，仍须原角色/中文权限/仓库校验。
+GET /api/v1/credit。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；credit，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/credit/{credit_id}。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；credit，仍须原角色/中文权限/仓库校验。
+GET /api/v1/credit/{credit_id}/detail。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；credit，仍须原角色/中文权限/仓库校验。
+POST /api/v1/credit/{credit_id}/payment。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；credit，仍须原角色/中文权限/仓库校验。
+GET /api/v1/credit/dashboard。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；credit，仍须原角色/中文权限/仓库校验。
+GET /api/v1/credit/alerts。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；credit，仍须原角色/中文权限/仓库校验。
+GET /api/v1/market。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；market，仍须原角色/中文权限/仓库校验。
+POST /api/v1/market/{item_id}/purchase。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；market，仍须原角色/中文权限/仓库校验。
+PUT /api/v1/market/{item_id}/confirm。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；market，仍须原角色/中文权限/仓库校验。
+GET /api/v1/group-order。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；group_order，仍须原角色/中文权限/仓库校验。
+POST /api/v1/group-order/{go_id}/join。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；group_order，仍须原角色/中文权限/仓库校验。
+GET /api/v1/group-order/{go_id}/participants。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；group_order，仍须原角色/中文权限/仓库校验。
+GET /api/v1/group-order/history。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；group_order，仍须原角色/中文权限/仓库校验。
+GET /api/v1/group-order/{go_id}。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；group_order，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/previews。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/recharge-summary。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/incoming-summary。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/income-expense。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/payable。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/expense-fund。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/reimbursement。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/credit。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+GET /api/v1/reports/reconciliation-diff。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；reports，仍须原角色/中文权限/仓库校验。
+POST /api/v1/upload/recharge-screenshot。原表：超管、仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；upload，仍须原角色/中文权限/仓库校验。
+GET /api/v1/rates。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；exchange_rates，仍须原角色/中文权限/仓库校验。
+GET /api/v1/rates/query。原表：仓库管理员、主管、财务、劳工；当前：已保护，劳工两次403；exchange_rates，仍须原角色/中文权限/仓库校验。

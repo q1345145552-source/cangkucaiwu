@@ -139,14 +139,15 @@ def test_all_registered_management_routes_deny_labor_before_business_queries(tmp
             try:
                 for route in management_routes():
                     for method in sorted(route.methods):
-                        outcomes=[]
+                        outcomes=[];responses=[]
                         for uid in (5,8):
                             response=await client.request(method,concrete(route,2),headers={**auth(uid),"X-Warehouse-ID":"all"},
                                 params={"view":"self","warehouse_id":2,"employee_id":2},json={"employee_ids":[1,2],"record_ids":[1,2]})
                             assert response.status_code==403 and response.json()=={"detail":"无权访问"},(method,route.path,response.status_code,response.text)
                             outcomes.append(response.status_code)
-                        tested.append({"method":method,"path":route.path,"module":route.endpoint.__module__.rsplit('.',1)[-1],"labor_same_and_foreign":outcomes})
-                assert len(tested)==335  # Round 12 adds the independent read-only operating report.
+                            responses.append({"user_id":uid,"status":response.status_code,"body":response.json()})
+                        tested.append({"method":method,"path":route.path,"module":route.endpoint.__module__.rsplit('.',1)[-1],"labor_same_and_foreign":outcomes,"responses":responses})
+                assert len(tested)==335  # Current registered management method/path pairs, checked against the independent inventory.
                 for statement in statements:
                     assert not statement.lstrip().upper().startswith(("INSERT","UPDATE","DELETE")),statement
                     assert set(re.findall(r"\b(?:FROM|JOIN)\s+(\w+)",statement,re.I)) <= {"users","user_warehouses"},statement
@@ -189,10 +190,10 @@ def test_admin_and_authorized_office_reads_and_revoked_permissions(tmp_path,monk
                 for path in READS:
                     response=await client.get("/api/v1"+path,headers=auth(uid),params={"start_date":"2026-10-19","end_date":"2026-10-20","month":"2026-10"})
                     assert response.status_code==200,(uid,path,response.status_code,response.text)
-                    # Cross-warehouse commerce is an explicit existing product policy, pending user decision.
+                    # Owner-approved platform board sharing; warehouse-private data must remain scoped.
                     if path not in ("/market","/group-order"):
                         assert "SECRET-WH2" not in response.text,(uid,path,response.text)
-                    results.append({"user":uid,"path":path,"status":response.status_code})
+                    results.append({"user":uid,"method":"GET","path":path,"status":response.status_code,"body":response.json()})
             for uid in (3,4):
                 async with factory() as db:
                     (await db.get(User,uid)).extra_permissions=[]
@@ -219,7 +220,7 @@ def test_employee_self_records_and_other_people_are_never_visible(tmp_path,monke
                 if path=="/payroll/my-payslip":assert [r['id'] for r in data['data']]==[1]
                 if path=="/employee-advances/my-debt":assert [r['id'] for r in data['data']]==[1]
                 if path=="/attendance/calendar":assert {r['id'] for r in data['employees']}=={1}
-                requests.append({"path":path,"status":200})
+                requests.append({"method":"GET","path":path,"status":200,"body":response.json()})
             for eid in (2,3):
                 response=await client.get('/api/v1/clock-in/photos',headers=auth(5),params={"employee_id":eid,"date":"2026-10-19"})
                 assert response.status_code==403,response.text
@@ -265,7 +266,7 @@ def test_granted_office_writes_still_work_and_revocation_denies_them(tmp_path,mo
                 for method,path,body in cases:
                     response=await client.request(method,'/api/v1'+path,headers=auth(uid),json=body)
                     assert response.status_code==200,(uid,path,response.status_code,response.text)
-                    results.append({'user':uid,'method':method,'path':path,'status':200})
+                    results.append({'user':uid,'method':method,'path':path,'status':200,'body':response.json()})
                 uploaded=await client.post('/api/v1/upload',headers=auth(uid),files={'file':('test.png',png(),'image/png')})
                 assert uploaded.status_code==200,uploaded.text
                 image=await client.get('/'+uploaded.json()['path'],headers=auth(uid))
@@ -401,7 +402,8 @@ def test_mixed_warehouse_batches_reject_without_partial_changes(tmp_path,monkeyp
             outcomes=[]
             for method,path,body in cases:
                 result=await client.request(method,'/api/v1'+path,headers=auth(1),json=body)
-                assert result.status_code in (400,403,404),(path,result.status_code,result.text)
+                expected={'/clock-in/batch-makeup':404,'/overtime':400}.get(path,403)
+                assert result.status_code==expected,(path,result.status_code,result.text)
                 outcomes.append({'path':path,'status':result.status_code,'body':result.json()})
             async with factory() as db:
                 assert (await db.get(PayrollRecord,1)).status=='pending'
@@ -447,7 +449,7 @@ def test_foreign_details_updates_and_photos_rejected_for_all_office_roles(tmp_pa
                     response=await client.request(method,'/api/v1'+path,headers=auth(uid),**kwargs)
                     assert response.status_code in (400,403,404),(uid,method,path,response.status_code,response.text)
                     assert 'SECRET-WH2' not in response.text
-                    checked.append({'user':uid,'method':method,'path':path,'status':response.status_code})
+                    checked.append({'user':uid,'method':method,'path':path,'status':response.status_code,'body':response.json()})
             for uid in (1,3,4):
                 response=await client.get('/api/v1/clock-in/photos',headers=auth(uid),params={'employee_id':2,'date':'2026-10-19'})
                 assert response.status_code==403
