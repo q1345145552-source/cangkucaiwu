@@ -1,0 +1,3112 @@
+{
+  "baseline_commit": "1fa823c",
+  "environment": "本地隔离 PostgreSQL，未部署，未写生产数据",
+  "exact_original_handler_before_after": [
+    {
+      "user": 3,
+      "selected_warehouse": 1,
+      "before": {
+        "previews": {
+          "recharge-summary": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 123.0,
+              "THB": 307.0
+            }
+          },
+          "incoming-summary": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 120.0,
+              "THB": 300.0
+            }
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 120.0,
+              "THB": 300.0
+            },
+            "expense_by_currency": {
+              "CNY": 12.0,
+              "THB": 60.0
+            },
+            "net_by_currency": {
+              "CNY": 108.0,
+              "THB": 240.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 108.0,
+              "THB": 240.0
+            }
+          },
+          "payable": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 130.0,
+              "THB": 1300.0
+            }
+          },
+          "expense-fund": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 15.0,
+              "THB": 150.0
+            }
+          },
+          "reimbursement": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 30.0,
+              "THB": 300.0
+            }
+          },
+          "credit": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "THB": 130.0,
+              "CNY": 33.0
+            }
+          },
+          "reconciliation-diff": {
+            "preview": 10.0,
+            "count": 4
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31"
+      },
+      "after": {
+        "previews": {
+          "recharge-summary": {
+            "preview_by_currency": {
+              "CNY": 51.0,
+              "THB": 103.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "incoming-summary": {
+            "preview_by_currency": {
+              "CNY": 50.0,
+              "THB": 100.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 50.0,
+              "THB": 100.0
+            },
+            "expense_by_currency": {
+              "CNY": 5.0,
+              "THB": 20.0
+            },
+            "net_by_currency": {
+              "CNY": 45.0,
+              "THB": 80.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 45.0,
+              "THB": 80.0
+            },
+            "period_basis": "period"
+          },
+          "payable": {
+            "preview_by_currency": {
+              "CNY": 50.0,
+              "THB": 500.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "expense-fund": {
+            "preview_by_currency": {
+              "CNY": 6.0,
+              "THB": 60.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reimbursement": {
+            "preview_by_currency": {
+              "CNY": 12.0,
+              "THB": 120.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "credit": {
+            "preview_by_currency": {
+              "THB": 50.0,
+              "CNY": 11.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reconciliation-diff": {
+            "preview_by_currency": {
+              "THB": 3.0,
+              "CNY": 1.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "month"
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "warehouse_ids": [
+          1
+        ]
+      }
+    },
+    {
+      "user": 3,
+      "selected_warehouse": 2,
+      "before": {
+        "previews": {
+          "recharge-summary": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 123.0,
+              "THB": 307.0
+            }
+          },
+          "incoming-summary": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 120.0,
+              "THB": 300.0
+            }
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 120.0,
+              "THB": 300.0
+            },
+            "expense_by_currency": {
+              "CNY": 12.0,
+              "THB": 60.0
+            },
+            "net_by_currency": {
+              "CNY": 108.0,
+              "THB": 240.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 108.0,
+              "THB": 240.0
+            }
+          },
+          "payable": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 130.0,
+              "THB": 1300.0
+            }
+          },
+          "expense-fund": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 15.0,
+              "THB": 150.0
+            }
+          },
+          "reimbursement": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 30.0,
+              "THB": 300.0
+            }
+          },
+          "credit": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "THB": 130.0,
+              "CNY": 33.0
+            }
+          },
+          "reconciliation-diff": {
+            "preview": 10.0,
+            "count": 4
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31"
+      },
+      "after": {
+        "previews": {
+          "recharge-summary": {
+            "preview_by_currency": {
+              "CNY": 72.0,
+              "THB": 204.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "incoming-summary": {
+            "preview_by_currency": {
+              "CNY": 70.0,
+              "THB": 200.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 70.0,
+              "THB": 200.0
+            },
+            "expense_by_currency": {
+              "CNY": 7.0,
+              "THB": 40.0
+            },
+            "net_by_currency": {
+              "CNY": 63.0,
+              "THB": 160.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 63.0,
+              "THB": 160.0
+            },
+            "period_basis": "period"
+          },
+          "payable": {
+            "preview_by_currency": {
+              "CNY": 80.0,
+              "THB": 800.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "expense-fund": {
+            "preview_by_currency": {
+              "CNY": 9.0,
+              "THB": 90.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reimbursement": {
+            "preview_by_currency": {
+              "CNY": 18.0,
+              "THB": 180.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "credit": {
+            "preview_by_currency": {
+              "THB": 80.0,
+              "CNY": 22.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reconciliation-diff": {
+            "preview_by_currency": {
+              "THB": 4.0,
+              "CNY": 2.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "month"
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "warehouse_ids": [
+          2
+        ]
+      }
+    },
+    {
+      "user": 1,
+      "selected_warehouse": 1,
+      "before": {
+        "previews": {
+          "recharge-summary": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 123.0,
+              "THB": 307.0
+            }
+          },
+          "incoming-summary": {
+            "preview": null,
+            "count": 5,
+            "preview_by_currency": {
+              "CNY": 120.0,
+              "THB": 8077.0
+            }
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 120.0,
+              "THB": 8077.0
+            },
+            "expense_by_currency": {
+              "CNY": 12.0,
+              "THB": 60.0
+            },
+            "net_by_currency": {
+              "CNY": 108.0,
+              "THB": 8017.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 108.0,
+              "THB": 8017.0
+            }
+          },
+          "payable": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 130.0,
+              "THB": 1300.0
+            }
+          },
+          "expense-fund": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 15.0,
+              "THB": 150.0
+            }
+          },
+          "reimbursement": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 30.0,
+              "THB": 300.0
+            }
+          },
+          "credit": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "THB": 130.0,
+              "CNY": 33.0
+            }
+          },
+          "reconciliation-diff": {
+            "preview": 10.0,
+            "count": 4
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31"
+      },
+      "after": {
+        "previews": {
+          "recharge-summary": {
+            "preview_by_currency": {
+              "CNY": 51.0,
+              "THB": 103.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "incoming-summary": {
+            "preview_by_currency": {
+              "CNY": 50.0,
+              "THB": 100.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 50.0,
+              "THB": 100.0
+            },
+            "expense_by_currency": {
+              "CNY": 5.0,
+              "THB": 20.0
+            },
+            "net_by_currency": {
+              "CNY": 45.0,
+              "THB": 80.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 45.0,
+              "THB": 80.0
+            },
+            "period_basis": "period"
+          },
+          "payable": {
+            "preview_by_currency": {
+              "CNY": 50.0,
+              "THB": 500.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "expense-fund": {
+            "preview_by_currency": {
+              "CNY": 6.0,
+              "THB": 60.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reimbursement": {
+            "preview_by_currency": {
+              "CNY": 12.0,
+              "THB": 120.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "credit": {
+            "preview_by_currency": {
+              "THB": 50.0,
+              "CNY": 11.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reconciliation-diff": {
+            "preview_by_currency": {
+              "THB": 3.0,
+              "CNY": 1.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "month"
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "warehouse_ids": [
+          1
+        ]
+      }
+    },
+    {
+      "user": 1,
+      "selected_warehouse": 2,
+      "before": {
+        "previews": {
+          "recharge-summary": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 123.0,
+              "THB": 307.0
+            }
+          },
+          "incoming-summary": {
+            "preview": null,
+            "count": 5,
+            "preview_by_currency": {
+              "CNY": 120.0,
+              "THB": 8077.0
+            }
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 120.0,
+              "THB": 8077.0
+            },
+            "expense_by_currency": {
+              "CNY": 12.0,
+              "THB": 60.0
+            },
+            "net_by_currency": {
+              "CNY": 108.0,
+              "THB": 8017.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 108.0,
+              "THB": 8017.0
+            }
+          },
+          "payable": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 130.0,
+              "THB": 1300.0
+            }
+          },
+          "expense-fund": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 15.0,
+              "THB": 150.0
+            }
+          },
+          "reimbursement": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "CNY": 30.0,
+              "THB": 300.0
+            }
+          },
+          "credit": {
+            "preview": null,
+            "count": 4,
+            "preview_by_currency": {
+              "THB": 130.0,
+              "CNY": 33.0
+            }
+          },
+          "reconciliation-diff": {
+            "preview": 10.0,
+            "count": 4
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31"
+      },
+      "after": {
+        "previews": {
+          "recharge-summary": {
+            "preview_by_currency": {
+              "CNY": 72.0,
+              "THB": 204.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "incoming-summary": {
+            "preview_by_currency": {
+              "CNY": 70.0,
+              "THB": 200.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "income-expense": {
+            "income_by_currency": {
+              "CNY": 70.0,
+              "THB": 200.0
+            },
+            "expense_by_currency": {
+              "CNY": 7.0,
+              "THB": 40.0
+            },
+            "net_by_currency": {
+              "CNY": 63.0,
+              "THB": 160.0
+            },
+            "total_income": null,
+            "total_expense": null,
+            "net": null,
+            "preview": null,
+            "preview_by_currency": {
+              "CNY": 63.0,
+              "THB": 160.0
+            },
+            "period_basis": "period"
+          },
+          "payable": {
+            "preview_by_currency": {
+              "CNY": 80.0,
+              "THB": 800.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "expense-fund": {
+            "preview_by_currency": {
+              "CNY": 9.0,
+              "THB": 90.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reimbursement": {
+            "preview_by_currency": {
+              "CNY": 18.0,
+              "THB": 180.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "period"
+          },
+          "credit": {
+            "preview_by_currency": {
+              "THB": 80.0,
+              "CNY": 22.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "current"
+          },
+          "reconciliation-diff": {
+            "preview_by_currency": {
+              "THB": 4.0,
+              "CNY": 2.0
+            },
+            "preview": null,
+            "count": 2,
+            "period_basis": "month"
+          }
+        },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-31",
+        "warehouse_ids": [
+          2
+        ]
+      }
+    }
+  ],
+  "selected_scope_responses": {
+    "1": {
+      "previews": {
+        "recharge-summary": {
+          "preview_by_currency": {
+            "CNY": 51.0,
+            "THB": 103.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "incoming-summary": {
+          "preview_by_currency": {
+            "CNY": 50.0,
+            "THB": 100.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "income-expense": {
+          "income_by_currency": {
+            "CNY": 50.0,
+            "THB": 100.0
+          },
+          "expense_by_currency": {
+            "CNY": 5.0,
+            "THB": 20.0
+          },
+          "net_by_currency": {
+            "CNY": 45.0,
+            "THB": 80.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "preview": null,
+          "preview_by_currency": {
+            "CNY": 45.0,
+            "THB": 80.0
+          },
+          "period_basis": "period"
+        },
+        "payable": {
+          "preview_by_currency": {
+            "CNY": 50.0,
+            "THB": 500.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "expense-fund": {
+          "preview_by_currency": {
+            "CNY": 6.0,
+            "THB": 60.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "current"
+        },
+        "reimbursement": {
+          "preview_by_currency": {
+            "CNY": 12.0,
+            "THB": 120.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "credit": {
+          "preview_by_currency": {
+            "THB": 50.0,
+            "CNY": 11.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "current"
+        },
+        "reconciliation-diff": {
+          "preview_by_currency": {
+            "THB": 3.0,
+            "CNY": 1.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "month"
+        }
+      },
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-31",
+      "warehouse_ids": [
+        1
+      ]
+    },
+    "2": {
+      "previews": {
+        "recharge-summary": {
+          "preview_by_currency": {
+            "CNY": 72.0,
+            "THB": 204.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "incoming-summary": {
+          "preview_by_currency": {
+            "CNY": 70.0,
+            "THB": 200.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "income-expense": {
+          "income_by_currency": {
+            "CNY": 70.0,
+            "THB": 200.0
+          },
+          "expense_by_currency": {
+            "CNY": 7.0,
+            "THB": 40.0
+          },
+          "net_by_currency": {
+            "CNY": 63.0,
+            "THB": 160.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "preview": null,
+          "preview_by_currency": {
+            "CNY": 63.0,
+            "THB": 160.0
+          },
+          "period_basis": "period"
+        },
+        "payable": {
+          "preview_by_currency": {
+            "CNY": 80.0,
+            "THB": 800.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "expense-fund": {
+          "preview_by_currency": {
+            "CNY": 9.0,
+            "THB": 90.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "current"
+        },
+        "reimbursement": {
+          "preview_by_currency": {
+            "CNY": 18.0,
+            "THB": 180.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "period"
+        },
+        "credit": {
+          "preview_by_currency": {
+            "THB": 80.0,
+            "CNY": 22.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "current"
+        },
+        "reconciliation-diff": {
+          "preview_by_currency": {
+            "THB": 4.0,
+            "CNY": 2.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "month"
+        }
+      },
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-31",
+      "warehouse_ids": [
+        2
+      ]
+    },
+    "all": {
+      "previews": {
+        "recharge-summary": {
+          "preview_by_currency": {
+            "CNY": 123.0,
+            "THB": 307.0
+          },
+          "preview": null,
+          "count": 4,
+          "period_basis": "period"
+        },
+        "incoming-summary": {
+          "preview_by_currency": {
+            "CNY": 120.0,
+            "THB": 300.0
+          },
+          "preview": null,
+          "count": 4,
+          "period_basis": "period"
+        },
+        "income-expense": {
+          "income_by_currency": {
+            "CNY": 120.0,
+            "THB": 300.0
+          },
+          "expense_by_currency": {
+            "CNY": 12.0,
+            "THB": 60.0
+          },
+          "net_by_currency": {
+            "CNY": 108.0,
+            "THB": 240.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "preview": null,
+          "preview_by_currency": {
+            "CNY": 108.0,
+            "THB": 240.0
+          },
+          "period_basis": "period"
+        },
+        "payable": {
+          "preview_by_currency": {
+            "CNY": 130.0,
+            "THB": 1300.0
+          },
+          "preview": null,
+          "count": 4,
+          "period_basis": "period"
+        },
+        "expense-fund": {
+          "preview_by_currency": {
+            "CNY": 15.0,
+            "THB": 150.0
+          },
+          "preview": null,
+          "count": 4,
+          "period_basis": "current"
+        },
+        "reimbursement": {
+          "preview_by_currency": {
+            "CNY": 30.0,
+            "THB": 300.0
+          },
+          "preview": null,
+          "count": 4,
+          "period_basis": "period"
+        },
+        "credit": {
+          "preview_by_currency": {
+            "THB": 130.0,
+            "CNY": 33.0
+          },
+          "preview": null,
+          "count": 4,
+          "period_basis": "current"
+        },
+        "reconciliation-diff": {
+          "preview_by_currency": {
+            "THB": 7.0,
+            "CNY": 3.0
+          },
+          "preview": null,
+          "count": 4,
+          "period_basis": "month"
+        }
+      },
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-31",
+      "warehouse_ids": [
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  "switch_sequence": [
+    {
+      "warehouse": "1",
+      "wallet": {
+        "income_by_currency": {
+          "CNY": 50.0,
+          "THB": 100.0
+        },
+        "expense_by_currency": {
+          "CNY": 5.0,
+          "THB": 20.0
+        },
+        "net_by_currency": {
+          "CNY": 45.0,
+          "THB": 80.0
+        },
+        "total_income": null,
+        "total_expense": null,
+        "net": null,
+        "preview": null,
+        "preview_by_currency": {
+          "CNY": 45.0,
+          "THB": 80.0
+        },
+        "period_basis": "period"
+      }
+    },
+    {
+      "warehouse": "2",
+      "wallet": {
+        "income_by_currency": {
+          "CNY": 70.0,
+          "THB": 200.0
+        },
+        "expense_by_currency": {
+          "CNY": 7.0,
+          "THB": 40.0
+        },
+        "net_by_currency": {
+          "CNY": 63.0,
+          "THB": 160.0
+        },
+        "total_income": null,
+        "total_expense": null,
+        "net": null,
+        "preview": null,
+        "preview_by_currency": {
+          "CNY": 63.0,
+          "THB": 160.0
+        },
+        "period_basis": "period"
+      }
+    },
+    {
+      "warehouse": "1",
+      "wallet": {
+        "income_by_currency": {
+          "CNY": 50.0,
+          "THB": 100.0
+        },
+        "expense_by_currency": {
+          "CNY": 5.0,
+          "THB": 20.0
+        },
+        "net_by_currency": {
+          "CNY": 45.0,
+          "THB": 80.0
+        },
+        "total_income": null,
+        "total_expense": null,
+        "net": null,
+        "preview": null,
+        "preview_by_currency": {
+          "CNY": 45.0,
+          "THB": 80.0
+        },
+        "period_basis": "period"
+      }
+    },
+    {
+      "warehouse": "all",
+      "wallet": {
+        "income_by_currency": {
+          "CNY": 120.0,
+          "THB": 300.0
+        },
+        "expense_by_currency": {
+          "CNY": 12.0,
+          "THB": 60.0
+        },
+        "net_by_currency": {
+          "CNY": 108.0,
+          "THB": 240.0
+        },
+        "total_income": null,
+        "total_expense": null,
+        "net": null,
+        "preview": null,
+        "preview_by_currency": {
+          "CNY": 108.0,
+          "THB": 240.0
+        },
+        "period_basis": "period"
+      }
+    }
+  ],
+  "read_write_queries": 0,
+  "special_business_filters": {
+    "payable": {
+      "data": [
+        {
+          "账单号": "BILL-1",
+          "到期日": "2026-10-25",
+          "金额": 500.0,
+          "已付": 0,
+          "币种": "THB",
+          "状态": "待处理"
+        },
+        {
+          "账单号": "CNY-BILL-1",
+          "到期日": "2026-10-25",
+          "金额": 50.0,
+          "已付": 0,
+          "币种": "CNY",
+          "状态": "待处理"
+        }
+      ],
+      "total_pending_by_currency": {
+        "THB": 500.0,
+        "CNY": 50.0
+      },
+      "overdue_count": 0,
+      "total_count": 2
+    },
+    "fund": {
+      "data": [
+        {
+          "用途": "非有效余额不混入",
+          "金额": 999.0,
+          "余额": 999.0,
+          "币种": "THB",
+          "状态": "closed"
+        },
+        {
+          "用途": "当前备用金",
+          "金额": 60.0,
+          "余额": 60.0,
+          "币种": "THB",
+          "状态": "正常"
+        },
+        {
+          "用途": "当前人民币备用金",
+          "金额": 6.0,
+          "余额": 6.0,
+          "币种": "CNY",
+          "状态": "正常"
+        }
+      ],
+      "in_transit_total_by_currency": {
+        "THB": 60.0,
+        "CNY": 6.0
+      },
+      "total_count": 3
+    },
+    "differences": {
+      "data": [
+        {
+          "月份": "2026-10",
+          "状态": "已匹配",
+          "差额": 3.0,
+          "币种": "THB",
+          "处理说明": ""
+        },
+        {
+          "月份": "2026-10",
+          "状态": "已匹配",
+          "差额": 1.0,
+          "币种": "CNY",
+          "处理说明": ""
+        },
+        {
+          "月份": "2026-10",
+          "状态": "未匹配",
+          "差额": 9.0,
+          "币种": "UNKNOWN",
+          "处理说明": ""
+        }
+      ],
+      "diff_count": 3,
+      "total_diff": null,
+      "total_diff_by_currency": {
+        "THB": 3.0,
+        "CNY": 1.0,
+        "UNKNOWN": 9.0
+      },
+      "total_count": 3
+    },
+    "wallet_unchanged": true
+  },
+  "permissions_and_month": {
+    "office_single_warehouse": 200,
+    "invalid_warehouse_and_query_mismatch": 403,
+    "office_all": 403,
+    "labor_and_business_super": 403,
+    "old_token_permission_revoke": 403,
+    "old_token_membership_revoke": 403,
+    "september": {
+      "previews": {
+        "recharge-summary": {
+          "preview_by_currency": {},
+          "preview": 0,
+          "count": 0,
+          "period_basis": "period"
+        },
+        "incoming-summary": {
+          "preview_by_currency": {
+            "THB": 9000.0
+          },
+          "preview": 9000.0,
+          "count": 1,
+          "period_basis": "period"
+        },
+        "income-expense": {
+          "income_by_currency": {
+            "THB": 9000.0
+          },
+          "expense_by_currency": {
+            "CNY": 6.0,
+            "THB": 960.0
+          },
+          "net_by_currency": {
+            "CNY": -6.0,
+            "THB": 8040.0
+          },
+          "total_income": null,
+          "total_expense": null,
+          "net": null,
+          "preview": null,
+          "preview_by_currency": {
+            "CNY": -6.0,
+            "THB": 8040.0
+          },
+          "period_basis": "period"
+        },
+        "payable": {
+          "preview_by_currency": {},
+          "preview": 0,
+          "count": 0,
+          "period_basis": "period"
+        },
+        "expense-fund": {
+          "preview_by_currency": {
+            "CNY": 6.0,
+            "THB": 60.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "current"
+        },
+        "reimbursement": {
+          "preview_by_currency": {},
+          "preview": 0,
+          "count": 0,
+          "period_basis": "period"
+        },
+        "credit": {
+          "preview_by_currency": {
+            "THB": 50.0,
+            "CNY": 11.0
+          },
+          "preview": null,
+          "count": 2,
+          "period_basis": "current"
+        },
+        "reconciliation-diff": {
+          "preview_by_currency": {},
+          "preview": 0,
+          "count": 0,
+          "period_basis": "month"
+        }
+      },
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-30",
+      "warehouse_ids": [
+        1
+      ]
+    },
+    "requests": [
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "previews",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "recharge-summary",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "incoming-summary",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "income-expense",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "payable",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "expense-fund",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "reimbursement",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "credit",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "path": "reconciliation-diff",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "previews",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "recharge-summary",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "incoming-summary",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "income-expense",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "payable",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "expense-fund",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "reimbursement",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "credit",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": 2,
+        "path": "reconciliation-diff",
+        "status": 200
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "5",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "4",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "999",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": "garbage",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 1,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "previews",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "recharge-summary",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "incoming-summary",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "income-expense",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "payable",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "expense-fund",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "reimbursement",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "credit",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "path": "reconciliation-diff",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "previews",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "recharge-summary",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "incoming-summary",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "income-expense",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "payable",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "expense-fund",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "reimbursement",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "credit",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": 2,
+        "path": "reconciliation-diff",
+        "status": 200
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "5",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "4",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "999",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": "garbage",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 3,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "previews",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "recharge-summary",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "incoming-summary",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "income-expense",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "payable",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "expense-fund",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "reimbursement",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "credit",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "path": "reconciliation-diff",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "previews",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "recharge-summary",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "incoming-summary",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "income-expense",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "payable",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "expense-fund",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "reimbursement",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "credit",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "reconciliation-diff",
+        "status": 200
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "5",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "4",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "999",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": "garbage",
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 1,
+        "query_warehouse": 2,
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "仓库筛选与当前仓库不一致"
+        }
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "previews",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "recharge-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "incoming-summary",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "income-expense",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "payable",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "expense-fund",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "reimbursement",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "credit",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      },
+      {
+        "user": 4,
+        "warehouse": 2,
+        "path": "reconciliation-diff",
+        "status": 403,
+        "body": {
+          "detail": "无权访问所选仓库"
+        },
+        "membership_revoked": true
+      }
+    ]
+  },
+  "browser_observations": [
+    {
+      "role": "warehouse_admin",
+      "viewport": "1280x720",
+      "scope": "A",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "1280x720",
+      "scope": "B",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥70 + ฿200\n\n支出 ¥7 + ฿40"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "1280x720",
+      "scope": "A-again",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "1280x720",
+      "scope": "all",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥120 + ฿300\n\n支出 ¥12 + ฿60"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "390x844",
+      "scope": "A",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "390x844",
+      "scope": "B",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥70 + ฿200\n\n支出 ¥7 + ฿40"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "390x844",
+      "scope": "A-again",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "390x844",
+      "scope": "B-after-old-A",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥70 + ฿200\n\n支出 ¥7 + ฿40"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "390x844",
+      "scope": "A-failure",
+      "alerts": [
+        "报表预览加载失败：隔离测试：模拟报表请求失败重试预览",
+        "报表加载失败：隔离测试：模拟报表请求失败重试报表",
+        ""
+      ],
+      "previewAmountCount": 0,
+      "cardText": "收支报表"
+    },
+    {
+      "role": "warehouse_admin",
+      "viewport": "390x844",
+      "scope": "A-retry",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20",
+      "alerts": []
+    },
+    {
+      "role": "staff",
+      "viewport": "390x844",
+      "scope": "A",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "staff",
+      "viewport": "390x844",
+      "scope": "B",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥70 + ฿200\n\n支出 ¥7 + ฿40"
+    },
+    {
+      "role": "staff",
+      "viewport": "390x844",
+      "scope": "A-again",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "supervisor",
+      "viewport": "1280x720",
+      "scope": "A",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "supervisor",
+      "viewport": "1280x720",
+      "scope": "B",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥70 + ฿200\n\n支出 ¥7 + ฿40"
+    },
+    {
+      "role": "supervisor",
+      "viewport": "1280x720",
+      "scope": "A-again",
+      "endDate": "2026-10-31",
+      "text": "收入 ¥50 + ฿100\n\n支出 ¥5 + ฿20"
+    },
+    {
+      "role": "supervisor",
+      "viewport": "390x844",
+      "scope": "A-September",
+      "startDate": "2026-09-01",
+      "endDate": "2026-09-30",
+      "text": "收入 ฿9,000\n\n支出 ¥6 + ฿960"
+    }
+  ],
+  "export_files": [
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_credit.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_expense-fund.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_income-expense.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_incoming-summary.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_payable.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_recharge-summary.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_reconciliation-diff.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/1_reimbursement.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_credit.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_expense-fund.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_income-expense.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_incoming-summary.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_payable.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_recharge-summary.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_reconciliation-diff.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/2_reimbursement.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_credit.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_expense-fund.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_income-expense.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_incoming-summary.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_payable.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_recharge-summary.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_reconciliation-diff.xlsx",
+    "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021/exports/all_reimbursement.xlsx"
+  ],
+  "evidence_directory": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第6轮报表预览-20261021"
+}

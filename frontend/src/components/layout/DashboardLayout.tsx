@@ -452,7 +452,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
-          <div key={pathname === "/dashboard" ? pathname : pathname + '-' + selectedWhId} className="animate-fade-in">
+          <div key={["/dashboard", "/reports"].includes(pathname) ? pathname : pathname + '-' + selectedWhId} className="animate-fade-in">
             {user && laborPageAllowed ? children : null}
           </div>
           <BackToTop />

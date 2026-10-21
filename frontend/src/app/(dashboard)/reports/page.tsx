@@ -31,7 +31,7 @@ const columnConfig: Record<string, string[]> = {
   "expense-fund": ["用途", "金额", "余额", "状态"],
   "reimbursement": ["日期", "金额", "币种", "状态"],
   "credit": ["额度", "欠款", "逾期天数", "状态"],
-  "reconciliation-diff": ["月份", "状态", "差额", "处理说明"],
+  "reconciliation-diff": ["月份", "状态", "差额", "币种", "处理说明"],
 };
 
 // Columns that contain amounts (right-align, bold)
@@ -65,9 +65,8 @@ function statusColor(s: string): string {
 export default function ReportsPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const today = new Date();
-  const curMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const curMonth = todayStr.slice(0,7);
 
   const reportRequest=useRef(0),previewRequest=useRef(0);
   const [scopeRevision,setScopeRevision]=useState(0);
@@ -76,6 +75,8 @@ export default function ReportsPage() {
   const [dateRange, setDateRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [loading, setLoading] = useState(false);
   const [previews, setPreviews] = useState<Record<string, any>>({});
+  const [previewLoading,setPreviewLoading] = useState(true);
+  const [previewError,setPreviewError] = useState(""), [reportError,setReportError] = useState("");
 
   useEffect(() => {
     if (!getToken()) router.push("/login");
@@ -84,7 +85,6 @@ export default function ReportsPage() {
       setSelected("operations");
       if(q.get("start_date")&&q.get("end_date"))setDateRange({start_date:q.get("start_date")!,end_date:q.get("end_date")!});
     }
-    loadPreviews();
   }, []);
   useEffect(()=>{
     if(operatingEntriesEnabled && selected==="operations")window.history.replaceState(window.history.state,"",`/reports?${new URLSearchParams({view:"operations",...dateRange})}`);
@@ -92,17 +92,20 @@ export default function ReportsPage() {
   useEffect(() => { loadPreviews(); if (selected && selected !== "operations") loadReport(selected); }, [dateRange,scopeRevision]);
 
   useEffect(()=>{
-    const change=()=>{reportRequest.current++;previewRequest.current++;setData(null);setPreviews({});setLoading(false);setScopeRevision(n=>n+1);};
+    const change=()=>{reportRequest.current++;previewRequest.current++;setData(null);setPreviews({});setPreviewLoading(true);setPreviewError("");setReportError("");setLoading(false);setScopeRevision(n=>n+1);};
     window.addEventListener("warehouse-changed",change);window.addEventListener("auth-user-refreshed",change);
     return()=>{reportRequest.current++;previewRequest.current++;window.removeEventListener("warehouse-changed",change);window.removeEventListener("auth-user-refreshed",change);};
   },[]);
 
   async function loadPreviews() {
     const id=++previewRequest.current;
+    setPreviews({});setPreviewError("");setPreviewLoading(true);
     try {
       const r = await api.get<any>(`/reports/previews?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
       if(id===previewRequest.current)setPreviews(r.previews || {});
-    } catch {}
+    } catch (err: any) {
+      if(id===previewRequest.current){setPreviews({});setPreviewError(`报表预览加载失败：${err.message || "请稍后重试"}`);}
+    } finally { if(id===previewRequest.current)setPreviewLoading(false); }
   }
 
   function openOperatingReport() {
@@ -120,15 +123,16 @@ export default function ReportsPage() {
       query.delete("view");query.delete("start_date");query.delete("end_date");
       window.history.replaceState(window.history.state,"",`/reports${query.size?`?${query}`:""}`);
     }
-    const id=++reportRequest.current;setSelected(key);setData(null);setLoading(true);
+    const id=++reportRequest.current;setSelected(key);setData(null);setReportError("");setLoading(true);
     try {
       const r = await api.get<any>(`/reports/${key}?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}`);
       if(id===reportRequest.current)setData(r);
-    } catch { if(id===reportRequest.current)setData(null); }
+    } catch (err: any) { if(id===reportRequest.current){setData(null);setReportError(`报表加载失败：${err.message || "请稍后重试"}`);} }
     if(id===reportRequest.current)setLoading(false);
   }
 
   async function exportExcel(key: string) {
+    const requestId=reportRequest.current;
     const token = getToken();
     const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
     const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
@@ -140,6 +144,7 @@ export default function ReportsPage() {
       });
       if (!res.ok) throw new Error("导出失败");
       const blob = await res.blob();
+      if(requestId!==reportRequest.current || warehouse!==getActiveWarehouseId())throw new Error("筛选已变化，请重新导出");
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -148,15 +153,28 @@ export default function ReportsPage() {
       document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch (err) {
       console.error("导出失败:", err);
-      toast("error", "导出失败 请稍后再试");
+      toast("error", err instanceof Error ? err.message : "导出失败 请稍后再试");
     }
   }
 
   function formatPreview(key: string, p: any): string {
     if (!p) return "";
     if (key === "reconciliation-diff") return `${p.count || 0}条`;
-    if (p.preview_by_currency) return fmtMoneyByCurrency(p.preview_by_currency);
+    if (p.preview_by_currency) return reportAmounts(p.preview_by_currency);
     return p.preview == null ? "按币种查看" : fmtMoney(p.preview);
+  }
+
+  function changeRange(next: typeof dateRange) {
+    reportRequest.current++;previewRequest.current++;
+    setData(null);setPreviews({});setPreviewError("");setReportError("");setPreviewLoading(true);
+    setDateRange(next);
+  }
+  function reportAmounts(values?: Record<string,number>) {
+    if (!values || !Object.keys(values).length) return "0";
+    const known=Object.fromEntries(Object.entries(values).filter(([c])=>c!=="UNKNOWN"));
+    const parts=Object.keys(known).length ? [fmtMoneyByCurrency(known)==="-" ? "0" : fmtMoneyByCurrency(known)] : [];
+    if(values.UNKNOWN!==undefined)parts.push(`${values.UNKNOWN.toLocaleString()}（币种待核对）`);
+    return parts.join("；");
   }
 
   const cols = selected ? (columnConfig[selected] || []) : [];
@@ -172,24 +190,28 @@ export default function ReportsPage() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end flex-wrap">
           {operatingEntriesEnabled && selected === "operations" && <label className="text-xs">经营月份<input aria-label="经营月份" type="month" className="form-input text-sm w-36" value={dateRange.start_date.slice(0,7)} onChange={e=>{if(e.target.value){const [y,m]=e.target.value.split("-").map(Number);setDateRange({start_date:`${e.target.value}-01`,end_date:`${e.target.value}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`});}}}/></label>}
-          <input type="date" value={dateRange.start_date} onChange={e => setDateRange({ ...dateRange, start_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
+          <input aria-label="开始日期" type="date" value={dateRange.start_date} onChange={e => changeRange({ ...dateRange, start_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
           <span className="text-gray-400 text-xs">至</span>
-          <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
+          <input aria-label="结束日期" type="date" value={dateRange.end_date} onChange={e => changeRange({ ...dateRange, end_date: e.target.value })} className="form-input text-sm py-1.5 w-36" />
         </div>
       </div>
 
       {selected !== "operations" && <WarehouseSummary startDate={dateRange.start_date} endDate={dateRange.end_date} />}
 
+      {previewError && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{previewError}<button className="ml-3 underline" onClick={() => loadPreviews()}>重试预览</button></div>}
+      {reportError && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reportError}<button className="ml-3 underline" onClick={() => loadReport(selected)}>重试报表</button></div>}
       {/* Report type cards with preview badges */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {reportTypes.filter(rt => operatingEntriesEnabled || rt.key !== "operations").map((rt) => {
           const pv = previews[rt.key];
-          const previewText = formatPreview(rt.key, pv);
+          const previewText = previewLoading && rt.key !== "cost-funds-debt" ? "加载中" : formatPreview(rt.key, pv);
           return (
             <button key={rt.key} onClick={() => { if(rt.key === "operations"){openOperatingReport();}else if(rt.key === "cost-funds-debt")router.push(`/reports/cost-funds-debt?${new URLSearchParams(dateRange)}`);else loadReport(rt.key); }}
               className={`relative bg-white rounded-2xl p-4 shadow-sm border text-left hover:shadow-md transition-all ${selected === rt.key ? "ring-2 ring-blue-500 border-blue-200" : "border-gray-100"}`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rt.color}`}>{rt.icon}</div>
               <div className="font-semibold text-sm mt-2.5 text-gray-700">{rt.label}</div>
+              {rt.key === "income-expense" && pv && <div className="mt-1 text-xs text-gray-500" aria-label="收支预览金额"><p>收入 {reportAmounts(pv.income_by_currency)}</p><p>支出 {reportAmounts(pv.expense_by_currency)}</p></div>}
+              {(rt.key === "expense-fund" || rt.key === "credit") && <p className="mt-1 text-[10px] text-gray-400">当前余额，不按日期回溯</p>}
               {previewText && (
                 <span className="absolute top-3 right-3 bg-gray-900 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
                   {previewText}
@@ -263,14 +285,14 @@ export default function ReportsPage() {
             )}
             {selected === "credit" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-yellow-50 rounded-xl p-4"><div className="text-xs text-yellow-600 mb-1">总欠款</div><div className="text-xl font-bold text-yellow-700">฿{(data.total_debt || 0).toLocaleString()}</div></div>
+                <div className="bg-yellow-50 rounded-xl p-4"><div className="text-xs text-yellow-600 mb-1">总欠款</div><div className="text-xl font-bold text-yellow-700">{reportAmounts(data.total_debt_by_currency)}</div></div>
                 <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">逾期客户数</div><div className="text-xl font-bold text-red-700">{data.overdue_count || 0}</div></div>
               </div>
             )}
             {selected === "reconciliation-diff" && (
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="bg-pink-50 rounded-xl p-4"><div className="text-xs text-pink-500 mb-1">差异笔数</div><div className="text-xl font-bold text-pink-700">{data.diff_count || 0} 笔</div></div>
-                <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">总差额</div><div className="text-xl font-bold text-red-700">฿{(data.total_diff || 0).toLocaleString()}</div></div>
+                <div className="bg-red-50 rounded-xl p-4"><div className="text-xs text-red-500 mb-1">总差额</div><div className="text-xl font-bold text-red-700">{reportAmounts(data.total_diff_by_currency)}</div></div>
               </div>
             )}
           </div>
@@ -291,7 +313,7 @@ export default function ReportsPage() {
                     <tr key={i} className="border-b hover:bg-gray-50/50 transition-colors">
                       {cols.map(k => {
                         const val = row[k];
-                        let display: any = val === null || val === undefined || val === "" ? "-" : String(val);
+                        let display: any = val === null || val === undefined || val === "" ? "-" : val === "UNKNOWN" ? "待核对" : String(val);
 
                         // Date formatting
                         if (dateCols.has(k) && val && String(val).length >= 10) {
@@ -300,7 +322,7 @@ export default function ReportsPage() {
                         // Amount columns: right-aligned bold, with currency symbol
                         if (amtCols.has(k) && typeof val === "number") {
                           const cur = row["币种"] || "THB";
-                          display = `${cur === "CNY" ? "¥" : "฿"}${val.toLocaleString()}`;
+                          display = cur === "UNKNOWN" ? `${val.toLocaleString()}（币种待核对）` : `${cur === "CNY" ? "¥" : "฿"}${val.toLocaleString()}`;
                           return (
                             <td key={k} className="px-4 py-3 text-right font-mono text-sm font-semibold text-gray-800 whitespace-nowrap">
                               {display}
