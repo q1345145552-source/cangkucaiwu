@@ -1,0 +1,44 @@
+第二批第3轮：内部转账固定说明，2026-10-21（Asia/Bangkok）
+
+本轮只改 frontend/src/app/(dashboard)/accounts/page.tsx 内部转账弹框顶部说明。
+原文逐字核对一致：
+本页记录的是公司内部资金调拨 现金户和企业户名称不同 但都属于老板钱包 不是对外付款 不计入收入和支出
+
+说明放在内部转账标题下面、转出账户字段之前。
+标题和说明采用sticky顶部区域，弹框内滚动时仍可见；说明没有自己的关闭按钮。
+整个弹框原有取消和确认转账按钮照旧，不把“不可关闭说明”做成“不能取消转账”。
+不改转账金额、请求、资金流水、权限、仓归属、报表或员工端，不翻译，不提前增加报表内部转账行。
+
+真实浏览器桌面1280×720、手机390×844均打开内部转账弹框，全文可见，位于表单顶部。
+DOM实测标题为内部转账，说明之后的字段为转出账户，说明区域的关闭按钮数为0。
+手机390×844：说明上沿162.875、下沿257.125，弹框上沿102.875、下沿741.125，说明完整在可见区域。
+额外以390×640缩短高度，弹框滚动94像素后，说明上沿108、下沿202.25仍在弹框48至592的可见区域内。
+手机弹框现有按钮只有取消和确认转账，没有“关闭说明”。
+
+在本机隔离库实际通过浏览器提交内部转账100泰铢，测试日期2026-10-20。
+转出现金户500 -> 400，转入企业户300 -> 400，合计800 -> 800。
+收支报表实际收入0 -> 0，实际支出0 -> 0。
+原有资金流水仍按既有机制显示两条内部调拨投影，不计公司收入和支出；没有改该逻辑。
+生产没有新增测试数据，本轮没有连接生产数据库，也没有部署。
+
+复用既有测试，没有新增后端测试文件。
+在backend目录实际执行：
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres ACCOUNT_NATURE_TEST_REPORT=/tmp/transfer-notice-native-nature.json CASH_WALLET_TEST_REPORT=/tmp/transfer-notice-native-cash.json /tmp/employee-advance-expense-py312/bin/python -m pytest tests/test_account_nature.py::test_permissions_warehouse_and_original_transfer tests/test_cash_wallet.py::test_cash_receive_pay_transfer_reports_and_balances -q --junitxml=/tmp/transfer-notice-native.xml
+结果2项通过，0失败、0错误、0跳过。
+前端在frontend目录运行NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules node tests/account-nature.test.cjs、tests/manual-wallet.test.cjs、tests/retired-entries.test.cjs，三组通过。
+将src复制到独立依赖目录/tmp/wallet-build-o6qsx2gz，运行node node_modules/next/dist/bin/next build，生产构建通过，50个页面。
+独立全量tsc --noEmit --pretty false检查改前84条、改后84条原有类型诊断，文件和错误信息对比新增0。
+
+截图及原始证据目录：
+/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/第二批第3轮转账说明-20261021
+电脑-转账顶部说明.png
+手机390-顶部固定说明.png
+手机390-滚动后说明仍可见.png
+转账前500和300.png
+转账后400和400.png
+界面验证.json、实测.json、既有转账测试2项.xml、前端构建.log。
+
+61e213b已停用的经营报表、客户应收及发货入口与七接口拦截文件未修改，前端停用入口检查通过。
+没有改员工四页、后端、数据库模型或迁移。
+本轮未做第4轮报表行，也未部署；应用容器替换许可及真实银行现金核对问题仍保留，不代用户批准。
+本轮推送后停止，等待协调验收。

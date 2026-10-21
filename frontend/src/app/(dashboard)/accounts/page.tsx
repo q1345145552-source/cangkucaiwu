@@ -276,7 +276,10 @@ export default function AccountsPage() {
         </div>
       )}
       {showTransfer && <div className="modal-overlay"><div className="modal-sm p-5 max-h-[90dvh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-3">内部转账</h2><p className="text-xs text-gray-500 mb-3">仅用于同仓库、同币种账户之间的真实调拨，不计公司收入和支出。</p>
+        <div className="sticky top-0 z-10 bg-white pb-3">
+          <h2 className="text-lg font-semibold mb-3">内部转账</h2>
+          <p role="note" aria-label="内部转账说明" className="text-sm leading-relaxed text-blue-900 bg-blue-50 border border-blue-100 rounded-lg p-3">本页记录的是公司内部资金调拨 现金户和企业户名称不同 但都属于老板钱包 不是对外付款 不计入收入和支出</p>
+        </div>
         {(["from_account_id", "to_account_id"] as const).map((key, i) => { const source = data.find(a => a.id === +transfer.from_account_id); return <div className="form-group" key={key}><label className="form-label">{i ? "转入账户" : "转出账户"}</label><select className="form-input" value={transfer[key]} onChange={e => { const next = { ...transfer, [key]: e.target.value }; if (!i) { const from = data.find(a => a.id === +e.target.value), to = data.find(a => a.id === +transfer.to_account_id); if (!from || !to || from.id === to.id || (from.currency || "THB") !== (to.currency || "THB") || from.warehouse_id !== to.warehouse_id) next.to_account_id = ""; } setTransfer(next); }}><option value="">请选择</option>{data.filter(a => (!a.status || a.status === "active") && (!i || !source || (a.id !== source.id && (a.currency || "THB") === (source.currency || "THB") && a.warehouse_id === source.warehouse_id))).map(a => <option key={a.id} value={a.id}>{a.account_name}（{a.currency}）</option>)}</select></div>; })}
         <div className="form-group"><label className="form-label">日期</label><input type="date" className="form-input" value={transfer.transfer_date} onChange={e => setTransfer({ ...transfer, transfer_date: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={transfer.amount} onChange={e => setTransfer({ ...transfer, amount: e.target.value })} /></div>

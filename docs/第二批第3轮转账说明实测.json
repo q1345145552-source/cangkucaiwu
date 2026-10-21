@@ -1,0 +1,168 @@
+{
+  "environment": "local isolated PostgreSQL, browser submitted transfer, no production writes",
+  "transfer_amount": 100,
+  "transfer_date": "2026-10-20",
+  "before_balances": {
+    "1": 500.0,
+    "3": 300.0
+  },
+  "after_balances": {
+    "1": 400.0,
+    "3": 400.0
+  },
+  "wallet_total_before": 800,
+  "wallet_total_after": 800,
+  "income_before": 0,
+  "income_after": 0,
+  "expense_before": 0,
+  "expense_after": 0,
+  "existing_internal_ledger_rows": 2,
+  "before_report": {
+    "data": [],
+    "income_by_currency": {},
+    "expense_by_currency": {},
+    "net_by_currency": {},
+    "total_income": 0,
+    "total_expense": 0,
+    "net": 0,
+    "total_income_by_currency": {},
+    "total_expense_by_currency": {},
+    "recharge_income_by_currency": {},
+    "other_income_by_currency": {}
+  },
+  "after_report": {
+    "data": [],
+    "income_by_currency": {},
+    "expense_by_currency": {},
+    "net_by_currency": {},
+    "total_income": 0,
+    "total_expense": 0,
+    "net": 0,
+    "total_income_by_currency": {},
+    "total_expense_by_currency": {},
+    "recharge_income_by_currency": {},
+    "other_income_by_currency": {}
+  },
+  "ledger": {
+    "data": [
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "date": "2026-10-20",
+        "amount": 100.0,
+        "currency": "THB",
+        "type": "income",
+        "source": "transfer",
+        "source_label": "内部转入",
+        "account_id": 3,
+        "status": "active",
+        "ref_no": "TR-IN-1",
+        "remark": "",
+        "category_name": "其他支出",
+        "category_id": null,
+        "is_internal_transfer": true,
+        "cash_advance_id": null,
+        "account_name": "企业户",
+        "is_non_cost_flow": false,
+        "status_label": "有效"
+      },
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "date": "2026-10-20",
+        "amount": 100.0,
+        "currency": "THB",
+        "type": "expense",
+        "source": "transfer",
+        "source_label": "内部转出",
+        "account_id": 1,
+        "status": "active",
+        "ref_no": "TR-OUT-1",
+        "remark": "",
+        "category_name": "其他支出",
+        "category_id": null,
+        "is_internal_transfer": true,
+        "cash_advance_id": null,
+        "account_name": "现金户",
+        "is_non_cost_flow": false,
+        "status_label": "有效"
+      }
+    ],
+    "total": 2,
+    "page": 1,
+    "page_size": 30,
+    "income_by_currency": {},
+    "expense_by_currency": {},
+    "total_income": 0,
+    "total_expense": 0,
+    "net": 0,
+    "flow_scope": "company",
+    "card_income": 0,
+    "card_expense": 0,
+    "card_net": 0
+  },
+  "ui": {
+    "desktop": {
+      "dismissButtonCount": 0,
+      "headerClass": "sticky top-0 z-10 bg-white pb-3",
+      "nextLabel": "转出账户",
+      "previous": "内部转账",
+      "text": "本页记录的是公司内部资金调拨 现金户和企业户名称不同 但都属于老板钱包 不是对外付款 不计入收入和支出",
+      "top": 114
+    },
+    "mobile390": {
+      "clientHeight": 638,
+      "dismissButtonCount": 0,
+      "modalBottom": 741.125,
+      "modalButtons": [
+        "取消",
+        "确认转账"
+      ],
+      "modalTop": 102.875,
+      "nextLabel": "转出账户",
+      "noteBottom": 257.125,
+      "noteTop": 162.875,
+      "previous": "内部转账",
+      "scrollHeight": 638,
+      "scrollTop": 0,
+      "text": "本页记录的是公司内部资金调拨 现金户和企业户名称不同 但都属于老板钱包 不是对外付款 不计入收入和支出"
+    },
+    "shortViewportBefore": {
+      "clientHeight": 544,
+      "scrollHeight": 638,
+      "scrollTop": 0,
+      "x": 195,
+      "y": 522
+    },
+    "shortViewportAfterScroll": {
+      "dismissButtonCount": 0,
+      "modalBottom": 592,
+      "modalTop": 48,
+      "noteBottom": 202.25,
+      "noteTop": 108,
+      "scrollTop": 94,
+      "text": "本页记录的是公司内部资金调拨 现金户和企业户名称不同 但都属于老板钱包 不是对外付款 不计入收入和支出"
+    }
+  },
+  "reused_backend_tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "2",
+    "time": "2.225",
+    "timestamp": "2026-10-21T18:01:25.428216+07:00",
+    "hostname": "XiongdeMac-mini.local"
+  },
+  "frontend_checks": [
+    "account-nature",
+    "manual-wallet",
+    "retired-entries"
+  ],
+  "build_passed": true,
+  "type_diagnostics": {
+    "before": 84,
+    "after": 84,
+    "new": 0
+  }
+}
