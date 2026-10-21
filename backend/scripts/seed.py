@@ -28,6 +28,18 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_account_nature(conn):
+    """只加可空账户性质；不猜测旧性质，不改余额和历史流水。"""
+    from sqlalchemy import text
+    try:
+        async with conn.begin_nested():
+            await conn.execute(text("ALTER TABLE payment_accounts ADD COLUMN IF NOT EXISTS account_nature VARCHAR(20)"))
+    except Exception as exc:
+        print(f"账户性质迁移失败：{exc}")
+        raise
+    print("账户性质迁移完成；旧账户留空，余额和流水不变")
+
+
 async def _migrate_customer_receipt_identity(conn):
     """只加客户归属列，旧到账和历史回款不按名称或金额自动回填。"""
     from sqlalchemy import text
@@ -528,6 +540,7 @@ async def seed():
         await _migrate_incoming_operations(conn)
         await _migrate_manual_wallet_operations(conn)
         await _migrate_wallet_basis(conn)
+        await _migrate_account_nature(conn)
         await _migrate_expense_approval_payment(conn)
         await _migrate_audit_ip_location(conn)
         await _migrate_user_attendance_columns(conn)

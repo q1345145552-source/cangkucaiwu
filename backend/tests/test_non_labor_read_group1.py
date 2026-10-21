@@ -258,8 +258,9 @@ def test_existing_guards_remain_first_and_round11_only_changes_receivable_reads(
         path='backend/app/api/v1/'+name+'.py'
         old=subprocess.check_output(['git','show','b5829bef2f88a86ebe3dab2ef72dc3284edae29a:'+path],cwd=root,text=True)
         def protected(source):
+            # 第二批第2轮仅扩展账户列表的性质/余额投影与当前仓范围，其他旧处理函数仍逐字保护。
             tree=ast.parse(source)
             tree.body=[n for n in tree.body if not isinstance(n,(ast.Import,ast.ImportFrom))
-                and not (isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef,ast.ClassDef)) and n.name in ({'dashboard':{'dashboard_cockpit'},'customers':{'CustomerReceiptLink','_scoped_customer','customer_receivables','link_customer_receipt','list_customers'}}.get(name,set())))]
+                and not (isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef,ast.ClassDef)) and n.name in ({'dashboard':{'dashboard_cockpit'},'customers':{'CustomerReceiptLink','_scoped_customer','customer_receivables','link_customer_receipt','list_customers'},'payment_accounts':{'list_accounts'}}.get(name,set())))]
             return ast.unparse(tree)
         assert protected((root/path).read_text())==protected(old),path

@@ -1,0 +1,225 @@
+{
+  "real_balances": {
+    "cash_id": 3,
+    "corporate_id": 4,
+    "by_currency": {
+      "CNY": {
+        "cash_balance": 70.0,
+        "corporate_balance": 30.0,
+        "unclassified_balance": 0.0,
+        "unclassified_account_count": 0,
+        "account_count": 2,
+        "classified_wallet_balance": 100.0,
+        "wallet_total_complete": true,
+        "wallet_actual_balance": 100.0,
+        "all_account_balance": 100.0
+      },
+      "THB": {
+        "cash_balance": 500.0,
+        "corporate_balance": 300.0,
+        "unclassified_balance": 100.0,
+        "unclassified_account_count": 1,
+        "account_count": 3,
+        "classified_wallet_balance": 800.0,
+        "wallet_total_complete": false,
+        "wallet_actual_balance": null,
+        "all_account_balance": 900.0
+      }
+    },
+    "old_nature": null,
+    "fund_10000_excluded": true,
+    "inactive_money_retained": true
+  },
+  "metadata_only": {
+    "before_balance": 700,
+    "after_balance": 700,
+    "before_counts": [
+      1,
+      0,
+      0
+    ],
+    "after_counts": [
+      1,
+      0,
+      0
+    ],
+    "legacy_client_keeps_nature": true,
+    "invalid_third_type": 422
+  },
+  "access_transfer": {
+    "denied": {
+      "2:GET:/accounts": 403,
+      "2:POST:/accounts": 403,
+      "2:PUT:/accounts/3": 403,
+      "5:GET:/accounts": 403,
+      "5:POST:/accounts": 403,
+      "5:PUT:/accounts/3": 403
+    },
+    "finance_create": 403,
+    "revoked": 403,
+    "foreign_header_and_id": 403,
+    "transfer": 100,
+    "after_transfer": {
+      "cash_balance": 400.0,
+      "corporate_balance": 400.0,
+      "unclassified_balance": 100.0,
+      "unclassified_account_count": 1,
+      "account_count": 3,
+      "classified_wallet_balance": 800.0,
+      "wallet_total_complete": false,
+      "wallet_actual_balance": null,
+      "all_account_balance": 900.0
+    }
+  },
+  "migration": {
+    "new_repeat": 2,
+    "old_repeat": 2,
+    "restart_repeat": 2,
+    "old_null_rows": 2,
+    "old_amounts_unchanged": true,
+    "savepoint_survives": true,
+    "explicit_classification_kept": "corporate"
+  },
+  "full_startup": {
+    "stages": {
+      "new_database": {
+        "exit_code": 0,
+        "migration_message": true
+      },
+      "legacy_upgrade": {
+        "exit_code": 0,
+        "migration_message": true
+      },
+      "restart": {
+        "exit_code": 0,
+        "migration_message": true
+      },
+      "second_restart": {
+        "exit_code": 0,
+        "migration_message": true
+      }
+    },
+    "old_null_on_upgrade": true,
+    "balance_unchanged": 100,
+    "nature_after_restarts": "cash"
+  },
+  "warehouse_scope": {
+    "1": {
+      "warehouse_ids": [
+        1
+      ],
+      "classified_THB": 500
+    },
+    "2": {
+      "warehouse_ids": [
+        2
+      ],
+      "classified_THB": 9000
+    },
+    "all": {
+      "warehouse_ids": [
+        1,
+        2
+      ],
+      "classified_THB": 9500
+    }
+  },
+  "browser": {
+    "environment": "isolated local PostgreSQL, browser-created synthetic accounts",
+    "rows": [
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "account_name": "老现金企业户不按名字猜",
+        "account_type": "cash",
+        "account_nature": null,
+        "opening_balance": 100.0,
+        "currency": "THB"
+      },
+      {
+        "id": 2,
+        "warehouse_id": 2,
+        "account_name": "测试现金2",
+        "account_type": "cash",
+        "account_nature": "corporate",
+        "opening_balance": 9000.0,
+        "currency": "THB"
+      },
+      {
+        "id": 3,
+        "warehouse_id": 1,
+        "account_name": "电脑现金户",
+        "account_type": "cash",
+        "account_nature": "cash",
+        "opening_balance": 500.0,
+        "currency": "THB"
+      },
+      {
+        "id": 4,
+        "warehouse_id": 1,
+        "account_name": "电脑企业户",
+        "account_type": "bank",
+        "account_nature": "corporate",
+        "opening_balance": 300.0,
+        "currency": "THB"
+      },
+      {
+        "id": 5,
+        "warehouse_id": 1,
+        "account_name": "手机现金户",
+        "account_type": "cash",
+        "account_nature": "cash",
+        "opening_balance": 70.0,
+        "currency": "CNY"
+      },
+      {
+        "id": 6,
+        "warehouse_id": 1,
+        "account_name": "手机企业户",
+        "account_type": "bank",
+        "account_nature": "corporate",
+        "opening_balance": 30.0,
+        "currency": "CNY"
+      }
+    ],
+    "flow_counts": {
+      "incoming_flows": 0,
+      "expense_records": 0,
+      "account_transfers": 0
+    },
+    "desktop": {
+      "THB_cash": 500,
+      "THB_corporate": 300,
+      "classified_THB": 800,
+      "unclassified_THB": 100
+    },
+    "mobile": {
+      "CNY_cash": 70,
+      "CNY_corporate": 30,
+      "wallet_CNY": 100
+    },
+    "warehouse_switch_UI": {
+      "warehouse_1_classified_THB": 800,
+      "warehouse_2_THB": 9000,
+      "back_warehouse_1_classified_THB": 800
+    }
+  },
+  "tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "160",
+    "time": "63.414",
+    "timestamp": "2026-10-21T17:45:39.987673+07:00",
+    "hostname": "XiongdeMac-mini.local"
+  },
+  "frontend_suites_passed": 13,
+  "build_passed": true,
+  "type_diagnostics": {
+    "before": 84,
+    "after": 84,
+    "new": 0
+  },
+  "production_deployed": false
+}

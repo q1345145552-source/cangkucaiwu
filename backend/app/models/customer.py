@@ -40,6 +40,7 @@ class PaymentAccount(Base):
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     account_name = Column(String(100), nullable=False)
     account_type = Column(String(20), nullable=False, comment="alipay/wechat/bank")
+    account_nature = Column(String(20), nullable=True, comment="cash现金户/corporate企业户；旧账户留空")
     account_number = Column(String(100), nullable=False)
     opening_balance = Column(Float, default=0)
     opening_balance_date = Column(Date, nullable=True, default=lambda: thai_today().replace(day=1))

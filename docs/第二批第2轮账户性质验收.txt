@@ -1,0 +1,59 @@
+第二批第2轮：账户性质验收，2026-10-21（Asia/Bangkok）
+
+只实现已明确的两类：现金户 cash、企业户 corporate；两类都显示“属于老板钱包”。
+性质字段 payment_accounts.account_nature，可空 VARCHAR(20)，与旧 account_type 分开。
+性质选项和中文名由后端目录提供给前端；不新增权限，不补权，不引入第三类。
+旧账户不按名称或原现金/银行类型猜测，不做数据回填。
+新增启动迁移 _migrate_account_nature：ALTER TABLE ... ADD COLUMN IF NOT EXISTS，独立保存点，失败终止启动。
+
+余额只调用原 current_account_balances，再按明确性质归组，没有改钱包收付算法。
+泰铢现金户期初400，实际到账200、实际支出100，真实余额500。
+泰铢企业户期初350、实际支出50，真实余额300。
+已分类泰铢钱包小计800，旧未分类100另列，全部收款账户余额900。
+因为还有未分类账户，wallet_actual_balance 返回 null、wallet_total_complete 返回 false，界面提示完整钱包余额尚未确认。
+人民币现金70、企业30，钱包余额100；不与泰铢相加。
+备用金10000留在独立台账，没有计入账户汇总。
+停用账户保留真实余额，不让现有钱因停用消失；界面明确标明含停用余额。
+
+性质 cash -> corporate -> null -> cash，余额一直700。
+修改前后到账/支出/内部转账记录数均为1/0/0，没有新增或改写流水。
+旧客户端编辑未传 account_nature，已分类性质不会被清空。
+未选择性质的新账户保留 null，个人户等未定义值返回422。
+
+桌面真实浏览器新建：电脑现金户 id3，cash、THB500；电脑企业户 id4，corporate、THB300。
+两条均重新打开编辑弹框，性质回显正确。
+390×844手机真实新建：手机现金户 id5，cash、CNY70；手机企业户 id6，corporate、CNY30。
+手机重新打开编辑弹框，两类性质正确；列表性质列可见，均带“属于老板钱包”。
+旧账户 id1 性质仍为 null、THB100，数据库和界面均未被自动归类。
+
+为防新钱包汇总把其他授权仓合进当前仓，账户列表读取使用现有 warehouse_scope，按顶部仓库选取；原收付和转账逻辑不改。
+真实浏览器仓1：泰铢已分类800、未分类100、人民币100。
+切仓2：只显示企业户泰铢9000；切回仓1恢复原数。
+原账户写权限与ID归属校验保留，非法仓头和无权账户ID403；旧令牌撤权后的账户读取403。
+有权限主管可新建；有权限财务可读、原新建限制仍403；劳工和普通业务超管403。
+普通内部转账100之后现金400、企业400，已分类小计仍800，没有新增公司收支。
+原现金收付、防重、转账、币种与停用入口回归通过。
+
+迁移真实PG：新库重复2次、旧库加列重复2次、新连接重启重复2次；旧行2条性质全为null，金额不变。
+故意制造加列失败，保存点前的改动仍在，随后正常迁移可继续。
+完整 seed.py 在独立新数据库、新字段被移除的旧库、重启、再次重启共4次运行，退出码全部0。
+旧账户升级时仍null、原余额100，后来明确标cash后两次重启不清除。
+
+实际验证命令（在仓库 backend 目录）：
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. INCOMING_TEST_DATABASE_URL=postgresql+asyncpg://receipt_test@127.0.0.1:55437/postgres ACCOUNT_NATURE_TEST_REPORT=/tmp/account-nature-actual.json /tmp/employee-advance-expense-py312/bin/python -m pytest tests/test_account_nature.py tests/test_retired_operating_entries.py tests/test_operating_report.py tests/test_customer_receivables.py tests/test_credit_shipments.py tests/test_dashboard_month.py tests/test_warehouse_summary.py tests/test_cash_wallet.py tests/test_other_income_currency.py tests/test_money_record_scope.py tests/test_money_month_range.py tests/test_management_access.py tests/test_expense_approval_payment.py tests/test_incoming_operations.py tests/test_non_labor_read_group1.py -q --junitxml=/tmp/account-nature-all.xml
+结果160项，0失败、0错误、0跳过。
+
+前端在 frontend 目录执行 NODE_PATH=/tmp/wallet-build-o6qsx2gz/node_modules node tests/<套件>.test.cjs。
+通过13组：account-nature、retired-entries、operating-report、customer-receivables、credit-shipments、dashboard-month、warehouse-summary、money-record-scope、money-month-range、other-income-currency、incoming-operations、expense-approval-payment、manual-wallet。
+用工作区src复制到独立依赖目录/tmp/wallet-build-o6qsx2gz，执行node node_modules/next/dist/bin/next build，生产构建通过、50个页面。
+node node_modules/typescript/bin/tsc --noEmit --pretty false，改前与改后均84条原有诊断，按文件/错误信息对比新增0。
+
+代码文件：backend/app/models/customer.py、backend/app/schemas/business.py、backend/app/core/account_nature.py、backend/app/services/account_nature.py、backend/app/api/v1/payment_accounts.py、backend/scripts/seed.py。
+界面文件：frontend/src/app/(dashboard)/accounts/page.tsx、frontend/src/components/AccountNatureSummary.tsx。
+新增 tests/test_account_nature.py 六项；旧接口源码保护测试仅允许本轮明确修改的 list_accounts，其他旧处理函数保护不减。
+
+边界：本轮不改内部转账固定说明，不改报表内部转账行，不做下一轮权限清单或旧预览切仓。
+61e213b已封闭的经营报表/客户应收/发货七接口继续403，相关入口仍隐藏。
+没有访问生产数据库或部署生产，没有修改历史财务数据，没有改工资算法。
+应用容器替换许可、真实银行现金余额依据仍保留待处理，不代替用户批准。
+本轮提交推送后停止，等待协调验收。

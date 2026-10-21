@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, date
 from typing import Optional, List
 from decimal import Decimal
@@ -64,14 +64,26 @@ class CustomerResponse(BaseModel):
 # ---- Payment Account ----
 class PaymentAccountCreate(BaseModel):
     account_name: str; account_type: str; account_number: str
+    account_nature: Optional[str] = None
     opening_balance: float = 0
     opening_balance_date: Optional[date] = None
     bank_name: Optional[str] = None; branch_name: Optional[str] = None
     account_holder: Optional[str] = None; currency: str = "THB"
     status: str = "active"; remark: Optional[str] = None
 
+    @field_validator("account_nature")
+    @classmethod
+    def valid_account_nature(cls, value):
+        from app.core.account_nature import ACCOUNT_NATURE_LABELS
+        if value in (None, ""):
+            return None
+        if value not in ACCOUNT_NATURE_LABELS:
+            raise ValueError("账户性质无效，请选择现金户、企业户或留空")
+        return value
+
 class PaymentAccountResponse(BaseModel):
     id: int; warehouse_id: int; account_name: str; account_type: str
+    account_nature: Optional[str] = None
     account_number: str; opening_balance: float
     bank_name: Optional[str] = None; branch_name: Optional[str] = None
     account_holder: Optional[str] = None; currency: str = "THB"

@@ -2,7 +2,8 @@
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useAuth } from "@/hooks/useAuth";
 import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import AccountNatureSummary, { AccountNatureBalance } from "@/components/AccountNatureSummary";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -19,25 +20,42 @@ export default function AccountsPage() {
   const [transferring, setTransferring] = useState(false);
   const [transfer, setTransfer] = useState({ from_account_id: "", to_account_id: "", amount: "", transfer_date: "", remark: "" });
   const [data, setData] = useState<any[]>([]);
+  const [walletBalances, setWalletBalances] = useState<Record<string, AccountNatureBalance>>({});
+  const [natureOptions, setNatureOptions] = useState<{ value: string; label: string; description: string }[]>([]);
+  const [loadError, setLoadError] = useState("");
+  const request = useRef(0);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({
-    account_name: "", account_type: "bank", account_number: "", opening_balance: "", opening_balance_date: new Date().toLocaleDateString("en-CA").slice(0, 8) + "01",
+    account_name: "", account_type: "bank", account_nature: "", account_number: "", opening_balance: "", opening_balance_date: new Date().toLocaleDateString("en-CA").slice(0, 8) + "01",
     bank_name: "", branch_name: "", account_holder: "", currency: "THB", remark: ""
   });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); }, []);
+  useEffect(() => {
+    if (!getToken()) router.push("/login");
+    load();
+    const change = () => { setShowForm(false); setShowTransfer(false); load(); };
+    window.addEventListener("warehouse-changed", change);
+    window.addEventListener("auth-user-refreshed", change);
+    return () => { request.current++; window.removeEventListener("warehouse-changed", change); window.removeEventListener("auth-user-refreshed", change); };
+  }, []);
 
   async function load() {
-    setLoading(true);
-    try { const r = await api.get<any>("/accounts"); setData(r.data); } catch {}
-    setLoading(false);
+    const generation = ++request.current;
+    setLoading(true); setLoadError(""); setData([]); setWalletBalances({}); setNatureOptions([]);
+    try {
+      const r = await api.get<any>("/accounts");
+      if (generation === request.current) { setData(r.data); setWalletBalances(r.wallet_balances_by_currency || {}); setNatureOptions(r.nature_options || []); }
+    } catch (err: any) {
+      if (generation === request.current) setLoadError(err.message || "账户余额加载失败，请重试");
+    }
+    if (generation === request.current) setLoading(false);
   }
 
   function openCreate() {
     setEditingId(null);
-    setForm({ account_name: "", account_type: "bank", account_number: "", opening_balance: "", opening_balance_date: new Date().toLocaleDateString("en-CA").slice(0, 8) + "01", bank_name: "", branch_name: "", account_holder: "", currency: "THB", remark: "" });
+    setForm({ account_name: "", account_type: "bank", account_nature: "", account_number: "", opening_balance: "", opening_balance_date: new Date().toLocaleDateString("en-CA").slice(0, 8) + "01", bank_name: "", branch_name: "", account_holder: "", currency: "THB", remark: "" });
     setShowForm(true);
   }
 
@@ -46,6 +64,7 @@ export default function AccountsPage() {
     setForm({
       account_name: row.account_name || "",
       account_type: row.account_type || "bank",
+      account_nature: row.account_nature || "",
       account_number: row.account_number || "",
       opening_balance_date: row.opening_balance_date || new Date().toLocaleDateString("en-CA").slice(0, 8) + "01",
       opening_balance: row.opening_balance != null ? String(row.opening_balance) : "",
@@ -59,7 +78,7 @@ export default function AccountsPage() {
   }
 
   async function handleSave() {
-    const payload = { ...form, account_number: form.account_type === "cash" ? form.account_number || "-" : form.account_number, opening_balance: form.opening_balance === "" ? 0 : +form.opening_balance };
+    const payload = { ...form, account_nature: form.account_nature || null, account_number: form.account_type === "cash" ? form.account_number || "-" : form.account_number, opening_balance: form.opening_balance === "" ? 0 : +form.opening_balance };
     try {
       if (editingId) {
         await api.put(`/accounts/${editingId}`, payload);
@@ -108,6 +127,7 @@ export default function AccountsPage() {
 
   const columns = [
     { key: "account_name", label: "账户名称", render: (v: string, row: any) => <span>{v}{row.account_type === "cash" && <small className="ml-1 text-gray-400">现金</small>}</span> },
+    { key: "account_nature", label: "账户性质", cellClassName: "min-w-[110px]", render: (_: string | null, row: any) => <div><span>{row.account_nature_label || "未分类"}</span>{row.belongs_to_owner_wallet && <small className="block text-gray-500">属于老板钱包</small>}</div> },
     { key: "account_holder", label: "账户持有人", hideOnMobile: true, render: (v: string) => v || "-" },
     { key: "account_type", label: "类型", hideOnMobile: true, render: (v: string) => typeLabels[v] || v },
     { key: "bank_name", label: "开户银行", hideOnMobile: true, render: (v: string) => v || "-" },
@@ -138,9 +158,11 @@ export default function AccountsPage() {
         <div className="flex gap-2">{canWriteWallet && <button className="btn-secondary" onClick={openTransfer}>内部转账</button>}{canCreateAccount && <button onClick={openCreate} className="btn-primary">新建账户</button>}</div>
       </div>
 
-      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : (
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : loadError ? <div role="alert" className="card p-4 text-red-600">{loadError}<button className="btn-secondary ml-2" onClick={load}>重试</button></div> : <>
+        <AccountNatureSummary balances={walletBalances} />
+        {data.length > 0 && !Object.keys(walletBalances).length && <p className="text-amber-800 mb-3">账户性质汇总暂不可用，请刷新或检查服务版本。</p>}
         <DataTable columns={columns} data={data} total={data.length} page={1} pageSize={100} onPageChange={() => {}} />
-      )}
+      </>}
 
       {/* 新建/编辑弹窗 */}
       {showForm && (
@@ -171,6 +193,14 @@ export default function AccountsPage() {
                       <option value="wechat">微信</option>
                     </select>
                   </div>
+                </div>
+                <div className="form-group mt-3">
+                  <label className="form-label" htmlFor="account-nature">账户性质（可留空）</label>
+                  <select id="account-nature" className="form-input" value={form.account_nature} onChange={e => setForm({ ...form, account_nature: e.target.value })}>
+                    <option value="">未分类</option>
+                    {natureOptions.map(option => <option key={option.value} value={option.value}>{option.label} · {option.description}</option>)}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">{form.account_nature ? "属于老板钱包" : "旧账户可留空，不按名称或账户类型推定性质。"}</p>
                 </div>
                 <div className="form-group mt-3">
                   <label className="form-label">账户持有人</label>

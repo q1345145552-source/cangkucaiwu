@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -10,6 +10,9 @@ from app.schemas.business import PaymentAccountCreate
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.services.account_balances import current_account_balances
+from app.core.account_nature import ACCOUNT_NATURES, ACCOUNT_NATURE_LABELS
+from app.services.account_nature import owner_wallet_summary
+from app.services.warehouse_summary import warehouse_scope
 from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.payroll import PayrollRecord
 from app.models.income_expense import ExpenseRecord
@@ -79,7 +82,7 @@ async def create_transfer(req: TransferRequest, user=Depends(check_staff_permiss
 
 
 @router.get("", dependencies=[Depends(require_non_labor)])
-async def list_accounts(current_user: User = Depends(check_staff_permission_any(
+async def list_accounts(request: Request, current_user: User = Depends(check_staff_permission_any(
         _PERMISSION,
         MENU_PERMISSIONS_BY_KEY["payroll"].label,
         MENU_PERMISSIONS_BY_KEY["payable"].label,
@@ -91,17 +94,21 @@ async def list_accounts(current_user: User = Depends(check_staff_permission_any(
     )), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    query = select(PaymentAccount)
-    query = query.where(PaymentAccount.warehouse_id.in_(get_wh_ids(current_user)))
+    scope = [w.id for w in await warehouse_scope(db, current_user, request.headers.get("X-Warehouse-ID"))]
+    query = select(PaymentAccount).where(PaymentAccount.warehouse_id.in_(scope))
     result = await db.execute(query.order_by(PaymentAccount.id))
     accs = result.scalars().all()
     balances = await current_account_balances(db, accs)
     return {"data": [{"id": a.id, "warehouse_id": a.warehouse_id, "account_name": a.account_name,
                       "account_type": a.account_type, "account_number": a.account_number,
+                      "account_nature": a.account_nature, "account_nature_label": ACCOUNT_NATURE_LABELS.get(a.account_nature),
+                      "belongs_to_owner_wallet": True if a.account_nature in ACCOUNT_NATURE_LABELS else None,
                       "opening_balance": a.opening_balance, "opening_balance_date": a.opening_balance_date.isoformat() if a.opening_balance_date else None, "current_balance": float(balances[a.id]), "bank_name": a.bank_name,
                       "branch_name": a.branch_name, "account_holder": a.account_holder,
                       "currency": a.currency or "THB", "status": a.status or "active",
-                      "remark": a.remark} for a in accs]}
+                      "remark": a.remark} for a in accs],
+        "nature_options": ACCOUNT_NATURES, "warehouse_ids": scope,
+        "wallet_balances_by_currency": owner_wallet_summary(accs, balances)}
 
 @router.post("")
 async def create_account(req: PaymentAccountCreate, current_user: User = Depends(check_staff_permission(_PERMISSION)),
