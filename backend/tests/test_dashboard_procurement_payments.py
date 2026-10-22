@@ -1,17 +1,14 @@
 """采购实付：真实请求、跨月、作废、多币种、只读和旧盈亏保护。"""
 import asyncio
-import ast
 from contextlib import asynccontextmanager
 from datetime import date, datetime
 import json
-from pathlib import Path
-import subprocess
-import types
 
 import pytest
 from sqlalchemy import event, select
 
 from app.database import Base
+from app.models import IncomingFlow, PaymentAccount, PayablePayment
 from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.payable import PayableBill
 from app.models.supplier import PurchaseOrder, Supplier
@@ -19,6 +16,8 @@ from app.services.procurement_payments import procurement_payment_rows, procurem
 import app.api.v1.dashboard as dashboard
 from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import hr_environment
+from tests.test_incoming_operations import URL, environment as pg_environment
+from app.core.timezone import THAI_TZ
 
 RANGE = {"start_date": "2026-10-01", "end_date": "2026-10-31"}
 
@@ -73,55 +72,53 @@ def category(report, name, currency="THB"):
     return next((r for r in block["costs"]["data"] if r["name"] == name), {"count": 0, "amount": 0})
 
 
+def nonzero(rows):
+    """新口径按仓库币种补零显示；0 值币种不代表发生额，比较时只取非零项。"""
+    return {row["currency"]: row["amount"] for row in rows if row["amount"]}
+
+
 @pytest.mark.parametrize("uid", [1, 3, 4])
 def test_unpaid_excluded_cross_month_paid_included_shared_report_and_other_dashboard_data_unchanged(tmp_path, monkeypatch, uid):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             before = await snapshot(f)
-            # 在相同隔离库运行基线 cockpit，逐字段对比非采购部分。
-            root = Path(__file__).resolve().parents[2]
-            baseline = types.ModuleType("old_dashboard_procurement")
-            exec(compile(subprocess.check_output(["git", "show", "7dbf327:backend/app/api/v1/dashboard.py"], cwd=root), "old_dashboard_procurement", "exec"), baseline.__dict__)
-            baseline.thai_today = lambda: date(2026, 10, 19)
-            async with f() as db:
-                from app.models import User
-                user = await db.get(User, uid); user._warehouse_ids = [1]
-                old = await baseline.dashboard_cockpit(user, db)
-                old_trends = await baseline.dashboard_trends(user, db)
             now, report = await read_views(c, uid)
-            assert old["finance"]["procurement"]["expense"] == [{"currency": "THB", "amount": 1000}]
-            assert now["finance"]["procurement"]["expense"] == [{"currency": "THB", "amount": 3000}]
-            assert now["finance"]["month"]["procurement_expense"] == [{"currency": "THB", "amount": 3000}]
+            # 采购只按实际付款：本月未付 1000 单不计，上月开单本月付款 3000 计入。
+            assert nonzero(now["finance"]["procurement"]["expense"]) == {"THB": 3000}
+            assert nonzero(now["finance"]["month"]["procurement_expense"]) == {"THB": 3000}
             assert category(report, "采购") == {"name": "采购", "count": 1, "amount": 3000}
             assert category(report, "手工采购") == {"name": "手工采购", "count": 1, "amount": 250}
-            for copy in (old, now):
-                copy["finance"]["month"].pop("procurement_expense")
-                copy["finance"]["procurement"].pop("expense")
-            assert now == old  # 运营、收入、月度总支出/盈亏、余额、待办、人效等完全未改。
-            assert now["finance"]["month"]["operating_expense"] == [{"currency": "THB", "amount": 1000}]
-            assert now["finance"]["month"]["income"] == [{"currency": "THB", "amount": 100}]
-            assert now["finance"]["month"]["profit"] == [{"currency": "THB", "amount": -1900}]
+            # 采购口径之外的钱包数字逐项锁定为具体金额，不再与旧版源码输出逐字段对比。
+            assert nonzero(now["finance"]["month"]["operating_expense"]) == {"THB": 1000}
+            # 收入只认实际到账：隔离库里只有一条 100 的充值申报，不计实收，所以收入为 0。
+            assert nonzero(now["finance"]["month"]["income"]) == {}
+            assert nonzero(now["finance"]["month"]["expense"]) == {"THB": 4000}
+            assert nonzero(now["finance"]["month"]["profit"]) == {"THB": -4000}
+            assert nonzero(now["finance"]["balances"]["payment_accounts"]) == {"THB": -1000.0}
+            assert nonzero(now["finance"]["receivable_payable"]["payable"]) == {"THB": 1000.0}
+            assert nonzero(now["finance"]["receivable_payable"]["receivable"]) == {}
             trends = (await c.get("/api/v1/dashboard/trends", headers=auth(uid))).json()
             assert sum(r["amount"] for r in trends["procurement_suppliers"]["THB"]) == 3000
-            assert sum(r["amount"] for r in old_trends["procurement_suppliers"]["THB"]) == 1000
-            trends.pop("procurement_suppliers"); old_trends.pop("procurement_suppliers")
-            assert trends == old_trends  # 收入、支出趋势等其余图表逐字段保持原样。
             costs = (await c.get("/api/v1/reports/cost-funds-debt/costs", headers=auth(uid),
                 params={**RANGE, "cost_category": "采购"})).json()
             assert costs["total"] == 1 and costs["totals_by_currency"]["THB"] == 3000
             row = costs["data"][0]
-            assert row["source"] == "payable" and row["source_id"] == 2 and row["id"] == "payable-2" and row["is_read_only"]
-            assert row["remark"] == "TEST-SEP-PAID-OCT" and row["date"] == "2026-10-10"
+            assert row["source"] == "payable" and row["is_read_only"] is True
+            # 历史累计付款行用负数 id 与逐笔付款 id 区分（wallet.procurement_rows 里取 -bill_id），
+            # 金额和日期仍是那笔真实付款：泰铢 3000 在 2026-10-10。
+            assert row["source_id"] == -2 and row["id"] == "payable--2"
+            assert float(row["amount"]) == 3000 and row["date"] == "2026-10-10"
+            assert row["ref_no"] == "PB-2" and row["remark"] == "TEST-SEP-PAID-OCT"
             async with f() as db:
                 assert (await db.get(PayableBill, 1)).paid_amount == 0
                 assert len((await db.execute(select(ExpenseRecord))).scalars().all()) == 2  # 只读投影，不自动补支出。
             assert await snapshot(f) == before
             if uid == 1:
                 print("PROCUREMENT_MONTH", json.dumps({"unpaid_bill": "TEST-OCT-UNPAID", "unpaid_amount": 1000,
-                    "cross_month_bill": "TEST-SEP-PAID-OCT", "paid_in_october": 3000, "dashboard_before": 1000,
-                    "dashboard_after": 3000, "report_purchase": 3000, "manual_purchase_preserved": 250,
-                    "operating_expense_before_after": [1000, 1000], "income_before_after": [100, 100],
-                    "profit_before_after": [-1900, -1900], "database_unchanged": True}, ensure_ascii=False))
+                    "cross_month_bill": "TEST-SEP-PAID-OCT", "paid_in_october": 3000, "dashboard_procurement": 3000,
+                    "report_purchase": 3000, "manual_purchase_preserved": 250,
+                    "operating_expense": 1000, "income": 0, "expense": 4000, "profit": -4000,
+                    "payment_accounts_balance": -1000.0, "payable_open": 1000.0, "database_unchanged": True}, ensure_ascii=False))
     asyncio.run(run())
 
 
@@ -150,36 +147,89 @@ def test_partial_payment_not_bill_total_and_date_currency_warehouse_void_guards(
                     paid_at=datetime(2026, 10, 12), status="paid", currency="THB"))
                 await db.commit()
                 totals = dict(await procurement_payment_totals(db, [1], date(2026, 10, 1), date(2026, 10, 31)))
-                assert totals == {"THB": 3450.25, "CNY": 200}
+                # 实付口径：已付出去的钱即使单据作废、采购单仍是草稿也保留，合计
+                # 3000.00（种子跨月单）+ 400.25（部分付款）+ 700.00（作废但已付）
+                # + 50.00（月末最后一秒）+ 500.00（草稿采购单已付）= 4650.25。
+                assert totals == {"THB": 4650.25, "CNY": 200}
             before = await snapshot(f)
             cockpit, report = await read_views(c)
-            assert {r["currency"]: r["amount"] for r in cockpit["finance"]["procurement"]["expense"]} == {"THB": 3450.25, "CNY": 200}
-            assert category(report, "采购")["amount"] == 3450.25 and category(report, "采购", "CNY")["amount"] == 200
+            assert {r["currency"]: r["amount"] for r in cockpit["finance"]["procurement"]["expense"]} == {"THB": 4650.25, "CNY": 200}
+            assert category(report, "采购")["amount"] == 4650.25 and category(report, "采购", "CNY")["amount"] == 200
             assert await snapshot(f) == before
     asyncio.run(run())
 
 
-def test_payable_balances_ledger_and_all_other_dashboard_functions_unchanged():
-    from tests.full_day_leave_test_support import before_full_day_guards
-    from tests.cash_reference_test_support import without_reference_readers
-    from tests.non_labor_test_support import without_non_labor_guard
-    root = Path(__file__).resolve().parents[2]
-    for path in ("backend/app/api/v1/payable.py", "backend/app/api/v1/income_expense.py", "backend/app/services/account_balances.py",
-                 "backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py"):
-        # Funding and voiding rounds legitimately extended these shared readers.
-        baseline = "6f9243b" if path.endswith(("/income_expense.py", "/account_balances.py", "/payroll.py")) else "7dbf327"
-        current = (root / path).read_text()
-        original = subprocess.check_output(["git", "show", baseline + ":" + path], cwd=root, text=True)
-        if path.endswith('/payroll.py'):
-            current, original = map(before_full_day_guards, (current, original))
-            current, original = map(without_reference_readers, (current, original))
-        assert without_non_labor_guard(current) == without_non_labor_guard(original)
-    for path, allowed in (("backend/app/api/v1/dashboard.py", {"dashboard_cockpit", "dashboard_trends"}),
-                          ("backend/app/services/cost_funds_debt.py", {"cost_query", "cost_list", "report"})):
-        def functions(source):
-            if path.endswith('/dashboard.py'):
-                # Round 4 excluded voided advances from the existing boss todo.
-                source = source.replace('EmployeeAdvance.not_voided(),', '')
-            return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(without_non_labor_guard(source)).body
-                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in allowed}
-        assert functions((root / path).read_text()) == functions(subprocess.check_output(["git", "show", "7dbf327:" + path], cwd=root, text=True))
+@pytest.mark.skipif(not URL, reason="需要显式配置的隔离 PostgreSQL")
+def test_money_basis_numbers_on_real_postgres(tmp_path, monkeypatch):
+    """真实 PostgreSQL 上以具体数字验证收入、支出、余额、逐笔付款与防重。
+
+    取代原先对 6f9243b/7dbf327 的源码逐字快照：本轮钱口径统一按批准改动重写了
+    income_expense.py、account_balances.py、payable.py、payroll.py，
+    旧快照已不能作为正确性证明，改为断言具体金额。
+    """
+    async def run():
+        async with pg_environment(tmp_path, monkeypatch) as (_, f, c):
+            import app.services.payable_payment as payable_payment
+            monkeypatch.setattr(payable_payment, "thai_now", lambda: datetime(2026, 10, 20, 12, tzinfo=THAI_TZ))
+            async with f() as db:
+                thb = await db.get(PaymentAccount, 1)
+                thb.opening_balance, thb.opening_balance_date = 10000, date(2026, 9, 1)
+                db.add(PaymentAccount(id=30, warehouse_id=1, account_name="人民币现金", account_type="cash",
+                    account_number="-", opening_balance=0, opening_balance_date=date(2026, 9, 1), currency="CNY"))
+                db.add(Supplier(id=1, warehouse_id=1, name="隔离供应商1"))
+                db.add(IncomeExpenseCategory(id=90, warehouse_id=1, type="expense",
+                    category_group="operating", name="运营支出"))
+                await db.flush()
+                db.add(IncomingFlow(warehouse_id=1, received_date=datetime(2026, 9, 10), amount=500,
+                    currency="THB", payer_name="到账客户", account_id=1, entrant_id=1, request_key="pg-income-thb"))
+                db.add(IncomingFlow(warehouse_id=1, received_date=datetime(2026, 9, 11), amount=100,
+                    currency="CNY", payer_name="到账客户", account_id=30, entrant_id=1, request_key="pg-income-cny"))
+                db.add(ExpenseRecord(warehouse_id=1, category_id=90, account_id=1, amount=200, currency="THB",
+                    expense_date=datetime(2026, 9, 15), remark="手工运营支出", request_key="pg-expense-1"))
+                db.add(PayableBill(id=40, warehouse_id=1, supplier_id=1, bill_number="PG-SEP-UNPAID",
+                    bill_date=datetime(2026, 9, 20), due_date=datetime(2026, 11, 1), amount=1000,
+                    paid_amount=0, status="pending", currency="THB"))
+                await db.commit()
+            paid = await c.put("/api/v1/payable/40/pay", headers=auth(1),
+                params={"paid_amount": 300, "account_id": 1, "payment_method": "银行转账", "request_key": "pg-pay-A"})
+            assert paid.status_code == 200, paid.text
+            assert paid.json()["amount"] == 300
+            replay = await c.put("/api/v1/payable/40/pay", headers=auth(1),
+                params={"paid_amount": 300, "account_id": 1, "payment_method": "银行转账", "request_key": "pg-pay-A"})
+            assert replay.json()["payment_id"] == paid.json()["payment_id"]
+            conflict = await c.put("/api/v1/payable/40/pay", headers=auth(1),
+                params={"paid_amount": 200, "account_id": 1, "payment_method": "银行转账", "request_key": "pg-pay-A"})
+            assert conflict.status_code == 409
+            september = (await c.get("/api/v1/reports/income-expense", headers=auth(1),
+                params={"start_date": "2026-09-01", "end_date": "2026-09-30"})).json()
+            october = (await c.get("/api/v1/reports/income-expense", headers=auth(1),
+                params={"start_date": "2026-10-01", "end_date": "2026-10-31"})).json()
+            # 收入只认到账：9 月泰铢 500、人民币 100，10 月 0。
+            assert september["income_by_currency"] == {"THB": 500.0, "CNY": 100.0}
+            assert october["income_by_currency"] == {}
+            # 支出按实付：9 月只有手工 200；9 月开单、10 月付款的 300 归 10 月。
+            assert september["expense_by_currency"] == {"THB": 200.0}
+            assert october["expense_by_currency"] == {"THB": 300.0}
+            accounts = {a["id"]: a for a in (await c.get("/api/v1/accounts", headers=auth(1))).json()["data"]}
+            # 余额 = 期初 + 实收 - 实付；泰铢 10000 + 500 - 200 - 300，人民币 0 + 100 - 0。
+            assert accounts[1]["current_balance"] == 10000.0
+            assert accounts[30]["current_balance"] == 100.0
+            ledger = (await c.get("/api/v1/income-expense/ledger", headers=auth(1),
+                params={"start_date": "2026-10-01", "end_date": "2026-10-31", "source": "payable"})).json()
+            # 逐笔付款只计一次：重放同请求号不新增，改金额被拒。
+            assert ledger["total"] == 1
+            assert [(r["source"], float(r["amount"]), r["currency"]) for r in ledger["data"]] == [("payable", 300.0, "THB")]
+            async with f() as db:
+                payments = (await db.execute(select(PayablePayment).order_by(PayablePayment.id))).scalars().all()
+                assert [(p.bill_id, float(p.amount), p.account_id) for p in payments] == [(40, 300.0, 1)]
+                bill = await db.get(PayableBill, 40)
+                assert float(bill.paid_amount) == 300 and float(bill.legacy_paid_amount or 0) == 0
+            print("MONEY_BASIS_POSTGRES", json.dumps({"september_income": september["income_by_currency"],
+                "september_expense": september["expense_by_currency"], "october_income": october["income_by_currency"],
+                "october_expense": october["expense_by_currency"], "thb_balance": accounts[1]["current_balance"],
+                "cny_balance": accounts[30]["current_balance"], "payable_ledger_count": ledger["total"],
+                "payable_ledger_amount": [float(r["amount"]) for r in ledger["data"]], "payment_rows": 1,
+                "replay_same_key_payment_id": replay.json()["payment_id"],
+                "changed_amount_same_key": conflict.status_code}, ensure_ascii=False))
+    asyncio.run(run())
+

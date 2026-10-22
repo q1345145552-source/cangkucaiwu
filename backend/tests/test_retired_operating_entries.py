@@ -7,13 +7,14 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import select, func, event
-from app.models import User, Customer, PaymentAccount, IncomeExpenseCategory, IncomeRecord, ExpenseRecord
+from app.models import User, Customer, PaymentAccount, IncomeExpenseCategory, IncomeRecord, ExpenseRecord, IncomingFlow
 from app.models.credit import CreditCustomer, CreditShipment
 from app.core.menu_registry import MENU_PERMISSIONS
 from tests.test_incoming_operations import environment, URL
 from tests.test_round2_permissions import auth
 
 pytestmark = pytest.mark.skipif(not URL, reason='Requires explicit loopback PostgreSQL')
+# 七个停用入口：请求体都是字段完整的合法请求，被拒必须来自停用守卫而不是 401/404/422。
 CLOSED = [
     ('GET', '/reports/operations', None),
     ('GET', '/customers/1/receivables', None),
@@ -41,7 +42,27 @@ async def seed(factory):
         for rid, cur, aid, income, expense in [(1, 'THB', 1, 1000, 400), (2, 'CNY', 3, 200, 50)]:
             db.add(IncomeRecord(id=rid, warehouse_id=1, category_id=1, account_id=aid, amount=income, currency=cur, income_date=datetime(2026, 9, 2), confirmed_by=1))
             db.add(ExpenseRecord(id=rid, warehouse_id=1, category_id=2, account_id=aid, amount=expense, currency=cur, expense_date=datetime(2026, 9, 3), approved_by=1))
+        # 关联到账用的是真实存在的本仓到账记录，避免 403 被 404 之类的参数错误替代；
+        # 日期放在 2026-08，不改变本文件用于对照的 9 月钱包快照。
+        db.add(IncomingFlow(id=1, warehouse_id=1, received_date=datetime(2026, 8, 15), amount=500,
+            currency='THB', payer_name='停用入口测试到账', account_id=1, entrant_id=1, request_key='retired-incoming-1'))
         await db.commit()
+
+async def invariants(factory):
+    """停用入口被拒前后必须完全一致的业务记录数和金额。"""
+    async with factory() as db:
+        return {
+            'credit_shipments': (await db.execute(select(func.count(CreditShipment.id)))).scalar_one(),
+            'credit_shipment_amounts': sorted(float(x) for x in (await db.execute(select(CreditShipment.amount))).scalars().all()),
+            'credit_shipment_statuses': sorted(str(x) for x in (await db.execute(select(CreditShipment.status))).scalars().all()),
+            'customers': (await db.execute(select(func.count(Customer.id)))).scalar_one(),
+            'customer_totals': [tuple(int(v) for v in row) for row in (await db.execute(
+                select(Customer.total_shipments, Customer.total_shipping_cost).where(Customer.id == 1))).all()],
+            'incoming_flows': (await db.execute(select(func.count(IncomingFlow.id)))).scalar_one(),
+            'income_records': (await db.execute(select(func.count(IncomeRecord.id)))).scalar_one(),
+            'expense_records': (await db.execute(select(func.count(ExpenseRecord.id)))).scalar_one(),
+        }
+
 
 async def snapshots(client):
     result = {}
@@ -56,6 +77,7 @@ def test_closed_routes_all_roles_keep_history_and_wallet(tmp_path, monkeypatch):
         async with environment(tmp_path, monkeypatch) as (engine, factory, client):
             await seed(factory)
             before = await snapshots(client)
+            invariants_before = await invariants(factory)
             captured = json.loads((Path(__file__).parent / 'fixtures/retired_operating_wallet_before.json').read_text())
             for value in before.values():
                 assert value["internal_transfers"]["by_currency"] == {}
@@ -74,6 +96,7 @@ def test_closed_routes_all_roles_keep_history_and_wallet(tmp_path, monkeypatch):
             finally:
                 event.remove(engine.sync_engine, 'before_cursor_execute', trace)
             assert not any(s.lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')) for s in statements)
+            assert await invariants(factory) == invariants_before
             assert await snapshots(client) == before
             async with factory() as db:
                 old = await db.get(CreditShipment, 1)
@@ -88,5 +111,5 @@ def test_closed_routes_all_roles_keep_history_and_wallet(tmp_path, monkeypatch):
                     assert r.status_code == 200, (uid, path, r.text)
                     pages[f'{uid}:{path}'] = r.status_code
             if os.environ.get('RETIRED_ENTRIES_TEST_REPORT'):
-                Path(os.environ['RETIRED_ENTRIES_TEST_REPORT']).write_text(json.dumps({'blocked':results, 'before':before, 'after':await snapshots(client), 'read_regression':pages, 'history_kept':True, 'blocked_mutation_count':0}, ensure_ascii=False, indent=2))
+                Path(os.environ['RETIRED_ENTRIES_TEST_REPORT']).write_text(json.dumps({'blocked':results, 'before':before, 'after':await snapshots(client), 'invariants_before':invariants_before, 'invariants_after':await invariants(factory), 'closed_count':len(CLOSED), 'read_regression':pages, 'history_kept':True, 'blocked_mutation_count':0}, ensure_ascii=False, indent=2))
     asyncio.run(run())

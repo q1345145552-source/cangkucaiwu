@@ -1,11 +1,14 @@
-"""工资管理端拒绝劳工，本人专用接口与原管理角色保持原样；仅用隔离库。"""
+"""工资管理端拒绝劳工，本人专用接口与原管理角色保持原样；仅用隔离库。
+
+统一守卫（e4a2bb7）把工资管理入口的拒绝文案改为「无权访问」，本文件按该已批准实现断言。
+金额口径不在本文件用源码快照证明，改由 tests/test_dashboard_procurement_payments.py 的
+test_money_basis_numbers_on_real_postgres 在真实 PostgreSQL 上以具体数字验证收入、支出、
+余额、逐笔付款与防重。
+"""
 import asyncio
-import ast
-import inspect
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -16,6 +19,7 @@ from app.main import app
 from app.models import User
 from app.models.payroll import PayrollRecord
 from app.core.security import hash_password
+from app.core.permissions import require_non_labor
 from app.api.v1 import payroll
 from tests.test_round2_permissions import auth, set_perms
 from tests.test_round4_permissions import attendance_environment
@@ -40,7 +44,7 @@ def test_every_management_route_denies_labor_before_validation_or_business(tmp_p
                         headers={**auth(uid), 'X-Warehouse-ID': '2'},
                         params={'view':'self', 'employee_id':2, 'user_id':6}, json={})
                     assert response.status_code == 403, response.text
-                    assert response.json() == {'detail':'无权查看工资数据'}
+                    assert response.json() == {'detail':'无权访问'}
             assert await snapshot(factory) == before
     asyncio.run(run())
 
@@ -66,7 +70,7 @@ def test_real_logins_self_only_four_employee_pages_and_management_roles(tmp_path
                 tokens[uid] = {'Authorization':'Bearer '+login.json()['access_token']}
             before = await snapshot(factory)
             denied = await c.get('/api/v1/payroll', headers=tokens[5])
-            assert denied.status_code == 403 and denied.json() == {'detail':'无权查看工资数据'}
+            assert denied.status_code == 403 and denied.json() == {'detail':'无权访问'}
             own = await c.get('/api/v1/payroll/my-payslip?employee_id=4&user_id=7', headers=tokens[5])
             assert own.status_code == 200, own.text
             assert {x['id'] for x in own.json()['data']} == {1, 2, 3}
@@ -75,12 +79,17 @@ def test_real_logins_self_only_four_employee_pages_and_management_roles(tmp_path
             sup = await c.get('/api/v1/payroll/my-payslip', headers=tokens[4])
             assert sup.status_code == 200 and [x['id'] for x in sup.json()['data']] == [20]
             roles = []
-            for uid in (1, 2, 3, 4):
+            # 本轮 ManagementRouter 默认挂 require_business_user：超级管理员不再进业务页面，
+            # 只保留仓库管理员/财务/主管三个业务角色，各自可见本仓工资单。
+            for uid in (1, 3, 4):
                 response = await c.get('/api/v1/payroll', headers=tokens[uid])
                 assert response.status_code == 200, response.text
                 assert {x['id'] for x in response.json()['data']} == {1, 2, 3, 20, 99}
                 roles.append({'role':(await c.get('/api/v1/auth/me', headers=tokens[uid])).json()['role'],
                     'status':response.status_code, 'record_ids':[x['id'] for x in response.json()['data']]})
+            super_admin = await c.get('/api/v1/payroll', headers=tokens[2])
+            assert super_admin.status_code == 403
+            assert super_admin.json() == {'detail':'超级管理员请使用各仓库管理员账号操作'}
             self_results = []
             for path in SELF_READS:
                 response = await c.get('/api/v1'+path, headers=tokens[5])
@@ -117,7 +126,7 @@ def test_real_logins_self_only_four_employee_pages_and_management_roles(tmp_path
                 'labor_calendar_employee_ids':[x['id'] for x in calendar['employees']],
                 'labor_calendar_salary_fields':[], 'all_tables_unchanged_after_reads':True,
                 'management_routes':[{'method':next(iter(r.methods)), 'path':r.path,'labor_status':403,
-                    'detail':'无权查看工资数据'} for r in MANAGEMENT_ROUTES]}
+                    'detail':'无权访问'} for r in MANAGEMENT_ROUTES]}
             if os.environ.get('PAYROLL_BOUNDARY_REPORT'):
                 Path(os.environ['PAYROLL_BOUNDARY_REPORT']).write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
             for uid in (3, 4):
@@ -127,16 +136,16 @@ def test_real_logins_self_only_four_employee_pages_and_management_roles(tmp_path
     asyncio.run(run())
 
 
-def test_single_self_exception_and_all_existing_business_functions_unchanged():
+def dependency_calls(route):
+    return [dependency.call for dependency in route.dependant.dependencies]
+
+
+def test_single_self_exception_and_guard_on_every_management_route():
     routes = [r for r in app.routes if isinstance(r, APIRoute) and r.endpoint.__module__ == payroll.__name__]
     assert len(routes) == 21 and len(MANAGEMENT_ROUTES) == 20
-    for route in routes:
-        assert route.dependant.dependencies[0].call is payroll.reject_labor_management_payroll
-    root = Path(__file__).resolve().parents[2]
-    path = 'backend/app/api/v1/payroll.py'
-    old = ast.parse(subprocess.check_output(['git','show','9e1c3cb:'+path], cwd=root, text=True))
-    now = ast.parse(inspect.getsource(payroll))
-    def functions(tree):
-        return {n.name:ast.dump(n,include_attributes=False) for n in tree.body
-            if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name!='reject_labor_management_payroll'}
-    assert functions(now) == functions(old)
+    self_routes = [r for r in routes if r.endpoint is payroll.my_payslip]
+    assert len(self_routes) == 1
+    # 本人工资单是唯一例外，且不挂非劳工守卫；可见范围仍由本人身份和仓库校验决定。
+    assert require_non_labor not in dependency_calls(self_routes[0])
+    for route in MANAGEMENT_ROUTES:
+        assert dependency_calls(route)[0] is require_non_labor, route.path
