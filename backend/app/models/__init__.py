@@ -34,7 +34,10 @@ from app.models.supplier_quote import SupplierQuote, SupplierQuoteRevision, Supp
 
 from app.models.procurement_control import ProcurementActionException, ProcurementDutyExecution, ProcurementRiskReview
 
+from app.models.inventory import InventoryAccount, InventoryMovement, InventoryReceiptLink, InventoryOperation, InventoryPolicy
+
 __all__ = [
+    "InventoryAccount", "InventoryMovement", "InventoryReceiptLink", "InventoryOperation", "InventoryPolicy",
     "ProcurementActionException", "ProcurementDutyExecution", "ProcurementRiskReview",
     "User", "Warehouse", "Customer", "PaymentAccount",
     "RechargeDeclaration", "IncomingFlow", "ReconciliationResult", "ExchangeRate",

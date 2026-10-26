@@ -16,9 +16,11 @@ from app.api.v1 import sku_catalog
 from app.api.v1 import supplier_quotes
 from app.api.v1 import procurement_report
 from app.api.v1 import procurement_risk
+from app.api.v1 import inventory
 from app.api.v1 import procurement_controls
 
 api_router = APIRouter()
+api_router.include_router(inventory.router,prefix='/inventory',tags=['耗材库存'])
 api_router.include_router(procurement_controls.router,prefix='/supplier-controls',tags=['采购职责与例外'])
 api_router.include_router(procurement_risk.router,prefix='/supplier-risk',tags=['采购风险看板'])
 api_router.include_router(procurement_report.router,prefix='/supplier-price-report',tags=['采购价差月报'])

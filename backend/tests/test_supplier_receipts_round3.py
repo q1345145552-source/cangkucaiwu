@@ -235,10 +235,17 @@ def test_new_old_repeat_migration_no_fabricated_history(tmp_path,monkeypatch,old
                 if old_received:await conn.execute(text('UPDATE purchase_orders SET items=CAST(:items AS JSON) WHERE id=1'),
                     {'items':json.dumps([{'product_name':'旧行','quantity':10,'received_quantity':5}])})
                 before=(await conn.execute(text('SELECT id,items,arrival_photo,total_amount FROM purchase_orders ORDER BY id'))).all()
+                # Emulate the pre-receipt schema, so later inventory FK tables must not exist yet.
+                from app.services.inventory_migration import MODELS, migrate_inventory
+                for model in reversed(MODELS):
+                    await conn.run_sync(lambda c,m=model:m.__table__.drop(c,checkfirst=True))
                 await conn.execute(text('DROP TABLE purchase_receipt_events'))
                 for table,cols in [('purchase_orders',['receipt_baseline']),('payable_bills',['matching_kind','match_lines','match_review'])]:
                     for col in cols:await conn.execute(text(f'ALTER TABLE {table} DROP COLUMN {col}'))
                 await migrate_purchase_receipts(conn);await migrate_purchase_receipts(conn)
+                await migrate_inventory(conn)
+                for model in MODELS:
+                    assert (await conn.execute(text(f'SELECT count(*) FROM {model.__tablename__}'))).scalar_one()==0
                 assert before==(await conn.execute(text('SELECT id,items,arrival_photo,total_amount FROM purchase_orders ORDER BY id'))).all()
                 assert (await conn.execute(text('SELECT count(*) FROM purchase_receipt_events'))).scalar_one()==0
                 assert (await conn.execute(text('SELECT receipt_baseline FROM purchase_orders WHERE id=1'))).scalar_one() is None

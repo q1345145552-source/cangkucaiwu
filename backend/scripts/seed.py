@@ -571,6 +571,8 @@ async def seed():
         await migrate_supplier_quotes(conn)
         from app.services.procurement_control_migration import migrate_procurement_controls
         await migrate_procurement_controls(conn)
+        from app.services.inventory_migration import migrate_inventory
+        await migrate_inventory(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

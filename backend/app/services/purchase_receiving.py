@@ -25,6 +25,8 @@ async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_
     await ensure_receipt_guard(await db.connection())
     from app.services.procurement_control_migration import ensure_procurement_controls
     await ensure_procurement_controls(await db.connection())
+    from app.services.inventory_migration import ensure_inventory
+    await ensure_inventory(await db.connection())
     po=(await db.execute(select(PurchaseOrder).where(PurchaseOrder.id==po_id).with_for_update())).scalar_one_or_none()
     if po is None: raise HTTPException(404,'采购单不存在')
     if po.warehouse_id!=warehouse_id: raise HTTPException(403,'无权操作其他仓库的采购单')
@@ -82,6 +84,8 @@ async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_
     saved=save_image(content,str(Path(os.environ.get('UPLOAD_DIR','/app/uploads'))/rel),f'/uploads/{rel}',f'{uuid.uuid4().hex}.{ext}')
     event.photo_path=saved['path']
     await db.flush()
+    from app.services.inventory import record_receipt
+    stock_result = await record_receipt(db,po,event,user)
     state=await match.receipt_state(db,po)
     has_diff=any(i['quantity_status']!='matched' for i in state['items'])
     po.items=[{**it,'line_id':it['line_id'],'received_quantity':it['received_quantity'],'diff_quantity':it['diff_quantity']}
@@ -96,7 +100,7 @@ async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_
         after={'receipt_event_id':event.id,'request_key':key,'items':event.items,'photo_path':event.photo_path,
                'remark':remark,'quantity_basis':po.receipt_baseline['source']},warehouse_id=warehouse_id)
     await db.flush()
-    response={'id':event.id,'receipt_event_id':event.id,'message':'本次收货已登记'+('，累计数量有差异，待老板复核' if has_diff else ''),
+    response={'inventory': stock_result, 'id':event.id,'receipt_event_id':event.id,'message':'本次收货已登记'+('，累计数量有差异，待老板复核' if has_diff else ''),
         'has_diff':has_diff,'receipt_status':po.receipt_status,'flow_status':po.flow_status,
         'items':state['items'],'photo_path':event.photo_path,
         'matching':await match.matching(db,bill,po) if bill and can_read_bills(user) else None}

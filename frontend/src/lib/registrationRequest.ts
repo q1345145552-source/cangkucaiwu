@@ -31,6 +31,13 @@ export function acceptDutyRejection(kind:string,resource:string|number,detail:an
     throw Error('尚未取得原职责请求未执行的明确结果，请沿用原请求核对');
   sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
 }
+// Only the exact warehouse-locked nonexecution proof releases an uncertain stock request.
+export function acceptInventoryRejection(resource:string,detail:any):void {
+  const id=slot('inventory',resource),draft=registrationDraft('inventory',resource);
+  if(running.has(id)||!draft||detail?.code!=='inventory_changed'||detail.not_executed!==true||detail.request_key!==draft.key)
+    throw Error('尚未取得原库存请求未执行的明确结果，请沿用原请求核对');
+  sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
+}
 export async function submitRegistration<T>(kind:string,resource:string|number,payload:any,send:(key:string)=>Promise<T>):Promise<T> {
   const id=slot(kind,resource),previous=registrationDraft(kind,resource);
   if(running.has(id)){

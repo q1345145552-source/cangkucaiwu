@@ -78,6 +78,7 @@ MENU_PERMISSIONS: tuple[MenuPermission, ...] = (
     MenuPermission("audit_logs", "操作日志", "/audit-logs", _ADMIN_OFFICE, legacy_permission=True),
     MenuPermission("suppliers", "供应商管理", "/suppliers", _OFFICE, legacy_permission=True),
     MenuPermission("sku_catalog", "标准SKU目录", "/supplier-skus", _OFFICE, permission_menu_key="sku_catalog"),
+    MenuPermission("inventory", "耗材库存", "/inventory", _OFFICE, permission_menu_key="inventory"),
     MenuPermission("sku_catalog_manage", "标准SKU管理", "", _OFFICE, permission_menu_key="sku_catalog_manage"),
     MenuPermission("other_income_expense", "其他收支", "/other-income-expense", _OFFICE, legacy_permission=True),
     MenuPermission("dashboard", "仪表盘", "/dashboard", _OFFICE, selectable=False),
