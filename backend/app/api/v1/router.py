@@ -15,8 +15,10 @@ from app.api.v1 import cost_identity
 from app.api.v1 import sku_catalog
 from app.api.v1 import supplier_quotes
 from app.api.v1 import procurement_report
+from app.api.v1 import procurement_risk
 
 api_router = APIRouter()
+api_router.include_router(procurement_risk.router,prefix='/supplier-risk',tags=['采购风险看板'])
 api_router.include_router(procurement_report.router,prefix='/supplier-price-report',tags=['采购价差月报'])
 api_router.include_router(supplier_quotes.router,prefix='/supplier-quotes',tags=['数量阶梯报价'])
 api_router.include_router(sku_catalog.router,prefix='/sku-catalog',tags=['标准SKU目录'])

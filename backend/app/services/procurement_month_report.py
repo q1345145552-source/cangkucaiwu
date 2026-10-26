@@ -90,6 +90,15 @@ def line_value(po,it,index,supplier_name,orderer_name,state_reason):
  if state_reason:r['historical_unavailable']=r['lowest_unavailable']=state_reason
  return r
 
+def order_state_exclusion(po,bills):
+ state=None
+ if po.status!='confirmed' or po.flow_status in ('cancelled','canceled','voided','rejected'):state='采购尚未生效或当前已驳回/取消/作废'
+ if po.payable_bill_id:
+  b=bills.get(po.payable_bill_id)
+  if not b or b.purchase_order_id!=po.id or b.supplier_id!=po.supplier_id or b.currency!=po.currency:state='采购应付关联异常，未计入'
+  elif b.status=='voided':state='关联应付已作废，未计入'
+ return state
+
 async def rows_for(db,wid,*,month=None,supplier_id=None,orderer_id=None,currency=None,po_id=None):
  month,start,end=parse_month(month)
  if supplier_id is not None:
@@ -110,12 +119,7 @@ async def rows_for(db,wid,*,month=None,supplier_id=None,orderer_id=None,currency
  bill_ids={p.payable_bill_id for p in orders if p.payable_bill_id};bills={b.id:b for b in (await db.execute(select(PayableBill).where(PayableBill.warehouse_id==wid,PayableBill.id.in_(bill_ids)))).scalars()}
  result=[]
  for po in orders:
-  state=None
-  if po.status!='confirmed' or po.flow_status in ('cancelled','canceled','voided','rejected'):state='采购尚未生效或当前已驳回/取消/作废'
-  if po.payable_bill_id:
-   b=bills.get(po.payable_bill_id)
-   if not b or b.purchase_order_id!=po.id or b.supplier_id!=po.supplier_id or b.currency!=po.currency:state='采购应付关联异常，未计入'
-   elif b.status=='voided':state='关联应付已作废，未计入'
+  state=order_state_exclusion(po,bills)
   items=[it if isinstance(it,dict) else {} for it in po.items] if isinstance(po.items,list) else [{}]
   counts={it.get('line_id'):sum(1 for x in items if x.get('line_id')==it.get('line_id')) for it in items if it.get('line_id')}
   for i,it in enumerate(items):

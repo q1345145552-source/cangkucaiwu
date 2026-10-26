@@ -48,7 +48,7 @@ export function ReceiptHistory({order}:{order:any}) {
       {order.receipt_baseline.photo_path && <button className="text-blue-600 underline" onClick={()=>photo(0)}>查看历史基数照片</button>}
     </div>}
     {(order.receipt_issues || []).map((s:string)=><p className="text-red-600" key={s}>{s}</p>)}
-    {!order.receipt_batches?.length ? <p>暂无新收货批次，没有补造历史事件。</p> : order.receipt_batches.map((batch:any)=><div className="border rounded p-3 space-y-1" key={batch.id}>
+    {!order.receipt_batches?.length ? <p>暂无新收货批次，没有补造历史事件。</p> : order.receipt_batches.map((batch:any)=><div className="border rounded p-3 space-y-1 target:bg-blue-50" key={batch.id} id={`receipt-event-${batch.id}`}>
       <p className="font-medium">批次 #{batch.id} · {batch.operator_name} · {thaiTime(batch.received_at)}</p>
       {batch.items.map((it:any)=><p key={it.line_id}>{it.product_name} {it.spec || ""} · 本次 {it.quantity}{it.unit || "（单位未记录）"}<span className="block text-xs text-gray-500 break-all">行编号：{it.line_id}</span></p>)}
       <p>备注：{batch.remark || "未填写"}</p><p className="text-xs break-all">请求编号：{batch.request_key}</p>

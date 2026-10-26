@@ -595,6 +595,7 @@ export default function SuppliersPage() {
           </button>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {(user as {role?:string}|null)?.role==='warehouse_admin'&&<button className="btn-secondary text-sm" onClick={()=>router.push('/suppliers/risk')}>采购风险看板</button>}
           {canViewReport&&<button className="btn-secondary text-sm" onClick={()=>router.push("/suppliers/monthly-price-report")}>采购价差月报</button>}
           {isAdmin && (
             <>
