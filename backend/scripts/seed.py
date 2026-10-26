@@ -563,6 +563,8 @@ async def seed():
         await migrate_payable_dedup(conn)
         from app.services.purchase_receipt_migration import migrate_purchase_receipts
         await migrate_purchase_receipts(conn)
+        from app.services.cost_identity_migration import migrate_cost_identities
+        await migrate_cost_identities(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

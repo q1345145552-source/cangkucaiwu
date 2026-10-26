@@ -5,9 +5,11 @@ import { fmtMoney } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, FileText, Search, X, Image as ImageIcon, Eye, CreditCard } from "lucide-react";
+import { useCostIdentity, type CostConfirmation } from "@/components/CostIdentity";
 
 export default function FundReviewPage() {
   const { toast } = useToast(); const router = useRouter();
+  const cost = useCostIdentity();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -67,24 +69,24 @@ export default function FundReviewPage() {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
 
-  async function doReview(action: "approve" | "reject") {
+  async function doReview(action: "approve" | "reject", costConfirmations: Record<number, CostConfirmation> = {}) {
     if (selectedIds.size === 0) { toast("error", "请先勾选要审核的记录"); return; }
     try {
       await api.post("/expense-fund/review/batch", {
-        item_ids: Array.from(selectedIds), action,
+        item_ids: Array.from(selectedIds), action, cost_confirmations: costConfirmations,
         remark: action === "reject" ? rejectRemark : undefined,
       });
       toast("success", action === "approve" ? "已批量通过" : "已批量驳回");
       setRejectRemark(""); load();
-    } catch (err: any) { toast("error", err.message || "审核失败"); }
+    } catch (err: any) { if (!cost.capture(err, data => doReview(action, { ...costConfirmations, [Number(data.target_ref?.split(":")[1])]: data }))) toast("error", err.message || "审核失败"); }
   }
 
-  async function approveOne(id: number) {
+  async function approveOne(id: number, costConfirmation?: CostConfirmation) {
     try {
-      await api.post("/expense-fund/review/batch", { item_ids: [id], action: "approve" });
+      await api.post("/expense-fund/review/batch", { item_ids: [id], action: "approve", cost_confirmation: costConfirmation });
       toast("success", "已通过");
       load();
-    } catch (err: any) { toast("error", err.message || "审核失败"); }
+    } catch (err: any) { if (!cost.capture(err, data => approveOne(id, data))) toast("error", err.message || "审核失败"); }
   }
   function rejectOne(id: number) {
     const reason = prompt("请输入驳回原因");
@@ -128,6 +130,7 @@ export default function FundReviewPage() {
 
   return (
     <>
+      {cost.dialog}
       <div className="mb-5">
         <h1 className="page-title">备用金审核</h1>
         <div className="flex gap-3 mt-2">

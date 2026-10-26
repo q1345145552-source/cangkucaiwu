@@ -39,7 +39,7 @@ function harness({role='warehouse_admin',grant=true,initialRows=[]}={}) {
   '@/lib/api':{api,getToken:()=> 'synthetic-token'},'@/hooks/useAuth':{useAuth:()=>({user})},
   '@/hooks/useMenuPermission':{useMenuPermission:key=>{assert.equal(key,'expense_approval');return grant;}},
   '@/components/ui/Toast':{useToast:()=>({toast:(...args)=>messages.push(args)})},'next/navigation':{useRouter:()=>({push(){}})}};
- vm.runInNewContext(source,{module:m,exports:m.exports,require:n=>imports[n]||require(n),console,Date,Promise,
+ vm.runInNewContext(source,{module:m,exports:m.exports,require:n=>n==='@/components/CostIdentity'?require('./cost-identity-compat.cjs'):n==='@/lib/registrationRequest'&&!imports[n]?{registrationDraft:()=>null,submitRegistration:async(_k,_r,_p,send)=>send('legacy-regression-key')}:imports[n]||require(n),console,Date,Promise,
   FileReader:class {readAsDataURL(){this.result='data:image/png;base64,test-image';queueMicrotask(()=>this.onload());}}});
  return {rows,writes,messages,reads,flags,WalletAccountSelect,async render(){await wait();for(let i=0;i<20;i++){index=ri=ei=0;const tree=m.exports.default();if(!effects.length)return tree;effects.splice(0).forEach(fn=>fn());await wait();}throw Error('Effects did not settle');}};
 }

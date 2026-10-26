@@ -81,6 +81,8 @@ async def creation_lock(db, warehouse_id):
     missing = await missing_guards(await db.connection())
     if missing:
         raise HTTPException(409, {'code': 'payable_constraints_blocked', 'message': '历史冲突或迁移未完成，新增及关联应付已停止；请管理员运行只读核对脚本', 'missing_guards': missing})
+    from app.services.cost_identity_migration import ensure_cost_guards
+    await ensure_cost_guards(await db.connection())
 
 
 async def purchase_by_number(db, warehouse_id, value):
@@ -181,24 +183,26 @@ async def check_duplicates(db, bill, user, confirmation=None, *, exclude_id=None
         'reason': data['reason'], 'candidates': candidates, 'candidate_ids': ids, 'window_days': window}
 
 
-async def register_bill(db, bill, user, confirmation=None):
+async def register_bill(db, bill, user, confirmation=None,cost_confirmation=None):
     number(bill.bill_number)
     valid_amount(bill.amount)
     bill.duplicate_confirmation = await check_duplicates(db, bill, user, confirmation)
     db.add(bill)
     await flush_unique(db)  # Unique indexes enforce this even if a writer bypassed the application check.
+    from app.services.cost_identity import sync
+    await sync(db,'payable',bill,user,confirmation=cost_confirmation,key=bill.create_request_key,signature=bill.create_request_fingerprint)
     if bill.duplicate_confirmation:
         await record_history(db, module='payable', record_id=bill.id, operator=user,
             operation_type='duplicate_confirm', after=bill.duplicate_confirmation, warehouse_id=bill.warehouse_id)
     return bill
 
 
-async def register_purchase_bill(db, po, bill, user, confirmation=None):
+async def register_purchase_bill(db, po, bill, user, confirmation=None,cost_confirmation=None):
     if await active_purchase_bill(db, po):
         raise HTTPException(409, '该采购单已有有效应付，不能再登记')
     bill.create_request_key = f'purchase:{po.id}'
     bill.create_request_fingerprint = fingerprint({'purchase_id': po.id})
-    await register_bill(db, bill, user, confirmation)
+    await register_bill(db, bill, user, confirmation,cost_confirmation)
     po.payable_bill_id = bill.id
     await db.flush()
     return bill

@@ -21,6 +21,7 @@ _PLAN_PERMISSION = MENU_PERMISSIONS_BY_KEY["payment_plans"].label
 from app.services.supplier_payable_read import current_supplier_warehouse, filtered_bills, supplier_totals, bill_detail, bill_link_warnings, bill_values, owned, checked_link
 from app.services import payable_creation as creation
 from app.services import purchase_matching as matching
+from app.services import cost_identity as costs
 
 router = APIRouter()
 
@@ -122,6 +123,7 @@ async def create_bill(
     invoice_identity: str = Form(None),
     duplicate_confirmation: str = Form(None),
     matching_kind: str = Form(None),
+    cost_confirmation: str = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
@@ -201,7 +203,7 @@ async def create_bill(
         create_request_key=request_key,create_request_fingerprint=signature,
         created_by=current_user.id,
     )
-    await creation.register_bill(db,b,current_user,duplicate_confirmation)
+    await creation.register_bill(db,b,current_user,duplicate_confirmation,cost_confirmation)
     # 关联采购单：回写 payable_bill_id
     if purchase_order_id:
         if po:
@@ -311,7 +313,8 @@ async def void_bill(bill_id: int, void_reason: str = None,
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
-    b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id))).scalar_one_or_none()
+    await costs.lock(db,warehouse_id)
+    b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id).with_for_update())).scalar_one_or_none()
     if not b:
         raise HTTPException(404, "账单不存在")
     if current_user.role != Role.SUPER_ADMIN and b.warehouse_id != warehouse_id:
@@ -328,6 +331,7 @@ async def void_bill(bill_id: int, void_reason: str = None,
     b.void_reason = reason
     b.voided_by = current_user.id
     b.voided_at = thai_now()
+    await costs.sync(db,'payable',b,current_user,skip_suspicion=True)
     await db.flush()
     await record_history(db, module="payable", record_id=b.id, operator=current_user,
                          operation_type="void",
@@ -351,6 +355,8 @@ class BillUpdate(BaseModel):
     diff_note: Optional[str] = None
     duplicate_confirmation: Optional[dict] = None
     matching_kind: Optional[str] = None
+    cost_confirmation: Optional[dict] = None
+    invoice_identity: Optional[dict] = None
 
 @router.put("/{bill_id}")
 async def update_bill(bill_id: int, req: BillUpdate,
@@ -370,7 +376,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
     # 已付款账单只允许改 备注 和 差异处理说明
     provided = req.model_dump(exclude_none=True)
     if b.status == PayableStatus.PAID.value or (b.paid_amount or 0) > 0:
-        disallowed = [k for k in provided.keys() if k not in ("remark", "diff_note")]
+        disallowed = [k for k in provided.keys() if k not in ("remark", "diff_note", "cost_confirmation")]
         if disallowed:
             raise HTTPException(400, "已付款的账单只能修改备注")
 
@@ -458,6 +464,8 @@ async def update_bill(bill_id: int, req: BillUpdate,
 
     # 应用其余字段
     if req.matching_kind is not None: b.matching_kind=matching.kind(req.matching_kind)
+    if 'invoice_identity' in req.model_fields_set:
+        b.invoice_identity,b.invoice_identity_key=creation.invoice_identity(req.invoice_identity,current_user)
     if req.supplier_id is not None:
         b.supplier_id = req.supplier_id
     if req.bill_number is not None:
@@ -518,6 +526,8 @@ async def update_bill(bill_id: int, req: BillUpdate,
             changed_after[k] = after_map[k]
     await db.flush()
     await matching.invalidate_review(db,b,current_user)
+    await costs.sync(db,'payable',b,current_user,confirmation=req.cost_confirmation,
+        identity=(b.invoice_identity,b.invoice_identity_key) if 'invoice_identity' in req.model_fields_set else costs.UNSET)
     # 与账单更新同事务写修改日志；没有字段变化则不写
     if changed_before:
         await record_history(db, module="payable", record_id=b.id, operator=current_user,

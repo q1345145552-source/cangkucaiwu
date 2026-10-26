@@ -9,6 +9,7 @@ from app.models.employee_advance import EmployeeAdvance
 from app.models.reimbursement import Reimbursement
 from app.services.data_history import record_history
 from app.services.flow_rules import fund_available
+from app.services import cost_identity as costs
 
 
 def fields(item):
@@ -23,12 +24,16 @@ def fields(item):
 async def linked_ids(db, ids):
     if not ids: return set()
     result = set()
-    for model in (EmployeeAdvance, Reimbursement):
+    from app.models import ExpenseApproval
+    for model in (EmployeeAdvance, Reimbursement,ExpenseApproval):
         result.update((await db.execute(select(model.fund_item_id).where(model.fund_item_id.in_(ids)))).scalars().all())
     return result
 
 
 async def lock_manual_item(db, account_id, item_id, wh_ids, *, action):
+    wid=(await db.execute(select(ExpenseFund.warehouse_id).where(ExpenseFund.id==account_id,ExpenseFund.warehouse_id.in_(wh_ids)))).scalar_one_or_none()
+    if wid is None:raise HTTPException(404,'开销记录不存在或不属于当前仓库')
+    await costs.lock(db,wid)
     # 审核同样先锁开销行；避免与审核并发时越过“已通过不能改”的判断。
     item = (await db.execute(select(ExpenseFundItem).join(ExpenseFund).where(
         ExpenseFundItem.id == item_id, ExpenseFundItem.fund_id == account_id,
@@ -72,6 +77,10 @@ async def update(db, fund, item, changes, user, validate_receipt):
             if key == "amount": value = float(value)
             if key == "description" and value is None: raise HTTPException(400, "开销说明不能为null")
             setattr(item, key, value)
+    await costs.sync(db,'fund_item',item,user,
+        supplier=changes.get('supplier_id',costs.UNSET),
+        identity=costs.parse_identity(changes['invoice_identity'],user) if 'invoice_identity' in changes else costs.UNSET,
+        confirmation=changes.get('cost_confirmation'))
     await db.flush()
     after = fields(item)
     await record_history(db, module="expense_fund_item", record_id=item.id, operator=user, operation_type="edit",
@@ -85,6 +94,7 @@ async def void(db, fund, item, reason, user):
     before = fields(item)
     item.review_status = ReviewStatus.VOIDED.value
     item.voided_by, item.voided_at, item.void_reason = user.id, thai_now(), reason
+    await costs.sync(db,'fund_item',item,user,skip_suspicion=True)
     await db.flush()
     after = fields(item)
     await record_history(db, module="expense_fund_item", record_id=item.id, operator=user, operation_type="void",

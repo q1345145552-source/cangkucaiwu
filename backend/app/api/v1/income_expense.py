@@ -23,6 +23,7 @@ from app.schemas.business import IncomeRecordCreate, ExpenseRecordCreate, Catego
 from app.services.data_history import record_history
 from app.services.money_period import money_period
 from app.services.internal_transfers import selected_wallet_warehouses, transfer_summary, transfer_record_filters, append_transfer_sheet
+from app.services import cost_identity as costs
 
 async def validate_manual_money(db, wid, account_id, category_id, currency, kind, value):
     from app.services.wallet import lock_account
@@ -211,6 +212,8 @@ async def create_expense(
     supplier_id: Optional[int] = Form(None),
     remark: Optional[str] = Form(None),
     request_key: Optional[str] = Form(None),
+    invoice_identity: Optional[str] = Form(None),
+    cost_confirmation: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -227,6 +230,17 @@ async def create_expense(
     except ValueError:raise HTTPException(400,'付款日期格式错误')
     values=dict(warehouse_id=wh_id,category_id=category_id,account_id=account_id,supplier_id=supplier_id,
         amount=amount,currency=currency,expense_date=when,remark=remark,approved_by=current_user.id)
+    costs.number(request_key,'登记请求编号',100)
+    await costs.lock(db,wh_id)
+    identity=costs.parse_identity(invoice_identity,current_user)
+    import hashlib
+    attachments=[]
+    for attachment in files or []:
+        if attachment and attachment.filename:
+            attachments.append(hashlib.sha256(await attachment.read()).hexdigest());await attachment.seek(0)
+    signature=costs.fingerprint({**values,'invoice_key':identity[1],'attachments':attachments})
+    previous=await costs.replay(db,'expense',wh_id,request_key,signature)
+    if previous:return {'id':previous.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':previous.voucher,**await costs.metadata_for(db,previous)}
     from app.services.manual_wallet import prepare,insert_once,lookup
     old=await lookup(db,'expense',values,request_key)
     if old:return {'id':old.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':old.voucher}
@@ -261,13 +275,15 @@ async def create_expense(
     voucher_field = json.dumps(voucher_paths, ensure_ascii=False) if voucher_paths else None
 
     r,created=await insert_once(db,'expense',{**values,'voucher':voucher_field},request_key,fingerprint)
+    root=await costs.sync(db,'expense',r,current_user,supplier=supplier_id,identity=identity,
+        confirmation=cost_confirmation,key=request_key,signature=signature)
     if created:await record_history(db, module="expense", record_id=r.id, operator=current_user,
                           operation_type="create", after={
                               "amount": amount, "currency": currency,
                               "expense_date": expense_date, "category_id": category_id,
                               "account_id": account_id, "remark": remark, "voucher": voucher_field,
                           }, warehouse_id=wh_id)
-    return {"id": r.id, "created":created,"message": "付款记录创建成功" if created else '付款记录已保存，请勿重复录入', "voucher": r.voucher}
+    return {"id": r.id, "created":created,"message": "付款记录创建成功" if created else '付款记录已保存，请勿重复录入', "voucher": r.voucher,**costs.metadata(root)}
 
 @router.put("/expense/{expense_id}")
 async def update_expense(
@@ -280,6 +296,8 @@ async def update_expense(
     supplier_id: Optional[int] = Form(None),
     remark: Optional[str] = Form(None),
     delete_vouchers: Optional[str] = Form(None),  # JSON 数组字符串：要删除的凭证路径
+    invoice_identity: Optional[str] = Form(None),
+    cost_confirmation: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -290,6 +308,7 @@ async def update_expense(
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
+    await costs.lock(db,get_wh_id(current_user))
     r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id).with_for_update())).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "记录不存在")
@@ -340,14 +359,8 @@ async def update_expense(
             del_list = [delete_vouchers]
         del_set = set(del_list)
         vouchers = [p for p in vouchers if p not in del_set]
-        for p in del_set:
-            if p and p.startswith("uploads/"):
-                try:
-                    fpath = os.path.join(UPLOAD_DIR, p[len("uploads/"):])
-                    if os.path.isfile(fpath):
-                        os.remove(fpath)
-                except Exception:
-                    pass
+        # Retain original evidence on disk. A later identity rejection/rollback must not
+        # erase an old attachment; the edit history preserves the previous references.
 
     # 追加新凭证
     if files:
@@ -380,6 +393,9 @@ async def update_expense(
         r.supplier_id = supplier_id
     r.remark = remark
     r.voucher = json.dumps(vouchers, ensure_ascii=False) if vouchers else None
+    await costs.sync(db,'expense',r,current_user,supplier=r.supplier_id,
+        identity=costs.parse_identity(invoice_identity,current_user) if invoice_identity is not None else costs.UNSET,
+        confirmation=cost_confirmation)
 
     await db.flush()
     await record_history(db, module="expense", record_id=r.id, operator=current_user,
@@ -403,6 +419,7 @@ async def delete_expense(
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
 
+    await costs.lock(db,get_wh_id(current_user))
     r = (await db.execute(select(ExpenseRecord).where(ExpenseRecord.id == expense_id).with_for_update())).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "记录不存在")
@@ -421,6 +438,7 @@ async def delete_expense(
         "category_id": r.category_id, "account_id": r.account_id,
         "supplier_id": r.supplier_id, "remark": r.remark, "voucher": r.voucher,
     }
+    await costs.deleted(db,'expense',r,current_user)
     await db.delete(r)
     await db.flush()
     await record_history(db, module="expense", record_id=expense_id, operator=current_user,

@@ -2,13 +2,14 @@
 import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { api, getToken, getActiveWarehouseId } from "@/lib/api";
+import { api, getToken, getActiveWarehouseId,ApiError } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import SafeImage from "@/components/SafeImage";
 import { thumbPathOf } from "@/lib/image";
 import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
+import { useCostIdentity,emptyCost,CostConfirmation } from "@/components/CostIdentity";
 import { TrendingUp, TrendingDown, Plus, DollarSign, Minus, ArrowUp, ArrowDown } from "lucide-react";
 
 function todayStr(): string {
@@ -21,6 +22,7 @@ function monthStartStr(): string {
 }
 
 export default function OperatingPage() {
+  const cost=useCostIdentity();
   const { toast } = useToast(); const router = useRouter();
   const [chartCurrency, setChartCurrency] = useState("THB");
   const [dashboard, setDashboard] = useState<any>(null);
@@ -151,25 +153,26 @@ export default function OperatingPage() {
 
   function closeForm() {
     setShowForm(false);
-    clearVoucher();
+    if(!pendingWalletOperation('expense'))clearVoucher();
   }
 
-  async function handleCreate() {
+  async function handleCreate(costConfirmation?:CostConfirmation) {
     if (!form.category_id) { toast("error", "请选择类别"); return; }
     if (!form.account_id) { toast("error", "请选择账户"); return; }
     try {
-      const result = await submitWalletOperation("expense", { ...form, amount: form.amount || 0, expense_date: form.date }, voucherFiles);
+      const result = await submitWalletOperation("expense", { ...form,...cost.payload(), amount: form.amount || 0, expense_date: form.date }, voucherFiles,costConfirmation);
       toast("success", result.message || "支出录入成功");
       setShowForm(false);
       setForm({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: todayStr(), remark: "" });
       clearVoucher();
       loadExpenses(); loadDashboard();
-    } catch (err: any) { toast("error", err.message || "录入失败"); }
+    } catch (err: any) { if(!cost.capture(err,handleCreate))toast("error", err.message || "录入失败"); }
   }
 
   function openCreate() {
     try {
       const pending = pendingWalletOperation("expense")?.payload;
+      cost.reset(pending?{supplier_id:pending.supplier_id||0,invoice:pending.invoice_identity?{...JSON.parse(pending.invoice_identity),verified:true}:emptyCost().invoice}:undefined);
       if (pending) {
         setForm({ category_id: pending.category_id, account_id: pending.account_id, amount: String(pending.amount), currency: pending.currency, date: pending.expense_date, remark: pending.remark || "" });
         toast("error", "已恢复上一笔结果待确认的付款，请重试核对；需要凭证时请重新选择照片");
@@ -180,6 +183,7 @@ export default function OperatingPage() {
 
   // ===== 编辑 =====
   function openEdit(row: any) {
+    cost.reset();cost.edit('expense',row.id).catch(e=>toast('error',e.message));
     loadRefs();
     setEditingExpense(row);
     setEditForm({
@@ -228,7 +232,7 @@ export default function OperatingPage() {
     setConfirmDeleteVoucher(null);
   }
 
-  async function handleEditSave() {
+  async function handleEditSave(costConfirmation?:CostConfirmation) {
     if (!editForm.category_id) { toast("error", "请选择类别"); return; }
     if (!editForm.account_id) { toast("error", "请选择账户"); return; }
     try {
@@ -238,6 +242,10 @@ export default function OperatingPage() {
       fd.append("amount", String(editForm.amount || 0));
       fd.append("currency", editForm.currency || "THB");
       fd.append("expense_date", editForm.date);
+      const identity=cost.payload();
+      if(identity.supplier_id)fd.append('supplier_id',String(identity.supplier_id));
+      fd.append('invoice_identity',identity.invoice_identity?JSON.stringify(identity.invoice_identity):'');
+      if(costConfirmation)fd.append('cost_confirmation',JSON.stringify(costConfirmation));
       if (editForm.remark) fd.append("remark", editForm.remark);
       if (editDeleteVouchers.length) fd.append("delete_vouchers", JSON.stringify(editDeleteVouchers));
       if (editVoucherFiles.length) editVoucherFiles.forEach(f => fd.append("files", f));
@@ -255,12 +263,12 @@ export default function OperatingPage() {
         const err = await res.json().catch(() => ({}));
         let msg = err.detail || "更新失败";
         if (Array.isArray(err.detail)) msg = err.detail.map((e: any) => e.msg).join("; ");
-        throw new Error(msg);
+        throw new ApiError(res.status,Array.isArray(err.detail)?msg:err.detail||msg);
       }
       toast("success", "更新成功");
       closeEdit();
       loadExpenses(); loadDashboard();
-    } catch (err: any) { toast("error", err.message || "更新失败"); }
+    } catch (err: any) { if(!cost.capture(err,handleEditSave))toast("error", err.message || "更新失败"); }
   }
 
   async function handleDeleteExpense() {
@@ -475,9 +483,10 @@ export default function OperatingPage() {
       }
 
       {/* 录入弹窗 */}
+      {cost.dialog}
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div role="dialog" aria-label="录入运营支出" className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
               <Minus size={20} /><h2 className="text-lg font-semibold">录入运营支出</h2>
               <button onClick={closeForm} className="ml-auto text-red-200 hover:text-white text-xl leading-none">&times;</button>
@@ -491,6 +500,7 @@ export default function OperatingPage() {
                 <div><label className="form-label">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
               </div>
               <div><label className="form-label">备注</label><input className="form-input" value={form.remark} onChange={e => setForm({...form, remark: e.target.value})} /></div>
+              {cost.fields}
               <div>
                 <label className="form-label">凭证图片（可选，可多张）</label>
                 <input type="file" accept="image/*" multiple className="form-input" onChange={handleVoucherSelect} />
@@ -508,7 +518,7 @@ export default function OperatingPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={closeForm} className="btn-secondary">取消</button>
-              <button onClick={handleCreate} className="btn-primary">保存</button>
+              <button onClick={()=>handleCreate()} className="btn-primary">保存</button>
             </div>
           </div>
         </div>
@@ -531,6 +541,7 @@ export default function OperatingPage() {
                 <div><label className="form-label">币种</label><select className="form-input" value={editForm.currency} onChange={e => setEditForm({...editForm, currency: e.target.value})}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
               </div>
               <div><label className="form-label">备注</label><input className="form-input" value={editForm.remark} onChange={e => setEditForm({...editForm, remark: e.target.value})} /></div>
+              {cost.fields}
               <div>
                 <label className="form-label">已有凭证（点击放大，可删除）</label>
                 {editExistingVouchers.length > 0 ? (
@@ -568,7 +579,7 @@ export default function OperatingPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={closeEdit} className="btn-secondary">取消</button>
-              <button onClick={handleEditSave} className="btn-primary">保存</button>
+              <button onClick={()=>handleEditSave()} className="btn-primary">保存</button>
             </div>
           </div>
         </div>

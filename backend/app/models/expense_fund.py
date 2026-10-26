@@ -45,6 +45,7 @@ class ExpenseFundItem(Base):
     __tablename__ = "expense_fund_items"
 
     id = Column(Integer, primary_key=True, index=True)
+    cost_identity_id = Column(Integer, ForeignKey('cost_identities.id'), nullable=True)
     fund_id = Column(Integer, ForeignKey("expense_funds.id"), nullable=False, index=True)
     expense_date = Column(DateTime, nullable=False)
     category = Column(String(100), nullable=False)

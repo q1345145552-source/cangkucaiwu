@@ -1,4 +1,4 @@
-import { getToken, getActiveWarehouseId } from "@/lib/api";
+import { getToken, getActiveWarehouseId,ApiError } from "@/lib/api";
 
 export type WalletOperationKind = "income" | "expense" | "transfer";
 type Payload = Record<string, any>;
@@ -22,10 +22,10 @@ export function pendingWalletOperation(kind: WalletOperationKind): Operation | n
 
 function normalized(kind: WalletOperationKind, source: Payload) {
   const keys = kind === "transfer" ? ["from_account_id", "to_account_id", "amount", "transfer_date", "remark"]
-    : ["category_id", "account_id", "customer_id", "supplier_id", "amount", "currency", `${kind}_date`, "remark", "voucher"];
+    : ["category_id", "account_id", "customer_id", "supplier_id", "amount", "currency", `${kind}_date`, "remark", "voucher",...(kind==="expense"?["invoice_identity"]:[])];
   const payload: Payload = {};
   for (const key of keys) if (source[key] !== undefined && source[key] !== null) {
-    payload[key] = ["amount", "category_id", "account_id", "customer_id", "supplier_id", "from_account_id", "to_account_id"].includes(key) ? Number(source[key]) : source[key];
+    payload[key] = key==="invoice_identity" ? JSON.stringify(source[key]) : ["amount", "category_id", "account_id", "customer_id", "supplier_id", "from_account_id", "to_account_id"].includes(key) ? Number(source[key]) : source[key];
   }
   return payload;
 }
@@ -45,9 +45,11 @@ function forget(kind: WalletOperationKind, key: string) {
   if (pendingWalletOperation(kind)?.key === key) sessionStorage.removeItem(storageKey(kind));
 }
 
-export async function submitWalletOperation(kind: WalletOperationKind, source: Payload, files: File[] = []) {
+export async function submitWalletOperation(kind: WalletOperationKind, source: Payload, files: File[] = [],costConfirmation?:any) {
   const payload = normalized(kind, source);
+  if(kind==="expense"&&files.length)payload.attachments=files.map(f=>({name:f.name,size:f.size,lastModified:f.lastModified}));
   const op = remember(kind, payload); // Persist before sending money; uncertain retries reuse the key.
+  const originalScope=storageKey(kind);
   const flightKey = storageKey(kind) + ":" + op.key;
   const running = inFlight.get(flightKey);
   if (running) return running;
@@ -58,17 +60,19 @@ export async function submitWalletOperation(kind: WalletOperationKind, source: P
     let body: FormData | string;
     if (kind === "expense") {
       const form = new FormData();
-      Object.entries(payload).forEach(([key, value]) => form.append(key, String(value)));
+      Object.entries(payload).filter(([key])=>key!=="attachments").forEach(([key, value]) => form.append(key, String(value)));
+      if(costConfirmation)form.append("cost_confirmation",JSON.stringify(costConfirmation));
       form.append("request_key", op.key); files.forEach(file => form.append("files", file)); body = form;
     } else { headers["Content-Type"] = "application/json"; body = JSON.stringify({ ...payload, request_key: op.key }); }
     const path = kind === "transfer" ? "/accounts/transfers" : `/income-expense/${kind}`;
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}${path}`, { method: "POST", headers, body });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      if ([400, 422].includes(response.status)) forget(kind, op.key); // Server rejected the transaction.
-      throw new Error(typeof error.detail === "string" ? error.detail : "收付款未完成，请重试同一笔");
+      if ([400, 422].includes(response.status) || (response.status===409&&String(error.detail?.code||"").startsWith("cost_"))) forget(kind, op.key);
+      throw new ApiError(response.status,error.detail || "收付款未完成，请重试同一笔");
     }
     const result = await response.json();
+    if(kind==="expense"&&originalScope!==storageKey(kind))throw Error("账号或仓库已变化，请回到原仓核对原登记；原请求已保留");
     forget(kind, op.key);
     return result;
   })();

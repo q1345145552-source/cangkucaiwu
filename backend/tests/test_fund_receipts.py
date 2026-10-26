@@ -12,7 +12,7 @@ from tests.test_fund_disbursement import environment, topup, receipt, values, BA
 from tests.test_round2_permissions import auth, set_perms, png
 from tests.test_cash_advances import finance_snapshot
 
-BODY={"expense_date":"2026-10-19","category":"耗材","amount":2000,"currency":"THB","description":"购买包装耗材"}
+BODY={"request_key":"receipt-regression-request","expense_date":"2026-10-19","category":"耗材","amount":2000,"currency":"THB","description":"购买包装耗材"}
 
 
 def test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost(tmp_path,monkeypatch):

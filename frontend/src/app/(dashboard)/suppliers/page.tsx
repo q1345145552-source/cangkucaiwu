@@ -12,6 +12,7 @@ import { ReceiptHistory, ThreeWayMatch } from "@/components/PurchaseReceiptInfo"
 import { ApiError } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { registrationDraft, submitRegistration } from "@/lib/registrationRequest";
+import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
 import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
 import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag, AlertCircle } from "lucide-react";
 
@@ -26,6 +27,7 @@ const FLOW_STATUS_MAP: Record<string, { label: string; cls: string }> = {
 };
 
 export default function SuppliersPage() {
+  const cost=useCostIdentity();
   const { t } = useI18n();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
@@ -241,7 +243,7 @@ export default function SuppliersPage() {
   })();
   const QUICK_REASONS = ["质量更好", "交货更快", "距离更近", "长期合作", "其他"];
 
-  async function doSubmitOrder(confirmAnomaly: boolean, reasons: Record<number, string>, confirmation?:DuplicateConfirmation) {
+  async function doSubmitOrder(confirmAnomaly: boolean, reasons: Record<number, string>, confirmation?:DuplicateConfirmation,costConfirmation?:CostConfirmation) {
     const selectedIds = Object.keys(orderItems).map(Number).filter(id => orderItems[id] > 0);
     if (selectedIds.length === 0) { toast("error", "请至少选择一个产品"); return; }
     setOrderSubmitting(true);
@@ -250,7 +252,7 @@ export default function SuppliersPage() {
         items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id], reason: reasons[id] || "" })),
       };
       const r = await submitRegistration<any>("purchase_order",orderSupplierId,payload,key=>api.post<any>(`/suppliers/${orderSupplierId}/purchase-order`,{
-        ...payload,request_key:key,confirm_price_anomaly:confirmAnomaly,duplicate_confirmation:confirmation,
+        ...payload,request_key:key,confirm_price_anomaly:confirmAnomaly,duplicate_confirmation:confirmation,cost_confirmation:costConfirmation,
       }));
       if (r.need_confirm) {
         // 价格异常：确认后再提交
@@ -278,7 +280,7 @@ export default function SuppliersPage() {
       if (confirm(`采购单已创建，应付账单编号: ${r.payable_bill_number}\n是否跳转到应付账款页面？`)) {
         router.push(payablePermission || planPermission ? `/payable?bill_id=${r.payable_bill_id}` : `/suppliers/purchase-orders/${r.order.id}`);
       }
-    } catch (err: any) { if(err.detail?.candidates){setDuplicateChallenge({detail:err.detail,retry:data=>doSubmitOrder(confirmAnomaly,reasons,data)});}else toast("error", err.message || "下单失败"); }
+    } catch (err: any) { if(cost.capture(err,data=>doSubmitOrder(confirmAnomaly,reasons,confirmation,data))){}else if(err.detail?.candidates){setDuplicateChallenge({detail:err.detail,retry:data=>doSubmitOrder(confirmAnomaly,reasons,data,costConfirmation)});}else toast("error", err.message || "下单失败"); }
     finally { setOrderSubmitting(false); }
   }
 
@@ -307,13 +309,13 @@ export default function SuppliersPage() {
       setApprovalThreshold(th.threshold ?? 0);
     } catch {}
   }
-  async function approveOrder(id: number, confirmation?:DuplicateConfirmation) {
+  async function approveOrder(id: number, confirmation?:DuplicateConfirmation,costConfirmation?:CostConfirmation) {
     try {
-      await api.put(`/suppliers/purchase-approvals/${id}/approve`, {duplicate_confirmation:confirmation});
+      await api.put(`/suppliers/purchase-approvals/${id}/approve`, {duplicate_confirmation:confirmation,cost_confirmation:costConfirmation});
       await openPoDetail(id);
       toast("success", "审批通过，应付账单已生成");
       openApprovals();
-    } catch (e: any) { if(e.detail?.candidates){setDuplicateChallenge({detail:e.detail,retry:data=>approveOrder(id,data)});}else toast("error", e.message || "审批失败"); }
+    } catch (e: any) { if(cost.capture(e,data=>approveOrder(id,confirmation,data))){}else if(e.detail?.candidates){setDuplicateChallenge({detail:e.detail,retry:data=>approveOrder(id,data,costConfirmation)});}else toast("error", e.message || "审批失败"); }
   }
   async function confirmReject() {
     if (!rejectTarget) return;
@@ -547,6 +549,7 @@ export default function SuppliersPage() {
   return (
     <>
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
+      {cost.dialog}
       <div className="flex justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <h1 className="page-title">{t("suppliers")}</h1>

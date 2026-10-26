@@ -16,6 +16,8 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional
 import base64, os, uuid
+from app.schemas.cost_identity import CostFields
+from app.services import cost_identity as costs
 
 router = APIRouter()
 
@@ -52,7 +54,7 @@ async def _get_threshold(db: AsyncSession, wh_id: int) -> float:
         return 0.0
 
 
-class ApprovalCreate(BaseModel):
+class ApprovalCreate(CostFields):
     payment_account_id: Optional[int] = None
     amount: float = Field(gt=0)
     currency: str = "THB"
@@ -63,7 +65,7 @@ class ApprovalCreate(BaseModel):
     voucher_base64: Optional[str] = None  # 凭证照片 base64（可选）
 
 
-class ApprovalUpdate(BaseModel):
+class ApprovalUpdate(CostFields):
     payment_account_id: Optional[int] = None
     amount: Optional[float] = None
     currency: Optional[str] = None
@@ -83,6 +85,7 @@ class RejectRequest(BaseModel):
 
 
 class PayRequest(BaseModel):
+    cost_confirmation: Optional[dict] = None
     payment_account_id: Optional[int] = None
     voucher_base64: Optional[str] = None  # 付款凭证照片 base64（可选）
 
@@ -139,6 +142,7 @@ async def _generate_operating_expense(db: AsyncSession, appr: ExpenseApproval):
     )
     db.add(expense)
     await db.flush()
+    await costs.link_child(db,appr,expense)
     appr.expense_record_id = expense.id
 
 
@@ -170,6 +174,7 @@ async def _link_fund(db: AsyncSession, appr: ExpenseApproval):
     )
     db.add(item)
     await db.flush()
+    await costs.link_child(db,appr,item)
     appr.fund_item_id = item.id
 
 
@@ -208,6 +213,12 @@ async def create_approval(
     except (ValueError, TypeError):
         raise HTTPException(400, "费用日期格式错误 YYYY-MM-DD")
 
+    costs.number(req.request_key,'登记请求编号',100)
+    await costs.lock(db,wh_id)
+    signature=costs.fingerprint(req.model_dump(exclude={'cost_confirmation'}))
+    previous=await costs.replay(db,'approval',wh_id,req.request_key,signature)
+    if previous:return {'id':previous.id,'status':previous.status,'replayed':True,'message':'原费用申请已保存，未重复新增',**await costs.metadata_for(db,previous)}
+    identity=costs.parse_identity(req.invoice_identity,current_user)
     if req.fund_source == "company" and req.payment_account_id is not None:
         from app.services.wallet import lock_account
         await lock_account(db, wh_id, req.payment_account_id, req.currency or "THB")
@@ -232,8 +243,10 @@ async def create_approval(
     )
     db.add(a)
     await db.flush()
+    root=await costs.sync(db,'approval',a,current_user,supplier=req.supplier_id,identity=identity,
+        confirmation=req.cost_confirmation,key=req.request_key,signature=signature)
 
-    return {"id": a.id, "status": status, "message": "费用已提交，等待审批" if status == "pending" else "免审批，等待确认付款"}
+    return {"id": a.id, "status": status, "message": "费用已提交，等待审批" if status == "pending" else "免审批，等待确认付款",**costs.metadata(root)}
 
 
 @router.get("")
@@ -264,6 +277,7 @@ async def list_approvals(
 
     return {
         "data": [{
+            **await costs.metadata_for(db,r),
             "id": r.id,
             "warehouse_id": r.warehouse_id,
             "applicant_id": r.applicant_id,
@@ -373,6 +387,7 @@ async def update_approval(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
+    await costs.lock(db,wh_id)
     a = (await db.execute(
         select(ExpenseApproval).where(ExpenseApproval.id == approval_id, ExpenseApproval.warehouse_id == wh_id)
         .with_for_update().execution_options(populate_existing=True)
@@ -423,6 +438,10 @@ async def update_approval(
     a.approver_id = None
     a.approved_at = None
     a.approval_note = None
+    await costs.sync(db,'approval',a,current_user,
+        supplier=req.supplier_id if 'supplier_id' in req.model_fields_set else costs.UNSET,
+        identity=costs.parse_identity(req.invoice_identity,current_user) if 'invoice_identity' in req.model_fields_set else costs.UNSET,
+        confirmation=req.cost_confirmation)
     await db.flush()
     return {"id": a.id, "message": "已重新提交，等待审批"}
 
@@ -437,6 +456,7 @@ async def approve_approval(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+    await costs.lock(db,wh_id)
     a = (await db.execute(
         select(ExpenseApproval).where(ExpenseApproval.id == approval_id, ExpenseApproval.warehouse_id == wh_id)
         .with_for_update().execution_options(populate_existing=True)
@@ -448,6 +468,7 @@ async def approve_approval(
     a.status = "approved"
     a.approver_id = current_user.id
     a.approved_at = thai_now()
+    await costs.sync(db,'approval',a,current_user)
     await db.flush()
     return {"id": a.id, "message": "已批准"}
 
@@ -463,6 +484,7 @@ async def reject_approval(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+    await costs.lock(db,wh_id)
     a = (await db.execute(
         select(ExpenseApproval).where(ExpenseApproval.id == approval_id, ExpenseApproval.warehouse_id == wh_id)
         .with_for_update().execution_options(populate_existing=True)
@@ -475,6 +497,7 @@ async def reject_approval(
     a.approver_id = current_user.id
     a.approved_at = thai_now()
     a.approval_note = req.note
+    await costs.sync(db,'approval',a,current_user)
     await db.flush()
     return {"id": a.id, "message": "已驳回"}
 
@@ -490,6 +513,7 @@ async def pay_approval(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+    await costs.lock(db,wh_id)
     a = (await db.execute(
         select(ExpenseApproval).where(ExpenseApproval.id == approval_id, ExpenseApproval.warehouse_id == wh_id).with_for_update().execution_options(populate_existing=True)
     )).scalar_one_or_none()
@@ -520,6 +544,7 @@ async def pay_approval(
     a.status = "paid"
     a.payer_id = current_user.id
     a.paid_at = thai_now()
+    await costs.sync(db,'approval',a,current_user,confirmation=req.cost_confirmation)
     await db.flush()
 
     # 付款后自动生成运营支出 + 备用金联动

@@ -48,6 +48,10 @@ def test_supervisor_denied_admin_edit_void_history_and_balance(tmp_path,monkeypa
             listed=(await c.get(f"{BASE}/accounts/{fid}/items",headers=auth(1))).json()["data"]
             assert len(listed)==1 and listed[0]["review_status"]=="voided" and not listed[0]["can_edit"] and not listed[0]["can_void"]
             history=(await c.get(f"/api/v1/history?module=expense_fund_item&record_id={iid}",headers=auth(1))).json()["data"]
+            identity_history=[r for r in history if r['operation_type']=='cost_identity']
+            assert len(identity_history)==4 and sorted(r['operator_id'] for r in identity_history)==[1,1,1,4]
+            assert all(r['created_at'] for r in identity_history)
+            history=[r for r in history if r['operation_type']!='cost_identity']
             assert len(history)==3 and {r["operation_type"] for r in history}=={"edit","void"}
             amount_log=next(row for row in history if row["operation_type"]=="edit" and row["before_data"]["amount"]!=row["after_data"]["amount"])
             assert amount_log["before_data"]["amount"]==2000 and amount_log["after_data"]["amount"]==1500

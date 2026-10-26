@@ -11,8 +11,10 @@ from app.api.v1 import deduction_template
 from app.api.v1 import employee_deduction
 from app.api.v1 import expense_approval
 from app.api.v1 import cash_advance
+from app.api.v1 import cost_identity
 
 api_router = APIRouter()
+api_router.include_router(cost_identity.router,prefix='/expense-identities',tags=['费用身份核对'])
 api_router.include_router(auth.router, prefix="/auth", tags=["认证"])
 api_router.include_router(users.router, prefix="/users", tags=["用户"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["仪表盘"])

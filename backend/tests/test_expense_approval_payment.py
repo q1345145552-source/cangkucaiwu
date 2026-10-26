@@ -58,7 +58,9 @@ async def fee_environment(tmp_path, monkeypatch, *, fund=False):
 
 
 async def create(client, *, uid=1, **overrides):
+    import uuid
     response = await client.post("/api/v1/expense-approvals", headers=auth(uid), json={
+        'request_key':uuid.uuid4().hex,
         "amount": 200, "purpose": "隔离测试小额耗材", "expense_date": "2026-09-30",
         "currency": "THB", "fund_source": "company", "payment_account_id": 1, **overrides})
     assert response.status_code == 200, response.text

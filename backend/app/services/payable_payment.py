@@ -34,6 +34,8 @@ async def record_payment(db, bill, value, account_id, method, operator, request_
     bill.paid_amount = float(money(bill.paid_amount) + n)
     bill.paid_at, bill.payment_method = now, method
     bill.status = 'paid' if money(bill.paid_amount) >= money(bill.amount) else 'partially_paid'
+    from app.services.cost_identity import paid
+    await paid(db,'payable',bill,operator)
     await db.flush()
     await record_history(db, module='payable', record_id=bill.id, operator=operator,
         operation_type='pay', after={'payment_id': row.id, 'amount': float(n), 'account_id': account.id,

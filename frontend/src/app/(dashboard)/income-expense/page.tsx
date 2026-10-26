@@ -9,8 +9,10 @@ import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
 import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
+import { useCostIdentity, emptyCost, type CostConfirmation } from "@/components/CostIdentity";
 
 export default function IncomeExpensePage() {
+  const cost = useCostIdentity();
   const { t } = useI18n();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [tab, setTab] = useState("income");
@@ -50,20 +52,22 @@ export default function IncomeExpensePage() {
     } catch {}
   }
 
-  async function handleCreate() {
+  async function handleCreate(costConfirmation?: CostConfirmation) {
     try {
-      const result = await submitWalletOperation(tab === "income" ? "income" : "expense", { ...form, amount: form.amount || 0, [tab === "income" ? "income_date" : "expense_date"]: form.date });
+      const result = await submitWalletOperation(tab === "income" ? "income" : "expense", { ...form, ...(tab === "expense" ? cost.payload() : {}), amount: form.amount || 0, [tab === "income" ? "income_date" : "expense_date"]: form.date }, [], costConfirmation);
       toast("success", result.message || "创建成功");
       setShowForm(false); load();
-    } catch (err: any) { toast("error", err.message || "创建失败"); }
+    } catch (err: any) { if (tab !== "expense" || !cost.capture(err, data => handleCreate(data))) toast("error", err.message || "创建失败"); }
   }
 
   function openCreate() {
     try {
       const kind = tab === "income" ? "income" : "expense";
       const pending = pendingWalletOperation(kind)?.payload;
+      cost.reset();
       if (pending) {
         setForm({ category_id: pending.category_id, account_id: pending.account_id, amount: String(pending.amount), currency: pending.currency, date: pending[`${kind}_date`], remark: pending.remark || "" });
+        if (kind === "expense") cost.reset({ supplier_id: pending.supplier_id || 0, invoice: pending.invoice_identity ? JSON.parse(pending.invoice_identity) : emptyCost().invoice });
         toast("error", "已恢复上一笔结果待确认的收付，请重试，不要另建");
       }
       loadRefs(); setShowForm(true);
@@ -96,6 +100,7 @@ export default function IncomeExpensePage() {
 
   return (
     <>
+      {cost.dialog}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="page-title">{t("income_expense")}</h1>
@@ -118,9 +123,10 @@ export default function IncomeExpensePage() {
       <DataTable columns={columns} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} />
       {showForm && (
         <div className="modal-overlay">
-          <div className="bg-white rounded-xl w-full max-w-md p-6">
+          <div className="bg-white rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">{tab === "income" ? "新建收款" : "新建付款"}</h2>
             <div className="space-y-3">
+              {tab === "expense" && cost.fields}
               <div><label className="block text-sm mb-1">类别</label><select className="form-input" value={form.category_id} onChange={e => setForm({...form, category_id: +e.target.value})}><option>选择类别</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               <div><label className="block text-sm mb-1">收款账户</label><select className="form-input" value={form.account_id} onChange={e => setForm({...form, account_id: +e.target.value})}><option>选择账户</option>{accounts.map((a: any) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}</select></div>
               <div><label className="block text-sm mb-1">日期</label><input type="date" className="form-input" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
@@ -130,7 +136,7 @@ export default function IncomeExpensePage() {
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="btn-secondary">取消</button>
-              <button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
+              <button onClick={() => handleCreate()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
             </div>
           </div>
         </div>

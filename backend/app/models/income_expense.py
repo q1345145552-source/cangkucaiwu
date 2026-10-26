@@ -52,6 +52,7 @@ class ExpenseRecord(Base):
     __table_args__ = (Index('uq_manual_expense_operation','warehouse_id','request_key',unique=True),)
 
     id = Column(Integer, primary_key=True, index=True)
+    cost_identity_id = Column(Integer, ForeignKey('cost_identities.id'), nullable=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     category_id = Column(Integer, ForeignKey("income_expense_categories.id"), nullable=False)
     account_id = Column(Integer, ForeignKey("payment_accounts.id"), nullable=True)  # 历史记录可为空；新垫款业务在归还时按付款记录计支出

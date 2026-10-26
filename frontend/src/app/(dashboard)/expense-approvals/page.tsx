@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useRouter } from "next/navigation";
 import { Receipt, Plus, Edit2, XCircle, CheckCircle, Banknote, Trash2 } from "lucide-react";
+import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
+import { submitRegistration,registrationDraft } from "@/lib/registrationRequest";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "待审批", approved: "待付款", paid: "已付款", rejected: "已驳回", completed: "已完成（历史）",
@@ -29,6 +31,7 @@ function todayStr(): string {
 }
 
 export default function ExpenseApprovalsPage() {
+  const cost=useCostIdentity();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [accountId, setAccountId] = useState(0);
   const [payAccountId, setPayAccountId] = useState(0);
@@ -99,11 +102,14 @@ export default function ExpenseApprovalsPage() {
     setEditingId(null);
     setAccountId(0);
     setForm({ amount: "", currency: "THB", purpose: "", expense_date: todayStr(), payment_method: "cash", fund_source: "company" });
-    setVoucherFile(null);
+    const pending=registrationDraft('cost_approval',0)?.payload;
+    cost.reset(pending?.cost);
+    if(pending){setForm(pending.form);setAccountId(pending.accountId);}else setVoucherFile(null);
     setShowForm(true);
   }
 
   function openEdit(r: any) {
+    cost.reset();cost.edit('approval',r.id).catch(e=>toast('error',e.message));
     setEditingId(r.id);
     setAccountId(r.payment_account_id || 0);
     setForm({
@@ -114,7 +120,7 @@ export default function ExpenseApprovalsPage() {
     setShowForm(true);
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(costConfirmation?:CostConfirmation) {
     if (submitBusy.current) return;
     const amt = parseFloat(form.amount);
     if (!amt || amt <= 0) { toast("error", "请填写金额"); return; }
@@ -133,16 +139,16 @@ export default function ExpenseApprovalsPage() {
         });
       }
       if (editingId) {
-        const r = await api.put<any>(`/expense-approvals/${editingId}`, { ...form, amount: amt, voucher_base64, payment_account_id: form.fund_source === "company" ? accountId : null });
+        const r = await api.put<any>(`/expense-approvals/${editingId}`, { ...form,...cost.payload(),cost_confirmation:costConfirmation, amount: amt, voucher_base64, payment_account_id: form.fund_source === "company" ? accountId : null });
         toast("success", r.message || "已重新提交");
       } else {
-        const r = await api.post<any>("/expense-approvals", { ...form, amount: amt, voucher_base64, payment_account_id: form.fund_source === "company" ? accountId : null });
+        const r = await submitRegistration<any>('cost_approval',0,{form,cost:cost.value,accountId,attachment:voucherFile?{name:voucherFile.name,size:voucherFile.size,lastModified:voucherFile.lastModified}:null},key=>api.post<any>("/expense-approvals", { ...form,...cost.payload(),cost_confirmation:costConfirmation,request_key:key, amount: amt, voucher_base64, payment_account_id: form.fund_source === "company" ? accountId : null }));
         toast("success", r.message || "费用已提交");
       }
       setShowForm(false);
       load();
       loadSummary();
-    } catch (err: any) { toast("error", err.message || "提交失败"); }
+    } catch (err: any) { if(!cost.capture(err,handleSubmit))toast("error", err.message || "提交失败"); }
     finally { submitBusy.current = false; setSubmitting(false); }
   }
 
@@ -163,7 +169,7 @@ export default function ExpenseApprovalsPage() {
     setPayVoucherFile(null);
   }
 
-  async function confirmPay() {
+  async function confirmPay(costConfirmation?:CostConfirmation) {
     if (!payId || payBusy.current) return;
     if (rows.find(r => r.id === payId)?.fund_source !== "fund" && !payAccountId) { toast("error", "请选择付款账户"); return; }
     if (!payVoucherFile) { toast("error", "请上传付款凭证"); return; }
@@ -176,14 +182,14 @@ export default function ExpenseApprovalsPage() {
         reader.onerror = reject;
         reader.readAsDataURL(payVoucherFile);
       });
-      const r = await api.post<any>(`/expense-approvals/${payId}/pay`, { voucher_base64,
+      const r = await api.post<any>(`/expense-approvals/${payId}/pay`, { voucher_base64,cost_confirmation:costConfirmation,
         payment_account_id: rows.find(row => row.id === payId)?.fund_source === "fund" ? null : payAccountId });
       toast("success", r.message || "已付款");
       setPayId(null);
       setPayVoucherFile(null);
       load();
       loadSummary();
-    } catch (err: any) { toast("error", err.message || "付款失败"); }
+    } catch (err: any) { if(!cost.capture(err,confirmPay))toast("error", err.message || "付款失败"); }
     finally { payBusy.current = false; setPaying(false); }
   }
 
@@ -313,6 +319,7 @@ export default function ExpenseApprovalsPage() {
       )}
 
       {/* 提申请/修改弹窗 */}
+      {cost.dialog}
       {showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { if (!submitting) setShowForm(false); }}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -321,6 +328,7 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="p-5 space-y-4">
               <p className="text-xs text-gray-500">不超过门槛可免审批，仍须仓库管理员确认付款后才记账。</p>
+              {cost.fields}
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">金额 <span className="text-red-400">*</span></label>
                 <input type="number" step="0.01" className="form-input py-2.5 w-full" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
@@ -371,7 +379,7 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button disabled={submitting} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button disabled={submitting} onClick={handleSubmit} className="btn-primary text-sm px-6 py-2">{submitting ? "提交中…" : "提交"}</button>
+              <button disabled={submitting} onClick={()=>handleSubmit()} className="btn-primary text-sm px-6 py-2">{submitting ? "提交中…" : "提交"}</button>
             </div>
           </div>
         </div>
@@ -422,7 +430,7 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button disabled={paying} onClick={() => setPayId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmPay} disabled={!payVoucherFile || paying}
+              <button onClick={()=>confirmPay()} disabled={!payVoucherFile || paying}
                 className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{paying ? "付款中…" : "确认付款"}</button>
             </div>
           </div>

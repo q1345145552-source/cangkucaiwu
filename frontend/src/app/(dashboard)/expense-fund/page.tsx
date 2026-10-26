@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState,useRef } from "react";
+import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
+import { submitRegistration,registrationDraft } from "@/lib/registrationRequest";
 import { api, getActiveWarehouseId, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
@@ -13,6 +15,8 @@ import {
 } from "lucide-react";
 
 export default function ExpenseFundPage() {
+  const cost=useCostIdentity();
+  const receiptCache=useRef<{file:File;path:string}|null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
@@ -161,27 +165,30 @@ export default function ExpenseFundPage() {
   }
 
   function openExpense(acc: any) {
+    const pending=registrationDraft('cost_fund_item',acc.id)?.payload;
+    cost.reset(pending?.cost);
     setEditingItem(null);
     setExpenseAccount(acc);
     setItemForm({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: acc.currency || "THB", description: "" });
-    setReceiptFile(null);
+    if(pending){setItemForm(pending.form);}else{setReceiptFile(null);receiptCache.current=null;}
     setShowExpense(true);
   }
   function openEditExpense(acc: any, item: any) {
     if (!isAdmin || !item.can_edit) return;
+    cost.reset();cost.edit('fund_item',item.id).catch(e=>toast('error',e.message));
     setExpenseAccount(acc); setEditingItem(item); setReceiptFile(null);
     setItemForm({ expense_date: item.expense_date?.slice(0, 10) || "", category: item.category,
       amount: String(item.amount), currency: item.currency || "THB", description: item.description || "" });
     setShowExpense(true);
   }
-  async function doAddExpense() {
+  async function doAddExpense(costConfirmation?:CostConfirmation) {
     if (!expenseAccount || expenseBusy) return;
     if (editingItem && !isAdmin) return;
-    if (!receiptFile && !editingItem?.receipt) { toast("error", "请上传开销凭证"); return; }
+    if (!receiptFile && !editingItem?.receipt && !registrationDraft('cost_fund_item',expenseAccount.id)?.payload?.receipt) { toast("error", "请上传开销凭证"); return; }
     setExpenseBusy(true);
     try {
-      let receipt = editingItem?.receipt;
-      if (receiptFile) {
+      let receipt = editingItem?.receipt || registrationDraft('cost_fund_item',expenseAccount.id)?.payload?.receipt;
+      if (receiptFile && receiptCache.current?.file!==receiptFile) {
         const fd = new FormData(); fd.append("file", receiptFile);
         const headers: Record<string, string> = { Authorization: `Bearer ${getToken()}` };
         const warehouse = getActiveWarehouseId(); if (warehouse) headers["X-Warehouse-ID"] = warehouse;
@@ -191,17 +198,19 @@ export default function ExpenseFundPage() {
         const upData = await upRes.json().catch(() => ({}));
         if (!upRes.ok || !upData.receipt) throw new Error(upData.detail || "凭证上传失败，请重试");
         receipt = upData.receipt;
+        receiptCache.current={file:receiptFile,path:receipt};
       }
-      const body = { ...itemForm, amount: itemForm.amount || 0, currency: itemForm.currency, receipt };
+      if(receiptFile&&receiptCache.current?.file===receiptFile)receipt=receiptCache.current.path;
+      const body = { ...itemForm,...cost.payload(),cost_confirmation:costConfirmation, amount: itemForm.amount || 0, currency: itemForm.currency, receipt };
       if (editingItem) await api.put(`/expense-fund/accounts/${expenseAccount.id}/items/${editingItem.id}`, body);
-      else await api.post(`/expense-fund/accounts/${expenseAccount.id}/items`, body);
+      else await submitRegistration<any>('cost_fund_item',expenseAccount.id,{form:itemForm,cost:cost.value,receipt},key=>api.post(`/expense-fund/accounts/${expenseAccount.id}/items`,{...body,request_key:key}));
       toast("success", editingItem ? "开销修改成功" : "开销添加成功");
       setShowExpense(false);
       loadAccounts();
       const updated = await api.get<any>(`/expense-fund/accounts/${expenseAccount.id}/items`);
       setItems(prev => ({ ...prev, [expenseAccount.id]: updated.data || [] }));
       loadDisbursements(expenseAccount.id);
-    } catch (err: any) { toast("error", err.message || "添加失败"); }
+    } catch (err: any) { if(!cost.capture(err,doAddExpense))toast("error", err.message || "添加失败"); }
     finally { setExpenseBusy(false); }
   }
   async function doVoidExpense() {
@@ -249,20 +258,20 @@ export default function ExpenseFundPage() {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
 
-  async function doReview(action: "approve" | "reject") {
+  async function doReview(action: "approve" | "reject",costConfirmations:Record<number,CostConfirmation>={}) {
     if (selectedIds.size === 0) { toast("error", "请先勾选要审核的记录"); return; }
     try {
-      await api.post("/expense-fund/review/batch", { item_ids: Array.from(selectedIds), action, remark: action === "reject" ? rejectRemark : undefined });
+      await api.post("/expense-fund/review/batch", { item_ids: Array.from(selectedIds), action,cost_confirmations:costConfirmations, remark: action === "reject" ? rejectRemark : undefined });
       toast("success", action === "approve" ? "已批量通过" : "已批量驳回");
       setRejectRemark(""); loadReviews();
-    } catch (err: any) { toast("error", err.message || "审核失败"); }
+    } catch (err: any) { if(!cost.capture(err,data=>doReview(action,{...costConfirmations,[Number(data.target_ref?.split(':')[1])]:data})))toast("error", err.message || "审核失败"); }
   }
 
-  async function approveOne(id: number) {
+  async function approveOne(id: number,costConfirmation?:CostConfirmation) {
     try {
-      await api.post("/expense-fund/review/batch", { item_ids: [id], action: "approve" });
+      await api.post("/expense-fund/review/batch", { item_ids: [id], action: "approve",cost_confirmation:costConfirmation });
       toast("success", "已通过"); loadReviews();
-    } catch (err: any) { toast("error", err.message || "审核失败"); }
+    } catch (err: any) { if(!cost.capture(err,data=>approveOne(id,data)))toast("error", err.message || "审核失败"); }
   }
   function rejectOne(id: number) {
     const reason = prompt("请输入驳回原因");
@@ -578,6 +587,7 @@ export default function ExpenseFundPage() {
           )}
 
           {/* Expense modal */}
+          {cost.dialog}
           {showExpense && (
             <div role="dialog" aria-modal="true" aria-label={editingItem ? "编辑备用金开销" : "添加备用金开销"} className="modal-overlay z-50" onClick={() => { if (!expenseBusy) { setShowExpense(false); setReceiptFile(null); } }}>
               <div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -593,6 +603,7 @@ export default function ExpenseFundPage() {
                     <div><label className="form-label">金额</label><input type="number" className="form-input" value={itemForm.amount} onChange={e => setItemForm({ ...itemForm, amount: e.target.value === "" ? "" : +e.target.value })} /></div>
                     <div><label className="form-label">币种</label><select disabled={!!editingItem} className="form-input" value={itemForm.currency} onChange={e => setItemForm({ ...itemForm, currency: e.target.value })}><option value="THB">THB 泰铢</option><option value="CNY">CNY 人民币</option></select></div>
                   </div>
+                  {cost.fields}
                   <div><label className="form-label">说明</label><input className="form-input" value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} /></div>
                   <div><label className="form-label" htmlFor="receiptFileInput4">凭证照片（必填）</label>
                     {editingItem?.receipt && <p className="text-xs text-gray-500 mb-1">已有凭证会保留，选择新照片才替换。<button type="button" className="text-blue-600 ml-2" onClick={() => setPreviewUrl(editingItem.receipt)}>查看当前凭证</button></p>}
@@ -607,7 +618,7 @@ export default function ExpenseFundPage() {
                 </div>
                 <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
                   <button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm">取消</button>
-                  <button disabled={expenseBusy} onClick={doAddExpense} className="btn-primary text-sm">{expenseBusy ? "保存中..." : "保存"}</button>
+                  <button disabled={expenseBusy} onClick={()=>doAddExpense()} className="btn-primary text-sm">{expenseBusy ? "保存中..." : "保存"}</button>
                 </div>
               </div>
             </div>

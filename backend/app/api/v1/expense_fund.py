@@ -15,6 +15,8 @@ from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, 
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from app.services import fund_item_controls as item_controls
+from app.schemas.cost_identity import CostFields
+from app.services import cost_identity as costs
 
 router = APIRouter()
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
@@ -82,13 +84,13 @@ class TopUpReq(BaseModel):
     receive_date: str = None
     payment_account_id: Optional[int] = None
 
-class FundItemCreate(BaseModel):
+class FundItemCreate(CostFields):
     expense_date: str; category: str; amount: float; description: str
     currency: str = "THB"
     receipt: Optional[str] = None
 
 
-class FundItemUpdate(BaseModel):
+class FundItemUpdate(CostFields):
     expense_date: Optional[date] = None
     category: Optional[str] = Field(default=None, max_length=100)
     amount: Optional[Decimal] = Field(default=None, gt=0, max_digits=14, decimal_places=2, allow_inf_nan=False)
@@ -116,6 +118,8 @@ class BatchReviewReq(BaseModel):
     item_ids: List[int]
     action: str  # approve / reject
     remark: Optional[str] = None
+    cost_confirmation: Optional[dict] = None
+    cost_confirmations: Optional[dict[int,dict]] = None
 
 class SettingsUpdate(BaseModel):
     key: str; value: str
@@ -342,7 +346,7 @@ async def list_items(
     items = result.scalars().all()
     _, sources = await fund_sources(db, account)
     linked = await item_controls.linked_ids(db, [i.id for i in items])
-    return {"data": [{**item_controls.fields(i), "disbursement_sources": sources.get(i.id, []),
+    return {"data": [{**item_controls.fields(i), **await costs.metadata_for(db,i,current_user), "disbursement_sources": sources.get(i.id, []),
         "can_edit": current_user.role == Role.WAREHOUSE_ADMIN and i.review_status != "approved" and not i.is_voided and i.id not in linked,
         "can_void": current_user.role == Role.WAREHOUSE_ADMIN and i.review_status != "approved" and not i.is_voided and i.id not in linked,
     } for i in items]}
@@ -372,11 +376,17 @@ async def add_item(
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
 
-    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id).with_for_update())).scalar_one_or_none()
+    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id))).scalar_one_or_none()
     if not account:
         raise HTTPException(404, "账户不存在")
     if account.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库的备用金账户")
+    costs.number(req.request_key,'登记请求编号',100)
+    await costs.lock(db,account.warehouse_id)
+    account=(await db.execute(select(ExpenseFund).where(ExpenseFund.id==account_id).with_for_update().execution_options(populate_existing=True))).scalar_one()
+    signature=costs.fingerprint({'fund_id':account_id,**req.model_dump(exclude={'cost_confirmation'})})
+    previous=await costs.replay(db,'fund_item',account.warehouse_id,req.request_key,signature)
+    if previous:return {'id':previous.id,'replayed':True,'message':'原开销已保存，未重复登记','receipt':previous.receipt,**await costs.metadata_for(db,previous)}
     if req.amount is None or req.amount <= 0:
         raise HTTPException(400, "开销金额必须大于0")
     if (req.currency or "THB") != (account.currency or "THB"):
@@ -405,8 +415,11 @@ async def add_item(
     )
     db.add(i)
     await db.flush()
+    root=await costs.sync(db,'fund_item',i,current_user,supplier=req.supplier_id,
+        identity=costs.parse_identity(req.invoice_identity,current_user),confirmation=req.cost_confirmation,
+        key=req.request_key,signature=signature)
     _, sources = await fund_sources(db, account)
-    return {"id": i.id, "message": "开销记录添加成功", "receipt": i.receipt, "cost_record_only": True,
+    return {"id": i.id, "message": "开销记录添加成功", "receipt": i.receipt, "cost_record_only": True,**costs.metadata(root),
             "disbursement_sources": sources.get(i.id, [])}
 
 
@@ -532,6 +545,10 @@ async def batch_review(
     wh_ids = get_wh_ids(current_user)
     processed = 0
 
+    warehouses=(await db.execute(select(ExpenseFund.warehouse_id).join(ExpenseFundItem,ExpenseFundItem.fund_id==ExpenseFund.id)
+        .where(ExpenseFundItem.id.in_(req.item_ids),ExpenseFund.warehouse_id.in_(wh_ids)).distinct())).scalars().all()
+    for wid in sorted(warehouses):await costs.lock(db,wid)
+
     for item_id in req.item_ids:
         item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == item_id))).scalar_one_or_none()
         if not item: continue
@@ -539,6 +556,9 @@ async def batch_review(
         fund_wh = (await db.execute(select(ExpenseFund.warehouse_id).where(ExpenseFund.id == item.fund_id))).scalar_one_or_none()
         if fund_wh is None or fund_wh not in wh_ids:
             continue
+        from app.models import ExpenseApproval
+        if (await db.execute(select(ExpenseApproval.id).where(ExpenseApproval.fund_item_id==item_id).limit(1))).first():
+            raise HTTPException(400,'费用审批联动开销请在原费用审批处理，不能独立改审或释放费用身份')
         # 新预支的资金事实只能随预支作废撤回，不能从开销审核绕过预支权限。
         from app.models.employee_advance import EmployeeAdvance
         if (await db.execute(select(EmployeeAdvance.id).where(
@@ -567,6 +587,9 @@ async def batch_review(
             raise HTTPException(400, f"该开销没有凭证，请先上传开销凭证（开销 #{item.id}）")
         item.review_status = new_status
         item.review_remark = req.remark
+        if item_id not in await item_controls.linked_ids(db,[item_id]):
+            await costs.sync(db,'fund_item',item,current_user,skip_suspicion=req.action!='approve',
+                confirmation=(req.cost_confirmations or {}).get(item_id,req.cost_confirmation))
         processed += 1
 
         # Sync with linked reimbursement（仅在状态真正发生变化时执行一次）

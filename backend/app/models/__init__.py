@@ -28,6 +28,7 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.reimbursement_payment import ReimbursementPayment
 from app.models.wallet import PayablePayment, AccountTransfer
 from app.models.purchase_receipt import PurchaseReceiptEvent
+from app.models.cost_identity import CostIdentity
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -50,5 +51,5 @@ __all__ = [
     "CashAdvance",
     "CashAdvanceDocument",
     "CashAdvanceRepayment",
-    "ReimbursementPayment", "PurchaseReceiptEvent",
+    "ReimbursementPayment", "PurchaseReceiptEvent", "CostIdentity",
 ]

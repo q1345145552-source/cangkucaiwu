@@ -3,7 +3,7 @@ const source=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src/lib/
 const makeStorage=()=>{const data=new Map();return{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k),data};};
 const storage=makeStorage(),local=makeStorage();local.setItem('user',JSON.stringify({id:1,warehouse_id:1}));
 let sequence=0,warehouse='1',calls=[],records=new Map(),flags={drop:false,status:200,hold:null};
-const api={getToken:()=> 'synthetic-token',getActiveWarehouseId:()=>warehouse};
+const api={ApiError:class extends Error{constructor(status,detail){super(typeof detail==='string'?detail:detail.message);this.status=status;this.detail=detail;}},getToken:()=> 'synthetic-token',getActiveWarehouseId:()=>warehouse};
 async function fetcher(url,options){
  const payload=typeof options.body==='string'?JSON.parse(options.body):Object.fromEntries(options.body.entries());
  calls.push({url,headers:options.headers,payload});

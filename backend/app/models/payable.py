@@ -23,6 +23,7 @@ class PayableBill(Base):
         for name, (table, columns, predicate) in GUARDS.items() if table == 'payable_bills')
 
     id = Column(Integer, primary_key=True, index=True)
+    cost_identity_id = Column(Integer, ForeignKey('cost_identities.id'), nullable=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
     bill_number = Column(String(50), nullable=False)

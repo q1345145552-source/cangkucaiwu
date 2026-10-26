@@ -84,7 +84,8 @@ async def bill_detail(db, bill_id, warehouse_id):
         warnings.append('账单累计与逐笔付款合计不一致，请管理员核对')
     from app.services.purchase_matching import matching
     match=await matching(db,b,po)
-    return {**bill_values(b), 'matching': match, 'supplier_name': supplier.name,
+    from app.services.cost_identity import metadata_for
+    return {**bill_values(b), **await metadata_for(db,b), 'matching': match, 'supplier_name': supplier.name,
         'purchase_order_number': po.order_number if po else None,
         'payments': payments, 'recorded_payment_total': float(recorded),
         'legacy_paid_amount': float(legacy) if legacy is not None and legacy >= 0 else None,

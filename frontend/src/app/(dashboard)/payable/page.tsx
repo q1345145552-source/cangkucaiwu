@@ -15,6 +15,7 @@ import { pendingPayablePayment, submitPayablePayment, uploadPayableVoucher, paya
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { registrationDraft, submitRegistration } from "@/lib/registrationRequest";
 import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
+import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 const emptyInvoice={issuer_identifier:"",series:"",number:"",verified:false};
@@ -28,6 +29,7 @@ function summaryCurrencies(values?:Record<string,number|null>, known:Record<stri
 }
 
 export default function PayablePage() {
+  const cost=useCostIdentity();
   const { t } = useI18n();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
@@ -140,7 +142,7 @@ export default function PayablePage() {
     if(e.detail?.candidates && ["payable_duplicate_confirmation","payable_invoice_duplicate"].includes(e.detail.code)){setDuplicateChallenge({detail:e.detail,retry});return true;}
     return false;
   }
-  async function handleCreate(confirmation?:DuplicateConfirmation) {
+  async function handleCreate(confirmation?:DuplicateConfirmation,costConfirmation?:CostConfirmation) {
     if (!billFile) { toast("error", "请上传凭证图片"); return; }
     if(!form.bill_date || !form.due_date || !form.bill_number.trim() || !Number.isFinite(Number(form.amount)) || Number(form.amount)<=0){toast("error","请填写有效账单编号、日期和大于零的金额");return;}
     if((invoice.issuer_identifier || invoice.series || invoice.number) && !invoice.verified){toast("error","请先核对完整发票身份；无法确认请清空身份字段");return;}
@@ -162,6 +164,7 @@ export default function PayablePage() {
       fd.append("file", billFile);fd.append("matching_kind",matchingKind);
       if(invoice.verified)fd.append("invoice_identity",JSON.stringify(invoice));
       if(confirmation)fd.append("duplicate_confirmation",JSON.stringify(confirmation));
+      if(costConfirmation)fd.append('cost_confirmation',JSON.stringify(costConfirmation));
       const r=await submitRegistration<any>("manual_bill",0,{form,invoice,...(matchingKind==="unknown"?{}:{matchingKind})},async key=>{
         fd.set("request_key",key);
         const res=await fetch(`${API_URL}/payable`,{method:"POST",headers:warehouseRequestHeaders(),body:fd});
@@ -173,7 +176,7 @@ export default function PayablePage() {
       setShowForm(false); setBillFile(null); setForm({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
       setInvoice(emptyInvoice);setMatchingKind("unknown");setDuplicateChallenge(null);
       load(); loadStats();
-    } catch (err: any) { if(!duplicateError(err,handleCreate))toast("error", err.message || "创建失败"); }
+    } catch (err: any) { if(!cost.capture(err,data=>handleCreate(confirmation,data))&&!duplicateError(err,data=>handleCreate(data,costConfirmation)))toast("error", err.message || "创建失败"); }
     finally{setCreating(false);}
   }
 
@@ -247,7 +250,7 @@ export default function PayablePage() {
     }catch(e:any){toast("error",e.message || "复核失败");}finally{setReviewSaving(false);}
   }
 
-  async function handleEdit(confirmation?:DuplicateConfirmation) {
+  async function handleEdit(confirmation?:DuplicateConfirmation,costConfirmation?:CostConfirmation) {
     try {
       const isPaid = (editingBill.status === "paid" || editingBill.paid_amount > 0);
       const payload: any = {};
@@ -270,10 +273,11 @@ export default function PayablePage() {
         payload.diff_note = editForm.diff_note;
       }
       if(confirmation)payload.duplicate_confirmation=confirmation;
+      if(costConfirmation)payload.cost_confirmation=costConfirmation;
       await api.put<any>(`/payable/${editingBill.id}`, payload);
       toast("success", "账单更新成功");
       setShowEditModal(false);setDuplicateChallenge(null); load(); loadStats();
-    } catch (err: any) { if(!duplicateError(err,handleEdit))toast("error", err.message || "更新失败"); }
+    } catch (err: any) { if(!cost.capture(err,data=>handleEdit(confirmation,data))&&!duplicateError(err,data=>handleEdit(data,costConfirmation)))toast("error", err.message || "更新失败"); }
   }
 
   function openVoidModal(row: any) {
@@ -482,6 +486,7 @@ export default function PayablePage() {
         <div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={reviewSaving} onClick={()=>setReviewTarget(0)}>取消复核</button><button className="btn-primary" disabled={reviewSaving} onClick={saveMatchReview}>{reviewSaving ? "保存中" : "保存本次复核"}</button></div>
       </div></div>}
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
+      {cost.dialog}
       {/* 新建账单弹窗 */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>

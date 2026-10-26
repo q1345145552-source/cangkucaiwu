@@ -264,6 +264,7 @@ class PurchaseOrderRequest(BaseModel):
     confirm_price_anomaly: bool = False  # 是否确认价格偏高后提交
     request_key: Optional[str] = None
     duplicate_confirmation: Optional[dict] = None
+    cost_confirmation: Optional[dict] = None
 
 
 # Parse settlement_cycle string to get number of days
@@ -764,7 +765,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
             matching_kind="goods", match_lines=matching.bill_lines(items_detail),
             created_by=current_user.id,
         )
-        await creation.register_purchase_bill(db,po,bill,current_user,req.duplicate_confirmation)
+        await creation.register_purchase_bill(db,po,bill,current_user,req.duplicate_confirmation,req.cost_confirmation)
         bill_id = bill.id
     await db.flush()
     return {
@@ -1093,7 +1094,7 @@ async def approve_purchase(po_id: int, req: Optional[dict] = Body(None), current
         matching_kind="goods", match_lines=matching.bill_lines(matching.lines(po)),
         created_by=current_user.id,
     )
-    await creation.register_purchase_bill(db,po,bill,current_user,(req or {}).get('duplicate_confirmation'))
+    await creation.register_purchase_bill(db,po,bill,current_user,(req or {}).get('duplicate_confirmation'),(req or {}).get('cost_confirmation'))
     po.status = "confirmed"
     await db.flush()
     # 审批通过 = 订单生效，此时才写入价格历史/异常/非最低价

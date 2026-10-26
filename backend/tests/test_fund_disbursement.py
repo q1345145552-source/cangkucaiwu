@@ -64,8 +64,10 @@ async def receipt(c, fid, uid=4):
 
 
 async def spend(c, fid, *, amount=2000):
+    import uuid
     path = await receipt(c, fid)
     return await c.post(f"{BASE}/accounts/{fid}/items", headers=auth(4), json={
+        'request_key':uuid.uuid4().hex,
         "amount": amount, "expense_date": "2026-10-11", "category": "耗材", "currency": "THB", "description": "购买包装耗材", "receipt": path})
 
 
@@ -328,7 +330,7 @@ def test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb(tmp_pat
                 await db.commit()
             paid = await topup(c, fid, amount=1000, payment_account_id=3)
             assert paid.status_code == 200 and paid.json()["account_balance"] == 29000, paid.text
-            item = await c.post(f"{BASE}/accounts/{fid}/items", headers=auth(4), json={"amount": 200,
+            item = await c.post(f"{BASE}/accounts/{fid}/items", headers=auth(4), json={"request_key":"cny-fund-regression","amount": 200,
                 "expense_date": "2026-10-11", "category": "耗材", "currency": "CNY", "description": "人民币耗材", "receipt": await receipt(c, fid)})
             assert item.status_code == 200, item.text
             r = await c.get("/api/v1/reports/cost-funds-debt", headers=auth(1), params=RANGE)

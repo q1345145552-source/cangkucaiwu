@@ -29,6 +29,8 @@ async def get(c,path,**params):
 
 async def post(c,path,**kwargs):
  if path=='/incoming': kwargs['json'].setdefault('request_key',uuid.uuid4().hex)
+ if path=='/expense-approvals':kwargs['json'].setdefault('request_key',uuid.uuid4().hex)
+ if path=='/income-expense/expense':kwargs['data'].setdefault('request_key',uuid.uuid4().hex)
  r=await c.post('/api/v1'+path,headers=auth(1),**kwargs)
  assert r.status_code==200,(path,r.status_code,r.text)
  return r.json()

@@ -10,6 +10,7 @@ class ExpenseApproval(Base):
     __table_args__ = (Index("uq_expense_approval_fund_item", "fund_item_id", unique=True),)
 
     id = Column(Integer, primary_key=True, index=True)
+    cost_identity_id = Column(Integer, ForeignKey('cost_identities.id'), nullable=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     applicant_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="申请人")
     amount = Column(Float, nullable=False)
