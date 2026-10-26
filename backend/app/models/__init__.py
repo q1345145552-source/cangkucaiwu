@@ -32,7 +32,10 @@ from app.models.cost_identity import CostIdentity
 from app.models.sku_catalog import StandardSKU, SupplierWarehouseTag, SupplierTagLink, ProductSkuMappingEvent, ProductImportOperation
 from app.models.supplier_quote import SupplierQuote, SupplierQuoteRevision, SupplierQuoteTier
 
+from app.models.procurement_control import ProcurementActionException, ProcurementDutyExecution, ProcurementRiskReview
+
 __all__ = [
+    "ProcurementActionException", "ProcurementDutyExecution", "ProcurementRiskReview",
     "User", "Warehouse", "Customer", "PaymentAccount",
     "RechargeDeclaration", "IncomingFlow", "ReconciliationResult", "ExchangeRate",
     "IncomeExpenseCategory", "IncomeRecord", "ExpenseRecord",

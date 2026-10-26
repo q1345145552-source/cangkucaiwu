@@ -792,6 +792,9 @@ async def update_settings(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
+    from app.services.procurement_controls import KEY as DUTY_POLICY_KEY
+    if req.key == DUTY_POLICY_KEY:
+        raise HTTPException(403, "采购职责配置必须通过老板专属入口并核对版本，不能由备用金设置改写")
     wh_id = get_wh_id(current_user)
     existing = (await db.execute(select(SystemSetting).where(
         SystemSetting.warehouse_id.in_(get_wh_ids(current_user)), SystemSetting.key == req.key

@@ -23,6 +23,14 @@ export function acceptQuotePreviewRejection(resource:string|number,detail:any):v
     throw Error('尚未取得原请求未创建采购的明确结果，请先核对原单');
   sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
 }
+// Only a warehouse-locked exact-key rejection may release an uncertain duty request.
+export function acceptDutyRejection(kind:string,resource:string|number,detail:any):void {
+  if(!['duty_approve','duty_reject','purchase_receipt','duty_policy','duty_grant','risk_review'].includes(kind))throw Error('职责请求类型不正确');
+  const id=slot(kind,resource),draft=registrationDraft(kind,resource);
+  if(running.has(id)||!draft||detail?.code!=='procurement_duty_changed'||detail.not_executed!==true||detail.request_key!==draft.key)
+    throw Error('尚未取得原职责请求未执行的明确结果，请沿用原请求核对');
+  sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
+}
 export async function submitRegistration<T>(kind:string,resource:string|number,payload:any,send:(key:string)=>Promise<T>):Promise<T> {
   const id=slot(kind,resource),previous=registrationDraft(kind,resource);
   if(running.has(id)){

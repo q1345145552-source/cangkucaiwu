@@ -4,7 +4,7 @@ import json
 import uuid
 from sqlalchemy import select
 from fastapi import HTTPException
-from app.models import PurchaseOrder, PayableBill, PurchaseReceiptEvent
+from app.models import PurchaseOrder, PayableBill, PurchaseReceiptEvent, ProcurementDutyExecution
 from app.core.timezone import thai_now
 from app.services import purchase_matching as match
 from app.services.payable_creation import number, fingerprint, flush_unique
@@ -13,7 +13,7 @@ from app.services.supplier_payable_read import checked_link, can_read_bills
 from app.services.data_history import record_history
 
 
-async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_key,remark=''):
+async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_key,remark='',controls=None):
     key=number(request_key,'收货请求编号',100)
     from app.services.image_utils import is_image
     if not content or not is_image(content): raise HTTPException(400,'请上传有效到货照片')
@@ -23,6 +23,8 @@ async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_
     if not isinstance(submitted,list) or not submitted: raise HTTPException(400,'请按稳定行编号填写本次收货明细')
     await match.scope_lock(db,warehouse_id)
     await ensure_receipt_guard(await db.connection())
+    from app.services.procurement_control_migration import ensure_procurement_controls
+    await ensure_procurement_controls(await db.connection())
     po=(await db.execute(select(PurchaseOrder).where(PurchaseOrder.id==po_id).with_for_update())).scalar_one_or_none()
     if po is None: raise HTTPException(404,'采购单不存在')
     if po.warehouse_id!=warehouse_id: raise HTTPException(403,'无权操作其他仓库的采购单')
@@ -47,6 +49,12 @@ async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_
         'remark':remark,'photo_sha256':hashlib.sha256(content).hexdigest()})
     old=(await db.execute(select(PurchaseReceiptEvent).where(PurchaseReceiptEvent.warehouse_id==warehouse_id,
         PurchaseReceiptEvent.purchase_order_id==po.id,PurchaseReceiptEvent.request_key==key))).scalar_one_or_none()
+    if old and old.operator_id!=user.id:raise HTTPException(403,'收货请求属于其他操作者，不能冒用原请求重放')
+    legacy_replay=old and not (await db.execute(select(ProcurementDutyExecution.id).where(ProcurementDutyExecution.warehouse_id==warehouse_id,
+        ProcurementDutyExecution.action=='receive',ProcurementDutyExecution.operator_id==user.id,ProcurementDutyExecution.request_key==key))).first()
+    from app.services import procurement_controls as duty
+    ticket=None if legacy_replay else await duty.begin(db,po,user,'receive',key,{'receipt_signature':signature},controls)
+    if ticket and ticket.get('replay'):return ticket['replay']
     if old:
         if old.request_fingerprint!=signature: raise HTTPException(409,f'该收货请求已登记为批次#{old.id}且内容不同，未重复累计')
         return {'id':old.id,'receipt_event_id':old.id,'replayed':True,'message':'原收货批次已保存，未重复累计',
@@ -88,7 +96,8 @@ async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_
         after={'receipt_event_id':event.id,'request_key':key,'items':event.items,'photo_path':event.photo_path,
                'remark':remark,'quantity_basis':po.receipt_baseline['source']},warehouse_id=warehouse_id)
     await db.flush()
-    return {'id':event.id,'receipt_event_id':event.id,'message':'本次收货已登记'+('，累计数量有差异，待老板复核' if has_diff else ''),
+    response={'id':event.id,'receipt_event_id':event.id,'message':'本次收货已登记'+('，累计数量有差异，待老板复核' if has_diff else ''),
         'has_diff':has_diff,'receipt_status':po.receipt_status,'flow_status':po.flow_status,
         'items':state['items'],'photo_path':event.photo_path,
         'matching':await match.matching(db,bill,po) if bill and can_read_bills(user) else None}
+    return await duty.finish(db,ticket,response)

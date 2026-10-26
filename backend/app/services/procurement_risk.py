@@ -20,7 +20,7 @@ def evidence(po,line=None,event=None):
   'url':f'/suppliers/purchase-orders/{po.id}'+(f'#receipt-event-{event}' if event is not None else f'#purchase-line-{lid}' if lid else ''),'remark':po.remark or ''}
 
 def signal(rule,subject,state,message,threshold,denominator,source,orders,**detail):
- return {'id':fingerprint({'rule':rule,'subject':subject,'version':VERSION}),'rule':rule,'label':RULES[rule],'version':VERSION,'state':state,'explanation':message,'threshold':threshold,'denominator':denominator,'source':source,'time_basis':prices.DATE_NOTE,'evidence':orders,'detail':detail,'limitation':NOTICE}
+ return {'id':fingerprint({'rule':rule,'subject':subject,'version':VERSION}),'subject':subject,'rule':rule,'label':RULES[rule],'version':VERSION,'state':state,'explanation':message,'threshold':threshold,'denominator':denominator,'source':source,'time_basis':prices.DATE_NOTE,'evidence':orders,'detail':detail,'limitation':NOTICE}
 
 async def settings(db,wid):
  # Existing policy keys and precedence, but do not conceal invalid values behind a default.

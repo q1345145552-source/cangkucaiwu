@@ -11,7 +11,9 @@ import { LinkedPayable, PurchaseQuantities } from "@/components/ProcurementInfo"
 import { ReceiptHistory, ThreeWayMatch } from "@/components/PurchaseReceiptInfo";
 import { ApiError } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
-import { registrationDraft, submitRegistration, acceptQuotePreviewRejection } from "@/lib/registrationRequest";
+import { registrationDraft, submitRegistration, acceptQuotePreviewRejection, acceptDutyRejection } from "@/lib/registrationRequest";
+import { controlScope,controlFields,controlMutation } from "@/lib/procurementControlRequest";
+import ProcurementDutyFields from "@/components/ProcurementDutyFields";
 import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
 import ProductImportDialog from "@/components/ProductImportDialog";
 import SkuProductMapping from "@/components/SkuProductMapping";
@@ -71,6 +73,31 @@ export default function SuppliersPage() {
   const [approvalThreshold, setApprovalThreshold] = useState(0);
   const [rejectTarget, setRejectTarget] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [dutyDialog,setDutyDialog]=useState<any>(null),[receiveDuty,setReceiveDuty]=useState<any>(null),[dutyBusy,setDutyBusy]=useState(false);
+  useEffect(()=>{setDutyDialog(null);setRejectTarget(null);setReceiveTarget(null);setReceiveDuty(null);setShowApprovals(false);setPendingOrders([]);setShowReceipt(false);setReceiptOrders([]);setPoDetail(null);poRequest.current++;},[quoteScope]);
+  async function readDuty(po:any,action:string){
+    const scope=controlScope(),kind=action==='receive'?'purchase_receipt':`duty_${action}`;
+    const draft=registrationDraft(kind,po.id);
+    const ctx=await api.get<any>(`/supplier-controls/orders/${po.id}/context?action=${action}`);
+    if(controlScope()!==scope)throw Error('账号或仓库已变化，请重新打开');
+    const locked=!!draft?.unknown;
+    const fields=locked?(action==='receive'?draft!.payload.duty:((({reason,...rest}:any)=>rest)(draft!.payload))):controlFields(ctx);
+    return {po,action,scope,ctx,fields,locked,exception:String(fields?.exception_id||''),draft:locked?draft:null};
+  }
+  function dutyPayload(value:any){
+    if(value.locked)return value.fields;
+    if(value.ctx.unknown_creator)throw Error('原采购人无法判断，请先核对原单');
+    const exception=value.exception.trim();
+    if(exception&&!/^[1-9]\d*$/.test(exception))throw Error('请输入有效的一次性例外授权编号');
+    if(value.ctx.needs_exception&&!exception)throw Error('本人操作需要老板明确授予一次性例外，请填写授权编号');
+    return {...value.fields,...(exception?{exception_id:Number(exception)}:{})};
+  }
+  async function startDuty(po:any,action:string){
+    const scope=controlScope();
+    try{const value=await readDuty(po,action);setDutyDialog(value);if(action==='reject'){setRejectTarget(po);setRejectReason(value.draft?.payload.reason||'');}}
+    catch(e:any){if(controlScope()===scope)toast('error',e.message||'职责上下文读取失败');}
+  }
+
   const [detail, setDetail] = useState<any>(null);
   // Products
   const [products, setProducts] = useState<any[]>([]);
@@ -327,48 +354,67 @@ export default function SuppliersPage() {
   }
   // ─── 采购审批 ───
   async function openApprovals() {
+    const scope=controlScope();
     setShowApprovals(true);
     try {
       const [r, th] = await Promise.all([
         api.get<any>("/suppliers/purchase-approvals"),
         api.get<any>("/suppliers/purchase-approval-threshold"),
       ]);
+      if(controlScope()!==scope)return;
       setPendingOrders(r.pending || []);
       setSplitGroups(r.split_groups || []);
       setApprovalThreshold(th.threshold ?? 0);
     } catch {}
   }
-  async function approveOrder(id: number, confirmation?:DuplicateConfirmation,costConfirmation?:CostConfirmation) {
+  async function approveOrder(id:number,confirmation?:DuplicateConfirmation,costConfirmation?:CostConfirmation,payload?:any,scope?:string) {
+    if(!payload||!scope)return startDuty({id},'approve');
+    setDutyBusy(true);
     try {
-      await api.put(`/suppliers/purchase-approvals/${id}/approve`, {duplicate_confirmation:confirmation,cost_confirmation:costConfirmation});
-      await openPoDetail(id);
-      toast("success", "审批通过，应付账单已生成");
-      openApprovals();
-    } catch (e: any) { if(cost.capture(e,data=>approveOrder(id,confirmation,data))){}else if(e.detail?.candidates){setDuplicateChallenge({detail:e.detail,retry:data=>approveOrder(id,data,costConfirmation)});}else toast("error", e.message || "审批失败"); }
+      await controlMutation('duty_approve',id,payload,`/suppliers/purchase-approvals/${id}/approve`,'PUT',scope,{duplicate_confirmation:confirmation,cost_confirmation:costConfirmation});
+      if(controlScope()!==scope)return;
+      setDutyDialog(null);await openPoDetail(id);
+      toast("success", "审批通过，应付账单已生成");openApprovals();
+    } catch(e:any){if(controlScope()!==scope)return;
+      if(cost.capture(e,data=>approveOrder(id,confirmation,data,payload,scope))){}
+      else if(e.detail?.candidates)setDuplicateChallenge({detail:e.detail,retry:data=>approveOrder(id,data,costConfirmation,payload,scope)});
+      else {const draft=registrationDraft('duty_approve',id);setDutyDialog((old:any)=>old?.scope===scope?{...old,locked:!!draft?.unknown,...(draft?.unknown?{fields:draft.payload,draft}:{})}:old);toast('error',e.message||'审批失败');}
+    }finally{setDutyBusy(false);}
+  }
+  async function confirmApprove(){
+    if(!dutyDialog||dutyBusy)return;
+    try{await approveOrder(dutyDialog.po.id,undefined,undefined,dutyPayload(dutyDialog),dutyDialog.scope);}
+    catch(e:any){toast('error',e.message);}
   }
   async function confirmReject() {
-    if (!rejectTarget) return;
-    if (!rejectReason.trim()) { toast("error", "请填写驳回原因"); return; }
+    if(!rejectTarget||!dutyDialog||dutyBusy)return;
+    if(!rejectReason.trim()){toast('error','请填写驳回原因');return;}
+    const value=dutyDialog;setDutyBusy(true);
     try {
-      await api.put(`/suppliers/purchase-approvals/${rejectTarget.id}/reject`, { reason: rejectReason });
-      toast("success", "已驳回");
-      setRejectTarget(null); setRejectReason("");
-      openApprovals();
-    } catch (e: any) { toast("error", e.message || "驳回失败"); }
+      const payload=value.locked?value.draft.payload:{reason:rejectReason,...dutyPayload(value)};
+      await controlMutation('duty_reject',rejectTarget.id,payload,`/suppliers/purchase-approvals/${rejectTarget.id}/reject`,'PUT',value.scope);
+      if(controlScope()!==value.scope)return;
+      toast('success','已驳回');setRejectTarget(null);setDutyDialog(null);setRejectReason('');openApprovals();
+    }catch(e:any){if(controlScope()===value.scope){const draft=registrationDraft('duty_reject',rejectTarget.id);setDutyDialog((old:any)=>old?{...old,locked:!!draft?.unknown,...(draft?.unknown?{fields:draft.payload,draft}:{})}:old);toast('error',e.message||'驳回失败');}}
+    finally{setDutyBusy(false);}
   }
   // ─── 采购收货验收 ───
   async function openReceipt() {
+    const scope=controlScope();
     setShowReceipt(true);
     setReceiptOrders([]);
     try {
       const r = await api.get<any>("/suppliers/purchase-orders?page=1&page_size=100");
-      setReceiptOrders(r.data || []);
-    } catch { setReceiptOrders([]); }
+      if(controlScope()===scope)setReceiptOrders(r.data || []);
+    } catch { if(controlScope()===scope)setReceiptOrders([]); }
   }
   async function openReceiveForm(po: any) {
     try {
-      const fresh=await api.get<any>(`/suppliers/purchase-orders/${po.id}`);
+      const scope=controlScope();
+      const [fresh,value]=await Promise.all([api.get<any>(`/suppliers/purchase-orders/${po.id}`),readDuty(po,'receive')]);
+      if(controlScope()!==scope)return;
       const draft=registrationDraft("purchase_receipt",po.id);
+      setReceiveDuty(value);
       const restored:Record<string,string>={};
       (fresh.items || []).forEach((it:any)=>{restored[it.line_id]=String(it.remaining_quantity ?? 0);});
       if(draft)draft.payload.items.forEach((it:any)=>{restored[it.line_id]=String(it.received_quantity);});
@@ -388,19 +434,31 @@ export default function SuppliersPage() {
       items.push({line_id:it.line_id,received_quantity:Number(raw)});
     }
     if(!items.some(it=>it.received_quantity>0)){toast("error","本次至少一行收货数量须大于零");return;}
-    const target=receiveTarget;setReceiptSubmitting(true);
+    const target=receiveTarget,value=receiveDuty;
+    if(!value||controlScope()!==value.scope){toast('error','账号或仓库已变化，请重新打开');return;}
+    let duty:any;try{duty=dutyPayload(value);}catch(e:any){toast('error',e.message);return;}
+    const payload={items,remark:receiveRemark,...(duty?{duty}:{})},headers=warehouseRequestHeaders();
+    setReceiptSubmitting(true);
     try {
       const fd = new FormData();fd.append("items",JSON.stringify(items));fd.append("file",receivePhoto);fd.append("remark",receiveRemark);
-      const r=await submitRegistration<any>("purchase_receipt",target.id,{items,remark:receiveRemark},async key=>{
+      const r=await submitRegistration<any>("purchase_receipt",target.id,payload,async key=>{
+        if(controlScope()!==value.scope)throw Error('账号或仓库已变化，未提交');
         fd.set("request_key",key);
-        const res=await fetch(`/api/v1/suppliers/purchase-orders/${target.id}/receive`,{method:"POST",headers:warehouseRequestHeaders(),body:fd});
-        const result=await res.json();if(!res.ok)throw new ApiError(res.status,result.detail || "收货失败");return result;
+        Object.entries(duty||{}).forEach(([k,v])=>fd.set(k,String(v)));
+        const res=await fetch(`/api/v1/suppliers/purchase-orders/${target.id}/receive`,{method:"POST",headers,body:fd});
+        const result=await res.json();
+        if(controlScope()!==value.scope)throw Error('账号或仓库已变化，原结果待核对，请回原仓沿用原请求重试');
+        if(!res.ok)throw new ApiError(res.status,result.detail || "收货失败");return result;
       });
       toast("success",`收货批次 #${r.receipt_event_id} 已保存${r.replayed ? "，未重复累计" : r.has_diff ? "，累计数量有差异，待老板复核" : ""}`);
       setReceiveTarget(null);openReceipt();
       if(poDetail?.id===target.id)await openPoDetail(target.id);
       if(showDiscrepancies)openDiscrepancies();
-    }catch(e:any){toast("error",e.message || "收货失败");}finally{setReceiptSubmitting(false);}
+    }catch(e:any){if(controlScope()===value.scope){
+      if(e.detail?.code==='procurement_duty_changed')acceptDutyRejection('purchase_receipt',target.id,e.detail);
+      const draft=registrationDraft('purchase_receipt',target.id);setReceiveDuty((old:any)=>old?{...old,locked:!!draft?.unknown,...(draft?.unknown?{fields:draft.payload.duty,draft}:{})}:old);
+      toast("error",e.message || "收货失败");
+    }}finally{setReceiptSubmitting(false);}
   }
   async function openDiscrepancies() {
     setShowDiscrepancies(true);
@@ -447,9 +505,9 @@ export default function SuppliersPage() {
     } catch { toast("error", "下载失败"); }
   }
   async function openPoDetail(id: number) {
-    const request=++poRequest.current;setPoDetail(null);
-    try { const result=await api.get<any>(`/suppliers/purchase-orders/${id}`);if(request===poRequest.current)setPoDetail(result); }
-    catch(e:any){if(request===poRequest.current)toast("error",e.message || "采购详情加载失败");}
+    const request=++poRequest.current,scope=controlScope();setPoDetail(null);
+    try { const result=await api.get<any>(`/suppliers/purchase-orders/${id}`);if(request===poRequest.current&&controlScope()===scope)setPoDetail(result); }
+    catch(e:any){if(request===poRequest.current&&controlScope()===scope)toast("error",e.message || "采购详情加载失败");}
   }
   async function refreshPoDetail() { if(poDetail?.id)await openPoDetail(poDetail.id); }
   async function markSent(po: any) {
@@ -1367,7 +1425,7 @@ export default function SuppliersPage() {
                         </div>
                         <div className="flex gap-2 mt-2">
                           <button onClick={() => approveOrder(po.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">通过</button>
-                          <button onClick={() => { setRejectTarget(po); setRejectReason(""); }} className="px-3 py-1 bg-red-500 text-white rounded text-xs">驳回</button>
+                          <button onClick={() => startDuty(po,"reject")} className="px-3 py-1 bg-red-500 text-white rounded text-xs">驳回</button>
                         </div>
                       </div>
                     ))}
@@ -1379,16 +1437,24 @@ export default function SuppliersPage() {
         </div>
       )}
 
+      {dutyDialog?.action==='approve'&&<div className="modal-overlay z-[70]" onClick={()=>!dutyBusy&&setDutyDialog(null)}>
+        <div role="dialog" aria-label="采购审批职责确认" className="bg-white rounded-xl p-5 w-[480px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
+          <h3 className="font-semibold mb-3">采购审批职责确认 · PO #{dutyDialog.po.id}</h3>
+          <ProcurementDutyFields value={dutyDialog} onChange={setDutyDialog} onRefresh={()=>startDuty(dutyDialog.po,'approve')}/>
+          <div className="flex gap-3 justify-end mt-4"><button onClick={()=>setDutyDialog(null)} disabled={dutyBusy} className="btn-secondary">取消</button><button disabled={dutyBusy} onClick={confirmApprove} className="btn-primary">{dutyBusy?'提交中...':'确认通过'}</button></div>
+        </div>
+      </div>}
       {/* 驳回原因弹窗 */}
       {rejectTarget && (
         <div className="modal-overlay z-[70]" onClick={() => setRejectTarget(null)}>
-          <div className="bg-white rounded-xl w-[420px] max-w-[95vw] p-5" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl w-[420px] max-w-[95vw] max-h-[85vh] overflow-auto p-5" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold mb-3">驳回采购单 {rejectTarget.order_number}</h3>
-            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+            <ProcurementDutyFields value={dutyDialog} onChange={setDutyDialog} onRefresh={()=>startDuty(rejectTarget,'reject')}/>
+            <textarea value={rejectReason} disabled={dutyDialog?.locked} onChange={e => setRejectReason(e.target.value)}
               className="w-full border rounded px-3 py-2 text-sm" rows={3} placeholder="填写驳回原因" />
             <div className="flex justify-end gap-3 mt-4">
               <button onClick={() => setRejectTarget(null)} className="px-4 py-2 border rounded text-sm">取消</button>
-              <button onClick={confirmReject} className="px-4 py-2 bg-red-500 text-white rounded text-sm">确认驳回</button>
+              <button onClick={confirmReject} disabled={dutyBusy} className="px-4 py-2 bg-red-500 text-white rounded text-sm">确认驳回</button>
             </div>
           </div>
         </div>
@@ -1530,6 +1596,7 @@ export default function SuppliersPage() {
             </div>
             <div className="p-5 space-y-4">
               <div className="text-sm text-gray-600">供应商：{receiveTarget.supplier_name || "-"} · 金额：{receiveTarget.total_amount}</div>
+              <ProcurementDutyFields value={receiveDuty} onChange={setReceiveDuty} onRefresh={()=>openReceiveForm(receiveTarget)}/>
               <p className="text-amber-800 text-sm">填写本次收到的数量，系统加到已有累计中；补收20填20，不填累计100。现有采购仅支持整数单位。</p>
               <div className="space-y-3">{(receiveTarget.items || []).map((it:any)=><div className="border rounded p-3 space-y-2" key={it.line_id}>
                 <p className="font-medium">{it.product_name} {it.spec || ""} · {it.unit || "单位未记录"}</p>

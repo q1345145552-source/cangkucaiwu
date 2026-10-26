@@ -28,6 +28,7 @@ from app.services import purchase_matching as matching
 from app.services import sku_catalog as catalog
 from app.services import supplier_quotes as quotes
 from app.services import purchase_price_review as price_review
+from app.services import procurement_controls as duty
 
 router = APIRouter()
 
@@ -933,6 +934,10 @@ async def non_lowest_summary(current_user: User = Depends(get_current_user), db:
 # ═══ 采购审批 ════════════════════════════
 class PurchaseRejectRequest(BaseModel):
     reason: str
+    request_key: Optional[str] = None
+    expected_policy_version: Optional[str] = None
+    expected_business_version: Optional[str] = None
+    exception_id: Optional[int] = None
 
 
 class ApprovalThresholdSet(BaseModel):
@@ -1060,6 +1065,8 @@ async def approve_purchase(po_id: int, req: Optional[dict] = Body(None), current
         raise HTTPException(404, "采购单不存在")
     if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权审批其他仓库的采购单")
+    ticket = await duty.begin(db,po,current_user,'approve',(req or {}).get('request_key'),{},req or {})
+    if ticket.get('replay'): return ticket['replay']
     prior = await creation.active_purchase_bill(db,po)
     if po.status == 'confirmed' and prior:
         return {'message':'该采购已审批，未重复生成应付','replayed':True,'payable_bill_id':prior.id,'payable_bill_number':prior.bill_number}
@@ -1088,7 +1095,7 @@ async def approve_purchase(po_id: int, req: Optional[dict] = Body(None), current
     await db.flush()
     # 审批通过 = 订单生效，此时才写入价格历史/异常/非最低价
     await _write_price_evidence(db, po)
-    return {"message": "审批通过，应付账单已生成", "payable_bill_id": bill.id, "payable_bill_number": bill_number}
+    return await duty.finish(db,ticket,{"message": "审批通过，应付账单已生成", "payable_bill_id": bill.id, "payable_bill_number": bill_number})
 
 
 @router.put("/purchase-approvals/{po_id}/reject")
@@ -1099,11 +1106,14 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
+    await matching.scope_lock(db,warehouse_id)
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id).with_for_update())).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
     if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权审批其他仓库的采购单")
+    ticket = await duty.begin(db,po,current_user,'reject',req.request_key,{'reason':req.reason},req.model_dump())
+    if ticket.get('replay'): return ticket['replay']
     if po.status != "pending":
         raise HTTPException(400, "该采购单已处理")
     if not (req.reason or "").strip():
@@ -1111,7 +1121,7 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
     po.status = "rejected"
     po.reject_reason = req.reason.strip()
     await db.flush()
-    return {"message": "已驳回"}
+    return await duty.finish(db,ticket,{"message": "已驳回"})
 
 
 # ═══ 采购收货验收 ════════════════════════════
@@ -1198,11 +1208,13 @@ async def read_receipt_photo(po_id: int, event_id: int,
 @router.post("/purchase-orders/{po_id}/receive", dependencies=[Depends(require_non_labor)])
 async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile = File(...),
                            request_key: str = Form(None), remark: str = Form(""),
+                           expected_policy_version: str = Form(None), expected_business_version: str = Form(None), exception_id: int = Form(None),
                            current_user: User = Depends(check_staff_permission("供应商管理")),
                            db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
     """本次收货增量，按稳定行编号登记；请求重试不重复累计。"""
     from app.services.purchase_receiving import receive
-    return await receive(db,po_id,warehouse_id,current_user,items,await file.read(),file.filename,request_key,remark)
+    return await receive(db,po_id,warehouse_id,current_user,items,await file.read(),file.filename,request_key,remark,
+        {'expected_policy_version':expected_policy_version,'expected_business_version':expected_business_version,'exception_id':exception_id})
 
 
 @router.post("/purchase-orders/{po_id}/mark-sent")
