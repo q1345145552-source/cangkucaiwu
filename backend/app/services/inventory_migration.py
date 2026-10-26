@@ -2,9 +2,9 @@
 from fastapi import HTTPException
 from sqlalchemy import inspect, Numeric
 import re
-from app.models.inventory import InventoryAccount, InventoryMovement, InventoryReceiptLink, InventoryOperation, InventoryPolicy
+from app.models.inventory import InventoryAccount, InventoryMovement, InventoryReceiptLink, InventoryOperation, InventoryPolicy, InventoryStocktake, InventoryControl
 
-MODELS = (InventoryAccount, InventoryMovement, InventoryReceiptLink, InventoryOperation, InventoryPolicy)
+MODELS = (InventoryAccount, InventoryMovement, InventoryReceiptLink, InventoryOperation, InventoryPolicy, InventoryStocktake, InventoryControl)
 
 
 async def ensure_inventory(conn):
@@ -36,6 +36,14 @@ async def ensure_inventory(conn):
                 definition=next((x['sqltext'] for x in checks if x['name']=='ck_inventory_nonnegative'),'')
                 normalized=re.sub(r'[\s()\"]','',re.sub(r'::numeric','',definition.lower()))
                 if normalized!='recorded_quantity>=0':missing.append('ck_inventory_nonnegative_definition')
+            definitions={'ck_inventory_count_nonnegative':'counted_quantity>=0andbook_quantity>=0',
+                         'ck_inventory_minimum':'minimum_quantityisnullorminimum_quantity>=0',
+                         'ck_inventory_usage_ratio':'receipt_usage_ratioisnullorreceipt_usage_ratio>1'}
+            for name,expected in definitions.items():
+                if not any(constraint.name==name for constraint in table.constraints):continue
+                definition=next((x['sqltext'] for x in checks if x['name']==name),'')
+                normalized=re.sub(r'[\s()\"]','',re.sub(r'::numeric','',definition.lower()))
+                if normalized!=expected:missing.append(name+'_definition')
             fks = i.get_foreign_keys(table.name)
             for fk in table.foreign_keys:
                 if not any(v['constrained_columns'] == [fk.parent.name] and v['referred_table'] == fk.column.table.name
@@ -52,4 +60,4 @@ async def migrate_inventory(conn):
         async with conn.begin_nested():
             await conn.run_sync(lambda c, m=model: m.__table__.create(c, checkfirst=True))
     await ensure_inventory(conn)
-    print('库存基础迁移 READY：5张空表；未猜期初、未回填历史收货或成本、未补权限')
+    print('库存基础及盘点迁移 READY：7张表存在即跳过；未猜期初、未回填历史收货或成本、未补权限')

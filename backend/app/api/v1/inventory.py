@@ -11,6 +11,9 @@ from app.models import InventoryAccount, InventoryMovement, InventoryReceiptLink
 from app.services.warehouse_summary import warehouse_scope
 from app.services import inventory as service, sku_catalog as catalog
 from app.services.inventory_migration import ensure_inventory
+from app.services import inventory_controls as control, inventory_analysis as analysis
+from app.models import InventoryStocktake
+from fastapi.responses import Response
 
 router = APIRouter(dependencies=[Depends(require_non_labor), Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY['inventory'].label))])
 
@@ -66,6 +69,26 @@ class Resolve(Mutation):
 
 class Policy(Mutation):
     valuation_method: Literal['unconfigured', 'quantity_only']
+    expected_version: str = Field(pattern=r'^[a-f0-9]{64}$')
+    change_reason: str = Field(min_length=1, max_length=1000)
+
+
+class Stocktake(Mutation):
+    counted_quantity: str
+    expected_version: str = Field(pattern=r'^[a-f0-9]{64}$')
+    count_reason: str = Field(min_length=1, max_length=1000)
+
+
+class CountReview(Mutation):
+    decision: Literal['approve', 'reject']
+    expected_count_version: str = Field(pattern=r'^[a-f0-9]{64}$')
+    review_reason: str = Field(min_length=1, max_length=1000)
+
+
+class Controls(Mutation):
+    minimum_quantity: str | None
+    receipt_usage_ratio: str | None
+    stockpiling_note: str = Field(max_length=1000)
     expected_version: str = Field(pattern=r'^[a-f0-9]{64}$')
     change_reason: str = Field(min_length=1, max_length=1000)
 
@@ -161,3 +184,55 @@ async def return_issue(movement_id: int, req: Return, user=Depends(get_current_u
 @router.post('/movements/{movement_id}/reverse')
 async def reverse(movement_id: int, req: Reversal, user=Depends(get_current_user), wid=Depends(current_warehouse), db=Depends(get_db)):
     return await service.reverse(db, wid, user, movement_id, **req.model_dump())
+
+
+@router.get('/counts')
+async def counts(account_id: int = Query(..., gt=0), page: int = Query(1, ge=1),
+                 page_size: int = Query(20, ge=1, le=100), user=Depends(get_current_user),
+                 wid=Depends(current_warehouse), db=Depends(get_db)):
+    await ensure_inventory(await db.connection())
+    account=await service.owned(db, InventoryAccount, account_id, wid)
+    q=select(InventoryStocktake).where(InventoryStocktake.warehouse_id==wid, InventoryStocktake.account_id==account_id)
+    total=(await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
+    rows=(await db.execute(q.order_by(InventoryStocktake.id.desc()).offset((page-1)*page_size).limit(page_size))).scalars()
+    return {'data':[control.count_data(r) for r in rows], 'account':service.account_data(account),
+            'total':total, 'page':page, 'note':'先记录实盘及账面版本，审核才调整；库存已变化则重盘，不改历史'}
+
+
+@router.post('/accounts/{account_id}/counts')
+async def submit_count(account_id: int, req: Stocktake, user=Depends(get_current_user), wid=Depends(current_warehouse), db=Depends(get_db)):
+    return await control.submit_count(db, wid, user, account_id, **req.model_dump())
+
+
+@router.post('/counts/{count_id}/review')
+async def review_count(count_id: int, req: CountReview, user=Depends(get_current_user), wid=Depends(current_warehouse), db=Depends(get_db)):
+    return await control.review_count(db, wid, user, count_id, **req.model_dump())
+
+
+@router.get('/accounts/{account_id}/controls')
+async def get_controls(account_id: int, user=Depends(get_current_user), wid=Depends(current_warehouse), db=Depends(get_db)):
+    await ensure_inventory(await db.connection())
+    await service.owned(db, InventoryAccount, account_id, wid)
+    return await control.controls(db, wid, account_id)
+
+
+@router.put('/accounts/{account_id}/controls')
+async def set_controls(account_id: int, req: Controls, user=Depends(get_current_user), wid=Depends(current_warehouse), db=Depends(get_db)):
+    return await control.set_controls(db, wid, user, account_id, **req.model_dump())
+
+
+async def analysis_owner(user=Depends(get_current_user)):
+    if user.role!=Role.WAREHOUSE_ADMIN: raise HTTPException(403,'仅仓库管理员可以查看库存用量与单票成本分析')
+    return user
+
+
+@router.get('/analysis')
+async def get_analysis(month: str | None = None, user=Depends(analysis_owner), wid=Depends(current_warehouse), db=Depends(get_db)):
+    return await analysis.calculate(db, wid, month)
+
+
+@router.get('/analysis/export')
+async def export_analysis(month: str | None = None, user=Depends(analysis_owner), wid=Depends(current_warehouse), db=Depends(get_db)):
+    result=await analysis.calculate(db, wid, month)
+    return Response(analysis.export(result), media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition':f'attachment; filename="inventory-analysis-{result["month"]}.csv"','Cache-Control':'private, no-store'})

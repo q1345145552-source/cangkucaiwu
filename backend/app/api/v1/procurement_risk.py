@@ -21,7 +21,7 @@ async def require_procurement_owner(user=Depends(get_current_user)):
 
 router=APIRouter(dependencies=[Depends(require_procurement_owner),Depends(require_non_labor),Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY['suppliers'].label))])
 State=Literal['attention','normal','unavailable','info']
-Rule=Literal['historical_price','non_lowest','new_supplier','concentration','split_window','self_receipt','receipt_quantity']
+Rule=Literal['historical_price','non_lowest','new_supplier','concentration','split_window','self_receipt','receipt_quantity','inventory_low','inventory_usage']
 async def selection(values=Depends(filters),rule:Rule|None=None,state:State|None=None):return {**values,'rule':rule,'state':state}
 
 async def read(db,wid,values):

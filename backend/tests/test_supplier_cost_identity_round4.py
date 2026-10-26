@@ -30,6 +30,12 @@ async def fixture(tmp_path,mp):
         mp.setattr(get_settings(),'PAYABLE_DUPLICATE_WINDOW_DAYS',7)
         import app.services.account_balances as balances
         mp.setattr(balances,'thai_today',lambda:datetime(2026,10,26).date())
+        # Freeze the payment clock too: otherwise after midnight a test payment
+        # lands after the balance fixture's fixed Oct26 as-of date.
+        import app.api.v1.expense_approval as approvals
+        from app.core.timezone import THAI_TZ
+        mp.setattr(approvals,'thai_now',lambda:datetime(2026,10,26,12,tzinfo=THAI_TZ))
+        mp.setattr(approvals,'thai_today',lambda:datetime(2026,10,26).date())
         async with f() as db:
             db.add(IncomeExpenseCategory(id=1,warehouse_id=1,type='expense',category_group='operating',name='耗材'))
             db.add(ExpenseFund(id=1,warehouse_id=1,employee_id=4,receive_date=datetime(2026,10,1),amount=10000,

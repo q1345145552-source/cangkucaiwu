@@ -5,6 +5,8 @@ const API_URL=process.env.NEXT_PUBLIC_API_URL||'/api/v1';
 export const inventoryScope=()=>JSON.stringify(warehouseRequestHeaders());
 export function inventoryMethod(resource:string){
   if(resource==='/inventory/policy')return 'PUT';
+  if(/^\/inventory\/accounts\/\d+\/controls$/.test(resource))return 'PUT';
+  if(/^\/inventory\/(accounts\/\d+\/counts|counts\/\d+\/review)$/.test(resource))return 'POST';
   if(/^\/inventory\/(openings\?sku_id=\d+&base_unit=[a-z]+|accounts\/\d+\/issues|movements\/\d+\/(returns|reverse)|pending-receipts\/\d+\/resolve)$/.test(resource))return 'POST';
   throw Error('库存请求来源不正确，请核对原记录');
 }

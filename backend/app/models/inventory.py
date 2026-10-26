@@ -97,3 +97,49 @@ class InventoryPolicy(Base):
     updated_by = Column(Integer, ForeignKey('users.id'), nullable=False)
     reason = Column(String(1000), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class InventoryStocktake(Base):
+    __tablename__ = 'inventory_stocktakes'
+    __table_args__ = (
+        CheckConstraint('counted_quantity >= 0 AND book_quantity >= 0', name='ck_inventory_count_nonnegative'),
+        CheckConstraint("status IN ('pending','approved','rejected')", name='ck_inventory_count_status'),
+        UniqueConstraint('adjustment_id', name='uq_inventory_count_adjustment'),
+    )
+    id = Column(Integer, primary_key=True)
+    warehouse_id = Column(Integer, ForeignKey('warehouses.id'), nullable=False, index=True)
+    account_id = Column(Integer, ForeignKey('inventory_accounts.id'), nullable=False, index=True)
+    book_quantity = Column(Numeric(24, 8), nullable=False)
+    counted_quantity = Column(Numeric(24, 8), nullable=False)
+    account_version = Column(String(64), nullable=False)
+    snapshot = Column(JSON, nullable=False)
+    counted_at = Column(DateTime(timezone=True), nullable=False)
+    reason = Column(String(1000), nullable=False)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    creator_name = Column(String(100), nullable=False)
+    status = Column(String(20), nullable=False, default='pending')
+    reviewed_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reviewer_name = Column(String(100), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_reason = Column(String(1000), nullable=True)
+    adjustment_id = Column(Integer, ForeignKey('inventory_movements.id'), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class InventoryControl(Base):
+    __tablename__ = 'inventory_controls'
+    __table_args__ = (
+        UniqueConstraint('warehouse_id', 'account_id', name='uq_inventory_control_account'),
+        CheckConstraint('minimum_quantity IS NULL OR minimum_quantity >= 0', name='ck_inventory_minimum'),
+        CheckConstraint('receipt_usage_ratio IS NULL OR receipt_usage_ratio > 1', name='ck_inventory_usage_ratio'),
+    )
+    id = Column(Integer, primary_key=True)
+    warehouse_id = Column(Integer, ForeignKey('warehouses.id'), nullable=False)
+    account_id = Column(Integer, ForeignKey('inventory_accounts.id'), nullable=False)
+    minimum_quantity = Column(Numeric(24, 8), nullable=True)
+    receipt_usage_ratio = Column(Numeric(24, 8), nullable=True)
+    stockpiling_note = Column(String(1000), nullable=False)
+    reason = Column(String(1000), nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+    updated_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

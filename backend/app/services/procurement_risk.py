@@ -10,6 +10,7 @@ from app.services.payable_creation import fingerprint
 VERSION='procurement-evidence-risk-v1'
 NOTICE='仅待核实线索，不认定回扣、损失或违规；不评分、不自动处罚、不改变采购付款。急单、交期、质量及选择理由需人工结合核实。'
 RULES={'historical_price':'冻结历史价格异常','non_lowest':'非最低有效价','new_supplier':'系统首次有效采购供应商','concentration':'供应商集中度','split_window':'24小时累计疑似拆单','self_receipt':'同人下单收货','receipt_quantity':'累计收货数量'}
+RULES.update(inventory_low='SKU安全库存提醒',inventory_usage='库存与用量核实')
 
 def dec(v):return receipts.decimal(v)
 def dt(v):return v.astimezone(prices.THAI_TZ) if v is not None else None
@@ -111,10 +112,28 @@ async def _calculate(db,wid,*,month=None,supplier_id=None,orderer_id=None,curren
    lid=item.get('line_id');known=not state['issues'] and item.get('line_id_source')=='stored' and state['baseline'].get('event_history_known') is True and item.get('quantity_status') in ('matched','short','over')
    q=item.get('quantity_status');msg={'matched':'累计已记录数量相符','short':'累计尚未收齐，可为正常分批；没有业务截止定义，不认定短缺违规','over':'累计记录超收，需核实凭证与单位'}
    observations.append(signal('receipt_quantity',(po.id,lid) if not state['issues'] else ('invalid_line',po.id,index),'normal' if known and q=='matched' else 'info' if known and q=='short' else 'attention' if known else 'unavailable',msg[q] if known else '历史基数/稳定行/有效事件依据不足，不猜算收货差异',{'comparison':'R3有效累计与订购数量；无强制截止日'},'本月有效采购稳定行，历史不明单列','R3 receipt_state',[evidence(po,{'line_ref':lid} if known else None)],quantity={k:item.get(k) for k in ['quantity','received_quantity','diff_quantity','over_quantity','quantity_status']},issues=state['issues']))
+ from app.services import inventory_analysis
+ if supplier_id is not None or orderer_id is not None or currency is not None:
+  inventory={'state':'unavailable','message':'库存按整仓SKU基本单位核实，不能按供应商/采购人/付款币种拆分；清除这些筛选后查看库存证据'}
+ else:
+  inventory=await inventory_analysis.calculate(db,wid,month)
+  for item in inventory['data']:
+   ev={'kind':'inventory','account_id':item['account_id'],'order_id':None,'order_number':item['sku']['code'],
+       'orderer_id':None,'supplier_id':None,'currency':'','amount':None,'created_at':None,
+       'line_id':None,'event_id':None,'url':f'/inventory#inventory-account-{item["account_id"]}','remark':item['stockpiling_note']}
+   for rule,state,message,threshold in [('inventory_low',item['low_stock_state'],item['low_stock_reason'],item['minimum_quantity']),
+                                         ('inventory_usage',item['usage_state'],item['usage_explanation'],item['configured_ratio'])]:
+    r=signal(rule,('account',item['account_id']),state,message,threshold,
+       {'account_id':item['account_id'],'base_unit':item['base_unit'],'opening':item['opening_quantity'],
+        'closing':item['closing_quantity'],'net_usage':item['net_issued_quantity']},
+       '库存原始有符号流水+实盘审核调整+当前SKU阈值',[ev],inventory=item,order_volume=inventory['order_volume'])
+    r.update(id=fingerprint({'rule':rule,'account_id':item['account_id'],'version':inventory_analysis.VERSION}),
+             version=inventory_analysis.VERSION,time_basis=inventory_analysis.DATE_NOTE)
+    observations.append(r)
  observations.sort(key=lambda r:(r['rule'],r['id']))
  assert len({r['id'] for r in observations})==len(observations)
  for g in aggregate.values():g['amount']=prices.amount(g['amount'])
- return {'month':month,'warehouse_id':wid,'version':VERSION,'notice':NOTICE,'date_basis':prices.DATE_NOTE,'policy':policy,'inventory':{'state':'unavailable','message':'第11轮待接入；未伪造库存或用量信号'},'orders':{'included':len(orders),'excluded':sum(1 for p in all_orders if p.created_at and start<=dt(p.created_at)<end and matches(p) and p not in orders),'totals_by_currency':{c:prices.amount(v) for c,v in totals.items()}},'by_orderer_supplier':list(aggregate.values()),'_order_facts':[{**evidence(p),'supplier_name':suppliers[p.supplier_id].name} for p in orders],'observations':observations}
+ return {'month':month,'warehouse_id':wid,'version':VERSION,'notice':NOTICE,'date_basis':prices.DATE_NOTE,'policy':policy,'inventory':inventory,'orders':{'included':len(orders),'excluded':sum(1 for p in all_orders if p.created_at and start<=dt(p.created_at)<end and matches(p) and p not in orders),'totals_by_currency':{c:prices.amount(v) for c,v in totals.items()}},'by_orderer_supplier':list(aggregate.values()),'_order_facts':[{**evidence(p),'supplier_name':suppliers[p.supplier_id].name} for p in orders],'observations':observations}
 
 async def calculate(db,wid,**filters):
  with localcontext() as ctx:
@@ -140,9 +159,10 @@ def filtered_report(result,rule=None,state=None):
 
 def export(result):
  import json
- out=io.StringIO(newline='');w=csv.writer(out);w.writerow(['月份','线索ID','规则','版本','状态','说明','门槛','分母','时间口径','证据来源','采购编号列表','币种列表','相对历史差额(参考)','相对最低差额(参考)','原因/备注','证据明细(采购金额不可跨线索相加)'])
+ out=io.StringIO(newline='');w=csv.writer(out);w.writerow(['月份','线索ID','规则','版本','状态','说明','门槛','分母','时间口径','证据来源','采购编号列表','币种列表','相对历史差额(参考)','相对最低差额(参考)','原因/备注','证据明细(采购金额不可跨线索相加)','库存与单票成本依据(数量不跨单位相加)'])
  for r in result['data']:
   p=r['detail'].get('price') or {}
   vals=[result['month'],r['id'],r['label'],r['version'],r['state'],r['explanation'],json.dumps(r['threshold'],ensure_ascii=False),json.dumps(r['denominator'],ensure_ascii=False),r['time_basis'],r['source'],json.dumps([e['order_id'] for e in r['evidence']]),json.dumps(sorted({e['currency'] for e in r['evidence']})),p.get('historical_difference'),p.get('lowest_difference'),p.get('reason') or '；'.join(e.get('remark','') for e in r['evidence']),json.dumps(r['evidence'],ensure_ascii=False)]
+  vals.append(json.dumps({'inventory':r['detail']['inventory'],'order_volume':r['detail']['order_volume']},ensure_ascii=False,default=str) if 'inventory' in r['detail'] else '')
   w.writerow([prices.cell(v,i in (12,13)) for i,v in enumerate(vals)])
  return ('\ufeff'+out.getvalue()).encode()

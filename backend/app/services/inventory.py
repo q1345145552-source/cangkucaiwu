@@ -22,7 +22,7 @@ from app.services.inventory_migration import ensure_inventory
 
 def owner(user):
     if user.role != Role.WAREHOUSE_ADMIN:
-        raise HTTPException(403, '只有仓库管理员可以确认期初、核对入库、冲销或修改库存配置')
+        raise HTTPException(403, '只有仓库管理员可以确认期初、审核盘点、核对入库、冲销或修改库存配置')
 
 
 def quantity(value, zero=False):
@@ -135,7 +135,7 @@ async def finish(db, ticket, response):
     result = {**response, 'operation_id': row.id}
     result.setdefault('id', row.id)
     row.response = jsonable_encoder(result)
-    await record_history(db, module='inventory', record_id=response.get('movement_id', row.id),
+    await record_history(db, module='inventory', record_id=response.get('movement_id') or response.get('record_id') or row.id,
                          operation_type=ticket['kind'], operator=ticket['user'],
                          after={'request_key': ticket['key'], **jsonable_encoder(result)},
                          warehouse_id=ticket['warehouse_id'])
@@ -250,7 +250,7 @@ async def reverse(db, wid, user, movement_id, *, expected_version, reverse_reaso
     original = await owned(db, Movement, movement_id, wid, True)
     row = await owned(db, Account, original.account_id, wid, True)
     check_version(row, wid, row.sku_id, row.base_unit, expected_version, ticket)
-    if original.status != 'active' or original.kind in ('opening', 'reversal'):
+    if original.status != 'active' or original.kind not in ('issue', 'receipt', 'return'):
         raise changed('该流水已冲销或属于不可直接冲销的期初/冲销记录，请保留历史并走相应调整', ticket['key'], 400)
     if original.kind == 'issue' and (await db.execute(select(Movement.id).where(
         Movement.reference_id == original.id, Movement.kind == 'return', Movement.status == 'active'))).first():
