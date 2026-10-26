@@ -1,0 +1,1255 @@
+{
+  "task": "supplier12-r01-fix01-20261026",
+  "workspace": "/Users/xiongliu/Desktop/海外仓财务系统",
+  "branch": "codex/supplier-optimization-20261026",
+  "baseline": "6a556356ccfe48d588bc34d81fe8593fa83036ad",
+  "migrations": [],
+  "verification": {
+    "pytest": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "17",
+      "time": "4.899",
+      "timestamp": "2026-10-26T10:37:12.432894+07:00",
+      "hostname": "XiongdeMac-mini.local",
+      "exit_code": 0,
+      "log": "raw/supplier01-related-fix01-last.log",
+      "junit": "raw/supplier01-related-fix01-last.xml",
+      "overlap_note": "7 new real PostgreSQL/HTTP tests plus 10 related existing tests; earlier 15 and 4 are overlapping, not additional"
+    },
+    "frontend_behavior": {
+      "exit_code": 0,
+      "log": "raw/supplier01-frontend-fix01.log",
+      "kind": "compiled real functions/components; simulated network; not browser evidence"
+    },
+    "build": {
+      "exit_code": 0,
+      "log": "raw/supplier01-build-fix01.log",
+      "types_and_lint_skipped_by_existing_config": true
+    },
+    "typecheck": {
+      "exit_code": 2,
+      "baseline_diagnostics": 84,
+      "final_diagnostics": 84,
+      "new_diagnostics": [],
+      "removed_diagnostics": []
+    }
+  },
+  "native_actual": {
+    "1000_300_700": {
+      "created": {
+        "message": "采购单已创建，应付账单已自动生成",
+        "order": {
+          "id": 2,
+          "order_number": "PO202610261037137894721",
+          "total_amount": 1000.0,
+          "items": [
+            {
+              "product_name": "耗材",
+              "spec": null,
+              "unit_price": 100.0,
+              "quantity": 10,
+              "subtotal": 1000.0,
+              "currency": "THB",
+              "reason": ""
+            }
+          ],
+          "status": "confirmed"
+        },
+        "pending": false,
+        "approval_threshold": 0.0,
+        "payable_bill_id": 2,
+        "payable_bill_number": "PO-PO202610261037137894721",
+        "anomalies": []
+      },
+      "partial": {
+        "id": 2,
+        "warehouse_id": 1,
+        "supplier_id": 1,
+        "bill_number": "PO-PO202610261037137894721",
+        "bill_date": "2026-10-26T10:37:13.789472",
+        "due_date": "2026-11-25T10:37:13.789472",
+        "currency": "THB",
+        "amount": 1000.0,
+        "paid_amount": 300.0,
+        "remaining_amount": 700.0,
+        "status": "partially_paid",
+        "need_boss_confirm": "false",
+        "purchase_order_id": 2,
+        "payment_voucher": null,
+        "bill_attachment": null,
+        "remark": null,
+        "detail": "- 耗材  x10 @ 100.0 = 1000.0",
+        "supplier_name": "本仓供应商",
+        "purchase_order_number": "PO202610261037137894721",
+        "payments": [
+          {
+            "id": 1,
+            "amount": 300.0,
+            "currency": "THB",
+            "account_name": "测试现金1",
+            "paid_at": "2026-10-26T03:37:13.817629+00:00",
+            "payment_method": "现金",
+            "operator_name": "测试账号1"
+          }
+        ],
+        "recorded_payment_total": 300.0,
+        "legacy_paid_amount": 0.0,
+        "legacy_paid_at": null,
+        "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+        "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+        "warnings": []
+      },
+      "final": {
+        "id": 2,
+        "warehouse_id": 1,
+        "supplier_id": 1,
+        "bill_number": "PO-PO202610261037137894721",
+        "bill_date": "2026-10-26T10:37:13.789472",
+        "due_date": "2026-11-25T10:37:13.789472",
+        "currency": "THB",
+        "amount": 1000.0,
+        "paid_amount": 1000.0,
+        "remaining_amount": 0.0,
+        "status": "paid",
+        "need_boss_confirm": "false",
+        "purchase_order_id": 2,
+        "payment_voucher": "/uploads/payment_vouchers/69338033d7354948bf6ee3be922656a3.png",
+        "bill_attachment": null,
+        "remark": null,
+        "detail": "- 耗材  x10 @ 100.0 = 1000.0",
+        "supplier_name": "本仓供应商",
+        "purchase_order_number": "PO202610261037137894721",
+        "payments": [
+          {
+            "id": 1,
+            "amount": 300.0,
+            "currency": "THB",
+            "account_name": "测试现金1",
+            "paid_at": "2026-10-26T03:37:13.817629+00:00",
+            "payment_method": "现金",
+            "operator_name": "测试账号1"
+          },
+          {
+            "id": 2,
+            "amount": 700.0,
+            "currency": "THB",
+            "account_name": "测试现金1",
+            "paid_at": "2026-10-26T03:37:13.849283+00:00",
+            "payment_method": "银行转账",
+            "operator_name": "测试账号1"
+          }
+        ],
+        "recorded_payment_total": 1000.0,
+        "legacy_paid_amount": 0.0,
+        "legacy_paid_at": null,
+        "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+        "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+        "warnings": []
+      },
+      "read_write_queries": [],
+      "voucher_failure_did_not_duplicate": true
+    },
+    "summary_legacy_plan": {
+      "before_plan_summary": {
+        "supplier_summary": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "本仓供应商",
+            "currency": "CNY",
+            "bill_count": 1,
+            "total_amount": 50.0,
+            "paid_amount": 0.0,
+            "unpaid_amount": 50.0,
+            "overdue_amount": 0.0,
+            "unknown_payment_count": 0,
+            "link_warning_count": 0,
+            "link_warning_bill_ids": [],
+            "known_paid_amount": 0.0,
+            "known_unpaid_amount": 50.0,
+            "known_overdue_amount": 0.0
+          },
+          {
+            "supplier_id": 1,
+            "supplier_name": "本仓供应商",
+            "currency": "THB",
+            "bill_count": 1,
+            "total_amount": 1000.0,
+            "paid_amount": 600.0,
+            "unpaid_amount": 400.0,
+            "overdue_amount": 400.0,
+            "unknown_payment_count": 0,
+            "link_warning_count": 0,
+            "link_warning_bill_ids": [],
+            "known_paid_amount": 600.0,
+            "known_unpaid_amount": 400.0,
+            "known_overdue_amount": 400.0
+          }
+        ],
+        "start_date": "1900-01-01",
+        "end_date": "9999-12-31",
+        "date_basis": "账单日期；有效应付；累计已付含历史；逾期是剩余应付的子集",
+        "warehouse_id": 1,
+        "unknown_payment_count_by_currency": {
+          "CNY": 0,
+          "THB": 0
+        },
+        "link_warning_count": 0,
+        "month_total_by_currency": {
+          "CNY": 50.0,
+          "THB": 1000.0
+        },
+        "month_total": null,
+        "month_paid_known_by_currency": {
+          "CNY": 0.0,
+          "THB": 600.0
+        },
+        "month_paid_by_currency": {
+          "CNY": 0.0,
+          "THB": 600.0
+        },
+        "month_paid": null,
+        "month_unpaid_known_by_currency": {
+          "CNY": 50.0,
+          "THB": 400.0
+        },
+        "month_unpaid_by_currency": {
+          "CNY": 50.0,
+          "THB": 400.0
+        },
+        "month_unpaid": null,
+        "overdue_known_by_currency": {
+          "CNY": 0.0,
+          "THB": 400.0
+        },
+        "overdue_by_currency": {
+          "CNY": 0.0,
+          "THB": 400.0
+        },
+        "overdue_total": null
+      },
+      "legacy_detail": {
+        "id": 1,
+        "warehouse_id": 1,
+        "supplier_id": 1,
+        "bill_number": "OLD-BILL-1",
+        "bill_date": "2020-01-01T00:00:00",
+        "due_date": "2020-02-01T00:00:00",
+        "currency": "THB",
+        "amount": 1000.0,
+        "paid_amount": 600.0,
+        "remaining_amount": 400.0,
+        "status": "partially_paid",
+        "need_boss_confirm": "false",
+        "purchase_order_id": 1,
+        "payment_voucher": null,
+        "bill_attachment": null,
+        "remark": null,
+        "detail": null,
+        "supplier_name": "本仓供应商",
+        "purchase_order_number": "OLD-PO-1",
+        "payments": [
+          {
+            "id": 1,
+            "amount": 200.0,
+            "currency": "THB",
+            "account_name": "测试现金1",
+            "paid_at": "2026-10-26T03:37:14.130954+00:00",
+            "payment_method": null,
+            "operator_name": "测试账号1"
+          }
+        ],
+        "recorded_payment_total": 200.0,
+        "legacy_paid_amount": 400.0,
+        "legacy_paid_at": null,
+        "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+        "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+        "warnings": []
+      },
+      "after_plan": {
+        "id": 1,
+        "warehouse_id": 1,
+        "supplier_id": 1,
+        "bill_number": "OLD-BILL-1",
+        "bill_date": "2020-01-01T00:00:00",
+        "due_date": "2020-02-01T00:00:00",
+        "currency": "THB",
+        "amount": 1000.0,
+        "paid_amount": 1000.0,
+        "remaining_amount": 0.0,
+        "status": "paid",
+        "need_boss_confirm": "false",
+        "purchase_order_id": 1,
+        "payment_voucher": null,
+        "bill_attachment": null,
+        "remark": null,
+        "detail": null,
+        "supplier_name": "本仓供应商",
+        "purchase_order_number": "OLD-PO-1",
+        "payments": [
+          {
+            "id": 1,
+            "amount": 200.0,
+            "currency": "THB",
+            "account_name": "测试现金1",
+            "paid_at": "2026-10-26T03:37:14.130954+00:00",
+            "payment_method": null,
+            "operator_name": "测试账号1"
+          },
+          {
+            "id": 2,
+            "amount": 400.0,
+            "currency": "THB",
+            "account_name": "测试现金1",
+            "paid_at": "2026-10-26T03:37:14.160019+00:00",
+            "payment_method": "银行转账",
+            "operator_name": "测试账号1"
+          }
+        ],
+        "recorded_payment_total": 600.0,
+        "legacy_paid_amount": 400.0,
+        "legacy_paid_at": null,
+        "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+        "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+        "warnings": []
+      }
+    },
+    "permissions": {
+      "allowed": [
+        {
+          "user": 1,
+          "detail": 200,
+          "purchase": 200
+        },
+        {
+          "user": 3,
+          "detail": 200,
+          "purchase": 200
+        },
+        {
+          "user": 8,
+          "detail": 200,
+          "purchase": 200
+        }
+      ],
+      "supplier_only": {
+        "id": 1,
+        "order_number": "OLD-PO-1",
+        "warehouse_id": 1,
+        "warehouse_name": "测试仓1",
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "status": "confirmed",
+        "flow_status": "pending_confirmation",
+        "receipt_status": "not_received",
+        "items": [
+          {
+            "product_name": "耗材",
+            "quantity": 10
+          }
+        ],
+        "total_amount": 1000.0,
+        "currency": "THB",
+        "created_at": "2019-12-31T17:00:00+00:00",
+        "received_at": null,
+        "arrival_photo": null,
+        "sent_at": null,
+        "receipt_uploaded_at": null,
+        "shipped_at": null,
+        "receipt_file": null,
+        "remark": null,
+        "reject_reason": null,
+        "bill": null,
+        "bill_message": "没有应付账款或付款计划读取权限，付款信息不展示",
+        "can_read_payable": false
+      },
+      "history_error": {
+        "detail": "采购单与应付账单历史关联不一致，请管理员核对；未自动修正"
+      },
+      "labor_foreign_super_denied": true
+    },
+    "approval_and_missing": {
+      "pending": {
+        "id": 2,
+        "order_number": "PO202610261037147113161",
+        "warehouse_id": 1,
+        "warehouse_name": "测试仓1",
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "status": "pending",
+        "flow_status": "pending_confirmation",
+        "receipt_status": "not_received",
+        "items": [
+          {
+            "product_name": "耗材",
+            "spec": null,
+            "unit_price": 100.0,
+            "quantity": 10,
+            "subtotal": 1000.0,
+            "currency": "THB",
+            "reason": ""
+          }
+        ],
+        "total_amount": 1000.0,
+        "currency": "THB",
+        "created_at": "2026-10-26T03:37:14.706853+00:00",
+        "received_at": null,
+        "arrival_photo": null,
+        "sent_at": null,
+        "receipt_uploaded_at": null,
+        "shipped_at": null,
+        "receipt_file": null,
+        "remark": null,
+        "reject_reason": null,
+        "bill": null,
+        "bill_message": "待审批，尚未生成应付账单",
+        "can_read_payable": true
+      },
+      "approved": {
+        "id": 2,
+        "order_number": "PO202610261037147113161",
+        "warehouse_id": 1,
+        "warehouse_name": "测试仓1",
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "status": "confirmed",
+        "flow_status": "pending_confirmation",
+        "receipt_status": "not_received",
+        "items": [
+          {
+            "product_name": "耗材",
+            "spec": null,
+            "unit_price": 100.0,
+            "quantity": 10,
+            "subtotal": 1000.0,
+            "currency": "THB",
+            "reason": ""
+          }
+        ],
+        "total_amount": 1000.0,
+        "currency": "THB",
+        "created_at": "2026-10-26T03:37:14.706853+00:00",
+        "received_at": null,
+        "arrival_photo": null,
+        "sent_at": null,
+        "receipt_uploaded_at": null,
+        "shipped_at": null,
+        "receipt_file": null,
+        "remark": null,
+        "reject_reason": null,
+        "bill": {
+          "id": 2,
+          "warehouse_id": 1,
+          "supplier_id": 1,
+          "bill_number": "PO-PO202610261037147113161",
+          "bill_date": "2026-10-26T10:37:14.719337",
+          "due_date": "2026-11-25T10:37:14.719337",
+          "currency": "THB",
+          "amount": 1000.0,
+          "paid_amount": 0.0,
+          "remaining_amount": 1000.0,
+          "status": "pending",
+          "need_boss_confirm": "false",
+          "purchase_order_id": 2,
+          "payment_voucher": null,
+          "bill_attachment": null,
+          "remark": null,
+          "detail": "- 耗材  x10 @ 100.0 = 1000.0",
+          "supplier_name": "本仓供应商",
+          "purchase_order_number": "PO202610261037147113161",
+          "payments": [],
+          "recorded_payment_total": 0.0,
+          "legacy_paid_amount": 0.0,
+          "legacy_paid_at": null,
+          "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+          "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+          "warnings": []
+        },
+        "bill_message": null,
+        "can_read_payable": true
+      },
+      "unknown_paid": {
+        "id": 1,
+        "warehouse_id": 1,
+        "supplier_id": 1,
+        "bill_number": "OLD-BILL-1",
+        "bill_date": "2020-01-01T00:00:00",
+        "due_date": "2026-12-20T00:00:00",
+        "currency": "THB",
+        "amount": 1000.0,
+        "paid_amount": null,
+        "remaining_amount": null,
+        "status": "pending",
+        "need_boss_confirm": "false",
+        "purchase_order_id": 1,
+        "payment_voucher": null,
+        "bill_attachment": null,
+        "remark": null,
+        "detail": null,
+        "supplier_name": "本仓供应商",
+        "purchase_order_number": "OLD-PO-1",
+        "payments": [],
+        "recorded_payment_total": 0.0,
+        "legacy_paid_amount": null,
+        "legacy_paid_at": null,
+        "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+        "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+        "warnings": [
+          "累计已付未记录，历史付款及剩余应付需核对"
+        ]
+      }
+    },
+    "over200_and_receive": {
+      "total": 206,
+      "old_detail": {
+        "id": 1,
+        "warehouse_id": 1,
+        "supplier_id": 1,
+        "bill_number": "OLD-BILL-1",
+        "bill_date": "2020-01-01T00:00:00",
+        "due_date": "2026-12-20T00:00:00",
+        "currency": "THB",
+        "amount": 1000.0,
+        "paid_amount": 0.0,
+        "remaining_amount": 1000.0,
+        "status": "pending",
+        "need_boss_confirm": "false",
+        "purchase_order_id": 1,
+        "payment_voucher": null,
+        "bill_attachment": null,
+        "remark": null,
+        "detail": null,
+        "supplier_name": "本仓供应商",
+        "purchase_order_number": "OLD-PO-1",
+        "payments": [],
+        "recorded_payment_total": 0.0,
+        "legacy_paid_amount": 0.0,
+        "legacy_paid_at": null,
+        "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+        "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+        "warnings": []
+      },
+      "after_receive": {
+        "id": 1,
+        "order_number": "OLD-PO-1",
+        "warehouse_id": 1,
+        "warehouse_name": "测试仓1",
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "status": "confirmed",
+        "flow_status": "arrived",
+        "receipt_status": "partially_received",
+        "items": [
+          {
+            "product_name": "耗材",
+            "quantity": 10,
+            "received_quantity": 8,
+            "diff_quantity": 2
+          }
+        ],
+        "total_amount": 1000.0,
+        "currency": "THB",
+        "created_at": "2019-12-31T17:00:00+00:00",
+        "received_at": "2026-10-26T03:37:15.061578+00:00",
+        "arrival_photo": "/uploads/arrival_photos/576a604cb4924ff5b8401bf9e3a1e552.png",
+        "sent_at": null,
+        "receipt_uploaded_at": null,
+        "shipped_at": null,
+        "receipt_file": null,
+        "remark": null,
+        "reject_reason": null,
+        "bill": {
+          "id": 1,
+          "warehouse_id": 1,
+          "supplier_id": 1,
+          "bill_number": "OLD-BILL-1",
+          "bill_date": "2020-01-01T00:00:00",
+          "due_date": "2026-12-20T00:00:00",
+          "currency": "THB",
+          "amount": 1000.0,
+          "paid_amount": 0.0,
+          "remaining_amount": 1000.0,
+          "status": "pending",
+          "need_boss_confirm": "true",
+          "purchase_order_id": 1,
+          "payment_voucher": null,
+          "bill_attachment": null,
+          "remark": null,
+          "detail": null,
+          "supplier_name": "本仓供应商",
+          "purchase_order_number": "OLD-PO-1",
+          "payments": [],
+          "recorded_payment_total": 0.0,
+          "legacy_paid_amount": 0.0,
+          "legacy_paid_at": null,
+          "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+          "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+          "warnings": []
+        },
+        "bill_message": null,
+        "can_read_payable": true
+      },
+      "payment_blocked": {
+        "detail": "该账单存在收货差异，需老板确认后才能付款"
+      },
+      "after_confirm_payment": {
+        "id": 1,
+        "order_number": "OLD-PO-1",
+        "warehouse_id": 1,
+        "warehouse_name": "测试仓1",
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "status": "confirmed",
+        "flow_status": "arrived",
+        "receipt_status": "partially_received",
+        "items": [
+          {
+            "product_name": "耗材",
+            "quantity": 10,
+            "received_quantity": 8,
+            "diff_quantity": 2
+          }
+        ],
+        "total_amount": 1000.0,
+        "currency": "THB",
+        "created_at": "2019-12-31T17:00:00+00:00",
+        "received_at": "2026-10-26T03:37:15.061578+00:00",
+        "arrival_photo": "/uploads/arrival_photos/576a604cb4924ff5b8401bf9e3a1e552.png",
+        "sent_at": null,
+        "receipt_uploaded_at": null,
+        "shipped_at": null,
+        "receipt_file": null,
+        "remark": null,
+        "reject_reason": null,
+        "bill": {
+          "id": 1,
+          "warehouse_id": 1,
+          "supplier_id": 1,
+          "bill_number": "OLD-BILL-1",
+          "bill_date": "2020-01-01T00:00:00",
+          "due_date": "2026-12-20T00:00:00",
+          "currency": "THB",
+          "amount": 1000.0,
+          "paid_amount": 300.0,
+          "remaining_amount": 700.0,
+          "status": "partially_paid",
+          "need_boss_confirm": "false",
+          "purchase_order_id": 1,
+          "payment_voucher": null,
+          "bill_attachment": null,
+          "remark": null,
+          "detail": null,
+          "supplier_name": "本仓供应商",
+          "purchase_order_number": "OLD-PO-1",
+          "payments": [
+            {
+              "id": 1,
+              "amount": 300.0,
+              "currency": "THB",
+              "account_name": "测试现金1",
+              "paid_at": "2026-10-26T03:37:15.087069+00:00",
+              "payment_method": null,
+              "operator_name": "测试账号1"
+            }
+          ],
+          "recorded_payment_total": 300.0,
+          "legacy_paid_amount": 0.0,
+          "legacy_paid_at": null,
+          "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+          "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+          "warnings": []
+        },
+        "bill_message": null,
+        "can_read_payable": true
+      }
+    },
+    "unknown_summary": {
+      "summary": {
+        "supplier_summary": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "本仓供应商",
+            "currency": "CNY",
+            "bill_count": 1,
+            "total_amount": 50.0,
+            "paid_amount": 0.0,
+            "unpaid_amount": 50.0,
+            "overdue_amount": 0.0,
+            "unknown_payment_count": 0,
+            "link_warning_count": 0,
+            "link_warning_bill_ids": [],
+            "known_paid_amount": 0.0,
+            "known_unpaid_amount": 50.0,
+            "known_overdue_amount": 0.0
+          },
+          {
+            "supplier_id": 1,
+            "supplier_name": "本仓供应商",
+            "currency": "THB",
+            "bill_count": 2,
+            "total_amount": 1700.0,
+            "paid_amount": null,
+            "unpaid_amount": null,
+            "overdue_amount": null,
+            "unknown_payment_count": 1,
+            "link_warning_count": 1,
+            "link_warning_bill_ids": [
+              2
+            ],
+            "known_paid_amount": 200.0,
+            "known_unpaid_amount": 500.0,
+            "known_overdue_amount": 500.0
+          }
+        ],
+        "start_date": "1900-01-01",
+        "end_date": "9999-12-31",
+        "date_basis": "账单日期；有效应付；累计已付含历史；逾期是剩余应付的子集",
+        "warehouse_id": 1,
+        "unknown_payment_count_by_currency": {
+          "CNY": 0,
+          "THB": 1
+        },
+        "link_warning_count": 1,
+        "month_total_by_currency": {
+          "CNY": 50.0,
+          "THB": 1700.0
+        },
+        "month_total": null,
+        "month_paid_known_by_currency": {
+          "CNY": 0.0,
+          "THB": 200.0
+        },
+        "month_paid_by_currency": {
+          "CNY": 0.0,
+          "THB": null
+        },
+        "month_paid": null,
+        "month_unpaid_known_by_currency": {
+          "CNY": 50.0,
+          "THB": 500.0
+        },
+        "month_unpaid_by_currency": {
+          "CNY": 50.0,
+          "THB": null
+        },
+        "month_unpaid": null,
+        "overdue_known_by_currency": {
+          "CNY": 0.0,
+          "THB": 500.0
+        },
+        "overdue_by_currency": {
+          "CNY": 0.0,
+          "THB": null
+        },
+        "overdue_total": null
+      },
+      "drill": {
+        "data": [
+          {
+            "id": 2,
+            "warehouse_id": 1,
+            "supplier_id": 1,
+            "supplier_name": "本仓供应商",
+            "bill_number": "LEGACY-700",
+            "bill_date": "2020-01-01T00:00:00",
+            "due_date": "2020-02-01T00:00:00",
+            "amount": 700.0,
+            "confirmed_amount": null,
+            "currency": "THB",
+            "paid_amount": 200.0,
+            "remaining_amount": 500.0,
+            "payment_totals_unknown": false,
+            "link_warning": "历史关联异常，请管理员核对；本单仍计入原有效应付范围，未自动修正",
+            "status": "partially_paid",
+            "is_duplicate_warned": null,
+            "payment_commitment_days": null,
+            "payment_voucher": null,
+            "payment_method": null,
+            "bill_attachment": null,
+            "is_fund_linked": null,
+            "detail": null,
+            "remark": null,
+            "diff_note": null,
+            "source": "manual",
+            "purchase_order_id": 2,
+            "purchase_order_number": "LEGACY-UNLINKED",
+            "need_boss_confirm": "false"
+          },
+          {
+            "id": 1,
+            "warehouse_id": 1,
+            "supplier_id": 1,
+            "supplier_name": "本仓供应商",
+            "bill_number": "OLD-BILL-1",
+            "bill_date": "2020-01-01T00:00:00",
+            "due_date": "2026-12-20T00:00:00",
+            "amount": 1000.0,
+            "confirmed_amount": null,
+            "currency": "THB",
+            "paid_amount": null,
+            "remaining_amount": null,
+            "payment_totals_unknown": true,
+            "link_warning": null,
+            "status": "pending",
+            "is_duplicate_warned": null,
+            "payment_commitment_days": null,
+            "payment_voucher": null,
+            "payment_method": null,
+            "bill_attachment": null,
+            "is_fund_linked": null,
+            "detail": null,
+            "remark": null,
+            "diff_note": null,
+            "source": "purchase_order",
+            "purchase_order_id": 1,
+            "purchase_order_number": "OLD-PO-1",
+            "need_boss_confirm": "false"
+          }
+        ],
+        "total": 2,
+        "page": 1,
+        "page_size": 20
+      },
+      "unknown_detail": {
+        "id": 1,
+        "warehouse_id": 1,
+        "supplier_id": 1,
+        "bill_number": "OLD-BILL-1",
+        "bill_date": "2020-01-01T00:00:00",
+        "due_date": "2026-12-20T00:00:00",
+        "currency": "THB",
+        "amount": 1000.0,
+        "paid_amount": null,
+        "remaining_amount": null,
+        "status": "pending",
+        "need_boss_confirm": "false",
+        "purchase_order_id": 1,
+        "payment_voucher": null,
+        "bill_attachment": null,
+        "remark": null,
+        "detail": null,
+        "supplier_name": "本仓供应商",
+        "purchase_order_number": "OLD-PO-1",
+        "payments": [],
+        "recorded_payment_total": 0.0,
+        "legacy_paid_amount": null,
+        "legacy_paid_at": null,
+        "legacy_note": "历史累计付款，缺逐笔明细；不与逐笔重复计算",
+        "voucher_scope": "账单级凭证，不代表某一次逐笔付款",
+        "warnings": [
+          "累计已付未记录，历史付款及剩余应付需核对"
+        ]
+      },
+      "history_detail_error": {
+        "detail": "采购单与应付账单历史关联不一致，请管理员核对；未自动修正"
+      }
+    },
+    "multi_warehouse": {
+      "membership_warehouses": [
+        1,
+        2
+      ],
+      "selections": [
+        {
+          "selected_warehouse": "1",
+          "list_ids": [
+            1
+          ],
+          "detail_and_action": 200,
+          "other_member_warehouse": 403
+        },
+        {
+          "selected_warehouse": "2",
+          "list_ids": [
+            2
+          ],
+          "detail_and_action": 200,
+          "other_member_warehouse": 403
+        }
+      ],
+      "all_mode": 400,
+      "manual_bill": {
+        "id": 3,
+        "message": "账单创建成功",
+        "has_diff": false,
+        "diff_note": null
+      },
+      "pdf_status": 200,
+      "pdf_bytes": 3171,
+      "receipt": {
+        "message": "回执已上传，供应商已确认",
+        "receipt_file": "/uploads/receipt_files/abecb06e76e74f4182e9fcc15ddadc9a.png",
+        "flow_status": "supplier_confirmed"
+      },
+      "auxiliary_lists": [
+        {
+          "warehouse": 1,
+          "pending_ids": [
+            5001
+          ],
+          "difference_purchase_ids": [
+            1
+          ]
+        },
+        {
+          "warehouse": 2,
+          "pending_ids": [
+            5002
+          ],
+          "difference_purchase_ids": [
+            2
+          ]
+        }
+      ]
+    }
+  },
+  "real_browser": {
+    "observed_writes": [
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/1/pay?paid_amount=300&account_id=1&payment_method=%E7%8E%B0%E9%87%91&request_key=2c947eb8-0c31-43ac-afa1-1de0119120df",
+        "status": 401,
+        "warehouse_header": "1"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/1/pay?paid_amount=300&account_id=1&payment_method=%E7%8E%B0%E9%87%91&request_key=2c947eb8-0c31-43ac-afa1-1de0119120df",
+        "status": 200,
+        "warehouse_header": "1"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable/1/upload-voucher",
+        "status": 503,
+        "warehouse_header": "1",
+        "files": [
+          {
+            "name": "proof-A.png",
+            "bytes": 91,
+            "sha256": "b9bc1a508518a9f85bee12b5b8fd2d6795acd233caf01af14b713a58637a2d4f"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable/1/upload-voucher",
+        "status": 200,
+        "warehouse_header": "1",
+        "files": [
+          {
+            "name": "proof-A.png",
+            "bytes": 91,
+            "sha256": "b9bc1a508518a9f85bee12b5b8fd2d6795acd233caf01af14b713a58637a2d4f"
+          }
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/payable/1/pay?paid_amount=700&account_id=1&payment_method=%E9%93%B6%E8%A1%8C%E8%BD%AC%E8%B4%A6&request_key=c0c77c49-9b87-4396-a4f3-34c1e5d939a8",
+        "status": 200,
+        "warehouse_header": "1"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable",
+        "status": 500,
+        "warehouse_header": "2",
+        "files": [
+          {
+            "name": "proof-B.png",
+            "bytes": 90,
+            "sha256": "6896277e79c20bf4f61b13b2637e2096bd7ed487776d52625bd14cfb7d837d5b"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable",
+        "status": 200,
+        "warehouse_header": "2",
+        "files": [
+          {
+            "name": "proof-B.png",
+            "bytes": 90,
+            "sha256": "6896277e79c20bf4f61b13b2637e2096bd7ed487776d52625bd14cfb7d837d5b"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/purchase-orders/2000/receipt",
+        "status": 200,
+        "warehouse_header": "2",
+        "files": [
+          {
+            "name": "proof-B.png",
+            "bytes": 90,
+            "sha256": "6896277e79c20bf4f61b13b2637e2096bd7ed487776d52625bd14cfb7d837d5b"
+          }
+        ]
+      }
+    ],
+    "native_B_requests": [
+      {
+        "method": "POST",
+        "path": "/api/v1/payable",
+        "status": 500,
+        "warehouse_header": "2",
+        "files": [
+          {
+            "name": "proof-B.png",
+            "bytes": 90,
+            "sha256": "6896277e79c20bf4f61b13b2637e2096bd7ed487776d52625bd14cfb7d837d5b"
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/payable",
+        "status": 200,
+        "warehouse_header": "2",
+        "files": [
+          {
+            "name": "proof-B.png",
+            "bytes": 90,
+            "sha256": "6896277e79c20bf4f61b13b2637e2096bd7ed487776d52625bd14cfb7d837d5b"
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/suppliers/purchase-orders/2000/pdf",
+        "status": 200,
+        "warehouse_header": "2"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/suppliers/purchase-orders/2000/receipt",
+        "status": 200,
+        "warehouse_header": "2",
+        "files": [
+          {
+            "name": "proof-B.png",
+            "bytes": 90,
+            "sha256": "6896277e79c20bf4f61b13b2637e2096bd7ed487776d52625bd14cfb7d837d5b"
+          }
+        ]
+      }
+    ],
+    "paid_300_snapshot": {
+      "schema": "incoming_test_4273f11f4a004b5aa9732a1b048307a5",
+      "read_only": "on",
+      "bills": [
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "bill_number": "OLD-BILL-1",
+          "amount": 1000.0,
+          "paid_amount": 300.0,
+          "status": "partially_paid",
+          "payment_voucher": "/uploads/payment_vouchers/b57f0ebdcb8b40a491859517e8a2e9f3.png"
+        },
+        {
+          "id": 2,
+          "warehouse_id": 1,
+          "bill_number": "CNY-50",
+          "amount": 50.0,
+          "paid_amount": 0.0,
+          "status": "pending",
+          "payment_voucher": null
+        },
+        {
+          "id": 3,
+          "warehouse_id": 1,
+          "bill_number": "B-HOLD-1000",
+          "amount": 1000.0,
+          "paid_amount": 0.0,
+          "status": "pending",
+          "payment_voucher": null
+        }
+      ],
+      "payments": [
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "bill_id": 1,
+          "amount": "300.00",
+          "currency": "THB",
+          "account_id": 1,
+          "request_key": "2c947eb8-0c31-43ac-afa1-1de0119120df"
+        }
+      ],
+      "account_openings": [
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "opening_balance": 10000.0,
+          "currency": "THB"
+        },
+        {
+          "id": 2,
+          "warehouse_id": 2,
+          "opening_balance": 0.0,
+          "currency": "THB"
+        },
+        {
+          "id": 3,
+          "warehouse_id": 1,
+          "opening_balance": 10000.0,
+          "currency": "CNY"
+        }
+      ]
+    },
+    "paid_1000_snapshot": {
+      "schema": "incoming_test_4273f11f4a004b5aa9732a1b048307a5",
+      "read_only": "on",
+      "bills": [
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "bill_number": "OLD-BILL-1",
+          "amount": 1000.0,
+          "paid_amount": 1000.0,
+          "status": "paid",
+          "payment_voucher": "/uploads/payment_vouchers/b57f0ebdcb8b40a491859517e8a2e9f3.png"
+        },
+        {
+          "id": 2,
+          "warehouse_id": 1,
+          "bill_number": "CNY-50",
+          "amount": 50.0,
+          "paid_amount": 0.0,
+          "status": "pending",
+          "payment_voucher": null
+        },
+        {
+          "id": 3,
+          "warehouse_id": 1,
+          "bill_number": "B-HOLD-1000",
+          "amount": 1000.0,
+          "paid_amount": 0.0,
+          "status": "pending",
+          "payment_voucher": null
+        }
+      ],
+      "payments": [
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "bill_id": 1,
+          "amount": "300.00",
+          "currency": "THB",
+          "account_id": 1,
+          "request_key": "2c947eb8-0c31-43ac-afa1-1de0119120df"
+        },
+        {
+          "id": 2,
+          "warehouse_id": 1,
+          "bill_id": 1,
+          "amount": "700.00",
+          "currency": "THB",
+          "account_id": 1,
+          "request_key": "c0c77c49-9b87-4396-a4f3-34c1e5d939a8"
+        }
+      ],
+      "account_openings": [
+        {
+          "id": 1,
+          "warehouse_id": 1,
+          "opening_balance": 10000.0,
+          "currency": "THB"
+        },
+        {
+          "id": 2,
+          "warehouse_id": 2,
+          "opening_balance": 0.0,
+          "currency": "THB"
+        },
+        {
+          "id": 3,
+          "warehouse_id": 1,
+          "opening_balance": 10000.0,
+          "currency": "CNY"
+        }
+      ]
+    }
+  },
+  "browser_observations": [
+    {
+      "view": "desktop-A-paid300-voucher-failure",
+      "text": "应付详情 OLD-BILL-1\n关闭\n\n供应商：本仓供应商 · 状态：部分付款\n\n应付总额 ฿1,000 · 累计已付 ฿300 · 剩余应付 ฿700\n\n查看关联采购单 OLD-PO-1\n逐笔实际付款（不补造历史）\n\n#1 · ฿300 · 测试现金1\n\n2026/10/26 10:25:26（泰国时间）\n\n现金 · 操作人：测试账号1\n\n逐笔合计：฿300\n\n账单级凭证，不代表某一次逐笔付款\n\n尚无账单级付款凭证\n\n仅上传／重传凭证\n付款"
+    },
+    {
+      "view": "mobile-A-voucher-retry-after-B-cancel",
+      "text": "A task: bill #1, warehouse #1. B file selected then cancelled. A-only retry succeeded; see captured request hash and local DB proof."
+    },
+    {
+      "view": "mobile-old-bill-paid300",
+      "text": "应付详情 OLD-BILL-1\n关闭\n\n供应商：本仓供应商 · 状态：部分付款\n\n应付总额 ฿1,000 · 累计已付 ฿300 · 剩余应付 ฿700\n\n查看关联采购单 OLD-PO-1\n逐笔实际付款（不补造历史）\n\n#1 · ฿300 · 测试现金1\n\n2026/10/26 10:25:26（泰国时间）\n\n现金 · 操作人：测试账号1\n\n逐笔合计：฿300\n\n账单级凭证，不代表某一次逐笔付款\n\n查看账单级付款凭证仅上传／重传凭证\n付款"
+    },
+    {
+      "view": "mobile-old-purchase-linked",
+      "text": "采购单详情 OLD-PO-1\n\n供应商：本仓供应商 · 币种：THB\n\n采购状态：已生效\n\n收货状态：未收货\n\n产品\t规格\t订购数量\t当前已记录实收\t数量差异\t单价\t小计\n耗材\t—\t10\t尚未记录实收\t尚未记录差异\t未记录\t未记录\n\n采购总额：฿1,000\n\n关联应付账单\n查看应付 OLD-BILL-1\n\n账单状态：部分付款\n\n应付总额 ฿1,000 · 累计已付 ฿300 · 剩余应付 ฿700\n\n此页仅查看，不自动收货、确认或付款\n\n返回应付账款"
+    },
+    {
+      "view": "desktop-old-bill-paid1000-two-payments",
+      "text": "应付详情 OLD-BILL-1\n关闭\n\n供应商：本仓供应商 · 状态：已付清\n\n应付总额 ฿1,000 · 累计已付 ฿1,000 · 剩余应付 ฿0\n\n查看关联采购单 OLD-PO-1\n逐笔实际付款（不补造历史）\n\n#1 · ฿300 · 测试现金1\n\n2026/10/26 10:25:26（泰国时间）\n\n现金 · 操作人：测试账号1\n\n#2 · ฿700 · 测试现金1\n\n2026/10/26 10:27:40（泰国时间）\n\n银行转账 · 操作人：测试账号1\n\n逐笔合计：฿1,000\n\n账单级凭证，不代表某一次逐笔付款\n\n查看账单级付款凭证仅上传／重传凭证"
+    },
+    {
+      "view": "desktop-all-date-summary",
+      "text": "应付总表（供应商 × 币种）\n\n按账单日期：不限起日 至 不限止日；仅有效应付，累计已付含历史。逾期属于剩余，不重复加总；付款计划不另算应付。\n\n供应商\t币种\t有效应付\t累计已付\t剩余应付\t其中逾期未付\t单据数\t明细\n本仓供应商\tCNY\t¥50\t¥0\t¥50\t¥0\t1\t查看对应明细\n本仓供应商\tTHB\t฿2,205\t฿1,000\t฿1,205\t฿0\t207\t查看对应明细"
+    },
+    {
+      "view": "CNY-summary-drill",
+      "text": "\t供应商\t账单编号\t来源\t标记\t账单日期\t到期日\t金额\t已付\t状态\t明细\t附件\t凭证\t操作\n\t本仓供应商\tCNY-50\t手动\t-\t2020-01-01\t2026-12-01\t¥50\t¥0\t待付\t-\t-\t-\t\n详情\n付款\n编辑\n作废"
+    },
+    {
+      "view": "menu-groups",
+      "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n供应商档案\n供应商采购分析\n修改日志\n拼单\n员工管理\n配置中心\n系统设置"
+    },
+    {
+      "view": "finance-menu-expanded",
+      "text": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n应付账款\n付款计划\n运营收支\n费用审批\n其他收入\n备用金管理\n报销管理\n垫款单\n账期管理\n报表中心\n资金流水总览\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置"
+    },
+    {
+      "view": "B-rejects-A-detail",
+      "text": "应付详情 #1\n关闭\n\n无权查看其他仓库的账单 重试"
+    },
+    {
+      "view": "B-unknown-summary",
+      "text": "应付总表（供应商 × 币种）\n\n按账单日期：2026-10-01 至 2026-10-26；仅有效应付，累计已付含历史。逾期属于剩余，不重复加总；付款计划不另算应付。\n\n供应商\t币种\t有效应付\t累计已付\t剩余应付\t其中逾期未付\t单据数\t明细\n外仓供应商\tTHB\t฿2,000\t待核实（已知单据小计 ฿0）\t待核实（已知单据小计 ฿1,000）\t待核实（已知单据小计 ฿0）\t2\n\n其中1笔累计付款待核实\n\n\t查看对应明细"
+    },
+    {
+      "view": "B-manual-created-250",
+      "text": "\t供应商\t账单编号\t来源\t标记\t账单日期\t到期日\t金额\t已付\t状态\t明细\t附件\t凭证\t操作\n\t外仓供应商\tB-PO-BILL\t采购单\t-\t2026-10-26\t2026-12-01\t฿1,000\t฿0\t待付\t-\t-\t-\t\n详情\n付款\n编辑\n作废\n\n\t外仓供应商\tB-UNKNOWN-HISTORY\t手动\t-\t2026-10-26\t2026-12-01\t฿1,000\t未记录，待核实\t待付\t-\t-\t-\t\n详情\n付款\n编辑\n作废\n\n\t外仓供应商\tB-MANUAL-BROWSER-250\t手动\t-\t2026-10-26\t2026-12-01\t฿250\t฿0\t待付\t-\t查看\t-\t\n详情\n付款\n编辑\n作废"
+    },
+    {
+      "view": "B-purchase-list",
+      "text": "采购单列表\n×\n单号\t供应商\t仓库\t金额\t状态\t流程\t收货\t下单时间\t操作\nB-PO-2000\t外仓供应商\t测试仓2\t1000\t已生效\t待供应商确认\t未收货\t2026/10/26 10:29:27\t\n明细\nPDF\n关闭"
+    },
+    {
+      "view": "B-receipt-uploaded",
+      "text": "采购单明细 - B-PO-2000\n×\n供应商：外仓供应商\n仓库：-\n状态：已生效\n下单时间：2026/10/26 10:29:27\n流程状态：供应商已确认\n关联应付账单\n查看应付 B-PO-BILL\n\n账单状态：待付\n\n应付总额 ฿1,000 · 累计已付 ฿0 · 剩余应付 ฿1,000\n\n收货状态：未收货\n\n流程操作\n标记已发送\n上传回执\n标记已发货\n回执上传：2026/10/26 10:31:57\n产品\t规格\t订购数量\t当前已记录实收\t数量差异\t单价\t小计\n\n采购明细未记录\n\n总价：1000\n查看回执\n下载PDF\n关闭"
+    },
+    {
+      "view": "supplier-only-redacted",
+      "text": "采购单详情 OLD-PO-1\n\n供应商：本仓供应商 · 币种：THB\n\n采购状态：已生效\n\n收货状态：未收货\n\n产品\t规格\t订购数量\t当前已记录实收\t数量差异\t单价\t小计\n耗材\t—\t10\t尚未记录实收\t尚未记录差异\t未记录\t未记录\n\n采购总额：฿1,000\n\n关联应付账单\n\n没有应付账款或付款计划读取权限，付款信息不展示\n\n此页仅查看，不自动收货、确认或付款\n\n返回应付账款"
+    },
+    {
+      "view": "final-B-detail-warehouse-name",
+      "text": "采购单明细 - B-PO-2000\n×\n供应商：外仓供应商\n仓库：测试仓2\n状态：已生效\n下单时间：2026/10/26 10:35:01\n流程状态：待供应商确认\n关联应付账单\n查看应付 B-PO-BILL\n\n账单状态：待付\n\n应付总额 ฿1,000 · 累计已付 ฿0 · 剩余应付 ฿1,000\n\n收货状态：未收货\n\n流程操作\n标记已发送\n上传回执\n标记已发货\n产品\t规格\t订购数量\t当前已记录实收\t数量差异\t单价\t小计\n\n采购明细未记录\n\n总价：1000\n下载PDF\n关闭"
+    },
+    {
+      "view": "final-mobile-unknown-summary",
+      "text": "应付总表（供应商 × 币种）\n\n按账单日期：2026-10-01 至 2026-10-26；仅有效应付，累计已付含历史。逾期属于剩余，不重复加总；付款计划不另算应付。\n\n供应商\t币种\t有效应付\t累计已付\t剩余应付\t其中逾期未付\t单据数\t明细\n外仓供应商\tTHB\t฿2,000\t待核实（已知单据小计 ฿0）\t待核实（已知单据小计 ฿1,000）\t待核实（已知单据小计 ฿0）\t2\n\n其中1笔累计付款待核实\n\n\t查看对应明细"
+    }
+  ],
+  "evidence_directory": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第01轮-20261026-014453",
+  "not_dynamically_retested": [
+    "all seven retired endpoints",
+    "all four employee self-service pages"
+  ],
+  "security_history": "Previous turn erroneously followed old receipt task and attempted production SSH. Network denied then SSH authentication failed; remote SQL did not run. Stopped thereafter. No production connections during fix01 continuation; no production writes/real payments/push/deploy."
+}

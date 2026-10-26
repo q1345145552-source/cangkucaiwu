@@ -20,6 +20,8 @@ from app.core.config_access import ensure_config_editor
 
 _CONCENTRATION_PERMISSION = MENU_PERMISSIONS_BY_KEY["concentration"].label
 
+from app.services.supplier_payable_read import current_supplier_warehouse, purchase_detail, checked_link
+
 router = APIRouter()
 
 
@@ -583,12 +585,14 @@ async def delete_product(supplier_id: int, product_id: int, current_user: User =
 async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
                                  current_user: User = Depends(get_current_user),
                                  db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     supplier = await _require_supplier_owned(db, current_user, supplier_id)
-    wh_id = get_wh_id(current_user)
+    wh_id = warehouse_id
+    if supplier.warehouse_id != wh_id: raise HTTPException(403, "无权操作其他仓库的供应商")
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
     threshold = await _get_price_threshold(db, wh_id)
@@ -935,13 +939,14 @@ async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User =
 
 @router.get("/purchase-approvals")
 async def purchase_approvals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """待审批采购单 + 疑似拆单提示。仓库管理员和主管可见。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    threshold = await _get_approval_threshold(db, get_wh_id(current_user))
-    wh_ids = get_wh_ids(current_user)
+    threshold = await _get_approval_threshold(db, warehouse_id)
+    wh_ids = [warehouse_id]
 
     # 待审批
     pquery = select(PurchaseOrder).where(PurchaseOrder.status == "pending")
@@ -1004,6 +1009,7 @@ async def purchase_approvals(current_user: User = Depends(get_current_user), db:
 
 @router.put("/purchase-approvals/{po_id}/approve")
 async def approve_purchase(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """审批通过：采购单生效，生成应付账单，并写入价格历史/异常/非最低价。"""
     _forbid_super_admin(current_user)
@@ -1012,7 +1018,7 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权审批其他仓库的采购单")
     if po.status != "pending":
         raise HTTPException(400, "该采购单已处理")
@@ -1021,6 +1027,7 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
     supplier = (await db.execute(select(Supplier).where(Supplier.id == po.supplier_id))).scalar_one_or_none()
     if not supplier:
         raise HTTPException(404, "供应商不存在")
+    if supplier.warehouse_id != warehouse_id: raise HTTPException(409, "采购单关联供应商的仓库不一致，请管理员核对")
     bill_number = f"PO-{po.order_number}"
     detail_lines = [f"- {d.get('product_name')} {d.get('spec') or ''} x{d.get('quantity')} @ {d.get('unit_price')} = {d.get('subtotal')}" for d in (po.items or [])]
     now = thai_now()
@@ -1044,6 +1051,7 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
 
 @router.put("/purchase-approvals/{po_id}/reject")
 async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """审批驳回：采购单作废，需填原因。"""
     _forbid_super_admin(current_user)
@@ -1052,7 +1060,7 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权审批其他仓库的采购单")
     if po.status != "pending":
         raise HTTPException(400, "该采购单已处理")
@@ -1068,6 +1076,7 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
 @router.get("/purchase-orders")
 async def list_purchase_orders(page: int = 1, page_size: int = 50,
                                current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """采购单列表（含收货状态），供收货录入使用。"""
     _forbid_super_admin(current_user)
@@ -1075,8 +1084,8 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
         raise HTTPException(403, "无权限")
     query = select(PurchaseOrder)
     count_q = select(func.count(PurchaseOrder.id))
-    query = query.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
-    count_q = count_q.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(PurchaseOrder.warehouse_id == warehouse_id)
+    count_q = count_q.where(PurchaseOrder.warehouse_id == warehouse_id)
     total = (await db.execute(count_q)).scalar()
     rows = (await db.execute(
         query.order_by(PurchaseOrder.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
@@ -1111,9 +1120,17 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
     } for po in rows], "total": total, "page": page, "page_size": page_size}
 
 
+@router.get("/purchase-orders/{po_id}", dependencies=[Depends(require_non_labor)])
+async def get_purchase_detail(po_id: int, warehouse_id: int = Depends(current_supplier_warehouse),
+        current_user: User = Depends(check_staff_permission_any(*(MENU_PERMISSIONS_BY_KEY[k].label
+            for k in ("suppliers", "payable", "payment_plans")))), db: AsyncSession = Depends(get_db)):
+    return await purchase_detail(db, po_id, warehouse_id, current_user)
+
+
 @router.post("/purchase-orders/{po_id}/receive")
 async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile = File(...),
                            current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                           warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """收货验收：逐个产品填实收数量 + 上传到货照片。"""
     import json
@@ -1123,8 +1140,12 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权操作其他仓库的采购单")
+    if po.payable_bill_id:
+        linked_bill = await db.get(PayableBill, po.payable_bill_id)
+        if linked_bill is None: raise HTTPException(409, "关联账单缺失，请管理员核对")
+        await checked_link(db, linked_bill, po, warehouse_id)
     if po.status != "confirmed":
         raise HTTPException(400, "仅已生效采购单可收货")
     if po.receipt_status == "received":
@@ -1190,6 +1211,7 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
 
 @router.post("/purchase-orders/{po_id}/mark-sent")
 async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """标记采购单已发送给供应商（记录发送时间/发送人）。"""
     _forbid_super_admin(current_user)
@@ -1198,7 +1220,7 @@ async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_curren
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权操作其他仓库的采购单")
     po.sent_at = thai_now()
     po.sent_by = current_user.id
@@ -1209,6 +1231,7 @@ async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_curren
 @router.post("/purchase-orders/{po_id}/receipt")
 async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
                                   current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """上传供应商签字/盖章回执，流程状态变为「供应商已确认」。"""
     _forbid_super_admin(current_user)
@@ -1217,7 +1240,7 @@ async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权操作其他仓库的采购单")
     if po.status != "confirmed":
         raise HTTPException(400, "仅已生效采购单可上传回执")
@@ -1236,6 +1259,7 @@ async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
 
 @router.post("/purchase-orders/{po_id}/mark-shipped")
 async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """标记供应商已发货，流程状态变为「已发货」。"""
     _forbid_super_admin(current_user)
@@ -1244,7 +1268,7 @@ async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_cur
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权操作其他仓库的采购单")
     po.shipped_at = thai_now()
     po.shipped_by = current_user.id
@@ -1255,6 +1279,7 @@ async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_cur
 
 @router.get("/purchase-orders/{po_id}/pdf")
 async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """下载采购单 PDF（含单号/供应商/产品明细/总价/日期/仓库/老板联系方式）。"""
     from app.models.warehouse import Warehouse
@@ -1265,7 +1290,7 @@ async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(g
     po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id not in get_wh_ids(current_user):
+    if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权查看其他仓库的采购单")
     supplier = (await db.execute(select(Supplier).where(Supplier.id == po.supplier_id))).scalar_one_or_none()
     wh = (await db.execute(select(Warehouse).where(Warehouse.id == po.warehouse_id))).scalar_one_or_none()
@@ -1280,13 +1305,14 @@ async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(g
 
 @router.get("/purchase-receipt-discrepancies")
 async def receipt_discrepancies(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """收货差异列表：所有数量不符的采购。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     query = select(PurchaseOrder).where(PurchaseOrder.receipt_status == "partially_received")
-    query = query.where(PurchaseOrder.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(PurchaseOrder.warehouse_id == warehouse_id)
     rows = (await db.execute(query.order_by(PurchaseOrder.received_at.desc()))).scalars().all()
 
     sid_set = {po.supplier_id for po in rows}
@@ -1712,12 +1738,12 @@ async def ai_compare(data: dict, current_user: User = Depends(get_current_user),
 async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
                          category_id: int = None,
                          current_user: User = Depends(get_current_user),
-                         db: AsyncSession = Depends(get_db)):
+                         db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     query = select(Supplier); count_q = select(func.count(Supplier.id))
-    query = query.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
-    count_q = count_q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(Supplier.warehouse_id == warehouse_id)
+    count_q = count_q.where(Supplier.warehouse_id == warehouse_id)
     if search:
         query = query.where(Supplier.name.ilike(f"%{search}%")); count_q = count_q.where(Supplier.name.ilike(f"%{search}%"))
     if category_id:

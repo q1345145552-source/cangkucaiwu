@@ -1,8 +1,8 @@
 "use client";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, warehouseRequestHeaders } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
@@ -10,7 +10,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, FileText, Receipt, Download, Edit, TrendingUp, Package, Trash2 } from "lucide-react";
 
+import PayableDetail from "@/components/PayableDetail";
+import { pendingPayablePayment, submitPayablePayment, uploadPayableVoucher, payableScope, PayableVoucherTask } from "@/lib/payablePayment";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+
+function summaryAmount(value:number|null, known:number, currency:string) {
+  return value == null ? `待核实（已知单据小计 ${fmtMoney(known,currency)}）` : fmtMoney(value,currency);
+}
+function summaryCurrencies(values?:Record<string,number|null>, known:Record<string,number>={}) {
+  if(!values)return "加载中";
+  return Object.entries(values).map(([currency,value])=>summaryAmount(value,known[currency] || 0,currency)).join("；") || "暂无有效应付";
+}
 
 export default function PayablePage() {
   const { t } = useI18n();
@@ -28,7 +40,14 @@ export default function PayablePage() {
   const [payingRow, setPayingRow] = useState<any>(null);
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [payAccountId, setPayAccountId] = useState(0);
-  const [payRequestKey, setPayRequestKey] = useState("");
+  const payablePermission=useMenuPermission("payable");
+  const canWriteBill=payablePermission && ["warehouse_admin","supervisor"].includes((user as {role?:string} | null)?.role || "");
+  const [pendingRecovery,setPendingRecovery]=useState(false);
+  const [billDetailId,setBillDetailId]=useState(0),[detailRevision,setDetailRevision]=useState(0);
+  const [voucherRetries,setVoucherRetries]=useState<PayableVoucherTask[]>([]);
+  const [listError,setListError]=useState(""),[statsError,setStatsError]=useState("");
+  const listRequest=useRef(0),statsRequest=useRef(0);
+  useEffect(()=>{const id=Number(new URLSearchParams(window.location.search).get("bill_id"));if(Number.isInteger(id)&&id>0)setBillDetailId(id);return()=>{listRequest.current++;statsRequest.current++;};},[]);
   const [payMethod, setPayMethod] = useState("银行转账");
   const [showPayModal, setShowPayModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -43,12 +62,12 @@ export default function PayablePage() {
   const _now = new Date();
   const _curMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}`;
   const _todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
-  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: `${_curMonth}-01`, end_date: _todayStr, status: "", source: "", purchase_order_number: "" });
+  const [listFilters, setListFilters] = useState({ supplier_id: 0, start_date: `${_curMonth}-01`, end_date: _todayStr, status: "", source: "", purchase_order_number: "", currency: "", effective_only: false });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadStats(); }, [page, listFilters]);
 
   async function load() {
-    setLoading(true);
+    const request=++listRequest.current;setLoading(true);setData([]);setListError("");
     try {
       const params = new URLSearchParams(); params.set("page", String(page)); params.set("page_size", "25");
       if (listFilters.supplier_id) params.set("supplier_id", String(listFilters.supplier_id));
@@ -57,13 +76,22 @@ export default function PayablePage() {
       if (listFilters.status) params.set("status", listFilters.status);
       if (listFilters.source) params.set("source", listFilters.source);
       if (listFilters.purchase_order_number) params.set("purchase_order_number", listFilters.purchase_order_number);
-      const r = await api.get<any>(`/payable?${params.toString()}`); setData(r.data); setTotal(r.total);
+      if(listFilters.currency)params.set("currency",listFilters.currency);
+      if(listFilters.effective_only)params.set("effective_only","true");
+      const r = await api.get<any>(`/payable?${params.toString()}`); if(request===listRequest.current){setData(r.data);setTotal(r.total);}
     }
-    catch (err) { console.error("加载失败:", err); }
-    setLoading(false);
+    catch (err:any) { if(request===listRequest.current)setListError(err.message || "列表加载失败"); }
+    if(request===listRequest.current)setLoading(false);
   }
   async function loadSuppliers() { try { const r = await api.get<any>("/suppliers?page_size=100"); setSuppliers(r.data); } catch {} }
-  async function loadStats() { try { const r = await api.get<any>(`/payable/stats?start_date=${listFilters.start_date}&end_date=${listFilters.end_date}`); setStats(r); } catch {} }
+  async function loadStats() {
+    const request=++statsRequest.current;setStats(null);setStatsError("");
+    const params=new URLSearchParams();
+    for(const key of ["start_date","end_date","supplier_id","currency","status","source","purchase_order_number"] as const){if(listFilters[key])params.set(key,String(listFilters[key]));}
+    if(!listFilters.start_date && !listFilters.end_date)params.set("all_dates","true");
+    try{const result=await api.get<any>(`/payable/stats?${params}`);if(request===statsRequest.current)setStats(result);}
+    catch(e:any){if(request===statsRequest.current)setStatsError(e.message || "应付总表加载失败");}
+  }
 
   // === 月度订单量 ===
   const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,"0");
@@ -116,7 +144,7 @@ export default function PayablePage() {
       if (form.purchase_order_number) fd.append("purchase_order_number", form.purchase_order_number);
       fd.append("file", billFile);
       const res = await fetch(`${API_URL}/payable`, {
-        method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
+        method: "POST", headers: warehouseRequestHeaders(), body: fd,
       });
       const r = await res.json();
       if (!res.ok) { toast("error", r.detail || "创建失败"); return; }
@@ -126,42 +154,43 @@ export default function PayablePage() {
     } catch (err: any) { toast("error", err.message || "创建失败"); }
   }
 
+  function hasPendingPayment(id:number){try{return !!pendingPayablePayment(id);}catch{return true;}}
   function openPayModal(row: any) {
-    setPayAmounts(prev => ({ ...prev, [row.id]: Math.round((row.amount - (row.paid_amount || 0)) * 100) / 100 }));
-    setPayingBillId(row.id);
-    setPayingRow(row);
-    setVoucherFile(null);
-    setPayAccountId(0); setPayRequestKey(crypto.randomUUID()); setShowPayModal(true);
+    try{
+      const pending=pendingPayablePayment(row.id);
+      if(!pending && row.paid_amount==null)throw Error("累计已付未记录，请先核对历史付款");
+      setPendingRecovery(!!pending);
+      setPayAmounts(prev=>({...prev,[row.id]:pending?.payload.paid_amount ?? Math.round((row.amount-(row.paid_amount || 0))*100)/100}));
+      setPayingBillId(row.id);setPayingRow(row);setVoucherFile(null);
+      setPayAccountId(pending?.payload.account_id || 0);setPayMethod(pending?.payload.payment_method || "银行转账");setShowPayModal(true);
+    }catch(e:any){toast("error",e.message);}
   }
-
+  async function retryVoucher(task:PayableVoucherTask){if(paymentSaving)return;setPaymentSaving(true);
+    try{await uploadPayableVoucher(task.billId,task.file,task.scope);setVoucherRetries(tasks=>tasks.filter(t=>t!==task));setDetailRevision(n=>n+1);toast("success","凭证已补传，没有再次付款");}
+    catch(e:any){toast("error",`付款已记录，凭证上传失败：${e.message}`);}finally{setPaymentSaving(false);}}
   async function handlePay() {
-    if (!payAccountId) { toast("error", "请选择付款账户"); return; }
-    const payAmount = Number(payAmounts[payingBillId]);
-    if (!Number.isFinite(payAmount) || payAmount <= 0) { toast("error", "请填写大于零的付款金额"); return; }
-    if (paymentSaving) return;
-    setPaymentSaving(true);
-    try {
-      const payRes = await fetch(`${API_URL}/payable/${payingBillId}/pay?paid_amount=${payAmount}&payment_method=${encodeURIComponent(payMethod)}&account_id=${payAccountId}&request_key=${payRequestKey}`, {
-        method: "PUT", headers: { "Authorization": `Bearer ${getToken()}` },
-      });
-      const payJson = await payRes.json().catch(() => ({}));
-      if (!payRes.ok) {
-        throw new Error(payJson.detail || "付款失败");
+    if(!payAccountId){toast("error","请选择付款账户");return;}
+    const payAmount=Number(payAmounts[payingBillId]);
+    if(!Number.isFinite(payAmount)||payAmount<=0){toast("error","请填写大于零的付款金额");return;}
+    if(paymentSaving)return;setPaymentSaving(true);
+    try{
+      // Capture this payment's file and identity; another modal must never replace a failed upload.
+      const scope=payableScope(), billId=payingBillId, file=voucherFile;
+      await submitPayablePayment(payingBillId,{paid_amount:payAmount,account_id:payAccountId,payment_method:payMethod});
+      setShowPayModal(false);setPendingRecovery(false);
+      let currentScope;try{currentScope=payableScope();}catch{}
+      if(scope.userId!==currentScope?.userId || scope.warehouseId!==currentScope?.warehouseId){
+        if(file)setVoucherRetries(tasks=>[...tasks,{billId,file,scope}]);
+        toast("success",file ? "付款已记录，请切回原账号和原仓库仅重传凭证" : "付款已记录，请在原仓库查看");return;
       }
-      if (voucherFile) {
-        const fd = new FormData(); fd.append("file", voucherFile);
-        const upRes = await fetch(`${API_URL}/payable/${payingBillId}/upload-voucher`, {
-          method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
-        });
-        const upJson = await upRes.json().catch(() => ({}));
-        if (!upRes.ok) {
-          throw new Error(upJson.detail || "付款凭证上传失败");
-        }
+      setBillDetailId(payingBillId);setDetailRevision(n=>n+1);load();loadStats();
+      if(file){
+        try{await uploadPayableVoucher(billId,file,scope);setDetailRevision(n=>n+1);}
+        catch(e:any){setVoucherRetries(tasks=>[...tasks,{billId,file,scope}]);toast("error",`付款已记录，凭证上传失败：${e.message}，请仅重传凭证`);return;}
       }
-      toast("success", "付款成功");
-      setShowPayModal(false); load(); loadStats();
-    } catch (err: any) { toast("error", err.message || "付款失败"); }
-    finally { setPaymentSaving(false); }
+      toast("success","付款已记录");
+    }catch(e:any){setPendingRecovery(hasPendingPayment(payingBillId));toast("error",e.message || "付款结果待确认，请重试同一请求");}
+    finally{setPaymentSaving(false);}
   }
 
   function openEditModal(row: any) {
@@ -188,6 +217,7 @@ export default function PayablePage() {
     try {
       await api.put(`/payable/${billId}/confirm`, {});
       toast("success", "已确认，可以付款");
+      setDetailRevision(n=>n+1);
       load(); loadStats();
     } catch (e: any) { toast("error", e.message || "确认失败"); }
   }
@@ -251,7 +281,7 @@ export default function PayablePage() {
     try {
       const billIds = Array.from(selectedIds).join(",");
       const res = await fetch(`${API_URL}/payable/batch-export?bill_ids=${billIds}`, {
-        headers: { "Authorization": `Bearer ${getToken()}` },
+        headers: warehouseRequestHeaders(),
       });
       const blob = await res.blob();
       const a = document.createElement("a"); a.href = window.URL.createObjectURL(blob);
@@ -287,23 +317,26 @@ export default function PayablePage() {
     <>
       <h1 className="page-title mb-5">{t("payable")}</h1>
 
+      {listError && <p role="alert" className="text-red-600">{listError}</p>}
+      {statsError && <p role="alert" className="text-red-600">{statsError}</p>}
+      {voucherRetries.map((task,i)=><div role="alert" key={`${task.scope.userId}:${task.scope.warehouseId}:${task.billId}:${i}`} className="p-3 bg-amber-50 text-amber-800">账单 #{task.billId}（仓库 #{task.scope.warehouseId}）付款已记录，凭证上传失败。<button onClick={()=>retryVoucher(task)} disabled={paymentSaving}>仅重传付款凭证</button></div>)}
       {/* 总览看板 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
-          <div className="flex items-center gap-2 mb-1"><DollarSign size={18} /><span className="text-sm opacity-80">本月应付</span></div>
-          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.month_total_by_currency)}</div>
+          <div className="flex items-center gap-2 mb-1"><DollarSign size={18} /><span className="text-sm opacity-80">所选账单日期应付</span></div>
+          <div className="text-2xl font-bold">{summaryCurrencies(stats?.month_total_by_currency)}</div>
         </div>
         <div className="card bg-gradient-to-br from-red-500 to-red-600 text-white border-0">
           <div className="flex items-center gap-2 mb-1"><AlertCircle size={18} /><span className="text-sm opacity-80">逾期未付</span></div>
-          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.overdue_by_currency)}</div>
+          <div className="text-2xl font-bold">{summaryCurrencies(stats?.overdue_by_currency,stats?.overdue_known_by_currency)}</div>
         </div>
         <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
-          <div className="flex items-center gap-2 mb-1"><CheckCircle size={18} /><span className="text-sm opacity-80">本月已付</span></div>
-          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.month_paid_by_currency)}</div>
+          <div className="flex items-center gap-2 mb-1"><CheckCircle size={18} /><span className="text-sm opacity-80">所选账单日期累计已付</span></div>
+          <div className="text-2xl font-bold">{summaryCurrencies(stats?.month_paid_by_currency,stats?.month_paid_known_by_currency)}</div>
         </div>
         <div className="card bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
-          <div className="flex items-center gap-2 mb-1"><Clock size={18} /><span className="text-sm opacity-80">本月未付</span></div>
-          <div className="text-2xl font-bold">{fmtMoneyByCurrency(stats?.month_unpaid_by_currency)}</div>
+          <div className="flex items-center gap-2 mb-1"><Clock size={18} /><span className="text-sm opacity-80">所选账单日期剩余应付</span></div>
+          <div className="text-2xl font-bold">{summaryCurrencies(stats?.month_unpaid_by_currency,stats?.month_unpaid_known_by_currency)}</div>
         </div>
       </div>
 
@@ -327,29 +360,18 @@ export default function PayablePage() {
         </div>
       </div>
 
-      {/* 按供应商汇总 */}
-      {(stats?.supplier_summary || []).length > 0 && (
-        <div className="card mb-5">
-          <h3 className="card-title">按供应商汇总（本月）</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {stats.supplier_summary.map((s: any) => (
-              <div key={s.supplier_id} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between cursor-pointer hover:bg-blue-50 transition-colors"
-                onClick={() => setListFilters(prev => ({ ...prev, supplier_id: s.supplier_id }))}>
-                <div>
-                  <div className="font-medium text-sm">{s.supplier_name}</div>
-                  <div className="text-xs text-gray-400">{s.bill_count}笔账单</div>
-                </div>
-                <div className="text-right text-xs">
-                  <div>应付 <span className="font-medium">{fmtMoney(s.total_amount)}</span></div>
-                  <div>已付 <span className="text-green-600">{fmtMoney(s.paid_amount)}</span></div>
-                  <div>未付 <span className="text-red-500">{fmtMoney(s.unpaid_amount)}</span></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <section className="card mb-5 p-4" aria-label="应付总表">
+        <h2 className="font-semibold">应付总表（供应商 × 币种）</h2>
+        <p className="text-xs text-gray-500 my-2">按账单日期：{listFilters.start_date || "不限起日"} 至 {listFilters.end_date || "不限止日"}；仅有效应付，累计已付含历史。逾期属于剩余，不重复加总；付款计划不另算应付。</p>
+        {!stats ? <p>{statsError ? "总表未能加载" : "加载中"}</p> : <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead><tr>{["供应商","币种","有效应付","累计已付","剩余应付","其中逾期未付","单据数","明细"].map(x=><th className="p-2 text-left" key={x}>{x}</th>)}</tr></thead><tbody>
+          {stats.supplier_summary.map((row:any)=><tr className="border-t" key={`${row.supplier_id}:${row.currency}`}>
+            <td className="p-2">{row.supplier_name}{row.link_warning_count>0 && <p className="text-amber-700 text-xs">{row.link_warning_count}笔历史关联异常，详情需核对；未移除应付金额</p>}</td><td>{row.currency}</td><td>{fmtMoney(row.total_amount,row.currency)}</td><td>{summaryAmount(row.paid_amount,row.known_paid_amount,row.currency)}</td><td>{summaryAmount(row.unpaid_amount,row.known_unpaid_amount,row.currency)}</td><td>{summaryAmount(row.overdue_amount,row.known_overdue_amount,row.currency)}</td><td>{row.bill_count}{row.unknown_payment_count>0 && <p className="text-amber-700 text-xs">其中{row.unknown_payment_count}笔累计付款待核实</p>}</td>
+            <td><button className="text-blue-600 underline" onClick={()=>{setPage(1);setListFilters(prev=>({...prev,supplier_id:row.supplier_id,currency:row.currency,effective_only:true}));}}>查看对应明细</button></td>
+          </tr>)}
+        </tbody></table>{!stats.supplier_summary.length && <p>当前范围暂无有效应付</p>}</div>}
+      </section>
 
+      <p className="text-xs text-gray-500 mb-2">列表日期口径：账单日期。{listFilters.effective_only ? "当前为总表钻取的有效账单范围。" : "列表可包含已作废记录，总表仅统计有效账单。"}</p>
       {/* 列表筛选 + 操作栏 */}
       <div className="card mb-4 p-4">
         <div className="flex items-end gap-3 flex-wrap">
@@ -384,6 +406,9 @@ export default function PayablePage() {
           <div className="w-[160px]"><label className="form-label">采购单号</label>
             <input className="form-input" value={listFilters.purchase_order_number} onChange={e => setListFilters({ ...listFilters, purchase_order_number: e.target.value })} placeholder="输入采购单号" />
           </div>
+          <div className="w-[130px]"><label className="form-label">币种</label><select className="form-input" value={listFilters.currency} onChange={e=>{setPage(1);setListFilters({...listFilters,currency:e.target.value});}}><option value="">全部币种（分列）</option><option value="THB">THB</option><option value="CNY">CNY</option></select></div>
+          <button className="btn-secondary" onClick={()=>{setPage(1);setListFilters({...listFilters,start_date:"",end_date:""});}}>全部账单日期</button>
+          {listFilters.effective_only && <button onClick={()=>setListFilters({...listFilters,effective_only:false})}>取消有效账单限定</button>}
           <button onClick={handleQuery} className="btn-primary h-[42px]">查询</button>
           <div className="flex-1" />
           <button onClick={handleExport} className="btn-secondary flex items-center gap-1 h-[42px]" disabled={selectedIds.size === 0}>
@@ -394,7 +419,7 @@ export default function PayablePage() {
               清除选择
             </button>
           )}
-          <button onClick={() => setShowForm(true)} className="btn-primary h-[42px]">新建账单</button>
+          {canWriteBill && <button onClick={() => setShowForm(true)} className="btn-primary h-[42px]">新建账单</button>}
         </div>
       </div>
 
@@ -405,9 +430,9 @@ export default function PayablePage() {
           render: (_: any, row: any) => <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleSelect(row.id)} className="w-4 h-4" />
         },
         { key: "supplier_name", label: "供应商" },
-        { key: "bill_number", label: "账单编号" },
+        { key: "bill_number", label: "账单编号", render:(v:any,row:any)=><button className="text-blue-600 underline" onClick={()=>setBillDetailId(row.id)}>{v}</button> },
         { key: "source", label: "来源", render: (v: any, row: any) => v === "purchase_order" ? <span className="px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-600">采购单</span> : <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">手动</span> },
-        { key: "need_boss_confirm", label: "标记", render: (v: any) => v === "true" ? <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-600 font-medium">待老板确认</span> : <span className="text-xs text-gray-300">-</span> },
+        { key: "need_boss_confirm", label: "标记", render: (v: any,row:any) => <>{v === "true" && <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-600 font-medium">待老板确认</span>}{row.link_warning && <span className="text-xs text-amber-700" title={row.link_warning}>历史关联异常，需核对</span>}{v!=="true" && !row.link_warning && <span className="text-xs text-gray-300">-</span>}</> },
         { key: "bill_date", label: "账单日期", render: (v: any) => v?.slice(0, 10) },
         { key: "due_date", label: "到期日", render: (v: any) => v?.slice(0, 10) },
         {
@@ -416,14 +441,15 @@ export default function PayablePage() {
             return <span>{fmtMoney(v, row.currency)} {diff && <AlertTriangle size={12} className="inline text-orange-500 ml-1" title={`供应商确认: ${row.confirmed_amount}`} />}</span>
           }
         },
-        { key: "paid_amount", label: "已付", align: "right", render: (v: any, row: any) => fmtMoney(v, row.currency) },
+        { key: "paid_amount", label: "已付", align: "right", render: (v: any, row: any) => v==null ? "未记录，待核实" : fmtMoney(v, row.currency) },
         { key: "status", label: "状态", render: (v: any) => <span className={statusColors[v] || ""}>{statusLabels[v] || v}</span> },
         { key: "detail", label: "明细", render: (v: any) => v ? <span className="text-xs text-gray-500 max-w-32 truncate block" title={v}>{v.length > 12 ? v.slice(0, 12) + "..." : v}</span> : "-" },
         { key: "bill_attachment", label: "附件", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "账单附件")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
         { key: "payment_voucher", label: "凭证", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "付款凭证")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
-        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{row.need_boss_confirm === "true" && row.status !== "voided" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{row.status !== "paid" && row.status !== "voided" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}{row.status !== "voided" && <button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>}{row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
+        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1"><button onClick={()=>setBillDetailId(row.id)} className="btn-secondary btn-xs">详情</button>{canWriteBill && hasPendingPayment(row.id) && <button onClick={()=>openPayModal(row)} className="btn-secondary btn-xs">核对上次付款</button>}{row.need_boss_confirm === "true" && row.status !== "voided" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{canWriteBill && row.status !== "paid" && row.status !== "voided" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}{canWriteBill && row.status !== "voided" && <button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>}{canWriteBill && row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} rowClassName={(row) => row.status === "voided" ? "opacity-50" : ""} />}
 
+      {billDetailId>0 && <PayableDetail billId={billDetailId} revision={detailRevision} onClose={()=>setBillDetailId(0)} onPay={bill=>{setBillDetailId(0);openPayModal(bill);}} onConfirm={confirmBoss}/>}
       {/* 新建账单弹窗 */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
@@ -605,17 +631,17 @@ export default function PayablePage() {
                   <div className="font-bold text-lg text-purple-700">{fmtMoney(payAmounts[payingBillId] || 0, payingRow.currency)}</div>
                 </div>
                 <div className={`rounded-lg p-3 text-center ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "bg-orange-50" : "bg-green-100"}`}>
-                  <div className={`text-xs mb-1 ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "text-orange-500" : "text-green-600"}`}>付款后余额</div>
-                  <div className={`font-bold text-lg ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "text-orange-700" : "text-green-700"}`}>{fmtMoney(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0), payingRow.currency)}</div>
+                  <div className={`text-xs mb-1 ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "text-orange-500" : "text-green-600"}`}>{pendingRecovery ? "上次付款结果" : "付款后剩余应付"}</div>
+                  <div className={`font-bold text-lg ${(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0)) > 0 ? "text-orange-700" : "text-green-700"}`}>{pendingRecovery ? "待核对" : fmtMoney(payingRow.amount - payingRow.paid_amount - (payAmounts[payingBillId] || 0), payingRow.currency)}</div>
                 </div>
               </div>
 
               <div className="border-t" />
 
               <div className="form-grid">
-                <WalletAccountSelect value={payAccountId} onChange={setPayAccountId} currency={payingRow.currency || "THB"} />
-                <div className="form-group"><label className="form-label">付款金额</label><input type="number" className="form-input text-lg font-semibold" value={payAmounts[payingBillId] ?? ""} onChange={e => setPayAmounts(prev => ({ ...prev, [payingBillId]: e.target.value === "" ? "" : +e.target.value }))} /></div>
-                <div className="form-group"><label className="form-label">付款方式</label><select className="form-input" value={payMethod} onChange={e => setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
+                {pendingRecovery && <p className="text-amber-700 text-sm">上次付款结果待确认，将沿用原请求编号、原金额、账户#{payAccountId}和方式，不会新建一笔付款。若修改输入，后端请求不会发送。</p>}<fieldset disabled={pendingRecovery}><WalletAccountSelect value={payAccountId} onChange={id=>{if(!pendingRecovery)setPayAccountId(id);}} currency={payingRow.currency || "THB"} /></fieldset>
+                <div className="form-group"><label className="form-label">付款金额</label><input disabled={pendingRecovery} type="number" className="form-input text-lg font-semibold" value={payAmounts[payingBillId] ?? ""} onChange={e => setPayAmounts(prev => ({ ...prev, [payingBillId]: e.target.value === "" ? "" : +e.target.value }))} /></div>
+                <div className="form-group"><label className="form-label">付款方式</label><select disabled={pendingRecovery} className="form-input" value={payMethod} onChange={e => setPayMethod(e.target.value)}><option>银行转账</option><option>现金</option><option>支票</option><option>PromptPay</option><option>其他</option></select></div>
               </div>
               <div className="form-group">
                 <label className="form-label">上传付款凭证（非必填）</label>

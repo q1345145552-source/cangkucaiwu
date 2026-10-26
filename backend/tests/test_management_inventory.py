@@ -5,8 +5,8 @@ from app.core.route_access import SELF_ROUTES, ACCOUNT_UTILITIES
 
 def test_original94_registered_management_all_guarded():
     result=audit()
-    assert result['total_method_paths']==358
-    assert result['management_method_paths']==335
+    assert result['total_method_paths']==360
+    assert result['management_method_paths']==337
     assert len(result['original94_comparison'])==94
     assert all(r['non_labor_guard'] and r['current_access'] in MANAGEMENT for r in result['original94_comparison'])
     assert result['unprotected_or_unclassified']==[]
@@ -38,3 +38,5 @@ def test_inventory_includes_all_retired_endpoints_and_target_groups():
     found={(r['method'],r['path']) for r in rows if 'require_operating_entries_enabled' in r['dependencies']}
     assert found==retired
     assert all(r['access']=='shared_platform' for r in rows if r['module'] in ('market','group_order'))
+    new_details={('GET','/api/v1/payable/{bill_id}/detail'),('GET','/api/v1/suppliers/purchase-orders/{po_id}')}
+    assert new_details <= {(r['method'],r['path']) for r in rows if r['non_labor_guard'] and r['access']=='business_management'}

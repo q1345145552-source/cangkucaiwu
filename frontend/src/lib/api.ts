@@ -33,6 +33,14 @@ export function getActiveWarehouseId(): string | null {
   return null;
 }
 
+// Native downloads and FormData requests need the same selected warehouse as JSON requests.
+export function warehouseRequestHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${getToken()}` };
+  const warehouse = getActiveWarehouseId();
+  if (warehouse !== null) headers["X-Warehouse-ID"] = warehouse;
+  return headers;
+}
+
 export function setActiveWarehouseId(id: string | number | null) {
   if (typeof window !== "undefined") {
     if (id !== null && id !== undefined) {

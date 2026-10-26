@@ -39,6 +39,8 @@ const navItems: NavItem[] = [
     key: "finance_daily_group", label: "finance_daily_group_label", icon: <PiggyBank size={20} />,
     roles: ["warehouse_admin", "staff", "supervisor"],
     children: [
+      { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin", "supervisor"] },
+      { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin", "supervisor"] },
       { key: "operating", label: "operating", icon: <BarChart3 size={18} />, href: "/operating", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "expense_approval", label: "expense_approval", icon: <Receipt size={18} />, href: "/expense-approvals", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "other_income_expense", label: "other_income_expense", icon: <FileText size={18} />, href: "/other-income-expense", roles: ["warehouse_admin", "staff", "supervisor"] },
@@ -55,8 +57,6 @@ const navItems: NavItem[] = [
     roles: ["warehouse_admin", "staff", "supervisor"],
     children: [
       { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin", "staff", "supervisor"] },
-      { key: "payable", label: "payable", icon: <FileText size={18} />, href: "/payable", roles: ["warehouse_admin", "supervisor"] },
-      { key: "payment_plans", label: "payment_plans", icon: <BarChart3 size={18} />, href: "/payment-plans", roles: ["warehouse_admin", "supervisor"] },
       { key: "concentration", label: "supplier_purchase_analysis", icon: <BarChart3 size={18} />, href: "/concentration", roles: ["warehouse_admin", "supervisor"] },
     ],
   },

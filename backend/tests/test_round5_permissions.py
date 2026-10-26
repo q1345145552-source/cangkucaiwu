@@ -238,7 +238,14 @@ def test_voided_statistics_paid_bill_edit_and_plan_execution(tmp_path,monkeypatc
             assert response.status_code==200,response.text
             async with factory() as db:
                 assert (await db.get(PayablePlan,response.json()['id'])).total_amount==900
-            response=await client.put('/api/v1/payable/plans/1/execute',headers=auth(uid))
+            # 现有逐笔付款要求账户和真实可用余额；旧用例未传账户，在6a55635基线也返回400。
+            from app.models import PaymentAccount
+            async with factory() as db:
+                account=await db.get(PaymentAccount,1)
+                account.opening_balance=10000
+                account.opening_balance_date=datetime(2026,10,1).date()
+                await db.commit()
+            response=await client.put('/api/v1/payable/plans/1/execute',headers=auth(uid),params={'account_id':1})
             assert response.status_code==200 and '2 笔' in response.json()['message'],response.text
             async with factory() as db:
                 assert (await db.get(PayableBill,1)).paid_amount==100

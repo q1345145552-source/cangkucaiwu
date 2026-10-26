@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
-import { api, getToken, getActiveWarehouseId } from "@/lib/api";
+import { api, getToken, warehouseRequestHeaders } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { LinkedPayable, PurchaseQuantities } from "@/components/ProcurementInfo";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag, AlertCircle } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -97,6 +99,8 @@ export default function SuppliersPage() {
   const [showPoList, setShowPoList] = useState(false);
   const [poList, setPoList] = useState<any[]>([]);
   const [poDetail, setPoDetail] = useState<any>(null);
+  const poRequest=useRef(0);
+  const payablePermission=useMenuPermission("payable"), planPermission=useMenuPermission("payment_plans");
   const receiptInputRef = useRef<HTMLInputElement>(null);
   const [receiptPoId, setReceiptPoId] = useState<number | null>(null);
 
@@ -127,7 +131,7 @@ export default function SuppliersPage() {
   async function downloadTemplate(mode: string) {
     try {
       const res = await fetch(`/api/v1/suppliers/import-template/${mode}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: warehouseRequestHeaders(),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: "下载失败" }));
@@ -152,12 +156,9 @@ export default function SuppliersPage() {
     const file = fileInputRef.current?.files?.[0];
     const sid = importSupplierId;
     if (!file || !sid) { toast("error", "请选择文件"); return; }
-    const token = getToken();
-    const whId = getActiveWarehouseId();
     const fd = new FormData(); fd.append("file", file);
     try {
-      const headers: Record<string, string> = { "Authorization": `Bearer ${token}` };
-      if (whId) headers["X-Warehouse-ID"] = whId;
+      const headers = warehouseRequestHeaders();
       const res = await fetch(`/api/v1/suppliers/${sid}/import/${importMode}`, { method: "POST", headers, body: fd });
       const r = await res.json();
       if (res.ok) toast("success", r.message || "导入成功"); else toast("error", r.detail || "导入失败");
@@ -265,7 +266,7 @@ export default function SuppliersPage() {
         return; // 待审批，不跳转
       }
       if (confirm(`采购单已创建，应付账单编号: ${r.payable_bill_number}\n是否跳转到应付账款页面？`)) {
-        router.push("/payable");
+        router.push(payablePermission || planPermission ? `/payable?bill_id=${r.payable_bill_id}` : `/suppliers/purchase-orders/${r.order.id}`);
       }
     } catch (err: any) { toast("error", err.message || "下单失败"); }
     finally { setOrderSubmitting(false); }
@@ -299,6 +300,7 @@ export default function SuppliersPage() {
   async function approveOrder(id: number) {
     try {
       await api.put(`/suppliers/purchase-approvals/${id}/approve`, {});
+      await openPoDetail(id);
       toast("success", "审批通过，应付账单已生成");
       openApprovals();
     } catch (e: any) { toast("error", e.message || "审批失败"); }
@@ -340,15 +342,15 @@ export default function SuppliersPage() {
       const fd = new FormData();
       fd.append("items", JSON.stringify(items));
       fd.append("file", receivePhoto);
-      const headers: Record<string, string> = { "Authorization": `Bearer ${getToken()}` };
-      const whId = getActiveWarehouseId();
-      if (whId) headers["X-Warehouse-ID"] = whId;
+      const headers = warehouseRequestHeaders();
       const res = await fetch(`/api/v1/suppliers/purchase-orders/${receiveTarget.id}/receive`, { method: "POST", headers, body: fd });
       const r = await res.json();
       if (!res.ok) { toast("error", r.detail || "收货失败"); return; }
       toast("success", r.has_diff ? "收货验收完成，存在数量差异，已标记待老板确认" : "收货验收完成");
       setReceiveTarget(null);
       openReceipt();
+      if (poDetail?.id === receiveTarget.id) await openPoDetail(receiveTarget.id);
+      if (showDiscrepancies) openDiscrepancies();
     } catch (err: any) { toast("error", err.message || "收货失败"); }
     finally { setReceiptSubmitting(false); }
   }
@@ -377,9 +379,8 @@ export default function SuppliersPage() {
   }
   async function downloadPoPdf(po: any) {
     try {
-      const token = getToken();
       const res = await fetch(`/api/v1/suppliers/purchase-orders/${po.id}/pdf`, {
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: warehouseRequestHeaders(),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: "下载失败" }));
@@ -397,16 +398,12 @@ export default function SuppliersPage() {
       URL.revokeObjectURL(url);
     } catch { toast("error", "下载失败"); }
   }
-  async function refreshPoDetail() {
-    if (poDetail?.id) {
-      try {
-        const r = await api.get<any>("/suppliers/purchase-orders?page=1&page_size=200");
-        const found = (r.data || []).find((x: any) => x.id === poDetail.id);
-        if (found) setPoDetail(found);
-        setPoList(r.data || []);
-      } catch {}
-    }
+  async function openPoDetail(id: number) {
+    const request=++poRequest.current;setPoDetail(null);
+    try { const result=await api.get<any>(`/suppliers/purchase-orders/${id}`);if(request===poRequest.current)setPoDetail(result); }
+    catch(e:any){if(request===poRequest.current)toast("error",e.message || "采购详情加载失败");}
   }
+  async function refreshPoDetail() { if(poDetail?.id)await openPoDetail(poDetail.id); }
   async function markSent(po: any) {
     try {
       await api.post(`/suppliers/purchase-orders/${po.id}/mark-sent`, {});
@@ -431,7 +428,7 @@ export default function SuppliersPage() {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch(`/api/v1/suppliers/purchase-orders/${receiptPoId}/receipt`, {
-        method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd,
+        method: "POST", headers: warehouseRequestHeaders(), body: fd,
       });
       const r = await res.json();
       if (!res.ok) { toast("error", r.detail || "上传失败"); return; }
@@ -551,7 +548,7 @@ export default function SuppliersPage() {
               <button onClick={() => downloadTemplate("products")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>耗材模板</button>
               <button onClick={() => downloadTemplate("logistics")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>物流模板</button>
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleSupplierImport} className="hidden" />
-              <input ref={receiptInputRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }} className="hidden" />
+              <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }} className="hidden" />
               <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
               <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
@@ -1632,7 +1629,7 @@ export default function SuppliersPage() {
                         <td className="px-3 py-2 text-gray-500 text-xs">{po.created_at ? new Date(po.created_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : "-"}</td>
                         <td className="px-3 py-2 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <button onClick={() => setPoDetail(po)} className="text-blue-600 text-xs hover:underline">明细</button>
+                            <button onClick={() => openPoDetail(po.id)} className="text-blue-600 text-xs hover:underline">明细</button>
                             <button onClick={() => downloadPoPdf(po)} className="text-green-600 text-xs hover:underline flex items-center gap-1"><Download size={12}/>PDF</button>
                           </div>
                         </td>
@@ -1673,6 +1670,8 @@ export default function SuppliersPage() {
                 </div>
               </div>
 
+              <LinkedPayable order={poDetail}/>
+              <p className="text-sm">收货状态：{({not_received:"未收货", received:"已收货", partially_received:"收货有差异"} as Record<string,string>)[poDetail.receipt_status] || "尚未记录"}</p>
               {/* 流程操作 */}
               {poDetail.status === "confirmed" && poDetail.flow_status !== "completed" && (
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
@@ -1688,28 +1687,7 @@ export default function SuppliersPage() {
                 </div>
               )}
 
-              <div className="overflow-x-auto touch-pan-x">
-              <table className="w-full text-sm min-w-[700px]">
-                <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
-                  <th className="px-3 py-2 font-medium">产品名称</th>
-                  <th className="px-3 py-2 font-medium">规格</th>
-                  <th className="px-3 py-2 font-medium text-right">数量</th>
-                  <th className="px-3 py-2 font-medium text-right">单价</th>
-                  <th className="px-3 py-2 font-medium text-right">小计</th>
-                </tr></thead>
-                <tbody>
-                  {(poDetail.items || []).map((it: any, i: number) => (
-                    <tr key={i} className="border-b">
-                      <td className="px-3 py-2">{it.product_name}</td>
-                      <td className="px-3 py-2 text-gray-500">{it.spec || "-"}</td>
-                      <td className="px-3 py-2 text-right">{it.quantity}</td>
-                      <td className="px-3 py-2 text-right">{it.unit_price}</td>
-                      <td className="px-3 py-2 text-right">{it.subtotal}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
+              <PurchaseQuantities order={poDetail}/>
               <div className="text-right font-semibold">总价：{poDetail.total_amount}</div>
             </div>
             <div className="border-t px-5 py-3 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
