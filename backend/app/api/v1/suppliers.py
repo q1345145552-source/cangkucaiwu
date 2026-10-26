@@ -27,6 +27,7 @@ from app.services import payable_creation as creation
 from app.services import purchase_matching as matching
 from app.services import sku_catalog as catalog
 from app.services import supplier_quotes as quotes
+from app.services import purchase_price_review as price_review
 
 router = APIRouter()
 
@@ -277,6 +278,7 @@ class PurchaseOrderRequest(BaseModel):
     cost_confirmation: Optional[dict] = None
     pricing_version: Optional[str] = None
     requirements: Optional[dict] = None
+    price_review_token: Optional[str] = None
 
 
 # Parse settlement_cycle string to get number of days
@@ -312,6 +314,10 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
 
         pricing=it.get('pricing_snapshot')
         if isinstance(pricing,dict):
+            historical=pricing.get('historical_price_review') or {}
+            if historical.get('is_anomaly'):
+                anomalies.append({'product_name':product_name,'spec':spec,'unit_price':float(historical['unit_price']),
+                    'historical_avg':float(historical['historical_avg']),'exceed_percent':float(historical['exceed_percent'])})
             if pricing.get('non_lowest') and pricing.get('lowest_comparable_price') is not None:
                 lowest=next(v for v in pricing['eligible_candidates'] if v['is_lowest'])
                 price=Decimal(pricing['unit_price']);factor=Decimal(pricing['selected_quote']['terms']['base_unit_factor'])
@@ -656,11 +662,25 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     prod_map={p.id:p for p in (await db.execute(select(SupplierProduct).where(SupplierProduct.id.in_([i.product_id for i in req.items])))).scalars()}
     order_currency=pricing['currency'];items_detail=[];total_decimal=Decimal('0');anomalies=[];non_lowest=[]
     threshold=await _get_price_threshold(db,wh_id)
+    binding=price_review.review_binding(wh_id,current_user.id,request_key,supplier_id,pricing)
+    try:
+        reviews=price_review.restore(req.price_review_token,binding) if req.price_review_token else await price_review.evaluate(db,wh_id,pricing,prod_map,threshold)
+    except HTTPException as error:
+        if error.status_code!=409:raise
+        # The warehouse lock and original-key lookup above prove that no order exists.
+        raise HTTPException(409,{**error.detail,'code':'quote_preview_changed','preview':pricing,'request_key':request_key,'not_created':True})
+    review_token=req.price_review_token or price_review.seal(reviews,binding)
     for it,row in zip(req.items,pricing['rows']):
         p=prod_map[it.product_id];price=Decimal(row['unit_price']);subtotal=Decimal(row['subtotal']);total_decimal+=subtotal
         reason=(it.reason or '').strip()
         snapshot={**row,'preview_version':pricing['version'],'evaluated_at':pricing['evaluated_at'],'selection_reason':reason,
-            'amount_basis':pricing['amount_basis'],'amount_note':pricing['amount_note']}
+            'amount_basis':pricing['amount_basis'],'amount_note':pricing['amount_note'],'historical_price_review':reviews[len(items_detail)]}
+        historical=snapshot['historical_price_review']
+        historical={**historical,'confirmed':bool(req.confirm_price_anomaly and historical['is_anomaly']),
+            'confirmed_by':current_user.id if req.confirm_price_anomaly and historical['is_anomaly'] else None}
+        snapshot['historical_price_review']=historical
+        if historical['is_anomaly']:
+            anomalies.append(historical)
         items_detail.append({'product_name':p.product_name,'spec':p.spec,'line_id':uuid4().hex,'unit':p.unit,'product_id':p.id,
             'sku_mapping':await catalog.purchase_snapshot(db,p,wh_id,it.quantity),'unit_price':row['unit_price'] if it.quote_id is not None else float(price),
             'quantity':it.quantity,'subtotal':float(subtotal),'subtotal_exact':row['subtotal'],'currency':order_currency,'reason':reason,'pricing_snapshot':snapshot})
@@ -678,9 +698,10 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     if anomalies and not req.confirm_price_anomaly:
         return {
             "need_confirm": True,
-            "message": f"有 {len(anomalies)} 项产品价格高于历史均价 {threshold}%",
-            "threshold": threshold,
-            "anomalies": anomalies,
+            "message": f"有 {len(anomalies)} 项产品价格超过历史参考阈值；这不是当前有效最低价或真实损失",
+            "threshold": float(reviews[0]['threshold']),
+            "anomalies": price_review.public_anomalies(anomalies),
+            "price_review_token": review_token,
         }
 
     # 有非最低价但未填原因 → 返回提示，不创建订单
@@ -688,6 +709,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     if missing_reason:
         return {
             "need_reason": True,
+            "price_review_token": review_token,
             "message": f"有 {len(missing_reason)} 项产品非最低价，请填写采购原因",
             "non_lowest_items": [{
                 "product_id": n["product_id"],
@@ -742,7 +764,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         "approval_threshold": approval_threshold,
         "payable_bill_id": bill_id,
         "payable_bill_number": bill_number,
-        "anomalies": anomalies,
+        "anomalies": price_review.public_anomalies(anomalies),
     }
 
 # ═══ 采购价格监控 ════════════════════════════

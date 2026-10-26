@@ -102,6 +102,7 @@ export default function SuppliersPage() {
   const [orderSupplierId, setOrderSupplierId] = useState(0);
   const [orderTotal, setOrderTotal] = useState(0);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const priceReviewToken=useRef<string|null>(null);
   const [duplicateChallenge,setDuplicateChallenge]=useState<{detail:any;retry:(confirmation:DuplicateConfirmation)=>Promise<void>}|null>(null);
   // 采购收货验收
   const [showReceipt, setShowReceipt] = useState(false);
@@ -211,11 +212,11 @@ export default function SuppliersPage() {
   function openOrder(sid: number) {
     setOrderSupplierId(sid);
     setOrderItems({});
-    setOrderTotal(0);
+    setOrderTotal(0);priceReviewToken.current=null;
     setReasonMap({});setOrderAvailableQuotes([]);setOrderQuotes({});setOrderRequirements({quality_tags:[],max_lead_days:null});setOrderPricing(null);setOrderDraft(null);setPricingRejection(null);
     try {
       const draft=registrationDraft("purchase_order",sid);
-      if(draft){setOrderDraft(draft);setOrderQuotes(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.quote_id||null])));setOrderRequirements(draft.payload.requirements||{quality_tags:[],max_lead_days:null});}
+      if(draft){priceReviewToken.current=draft.payload.price_review_token||null;setOrderDraft(draft);setOrderQuotes(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.quote_id||null])));setOrderRequirements(draft.payload.requirements||{quality_tags:[],max_lead_days:null});}
       if(draft){setOrderItems(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.quantity])));setReasonMap(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.reason || ""])));toast("success","已恢复原采购登记，请核对后沿用原请求重试");}
       api.get<any>(`/suppliers/${sid}/products`).then((r: any) => {
         setProducts(r.data);
@@ -225,7 +226,7 @@ export default function SuppliersPage() {
   }
   function toggleOrderItem(pid: number) {
     if(orderDraft?.unknown)return;
-    setOrderPricing(null);
+    priceReviewToken.current=null;setOrderPricing(null);
     const p = products.find((x: any) => x.id === pid);
     if (!p || (!(p.unit_price > 0)&&!orderAvailableQuotes.some(q=>q.product_id===pid))) {
       toast("error", "该产品尚未录入价格，请先录入价格后再下单");
@@ -241,7 +242,7 @@ export default function SuppliersPage() {
     if(orderDraft?.unknown)return;
     if(!Number.isInteger(qty)){toast("error","采购仅支持整数原单位，不会自动截断小数");return;}
     if (qty < 1) return;
-    setOrderPricing(null);
+    priceReviewToken.current=null;setOrderPricing(null);
     setOrderItems(prev => ({ ...prev, [pid]: qty }));
   }
   const selectedOrderIds=Object.keys(orderItems).map(Number).filter(id=>orderItems[id]>0);
@@ -274,15 +275,17 @@ export default function SuppliersPage() {
       if(!stored?.unknown&&needsPricing&&(!orderPricingCurrent||!orderPricing.can_order))throw Error("请先核对有效报价与数量，处理不满足的条件后再提交");
       const payload = stored?.unknown?stored.payload:{
         items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id], reason: reasons[id] || "",...(orderQuotes[id]?{quote_id:orderQuotes[id]}:{}) })),
-        ...(needsPricing?{pricing_version:orderPricing.version,requirements:orderRequirements}:{})
+        ...(needsPricing?{pricing_version:orderPricing.version,requirements:orderRequirements}:{}),
+        ...(priceReviewToken.current?{price_review_token:priceReviewToken.current}:{})
       };
       const r = await submitRegistration<any>("purchase_order",orderSupplierId,payload,key=>api.post<any>(`/suppliers/${orderSupplierId}/purchase-order`,{
         ...payload,request_key:key,confirm_price_anomaly:confirmAnomaly,duplicate_confirmation:confirmation,cost_confirmation:costConfirmation,
       }));
+      if(r.price_review_token)priceReviewToken.current=r.price_review_token;
       if (r.need_confirm) {
         // 价格异常：确认后再提交
         const lines = (r.anomalies || []).map((a: any) =>
-          `· ${a.product_name}${a.spec ? `（${a.spec}）` : ""}：采购价 ${a.unit_price}，历史均价 ${a.historical_avg}，高出 ${a.exceed_percent}%`
+          `· ${a.product_name}${a.spec ? `（${a.spec}）` : ""}：采购价 ${a.unit_price} ${a.currency || ""}/${a.original_unit || ""}，历史均价 ${a.historical_avg}，高出 ${a.exceed_percent}%\n${a.note || "历史价格参考，不代表当前有效最低价或真实损失。"}`
         ).join("\n");
         const ok = confirm(`${r.message}\n\n${lines}\n\n价格高于历史均价，确认仍要提交？`);
         if (!ok) return;
@@ -305,7 +308,7 @@ export default function SuppliersPage() {
       if (confirm(`采购单已创建，应付账单编号: ${r.payable_bill_number}\n是否跳转到应付账款页面？`)) {
         router.push(payablePermission || planPermission ? `/payable?bill_id=${r.payable_bill_id}` : `/suppliers/purchase-orders/${r.order.id}`);
       }
-    } catch (err: any) { setOrderDraft(registrationDraft("purchase_order",orderSupplierId));if(err.detail?.code==='quote_preview_changed'){setOrderPricing(null);setPricingRejection(err.detail);toast("error",err.message);}else if(cost.capture(err,data=>doSubmitOrder(confirmAnomaly,reasons,confirmation,data))){}else if(err.detail?.candidates){setDuplicateChallenge({detail:err.detail,retry:data=>doSubmitOrder(confirmAnomaly,reasons,data,costConfirmation)});}else toast("error", err.message || "下单失败"); }
+    } catch (err: any) { setOrderDraft(registrationDraft("purchase_order",orderSupplierId));if(err.detail?.code==='quote_preview_changed'){priceReviewToken.current=null;setOrderPricing(null);setPricingRejection(err.detail);toast("error",err.message);}else if(cost.capture(err,data=>doSubmitOrder(confirmAnomaly,reasons,confirmation,data))){}else if(err.detail?.candidates){setDuplicateChallenge({detail:err.detail,retry:data=>doSubmitOrder(confirmAnomaly,reasons,data,costConfirmation)});}else toast("error", err.message || "下单失败"); }
     finally { setOrderSubmitting(false); }
   }
 
@@ -843,7 +846,7 @@ export default function SuppliersPage() {
                 </tbody>
               </table>
               </div>
-              <PurchaseQuotePreview supplierId={orderSupplierId} products={products} quantities={orderItems} selections={orderQuotes} onSelect={(pid,qid)=>{setOrderPricing(null);setOrderQuotes(v=>({...v,[pid]:qid}));}} requirements={orderRequirements} onRequirements={setOrderRequirements} onPreview={setOrderPricing} onQuotes={setOrderAvailableQuotes} canRead={canReadCatalog} locked={!!orderDraft?.unknown}/>
+              <PurchaseQuotePreview supplierId={orderSupplierId} products={products} quantities={orderItems} selections={orderQuotes} onSelect={(pid,qid)=>{priceReviewToken.current=null;setOrderPricing(null);setOrderQuotes(v=>({...v,[pid]:qid}));}} requirements={orderRequirements} onRequirements={v=>{priceReviewToken.current=null;setOrderRequirements(v);}} onPreview={setOrderPricing} onQuotes={setOrderAvailableQuotes} canRead={canReadCatalog} locked={!!orderDraft?.unknown}/>
               {pricingRejection&&<div role="alert" className="border border-amber-400 rounded p-3 my-3 text-sm"><p>{pricingRejection.message}</p><button className="btn-secondary" onClick={()=>{try{acceptQuotePreviewRejection(orderSupplierId,pricingRejection);setOrderDraft(registrationDraft("purchase_order",orderSupplierId));setOrderPricing(pricingRejection.preview);setPricingRejection(null);}catch(e:any){toast("error",e.message);}}}>服务器确认未创建，重新核对报价</button></div>}
               {Object.keys(orderItems).filter(k => orderItems[+k] > 0).length === 0 && (
                 <div className="text-center py-8 text-gray-400 text-sm">请勾选需要采购的产品，并填写数量</div>
