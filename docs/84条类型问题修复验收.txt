@@ -1,0 +1,65 @@
+84条旧TypeScript诊断修复｜types84-fix-20261027
+本地代码修复与执行会话自验完成，等待协调会话独立验收；不把本报告当作独立验收已通过。
+基线/父提交：adb9024b3706ee7a94cbfe5e219ba47da1eab8d1
+工作树：/private/tmp/supplier08-worktree
+分支：codex/types84-fix-20261027
+仅本地提交，不推送、不部署、不SSH、不连接生产（含只读）、不读.deploy凭据；库存计价完全未动。
+
+一、基线与结果
+从已合并的adb9024干净基线建立独立分支。首次原全量tsc --noEmit --pretty false退出2，真实84条error TS、103个非空输出行。
+修复后同一完整项目tsc退出0、0诊断。最终构建后删除自己的增量缓存重新完整检查仍0；在实际工作树frontend目录临时接入同一套本地依赖和生成类型，以--noEmit --pretty false --incremental false再次检查，退出0、0诊断。临时链接/目录均已清理。
+没有关闭strict、修改include/exclude、增加忽略文件、@ts-ignore/@ts-nocheck、扩大any、双重unknown断言或错误占位声明。tsconfig、依赖锁和构建配置与基线完全一致。
+生产构建成功，静态页56/56。原next.config.js仍为ignoreBuildErrors:true和忽略构建lint，未改设置，因此构建日志仍打印Skipping validation of types；完整类型通过的依据是单独真实tsc退出0，不能拿构建成功代替。
+
+二、84条逐项根因与修复
+1. 认证上下文50条（49个属性never及1个登录函数never）：原useAuth.js创建null上下文/状态，使TS消费者推断为never。改为useAuth.tsx，声明AuthUser、五角色、仓库、登录响应和上下文方法/ReactNode。登录API泛型对齐现有后端字段，合法账号的登录、仓库选择、考勤绑定、个人入口、退出流程不变。
+2. 数字表单15条：现有onChange保存数字或空白，初始化空串却推断成纯string。对备用金、收支、运营、应付、充值、供应商价格相关字段明确string|number，保留原输入处理、校验、请求和金额计算。只是静态状态声明，不用改变输入来凑通过。
+3. 接口响应10条：离职/删除、备用金创建/拨付/申请、加班确认/核实、工资确认/原保留撤销代码、AI比较补真实MessageResponse、total_amount、result泛型。公共api只新增被擦除的接口声明，传输和错误处理的运行时JS完全不变。
+4. 付款输入5条：实际来源是数字或空串（输入处理/待核对付款类型均如此），把Record<number,string|number>精确为Record<number,number|"">。保留原||0、剩余金额表达式和付款流程，没有额外Number转换或改变资金计算。
+5. 图标title属性2条：Lucide不支持该属性。把原提示文字原样移到外层span的标准title，图标颜色/尺寸/文字含义不变。
+6. 加班不存在setter1条：删除唯一无对应状态、无输入控件使用的setLimitInput调用，已有setLimitHours和配置入口保留。旧调用会ReferenceError并被catch吞掉，导致后续月度警告读取中断；现恢复原后续读取。没有改加班公式、审批或接口。
+7. 语言枚举1条：菜单语言选项使用Locale并以satisfies核实字面值，保持zh/th/my和员工仅my/th原规则；i18n函数、字典及运行时菜单JS均未改。
+具体每条原文件/行号/错误号见84条诊断逐项根因.json。
+
+三、必要的运行时收窄及边界
+缓存JSON和auth-user-refreshed事件原来未经结构检查直接作为用户。现以unknown进入实际类型守卫，验证五种角色、编号、仓库列表、权限字符串、布尔考勤标记和可空关联字段；无宽泛断言。
+合法当前缓存/后端me数据保留原行为，live撤权/关闭考勤正常替换；坏JSON、字段不完整或非法事件不写进上下文，事件null仍可清空上下文。旧版本字段不全的缓存会暂不采用，等待已有/auth/me刷新；不会清令牌、修改后端权限或数据库。这是明确的错误输入行为变化，不声称所有坏缓存仍与以前相同。
+
+四、回归与原始失败如实区分
+44组相关前端脚本最终全exit0，包括登录上下文新增专项、实际组件/请求处理、权限和拒绝、本人页、三语、付款防重、收支/备用金/工资相关、供应商报价与职责、库存和菜单。不是44条断言，而是44个脚本；各命令/退出码逐项留存。
+新增认证专项覆盖五角色登录/退出、普通及考勤主管、仓库恢复、有效缓存/坏缓存/无令牌、live撤权/关闭考勤、非法事件、监听清理、Provider外误用、登录被拒和附件会话清理失败仍退出。
+新增行为专项把公共API、菜单和7个业务页面编译为JS逐项对照adb9024，确认类型标注不改变请求、事件处理和文字。应付/采购分析除同文tooltip外，整个运行时对照一致；加班实际加载验证月度警告能继续显示。
+三项本轮引起的旧测试失败仅因比较TS源码文字，已改比较实际编译JS；原菜单顺序/图标/权限、老板待办与写动作断言均保留，未改金额或HTTP预期。3项是boss-todos、inventory-menu-round10、supplier-integration-menu-round12。基线原版先分别验证为通过，再修改比较方式并复验通过。
+
+额外宽范围初跑56脚本，41通过15失败；把15项原始脚本放回adb9024原版单独跑，证实12项在修复前也失败。没有为凑全绿改无关业务或删除这些断言，也不把它们计为通过：
+ - batch-makeup.test.cjs
+ - cash-advance-documents.test.cjs
+ - cash-advances.test.cjs
+ - config-center-access.test.cjs
+ - dashboard-month.test.cjs
+ - employee-self.test.cjs
+ - modification-log-permissions.test.cjs
+ - money-month-range.test.cjs
+ - money-record-scope.test.cjs
+ - payroll-disbursement.test.cjs
+ - payroll-supervisor.test.cjs
+ - reimbursement-payments.test.cjs
+
+其中employee-self、payroll-supervisor依赖未启动的旧18080测试服务，属于本轮不具备旧fixture；money-month-range、money-record-scope缺后续CostIdentity测试适配；其余是较早版本的源码/菜单/文案或作用域快照过期。原始失败仍在证据目录，需另行整理测试基础设施。本轮不能声称整个历史测试库全绿。
+
+五、真实本地接口与浏览器
+独立合成PG只监听127.0.0.1:65220，API19060、前端19061、代理19062。真实接口五角色登录/me全200，实际响应均通过AuthUser守卫；错误密码401。
+劳工及纳入考勤主管分别调自己的打卡、考勤、加班、工资单四入口全200；管理员、超管、财务调这些个人接口均403，原角色范围未扩大。
+最终构建浏览器实登老板、劳工、考勤主管；老板zh→th→my→zh菜单切换成功，账号列表及编辑弹层可读，37项授权和主管考勤勾选回显。未保存账号或改权限。
+390手机劳工打卡页正常且能切my/th，自己的考勤、加班（2条待确认）、工资单正常；合成本人工资400。主管自己的工资321，与劳工记录分开，不是实际发薪。页面/文档宽均390，账号编辑弹层可滚，最终console warning/error为0。UI只读，没有相机/打卡、确认、异议、账户/工资/付款等写动作。
+浏览器部分Playwright点击长表格末列未生效，未假称成功；用实际AX入口打开编辑，确认弹层后再核手机显示。没有为自动化改页面。
+最终合成SQL核验工资400/400/321、应付两笔各300/已付0、备用金余额各1000、开销各10、打卡2条、逐笔付款0均保留原准备值。登录产生测试审计日志是预期，不涉及真实业务数据。
+
+六、未测与残余风险
+没有进行生产环境、生产规模性能和所有业务写流程的重新验收；后端、金额/审批算法、7个停用入口、员工自身边界、库存源文件和语言字典均未修改。当前范围只修类型，原业务边界由运行时一致性、相关回归和本地角色检查佐证。
+上述12个旧测试/fixture问题没有修；原ignoreBuildErrors配置依旧，只是独立tsc现已真正通过。此次不处理FIFO/均价/真实库存期初、成本层或任何控制开关。
+
+七、资源与交付
+本轮自建23号页已关闭，视口恢复。仅核对并停止19060/61/62及65220，专用schema剩余0，数据目录未删；工作树临时node_modules链接与仅含生成类型的.next目录已移除，未动用户其他服务。
+修复与本报告仅本地提交；完整提交hash/父提交/文件清单在外部本地提交交付记录.json。等待协调独立验收，不推送、不部署、不自开库存计价。
+证据目录：/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/类型检查84修复-20261027

@@ -1,5 +1,9 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
+export interface MessageResponse {
+  message?: string;
+}
+
 export class ApiError extends Error {
   constructor(public status:number, public detail:any) {
     super(typeof detail === "string" ? detail : detail?.message || `HTTP ${status}`);

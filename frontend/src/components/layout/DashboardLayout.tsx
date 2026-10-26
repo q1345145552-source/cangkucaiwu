@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useI18n } from "@/hooks/useI18n";
+import { useI18n, type Locale } from "@/hooks/useI18n";
 import {
   LayoutDashboard, Users, Warehouse, CreditCard, Truck, ArrowDownUp,
   CheckCircle, TrendingUp, PiggyBank, Receipt, FileText, Clock,
@@ -409,7 +409,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   {((user?.role === "warehouse_labor"
                     ? [{ code: "th", label: "ไทย" }, { code: "my", label: "မြန်မာ" }]
                     : [{ code: "zh", label: "中文" }, { code: "th", label: "ไทย" }, { code: "my", label: "မြန်မာ" }]
-                  ) as { code: string; label: string }[]).map(lang => (
+                  ) satisfies { code: Locale; label: string }[]).map(lang => (
                     <button
                       key={lang.code}
                       onClick={() => { setLocale(lang.code); setShowLangSwitcher(false); }}

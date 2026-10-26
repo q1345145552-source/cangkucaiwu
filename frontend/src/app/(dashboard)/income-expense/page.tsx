@@ -27,7 +27,7 @@ export default function IncomeExpensePage() {
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: "", remark: "" });
+  const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "" as string | number, currency: "THB", date: "", remark: "" });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadRefs(); return () => { loadVersion.current += 1; }; }, [page, tab, dateRange]);
 

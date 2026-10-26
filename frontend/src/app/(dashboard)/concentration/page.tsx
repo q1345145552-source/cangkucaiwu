@@ -134,7 +134,7 @@ export default function ConcentrationPage() {
                   <span className="text-sm text-gray-600 w-28 text-right">{s.currency === "mixed" ? fmtMoney(s.amount) : fmtMoney(s.amount, s.currency)}</span>
                   <span className="text-xs text-gray-400 w-20 text-right">{s.order_count} 笔订单</span>
                   {s.percent > threshold && (
-                    <AlertTriangle size={16} className="text-red-500" title={`占比超过 ${threshold}%`} />
+                    <span title={`占比超过 ${threshold}%`}><AlertTriangle size={16} className="text-red-500" /></span>
                   )}
                 </div>
               </div>

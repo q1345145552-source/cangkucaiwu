@@ -1,4 +1,5 @@
 "use client";
+import type { MessageResponse } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
@@ -317,7 +318,7 @@ export default function EmployeesPage() {
   async function resignEmployee() {
     if (!resigningId) return;
     try {
-      const r = await api.post(`/employees/${resigningId}/resign`, resignForm);
+      const r = await api.post<MessageResponse>(`/employees/${resigningId}/resign`, resignForm);
       toast("success", r.message || "已标记为离职");
       setResigningId(null);
       if (detailEmp && detailEmp.id === resigningId) setDetailEmp(null);
@@ -338,7 +339,7 @@ export default function EmployeesPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const r = await api.delete(`/employees/${deleteTarget.id}`);
+      const r = await api.delete<MessageResponse>(`/employees/${deleteTarget.id}`);
       toast("success", r.message || "已删除");
       setDeleteTarget(null);
       if (detailEmp && detailEmp.id === deleteTarget.id) setDetailEmp(null);

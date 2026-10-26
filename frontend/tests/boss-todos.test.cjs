@@ -27,10 +27,11 @@ function text(n){if(n==null)return '';if(typeof n!=='object')return String(n);re
  }
  for(let role of ['super_admin','warehouse_labor']){let h=harness(role);assert.equal(await h.render(),null);assert.equal(h.calls,0);count++;}
  // Existing write handlers are identical to round 19; new review calls reuse existing APIs.
+ const emittedRuntime=(source,file)=>ts.transpileModule(source,{fileName:file,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  const printer=ts.createPrinter();
  for(let file of ['employee-advances','overtime']){
   let name=`frontend/src/app/(dashboard)/${file}/page.tsx`;
-  function functions(s){let out={};let sf=ts.createSourceFile(name,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['load','review','handleCreate','loadRefs','EmployeeAdvancePage','OvertimePage'].includes(n.name.text))out[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return out;}
+  function functions(s){let out={};let sf=ts.createSourceFile(name,emittedRuntime(s,name),ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['load','review','handleCreate','loadRefs','EmployeeAdvancePage','OvertimePage'].includes(n.name.text))out[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return out;}
   assert.deepEqual(functions(fs.readFileSync(path.join(root,name),'utf8')),functions(execFileSync('git',['show','8dfc03f608f1c76927825d30da3838e3d4720244:'+name],{cwd:root,encoding:'utf8'})));count++;
  }
  console.log(`Boss todos: ${count} checks passed`);

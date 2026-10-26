@@ -21,7 +21,7 @@ export default function RechargePage() {
   const [saving, setSaving] = useState(false);
   // 编辑 / 删除 / 历史
   const [editingRow, setEditingRow] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ customer_id: 0, declare_date: "", amount: "", currency: "THB", payment_method: "", remark: "" });
+  const [editForm, setEditForm] = useState({ customer_id: 0, declare_date: "", amount: "" as string | number, currency: "THB", payment_method: "", remark: "" });
   const [editScreenshotFile, setEditScreenshotFile] = useState<File | null>(null);
   const [deletingRow, setDeletingRow] = useState<any>(null);
   const [historyRow, setHistoryRow] = useState<any>(null);
@@ -31,7 +31,7 @@ export default function RechargePage() {
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     customer_id: 0, declare_date: today,
-    amount: "", currency: "THB", payment_method: "",
+    amount: "" as string | number, currency: "THB", payment_method: "",
   });
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCustomers(); }, [page]);

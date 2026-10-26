@@ -1,4 +1,5 @@
 "use client";
+import type { MessageResponse } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -85,7 +86,6 @@ export default function OvertimePage() {
       // Load limit
       const lr = await api.get<any>(`/overtime/limit${employeeView ? "?view=self" : ""}`);
       setLimitHours(lr.max_hours || 50);
-      setLimitInput(String(lr.max_hours || 50));
       // Load monthly hours warnings
       if (isAdmin) {
         const month = new Date().toISOString().slice(0, 7);
@@ -117,7 +117,7 @@ export default function OvertimePage() {
 
   async function confirmOvertime(taskId: number) {
     try {
-      const r = await api.post(`/overtime/${taskId}/confirm`);
+      const r = await api.post<MessageResponse>(`/overtime/${taskId}/confirm`);
       toast("success", r.message || t("ot_confirm_success"));
       load();
     } catch (err: any) { toast("error", err.message || t("ot_confirm_failed")); }
@@ -197,7 +197,7 @@ export default function OvertimePage() {
     const payload = assignments.map((a: any) => ({ assignment_id: a.id, actual_hours: Number(verifyHours[a.id]) }));
     const hadDispute = assignments.some((a: any) => a.has_dispute);
     try {
-      const r = await api.post(`/overtime/${verifyTask.id}/verify`, { assignments: payload });
+      const r = await api.post<{ total_amount?: number }>(`/overtime/${verifyTask.id}/verify`, { assignments: payload });
       let msg = t("ot_verify_success").replace("{amount}", String(r.total_amount ?? 0));
       if (hadDispute) msg += "，" + t("ot_verify_dispute_notified");
       toast("success", msg);

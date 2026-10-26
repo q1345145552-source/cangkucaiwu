@@ -1,28 +1,41 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { isAuthUser, type AuthUser, type LoginResponse } from "@/types/auth";
 import { useRouter } from "next/navigation";
 import { api, setToken, clearToken, getToken, setActiveWarehouseId } from "@/lib/api";
 
-const AuthContext = createContext(null);
+interface AuthContextValue {
+  user: AuthUser | null;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
+  loading: boolean;
+}
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const saved = localStorage.getItem("user");
     if (saved && getToken()) {
-      try { setUser(JSON.parse(saved)); } catch {}
+      try { const cached: unknown = JSON.parse(saved); if (isAuthUser(cached)) setUser(cached); } catch {}
     }
-    const refresh = (event) => setUser(event.detail);
+    const refresh = (event: Event) => {
+      if (!("detail" in event)) return;
+      const refreshed: unknown = event.detail;
+      if (refreshed === null || isAuthUser(refreshed)) setUser(refreshed);
+    };
     window.addEventListener("auth-user-refreshed", refresh);
     setLoading(false);
     return () => window.removeEventListener("auth-user-refreshed", refresh);
   }, []);
 
-  async function doLogin(username, password) {
-    const res = await api.post("/auth/login", { username, password });
+  async function doLogin(username: string, password: string) {
+    const res = await api.post<LoginResponse>("/auth/login", { username, password });
     setToken(res.access_token);
     
     if (res.warehouses && res.warehouses.length > 0) {
@@ -30,7 +43,7 @@ export function AuthProvider({ children }) {
       setActiveWarehouseId(res.warehouses[0].id);
     }
     
-    const u = {
+    const u: AuthUser = {
       id: res.user_id,
       username: res.username,
       display_name: res.display_name,

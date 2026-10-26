@@ -1,4 +1,5 @@
 "use client";
+import type { MessageResponse } from "@/lib/api";
 import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
@@ -282,7 +283,7 @@ export default function PayrollPage() {
     if (!selectedMonth) { toast("error", "请先选择月份"); return; }
     if (!confirm(`确定将 ${selectedMonth} 月 所有待确认工资单全部确认吗`)) return;
     try {
-      const r = await api.post(`/payroll/confirm-all?settle_month=${selectedMonth}`);
+      const r = await api.post<MessageResponse>(`/payroll/confirm-all?settle_month=${selectedMonth}`);
       toast("success", r.message || "全部确认成功");
       loadRecordsByMonth();
     } catch (err: any) {
@@ -421,7 +422,7 @@ export default function PayrollPage() {
     const recordId = revokeModal.id;
     setDisbursing(recordId);
     try {
-      const r = await api.post(`/payroll/${recordId}/revoke-disbursement`, {});
+      const r = await api.post<MessageResponse>(`/payroll/${recordId}/revoke-disbursement`, {});
       toast("success", r.message || "撤销发放成功");
       setRevokeModal(null);
       loadRecordsByMonth();

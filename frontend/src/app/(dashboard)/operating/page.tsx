@@ -34,7 +34,7 @@ export default function OperatingPage() {
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: todayStr(), remark: "" });
+  const [form, setForm] = useState({ category_id: 0, account_id: 0, amount: "" as string | number, currency: "THB", date: todayStr(), remark: "" });
   const [reportView, setReportView] = useState(false);
   const [costCategory, setCostCategory] = useState("");
   const [costTotals, setCostTotals] = useState<Record<string, number>>({});
@@ -46,7 +46,7 @@ export default function OperatingPage() {
   const [zoomIndex, setZoomIndex] = useState(0);
   // 编辑
   const [editingExpense, setEditingExpense] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ category_id: 0, account_id: 0, amount: "", currency: "THB", date: "", remark: "" });
+  const [editForm, setEditForm] = useState({ category_id: 0, account_id: 0, amount: "" as string | number, currency: "THB", date: "", remark: "" });
   const [editExistingVouchers, setEditExistingVouchers] = useState<string[]>([]);
   const [editDeleteVouchers, setEditDeleteVouchers] = useState<string[]>([]);
   const [editVoucherFiles, setEditVoucherFiles] = useState<File[]>([]);

@@ -37,11 +37,11 @@ export default function PayablePage() {
   const [page, setPage] = useState(1); const [showForm, setShowForm] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [form, setForm] = useState({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
+  const [form, setForm] = useState({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "" as string | number, confirmed_amount: "" as string | number, payment_commitment_days: "" as string | number, currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
   const [billFile, setBillFile] = useState<File | null>(null);
   const [invoice,setInvoice]=useState(emptyInvoice),[creating,setCreating]=useState(false);
   const [duplicateChallenge,setDuplicateChallenge]=useState<{detail:any;retry:(confirmation:DuplicateConfirmation)=>Promise<void>}|null>(null);
-  const [payAmounts, setPayAmounts] = useState<Record<number, string | number>>({});
+  const [payAmounts, setPayAmounts] = useState<Record<number, number | "">>({});
   const [voucherFile, setVoucherFile] = useState<File | null>(null);
   const [payingBillId, setPayingBillId] = useState(0);
   const [payingRow, setPayingRow] = useState<any>(null);
@@ -59,7 +59,7 @@ export default function PayablePage() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ supplier_id: 0, bill_number: "", currency: "THB", purchase_order_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", detail: "", remark: "", diff_note: "" });
+  const [editForm, setEditForm] = useState({ supplier_id: 0, bill_number: "", currency: "THB", purchase_order_number: "", bill_date: "", due_date: "", amount: "" as string | number, confirmed_amount: "" as string | number, payment_commitment_days: "" as string | number, detail: "", remark: "", diff_note: "" });
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidTarget, setVoidTarget] = useState<any>(null);
   const [voidReason, setVoidReason] = useState("");
@@ -468,7 +468,7 @@ export default function PayablePage() {
         {
           key: "amount", label: "金额", align: "right", render: (v: any, row: any) => {
             const diff = row.confirmed_amount && row.confirmed_amount !== row.amount;
-            return <span>{fmtMoney(v, row.currency)} {diff && <AlertTriangle size={12} className="inline text-orange-500 ml-1" title={`供应商确认: ${row.confirmed_amount}`} />}</span>
+            return <span>{fmtMoney(v, row.currency)} {diff && <span title={`供应商确认: ${row.confirmed_amount}`}><AlertTriangle size={12} className="inline text-orange-500 ml-1" /></span>}</span>
           }
         },
         { key: "paid_amount", label: "已付", align: "right", render: (v: any, row: any) => v==null ? "未记录，待核实" : fmtMoney(v, row.currency) },

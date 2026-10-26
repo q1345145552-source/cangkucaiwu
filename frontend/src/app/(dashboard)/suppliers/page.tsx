@@ -103,12 +103,12 @@ export default function SuppliersPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [showProducts, setShowProducts] = useState(false);
   const [productSupplierId, setProductSupplierId] = useState(0);
-  const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "", currency: "THB" });
+  const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: "" as string | number, unit_price: "" as string | number, unit: "个", remark: "", currency: "THB" });
   // Logistics prices
   const [logisticsPrices, setLogisticsPrices] = useState<any[]>([]);
   const [showLogistics, setShowLogistics] = useState(false);
   const [logisticsSupplierId, setLogisticsSupplierId] = useState(0);
-  const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "CNY" });
+  const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "" as string | number, estimated_days: "", currency: "CNY" });
   // Compare
   const [compareData, setCompareData] = useState<any[]>([]);
   const [showCompare, setShowCompare] = useState(false);
@@ -610,7 +610,7 @@ export default function SuppliersPage() {
   async function doAiCompare() {
     setAiCompareResult("分析中...");
     try {
-      const r = await api.post("/suppliers/ai-compare", { compare_data: compareData, mode: compareMode });
+      const r = await api.post<{ result?: string }>("/suppliers/ai-compare", { compare_data: compareData, mode: compareMode });
       setAiCompareResult(r.result || "分析完成");
     } catch (e: any) { setAiCompareResult(e.message); }
   }

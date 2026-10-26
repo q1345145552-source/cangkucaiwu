@@ -1,4 +1,5 @@
 "use client";
+import type { MessageResponse } from "@/lib/api";
 import { useEffect, useState,useRef } from "react";
 import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
 import { submitRegistration,registrationDraft } from "@/lib/registrationRequest";
@@ -47,7 +48,7 @@ export default function ExpenseFundPage() {
   const [disbursements, setDisbursements] = useState<Record<number, any[]>>({});
   const [showExpense, setShowExpense] = useState(false);
   const [expenseAccount, setExpenseAccount] = useState<any>(null);
-  const [itemForm, setItemForm] = useState({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "", currency: "THB", description: "" });
+  const [itemForm, setItemForm] = useState({ expense_date: new Date().toISOString().slice(0, 10), category: "耗材", amount: "" as string | number, currency: "THB", description: "" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [expenseBusy, setExpenseBusy] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -117,7 +118,7 @@ export default function ExpenseFundPage() {
   async function doCreate() {
     if (!newEmpId) { toast("error", "请选择员工"); return; }
     try {
-      const r = await api.post("/expense-fund/accounts", { employee_id: +newEmpId, fund_limit: newLimit ? +newLimit : undefined });
+      const r = await api.post<MessageResponse>("/expense-fund/accounts", { employee_id: +newEmpId, fund_limit: newLimit ? +newLimit : undefined });
       toast("success", r.message || "创建成功");
       setShowCreate(false); setNewEmpId(""); setNewLimit("");
       loadAll();
@@ -147,12 +148,12 @@ export default function ExpenseFundPage() {
         // 管理员直接充值
         const fields = { payment_account_id: +paymentAccountId, receive_date: topUpDate };
         const r = rechargeReviewId !== null
-          ? await api.post("/expense-fund/recharge/review", { request_id: rechargeReviewId, action: "approve", ...fields })
-          : await api.post(`/expense-fund/accounts/${topUpAccount.id}/topup`, { amount: +topUpAmount, ...fields });
+          ? await api.post<MessageResponse>("/expense-fund/recharge/review", { request_id: rechargeReviewId, action: "approve", ...fields })
+          : await api.post<MessageResponse>(`/expense-fund/accounts/${topUpAccount.id}/topup`, { amount: +topUpAmount, ...fields });
         toast("success", r.message || "充值成功");
       } else {
         // 财务提交充值申请
-        const r = await api.post("/expense-fund/recharge/request", { amount: +topUpAmount, reason: topUpReason });
+        const r = await api.post<MessageResponse>("/expense-fund/recharge/request", { amount: +topUpAmount, reason: topUpReason });
         toast("success", r.message || "充值申请已提交");
       }
       setShowTopUp(false); setTopUpAmount(""); setTopUpReason(""); setTopUpReason("");
@@ -309,7 +310,7 @@ export default function ExpenseFundPage() {
     if (reason === null) return;
     (async () => {
       try {
-        await api.post("/expense-fund/recharge/review", { request_id: reqId, action: "reject", remark: reason });
+        await api.post<MessageResponse>("/expense-fund/recharge/review", { request_id: reqId, action: "reject", remark: reason });
         toast("success", "充值申请已驳回");
         loadRechargeRequests();
       } catch (err: any) { toast("error", err.message || "审核失败"); }
