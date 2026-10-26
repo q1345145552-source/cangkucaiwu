@@ -33,6 +33,7 @@ from app.models.overtime import OvertimeTask, OvertimeAssignment
 from app.models.reimbursement import ReimbursementItem
 from app.models.reimbursement_payment import ReimbursementPayment
 from app.models.supplier import PurchaseOrder
+from app.models.purchase_receipt import PurchaseReceiptEvent
 from app.services.image_utils import thumb_path_of
 
 router = APIRouter()
@@ -50,7 +51,8 @@ PRIVATE_FILES = [
     (Reimbursement,("payment_voucher_path",),"reimbursement",None),
     (ReimbursementPayment,("voucher_path",),"reimbursement",None),
     (PayableBill,("payment_voucher","voucher","bill_attachment"),"payable",None),
-    (PurchaseOrder,("receipt_file",),"suppliers",None),
+    (PurchaseOrder,("receipt_file","arrival_photo"),"suppliers",None),
+    (PurchaseReceiptEvent,("photo_path",),"suppliers",None),
     (ExpenseFundItem,("receipt",),"expense_fund",ExpenseFund),
     (ReimbursementItem,("receipt",),"reimbursement",Reimbursement),
     (OvertimeAssignment,("dispute_photo",),"overtime",OvertimeTask),

@@ -8,12 +8,13 @@ from app.models.user import User
 from app.models.payable import PayableBill
 from app.models.expense_fund import SystemSetting
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any, require_non_labor
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictInt, Field
 from typing import Optional, List
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from datetime import datetime, timedelta
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
 import io
+from uuid import uuid4
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.core.config_access import ensure_config_editor
@@ -22,8 +23,39 @@ _CONCENTRATION_PERMISSION = MENU_PERMISSIONS_BY_KEY["concentration"].label
 
 from app.services.supplier_payable_read import current_supplier_warehouse, purchase_detail, checked_link
 from app.services import payable_creation as creation
+from app.services import purchase_matching as matching
 
 router = APIRouter()
+
+
+class MatchPolicySet(BaseModel):
+    strict: bool
+
+
+@router.get("/purchase-match-policy", dependencies=[Depends(require_non_labor)])
+async def get_match_policy(warehouse_id: int = Depends(current_supplier_warehouse),
+        current_user: User = Depends(check_staff_permission_any(*(MENU_PERMISSIONS_BY_KEY[k].label
+            for k in ("suppliers", "payable", "payment_plans", "config_center")))), db: AsyncSession = Depends(get_db)):
+    return await matching.policy(db,warehouse_id)
+
+
+@router.put("/purchase-match-policy", dependencies=[Depends(require_non_labor)])
+async def set_match_policy(req: MatchPolicySet, warehouse_id: int = Depends(current_supplier_warehouse),
+        current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)),
+        db: AsyncSession = Depends(get_db)):
+    ensure_config_editor(current_user)
+    await matching.scope_lock(db,warehouse_id)
+    rows=(await db.execute(select(SystemSetting).where(SystemSetting.warehouse_id==warehouse_id,
+        SystemSetting.key==matching.POLICY_KEY).with_for_update())).scalars().all()
+    if len(rows)>1: raise HTTPException(409,"三单校验配置重复，请管理员核对")
+    before=rows[0].value if rows else "false"
+    if rows: rows[0].value="true" if req.strict else "false"
+    else: db.add(SystemSetting(warehouse_id=warehouse_id,key=matching.POLICY_KEY,value="true" if req.strict else "false"))
+    from app.services.data_history import record_history
+    await record_history(db,module="suppliers",record_id=warehouse_id,operator=current_user,operation_type="match_policy",
+        before={"strict":before},after={"strict":req.strict},warehouse_id=warehouse_id)
+    await db.flush()
+    return await matching.policy(db,warehouse_id)
 
 
 def _forbid_super_admin(current_user: User) -> None:
@@ -223,7 +255,7 @@ async def _get_lowest_quote(db: AsyncSession, product_name: str, spec: str | Non
 
 class PurchaseOrderItem(BaseModel):
     product_id: int
-    quantity: int = 1
+    quantity: StrictInt = Field(default=1, gt=0, le=2147483647)
     reason: Optional[str] = None  # 非最低价采购原因
 
 class PurchaseOrderRequest(BaseModel):
@@ -635,10 +667,11 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
             raise HTTPException(400, f"产品 ID={it.product_id} 不属于该供应商")
         if not p.unit_price or p.unit_price <= 0:
             raise HTTPException(400, f"产品「{p.product_name}」尚未录入价格，请先录入价格后再下单")
-        qty = max(it.quantity, 1)
+        qty = it.quantity
         subtotal = p.unit_price * qty
         items_detail.append({
             "product_name": p.product_name, "spec": p.spec,
+            "line_id": uuid4().hex, "unit": p.unit,
             "unit_price": p.unit_price, "quantity": qty,
             "subtotal": round(subtotal, 2),
             "currency": order_currency,
@@ -704,7 +737,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     po = PurchaseOrder(
         warehouse_id=wh_id, supplier_id=supplier_id,
         order_number=order_number, total_amount=total,
-        currency=order_currency, items=items_detail,
+        currency=order_currency, items=items_detail, receipt_baseline=matching.new_baseline(items_detail),
         status="pending" if is_pending else "confirmed",
         remark=req.remark, created_by=current_user.id,
         request_key=request_key,request_fingerprint=signature,
@@ -728,6 +761,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
             amount=total, currency=order_currency, status="pending",
             detail="\n".join(detail_lines),
             source="purchase_order", purchase_order_id=po.id,
+            matching_kind="goods", match_lines=matching.bill_lines(items_detail),
             created_by=current_user.id,
         )
         await creation.register_purchase_bill(db,po,bill,current_user,req.duplicate_confirmation)
@@ -1056,6 +1090,7 @@ async def approve_purchase(po_id: int, req: Optional[dict] = Body(None), current
         due_date=(now + timedelta(days=_parse_settlement_days(supplier.settlement_cycle))).replace(tzinfo=None),
         amount=po.total_amount, currency=po.currency or "THB", status="pending",
         detail="\n".join(detail_lines), source="purchase_order", purchase_order_id=po.id,
+        matching_kind="goods", match_lines=matching.bill_lines(matching.lines(po)),
         created_by=current_user.id,
     )
     await creation.register_purchase_bill(db,po,bill,current_user,(req or {}).get('duplicate_confirmation'))
@@ -1144,86 +1179,40 @@ async def get_purchase_detail(po_id: int, warehouse_id: int = Depends(current_su
     return await purchase_detail(db, po_id, warehouse_id, current_user)
 
 
-@router.post("/purchase-orders/{po_id}/receive")
+@router.get("/purchase-orders/{po_id}/receipts/{event_id}/photo", dependencies=[Depends(require_non_labor)])
+async def read_receipt_photo(po_id: int, event_id: int,
+        current_user: User = Depends(check_staff_permission_any(*(MENU_PERMISSIONS_BY_KEY[k].label
+            for k in ("suppliers","payable","payment_plans")))), warehouse_id: int = Depends(current_supplier_warehouse),
+        db: AsyncSession = Depends(get_db)):
+    from pathlib import Path
+    from app.models import PurchaseReceiptEvent
+    from app.services.supplier_payable_read import owned
+    from app.api.secure_uploads import upload_root
+    from fastapi.responses import FileResponse
+    po=await owned(db,PurchaseOrder,po_id,warehouse_id,"采购单")
+    if event_id==0: path=matching.baseline(po).get("photo_path")
+    else:
+        event=await db.get(PurchaseReceiptEvent,event_id)
+        if event is None: raise HTTPException(404,"收货批次不存在")
+        if event.warehouse_id!=warehouse_id or event.purchase_order_id!=po.id:
+            raise HTTPException(403,"无权查看此收货批次照片")
+        path=event.photo_path
+    if not isinstance(path,str) or not path.lstrip('/').startswith('uploads/'):
+        raise HTTPException(404,"历史照片路径未记录或无法安全读取")
+    target=(upload_root()/path.lstrip('/')[len('uploads/'):]).resolve()
+    if not target.is_relative_to(upload_root()) or not target.is_file() or target.suffix.lower() not in ('.jpg','.jpeg','.png','.webp','.pdf'):
+        raise HTTPException(404,"到货照片不存在")
+    return FileResponse(target,headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
+
+
+@router.post("/purchase-orders/{po_id}/receive", dependencies=[Depends(require_non_labor)])
 async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile = File(...),
-                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-                           warehouse_id: int = Depends(current_supplier_warehouse),
-    _perm=Depends(check_staff_permission("供应商管理"))):
-    """收货验收：逐个产品填实收数量 + 上传到货照片。"""
-    import json
-    _forbid_super_admin(current_user)
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
-    if not po:
-        raise HTTPException(404, "采购单不存在")
-    if po.warehouse_id != warehouse_id:
-        raise HTTPException(403, "无权操作其他仓库的采购单")
-    if po.payable_bill_id:
-        linked_bill = await db.get(PayableBill, po.payable_bill_id)
-        if linked_bill is None: raise HTTPException(409, "关联账单缺失，请管理员核对")
-        await checked_link(db, linked_bill, po, warehouse_id)
-    if po.status != "confirmed":
-        raise HTTPException(400, "仅已生效采购单可收货")
-    if po.receipt_status == "received":
-        raise HTTPException(400, "该采购单已收货验收")
-
-    try:
-        received_list = json.loads(items)
-    except Exception:
-        raise HTTPException(400, "收货明细格式错误")
-    received_map = {}
-    for it in received_list:
-        key = (str(it.get("product_name", "")), str(it.get("spec") or ""))
-        try:
-            received_map[key] = max(0, int(it.get("received_quantity") or 0))
-        except (ValueError, TypeError):
-            received_map[key] = 0
-
-    # 保存到货照片（压缩 + 缩略图）
-    import os, uuid
-    from app.services.image_utils import save_image
-    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "jpg"
-    fname = f"{uuid.uuid4().hex}.{ext}"
-    result = save_image(await file.read(), "/app/uploads/arrival_photos", "/uploads/arrival_photos", fname)
-    photo_path = result["path"]
-
-    # 逐项对比订单数量与实收数量
-    updated_items = []
-    has_diff = False
-    for it in (po.items or []):
-        key = (str(it.get("product_name", "")), str(it.get("spec") or ""))
-        ordered_qty = int(it.get("quantity") or 0)
-        received_qty = received_map.get(key, 0)
-        diff_qty = ordered_qty - received_qty
-        if diff_qty != 0:
-            has_diff = True
-        updated_items.append({
-            **it,
-            "received_quantity": received_qty,
-            "diff_quantity": diff_qty,
-        })
-    po.items = updated_items
-    po.receipt_status = "partially_received" if has_diff else "received"
-    po.flow_status = "arrived" if has_diff else "completed"
-    po.arrival_photo = photo_path
-    po.received_by = current_user.id
-    po.received_at = thai_now()
-    await db.flush()
-
-    # 有差异 → 关联账单标记待老板确认
-    if has_diff and po.payable_bill_id:
-        bill = (await db.execute(select(PayableBill).where(PayableBill.id == po.payable_bill_id))).scalar_one_or_none()
-        if bill:
-            bill.need_boss_confirm = "true"
-            await db.flush()
-
-    return {
-        "message": "收货验收完成" + ("，存在数量差异" if has_diff else ""),
-        "receipt_status": po.receipt_status,
-        "flow_status": po.flow_status,
-        "has_diff": has_diff,
-    }
+                           request_key: str = Form(None), remark: str = Form(""),
+                           current_user: User = Depends(check_staff_permission("供应商管理")),
+                           db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
+    """本次收货增量，按稳定行编号登记；请求重试不重复累计。"""
+    from app.services.purchase_receiving import receive
+    return await receive(db,po_id,warehouse_id,current_user,items,await file.read(),file.filename,request_key,remark)
 
 
 @router.post("/purchase-orders/{po_id}/mark-sent")
@@ -1345,23 +1334,20 @@ async def receipt_discrepancies(current_user: User = Depends(get_current_user), 
 
     data = []
     for po in rows:
-        for it in (po.items or []):
-            diff = int(it.get("diff_quantity") or 0)
-            if diff == 0:
-                continue
-            data.append({
-                "purchase_order_id": po.id,
-                "order_number": po.order_number,
-                "supplier_name": sup_map.get(po.supplier_id, ""),
-                "product_name": it.get("product_name", ""),
-                "spec": it.get("spec") or None,
-                "order_quantity": int(it.get("quantity") or 0),
-                "received_quantity": int(it.get("received_quantity") or 0),
-                "diff_quantity": diff,
-                "diff_amount": round(diff * (it.get("unit_price") or 0), 2),
-                "receiver_name": user_map.get(po.received_by, ""),
-                "received_at": po.received_at.isoformat() if po.received_at else None,
-            })
+        state=await matching.receipt_state(db,po)
+        for it in state['items']:
+            diff=it['diff_quantity']
+            if diff==0: continue
+            price=matching.decimal(it.get('unit_price'))
+            value=matching.amount(diff*price) if diff is not None and price is not None else None
+            data.append({"purchase_order_id":po.id,"order_number":po.order_number,
+                "supplier_name":sup_map.get(po.supplier_id,""),"line_id":it['line_id'],
+                "product_name":it.get('product_name',""),"spec":it.get('spec'),"unit":it.get('unit'),
+                "order_quantity":it.get('quantity'),"received_quantity":it['received_quantity'],
+                "diff_quantity":diff,"diff_amount":float(value) if value is not None else None,
+                "currency":po.currency,"quantity_status":it['quantity_status'],
+                "receiver_name":user_map.get(po.received_by,""),
+                "received_at":po.received_at.isoformat() if po.received_at else None})
     data.sort(key=lambda x: x.get("received_at") or "", reverse=True)
     return {"data": data}
 

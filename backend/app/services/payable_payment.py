@@ -20,6 +20,8 @@ async def record_payment(db, bill, value, account_id, method, operator, request_
     n = positive_money(value)
     remaining = money(bill.amount) - money(bill.paid_amount)
     if n > remaining: raise HTTPException(400, '付款金额不能超过剩余应付')
+    from app.services.purchase_matching import check_payment
+    await check_payment(db,bill,n)
     account = await lock_account(db, bill.warehouse_id, account_id, bill.currency or 'THB')
     balance = (await current_account_balances(db, [account]))[account.id]
     if balance < n: raise HTTPException(400, f'公司账户余额不足（可用 {balance:,.2f}）')

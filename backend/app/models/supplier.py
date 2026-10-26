@@ -96,6 +96,7 @@ class PurchaseOrder(Base):
     order_number = Column(String(50), nullable=False, unique=True, index=True)
     request_key = Column(String(100), nullable=True)
     request_fingerprint = Column(String(64), nullable=True)
+    receipt_baseline = Column(JSON, nullable=True, comment='Original recorded receipt basis; never rebase from cumulative batch cache')
     total_amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False, default='THB')
     items = Column(JSON, nullable=False)

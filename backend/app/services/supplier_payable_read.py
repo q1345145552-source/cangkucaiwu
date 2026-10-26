@@ -50,7 +50,7 @@ def bill_values(b):
         'need_boss_confirm': b.need_boss_confirm, 'purchase_order_id': b.purchase_order_id,
         'payment_voucher': b.payment_voucher, 'bill_attachment': b.bill_attachment,
         'remark': b.remark, 'detail': b.detail, 'invoice_identity': b.invoice_identity,
-        'duplicate_confirmation': b.duplicate_confirmation, 'create_request_key': b.create_request_key}
+        'duplicate_confirmation': b.duplicate_confirmation, 'create_request_key': b.create_request_key, 'matching_kind': b.matching_kind}
 
 
 async def bill_detail(db, bill_id, warehouse_id):
@@ -82,7 +82,9 @@ async def bill_detail(db, bill_id, warehouse_id):
         warnings.append('累计已付未记录，历史付款及剩余应付需核对')
     elif legacy < 0 or legacy + recorded != money(b.paid_amount):
         warnings.append('账单累计与逐笔付款合计不一致，请管理员核对')
-    return {**bill_values(b), 'supplier_name': supplier.name,
+    from app.services.purchase_matching import matching
+    match=await matching(db,b,po)
+    return {**bill_values(b), 'matching': match, 'supplier_name': supplier.name,
         'purchase_order_number': po.order_number if po else None,
         'payments': payments, 'recorded_payment_total': float(recorded),
         'legacy_paid_amount': float(legacy) if legacy is not None and legacy >= 0 else None,
@@ -108,11 +110,15 @@ async def purchase_detail(db, po_id, warehouse_id, user):
         else: message = '没有应付账款或付款计划读取权限，付款信息不展示'
     elif (await db.execute(select(PayableBill.id).where(PayableBill.purchase_order_id == po.id))).first():
         raise HTTPException(409, '采购单与应付账单历史关联不一致，请管理员核对')
+    from app.services.purchase_matching import receipt_state
+    receipts=await receipt_state(db,po)
     return {'id': po.id, 'order_number': po.order_number, 'warehouse_id': po.warehouse_id,
         'warehouse_name': warehouse.name if warehouse else None,
         'supplier_id': po.supplier_id, 'supplier_name': supplier.name,
         'status': po.status, 'flow_status': po.flow_status, 'receipt_status': po.receipt_status,
-        'items': po.items, 'total_amount': po.total_amount, 'currency': po.currency,
+        'items': receipts['items'], 'receipt_batches': receipts['batches'], 'receipt_baseline': receipts['baseline'],
+        'receipt_issues': receipts['issues'], 'quantity_mode': receipts['quantity_mode'],
+        'matching': bill.get('matching') if bill else None, 'total_amount': po.total_amount, 'currency': po.currency,
         'created_at': po.created_at, 'received_at': po.received_at, 'arrival_photo': po.arrival_photo,
         'sent_at': po.sent_at, 'receipt_uploaded_at': po.receipt_uploaded_at, 'shipped_at': po.shipped_at,
         'receipt_file': po.receipt_file, 'remark': po.remark, 'reject_reason': po.reject_reason,

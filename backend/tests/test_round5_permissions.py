@@ -21,7 +21,7 @@ CASES=[
  ('POST','/payable/1/upload-voucher','payable',{'file':True}),
  ('POST','/payable/1/upload-attachment','payable',{'file':True}),
  ('PUT','/payable/1/pay?paid_amount=100&payment_method=bank','payable',None),
- ('PUT','/payable/4/confirm','payable',None),
+ ('PUT','/payable/4/confirm','payable',{'reason':'核对当前匹配依据后确认'}),
  ('PUT','/payable/1/void?void_reason=测试作废','payable',None),
  ('PUT','/payable/1','payable',{'remark':'已编辑','amount':120}),
  ('GET','/payable/stats?start_date=2026-10-01&end_date=2026-10-31','payable',None),
@@ -281,7 +281,7 @@ def test_finance_warehouse_isolation(tmp_path,monkeypatch,uid):
             before=await finance_snapshot(factory)
             for method,path,body in [
                 ('PUT','/payable/10',{'remark':'越权'}),('PUT','/payable/10/pay',None),
-                ('PUT','/payable/10/confirm',None),('PUT','/payable/10/void?void_reason=越权',None),
+                ('PUT','/payable/10/confirm',{'reason':'核对当前匹配依据后确认'}),('PUT','/payable/10/void?void_reason=越权',None),
                 ('POST','/payable/10/upload-voucher',{'file':True}),('POST','/payable/10/upload-attachment',{'file':True}),
                 ('POST','/payable/plans',{'plan_name':'越权计划','planned_date':'2026-10-20','bill_ids':[1,10]}),
                 ('PUT','/payable/plans/10/execute',None),('GET','/payable/plans/10/detail',None),

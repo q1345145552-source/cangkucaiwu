@@ -1,5 +1,5 @@
 from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import Body, APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.core.timezone import thai_now, thai_today
@@ -20,6 +20,7 @@ _PLAN_PERMISSION = MENU_PERMISSIONS_BY_KEY["payment_plans"].label
 
 from app.services.supplier_payable_read import current_supplier_warehouse, filtered_bills, supplier_totals, bill_detail, bill_link_warnings, bill_values, owned, checked_link
 from app.services import payable_creation as creation
+from app.services import purchase_matching as matching
 
 router = APIRouter()
 
@@ -120,6 +121,7 @@ async def create_bill(
     request_key: str = Form(None),
     invoice_identity: str = Form(None),
     duplicate_confirmation: str = Form(None),
+    matching_kind: str = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
@@ -142,6 +144,7 @@ async def create_bill(
     if not currency or len(currency) > 5:
         raise HTTPException(400, '请填写有效币种')
     identity, identity_key = creation.invoice_identity(invoice_identity,current_user)
+    document_kind = matching.kind(matching_kind)
     await creation.creation_lock(db, warehouse_id)
     await owned(db, Supplier, supplier_id, warehouse_id, "供应商")
     if not wh_id:
@@ -155,7 +158,8 @@ async def create_bill(
     signature = creation.fingerprint({'supplier_id':supplier_id,'bill_number':bill_number,'bill_date':bill_date_obj,
         'due_date':due_date_obj,'amount':amount,'currency':currency,'confirmed_amount':confirmed_amount,
         'remark':remark,'payment_commitment_days':payment_commitment_days,'detail':detail,'is_fund_linked':is_fund_linked,
-        'purchase_order_number':purchase_order_number,'invoice_key':identity_key,'attachment_sha256':hashlib.sha256(content).hexdigest()})
+        'purchase_order_number':purchase_order_number,**({'matching_kind':document_kind} if document_kind!='unknown' else {}),
+        'invoice_key':identity_key,'attachment_sha256':hashlib.sha256(content).hexdigest()})
     replay = await creation.creation_replay(db,warehouse_id,request_key,signature)
     if replay:
         return {'id':replay.id,'message':'该次登记已保存，未重复新增','replayed':True,
@@ -193,7 +197,7 @@ async def create_bill(
         payment_commitment_days=payment_commitment_days,
         is_fund_linked=is_fund_linked,
         source=source, purchase_order_id=purchase_order_id,
-        invoice_identity=identity, invoice_identity_key=identity_key,
+        invoice_identity=identity, invoice_identity_key=identity_key, matching_kind=document_kind,
         create_request_key=request_key,create_request_fingerprint=signature,
         created_by=current_user.id,
     )
@@ -258,6 +262,7 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
+    await matching.scope_lock(db,warehouse_id)
     b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id).with_for_update()
         .execution_options(populate_existing=True))).scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
@@ -270,21 +275,32 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     return {"message": "付款记录成功", "payment_id": row.id, "amount": float(row.amount),
         "account_id": row.account_id, "paid_at": row.paid_at.isoformat()}
 
-@router.put("/{bill_id}/confirm")
-async def confirm_bill(bill_id: int, current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
-    """仓库管理员确认收货差异账单，确认后才能付款。"""
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+@router.put("/{bill_id}/confirm", dependencies=[Depends(require_non_labor)])
+async def confirm_bill(bill_id: int, req: Optional[dict] = Body(None),
+        current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db),
+        warehouse_id: int = Depends(current_supplier_warehouse)):
     if current_user.role != Role.WAREHOUSE_ADMIN:
         raise HTTPException(403, "只有仓库管理员可以确认")
-    b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id))).scalar_one_or_none()
-    if not b:
-        raise HTTPException(404, "账单不存在")
-    if current_user.role != Role.SUPER_ADMIN and b.warehouse_id != warehouse_id:
-        raise HTTPException(403, "无权操作其他仓库的账单")
-    b.need_boss_confirm = "false"
+    reason=(req or {}).get("reason")
+    if not isinstance(reason,str) or not reason.strip() or len(reason)>1000:
+        raise HTTPException(400,"请填写本次匹配复核原因（不超过1000字）")
+    await matching.scope_lock(db,warehouse_id)
+    b=(await db.execute(select(PayableBill).where(PayableBill.id==bill_id).with_for_update())).scalar_one_or_none()
+    if b is None: raise HTTPException(404,"账单不存在")
+    if b.warehouse_id!=warehouse_id: raise HTTPException(403,"无权操作其他仓库的账单")
+    if b.status=='voided': raise HTTPException(400,"已作废账单不能复核")
+    state=await matching.matching(db,b)
+    if state['review_valid'] and b.match_review.get('reason')==reason:
+        return {"message":"本次匹配已复核，未重复留痕","replayed":True,"review":b.match_review}
+    old=b.match_review
+    b.match_review={"reason":reason,"operator_id":current_user.id,"operator_name":current_user.display_name,
+        "confirmed_at":thai_now().isoformat(),"snapshot_hash":state['snapshot_hash'],"snapshot":state['snapshot'],
+        "result":{k:state[k] for k in ('status','kind','quantity_match','receipt_quantity_match','amount_match','notes')}}
+    b.need_boss_confirm="false"
+    await record_history(db,module='payable',record_id=b.id,operator=current_user,operation_type='match_confirm',
+        before=old,after=b.match_review,warehouse_id=warehouse_id)
     await db.flush()
-    return {"message": "已确认，可以付款"}
+    return {"message":"匹配复核已留痕，后续变动须重新复核；付款仍按当前校验规则","review":b.match_review}
 
 @router.put("/{bill_id}/void")
 async def void_bill(bill_id: int, void_reason: str = None,
@@ -334,6 +350,7 @@ class BillUpdate(BaseModel):
     remark: Optional[str] = None
     diff_note: Optional[str] = None
     duplicate_confirmation: Optional[dict] = None
+    matching_kind: Optional[str] = None
 
 @router.put("/{bill_id}")
 async def update_bill(bill_id: int, req: BillUpdate,
@@ -357,6 +374,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
         if disallowed:
             raise HTTPException(400, "已付款的账单只能修改备注")
 
+    if req.matching_kind is not None: matching.kind(req.matching_kind)
     # 金额不能为 0 或负数
     if req.amount is not None: creation.valid_amount(req.amount)
     if req.bill_number is not None: creation.number(req.bill_number)
@@ -392,6 +410,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
         )).scalar_one_or_none()
     before_map = {
         "supplier_id": b.supplier_id,
+        "matching_kind": b.matching_kind,
         "bill_number": b.bill_number,
         "currency": b.currency,
         "purchase_order_number": old_po.order_number if old_po else None,
@@ -438,6 +457,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
             b.source = "manual"
 
     # 应用其余字段
+    if req.matching_kind is not None: b.matching_kind=matching.kind(req.matching_kind)
     if req.supplier_id is not None:
         b.supplier_id = req.supplier_id
     if req.bill_number is not None:
@@ -477,6 +497,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
         )).scalar_one_or_none()
     after_map = {
         "supplier_id": b.supplier_id,
+        "matching_kind": b.matching_kind,
         "bill_number": b.bill_number,
         "currency": b.currency,
         "purchase_order_number": new_po.order_number if new_po else None,
@@ -496,6 +517,7 @@ async def update_bill(bill_id: int, req: BillUpdate,
             changed_before[k] = before_map[k]
             changed_after[k] = after_map[k]
     await db.flush()
+    await matching.invalidate_review(db,b,current_user)
     # 与账单更新同事务写修改日志；没有字段变化则不写
     if changed_before:
         await record_history(db, module="payable", record_id=b.id, operator=current_user,
@@ -747,6 +769,7 @@ async def payable_timeline(current_user: User = Depends(check_staff_permission(_
 async def execute_plan(plan_id: int, account_id: int = None, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    await matching.scope_lock(db,warehouse_id)
     result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id).with_for_update())
     p = result.scalar_one_or_none()
     if not p: raise HTTPException(404, "计划不存在")

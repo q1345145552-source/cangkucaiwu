@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
+import { ThreeWayMatch } from "@/components/PurchaseReceiptInfo";
 import { billStatus } from "@/components/ProcurementInfo";
 import { uploadPayableVoucher, payableScope, PayableVoucherTask } from "@/lib/payablePayment";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
@@ -32,6 +33,7 @@ export default function PayableDetail({ billId, revision, onClose, onPay, onConf
         {(bill.warnings || []).map((w:string)=><p role="alert" className="text-red-600" key={w}>{w}</p>)}
         {bill.invoice_identity && <p>已核实发票：{bill.invoice_identity.issuer_identifier} · {bill.invoice_identity.series} · {bill.invoice_identity.number}</p>}
         {bill.duplicate_confirmation && <section className="border rounded p-3"><h3 className="font-semibold">本次疑似重复核对留痕</h3><p>{bill.duplicate_confirmation.operator_name} · {new Date(bill.duplicate_confirmation.confirmed_at).toLocaleString("zh-CN",{timeZone:"Asia/Bangkok"})}（泰国时间）</p><p>原因：{bill.duplicate_confirmation.reason}</p><p>核对账单：{bill.duplicate_confirmation.candidate_ids.map((id:number)=>`#${id}`).join("、")}</p><p className="text-xs text-gray-500">仅限本次，不豁免后续登记。</p></section>}
+        <ThreeWayMatch value={bill.matching}/>
         <h3 className="font-semibold">逐笔实际付款（不补造历史）</h3>
         {bill.payments.length ? bill.payments.map((p:any)=><div key={p.id} className="border rounded-lg p-3 space-y-1" aria-label={`付款记录${p.id}`}>
           <p>#{p.id} · {fmtMoney(p.amount,p.currency)} · {p.account_name}</p>

@@ -8,6 +8,8 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { LinkedPayable, PurchaseQuantities } from "@/components/ProcurementInfo";
+import { ReceiptHistory, ThreeWayMatch } from "@/components/PurchaseReceiptInfo";
+import { ApiError } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { registrationDraft, submitRegistration } from "@/lib/registrationRequest";
 import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
@@ -93,7 +95,8 @@ export default function SuppliersPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptOrders, setReceiptOrders] = useState<any[]>([]);
   const [receiveTarget, setReceiveTarget] = useState<any>(null);
-  const [receiveQty, setReceiveQty] = useState<Record<number, number>>({});
+  const [receiveQty, setReceiveQty] = useState<Record<string, string>>({});
+  const [receiveRemark,setReceiveRemark]=useState("");
   const [receivePhoto, setReceivePhoto] = useState<File | null>(null);
   const [receiptSubmitting, setReceiptSubmitting] = useState(false);
   const [showDiscrepancies, setShowDiscrepancies] = useState(false);
@@ -331,35 +334,42 @@ export default function SuppliersPage() {
       setReceiptOrders(r.data || []);
     } catch { setReceiptOrders([]); }
   }
-  function openReceiveForm(po: any) {
-    setReceiveTarget(po);
-    const init: Record<number, number> = {};
-    (po.items || []).forEach((it: any, i: number) => { init[i] = it.quantity || 0; });
-    setReceiveQty(init);
-    setReceivePhoto(null);
+  async function openReceiveForm(po: any) {
+    try {
+      const fresh=await api.get<any>(`/suppliers/purchase-orders/${po.id}`);
+      const draft=registrationDraft("purchase_receipt",po.id);
+      const restored:Record<string,string>={};
+      (fresh.items || []).forEach((it:any)=>{restored[it.line_id]=String(it.remaining_quantity ?? 0);});
+      if(draft)draft.payload.items.forEach((it:any)=>{restored[it.line_id]=String(it.received_quantity);});
+      setReceiveTarget(fresh);setReceiveQty(restored);setReceiveRemark(draft?.payload.remark || "");setReceivePhoto(null);
+      if(draft)toast("success","已恢复原收货请求，请选择原照片沿用原请求重试");
+    }catch(e:any){toast("error",e.message || "收货明细读取失败");}
   }
   async function submitReceive() {
-    if (!receiveTarget) return;
+    if (!receiveTarget || receiptSubmitting) return;
     if (!receivePhoto) { toast("error", "请上传到货照片"); return; }
-    const items = (receiveTarget.items || []).map((it: any, i: number) => ({
-      product_name: it.product_name, spec: it.spec, received_quantity: receiveQty[i] ?? 0,
-    }));
-    setReceiptSubmitting(true);
+    const items=[];
+    for(const it of receiveTarget.items || []) {
+      const raw=receiveQty[it.line_id] ?? "";
+      if(!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)) || Number(raw)>2147483647) {
+        toast("error","本次收货数量必须是非负整数，不支持小数或自动截断");return;
+      }
+      items.push({line_id:it.line_id,received_quantity:Number(raw)});
+    }
+    if(!items.some(it=>it.received_quantity>0)){toast("error","本次至少一行收货数量须大于零");return;}
+    const target=receiveTarget;setReceiptSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append("items", JSON.stringify(items));
-      fd.append("file", receivePhoto);
-      const headers = warehouseRequestHeaders();
-      const res = await fetch(`/api/v1/suppliers/purchase-orders/${receiveTarget.id}/receive`, { method: "POST", headers, body: fd });
-      const r = await res.json();
-      if (!res.ok) { toast("error", r.detail || "收货失败"); return; }
-      toast("success", r.has_diff ? "收货验收完成，存在数量差异，已标记待老板确认" : "收货验收完成");
-      setReceiveTarget(null);
-      openReceipt();
-      if (poDetail?.id === receiveTarget.id) await openPoDetail(receiveTarget.id);
-      if (showDiscrepancies) openDiscrepancies();
-    } catch (err: any) { toast("error", err.message || "收货失败"); }
-    finally { setReceiptSubmitting(false); }
+      const fd = new FormData();fd.append("items",JSON.stringify(items));fd.append("file",receivePhoto);fd.append("remark",receiveRemark);
+      const r=await submitRegistration<any>("purchase_receipt",target.id,{items,remark:receiveRemark},async key=>{
+        fd.set("request_key",key);
+        const res=await fetch(`/api/v1/suppliers/purchase-orders/${target.id}/receive`,{method:"POST",headers:warehouseRequestHeaders(),body:fd});
+        const result=await res.json();if(!res.ok)throw new ApiError(res.status,result.detail || "收货失败");return result;
+      });
+      toast("success",`收货批次 #${r.receipt_event_id} 已保存${r.replayed ? "，未重复累计" : r.has_diff ? "，累计数量有差异，待老板复核" : ""}`);
+      setReceiveTarget(null);openReceipt();
+      if(poDetail?.id===target.id)await openPoDetail(target.id);
+      if(showDiscrepancies)openDiscrepancies();
+    }catch(e:any){toast("error",e.message || "收货失败");}finally{setReceiptSubmitting(false);}
   }
   async function openDiscrepancies() {
     setShowDiscrepancies(true);
@@ -1454,8 +1464,8 @@ export default function SuppliersPage() {
                             : <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">未收货</span>}
                         </td>
                         <td className="px-3 py-2 text-center">
-                          {po.status === "confirmed" && po.receipt_status !== "received" && (
-                            <button onClick={() => openReceiveForm(po)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">收货</button>
+                          {po.status === "confirmed" && (
+                            <button onClick={() => openReceiveForm(po)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">登记本次收货</button>
                           )}
                           {po.arrival_photo && (
                             <button onClick={() => window.open(uploadUrl(po.arrival_photo), "_blank")} className="text-blue-600 text-xs hover:underline ml-2">照片</button>
@@ -1478,47 +1488,22 @@ export default function SuppliersPage() {
       {/* 收货录入弹窗 */}
       {receiveTarget && (
         <div className="modal-overlay z-[60]" onClick={() => setReceiveTarget(null)}>
-          <div className="bg-white rounded-xl w-[760px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+          <div role="dialog" aria-label="登记本次收货" className="bg-white rounded-xl w-[760px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-green-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <CheckCircle size={20} />
-              <h2 className="font-semibold">收货验收 - {receiveTarget.order_number}</h2>
+              <h2 className="font-semibold">登记本次收货 - {receiveTarget.order_number}</h2>
               <button onClick={() => setReceiveTarget(null)} className="ml-auto text-green-200 hover:text-white text-xl">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div className="text-sm text-gray-600">供应商：{receiveTarget.supplier_name || "-"} · 金额：{receiveTarget.total_amount}</div>
-              <div className="overflow-x-auto touch-pan-x">
-              <table className="w-full text-sm min-w-[700px]">
-                <thead><tr className="border-b bg-gray-50 text-left text-gray-500">
-                  <th className="px-3 py-2 font-medium">产品</th>
-                  <th className="px-3 py-2 font-medium">规格</th>
-                  <th className="px-3 py-2 font-medium text-right">订购数量</th>
-                  <th className="px-3 py-2 font-medium text-center">实收数量</th>
-                  <th className="px-3 py-2 font-medium text-right">差异</th>
-                </tr></thead>
-                <tbody>
-                  {(receiveTarget.items || []).map((it: any, i: number) => {
-                    const rq = receiveQty[i] ?? 0;
-                    const diff = (it.quantity || 0) - rq;
-                    return (
-                      <tr key={i} className="border-b">
-                        <td className="px-3 py-2">{it.product_name}</td>
-                        <td className="px-3 py-2 text-gray-500">{it.spec || "-"}</td>
-                        <td className="px-3 py-2 text-right">{it.quantity}</td>
-                        <td className="px-3 py-2 text-center">
-                          <input type="number" min={0} value={rq}
-                            onChange={e => setReceiveQty(prev => ({ ...prev, [i]: Math.max(0, parseInt(e.target.value) || 0) }))}
-                            className="w-20 text-center border rounded py-1 text-sm" />
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {diff === 0 ? <span className="text-xs text-green-600">正常</span>
-                            : <span className="text-xs font-semibold text-red-600">{diff > 0 ? "少" : "多"} {Math.abs(diff)}</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              </div>
+              <p className="text-amber-800 text-sm">填写本次收到的数量，系统加到已有累计中；补收20填20，不填累计100。现有采购仅支持整数单位。</p>
+              <div className="space-y-3">{(receiveTarget.items || []).map((it:any)=><div className="border rounded p-3 space-y-2" key={it.line_id}>
+                <p className="font-medium">{it.product_name} {it.spec || ""} · {it.unit || "单位未记录"}</p>
+                <p className="text-xs text-gray-500 break-all">行编号：{it.line_id}</p>
+                <div className="grid grid-cols-3 gap-2 text-sm"><span>订购 {it.quantity ?? "未知"}</span><span>累计已记录 {it.received_quantity ?? "未知"}</span><span>尚差 {it.remaining_quantity ?? "未知"}</span></div>
+                <label className="block text-sm">本次收货数量<input aria-label={`本次收货数量-${it.line_id}`} type="number" min="0" step="1" className="form-input" value={receiveQty[it.line_id] ?? ""} onChange={e=>setReceiveQty(prev=>({...prev,[it.line_id]:e.target.value}))}/></label>
+              </div>)}</div>
+              <label className="block text-sm">本次备注<textarea className="form-input" maxLength={1000} value={receiveRemark} onChange={e=>setReceiveRemark(e.target.value)}/></label>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">到货照片 <span className="text-red-400">*</span></label>
                 <input type="file" accept="image/*" onChange={e => setReceivePhoto(e.target.files?.[0] || null)} className="text-sm text-gray-500" />
@@ -1529,7 +1514,7 @@ export default function SuppliersPage() {
               <button onClick={() => setReceiveTarget(null)} className="btn-secondary text-sm px-5 py-2">取消</button>
               <button onClick={submitReceive} disabled={receiptSubmitting}
                 className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
-                {receiptSubmitting ? "提交中..." : "确认收货"}
+                {receiptSubmitting ? "提交中..." : "确认本次收货"}
               </button>
             </div>
           </div>
@@ -1563,14 +1548,14 @@ export default function SuppliersPage() {
                   </tr></thead>
                   <tbody>
                     {discrepancies.map((d: any, i: number) => (
-                      <tr key={i} className="border-b">
+                      <tr key={`${d.purchase_order_id}:${d.line_id}`} className="border-b">
                         <td className="px-3 py-2 font-medium">{d.order_number}</td>
                         <td className="px-3 py-2">{d.supplier_name || "-"}</td>
                         <td className="px-3 py-2">{d.product_name}{d.spec ? <span className="text-gray-400 text-xs">（{d.spec}）</span> : null}</td>
-                        <td className="px-3 py-2 text-right">{d.order_quantity}</td>
-                        <td className="px-3 py-2 text-right">{d.received_quantity}</td>
-                        <td className="px-3 py-2 text-right text-red-600 font-semibold">{d.diff_quantity > 0 ? "少" : "多"} {Math.abs(d.diff_quantity)}</td>
-                        <td className="px-3 py-2 text-right text-red-600 font-semibold">{d.diff_amount}</td>
+                        <td className="px-3 py-2 text-right">{d.order_quantity ?? "未记录"}</td>
+                        <td className="px-3 py-2 text-right">{d.received_quantity ?? "未记录"}</td>
+                        <td className="px-3 py-2 text-right text-red-600 font-semibold">{d.diff_quantity==null ? "未知" : `${d.diff_quantity>0 ? "少" : "多"} ${Math.abs(d.diff_quantity)}`}</td>
+                        <td className="px-3 py-2 text-right text-red-600 font-semibold">{d.diff_amount==null ? "待核对" : fmtMoney(d.diff_amount,d.currency)}</td>
                         <td className="px-3 py-2 text-gray-500">{d.receiver_name || "-"}</td>
                       </tr>
                     ))}
@@ -1695,7 +1680,7 @@ export default function SuppliersPage() {
                 </div>
               )}
 
-              <PurchaseQuantities order={poDetail}/>
+              <PurchaseQuantities order={poDetail}/><ReceiptHistory order={poDetail}/><ThreeWayMatch value={poDetail.matching}/>
               <div className="text-right font-semibold">总价：{poDetail.total_amount}</div>
             </div>
             <div className="border-t px-5 py-3 flex justify-end gap-3 bg-gray-50 rounded-b-xl">

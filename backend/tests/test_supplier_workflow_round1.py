@@ -61,7 +61,7 @@ def test_new_order_real_two_payments_voucher_failure_retry_and_read_only(tmp_pat
             created=await request(c,'POST','/suppliers/1/purchase-order',json={'items':[{'product_id':1,'quantity':10}]})
             poid=created['order']['id'];bid=created['payable_bill_id'];assert bid and not created['pending']
             po=await request(c,'GET',f'/suppliers/purchase-orders/{poid}')
-            assert po['items'][0].get('received_quantity') is None and po['bill']['id']==bid
+            assert po['items'][0]['received_quantity']==0 and not po['receipt_batches'] and po['bill']['id']==bid
             assert po['bill']['amount']==1000 and po['bill']['paid_amount']==0
             parameters={'paid_amount':300,'account_id':1,'payment_method':'现金','request_key':'supplier-first-300'}
             first=await request(c,'PUT',f'/payable/{bid}/pay',params=parameters)
@@ -189,13 +189,13 @@ def test_over_200_old_documents_exact_lookup_and_receipt_refresh_guard(tmp_path,
             assert old['bill_date'].startswith('2020-01') and old['purchase_order_id']==1
             original=images.save_image
             monkeypatch.setattr(images,'save_image',lambda content,_folder,prefix,name:original(content,str(tmp_path/'arrivals'),prefix,name))
-            await request(c,'POST','/suppliers/purchase-orders/1/receive',files={'file':('arrival.png',png(),'image/png')},data={'items':json.dumps([{'product_name':'耗材','received_quantity':8}])})
+            await request(c,'POST','/suppliers/purchase-orders/1/receive',files={'file':('arrival.png',png(),'image/png')},data={'request_key':'round01-contract-receipt-8','items':json.dumps([{'line_id':'legacy:1:1','received_quantity':8}])})
             after=await request(c,'GET','/suppliers/purchase-orders/1')
             assert after['receipt_status']=='partially_received' and after['items'][0]['received_quantity']==8 and after['items'][0]['diff_quantity']==2
             assert after['bill']['need_boss_confirm']=='true'
             denied=await request(c,'PUT','/payable/1/pay',code=400,params={'paid_amount':300,'account_id':1,'request_key':'must-confirm'})
             assert '需老板确认' in denied['detail']
-            await request(c,'PUT','/payable/1/confirm')
+            await request(c,'PUT','/payable/1/confirm',json={'reason':'核实旧单少收两件，按当前凭据复核'})
             await request(c,'PUT','/payable/1/pay',params={'paid_amount':300,'account_id':1,'request_key':'after-confirm'})
             final=await request(c,'GET','/suppliers/purchase-orders/1')
             assert final['bill']['paid_amount']==300 and final['bill']['remaining_amount']==700

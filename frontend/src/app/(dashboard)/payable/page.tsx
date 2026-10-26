@@ -131,8 +131,9 @@ export default function PayablePage() {
     } catch { toast("error", "加载趋势失败"); }
   }
 
+  const [matchingKind,setMatchingKind]=useState("unknown");
   function openBillForm(){
-    try{const draft=registrationDraft("manual_bill");if(draft){setForm(draft.payload.form);setInvoice(draft.payload.invoice);toast("success","已恢复未完成登记，请重新选择原凭证后重试");}setBillFile(null);setShowForm(true);}
+    try{const draft=registrationDraft("manual_bill");if(draft){setForm(draft.payload.form);setInvoice(draft.payload.invoice);setMatchingKind(draft.payload.matchingKind || "unknown");toast("success","已恢复未完成登记，请重新选择原凭证后重试");}setBillFile(null);setShowForm(true);}
     catch(e:any){toast("error",e.message);}
   }
   function duplicateError(e:any,retry:(confirmation:DuplicateConfirmation)=>Promise<void>){
@@ -158,10 +159,10 @@ export default function PayablePage() {
       if (form.detail) fd.append("detail", form.detail);
       if (form.is_fund_linked) fd.append("is_fund_linked", form.is_fund_linked);
       if (form.purchase_order_number) fd.append("purchase_order_number", form.purchase_order_number);
-      fd.append("file", billFile);
+      fd.append("file", billFile);fd.append("matching_kind",matchingKind);
       if(invoice.verified)fd.append("invoice_identity",JSON.stringify(invoice));
       if(confirmation)fd.append("duplicate_confirmation",JSON.stringify(confirmation));
-      const r=await submitRegistration<any>("manual_bill",0,{form,invoice},async key=>{
+      const r=await submitRegistration<any>("manual_bill",0,{form,invoice,...(matchingKind==="unknown"?{}:{matchingKind})},async key=>{
         fd.set("request_key",key);
         const res=await fetch(`${API_URL}/payable`,{method:"POST",headers:warehouseRequestHeaders(),body:fd});
         const result=await res.json();
@@ -170,7 +171,7 @@ export default function PayablePage() {
       });
       toast("success", r.has_diff ? "账单创建成功，已标记对账差异" : "创建成功");
       setShowForm(false); setBillFile(null); setForm({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
-      setInvoice(emptyInvoice);setDuplicateChallenge(null);
+      setInvoice(emptyInvoice);setMatchingKind("unknown");setDuplicateChallenge(null);
       load(); loadStats();
     } catch (err: any) { if(!duplicateError(err,handleCreate))toast("error", err.message || "创建失败"); }
     finally{setCreating(false);}
@@ -234,14 +235,16 @@ export default function PayablePage() {
     setShowEditModal(true);
   }
 
-  async function confirmBoss(billId: number) {
-    if (!confirm("确认该账单收货差异已核实，可以付款？")) return;
-    try {
-      await api.put(`/payable/${billId}/confirm`, {});
-      toast("success", "已确认，可以付款");
-      setDetailRevision(n=>n+1);
-      load(); loadStats();
-    } catch (e: any) { toast("error", e.message || "确认失败"); }
+  const [reviewTarget,setReviewTarget]=useState(0),[reviewReason,setReviewReason]=useState(""),[reviewSaving,setReviewSaving]=useState(false);
+  async function confirmBoss(billId:number){setReviewTarget(billId);setReviewReason("");}
+  async function saveMatchReview(){
+    if(!reviewReason.trim()){toast("error","请填写本次匹配复核原因");return;}
+    if(!reviewTarget || reviewSaving)return;setReviewSaving(true);
+    try{
+      await api.put(`/payable/${reviewTarget}/confirm`,{reason:reviewReason});
+      toast("success","本次匹配复核已保存，后续变化须重新复核");setReviewTarget(0);setReviewReason("");
+      setDetailRevision(n=>n+1);load();loadStats();
+    }catch(e:any){toast("error",e.message || "复核失败");}finally{setReviewSaving(false);}
   }
 
   async function handleEdit(confirmation?:DuplicateConfirmation) {
@@ -473,6 +476,11 @@ export default function PayablePage() {
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} rowClassName={(row) => row.status === "voided" ? "opacity-50" : ""} />}
 
       {billDetailId>0 && <PayableDetail billId={billDetailId} revision={detailRevision} onClose={()=>setBillDetailId(0)} onPay={bill=>{setBillDetailId(0);openPayModal(bill);}} onConfirm={confirmBoss}/>}
+      {reviewTarget>0 && <div className="modal-overlay z-[85]"><div role="dialog" aria-label="匹配复核" className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="p-4 border-b"><h2 className="font-semibold">本次采购、收货与应付复核</h2></div>
+        <div className="p-4 overflow-auto space-y-3"><p className="text-sm">记录当前匹配快照、复核人和时间。后续收货或账单变化须重新复核；已有付款保持原样。</p><label className="block text-sm">本次匹配复核原因<textarea className="form-input min-h-[120px]" maxLength={1000} value={reviewReason} onChange={e=>setReviewReason(e.target.value)}/></label></div>
+        <div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={reviewSaving} onClick={()=>setReviewTarget(0)}>取消复核</button><button className="btn-primary" disabled={reviewSaving} onClick={saveMatchReview}>{reviewSaving ? "保存中" : "保存本次复核"}</button></div>
+      </div></div>}
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       {/* 新建账单弹窗 */}
       {showForm && (
@@ -498,6 +506,7 @@ export default function PayablePage() {
                 <div className="form-group"><label className="form-label">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}><option>THB</option><option>CNY</option><option>USD</option></select></div>
               </div>
               <div className="form-group"><label className="form-label">关联采购单号（可选）</label><input className="form-input" value={form.purchase_order_number} onChange={e => setForm({ ...form, purchase_order_number: e.target.value })} placeholder="如 PO2026..." /></div>
+              <label className="form-label block">三单匹配业务类型<select className="form-input" value={matchingKind} onChange={e=>setMatchingKind(e.target.value)}><option value="unknown">待核实（不猜测历史类型）</option><option value="goods">商品采购</option><option value="prepayment">预付款</option><option value="non_goods">非商品费用</option></select></label>
               <fieldset className="border rounded p-3 space-y-2"><legend>真实发票身份（选填）</legend><p className="text-xs text-gray-500">登记号不默认当作发票号。仅按原始凭证核实后填写；无法确认请留空。只去首尾空白，保留大小写、内部字符和标点。</p>
                 {([["issuer_identifier","供应商官方唯一识别号"],["series","发票类型／系列（完整）"],["number","完整发票号码"]] as const).map(([key,label])=><label className="block text-sm" key={key}>{label}<input className="form-input" maxLength={150} value={invoice[key]} onChange={e=>setInvoice({...invoice,[key]:e.target.value})}/></label>)}
                 <label className="flex gap-2 text-sm"><input type="checkbox" checked={invoice.verified} onChange={e=>setInvoice({...invoice,verified:e.target.checked})}/>我已核对原凭证，确认真实供应商和完整发票身份一致</label>
