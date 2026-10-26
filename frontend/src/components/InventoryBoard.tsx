@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {useSearchParams} from 'next/navigation';
 import InventoryControls from '@/components/InventoryControls';
 import InventoryAnalysis from '@/components/InventoryAnalysis';
 import {api} from '@/lib/api';
@@ -20,6 +21,7 @@ const thai=(v:string)=>new Date(v).toLocaleString('zh-CN',{timeZone:'Asia/Bangko
 function startToday(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());return ['year','month','day'].map(k=>p.find(x=>x.type===k)!.value).join('-')+'T00:00';}
 
 export default function InventoryBoard(){
+  const focusedAccount=useSearchParams().get('account_id');
   const {user}=useAuth() as {user:{id:number;role:string}|null};
   const permission=useMenuPermission('inventory'),canViewSource=useMenuPermission('suppliers');
   const allowed=!!user&&['warehouse_admin','supervisor','staff'].includes(user.role)&&permission,owner=user?.role==='warehouse_admin';
@@ -27,6 +29,7 @@ export default function InventoryBoard(){
   const [loaded,setLoaded]=useState(''),[data,setData]=useState<any>(null),[catalog,setCatalog]=useState<any[]>([]),[pending,setPending]=useState<any>(null);
   const [page,setPage]=useState(1),[pendingPage,setPendingPage]=useState(1),[filter,setFilter]=useState(''),[applied,setApplied]=useState('');
   const [error,setError]=useState(''),[message,setMessage]=useState(''),[detail,setDetail]=useState<any>(null),[detailLoaded,setDetailLoaded]=useState(''),[detailPage,setDetailPage]=useState(1);
+  const [detailRoute,setDetailRoute]=useState<string|null>(null);
   const [form,setForm]=useState<any>(null),[busy,setBusy]=useState(false),[drafts,setDrafts]=useState<any[]>([]),[draftScope,setDraftScope]=useState(''),[revision,setRevision]=useState(0);
   const query=new URLSearchParams({page:String(page),page_size:'20',...(applied?{sku_id:applied}:{})}).toString();
   function readDrafts(){try{setDrafts(pendingInventoryRequests());setDraftScope(scope);}catch(e:any){setDrafts([]);setDraftScope('');setError(e.message);}}
@@ -42,10 +45,17 @@ export default function InventoryBoard(){
   },[scope,allowed,owner,query,pendingPage,revision]);
 
   async function showDetail(id:number,p=1){
-    const seq=++detailSequence.current,expected=scope;setError('');setDetail(null);setDetailLoaded('');
-    try{const r=await api.get<any>(`/inventory/accounts/${id}?page=${p}&page_size=20`);if(seq===detailSequence.current&&inventoryScope()===expected){setDetail(r);setDetailLoaded(expected);setDetailPage(p);}}
+    const seq=++detailSequence.current,expected=scope,route=focusedAccount;setError('');setDetail(null);setDetailLoaded('');
+    try{const r=await api.get<any>(`/inventory/accounts/${id}?page=${p}&page_size=20`);if(seq===detailSequence.current&&inventoryScope()===expected){setDetail(r);setDetailLoaded(expected);setDetailRoute(route);setDetailPage(p);}}
     catch(e:any){if(seq===detailSequence.current&&inventoryScope()===expected)setError(e.message||'库存流水读取失败');}
   }
+  useEffect(()=>{
+    detailSequence.current++;setDetail(null);setDetailLoaded('');
+    if(!allowed||focusedAccount===null)return;
+    if(!/^[1-9]\d*$/.test(focusedAccount)||Number(focusedAccount)>2147483647){setError('库存台账编号不正确');return;}
+    void showDetail(Number(focusedAccount));
+    return()=>{detailSequence.current++;};
+  },[focusedAccount,scope,allowed,owner,query,pendingPage,revision]);
   function restore(resource:string){
     const draft=registrationDraft('inventory',resource);
     if(!draft)throw Error('原请求已不存在，请重新读取库存核对');
@@ -109,7 +119,7 @@ export default function InventoryBoard(){
     finally{setBusy(false);}
   }
   if(!allowed)return <section className="card p-4"><h1 className="page-title">耗材库存</h1><p>无此操作权限，或权限清单尚未加载。仅当前仓有库存权限的管理账号可访问。</p></section>;
-  const visible=loaded===scope?data:null,visibleDetail=detailLoaded===scope?detail:null,visibleCatalog=loaded===scope?catalog:[],visibleDrafts=draftScope===scope?drafts:[];
+  const visible=loaded===scope?data:null,visibleDetail=detailLoaded===scope&&detailRoute===focusedAccount?detail:null,visibleCatalog=loaded===scope?catalog:[],visibleDrafts=draftScope===scope?drafts:[];
   return <section className="space-y-4 min-w-0"><div className="flex flex-wrap gap-3 items-center"><h1 className="page-title">耗材库存</h1>{canViewSource&&<Link href="/suppliers" className="text-blue-700 underline">供应商管理</Link>}</div>
     <p className="text-sm">各仓、各SKU、各基本单位分开。真实期初未确认时，不把已知收货当作当前库存；仅记录耗材数量，不新增资金支出或费用。金额待配置。</p>
     {error&&<p role="alert" className="text-red-600 break-words">{error}</p>}{message&&<p role="status" className="text-blue-800">{message}</p>}

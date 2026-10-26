@@ -1,0 +1,21 @@
+供应商十二轮最终本地交付清单
+分支：codex/supplier-risk-r08-20261026；工作树：/private/tmp/supplier08-worktree
+状态：12轮本地代码集成验收完成；未推送、未部署。不是线上数据/生产性能验收。
+轮次 | 本地提交 | 功能 | 本轮相关后端通过数 | 原始证据报告
+01 | 3ca985188014edf837f8baae70b979bc62e21f0a | 采购应付串联、逐笔付款、分币种应付总表、菜单移组 | 7 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第01轮-20261026-014453/供应商十二轮第01轮验收.txt
+02 | 659f1614a8b1e27b999b075287c8471a908d4a98 | 单渠道查重、请求幂等、历史冲突只报告 | 13 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第02轮-20261026/第02轮交付报告.txt
+03 | 9806c0d518892a34e70db483d37446b7ec79bd9b | 稳定行与分批实收、三单匹配及可配严格付款上限 | 17 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第03轮-20261026/第03轮交付报告.txt
+04 | 8d0232ee77d8e10b21a203427308a8450ebaeaef | 跨渠道供应商/发票身份、并发防重与留痕 | 20 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第04轮-20261026/第04轮本地交付报告.txt
+05 | 280d4ddb556cb43ed0d9cd5465be931f1a825ce8 | 标准SKU、单位、供应商人工映射和导入 | 21 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第05轮-20261026/第05轮验收报告.txt
+06 | 021de21f3fa5b6d73c29799e48a5cbcb153f9165 + d022cb6c751802549e92152b47ca016687e4c778 | 数量阶梯有效报价、最低可比推荐及旧价格异常补修 | 30 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第06轮-20261026/第06轮验收报告.txt
+07 | e7501ba0891d952f8ba37ce2249d79bcfc5870f1 | 冻结基线的月度价格差额只读报告 | 15 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第07轮-20261026/第07轮验收报告.txt
+08 | de0ddeda339619ff8a7ef5083c947dc9ed786b29 | 老板专属、可解释采购风险看板及审计 | 10 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第08轮-20261026/第08轮验收报告.txt
+09 | 4be718d0ce258d6818c58a927e3fcdb9b65fb760 | 职责分离、一次性例外、老板复核与不可覆盖历史 | 12 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第09轮-20261026/第09轮验收报告.txt
+10 | cb63cd5ea5ea0a7dfa98128ef4d0bc5bd0606c17 | 按仓SKU单位的库存数量台账、领用退回冲销 | 16 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第10轮-20261026/第10轮验收报告.txt
+11 | b20c6c848f68c23098149f1d920f35baa6546d75 | 盘点审核、安全库存、用量证据与成本不可算提示 | 14 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第11轮-20261027/第11轮验收报告.txt
+12 | 本清单所在本地提交（最终HEAD见外部本地提交交付记录.json） | 组合验收、精确库存链接补修及整批迁移/权限/手机 | 新增5，另权限/自助25、路由审计2、停用入口1 | /Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商十二轮第12轮-20261027/第12轮集成验收报告.txt
+
+最终本轮验证：208后端、15组前端、56页生产构建通过；84条旧类型诊断、0新增。
+待确认：真实库存期初和映射、计价法与真实成本层、正式职责分离/严格匹配政策、授权和阈值、生产规模性能及真实账目/备份/迁移/上线验收。
+本轮修复只有风险证据精确跳转；未改资金或库存计算、菜单排版。详细变更、数字、失败过程与限制见第12轮报告。
+未部署是有意保留的边界，不表示正式库已具备新增表或新版本功能。

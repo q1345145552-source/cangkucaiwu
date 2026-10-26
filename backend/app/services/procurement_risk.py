@@ -120,7 +120,7 @@ async def _calculate(db,wid,*,month=None,supplier_id=None,orderer_id=None,curren
   for item in inventory['data']:
    ev={'kind':'inventory','account_id':item['account_id'],'order_id':None,'order_number':item['sku']['code'],
        'orderer_id':None,'supplier_id':None,'currency':'','amount':None,'created_at':None,
-       'line_id':None,'event_id':None,'url':f'/inventory#inventory-account-{item["account_id"]}','remark':item['stockpiling_note']}
+       'line_id':None,'event_id':None,'url':f'/inventory?account_id={item["account_id"]}','remark':item['stockpiling_note']}
    for rule,state,message,threshold in [('inventory_low',item['low_stock_state'],item['low_stock_reason'],item['minimum_quantity']),
                                          ('inventory_usage',item['usage_state'],item['usage_explanation'],item['configured_ratio'])]:
     r=signal(rule,('account',item['account_id']),state,message,threshold,

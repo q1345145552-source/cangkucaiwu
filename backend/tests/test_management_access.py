@@ -147,7 +147,7 @@ def test_all_registered_management_routes_deny_labor_before_business_queries(tmp
                             outcomes.append(response.status_code)
                             responses.append({"user_id":uid,"status":response.status_code,"body":response.json()})
                         tested.append({"method":method,"path":route.path,"module":route.endpoint.__module__.rsplit('.',1)[-1],"labor_same_and_foreign":outcomes,"responses":responses})
-                assert len(tested)==335  # Current registered management method/path pairs, checked against the independent inventory.
+                assert len(tested)==394  # Supplier rounds 1–11: independently checked by test_management_inventory.
                 for statement in statements:
                     assert not statement.lstrip().upper().startswith(("INSERT","UPDATE","DELETE")),statement
                     assert set(re.findall(r"\b(?:FROM|JOIN)\s+(\w+)",statement,re.I)) <= {"users","user_warehouses"},statement
