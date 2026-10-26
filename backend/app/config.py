@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     UPLOAD_DIR: str = "/app/uploads"
+    PAYABLE_DUPLICATE_WINDOW_DAYS: int = 0  # Same bill-date only by default; suspicion, never an amount-based hard identity.
     class Config:
         env_file = ".env"
         case_sensitive = True

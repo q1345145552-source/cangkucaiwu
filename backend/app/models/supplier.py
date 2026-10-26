@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, JSON, Index, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -87,10 +87,15 @@ class SupplierCrossBorderPrice(Base):
 
 class PurchaseOrder(Base):
     __tablename__ = 'purchase_orders'
+    from app.core.payable_constraints import GUARDS
+    __table_args__ = tuple(Index(name, *columns, unique=True, postgresql_where=text(predicate), sqlite_where=text(predicate))
+        for name, (table, columns, predicate) in GUARDS.items() if table == 'purchase_orders')
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey('warehouses.id'), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
     order_number = Column(String(50), nullable=False, unique=True, index=True)
+    request_key = Column(String(100), nullable=True)
+    request_fingerprint = Column(String(64), nullable=True)
     total_amount = Column(Float, nullable=False)
     currency = Column(String(10), nullable=False, default='THB')
     items = Column(JSON, nullable=False)

@@ -14,7 +14,8 @@ const realApi=compile('lib/api.ts',{}, {window:{},localStorage:local});
 function setWarehouse(id){warehouse=id;local.setItem('activeWarehouseId',id);}setWarehouse('1');
 const bill={id:1,bill_number:'OLD-BILL-1',supplier_name:'供应商',amount:1000,paid_amount:0,currency:'THB',status:'pending',need_boss_confirm:'false',purchase_order_id:201,payments:[],remaining_amount:1000,legacy_paid_amount:0,recorded_payment_total:0,warnings:[],voucher_scope:'账单级凭证，不代表某一次逐笔付款'};
 const api={getToken:()=> 'synthetic-token',getActiveWarehouseId:()=>warehouse,warehouseRequestHeaders:realApi.warehouseRequestHeaders,api:{async get(url){calls.push({get:url});if(url.startsWith('/payable/stats'))return{month_total_by_currency:{THB:1000},month_paid_by_currency:{THB:bill.paid_amount},month_unpaid_by_currency:{THB:bill.remaining_amount},overdue_by_currency:{THB:0},supplier_summary:[{supplier_id:1,supplier_name:'供应商',currency:'THB',bill_count:1,total_amount:1000,paid_amount:bill.paid_amount,unpaid_amount:bill.remaining_amount,overdue_amount:0}]};if(url.startsWith('/payable/monthly-order'))return{data:[]};if(url.startsWith('/payable?'))return{data:[{...bill}],total:1};if(url.startsWith('/payable/1/detail'))return{...bill};return{data:[]};}}};
-async function fetcher(url,options){calls.push({url,method:options.method,headers:options.headers,body:options.body});if(options.method==='PUT'){
+api.ApiError=realApi.ApiError;
+async function fetcher(url,options){calls.push({url,method:options.method,headers:options.headers,body:options.body});if(url==='/api/v1/payable')return{ok:true,status:200,json:async()=>({id:9})};if(options.method==='PUT'){
  if(rejectStatus)return{ok:false,status:rejectStatus,json:async()=>({detail:'isolated permission revoked'})};
  const query=new URL(url,'http://isolated').searchParams,key=query.get('request_key'),amount=Number(query.get('paid_amount'));
  if(!payments.has(key)){const p={payment_id:payments.size+1,amount,account_id:1};payments.set(key,p);bill.paid_amount+=amount;bill.remaining_amount=1000-bill.paid_amount;bill.status=bill.remaining_amount?'partially_paid':'paid';}
@@ -38,6 +39,8 @@ const button=(tree,label)=>{const n=walk(tree).find(x=>x.type==='button'&&text(x
  payments=new Map();bill.paid_amount=0;bill.remaining_amount=1000;bill.status='pending';calls=[];uploads=0;
  const h=hooks(),toasts=[],Wallet=()=>null,Detail=()=>null;module=transport();
  const imports={react:h.react,'@/lib/api':api,'@/lib/currency':money,'@/lib/payablePayment':module,'@/hooks/useAuth':{useAuth:()=>({user:{id:1,role:'warehouse_admin'}})},'@/hooks/useMenuPermission':{useMenuPermission:()=>true},'@/hooks/useI18n':{useI18n:()=>({t:k=>k})},'@/components/ui/Toast':{useToast:()=>({toast:(...x)=>toasts.push(x)})},'next/navigation':{useRouter:()=>({push(){}})},'@/components/WalletAccountSelect':{__esModule:true,default:Wallet},'@/components/PayableDetail':{__esModule:true,default:Detail},'@/components/common/DataTable':{__esModule:true,default:()=>null}};
+ imports['@/lib/registrationRequest']=compile('lib/registrationRequest.ts',{'@/lib/api':api},{localStorage:local,sessionStorage:session,crypto:{randomUUID:()=>`registration-${++sequence}`}});
+ imports['@/components/PayableDuplicateDialog']={__esModule:true,default:()=>null};
  const Page=compile('app/(dashboard)/payable/page.tsx',imports,{window:{location:{search:''}},crypto:{randomUUID:()=>`page-key-${++sequence}`},fetch:fetcher,FormData,localStorage:local,sessionStorage:session}).default;
  let tree=await h.render(()=>Page());assert(text(tree).includes('应付总表（供应商 × 币种）'));assert(text(tree).includes('逾期属于剩余'));
  button(tree,'查看对应明细').props.onClick();tree=await h.render(()=>Page());assert(calls.some(c=>c.get?.startsWith('/payable?')&&c.get.includes('currency=THB')&&c.get.includes('effective_only=true')));
@@ -59,6 +62,10 @@ const button=(tree,label)=>{const n=walk(tree).find(x=>x.type==='button'&&text(x
  const retry=calls.filter(c=>c.url?.includes('/upload-voucher')).at(-1);assert(retry.url.includes('/payable/1/'));assert.equal(retry.headers['X-Warehouse-ID'],'1');assert.equal(await retry.body.get('file').text(),'proof-A');
  // Actual native create request uses B, not the user's primary warehouse A, without JSON Content-Type.
  setWarehouse('2');tree=await h.render(()=>Page());button(tree,'新建账单').props.onClick();tree=await h.render(()=>Page());
+ for(const [label,value] of [['账单编号（登记号）','HEADER-B'],['账单日期','2026-10-26'],['到期日期','2026-12-01'],['金额','250']]){
+   const group=walk(tree).find(x=>x.type==='div'&&x.props.className==='form-group'&&walk(x.props.children).some(y=>y.type==='label'&&text(y)===label));
+   assert(group,label);walk(group).find(x=>x.type==='input').props.onChange({target:{value}});tree=await h.render(()=>Page());
+ }
  walk(tree).find(x=>x.type==='input'&&x.props.type==='file').props.onChange({target:{files:[new Blob(['B-manual'])]}});
  tree=await h.render(()=>Page());await walk(tree).findLast(x=>x.type==='button'&&text(x).trim()==='保存').props.onClick();
  const create=calls.findLast(c=>c.url==='/api/v1/payable');assert.equal(create.headers['X-Warehouse-ID'],'2');assert.equal(create.headers['Content-Type'],undefined);setWarehouse('1');

@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { LinkedPayable, PurchaseQuantities } from "@/components/ProcurementInfo";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { registrationDraft, submitRegistration } from "@/lib/registrationRequest";
+import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
 import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag, AlertCircle } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -86,6 +88,7 @@ export default function SuppliersPage() {
   const [orderSupplierId, setOrderSupplierId] = useState(0);
   const [orderTotal, setOrderTotal] = useState(0);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [duplicateChallenge,setDuplicateChallenge]=useState<{detail:any;retry:(confirmation:DuplicateConfirmation)=>Promise<void>}|null>(null);
   // 采购收货验收
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptOrders, setReceiptOrders] = useState<any[]>([]);
@@ -193,7 +196,10 @@ export default function SuppliersPage() {
     setOrderSupplierId(sid);
     setOrderItems({});
     setOrderTotal(0);
+    setReasonMap({});
     try {
+      const draft=registrationDraft("purchase_order",sid);
+      if(draft){setOrderItems(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.quantity])));setReasonMap(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.reason || ""])));toast("success","已恢复原采购登记，请核对后沿用原请求重试");}
       api.get<any>(`/suppliers/${sid}/products`).then((r: any) => {
         setProducts(r.data);
         setShowOrder(true);
@@ -232,16 +238,17 @@ export default function SuppliersPage() {
   })();
   const QUICK_REASONS = ["质量更好", "交货更快", "距离更近", "长期合作", "其他"];
 
-  async function doSubmitOrder(confirmAnomaly: boolean, reasons: Record<number, string>) {
+  async function doSubmitOrder(confirmAnomaly: boolean, reasons: Record<number, string>, confirmation?:DuplicateConfirmation) {
     const selectedIds = Object.keys(orderItems).map(Number).filter(id => orderItems[id] > 0);
     if (selectedIds.length === 0) { toast("error", "请至少选择一个产品"); return; }
     setOrderSubmitting(true);
     try {
       const payload = {
         items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id], reason: reasons[id] || "" })),
-        confirm_price_anomaly: confirmAnomaly,
       };
-      const r = await api.post<any>(`/suppliers/${orderSupplierId}/purchase-order`, payload);
+      const r = await submitRegistration<any>("purchase_order",orderSupplierId,payload,key=>api.post<any>(`/suppliers/${orderSupplierId}/purchase-order`,{
+        ...payload,request_key:key,confirm_price_anomaly:confirmAnomaly,duplicate_confirmation:confirmation,
+      }));
       if (r.need_confirm) {
         // 价格异常：确认后再提交
         const lines = (r.anomalies || []).map((a: any) =>
@@ -268,11 +275,11 @@ export default function SuppliersPage() {
       if (confirm(`采购单已创建，应付账单编号: ${r.payable_bill_number}\n是否跳转到应付账款页面？`)) {
         router.push(payablePermission || planPermission ? `/payable?bill_id=${r.payable_bill_id}` : `/suppliers/purchase-orders/${r.order.id}`);
       }
-    } catch (err: any) { toast("error", err.message || "下单失败"); }
+    } catch (err: any) { if(err.detail?.candidates){setDuplicateChallenge({detail:err.detail,retry:data=>doSubmitOrder(confirmAnomaly,reasons,data)});}else toast("error", err.message || "下单失败"); }
     finally { setOrderSubmitting(false); }
   }
 
-  function submitOrder() { doSubmitOrder(false, {}); }
+  function submitOrder() { doSubmitOrder(false, reasonMap); }
 
   function confirmReasonSubmit() {
     for (const item of reasonItems) {
@@ -297,13 +304,13 @@ export default function SuppliersPage() {
       setApprovalThreshold(th.threshold ?? 0);
     } catch {}
   }
-  async function approveOrder(id: number) {
+  async function approveOrder(id: number, confirmation?:DuplicateConfirmation) {
     try {
-      await api.put(`/suppliers/purchase-approvals/${id}/approve`, {});
+      await api.put(`/suppliers/purchase-approvals/${id}/approve`, {duplicate_confirmation:confirmation});
       await openPoDetail(id);
       toast("success", "审批通过，应付账单已生成");
       openApprovals();
-    } catch (e: any) { toast("error", e.message || "审批失败"); }
+    } catch (e: any) { if(e.detail?.candidates){setDuplicateChallenge({detail:e.detail,retry:data=>approveOrder(id,data)});}else toast("error", e.message || "审批失败"); }
   }
   async function confirmReject() {
     if (!rejectTarget) return;
@@ -529,6 +536,7 @@ export default function SuppliersPage() {
 
   return (
     <>
+      {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       <div className="flex justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <h1 className="page-title">{t("suppliers")}</h1>

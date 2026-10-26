@@ -49,7 +49,8 @@ def bill_values(b):
         'remaining_amount': float(money(b.amount) - money(b.paid_amount)) if b.paid_amount is not None else None, 'status': b.status,
         'need_boss_confirm': b.need_boss_confirm, 'purchase_order_id': b.purchase_order_id,
         'payment_voucher': b.payment_voucher, 'bill_attachment': b.bill_attachment,
-        'remark': b.remark, 'detail': b.detail}
+        'remark': b.remark, 'detail': b.detail, 'invoice_identity': b.invoice_identity,
+        'duplicate_confirmation': b.duplicate_confirmation, 'create_request_key': b.create_request_key}
 
 
 async def bill_detail(db, bill_id, warehouse_id):

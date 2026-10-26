@@ -1,0 +1,42 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),React=require('react');
+const load=(file,imports={},extra={})=>{const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src',file),'utf8'),{fileName:file,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;vm.runInNewContext(code,{module:m,exports:m.exports,require:n=>imports[n]||require(n),console,process:{env:{}},...extra});return m.exports;};
+const walk=x=>!x||typeof x!=='object'?[]:Array.isArray(x)?x.flatMap(walk):[x,...walk(x.props?.children)];
+const text=x=>x==null||typeof x==='boolean'?'':typeof x!=='object'?String(x):Array.isArray(x)?x.map(text).join(''):text(x.props?.children);
+const mem=()=>{const data=new Map();return{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};};
+const local=mem(),session=mem();local.setItem('user',JSON.stringify({id:1,warehouse_id:1}));let wh='1',seq=0;
+const api={getActiveWarehouseId:()=>wh};
+const moduleFactory=()=>load('lib/registrationRequest.ts',{'@/lib/api':api},{localStorage:local,sessionStorage:session,crypto:{randomUUID:()=>`registration-${++seq}`}});
+const tick=()=>new Promise(r=>setTimeout(r,0));
+(async()=>{
+ let mod=moduleFactory(),keys=[],records=new Map(),drop=true;
+ const payload={form:{bill_number:'B-1',amount:100},invoice:{verified:false}};
+ const send=async key=>{keys.push(key);if(!records.has(key))records.set(key,{id:records.size+1});if(drop){drop=false;throw Error('response lost after local commit');}return records.get(key);};
+ await assert.rejects(mod.submitRegistration('manual_bill',0,payload,send),/结果待核对/);
+ const original=mod.registrationDraft('manual_bill');assert(original.unknown);
+ mod=moduleFactory();await assert.rejects(mod.submitRegistration('manual_bill',0,{...payload,changed:true},send),/恢复原内容/);assert.equal(keys.length,1);
+ await assert.rejects(mod.submitRegistration('manual_bill',0,payload,async()=>{throw Object.assign(Error('revoked'),{status:403});}));
+ assert.equal(mod.registrationDraft('manual_bill').key,original.key);
+ const retry=await mod.submitRegistration('manual_bill',0,payload,send);assert.equal(retry.id,1);assert.equal(records.size,1);assert.equal(keys[0],keys[1]);assert.equal(mod.registrationDraft('manual_bill'),null);
+ const blocked=session.setItem;session.setItem=()=>{throw Error('unavailable');};await assert.rejects(mod.submitRegistration('manual_bill',0,payload,send),/无法保存/);assert.equal(keys.length,2);session.setItem=blocked;
+ let release,count=0;const held=new Promise(r=>release=r);
+ const a=mod.submitRegistration('purchase_order',9,{items:[1]},async()=>{count++;await held;return{order:{id:99}};});
+ const b=mod.submitRegistration('purchase_order',9,{items:[1]},async()=>{throw Error('duplicate send');});
+ await assert.rejects(mod.submitRegistration('purchase_order',9,{items:[2]},async()=>({})),/正在提交/);release();assert.equal((await a).order.id,(await b).order.id);assert.equal(count,1);
+ await assert.rejects(mod.submitRegistration('manual_bill',0,payload,async()=>{throw Object.assign(Error('suspected'),{status:409,detail:{code:'payable_duplicate_confirmation'}});}));
+ assert.equal(mod.registrationDraft('manual_bill').unknown,false);
+ // Definite rejection allows correcting a draft; an unknown response does not.
+ await mod.submitRegistration('manual_bill',0,{corrected:true},async()=>({id:10}));
+ await assert.rejects(mod.submitRegistration('manual_bill',0,payload,async()=>{throw Error('lost');}));
+ wh='2';assert.equal(mod.registrationDraft('manual_bill'),null);wh='1';assert(mod.registrationDraft('manual_bill'));
+ local.setItem('user',JSON.stringify({id:2,warehouse_id:1}));assert.equal(mod.registrationDraft('manual_bill'),null);local.setItem('user',JSON.stringify({id:1,warehouse_id:1}));
+ // Actual confirmation component: no confirmation without reason; candidates/links and reason passed unchanged.
+ const state=[];let i=0;const react={...React,useState(v){const n=i++;if(!(n in state))state[n]=v;return[state[n],v=>state[n]=typeof v==='function'?v(state[n]):v];}};
+ const Dialog=load('components/PayableDuplicateDialog.tsx',{react,'next/link':{__esModule:true,default:'a'},'@/lib/currency':load('lib/currency.ts'),'@/components/ProcurementInfo':{billStatus:{pending:'待付'}}}).default;
+ let accepted;const challenge={message:'核对',candidates:[{id:7,bill_number:'OLD-7',bill_date:'2026-10-26',amount:100,currency:'THB',status:'pending',reasons:['同金额同日']}],hard_duplicate:false};
+ const render=()=>{i=0;return Dialog({challenge,onClose(){},onConfirm:async data=>{accepted=data;}});};
+ const button=(tree,label)=>walk(tree).find(x=>x.type==='button'&&text(x)===label);
+ let tree=render();assert(walk(tree).some(x=>x.props?.href==='/payable?bill_id=7'));await button(tree,'说明后继续登记').props.onClick();tree=render();assert(text(tree).includes('请填写本次继续登记的原因'));assert.equal(accepted,undefined);
+ walk(tree).find(x=>x.type==='textarea').props.onChange({target:{value:'独立第二笔，已核对'}});tree=render();await button(tree,'说明后继续登记').props.onClick();assert.deepEqual(JSON.parse(JSON.stringify(accepted)),{candidate_ids:[7],reason:'独立第二笔，已核对'});
+ challenge.hard_duplicate=true;tree=render();assert(!button(tree,'说明后继续登记'));assert(!walk(tree).some(x=>x.type==='textarea'));
+ console.log('PASS: registration unknown-result request key survives reload/403, payload changes and storage failure block sends, concurrent identical submission coalesces, known409 permits correction, user/warehouse drafts isolate; actual duplicate dialog requires reason and exact candidate IDs, links to original bill, hard invoice duplicate has no override');
+})().catch(e=>{console.error(e);process.exitCode=1;});

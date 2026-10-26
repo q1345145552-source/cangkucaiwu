@@ -1,5 +1,11 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
+export class ApiError extends Error {
+  constructor(public status:number, public detail:any) {
+    super(typeof detail === "string" ? detail : detail?.message || `HTTP ${status}`);
+  }
+}
+
 let token: string | null = null;
 if (typeof window !== "undefined") {
   token = localStorage.getItem("token");
@@ -98,7 +104,7 @@ async function request<T>(
         return field ? `${field}: ${e.msg}` : e.msg;
       }).join("; ");
     }
-    throw new Error(msg);
+    throw new ApiError(res.status,Array.isArray(err.detail) ? msg : err.detail || msg);
   }
   return res.json();
 }

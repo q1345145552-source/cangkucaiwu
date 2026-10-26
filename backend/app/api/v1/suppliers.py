@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -21,6 +21,7 @@ from app.core.config_access import ensure_config_editor
 _CONCENTRATION_PERMISSION = MENU_PERMISSIONS_BY_KEY["concentration"].label
 
 from app.services.supplier_payable_read import current_supplier_warehouse, purchase_detail, checked_link
+from app.services import payable_creation as creation
 
 router = APIRouter()
 
@@ -229,6 +230,8 @@ class PurchaseOrderRequest(BaseModel):
     items: List[PurchaseOrderItem]
     remark: Optional[str] = None
     confirm_price_anomaly: bool = False  # 是否确认价格偏高后提交
+    request_key: Optional[str] = None
+    duplicate_confirmation: Optional[dict] = None
 
 
 # Parse settlement_cycle string to get number of days
@@ -595,6 +598,19 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     if supplier.warehouse_id != wh_id: raise HTTPException(403, "无权操作其他仓库的供应商")
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+    request_key = creation.number(req.request_key, '请求编号', 100)
+    await creation.creation_lock(db,wh_id)
+    signature = creation.fingerprint({'supplier_id':supplier_id,'items':[i.model_dump() for i in req.items],'remark':req.remark})
+    previous = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.warehouse_id == wh_id,
+        PurchaseOrder.request_key == request_key))).scalars().all()
+    if len(previous)>1: raise HTTPException(409,'历史采购请求编号冲突，请管理员核对')
+    if previous:
+        old=previous[0]
+        if old.request_fingerprint != signature: raise HTTPException(409,f'该采购请求已保存且内容不同，请查看原采购 #{old.id}；未重复新增')
+        linked=await creation.active_purchase_bill(db,old)
+        return {'message':'该采购请求已保存，未重复新增','replayed':True,'pending':old.status=='pending',
+            'order':{'id':old.id,'order_number':old.order_number,'total_amount':old.total_amount,'items':old.items,'status':old.status},
+            'payable_bill_id':linked.id if linked else None,'payable_bill_number':linked.bill_number if linked else None}
     threshold = await _get_price_threshold(db, wh_id)
 
     pid_set = {it.product_id for it in req.items}
@@ -691,9 +707,10 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         currency=order_currency, items=items_detail,
         status="pending" if is_pending else "confirmed",
         remark=req.remark, created_by=current_user.id,
+        request_key=request_key,request_fingerprint=signature,
     )
     db.add(po)
-    await db.flush()
+    await creation.flush_unique(db)
 
     # 价格历史/异常/非最低价：订单生效时才写入（直接生效立即写，待审批的等审批通过后再写）
     if not is_pending:
@@ -713,9 +730,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
             source="purchase_order", purchase_order_id=po.id,
             created_by=current_user.id,
         )
-        db.add(bill)
-        await db.flush()
-        po.payable_bill_id = bill.id
+        await creation.register_purchase_bill(db,po,bill,current_user,req.duplicate_confirmation)
         bill_id = bill.id
     await db.flush()
     return {
@@ -1008,18 +1023,22 @@ async def purchase_approvals(current_user: User = Depends(get_current_user), db:
 
 
 @router.put("/purchase-approvals/{po_id}/approve")
-async def approve_purchase(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+async def approve_purchase(po_id: int, req: Optional[dict] = Body(None), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """审批通过：采购单生效，生成应付账单，并写入价格历史/异常/非最低价。"""
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
+    await creation.creation_lock(db,warehouse_id)
+    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id).with_for_update())).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
     if po.warehouse_id != warehouse_id:
         raise HTTPException(403, "无权审批其他仓库的采购单")
+    prior = await creation.active_purchase_bill(db,po)
+    if po.status == 'confirmed' and prior:
+        return {'message':'该采购已审批，未重复生成应付','replayed':True,'payable_bill_id':prior.id,'payable_bill_number':prior.bill_number}
     if po.status != "pending":
         raise HTTPException(400, "该采购单已处理")
     if po.payable_bill_id:
@@ -1039,9 +1058,7 @@ async def approve_purchase(po_id: int, current_user: User = Depends(get_current_
         detail="\n".join(detail_lines), source="purchase_order", purchase_order_id=po.id,
         created_by=current_user.id,
     )
-    db.add(bill)
-    await db.flush()
-    po.payable_bill_id = bill.id
+    await creation.register_purchase_bill(db,po,bill,current_user,(req or {}).get('duplicate_confirmation'))
     po.status = "confirmed"
     await db.flush()
     # 审批通过 = 订单生效，此时才写入价格历史/异常/非最低价
@@ -1057,7 +1074,7 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id))).scalar_one_or_none()
+    po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == po_id).with_for_update())).scalar_one_or_none()
     if not po:
         raise HTTPException(404, "采购单不存在")
     if po.warehouse_id != warehouse_id:

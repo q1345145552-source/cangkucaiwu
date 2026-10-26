@@ -19,6 +19,7 @@ _PAYABLE_PERMISSION = MENU_PERMISSIONS_BY_KEY["payable"].label
 _PLAN_PERMISSION = MENU_PERMISSIONS_BY_KEY["payment_plans"].label
 
 from app.services.supplier_payable_read import current_supplier_warehouse, filtered_bills, supplier_totals, bill_detail, bill_link_warnings, bill_values, owned, checked_link
+from app.services import payable_creation as creation
 
 router = APIRouter()
 
@@ -116,6 +117,9 @@ async def create_bill(
     detail: str = Form(None),
     is_fund_linked: str = Form(None),
     purchase_order_number: str = Form(None),
+    request_key: str = Form(None),
+    invoice_identity: str = Form(None),
+    duplicate_confirmation: str = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
@@ -126,6 +130,19 @@ async def create_bill(
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
     wh_id = warehouse_id
+    request_key = creation.number(request_key, '请求编号', 100)
+    creation.number(bill_number)
+    bill_date_obj = creation.valid_date(bill_date, '账单日期')
+    due_date_obj = creation.valid_date(due_date, '到期日期')
+    creation.valid_amount(amount)
+    if confirmed_amount is not None:
+        import math
+        if not math.isfinite(confirmed_amount) or confirmed_amount < 0:
+            raise HTTPException(400, '供应商确认金额必须是非负有限数字')
+    if not currency or len(currency) > 5:
+        raise HTTPException(400, '请填写有效币种')
+    identity, identity_key = creation.invoice_identity(invoice_identity,current_user)
+    await creation.creation_lock(db, warehouse_id)
     await owned(db, Supplier, supplier_id, warehouse_id, "供应商")
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
@@ -133,44 +150,31 @@ async def create_bill(
     # 关联采购单校验：一张采购单只能生成一张账单
     purchase_order_id = None
     source = "manual"
-    if purchase_order_number and purchase_order_number.strip():
-        po = (await db.execute(
-            select(PurchaseOrder).where(PurchaseOrder.order_number == purchase_order_number.strip())
-        )).scalar_one_or_none()
-        if not po:
-            raise HTTPException(400, f"采购单 {purchase_order_number.strip()} 不存在")
-        if po.warehouse_id != warehouse_id: raise HTTPException(403, "无权关联其他仓库的采购单")
+    import hashlib
+    content = await file.read()
+    signature = creation.fingerprint({'supplier_id':supplier_id,'bill_number':bill_number,'bill_date':bill_date_obj,
+        'due_date':due_date_obj,'amount':amount,'currency':currency,'confirmed_amount':confirmed_amount,
+        'remark':remark,'payment_commitment_days':payment_commitment_days,'detail':detail,'is_fund_linked':is_fund_linked,
+        'purchase_order_number':purchase_order_number,'invoice_key':identity_key,'attachment_sha256':hashlib.sha256(content).hexdigest()})
+    replay = await creation.creation_replay(db,warehouse_id,request_key,signature)
+    if replay:
+        return {'id':replay.id,'message':'该次登记已保存，未重复新增','replayed':True,
+            'has_diff':replay.confirmed_amount is not None and replay.confirmed_amount != replay.amount,'diff_note':replay.diff_note}
+    po = None
+    if purchase_order_number and creation.normalized(purchase_order_number):
+        po = await creation.purchase_by_number(db,warehouse_id,purchase_order_number)
         if po.supplier_id != supplier_id or po.currency != currency: raise HTTPException(400, "采购单的供应商或币种与账单不一致")
         if po.status != "confirmed": raise HTTPException(400, "仅已生效采购单可关联账单")
-        if po.payable_bill_id:
-            raise HTTPException(400, "该采购单已生成账单，不能重复生成")
-        existing_po_bill = (await db.execute(
-            select(PayableBill).where(PayableBill.purchase_order_id == po.id)
-        )).scalar_one_or_none()
-        if existing_po_bill:
-            raise HTTPException(400, "该采购单已生成账单，不能重复生成")
+        if await creation.active_purchase_bill(db,po):
+            raise HTTPException(409, '该采购单已生成有效应付，不能重复生成')
         purchase_order_id = po.id
         source = "purchase_order"
 
-    # 重复检测
-    existing = (await db.execute(
-        select(PayableBill).where(
-            PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
-            PayableBill.bill_number == bill_number,
-            PayableBill.supplier_id == supplier_id,
-        )
-    )).scalar_one_or_none()
-    if existing and not existing.is_duplicate_warned:
-        raise HTTPException(409, f"重复账单警告: 账单号 {bill_number} 已存在，请确认是否新账单")
-
-    # 保存凭证图片（必传，压缩 + 缩略图）
+    # Validation, identity/duplicate checks and DB uniqueness are completed before writing the attachment.
     import os, uuid
     from app.services.image_utils import save_image
     ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "png"
     fname = f"{uuid.uuid4().hex}.{ext}"
-    content = await file.read()
-    result = save_image(content, "/app/uploads/bill_attachments", "/uploads/bill_attachments", fname)
-    voucher_path = result["path"]
 
     # 对账差异检测
     has_diff = False
@@ -182,23 +186,26 @@ async def create_bill(
     b = PayableBill(
         warehouse_id=wh_id, supplier_id=supplier_id,
         bill_number=bill_number,
-        bill_date=datetime.fromisoformat(bill_date),
-        due_date=datetime.fromisoformat(due_date),
+        bill_date=bill_date_obj,
+        due_date=due_date_obj,
         amount=amount, confirmed_amount=confirmed_amount,
         currency=currency, detail=detail, remark=remark,
         payment_commitment_days=payment_commitment_days,
         is_fund_linked=is_fund_linked,
         source=source, purchase_order_id=purchase_order_id,
-        bill_attachment=voucher_path, voucher=voucher_path,
+        invoice_identity=identity, invoice_identity_key=identity_key,
+        create_request_key=request_key,create_request_fingerprint=signature,
         created_by=current_user.id,
     )
-    db.add(b); await db.flush()
+    await creation.register_bill(db,b,current_user,duplicate_confirmation)
     # 关联采购单：回写 payable_bill_id
     if purchase_order_id:
-        po = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.id == purchase_order_id))).scalar_one_or_none()
         if po:
             po.payable_bill_id = b.id
             await db.flush()
+    result = save_image(content, "/app/uploads/bill_attachments", "/uploads/bill_attachments", fname)
+    b.bill_attachment = b.voucher = result['path']
+    await db.flush()
     return {"id": b.id, "message": "账单创建成功", "has_diff": has_diff, "diff_note": diff_note}
 
 @router.post("/{bill_id}/upload-voucher")
@@ -326,6 +333,7 @@ class BillUpdate(BaseModel):
     detail: Optional[str] = None
     remark: Optional[str] = None
     diff_note: Optional[str] = None
+    duplicate_confirmation: Optional[dict] = None
 
 @router.put("/{bill_id}")
 async def update_bill(bill_id: int, req: BillUpdate,
@@ -335,7 +343,8 @@ async def update_bill(bill_id: int, req: BillUpdate,
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
-    result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id))
+    await creation.creation_lock(db,warehouse_id)
+    result = await db.execute(select(PayableBill).where(PayableBill.id == bill_id).with_for_update())
     b = result.scalar_one_or_none()
     if not b: raise HTTPException(404, "账单不存在")
     if current_user.role != Role.SUPER_ADMIN and b.warehouse_id != warehouse_id:
@@ -349,8 +358,10 @@ async def update_bill(bill_id: int, req: BillUpdate,
             raise HTTPException(400, "已付款的账单只能修改备注")
 
     # 金额不能为 0 或负数
-    if req.amount is not None and req.amount <= 0:
-        raise HTTPException(400, "金额必须大于0")
+    if req.amount is not None: creation.valid_amount(req.amount)
+    if req.bill_number is not None: creation.number(req.bill_number)
+    if b.invoice_identity_key and req.supplier_id is not None and req.supplier_id != b.supplier_id:
+        raise HTTPException(400,'已核实发票身份的账单不能直接更换供应商，请核对原单')
 
     # 日期格式校验
     bill_date_obj = None
@@ -396,19 +407,15 @@ async def update_bill(bill_id: int, req: BillUpdate,
 
     # 关联采购单号
     if req.purchase_order_number is not None:
-        po_num = req.purchase_order_number.strip()
+        po_num = creation.normalized(req.purchase_order_number)
         if po_num:
-            po = (await db.execute(
-                select(PurchaseOrder).where(PurchaseOrder.order_number == po_num)
-            )).scalar_one_or_none()
-            if not po:
-                raise HTTPException(400, f"采购单 {po_num} 不存在")
-            if po.warehouse_id != warehouse_id: raise HTTPException(403, "无权关联其他仓库的采购单")
+            po = await creation.purchase_by_number(db,warehouse_id,po_num)
             if po.supplier_id != (req.supplier_id if req.supplier_id is not None else b.supplier_id) or po.currency != (req.currency or b.currency):
                 raise HTTPException(400,"采购单的供应商或币种与账单不一致")
             if po.status != "confirmed": raise HTTPException(400,"仅已生效采购单可关联账单")
-            if po.payable_bill_id and po.payable_bill_id != b.id:
-                raise HTTPException(400, "该采购单已生成账单，不能重复生成")
+            existing_bill=await creation.active_purchase_bill(db,po,allow_bill_id=b.id)
+            if existing_bill and existing_bill.id != b.id:
+                raise HTTPException(409, '该采购单已生成有效应付，不能重复关联')
             # 更换采购单时，先解除旧采购单回写
             if b.purchase_order_id and b.purchase_order_id != po.id:
                 old_po = (await db.execute(
@@ -453,6 +460,14 @@ async def update_bill(bill_id: int, req: BillUpdate,
         b.remark = req.remark
     if req.diff_note is not None:
         b.diff_note = req.diff_note
+
+    if any(k in provided for k in ('supplier_id','bill_number','amount','bill_date','currency','purchase_order_number')):
+        with db.no_autoflush:
+            confirmation = await creation.check_duplicates(db,b,current_user,req.duplicate_confirmation,exclude_id=b.id)
+        if confirmation:
+            b.duplicate_confirmation=confirmation
+            await record_history(db,module='payable',record_id=b.id,operator=current_user,
+                operation_type='duplicate_confirm',after=confirmation,warehouse_id=warehouse_id)
 
     # 修改后快照 + 只记真正变化的字段
     new_po = None

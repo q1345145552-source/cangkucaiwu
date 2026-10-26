@@ -44,6 +44,12 @@ async def setup(tmp_path, mp):
         yield engine,f,c
 
 async def request(c, method, path, uid=1, warehouse='1', code=200, **kwargs):
+    # New creation contract uses request IDs; keep the original round01 financial assertions intact.
+    import uuid
+    if method=='POST' and path.endswith('/purchase-order'):
+        kwargs['json'].setdefault('request_key',uuid.uuid4().hex)
+    if method=='POST' and path=='/payable':
+        kwargs['data'].setdefault('request_key',uuid.uuid4().hex)
     r=await c.request(method,'/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':warehouse},**kwargs)
     assert r.status_code==code,(method,path,r.status_code,r.text)
     return r.json()
@@ -156,7 +162,7 @@ def test_pending_approval_creates_one_link_and_unknown_paid_value_stays_unknown(
             approved=await request(c,'PUT',f'/suppliers/purchase-approvals/{poid}/approve')
             after=await request(c,'GET',f'/suppliers/purchase-orders/{poid}')
             assert after['bill']['id']==approved['payable_bill_id'] and after['status']=='confirmed'
-            await request(c,'PUT',f'/suppliers/purchase-approvals/{poid}/approve',code=400)
+            assert (await request(c,'PUT',f'/suppliers/purchase-approvals/{poid}/approve'))['payable_bill_id']==approved['payable_bill_id']
             async with f() as db:
                 assert (await db.execute(select(func.count(PayableBill.id)).where(PayableBill.purchase_order_id==poid))).scalar_one()==1
                 (await db.get(PayableBill,1)).paid_amount=None;await db.commit()

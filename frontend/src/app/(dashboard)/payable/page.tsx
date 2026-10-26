@@ -2,7 +2,7 @@
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
-import { api, getToken, warehouseRequestHeaders } from "@/lib/api";
+import { api, getToken, warehouseRequestHeaders, ApiError } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
@@ -13,8 +13,11 @@ import { Upload, AlertTriangle, DollarSign, Clock, CheckCircle, AlertCircle, Fil
 import PayableDetail from "@/components/PayableDetail";
 import { pendingPayablePayment, submitPayablePayment, uploadPayableVoucher, payableScope, PayableVoucherTask } from "@/lib/payablePayment";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { registrationDraft, submitRegistration } from "@/lib/registrationRequest";
+import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const emptyInvoice={issuer_identifier:"",series:"",number:"",verified:false};
 
 function summaryAmount(value:number|null, known:number, currency:string) {
   return value == null ? `待核实（已知单据小计 ${fmtMoney(known,currency)}）` : fmtMoney(value,currency);
@@ -34,6 +37,8 @@ export default function PayablePage() {
   const [stats, setStats] = useState<any>(null);
   const [form, setForm] = useState({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
   const [billFile, setBillFile] = useState<File | null>(null);
+  const [invoice,setInvoice]=useState(emptyInvoice),[creating,setCreating]=useState(false);
+  const [duplicateChallenge,setDuplicateChallenge]=useState<{detail:any;retry:(confirmation:DuplicateConfirmation)=>Promise<void>}|null>(null);
   const [payAmounts, setPayAmounts] = useState<Record<number, string | number>>({});
   const [voucherFile, setVoucherFile] = useState<File | null>(null);
   const [payingBillId, setPayingBillId] = useState(0);
@@ -126,8 +131,19 @@ export default function PayablePage() {
     } catch { toast("error", "加载趋势失败"); }
   }
 
-  async function handleCreate() {
+  function openBillForm(){
+    try{const draft=registrationDraft("manual_bill");if(draft){setForm(draft.payload.form);setInvoice(draft.payload.invoice);toast("success","已恢复未完成登记，请重新选择原凭证后重试");}setBillFile(null);setShowForm(true);}
+    catch(e:any){toast("error",e.message);}
+  }
+  function duplicateError(e:any,retry:(confirmation:DuplicateConfirmation)=>Promise<void>){
+    if(e.detail?.candidates && ["payable_duplicate_confirmation","payable_invoice_duplicate"].includes(e.detail.code)){setDuplicateChallenge({detail:e.detail,retry});return true;}
+    return false;
+  }
+  async function handleCreate(confirmation?:DuplicateConfirmation) {
     if (!billFile) { toast("error", "请上传凭证图片"); return; }
+    if(!form.bill_date || !form.due_date || !form.bill_number.trim() || !Number.isFinite(Number(form.amount)) || Number(form.amount)<=0){toast("error","请填写有效账单编号、日期和大于零的金额");return;}
+    if((invoice.issuer_identifier || invoice.series || invoice.number) && !invoice.verified){toast("error","请先核对完整发票身份；无法确认请清空身份字段");return;}
+    if(creating)return;setCreating(true);
     try {
       const fd = new FormData();
       fd.append("supplier_id", String(form.supplier_id));
@@ -143,15 +159,21 @@ export default function PayablePage() {
       if (form.is_fund_linked) fd.append("is_fund_linked", form.is_fund_linked);
       if (form.purchase_order_number) fd.append("purchase_order_number", form.purchase_order_number);
       fd.append("file", billFile);
-      const res = await fetch(`${API_URL}/payable`, {
-        method: "POST", headers: warehouseRequestHeaders(), body: fd,
+      if(invoice.verified)fd.append("invoice_identity",JSON.stringify(invoice));
+      if(confirmation)fd.append("duplicate_confirmation",JSON.stringify(confirmation));
+      const r=await submitRegistration<any>("manual_bill",0,{form,invoice},async key=>{
+        fd.set("request_key",key);
+        const res=await fetch(`${API_URL}/payable`,{method:"POST",headers:warehouseRequestHeaders(),body:fd});
+        const result=await res.json();
+        if(!res.ok)throw new ApiError(res.status,result.detail || "创建失败");
+        return result;
       });
-      const r = await res.json();
-      if (!res.ok) { toast("error", r.detail || "创建失败"); return; }
       toast("success", r.has_diff ? "账单创建成功，已标记对账差异" : "创建成功");
       setShowForm(false); setBillFile(null); setForm({ supplier_id: 0, bill_number: "", bill_date: "", due_date: "", amount: "", confirmed_amount: "", payment_commitment_days: "", currency: "THB", detail: "", remark: "", is_fund_linked: "", purchase_order_number: "" });
+      setInvoice(emptyInvoice);setDuplicateChallenge(null);
       load(); loadStats();
-    } catch (err: any) { toast("error", err.message || "创建失败"); }
+    } catch (err: any) { if(!duplicateError(err,handleCreate))toast("error", err.message || "创建失败"); }
+    finally{setCreating(false);}
   }
 
   function hasPendingPayment(id:number){try{return !!pendingPayablePayment(id);}catch{return true;}}
@@ -222,7 +244,7 @@ export default function PayablePage() {
     } catch (e: any) { toast("error", e.message || "确认失败"); }
   }
 
-  async function handleEdit() {
+  async function handleEdit(confirmation?:DuplicateConfirmation) {
     try {
       const isPaid = (editingBill.status === "paid" || editingBill.paid_amount > 0);
       const payload: any = {};
@@ -244,10 +266,11 @@ export default function PayablePage() {
         payload.remark = editForm.remark;
         payload.diff_note = editForm.diff_note;
       }
+      if(confirmation)payload.duplicate_confirmation=confirmation;
       await api.put<any>(`/payable/${editingBill.id}`, payload);
       toast("success", "账单更新成功");
-      setShowEditModal(false); load(); loadStats();
-    } catch (err: any) { toast("error", err.message || "更新失败"); }
+      setShowEditModal(false);setDuplicateChallenge(null); load(); loadStats();
+    } catch (err: any) { if(!duplicateError(err,handleEdit))toast("error", err.message || "更新失败"); }
   }
 
   function openVoidModal(row: any) {
@@ -419,7 +442,7 @@ export default function PayablePage() {
               清除选择
             </button>
           )}
-          {canWriteBill && <button onClick={() => setShowForm(true)} className="btn-primary h-[42px]">新建账单</button>}
+          {canWriteBill && <button onClick={openBillForm} className="btn-primary h-[42px]">新建账单</button>}
         </div>
       </div>
 
@@ -450,6 +473,7 @@ export default function PayablePage() {
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} rowClassName={(row) => row.status === "voided" ? "opacity-50" : ""} />}
 
       {billDetailId>0 && <PayableDetail billId={billDetailId} revision={detailRevision} onClose={()=>setBillDetailId(0)} onPay={bill=>{setBillDetailId(0);openPayModal(bill);}} onConfirm={confirmBoss}/>}
+      {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       {/* 新建账单弹窗 */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
@@ -470,10 +494,14 @@ export default function PayablePage() {
                 </select>
               </div>
               <div className="form-grid">
-                <div className="form-group"><label className="form-label">账单编号</label><input className="form-input" value={form.bill_number} onChange={e => setForm({ ...form, bill_number: e.target.value })} /></div>
+                <div className="form-group"><label className="form-label">账单编号（登记号）</label><input className="form-input" value={form.bill_number} onChange={e => setForm({ ...form, bill_number: e.target.value })} /></div>
                 <div className="form-group"><label className="form-label">币种</label><select className="form-input" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}><option>THB</option><option>CNY</option><option>USD</option></select></div>
               </div>
               <div className="form-group"><label className="form-label">关联采购单号（可选）</label><input className="form-input" value={form.purchase_order_number} onChange={e => setForm({ ...form, purchase_order_number: e.target.value })} placeholder="如 PO2026..." /></div>
+              <fieldset className="border rounded p-3 space-y-2"><legend>真实发票身份（选填）</legend><p className="text-xs text-gray-500">登记号不默认当作发票号。仅按原始凭证核实后填写；无法确认请留空。只去首尾空白，保留大小写、内部字符和标点。</p>
+                {([["issuer_identifier","供应商官方唯一识别号"],["series","发票类型／系列（完整）"],["number","完整发票号码"]] as const).map(([key,label])=><label className="block text-sm" key={key}>{label}<input className="form-input" maxLength={150} value={invoice[key]} onChange={e=>setInvoice({...invoice,[key]:e.target.value})}/></label>)}
+                <label className="flex gap-2 text-sm"><input type="checkbox" checked={invoice.verified} onChange={e=>setInvoice({...invoice,verified:e.target.checked})}/>我已核对原凭证，确认真实供应商和完整发票身份一致</label>
+              </fieldset>
               <div className="form-grid">
                 <div className="form-group"><label className="form-label">账单日期</label><input type="date" className="form-input" value={form.bill_date} onChange={e => setForm({ ...form, bill_date: e.target.value })} /></div>
                 <div className="form-group"><label className="form-label">到期日期</label><input type="date" className="form-input" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} /></div>
@@ -501,7 +529,7 @@ export default function PayablePage() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleCreate} className="btn-primary min-w-[80px]">保存</button>
+              <button onClick={()=>handleCreate()} disabled={creating} className="btn-primary min-w-[80px]">{creating ? "保存中" : "保存"}</button>
             </div>
           </div></div>
       )}
@@ -566,7 +594,7 @@ export default function PayablePage() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowEditModal(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleEdit} className="btn-primary min-w-[80px]">保存修改</button>
+              <button onClick={()=>handleEdit()} className="btn-primary min-w-[80px]">保存修改</button>
             </div>
           </div>
         </div>

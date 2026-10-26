@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, JSON, Index, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -18,11 +18,19 @@ class PlanStatus(str, enum.Enum):
 
 class PayableBill(Base):
     __tablename__ = "payable_bills"
+    from app.core.payable_constraints import GUARDS
+    __table_args__ = tuple(Index(name, *columns, unique=True, postgresql_where=text(predicate), sqlite_where=text(predicate))
+        for name, (table, columns, predicate) in GUARDS.items() if table == 'payable_bills')
 
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
     bill_number = Column(String(50), nullable=False)
+    invoice_identity = Column(JSON, nullable=True, comment="操作者已核对的供应商官方身份、系列及完整发票号码；原文保留")
+    invoice_identity_key = Column(String(64), nullable=True)
+    create_request_key = Column(String(100), nullable=True)
+    create_request_fingerprint = Column(String(64), nullable=True)
+    duplicate_confirmation = Column(JSON, nullable=True, comment="本次疑似重复确认；不豁免后续检查")
     bill_date = Column(DateTime, nullable=False)
     due_date = Column(DateTime, nullable=False)
     amount = Column(Float, nullable=False)

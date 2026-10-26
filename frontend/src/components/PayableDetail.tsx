@@ -30,6 +30,8 @@ export default function PayableDetail({ billId, revision, onClose, onPay, onConf
         {canWrite && user?.role === "warehouse_admin" && bill.need_boss_confirm === "true" && bill.status !== "voided" && onConfirm && <button className="btn-primary" onClick={()=>onConfirm(bill.id)}>确认收货差异</button>}
         {bill.purchase_order_id ? <Link className="text-blue-600 underline" href={`/suppliers/purchase-orders/${bill.purchase_order_id}`}>查看关联采购单 {bill.purchase_order_number}</Link> : <p>未关联采购单（手动账单）</p>}
         {(bill.warnings || []).map((w:string)=><p role="alert" className="text-red-600" key={w}>{w}</p>)}
+        {bill.invoice_identity && <p>已核实发票：{bill.invoice_identity.issuer_identifier} · {bill.invoice_identity.series} · {bill.invoice_identity.number}</p>}
+        {bill.duplicate_confirmation && <section className="border rounded p-3"><h3 className="font-semibold">本次疑似重复核对留痕</h3><p>{bill.duplicate_confirmation.operator_name} · {new Date(bill.duplicate_confirmation.confirmed_at).toLocaleString("zh-CN",{timeZone:"Asia/Bangkok"})}（泰国时间）</p><p>原因：{bill.duplicate_confirmation.reason}</p><p>核对账单：{bill.duplicate_confirmation.candidate_ids.map((id:number)=>`#${id}`).join("、")}</p><p className="text-xs text-gray-500">仅限本次，不豁免后续登记。</p></section>}
         <h3 className="font-semibold">逐笔实际付款（不补造历史）</h3>
         {bill.payments.length ? bill.payments.map((p:any)=><div key={p.id} className="border rounded-lg p-3 space-y-1" aria-label={`付款记录${p.id}`}>
           <p>#{p.id} · {fmtMoney(p.amount,p.currency)} · {p.account_name}</p>
