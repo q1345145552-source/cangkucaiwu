@@ -18,7 +18,7 @@ export function LinkedPayable({ order }: { order: any }) {
 export function PurchaseQuantities({ order }: { order: any }) {
   return <div className="overflow-x-auto"><table className="w-full text-sm min-w-[680px]">
     <thead><tr>{["产品","规格／单位","订购数量","历史基数","批次累计","当前累计已记录实收","尚差／超收","单价","小计"].map(x => <th className="p-2 text-left" key={x}>{x}</th>)}</tr></thead>
-    <tbody>{(order.items || []).map((it:any,i:number) => <tr className="border-t" key={it.line_id || i}>
+    <tbody>{(order.items || []).map((it:any,i:number) => <tr className="border-t target:bg-blue-50" key={it.line_id || i} id={`purchase-line-${it.line_id || `legacy-${i}`}`}>
       <td className="p-2">{it.product_name || "产品未记录"}</td><td className="p-2">{it.spec || "—"} · {it.unit || "单位未记录"}</td>
       <td className="p-2">{it.quantity ?? "未记录"}</td><td className="p-2">{it.historical_received_quantity ?? "未知"}</td><td className="p-2">{it.batch_received_quantity ?? "暂无批次"}</td><td className="p-2">{it.received_quantity ?? "尚未记录实收"}</td><td className="p-2">{it.diff_quantity ?? "尚未记录差异"}</td>
       <td className="p-2">{it.unit_price == null ? "未记录" : fmtMoney(it.unit_price,order.currency)}</td><td className="p-2">{it.subtotal == null ? "未记录" : fmtMoney(it.subtotal,order.currency)}</td>

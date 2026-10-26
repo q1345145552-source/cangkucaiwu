@@ -39,6 +39,7 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+  const canViewReport=useMenuPermission('suppliers')&&['warehouse_admin','supervisor','staff'].includes((user as {role?:string}|null)?.role||'');
   const canReadCatalog=useMenuPermission("sku_catalog"), canManageCatalog=useMenuPermission("sku_catalog_manage")&&canReadCatalog;
   const [mappingProductId,setMappingProductId]=useState(0),[productImportFile,setProductImportFile]=useState<File|null>(null),[productAttrsText,setProductAttrsText]=useState("");
   const [orderAvailableQuotes,setOrderAvailableQuotes]=useState<any[]>([]);
@@ -594,6 +595,7 @@ export default function SuppliersPage() {
           </button>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {canViewReport&&<button className="btn-secondary text-sm" onClick={()=>router.push("/suppliers/monthly-price-report")}>采购价差月报</button>}
           {isAdmin && (
             <>
               {/* Template download */}

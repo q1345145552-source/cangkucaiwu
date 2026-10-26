@@ -1,15 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, warehouseRequestHeaders } from "@/lib/api";
 import { LinkedPayable, PurchaseQuantities } from "@/components/ProcurementInfo";
 import { ReceiptHistory, ThreeWayMatch } from "@/components/PurchaseReceiptInfo";
 import { fmtMoney } from "@/lib/currency";
 
 export default function PurchaseOrderPage({params}:{params:{id:string}}) {
-  const [order,setOrder]=useState<any>(null),[error,setError]=useState("");
+  const [storedOrder,setOrder]=useState<any>(null),[error,setError]=useState(""),[loadedScope,setLoadedScope]=useState("");
+  const scope=JSON.stringify(warehouseRequestHeaders()),order=loadedScope===scope?storedOrder:null;
   useEffect(()=>{let active=true;setOrder(null);setError("");api.get<any>(`/suppliers/purchase-orders/${params.id}`)
-    .then(x=>{if(active)setOrder(x);}).catch(e=>{if(active)setError(e.message || "采购单读取失败");});return()=>{active=false;};},[params.id]);
+    .then(x=>{if(active&&JSON.stringify(warehouseRequestHeaders())===scope){setLoadedScope(scope);setOrder(x);}}).catch(e=>{if(active&&JSON.stringify(warehouseRequestHeaders())===scope)setError(e.message || "采购单读取失败");});return()=>{active=false;};},[params.id,scope]);
+  useEffect(()=>{if(!order||typeof window==='undefined')return;try{const id=decodeURIComponent(window.location.hash.slice(1));if(id.startsWith('purchase-line-'))document.getElementById(id)?.scrollIntoView({block:'center'});}catch{}},[order]);
   return <div className="card p-4 space-y-4"><h1 className="page-title">采购单详情 {order?.order_number}</h1>
     {error ? <p role="alert" className="text-red-600">{error}</p> : !order ? <p>加载中</p> : <>
       <p>供应商：{order.supplier_name} · 币种：{order.currency}</p>

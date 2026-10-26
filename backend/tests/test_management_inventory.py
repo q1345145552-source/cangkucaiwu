@@ -6,8 +6,8 @@ from app.core.route_access import SELF_ROUTES, ACCOUNT_UTILITIES
 def test_original94_registered_management_all_guarded():
     result=audit()
     # Round06 adds 5 scoped quote/version/recommendation routes after Round05.
-    assert result['total_method_paths']==383
-    assert result['management_method_paths']==360
+    assert result['total_method_paths']==386
+    assert result['management_method_paths']==363
     assert len(result['original94_comparison'])==94
     assert all(r['non_labor_guard'] and r['current_access'] in MANAGEMENT for r in result['original94_comparison'])
     assert result['unprotected_or_unclassified']==[]
@@ -31,7 +31,7 @@ def test_inventory_includes_all_retired_endpoints_and_target_groups():
     result=audit();rows=result['routes']
     groups=set(result['management_by_module'])
     assert {'suppliers','income_expense','reimbursement','payable','credit','reports','cost_funds_debt',
-        'market','group_order','exchange_rates','upload','sku_catalog','supplier_quotes'}<=groups
+        'market','group_order','exchange_rates','upload','sku_catalog','supplier_quotes','procurement_report'}<=groups
     retired={('GET','/api/v1/reports/operations'),('GET','/api/v1/customers/{customer_id}/receivables'),
         ('POST','/api/v1/customers/{customer_id}/receipts/link'),('GET','/api/v1/credit/shipments'),
         ('POST','/api/v1/credit/{credit_id}/shipment'),('PUT','/api/v1/credit/{credit_id}/shipment/{shipment_id}'),
