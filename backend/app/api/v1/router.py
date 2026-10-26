@@ -13,8 +13,10 @@ from app.api.v1 import expense_approval
 from app.api.v1 import cash_advance
 from app.api.v1 import cost_identity
 from app.api.v1 import sku_catalog
+from app.api.v1 import supplier_quotes
 
 api_router = APIRouter()
+api_router.include_router(supplier_quotes.router,prefix='/supplier-quotes',tags=['数量阶梯报价'])
 api_router.include_router(sku_catalog.router,prefix='/sku-catalog',tags=['标准SKU目录'])
 api_router.include_router(cost_identity.router,prefix='/expense-identities',tags=['费用身份核对'])
 api_router.include_router(auth.router, prefix="/auth", tags=["认证"])

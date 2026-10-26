@@ -15,6 +15,14 @@ export function registrationDraft(kind:string,resource:string|number=0):Draft|nu
   if(!result.key || !result.payload)throw Error("登记请求草稿异常，请先核对原单");
   return result;
 }
+// Only a locked server rejection proving this exact request did not create an order can unfreeze it.
+// Retain its key: a competing replay can therefore never create a second order.
+export function acceptQuotePreviewRejection(resource:string|number,detail:any):void {
+  const id=slot('purchase_order',resource),draft=registrationDraft('purchase_order',resource);
+  if(running.has(id) || !draft || detail?.code!=='quote_preview_changed' || detail.not_created!==true || detail.request_key!==draft.key)
+    throw Error('尚未取得原请求未创建采购的明确结果，请先核对原单');
+  sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
+}
 export async function submitRegistration<T>(kind:string,resource:string|number,payload:any,send:(key:string)=>Promise<T>):Promise<T> {
   const id=slot(kind,resource),previous=registrationDraft(kind,resource);
   if(running.has(id)){

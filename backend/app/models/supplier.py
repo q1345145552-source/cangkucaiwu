@@ -145,6 +145,7 @@ class ProcurementPriceHistory(Base):
     unit = Column(String(20), nullable=True)
     sku_snapshot = Column(JSON, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    pricing_snapshot = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 

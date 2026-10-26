@@ -567,6 +567,8 @@ async def seed():
         await migrate_cost_identities(conn)
         from app.services.sku_catalog_migration import migrate_sku_catalog
         await migrate_sku_catalog(conn)
+        from app.services.supplier_quote_migration import migrate_supplier_quotes
+        await migrate_supplier_quotes(conn)
         # Migration: add half column to payroll_records if not exists
         from sqlalchemy import text
         try:

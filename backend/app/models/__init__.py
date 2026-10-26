@@ -30,6 +30,7 @@ from app.models.wallet import PayablePayment, AccountTransfer
 from app.models.purchase_receipt import PurchaseReceiptEvent
 from app.models.cost_identity import CostIdentity
 from app.models.sku_catalog import StandardSKU, SupplierWarehouseTag, SupplierTagLink, ProductSkuMappingEvent, ProductImportOperation
+from app.models.supplier_quote import SupplierQuote, SupplierQuoteRevision, SupplierQuoteTier
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -54,4 +55,5 @@ __all__ = [
     "CashAdvanceRepayment",
     "ReimbursementPayment", "PurchaseReceiptEvent", "CostIdentity",
     "StandardSKU", "SupplierWarehouseTag", "SupplierTagLink", "ProductSkuMappingEvent", "ProductImportOperation",
+    "SupplierQuote", "SupplierQuoteRevision", "SupplierQuoteTier",
 ]

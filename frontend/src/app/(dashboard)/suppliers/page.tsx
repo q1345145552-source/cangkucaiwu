@@ -11,10 +11,12 @@ import { LinkedPayable, PurchaseQuantities } from "@/components/ProcurementInfo"
 import { ReceiptHistory, ThreeWayMatch } from "@/components/PurchaseReceiptInfo";
 import { ApiError } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
-import { registrationDraft, submitRegistration } from "@/lib/registrationRequest";
+import { registrationDraft, submitRegistration, acceptQuotePreviewRejection } from "@/lib/registrationRequest";
 import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
 import ProductImportDialog from "@/components/ProductImportDialog";
 import SkuProductMapping from "@/components/SkuProductMapping";
+import SupplierQuoteEditor from "@/components/SupplierQuoteEditor";
+import PurchaseQuotePreview from "@/components/PurchaseQuotePreview";
 import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
 import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag, AlertCircle } from "lucide-react";
 
@@ -39,6 +41,10 @@ export default function SuppliersPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const canReadCatalog=useMenuPermission("sku_catalog"), canManageCatalog=useMenuPermission("sku_catalog_manage")&&canReadCatalog;
   const [mappingProductId,setMappingProductId]=useState(0),[productImportFile,setProductImportFile]=useState<File|null>(null),[productAttrsText,setProductAttrsText]=useState("");
+  const [orderAvailableQuotes,setOrderAvailableQuotes]=useState<any[]>([]);
+  const [quoteProductId,setQuoteProductId]=useState(0),[orderQuotes,setOrderQuotes]=useState<Record<number,number|null>>({}),[orderRequirements,setOrderRequirements]=useState<any>({quality_tags:[],max_lead_days:null}),[orderPricing,setOrderPricing]=useState<any>(null),[orderDraft,setOrderDraft]=useState<any>(null),[pricingRejection,setPricingRejection]=useState<any>(null);
+  const quoteScope=JSON.stringify(warehouseRequestHeaders());
+  useEffect(()=>{setQuoteProductId(0);setOrderAvailableQuotes([]);setOrderQuotes({});setOrderRequirements({quality_tags:[],max_lead_days:null});setOrderPricing(null);setOrderDraft(null);setPricingRejection(null);setShowOrder(false);},[quoteScope]);
   const [filterCat, setFilterCat] = useState(1);
   const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "", category_id: 0, default_currency: "THB" });
   const [aiResult, setAiResult] = useState("");
@@ -206,9 +212,10 @@ export default function SuppliersPage() {
     setOrderSupplierId(sid);
     setOrderItems({});
     setOrderTotal(0);
-    setReasonMap({});
+    setReasonMap({});setOrderAvailableQuotes([]);setOrderQuotes({});setOrderRequirements({quality_tags:[],max_lead_days:null});setOrderPricing(null);setOrderDraft(null);setPricingRejection(null);
     try {
       const draft=registrationDraft("purchase_order",sid);
+      if(draft){setOrderDraft(draft);setOrderQuotes(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.quote_id||null])));setOrderRequirements(draft.payload.requirements||{quality_tags:[],max_lead_days:null});}
       if(draft){setOrderItems(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.quantity])));setReasonMap(Object.fromEntries(draft.payload.items.map((i:any)=>[i.product_id,i.reason || ""])));toast("success","已恢复原采购登记，请核对后沿用原请求重试");}
       api.get<any>(`/suppliers/${sid}/products`).then((r: any) => {
         setProducts(r.data);
@@ -217,8 +224,10 @@ export default function SuppliersPage() {
     } catch { toast("error", "加载产品失败"); }
   }
   function toggleOrderItem(pid: number) {
+    if(orderDraft?.unknown)return;
+    setOrderPricing(null);
     const p = products.find((x: any) => x.id === pid);
-    if (!p || !(p.unit_price > 0)) {
+    if (!p || (!(p.unit_price > 0)&&!orderAvailableQuotes.some(q=>q.product_id===pid))) {
       toast("error", "该产品尚未录入价格，请先录入价格后再下单");
       return;
     }
@@ -229,17 +238,24 @@ export default function SuppliersPage() {
     });
   }
   function updateQuantity(pid: number, qty: number) {
+    if(orderDraft?.unknown)return;
+    if(!Number.isInteger(qty)){toast("error","采购仅支持整数原单位，不会自动截断小数");return;}
     if (qty < 1) return;
+    setOrderPricing(null);
     setOrderItems(prev => ({ ...prev, [pid]: qty }));
   }
-  // Compute order total
+  const selectedOrderIds=Object.keys(orderItems).map(Number).filter(id=>orderItems[id]>0);
+  const orderPricingCurrent=orderPricing&&orderPricing.rows.length===selectedOrderIds.length&&JSON.stringify(orderPricing.requirements)===JSON.stringify(orderRequirements)&&orderPricing.rows.every((r:any)=>orderItems[r.product_id]===Number(r.quantity)&&(orderQuotes[r.product_id]||null)===(r.selected_quote?.id||null));
+  // Compute order total; an explicit quote never silently uses the old product price.
   useEffect(() => {
+    if(orderPricingCurrent){setOrderTotal(Number(orderPricing.total));return;}
+    if(selectedOrderIds.some(id=>orderQuotes[id])){setOrderTotal(0);return;}
     let total = 0;
     products.forEach((p: any) => {
       if (orderItems[p.id]) total += (p.unit_price || 0) * (orderItems[p.id] || 0);
     });
     setOrderTotal(Math.round(total * 100) / 100);
-  }, [orderItems, products]);
+  }, [orderItems, products, orderQuotes, orderPricing, orderPricingCurrent]);
   const orderCurrency = (() => {
     for (const p of products) {
       if (orderItems[p.id] > 0) return p.currency || "THB";
@@ -253,8 +269,12 @@ export default function SuppliersPage() {
     if (selectedIds.length === 0) { toast("error", "请至少选择一个产品"); return; }
     setOrderSubmitting(true);
     try {
-      const payload = {
-        items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id], reason: reasons[id] || "" })),
+      const stored=registrationDraft("purchase_order",orderSupplierId);
+      const needsPricing=selectedIds.some(id=>!!orderQuotes[id])||orderRequirements.quality_tags.length>0||orderRequirements.max_lead_days!==null;
+      if(!stored?.unknown&&needsPricing&&(!orderPricingCurrent||!orderPricing.can_order))throw Error("请先核对有效报价与数量，处理不满足的条件后再提交");
+      const payload = stored?.unknown?stored.payload:{
+        items: selectedIds.map(id => ({ product_id: id, quantity: orderItems[id], reason: reasons[id] || "",...(orderQuotes[id]?{quote_id:orderQuotes[id]}:{}) })),
+        ...(needsPricing?{pricing_version:orderPricing.version,requirements:orderRequirements}:{})
       };
       const r = await submitRegistration<any>("purchase_order",orderSupplierId,payload,key=>api.post<any>(`/suppliers/${orderSupplierId}/purchase-order`,{
         ...payload,request_key:key,confirm_price_anomaly:confirmAnomaly,duplicate_confirmation:confirmation,cost_confirmation:costConfirmation,
@@ -285,7 +305,7 @@ export default function SuppliersPage() {
       if (confirm(`采购单已创建，应付账单编号: ${r.payable_bill_number}\n是否跳转到应付账款页面？`)) {
         router.push(payablePermission || planPermission ? `/payable?bill_id=${r.payable_bill_id}` : `/suppliers/purchase-orders/${r.order.id}`);
       }
-    } catch (err: any) { if(cost.capture(err,data=>doSubmitOrder(confirmAnomaly,reasons,confirmation,data))){}else if(err.detail?.candidates){setDuplicateChallenge({detail:err.detail,retry:data=>doSubmitOrder(confirmAnomaly,reasons,data,costConfirmation)});}else toast("error", err.message || "下单失败"); }
+    } catch (err: any) { setOrderDraft(registrationDraft("purchase_order",orderSupplierId));if(err.detail?.code==='quote_preview_changed'){setOrderPricing(null);setPricingRejection(err.detail);toast("error",err.message);}else if(cost.capture(err,data=>doSubmitOrder(confirmAnomaly,reasons,confirmation,data))){}else if(err.detail?.candidates){setDuplicateChallenge({detail:err.detail,retry:data=>doSubmitOrder(confirmAnomaly,reasons,data,costConfirmation)});}else toast("error", err.message || "下单失败"); }
     finally { setOrderSubmitting(false); }
   }
 
@@ -556,6 +576,7 @@ export default function SuppliersPage() {
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       {cost.dialog}
       {productImportFile&&<ProductImportDialog canMap={canManageCatalog} file={productImportFile} supplierId={importSupplierId||undefined} onClose={()=>{setProductImportFile(null);setImportSupplierId(null);if(fileInputRef.current)fileInputRef.current.value="";}} onImported={r=>{toast("success",r.message);load();}}/>}
+      {quoteProductId>0&&<SupplierQuoteEditor supplierId={productSupplierId} productId={quoteProductId} canEdit={canManageCatalog} onClose={()=>setQuoteProductId(0)} onDone={()=>toast("success","报价版本已保存，旧采购快照不变")}/>}
       {mappingProductId>0&&<SkuProductMapping productId={mappingProductId} canEdit={canManageCatalog} onClose={()=>setMappingProductId(0)} onDone={()=>{toast("success","人工映射已保存，历史订单不变");openProducts(productSupplierId);}}/>}
       <div className="flex justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -717,6 +738,7 @@ export default function SuppliersPage() {
                             </td>
                             <td className="px-3 py-3 text-center">
                               {canReadCatalog&&<button className="text-blue-600 px-2" onClick={()=>setMappingProductId(p.id)}>SKU映射</button>}
+                              {canReadCatalog&&<button className="text-xs text-indigo-600" onClick={()=>setQuoteProductId(p.id)}>阶梯报价</button>}
                               <button onClick={()=>deleteProduct(p.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="停用产品，保留历史">
                                 <Trash2 size={16} />
                               </button>
@@ -761,7 +783,7 @@ export default function SuppliersPage() {
                     <th className="text-left px-3 py-3 font-medium text-gray-500 w-[25%]">产品名称</th>
                     <th className="text-left px-3 py-3 font-medium text-gray-500 w-[15%]">规格</th>
                     <th className="text-right px-3 py-3 font-medium text-gray-500 w-[12%]">单价</th>
-                    <th className="text-center px-3 py-3 font-medium text-gray-500 w-[13%]">最低价对比</th>
+                    <th className="text-center px-3 py-3 font-medium text-gray-500 w-[13%]">有效价对比</th>
                     <th className="text-center px-3 py-3 font-medium text-gray-500 w-[12%]">数量</th>
                     <th className="text-right px-3 py-3 font-medium text-gray-500 w-[18%]">小计</th>
                   </tr>
@@ -770,13 +792,15 @@ export default function SuppliersPage() {
                   {products.map((p:any) => {
                     const qty = orderItems[p.id] || 0;
                     const selected = qty > 0;
-                    const hasPrice = (p.unit_price || 0) > 0;
-                    const subtotal = (p.unit_price || 0) * qty;
+                    const hasPrice = (p.unit_price || 0) > 0||orderAvailableQuotes.some(q=>q.product_id===p.id);
+                    const pricingRow=orderPricingCurrent?orderPricing.rows.find((r:any)=>r.product_id===p.id):null;
+                    const shownPrice=pricingRow?.unit_price??(orderQuotes[p.id]?null:p.unit_price);
+                    const subtotal=pricingRow?.subtotal??(orderQuotes[p.id]?null:(p.unit_price||0)*qty);
                     return (
                       <tr key={p.id} className={`border-b hover:bg-gray-50/50 transition-colors ${selected ? "bg-green-50/50" : ""} ${!hasPrice ? "opacity-50" : ""}`}>
                         <td className="px-3 py-3 text-center">
                           {hasPrice ? (
-                            <button onClick={()=>toggleOrderItem(p.id)}
+                            <button disabled={!!orderDraft?.unknown} onClick={()=>toggleOrderItem(p.id)}
                               className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                                 selected ? "bg-green-600 border-green-600 text-white" : "border-gray-300 hover:border-green-400"
                               }`}>
@@ -791,29 +815,19 @@ export default function SuppliersPage() {
                         <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}</td>
                         <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
                         <td className="px-3 py-3 text-right font-semibold text-gray-700">
-                          {hasPrice ? fmtMoney(p.unit_price, p.currency) : <span className="text-red-500 text-xs">未录价格</span>}
+                          {!hasPrice?<span className="text-red-500 text-xs">未录价格</span>:shownPrice===null?<span className="text-amber-600 text-xs">待核对报价</span>:Number(shownPrice)<=0?<span className="text-amber-600 text-xs">请选择有效报价</span>:fmtMoney(Number(shownPrice),p.currency)}
                         </td>
                         <td className="px-3 py-3 text-center">
-                          {!hasPrice ? (
-                            <span className="text-xs text-red-400">先录入价格</span>
-                          ) : p.is_lowest ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                              <Tag size={10} />最低价
-                            </span>
-                          ) : p.price_diff != null ? (
-                            <span className="text-xs text-orange-500">+{fmtMoney(p.price_diff, p.currency)}</span>
-                          ) : (
-                            <span className="text-xs text-gray-400">-</span>
-                          )}
+                          <span className={pricingRow?.non_lowest?"text-xs text-amber-600":"text-xs text-gray-500"}>{pricingRow?.lowest_comparable_price!=null?(pricingRow.non_lowest?'非最低，需原因':'最低有效价 / 并列最低'):'无有效可比推荐'}</span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           {selected ? (
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={()=>updateQuantity(p.id, qty-1)}
+                              <button disabled={!!orderDraft?.unknown} onClick={()=>updateQuantity(p.id, qty-1)}
                                 className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-sm">-</button>
-                              <input type="number" value={qty} onChange={e=>updateQuantity(p.id, parseInt(e.target.value)||1)}
+                              <input aria-label={`采购数量 ${p.id}`} type="number" step="1" disabled={!!orderDraft?.unknown} value={qty} onChange={e=>updateQuantity(p.id, Number(e.target.value))}
                                 className="w-14 text-center border rounded py-1 text-sm" min="1" />
-                              <button onClick={()=>updateQuantity(p.id, qty+1)}
+                              <button disabled={!!orderDraft?.unknown} onClick={()=>updateQuantity(p.id, qty+1)}
                                 className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-sm">+</button>
                             </div>
                           ) : (
@@ -821,7 +835,7 @@ export default function SuppliersPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-right font-semibold text-green-700">
-                          {selected ? fmtMoney(subtotal, p.currency) : "-"}
+                          {selected ? subtotal===null?'待核对':fmtMoney(Number(subtotal), p.currency) : "-"}
                         </td>
                       </tr>
                     );
@@ -829,6 +843,8 @@ export default function SuppliersPage() {
                 </tbody>
               </table>
               </div>
+              <PurchaseQuotePreview supplierId={orderSupplierId} products={products} quantities={orderItems} selections={orderQuotes} onSelect={(pid,qid)=>{setOrderPricing(null);setOrderQuotes(v=>({...v,[pid]:qid}));}} requirements={orderRequirements} onRequirements={setOrderRequirements} onPreview={setOrderPricing} onQuotes={setOrderAvailableQuotes} canRead={canReadCatalog} locked={!!orderDraft?.unknown}/>
+              {pricingRejection&&<div role="alert" className="border border-amber-400 rounded p-3 my-3 text-sm"><p>{pricingRejection.message}</p><button className="btn-secondary" onClick={()=>{try{acceptQuotePreviewRejection(orderSupplierId,pricingRejection);setOrderDraft(registrationDraft("purchase_order",orderSupplierId));setOrderPricing(pricingRejection.preview);setPricingRejection(null);}catch(e:any){toast("error",e.message);}}}>服务器确认未创建，重新核对报价</button></div>}
               {Object.keys(orderItems).filter(k => orderItems[+k] > 0).length === 0 && (
                 <div className="text-center py-8 text-gray-400 text-sm">请勾选需要采购的产品，并填写数量</div>
               )}
@@ -836,15 +852,15 @@ export default function SuppliersPage() {
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-between items-center">
               <div className="text-sm">
                 已选 <span className="font-semibold text-green-600">{Object.keys(orderItems).filter(k => orderItems[+k] > 0).length}</span> 个产品，
-                总价 <span className="font-semibold text-green-600 text-lg">{fmtMoney(orderTotal, orderCurrency)}</span>
+                总价 <span className="font-semibold text-green-600 text-lg">{orderDraft?.unknown||(selectedOrderIds.some(id=>orderQuotes[id])&&!orderPricingCurrent)?"待核对":fmtMoney(orderTotal, orderCurrency)}</span>
               </div>
               <div className="flex gap-3">
                 <button onClick={()=>setShowOrder(false)} className="btn-secondary text-sm px-5 py-2">取消</button>
-                <button onClick={submitOrder} disabled={orderSubmitting || orderTotal === 0}
+                <button onClick={submitOrder} disabled={orderSubmitting || (!orderDraft?.unknown && orderTotal === 0)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    orderTotal === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
+                    !orderDraft?.unknown&&orderTotal === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
                   }`}>
-                  <ShoppingCart size={16}/>{orderSubmitting ? "提交中..." : "确认下单"}
+                  <ShoppingCart size={16}/>{orderSubmitting ? "提交中..." : orderDraft?.unknown?"重试原采购请求":"确认下单"}
                 </button>
               </div>
             </div>

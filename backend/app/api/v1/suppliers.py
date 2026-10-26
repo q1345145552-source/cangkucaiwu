@@ -8,7 +8,8 @@ from app.models.user import User
 from app.models.payable import PayableBill
 from app.models.expense_fund import SystemSetting
 from app.core.permissions import get_current_user, get_wh_id, get_wh_ids, Role, check_staff_permission, check_staff_permission_any, require_non_labor
-from pydantic import BaseModel, StrictInt, Field
+from pydantic import BaseModel, StrictInt, Field, ConfigDict
+from decimal import Decimal
 from typing import Optional, List
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from datetime import datetime, timedelta
@@ -25,6 +26,7 @@ from app.services.supplier_payable_read import current_supplier_warehouse, purch
 from app.services import payable_creation as creation
 from app.services import purchase_matching as matching
 from app.services import sku_catalog as catalog
+from app.services import supplier_quotes as quotes
 
 router = APIRouter()
 
@@ -259,17 +261,22 @@ async def _get_lowest_quote(db: AsyncSession, product_name: str, spec: str | Non
 
 
 class PurchaseOrderItem(BaseModel):
+    model_config=ConfigDict(extra='forbid')
     product_id: int
     quantity: StrictInt = Field(default=1, gt=0, le=2147483647)
     reason: Optional[str] = None  # 非最低价采购原因
+    quote_id: Optional[StrictInt] = None
 
 class PurchaseOrderRequest(BaseModel):
+    model_config=ConfigDict(extra='forbid')
     items: List[PurchaseOrderItem]
     remark: Optional[str] = None
     confirm_price_anomaly: bool = False  # 是否确认价格偏高后提交
     request_key: Optional[str] = None
     duplicate_confirmation: Optional[dict] = None
     cost_confirmation: Optional[dict] = None
+    pricing_version: Optional[str] = None
+    requirements: Optional[dict] = None
 
 
 # Parse settlement_cycle string to get number of days
@@ -303,6 +310,17 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
         quantity = int(it.get("quantity") or 0)
         reason = (it.get("reason") or "").strip()
 
+        pricing=it.get('pricing_snapshot')
+        if isinstance(pricing,dict):
+            if pricing.get('non_lowest') and pricing.get('lowest_comparable_price') is not None:
+                lowest=next(v for v in pricing['eligible_candidates'] if v['is_lowest'])
+                price=Decimal(pricing['unit_price']);factor=Decimal(pricing['selected_quote']['terms']['base_unit_factor'])
+                equivalent=Decimal(pricing['lowest_comparable_price'])*factor
+                non_lowest.append({'product_name':product_name,'spec':spec,'unit_price':float(price),'quantity':quantity,
+                    'reason':pricing.get('selection_reason') or reason,'lowest_price':float(equivalent),'lowest_supplier_id':lowest['supplier_id'],
+                    'lowest_supplier_name':lowest['supplier_name'],'price_diff':float(price-equivalent)})
+            continue  # Never recompute a new order against a later quote or same-name guess.
+
         hist_rows = await _get_price_history(db, wh_id, product_name, spec, po.currency, it.get("unit"))
         if hist_rows:
             avg = sum(r.unit_price for r in hist_rows) / len(hist_rows)
@@ -334,7 +352,7 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
         db.add(ProcurementPriceHistory(
             warehouse_id=wh_id, supplier_id=po.supplier_id, purchase_order_id=po.id,
             product_name=product_name, spec=spec, unit_price=unit_price,
-            quantity=quantity, created_by=orderer_id, currency=po.currency, unit=it.get("unit"), sku_snapshot=it.get("sku_mapping"),
+            quantity=quantity, created_by=orderer_id, currency=po.currency, unit=it.get("unit"), sku_snapshot=it.get("sku_mapping"), pricing_snapshot=it.get("pricing_snapshot"),
         ))
 
     # 写入价格异常
@@ -613,7 +631,11 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     request_key = creation.number(req.request_key, '请求编号', 100)
     await creation.creation_lock(db,wh_id)
     await catalog.lock(db,wh_id)
-    signature = creation.fingerprint({'supplier_id':supplier_id,'items':[i.model_dump() for i in req.items],'remark':req.remark})
+    request_items=[{k:v for k,v in i.model_dump().items() if k!='quote_id' or v is not None} for i in req.items]
+    request_body={'supplier_id':supplier_id,'items':request_items,'remark':req.remark}
+    if any(i.quote_id is not None for i in req.items) or req.pricing_version is not None or req.requirements is not None:
+        request_body.update(pricing_version=req.pricing_version,requirements=req.requirements)
+    signature = creation.fingerprint(request_body)
     previous = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.warehouse_id == wh_id,
         PurchaseOrder.request_key == request_key))).scalars().all()
     if len(previous)>1: raise HTTPException(409,'历史采购请求编号冲突，请管理员核对')
@@ -624,69 +646,33 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         return {'message':'该采购请求已保存，未重复新增','replayed':True,'pending':old.status=='pending',
             'order':{'id':old.id,'order_number':old.order_number,'total_amount':old.total_amount,'items':old.items,'status':old.status},
             'payable_bill_id':linked.id if linked else None,'payable_bill_number':linked.bill_number if linked else None}
-    threshold = await _get_price_threshold(db, wh_id)
-
-    pid_set = {it.product_id for it in req.items}
-    products = (await db.execute(
-        select(SupplierProduct).where(SupplierProduct.id.in_(pid_set), SupplierProduct.supplier_id == supplier_id, SupplierProduct.catalog_active.is_not(False))
-    )).scalars().all()
-    prod_map = {p.id: p for p in products}
-
-    # 币种一致性校验：同一张采购单内产品币种必须一致
-    currencies = {p.currency or "THB" for p in prod_map.values()}
-    if len(currencies) > 1:
-        raise HTTPException(400, "不同币种不能放在同一张采购单，请分开下单")
-    order_currency = currencies.pop() if currencies else "THB"
-
-    items_detail = []
-    total = 0.0
-    anomalies = []
-    non_lowest = []
-    for it in req.items:
-        p = prod_map.get(it.product_id)
-        if not p:
-            raise HTTPException(400, f"产品 ID={it.product_id} 不属于该供应商")
-        if not p.unit_price or p.unit_price <= 0:
-            raise HTTPException(400, f"产品「{p.product_name}」尚未录入价格，请先录入价格后再下单")
-        qty = it.quantity
-        subtotal = p.unit_price * qty
-        items_detail.append({
-            "product_name": p.product_name, "spec": p.spec,
-            "line_id": uuid4().hex, "unit": p.unit, "product_id": p.id,
-            "sku_mapping": await catalog.purchase_snapshot(db,p,wh_id,qty),
-            "unit_price": p.unit_price, "quantity": qty,
-            "subtotal": round(subtotal, 2),
-            "currency": order_currency,
-            "reason": (it.reason or "").strip(),
-        })
-        total += subtotal
-
-        # 价格异常检测：对比历史均价（不含本次下单）
-        hist_rows = await _get_price_history(db, wh_id, p.product_name, p.spec, p.currency or "THB", p.unit)
-        if hist_rows:
-            avg = sum(r.unit_price for r in hist_rows) / len(hist_rows)
-            if avg > 0 and p.unit_price > avg * (1 + threshold / 100.0):
-                exceed = round((p.unit_price - avg) / avg * 100.0, 1)
-                anomalies.append({
-                    "product_name": p.product_name, "spec": p.spec,
-                    "unit_price": p.unit_price, "historical_avg": round(avg, 2),
-                    "exceed_percent": exceed,
-                })
-
-        # 非最低价检测：对比该产品(名+规格)在本仓库内的最低报价
-        lowest = await _get_lowest_quote(db, p.product_name, p.spec, wh_id, p.currency or "THB", p.unit)
-        if lowest and p.unit_price > lowest["lowest_price"] + 0.001:
-            non_lowest.append({
-                "product_id": p.id,
-                "product_name": p.product_name, "spec": p.spec,
-                "unit_price": p.unit_price,
-                "lowest_price": lowest["lowest_price"],
-                "lowest_supplier_id": lowest["lowest_supplier_id"],
-                "lowest_supplier_name": lowest["lowest_supplier_name"],
-                "price_diff": round(p.unit_price - lowest["lowest_price"], 2),
-                "quantity": qty,
-                "reason": (it.reason or "").strip(),
-            })
+    use_quotes=any(i.quote_id is not None for i in req.items)
+    if use_quotes:catalog.require_read(current_user)
+    pricing=await quotes.cart_preview(db,wh_id,supplier_id,[i.model_dump() for i in req.items],req.requirements)
+    if use_quotes and req.pricing_version!=pricing['version'] or req.pricing_version is not None and req.pricing_version!=pricing['version']:
+        raise HTTPException(409,{'code':'quote_preview_changed','message':'数量、需求、报价或有效期已变化，请重新核对推荐；未创建采购','preview':pricing,'request_key':request_key,'not_created':True})
+    if not pricing['can_order']:
+        raise HTTPException(400,{'code':'quote_not_orderable','message':'所选报价或数量不满足采购条件，未创建采购','preview':pricing})
+    prod_map={p.id:p for p in (await db.execute(select(SupplierProduct).where(SupplierProduct.id.in_([i.product_id for i in req.items])))).scalars()}
+    order_currency=pricing['currency'];items_detail=[];total_decimal=Decimal('0');anomalies=[];non_lowest=[]
+    threshold=await _get_price_threshold(db,wh_id)
+    for it,row in zip(req.items,pricing['rows']):
+        p=prod_map[it.product_id];price=Decimal(row['unit_price']);subtotal=Decimal(row['subtotal']);total_decimal+=subtotal
+        reason=(it.reason or '').strip()
+        snapshot={**row,'preview_version':pricing['version'],'evaluated_at':pricing['evaluated_at'],'selection_reason':reason,
+            'amount_basis':pricing['amount_basis'],'amount_note':pricing['amount_note']}
+        items_detail.append({'product_name':p.product_name,'spec':p.spec,'line_id':uuid4().hex,'unit':p.unit,'product_id':p.id,
+            'sku_mapping':await catalog.purchase_snapshot(db,p,wh_id,it.quantity),'unit_price':row['unit_price'] if it.quote_id is not None else float(price),
+            'quantity':it.quantity,'subtotal':float(subtotal),'subtotal_exact':row['subtotal'],'currency':order_currency,'reason':reason,'pricing_snapshot':snapshot})
+        if row['requires_reason']:
+            lowest=next(v for v in row['eligible_candidates'] if v['is_lowest']);factor=Decimal(row['selected_quote']['terms']['base_unit_factor'])
+            equivalent=Decimal(row['lowest_comparable_price'])*factor
+            non_lowest.append({'product_id':p.id,'product_name':p.product_name,'spec':p.spec,'unit_price':float(price),
+                'lowest_price':float(equivalent),'lowest_supplier_id':lowest['supplier_id'],'lowest_supplier_name':lowest['supplier_name'],
+                'price_diff':float(price-equivalent),'quantity':it.quantity,'reason':reason,'lowest_quote_ids':row['lowest']})
+    if total_decimal<=0 or Decimal(str(float(total_decimal)))!=total_decimal:
+        raise HTTPException(400,'采购金额小于现有金额精度或超过可精确保存范围，请核对数量或拆单')
+    total=float(total_decimal)
 
     # 有价格异常且未确认 → 返回提示，不创建订单
     if anomalies and not req.confirm_price_anomaly:
@@ -1779,6 +1765,7 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
     if not s: raise HTTPException(404, "供应商不存在")
     if current_user.role != Role.SUPER_ADMIN and s.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能修改自己仓库的供应商")
+    await catalog.lock(db,s.warehouse_id)
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(s, k, v)
     await db.flush(); return {"message": "更新成功"}
@@ -1795,10 +1782,11 @@ async def delete_supplier(supplier_id: int, current_user: User = Depends(get_cur
     if current_user.role != Role.SUPER_ADMIN and s.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能删除自己仓库的供应商")
     await catalog.lock(db,s.warehouse_id)
-    from app.models import ProductSkuMappingEvent,SupplierTagLink
+    from app.models import ProductSkuMappingEvent,SupplierTagLink,SupplierQuote
+    quoted=(await db.execute(select(SupplierQuote.id).join(SupplierProduct,SupplierQuote.product_id==SupplierProduct.id).where(SupplierProduct.supplier_id==s.id).limit(1))).first()
     mapped=(await db.execute(select(ProductSkuMappingEvent.id).join(SupplierProduct,ProductSkuMappingEvent.product_id==SupplierProduct.id).where(SupplierProduct.supplier_id==s.id).limit(1))).first()
     tagged=(await db.execute(select(SupplierTagLink.id).where(SupplierTagLink.supplier_id==s.id).limit(1))).first()
-    if mapped or tagged:raise HTTPException(409,"供应商存在SKU映射或仓内标签引用，不能硬删除；请保留历史并停用")
+    if mapped or tagged or quoted:raise HTTPException(409,"供应商存在SKU映射、报价或仓内标签引用，不能硬删除；请保留历史并停用")
     await db.delete(s); await db.flush()
     return {"message": "删除成功"}
 
