@@ -57,6 +57,7 @@ const navItems: NavItem[] = [
     roles: ["warehouse_admin", "staff", "supervisor"],
     children: [
       { key: "suppliers", label: "suppliers", icon: <Truck size={18} />, href: "/suppliers", roles: ["warehouse_admin", "staff", "supervisor"] },
+      { key: "sku_catalog", label: "标准SKU目录", icon: <PackageOpen size={18} />, href: "/supplier-skus", roles: ["warehouse_admin", "staff", "supervisor"] },
       { key: "concentration", label: "supplier_purchase_analysis", icon: <BarChart3 size={18} />, href: "/concentration", roles: ["warehouse_admin", "supervisor"] },
     ],
   },

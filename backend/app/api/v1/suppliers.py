@@ -13,7 +13,7 @@ from typing import Optional, List
 from app.core.timezone import thai_now, thai_today, THAI_TZ
 from datetime import datetime, timedelta
 from app.schemas.business import SupplierCreate, SupplierUpdate, SupplierResponse, SupplierProductCreate
-import io
+import io, json
 from uuid import uuid4
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
@@ -24,6 +24,7 @@ _CONCENTRATION_PERMISSION = MENU_PERMISSIONS_BY_KEY["concentration"].label
 from app.services.supplier_payable_read import current_supplier_warehouse, purchase_detail, checked_link
 from app.services import payable_creation as creation
 from app.services import purchase_matching as matching
+from app.services import sku_catalog as catalog
 
 router = APIRouter()
 
@@ -209,11 +210,13 @@ async def _get_approval_threshold(db: AsyncSession, wh_id: int | None) -> float:
         return 0.0
 
 
-async def _get_price_history(db: AsyncSession, wh_id: int, product_name: str, spec: str | None) -> list:
+async def _get_price_history(db: AsyncSession, wh_id: int, product_name: str, spec: str | None, currency: str | None=None, unit: str | None=None) -> list:
+    if not currency or not unit:return []
     rows = (await db.execute(
         select(ProcurementPriceHistory).where(
             ProcurementPriceHistory.warehouse_id == wh_id,
             ProcurementPriceHistory.product_name == product_name,
+            ProcurementPriceHistory.currency == currency, ProcurementPriceHistory.unit == unit,
             func.coalesce(ProcurementPriceHistory.spec, "") == (spec or ""),
         ).order_by(ProcurementPriceHistory.created_at.asc())
     )).scalars().all()
@@ -232,13 +235,15 @@ def _calc_stats(rows: list) -> dict:
     }
 
 
-async def _get_lowest_quote(db: AsyncSession, product_name: str, spec: str | None, wh_id: int) -> dict | None:
+async def _get_lowest_quote(db: AsyncSession, product_name: str, spec: str | None, wh_id: int, currency: str | None=None, unit: str | None=None) -> dict | None:
     """某产品(名+规格)在本仓库内的最低报价（含最低价供应商名）。仅限本仓库，避免跨仓泄露。"""
+    if not currency or not unit:return None
     rows = (await db.execute(
         select(SupplierProduct, Supplier)
         .join(Supplier, Supplier.id == SupplierProduct.supplier_id)
         .where(
             SupplierProduct.product_name == product_name,
+            SupplierProduct.currency == currency, SupplierProduct.unit == unit, SupplierProduct.catalog_active.is_not(False),
             func.coalesce(SupplierProduct.spec, "") == (spec or ""),
             Supplier.warehouse_id == wh_id,
         )
@@ -298,7 +303,7 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
         quantity = int(it.get("quantity") or 0)
         reason = (it.get("reason") or "").strip()
 
-        hist_rows = await _get_price_history(db, wh_id, product_name, spec)
+        hist_rows = await _get_price_history(db, wh_id, product_name, spec, po.currency, it.get("unit"))
         if hist_rows:
             avg = sum(r.unit_price for r in hist_rows) / len(hist_rows)
             if avg > 0 and unit_price > avg * (1 + threshold / 100.0):
@@ -309,7 +314,7 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
                     "exceed_percent": exceed,
                 })
 
-        lowest = await _get_lowest_quote(db, product_name, spec, wh_id)
+        lowest = await _get_lowest_quote(db, product_name, spec, wh_id, po.currency, it.get("unit"))
         if lowest and unit_price > lowest["lowest_price"] + 0.001:
             non_lowest.append({
                 "product_name": product_name, "spec": spec,
@@ -329,7 +334,7 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
         db.add(ProcurementPriceHistory(
             warehouse_id=wh_id, supplier_id=po.supplier_id, purchase_order_id=po.id,
             product_name=product_name, spec=spec, unit_price=unit_price,
-            quantity=quantity, created_by=orderer_id,
+            quantity=quantity, created_by=orderer_id, currency=po.currency, unit=it.get("unit"), sku_snapshot=it.get("sku_mapping"),
         ))
 
     # 写入价格异常
@@ -363,11 +368,7 @@ async def list_categories(current_user = Depends(get_current_user), db: AsyncSes
 @router.post("/categories")
 async def create_category(name: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    c = SupplierCategory(name=name)
-    db.add(c); await db.flush()
-    return {"id": c.id, "name": c.name, "message": "创建成功"}
+    raise HTTPException(403, "供应商分类为统一参考，只读；请使用本仓标签，不改写历史分类")
 
 # ═══ Import Templates ════════════════════════════
 @router.get("/import-template/products")
@@ -379,12 +380,15 @@ async def download_products_template(current_user: User = Depends(get_current_us
     wb = Workbook(); ws = wb.active; ws.title = "耗材产品导入"
     hfill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
-    for c, h in enumerate(["供应商名称", "产品名", "产品规格", "规格报价", "单价"], 1):
+    for c, h in enumerate(["供应商名称", "产品名", "产品规格", "规格报价", "单价", "单位", "币种", "标准SKU编码", "结构化规格JSON", "基本单位换算数"], 1):
         cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hfill
     for c, v in enumerate(["示例: 耗材商A", "快递袋", "一打80个", 80, 1], 1):
         ws.cell(row=2, column=c, value=v)
     for col, w in [('A',20),('B',16),('C',16),('D',12),('E',12)]:
         ws.column_dimensions[col].width = w
+    notes=wb.create_sheet("填写说明")
+    for value in ["旧全局5列、单供应商4列仍支持，新增列可留空；先预览再逐行确认，整批成功或整批不导入。", "同规格不同名称只建议，不自动合并；同编码不同规格拒绝。SKU编码请用文本。", "结构化规格示例：{\"material\":\"PE\",\"width\":{\"value\":38,\"unit\":\"cm\"},\"packaging\":\"single\"}", "单位请从目录清单选择；箱/包换算未知留空，不猜箱=多少个。", "每行明确保持未映射或选择本仓SKU、核对版本并填写映射依据；原报价与历史订单不会覆盖。"]:notes.append([value])
+    notes.column_dimensions['A'].width=110
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"})
@@ -410,38 +414,16 @@ async def download_logistics_template(current_user: User = Depends(get_current_u
 
 # ═══ Import ══════════════════════════════════════
 @router.post("/import/products")
-async def import_products(file: UploadFile = File(...), current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("供应商管理"))):
-    """批量导入耗材产品 Excel"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    from openpyxl import load_workbook
-    content = await file.read()
-    wb = load_workbook(io.BytesIO(content)); ws = wb.active
-    imported, skipped, errors = 0, 0, []
-    # Resolve supplier name→id for this warehouse
-    sups = (await db.execute(select(Supplier).where(Supplier.warehouse_id.in_(get_wh_ids(current_user))))).scalars().all()
-    sup_map = {s.name.strip(): s.id for s in sups}
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row or not row[0]: continue
-        sup_name = str(row[0]).strip()
-        if sup_name.startswith("示例"): continue
-        if sup_name not in sup_map:
-            errors.append(f"供应商「{sup_name}」不存在"); skipped += 1; continue
-        try:
-            p = SupplierProduct(
-                supplier_id=sup_map[sup_name],
-                product_name=str(row[1] or "").strip(),
-                spec=str(row[2] or "").strip() if row[2] else None,
-                spec_price=float(row[3] or 0) if row[3] else None,
-                unit_price=float(row[4] or 0),
-            )
-            db.add(p); imported += 1
-        except Exception as e:
-            errors.append(f"行解析失败: {e}"); skipped += 1
-    await db.flush()
-    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条产品"}
+async def import_products(file: UploadFile = File(...), mode: str = Form("preview"),
+                          preview_version: str = Form(None), request_key: str = Form(None), choices: str = Form(None),
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                          warehouse_id: int = Depends(current_supplier_warehouse),
+                          _perm=Depends(check_staff_permission("供应商管理"))):
+    from app.services import product_import
+    content=await file.read()
+    if mode=="preview":return await product_import.preview(db,warehouse_id,current_user,content)
+    if mode!="confirm":raise HTTPException(400,"请选择预览或明确确认导入")
+    return await product_import.confirm(db,warehouse_id,current_user,content,None,request_key,preview_version,choices)
 
 @router.post("/import/logistics")
 async def import_logistics(file: UploadFile = File(...), current_user: User = Depends(get_current_user),
@@ -480,34 +462,16 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
 
 # ═══ Per-Supplier Import ══════════════════════════
 @router.post("/{supplier_id}/import/products")
-async def import_products_for_supplier(supplier_id: int, file: UploadFile = File(...),
-                                        current_user: User = Depends(get_current_user),
-                                        db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("供应商管理"))):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    await _require_supplier_owned(db, current_user, supplier_id)
-    from openpyxl import load_workbook
-    content = await file.read()
-    wb = load_workbook(io.BytesIO(content)); ws = wb.active
-    imported, skipped, errors = 0, 0, []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row or (not row[0] and not row[1]): continue
-        pname = str(row[0] or row[1] or "").strip()
-        if not pname or pname.startswith("示例"): continue
-        try:
-            p = SupplierProduct(
-                supplier_id=supplier_id,
-                product_name=pname,
-                spec=str(row[1] or "").strip() if row[1] and len(row)>1 else None,
-                spec_price=float(row[2] or 0) if len(row)>2 and row[2] else None,
-                unit_price=float(row[3] or 0) if len(row)>3 and row[3] else 0,
-            )
-            db.add(p); imported += 1
-        except Exception as e:
-            errors.append(f"行解析失败: {e}"); skipped += 1
-    await db.flush()
-    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条产品"}
+async def import_products_for_supplier(supplier_id: int, file: UploadFile = File(...), mode: str = Form("preview"),
+                          preview_version: str = Form(None), request_key: str = Form(None), choices: str = Form(None),
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                          warehouse_id: int = Depends(current_supplier_warehouse),
+                          _perm=Depends(check_staff_permission("供应商管理"))):
+    from app.services import product_import
+    content=await file.read()
+    if mode=="preview":return await product_import.preview(db,warehouse_id,current_user,content,supplier_id)
+    if mode!="confirm":raise HTTPException(400,"请选择预览或明确确认导入")
+    return await product_import.confirm(db,warehouse_id,current_user,content,supplier_id,request_key,preview_version,choices)
 
 @router.post("/{supplier_id}/import/logistics")
 async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = File(...),
@@ -543,10 +507,12 @@ async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = Fil
 
 # ═══ Product CRUD ════════════════════════════════
 @router.get("/{supplier_id}/products")
-async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     await _require_supplier_owned(db, current_user, supplier_id)
-    prods = (await db.execute(select(SupplierProduct).where(SupplierProduct.supplier_id == supplier_id).order_by(SupplierProduct.created_at.desc()))).scalars().all()
+    supplier = await db.get(Supplier,supplier_id)
+    if supplier.warehouse_id != warehouse_id:raise HTTPException(403,"只能查看当前仓库产品")
+    prods = (await db.execute(select(SupplierProduct).where(SupplierProduct.supplier_id == supplier_id, SupplierProduct.catalog_active.is_not(False)).order_by(SupplierProduct.created_at.desc()))).scalars().all()
     # Price comparison: find lowest price for each product across all suppliers
     price_map = {}
     if prods:
@@ -555,11 +521,11 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
         all_prods = (await db.execute(
             select(SupplierProduct)
             .join(Supplier, SupplierProduct.supplier_id == Supplier.id)
-            .where(SupplierProduct.product_name.in_(pnames), Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+            .where(SupplierProduct.product_name.in_(pnames), Supplier.warehouse_id==warehouse_id, SupplierProduct.catalog_active.is_not(False))
         )).scalars().all()
         grouped = defaultdict(list)
         for ap in all_prods:
-            key = (ap.product_name, ap.spec or '')
+            key = (ap.product_name, ap.spec or '', ap.currency or 'THB', ap.unit)
             grouped[key].append(ap)
         sids = set()
         for key, aps in grouped.items():
@@ -573,13 +539,14 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
                 v['min_supplier_name'] = smap.get(v['min_supplier_id'], '')
     result = []
     for p in prods:
-        key = (p.product_name, p.spec or '')
-        cmp = price_map.get(key)
+        key = (p.product_name, p.spec or '', p.currency or 'THB', p.unit)
+        cmp = price_map.get(key) if p.unit else None
         item = {
             'id': p.id, 'product_name': p.product_name, 'spec': p.spec,
             'spec_price': p.spec_price, 'unit_price': p.unit_price,
             'currency': p.currency or "THB",
             'unit': p.unit, 'remark': p.remark,
+            'comparison_basis': '同仓同名称规格、同币种及原单位参考；不等同于已核实SKU比价',
             'is_lowest': False, 'min_price': None,
             'min_supplier_name': None, 'price_diff': None,
         }
@@ -590,16 +557,20 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
                 item['is_lowest'] = True
             elif p.unit_price > cmp['min_price']:
                 item['price_diff'] = round(p.unit_price - cmp['min_price'], 2)
+        item.update(await catalog.mapping_view(db,p,warehouse_id))
         result.append(item)
     return {'data': result}
 @router.post("/{supplier_id}/products")
-async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
     supplier = (await db.execute(select(Supplier).where(Supplier.id == supplier_id))).scalar_one_or_none()
+    if supplier.warehouse_id != warehouse_id:raise HTTPException(403,"只能添加当前仓库产品")
+    await catalog.lock(db,warehouse_id)
     d = req.model_dump()
+    d["catalog_attributes"] = catalog.attributes(d.get("catalog_attributes"))
     if not d.get("currency"):
         d["currency"] = (supplier.default_currency if supplier and supplier.default_currency else "THB")
     p = SupplierProduct(supplier_id=supplier_id, **d)
@@ -607,15 +578,23 @@ async def add_product(supplier_id: int, req: SupplierProductCreate, current_user
     return {"id": p.id, "message": "添加成功"}
 
 @router.delete("/{supplier_id}/products/{product_id}")
-async def delete_product(supplier_id: int, product_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+async def delete_product(supplier_id: int, product_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     await _require_supplier_owned(db, current_user, supplier_id)
+    await catalog.lock(db,warehouse_id)
     p = (await db.execute(select(SupplierProduct).where(SupplierProduct.id == product_id, SupplierProduct.supplier_id == supplier_id))).scalar_one_or_none()
     if not p: raise HTTPException(404, "产品不存在")
-    await db.delete(p); await db.flush()
-    return {"message": "删除成功"}
+    supplier=await db.get(Supplier,supplier_id)
+    if supplier.warehouse_id != warehouse_id:raise HTTPException(403,"只能停用当前仓库产品")
+    before=catalog.product_state(p)
+    p.catalog_active=False;p.catalog_revision=(p.catalog_revision or 0)+1
+    await db.flush()
+    from app.services.data_history import record_history
+    await record_history(db,module='sku_catalog',record_id=p.id,operation_type='deactivate_product',operator=current_user,
+        before=json.loads(json.dumps(before,default=str)),after=json.loads(json.dumps(catalog.product_state(p),default=str)),warehouse_id=warehouse_id)
+    return {"message": "产品已停用，原报价、映射及订单历史保留"}
 # ═══ Purchase Order ═════════════════════════════
 @router.post("/{supplier_id}/purchase-order")
 async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
@@ -633,6 +612,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         raise HTTPException(400, "请先选择仓库")
     request_key = creation.number(req.request_key, '请求编号', 100)
     await creation.creation_lock(db,wh_id)
+    await catalog.lock(db,wh_id)
     signature = creation.fingerprint({'supplier_id':supplier_id,'items':[i.model_dump() for i in req.items],'remark':req.remark})
     previous = (await db.execute(select(PurchaseOrder).where(PurchaseOrder.warehouse_id == wh_id,
         PurchaseOrder.request_key == request_key))).scalars().all()
@@ -648,7 +628,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
 
     pid_set = {it.product_id for it in req.items}
     products = (await db.execute(
-        select(SupplierProduct).where(SupplierProduct.id.in_(pid_set), SupplierProduct.supplier_id == supplier_id)
+        select(SupplierProduct).where(SupplierProduct.id.in_(pid_set), SupplierProduct.supplier_id == supplier_id, SupplierProduct.catalog_active.is_not(False))
     )).scalars().all()
     prod_map = {p.id: p for p in products}
 
@@ -672,7 +652,8 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         subtotal = p.unit_price * qty
         items_detail.append({
             "product_name": p.product_name, "spec": p.spec,
-            "line_id": uuid4().hex, "unit": p.unit,
+            "line_id": uuid4().hex, "unit": p.unit, "product_id": p.id,
+            "sku_mapping": await catalog.purchase_snapshot(db,p,wh_id,qty),
             "unit_price": p.unit_price, "quantity": qty,
             "subtotal": round(subtotal, 2),
             "currency": order_currency,
@@ -681,7 +662,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
         total += subtotal
 
         # 价格异常检测：对比历史均价（不含本次下单）
-        hist_rows = await _get_price_history(db, wh_id, p.product_name, p.spec)
+        hist_rows = await _get_price_history(db, wh_id, p.product_name, p.spec, p.currency or "THB", p.unit)
         if hist_rows:
             avg = sum(r.unit_price for r in hist_rows) / len(hist_rows)
             if avg > 0 and p.unit_price > avg * (1 + threshold / 100.0):
@@ -693,7 +674,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
                 })
 
         # 非最低价检测：对比该产品(名+规格)在本仓库内的最低报价
-        lowest = await _get_lowest_quote(db, p.product_name, p.spec, wh_id)
+        lowest = await _get_lowest_quote(db, p.product_name, p.spec, wh_id, p.currency or "THB", p.unit)
         if lowest and p.unit_price > lowest["lowest_price"] + 0.001:
             non_lowest.append({
                 "product_id": p.id,
@@ -1813,6 +1794,11 @@ async def delete_supplier(supplier_id: int, current_user: User = Depends(get_cur
     if not s: raise HTTPException(404, "供应商不存在")
     if current_user.role != Role.SUPER_ADMIN and s.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能删除自己仓库的供应商")
+    await catalog.lock(db,s.warehouse_id)
+    from app.models import ProductSkuMappingEvent,SupplierTagLink
+    mapped=(await db.execute(select(ProductSkuMappingEvent.id).join(SupplierProduct,ProductSkuMappingEvent.product_id==SupplierProduct.id).where(SupplierProduct.supplier_id==s.id).limit(1))).first()
+    tagged=(await db.execute(select(SupplierTagLink.id).where(SupplierTagLink.supplier_id==s.id).limit(1))).first()
+    if mapped or tagged:raise HTTPException(409,"供应商存在SKU映射或仓内标签引用，不能硬删除；请保留历史并停用")
     await db.delete(s); await db.flush()
     return {"message": "删除成功"}
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, JSON, Index, text
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, JSON, Index, text, Boolean, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -46,6 +46,12 @@ class SupplierProduct(Base):
     currency = Column(String(10), nullable=True, default="THB", comment="币种: THB/CNY")
     unit = Column(String(20), nullable=True, default="个", comment="单位")
     remark = Column(String(500), nullable=True, comment="备注")
+    standard_sku_id = Column(Integer, ForeignKey('standard_skus.id'), nullable=True)
+    catalog_attributes = Column(JSON, nullable=True)
+    base_unit_factor = Column(Numeric(20,8), nullable=True)
+    sku_snapshot = Column(JSON, nullable=True)
+    catalog_revision = Column(Integer, nullable=True, default=0)
+    catalog_active = Column(Boolean, nullable=True, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     supplier = relationship("Supplier", back_populates="products")
@@ -135,6 +141,9 @@ class ProcurementPriceHistory(Base):
     spec = Column(String(300), nullable=True)
     unit_price = Column(Float, nullable=False)
     quantity = Column(Integer, default=1)
+    currency = Column(String(10), nullable=True)
+    unit = Column(String(20), nullable=True)
+    sku_snapshot = Column(JSON, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 

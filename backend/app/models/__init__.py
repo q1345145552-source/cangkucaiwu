@@ -6,7 +6,7 @@ from app.models.recharge import RechargeDeclaration, IncomingFlow, Reconciliatio
 from app.models.income_expense import IncomeExpenseCategory, IncomeRecord, ExpenseRecord
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting, FundRechargeRequest, ExpenseFundDisbursement
 from app.models.reimbursement import Reimbursement, ReimbursementItem, ReimbCategory
-from app.models.supplier import Supplier, PurchaseOrder, ProcurementPriceHistory, ProcurementPriceAnomaly, ProcurementNonLowestRecord
+from app.models.supplier import Supplier, SupplierCategory, SupplierProduct, PurchaseOrder, ProcurementPriceHistory, ProcurementPriceAnomaly, ProcurementNonLowestRecord
 from app.models.payable import PayableBill, PayablePlan
 from app.models.credit import CreditCustomer, CreditRepayment
 from app.models.market import MarketItem
@@ -29,6 +29,7 @@ from app.models.reimbursement_payment import ReimbursementPayment
 from app.models.wallet import PayablePayment, AccountTransfer
 from app.models.purchase_receipt import PurchaseReceiptEvent
 from app.models.cost_identity import CostIdentity
+from app.models.sku_catalog import StandardSKU, SupplierWarehouseTag, SupplierTagLink, ProductSkuMappingEvent, ProductImportOperation
 
 __all__ = [
     "User", "Warehouse", "Customer", "PaymentAccount",
@@ -36,7 +37,7 @@ __all__ = [
     "IncomeExpenseCategory", "IncomeRecord", "ExpenseRecord",
     "ExpenseFund", "ExpenseFundItem", "ExpenseFundDisbursement",
     "Reimbursement", "ReimbursementItem", "ReimbCategory",
-    "Supplier", "PurchaseOrder", "ProcurementPriceHistory", "ProcurementPriceAnomaly", "ProcurementNonLowestRecord", "PayableBill", "PayablePlan",
+    "Supplier", "SupplierCategory", "SupplierProduct", "PurchaseOrder", "ProcurementPriceHistory", "ProcurementPriceAnomaly", "ProcurementNonLowestRecord", "PayableBill", "PayablePlan",
     "CreditCustomer", "CreditRepayment",
     "MarketItem", "GroupOrder", "GroupOrderParticipant",
     "AuditLog",
@@ -52,4 +53,5 @@ __all__ = [
     "CashAdvanceDocument",
     "CashAdvanceRepayment",
     "ReimbursementPayment", "PurchaseReceiptEvent", "CostIdentity",
+    "StandardSKU", "SupplierWarehouseTag", "SupplierTagLink", "ProductSkuMappingEvent", "ProductImportOperation",
 ]

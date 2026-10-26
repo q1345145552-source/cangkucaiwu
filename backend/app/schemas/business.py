@@ -254,3 +254,4 @@ class SupplierProductCreate(BaseModel):
     spec_price: Optional[float] = None; unit_price: float
     unit: str = "个"; remark: Optional[str] = None
     currency: Optional[str] = None
+    catalog_attributes: Optional[dict] = None

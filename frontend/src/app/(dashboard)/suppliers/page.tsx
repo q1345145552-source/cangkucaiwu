@@ -13,6 +13,8 @@ import { ApiError } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { registrationDraft, submitRegistration } from "@/lib/registrationRequest";
 import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
+import ProductImportDialog from "@/components/ProductImportDialog";
+import SkuProductMapping from "@/components/SkuProductMapping";
 import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
 import { Sparkles, Eye, TrendingUp, TrendingDown, BarChart3, DollarSign, Lightbulb, Scale, Plus, Trash2, Download, Upload, User, Phone, MapPin, FileText, Calendar, Package, Truck, ShoppingCart, CheckCircle, Tag, AlertCircle } from "lucide-react";
 
@@ -35,6 +37,8 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+  const canReadCatalog=useMenuPermission("sku_catalog"), canManageCatalog=useMenuPermission("sku_catalog_manage")&&canReadCatalog;
+  const [mappingProductId,setMappingProductId]=useState(0),[productImportFile,setProductImportFile]=useState<File|null>(null),[productAttrsText,setProductAttrsText]=useState("");
   const [filterCat, setFilterCat] = useState(1);
   const [form, setForm] = useState({ name: "", contact_person: "", contact_info: "", address: "", payment_terms: "", cooperation_content: "", settlement_cycle: "", category_id: 0, default_currency: "THB" });
   const [aiResult, setAiResult] = useState("");
@@ -164,6 +168,7 @@ export default function SuppliersPage() {
     const file = fileInputRef.current?.files?.[0];
     const sid = importSupplierId;
     if (!file || !sid) { toast("error", "请选择文件"); return; }
+    if(importMode==="products"){setProductImportFile(file);return;}
     const fd = new FormData(); fd.append("file", file);
     try {
       const headers = warehouseRequestHeaders();
@@ -178,14 +183,14 @@ export default function SuppliersPage() {
 
   // ─── Products ───
   async function openProducts(sid: number) {
-    setProductSupplierId(sid);
+    setProductSupplierId(sid);setProductAttrsText("");
     const s = data.find((x: any) => x.id === sid);
     setProductForm(prev => ({ ...prev, currency: s?.default_currency || "THB" }));
     try { const r = await api.get<any>(`/suppliers/${sid}/products`); setProducts(r.data); } catch { setProducts([]); }
     setShowProducts(true);
   }
   async function addProduct() {
-    try { await api.post(`/suppliers/${productSupplierId}/products`, { ...productForm, spec_price: productForm.spec_price || 0, unit_price: productForm.unit_price || 0 }); toast("success", "产品添加成功");
+    try { await api.post(`/suppliers/${productSupplierId}/products`, { ...productForm,...(productAttrsText.trim()?{catalog_attributes:JSON.parse(productAttrsText)}:{}), spec_price: productForm.spec_price || 0, unit_price: productForm.unit_price || 0 }); toast("success", "产品添加成功");setProductAttrsText("");
       const r = await api.get<any>(`/suppliers/${productSupplierId}/products`); setProducts(r.data);
       setProductForm(prev => ({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "", currency: prev.currency }));
     } catch (err: any) { toast("error", err.message || "添加失败"); }
@@ -550,6 +555,8 @@ export default function SuppliersPage() {
     <>
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       {cost.dialog}
+      {productImportFile&&<ProductImportDialog canMap={canManageCatalog} file={productImportFile} supplierId={importSupplierId||undefined} onClose={()=>{setProductImportFile(null);setImportSupplierId(null);if(fileInputRef.current)fileInputRef.current.value="";}} onImported={r=>{toast("success",r.message);load();}}/>}
+      {mappingProductId>0&&<SkuProductMapping productId={mappingProductId} canEdit={canManageCatalog} onClose={()=>setMappingProductId(0)} onDone={()=>{toast("success","人工映射已保存，历史订单不变");openProducts(productSupplierId);}}/>}
       <div className="flex justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <h1 className="page-title">{t("suppliers")}</h1>
@@ -665,6 +672,7 @@ export default function SuppliersPage() {
                 </div>
               </div>
 
+              <label className="block text-sm mb-3">结构化规格JSON（可选，用于SKU候选核对）<textarea aria-label="新产品结构化规格JSON" className="form-input" value={productAttrsText} onChange={e=>setProductAttrsText(e.target.value)} placeholder={'例如 {"material":"PE","width":{"value":38,"unit":"cm"},"packaging":"single"}'}/></label>
               {/* Product Table */}
               <div className="pt-3">
                 <div className="flex items-center gap-2 mb-3">
@@ -690,14 +698,14 @@ export default function SuppliersPage() {
                       <tbody>
                         {products.map((p:any)=>(
                           <tr key={p.id} className="border-b hover:bg-gray-50/50 transition-colors">
-                            <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}</td>
+                            <td className="px-3 py-3 font-medium text-gray-800">{p.product_name}<p className="text-xs text-gray-500">{p.mapping_label||"未映射/待核对"} {p.sku_snapshot?.code||""}</p></td>
                             <td className="px-3 py-3 text-gray-500">{p.spec||"-"}</td>
                             <td className="px-3 py-3 text-right text-gray-700">{p.spec_price != null ? fmtMoney(p.spec_price, p.currency) : "-"}</td>
                             <td className="px-3 py-3 text-right font-semibold text-green-700">{fmtMoney(p.unit_price, p.currency)}</td>
                             <td className="px-3 py-3 text-center">
                               {p.is_lowest ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                                  <Tag size={10} />最低价
+                                  <Tag size={10} />同名规格参考最低
                                 </span>
                               ) : p.price_diff != null ? (
                                 <span className="text-xs text-orange-500">高于最低价 {fmtMoney(p.price_diff, p.currency)}</span>
@@ -708,7 +716,8 @@ export default function SuppliersPage() {
                               )}
                             </td>
                             <td className="px-3 py-3 text-center">
-                              <button onClick={()=>deleteProduct(p.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="删除">
+                              {canReadCatalog&&<button className="text-blue-600 px-2" onClick={()=>setMappingProductId(p.id)}>SKU映射</button>}
+                              <button onClick={()=>deleteProduct(p.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="停用产品，保留历史">
                                 <Trash2 size={16} />
                               </button>
                             </td>
@@ -723,7 +732,7 @@ export default function SuppliersPage() {
             {/* Footer */}
             <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-between items-center">
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Tag size={12} /><span>绿色标签 = 同类产品最低价</span>
+                <Tag size={12} /><span>同名规格、同币种及原单位参考；未映射不作为标准SKU可比</span>
               </div>
               <div className="flex gap-3">
                 <button onClick={()=>openOrder(productSupplierId)} className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"><ShoppingCart size={16}/>下单</button>
