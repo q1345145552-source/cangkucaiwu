@@ -34,7 +34,20 @@ function harness({employees=people,error=false}={}) {
   h=harness();t=h.render();button(t,'取消').props.onClick();assert.equal(h.closed,1);assert.equal(h.writes.length,0);
   const filename='frontend/src/app/(dashboard)/attendance/page.tsx',page=fs.readFileSync(path.join(root,filename),'utf8'),old=execFileSync('git',['show','c515151:'+filename],{cwd:root,encoding:'utf8'});
   assert(page.includes('!employeeView && role === "warehouse_admin"'));
-  const printer=ts.createPrinter();function handlers(s){const sf=ts.createSourceFile(filename,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),result={};function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['AttendancePage','openPhotoPopup','loadCalendar','loadMakeupMarkers'].includes(n.name.text))result[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return result;}
+  const printer=ts.createPrinter();function handlers(s){const sf=ts.createSourceFile(filename,s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),result={};function visit(n){if(ts.isFunctionDeclaration(n)&&n.name&&!['AttendancePage','openPhotoPopup','loadCalendar','loadMakeupMarkers','approveLeave','submitProxyLeave'].includes(n.name.text))result[n.name.text]=printer.printNode(ts.EmitHint.Unspecified,n,sf);ts.forEachChild(n,visit);}visit(sf);return result;}
   assert.deepEqual(handlers(page),handlers(old));
+  // Full-day leave warnings were intentionally added later. Execute those actual handlers
+  // instead of demanding that valid subsequent work equal the pre-batch source snapshot.
+  const {actualFunction}=require('./legacy-regression-support.cjs');
+  for(const name of ['approveLeave','submitProxyLeave']) {
+    const calls=[],alerts=[],toasts=[],refresh=[];
+    const globals={api:{post:async(route,body)=>{calls.push({route,body});return {warning:'该员工当天已有打卡记录'};},put:async(route,body)=>{calls.push({route,body});return {warning:'该员工当天已有打卡记录'};}},window:{alert:message=>alerts.push(message)},toast:(...v)=>toasts.push(v),t:key=>key,
+      proxyEmpId:3,proxyStartDate:'2026-10-10',proxyEndDate:'2026-10-10',proxyType:'sick',proxyDuration:'full',proxyHours:'',proxyReason:'系统测试',proxyNotifiedAt:'2026-10-09',todayStr:'2026-10-10',loadLeaves:()=>refresh.push('leaves'),loadCalendar:()=>refresh.push('calendar')};
+    for(const setter of ['setShowProxyLeaveForm','setProxyEmpId','setProxyStartDate','setProxyEndDate','setProxyType','setProxyDuration','setProxyHours','setProxyReason','setProxyNotifiedAt'])globals[setter]=()=>{};
+    await actualFunction(page,filename,name,globals)(19);
+    assert.equal(calls.length,1);assert.deepEqual(alerts,['该员工当天已有打卡记录']);assert.deepEqual(refresh,['leaves','calendar']);
+    assert.equal(calls[0].route,name==='approveLeave'?'/attendance/leaves/19/approve':'/attendance/leaves/admin-record');
+    if(name==='submitProxyLeave'){assert.equal(calls[0].body.employee_id,3);assert.equal(calls[0].body.duration_type,'full');}
+  }
   console.log('PASS: defaults, person/session selection, select all/none, date/reason checks, success/error/cancel, empty employees, admin-only gate, original write handlers unchanged');
 })().catch(error=>{console.error(error);process.exitCode=1;});

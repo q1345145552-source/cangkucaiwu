@@ -1,0 +1,140 @@
+旧测试12组修复与本地验收（legacy12-fix-20261027）
+范围：/private/tmp/supplier08-worktree；分支codex/legacy12-fix-20261027；父提交2d41f76e3f69a6b3d2e94f3950267a1cd77631c2。
+最终完整本地HEAD见外部本地提交交付记录.json，避免把提交自身hash写入提交内容形成循环。
+本轮只修测试和独立测试环境，没有改业务代码、模型、数据库迁移、权限规则、金额算法、库存计价、前端布局或字典。
+
+一、逐项根因与有效验证（每项复现退出1；最终退出见final56-pass/results.json）
+01. batch-makeup.test.cjs
+分类：过期源码快照
+修复与保留：后续全天假警告合法改了approveLeave/submitProxyLeave；保留其他旧处理器快照，对这两处执行实际函数，核请求、警告与刷新；原选人/时点/未来日期/原因/失败用例全部保留。
+02. cash-advance-documents.test.cjs
+分类：共享夹具导入时被旧菜单快照中断
+修复与保留：本文件无须改动；改正cash-advances共享夹具的菜单契约后，7000合计、6000差额备注、分页、多单据、编辑限制、币种等原断言全执行。
+03. cash-advances.test.cjs
+分类：过期整份菜单快照与已支持归还功能冲突
+修复与保留：整份历史菜单相等改成执行实际filterNavItems+本次后端registry；验证5角色及授权、停用入口不恢复。保留主管登记/老板确认/驳回/上传失败/只读等原行为；财务无归还入口。
+04. config-center-access.test.cjs
+分类：过期共享页面逐字节快照
+修复与保留：保留12输入只读、2保存按钮和4写请求等；共享读取只验现行attendance-times契约，增加真实HTTP：仅考勤权可读共享四时点、不能读配置中心，无权/劳工被拒，已授权财务editable=false，主管/老板true。
+05. dashboard-month.test.cjs
+分类：旧预期要求报表切仓强制重建
+修复与保留：当前已认可的dashboard与reports均保留所选期间，依靠各页防旧响应；改为验证两者key稳定，employees仍随仓重建。原月份/金额/迟到响应/币种/失败重试等断言保留。
+06. employee-self.test.cjs
+分类：旧本地HTTP环境缺失及劳工管理地址夹具过时
+修复与保留：新PostgreSQL+真实登录+显式动态127端口。正常布局在允许的clock-in地址渲染，另验证劳工dashboard为空；桌面/手机48组身份组合保留，增加本人记录/工资单、同仓他人与外仓拒绝、无资格角色拒绝和劳工4入口。
+07. modification-log-permissions.test.cjs
+分类：过期菜单快照及日志新字段格式化快照
+修复与保留：保留原10角色授权、导出守卫及未变函数；实际后端清单验证菜单，renderFieldVal改执行布尔/审核状态/未知值/金额等，保留现有作废及只记录标签。
+08. money-month-range.test.cjs
+分类：缺CostIdentity模块夹具，及空holdStart会误挂起无日期引用请求
+修复与保留：加载实际CostIdentity组件/Hook和manualWallet提交模块，按本仓供应商+完整核实发票走现有登记路径。保留9月200/10月300和旧响应保护；加仓2九月400、分仓供应商/账户与跨月200/600请求金额日期和认证仓库头。
+09. money-record-scope.test.cjs
+分类：缺CostIdentity模块夹具
+修复与保留：同上；原到账1000+手工200=1200/支出300、业务只读、来源入口、导出拒绝保留；仓2收入2400与对应仓头，登记400实际身份载荷并验证未核实先阻止提交。
+10. payroll-disbursement.test.cjs
+分类：源码类型字面快照和旧成功提示
+修复与保留：只擦除类型后比较旧处理器运行JS，保留其他处理器与按钮约束；现金/银行/外仓/币种/额度/单发1234.56/批发300.03/错误/停用撤销等原场景保留，提示校验当前归还时记支出规则。
+11. payroll-supervisor.test.cjs
+分类：硬编码18080和员工编号5
+修复与保留：改为本次独立端点及元数据；主管员工编号41来自真实账号绑定。真HTTP校验本仓3张、外仓1张、主管唯一标签、列表/明细6次渲染、本人800工资单和劳工管理列表403，历史事件断言保留。
+12. reimbursement-payments.test.cjs
+分类：垫款提示沿用旧成本时点文字
+修复与保留：改核当前四项提示：不记公司支出/不扣公司账户/不新增流水/归还日记支出；公司付款2000、凭证/账户必填、额度、备用金、上传/提交失败、历史撤销仍显示且入口关闭等全部保留。
+
+二、环境和复跑
+新增frontend/tests/legacy-regression.fixture.py：用原应用、原数据库模型、原登录和真实HTTP；只初始化本次全新PostgreSQL随机schema，不跑启动seed/迁移。12个合成账号、2仓、4档案、4工资单和4打卡记录均是测试数据；主管员工编号刻意不同于账号编号。
+新增frontend/tests/run-legacy-regressions.py：每次init独立临时PG目录，动态选择两个127.0.0.1端口；生成本次registry/fixture元数据；环境变量端点必须与元数据一致，拒绝旧18080和用户18082。停止时只给自己Popen的HTTP进程发退出信号，DROP自己schema，按自己data目录停止PG；不删除数据目录/卷，不碰其他服务。
+新增legacy-regression-support.cjs：编译现有TS/TSX，保留真实文件扩展名；读取本次后端唯一清单，不复制产品清单。收支场景仅模拟网络/浏览器存储，运行实际CostIdentity和manualWallet，验证表单/请求及金额范围；不是生产账目核对，也没有真实发单付款。
+用项目Python测试虚拟环境运行（需原requirements-test及原后端依赖），Node使用安装自同一package-lock的node_modules：
+/tmp/supplier01-py312/bin/python frontend/tests/run-legacy-regressions.py --postgres-bin /tmp/supplier01-pgserver/pgserver/pginstall/bin --node-modules /var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/types84-build-24d21e3_/node_modules --node /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node --output <本地证据目录>
+单组/12组复跑可追加 --tests <一个或多个完整.test.cjs文件名>；runner每次负责完整启动/清理，不需复用旧服务。
+所有单组实际命令/退出码在results.json；完整stdout/stderr在各同名.log；initdb/启动/停止/剩余schema命令在lifecycle.json。
+
+三、全量类型和构建
+以父提交已经验收的前端为准：将src/public和7份原配置复制到独立build目录，node_modules只复用与本次package-lock逐字相同的现有依赖；7份配置和每个src文件的SHA256见build-source-config.json。没有复制漏Tailwind，也没有放宽tsconfig或next配置。
+构建前和构建后分别完整执行：node node_modules/typescript/bin/tsc --noEmit --pretty false --incremental false。
+两次均exit0，原始输出空，0诊断；node node_modules/next/dist/bin/next build exit0，56/56页生成。
+原next.config跳过构建内置类型检查的设置没动；不把这一设置算作类型通过，以上独立tsc真实通过。
+完整命令/cwd/退出码见build-results.json；production-build.log和tsc-before.log/tsc-after.log原样保留。
+
+四、脚本范围与边界
+现有61个.test.cjs中，声明回归为前批44组+本次12组，共56组，逐个执行，没有skip/缺环境当通过。
+另外5个旧独立HTTP脚本不在这56组内：account-attendance.test.cjs、account-permissions.test.cjs、button-permissions.test.cjs、menu-backend-regression.test.cjs、menu-permissions.test.cjs。它们沿用更早的独立夹具/菜单快照；本轮没有改它们，不冒称61组全部通过。employee-self仅导入account-permissions里的请求辅助函数，不运行其main，也不复活其旧环境。
+本轮没有新增产品缺陷修复。权限/本人隔离/跨仓边界以本轮真实HTTP验证与已有56组回归佐证；完整生产/真账/所有后端测试没有重新执行。
+停用经营报表、客户应收和发货入口的原retired-entries.test.cjs仍执行，未恢复入口；旧采购/库存测试照原规则执行，库存计价未改变。
+
+五、失败过程保留
+12组最初失败的完整日志和命令保留legacy12-before*.log/jsonl。
+attempt1、2、3记录适配过程：首次共享清单误用系统Python3.9（旧语法不支持）改为使用runner生成清单；编译api.ts初次丢扩展名而按TSX误解析，现保留真实扩展名；共用作息读取应受现行管理权限守卫限制，使用仅考勤权限账号证明共享读取，不扩大权限。
+首次fixture SIGINT使异步清理被取消，已改为事件循环请求server退出，之后清理schema为0。首次构建准备把Tailwind文件名误写成.ts，未进入编译，已按真实.js复制后完整验证。
+full56-attempt1为56/56；随后补端点元数据、劳工四入口/管理路由检查和强制清理结果，再跑final56曾55/56，因为测试未展开劳工settings_group，补为展开真实分组后重跑，不改产品。
+上述失败日志均保留，不覆盖或隐瞒。
+
+六、操作偏离与纠正
+本任务恢复时曾误接旧供应商十二轮交付，执行fetch、push origin main:main及ls-remote；push返回Everything up-to-date，没有本轮修复提交推入。已向用户承认并接受协调纠正，纠正后没有任何远程核验、推送、SSH、部署、生产访问或.deploy读取。当前接续文件首行明确本任务/禁止事项，防止再次被旧摘要覆盖。
+本批修复最终只做本地commit，完成后停止，交由协调会话独立验收；库存计价继续等用户决定，本批没有替用户决定。
+
+原始执行证据目录：
+/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/旧测试12组修复-20261027
+
+七、最终结果（final56-pass，修复后同一份最终测试文件）
+56组全部exit0；12目标组全部exit0；失败0、超时0、跳过0。运行器exit0。
+account-nature.test.cjs | exit 0
+advance-manager-recipients.test.cjs | exit 0
+audit-log-location.test.cjs | exit 0
+batch-makeup.test.cjs | exit 0
+boss-todos.test.cjs | exit 0
+cash-advance-documents.test.cjs | exit 0
+cash-advance-references.test.cjs | exit 0
+cash-advance-repayments.test.cjs | exit 0
+cash-advances.test.cjs | exit 0
+config-center-access.test.cjs | exit 0
+cost-funds-debt.test.cjs | exit 0
+credit-shipments.test.cjs | exit 0
+customer-receivables.test.cjs | exit 0
+dashboard-month.test.cjs | exit 0
+employee-advance-funding.test.cjs | exit 0
+employee-advance-void.test.cjs | exit 0
+employee-self.test.cjs | exit 0
+expense-approval-payment.test.cjs | exit 0
+full-day-leave.test.cjs | exit 0
+fund-disbursement.test.cjs | exit 0
+fund-item-controls.test.cjs | exit 0
+fund-receipts.test.cjs | exit 0
+incoming-operations.test.cjs | exit 0
+internal-transfer-summary.test.cjs | exit 0
+inventory-integration-round12.test.cjs | exit 0
+inventory-menu-round10.test.cjs | exit 0
+inventory-round10.test.cjs | exit 0
+inventory-round11.test.cjs | exit 0
+labor-language.test.cjs | exit 0
+makeup-batch-history.test.cjs | exit 0
+makeup-display.test.cjs | exit 0
+manual-wallet.test.cjs | exit 0
+modification-log-permissions.test.cjs | exit 0
+money-month-range.test.cjs | exit 0
+money-record-scope.test.cjs | exit 0
+operating-report.test.cjs | exit 0
+other-income-currency.test.cjs | exit 0
+payroll-disbursement.test.cjs | exit 0
+payroll-supervisor.test.cjs | exit 0
+procurement-controls-round9.test.cjs | exit 0
+procurement-month-round7.test.cjs | exit 0
+procurement-risk-round8.test.cjs | exit 0
+reimbursement-payments.test.cjs | exit 0
+report-preview-scope.test.cjs | exit 0
+retired-entries.test.cjs | exit 0
+supplier-cost-entrypoints-round4.test.cjs | exit 0
+supplier-cost-identity-round4.test.cjs | exit 0
+supplier-dedup-round2.test.cjs | exit 0
+supplier-integration-menu-round12.test.cjs | exit 0
+supplier-quotes-round6.test.cjs | exit 0
+supplier-receipts-round3.test.cjs | exit 0
+supplier-sku-round5.test.cjs | exit 0
+supplier-workflow-round1.test.cjs | exit 0
+types84-auth.test.cjs | exit 0
+types84-behavior.test.cjs | exit 0
+warehouse-summary.test.cjs | exit 0
+
+本次PG端口53602、HTTP端口53603，均只绑定127.0.0.1；最终schema数0，fixture退出0，postmaster.pid不存在，两个端口均已停止监听。原始核对见cleanup-verification.json及final56-pass/lifecycle.json。
+最终差异只在frontend/tests与本报告；backend、frontend/src及原配置git diff为空。库存计价/财务口径/权限政策均未修改。完整tsc保持0诊断，56页构建通过。完成本地commit后停止，等待独立验收，不推送、不部署。

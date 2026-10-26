@@ -51,6 +51,7 @@ function harness(){
  function wrapperKey(warehouse,pathname){route=pathname;cursor=0;layoutState=[true,false,null,false,false,false,[],warehouse,false,{id:1,role:'warehouse_admin'},false,[]];
   const child=React.createElement('p',null,'month view'),tree=layout.default({children:child});return walk(tree).find(n=>n.props?.children===child).key;}
  assert.equal(wrapperKey(1,'/dashboard'),wrapperKey(2,'/dashboard'));
- assert.notEqual(wrapperKey(1,'/reports'),wrapperKey(2,'/reports'));
+ assert.equal(wrapperKey(1,'/reports'),wrapperKey(2,'/reports'),'Reports also preserve selected dates and guard stale scoped responses');
+ assert.notEqual(wrapperKey(1,'/employees'),wrapperKey(2,'/employees'),'Other pages remount on warehouse change');
  console.log('PASS: actual dashboard defaults to Thai month across UTC boundary, one response feeds all monthly cards/charts, selector and warehouse changes clear stale values, delayed old month ignored, currencies remain separate, instant sections labeled, failures/retry/empty future and signed chart/breakdown behavior validated');
 })().catch(error=>{console.error(error);process.exitCode=1;});

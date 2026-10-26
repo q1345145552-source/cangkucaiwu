@@ -2,8 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ts=require('typescript'),React=require('react');
 const root=path.resolve(__dirname,'../..'),source=fs.readFileSync(path.join(root,'frontend/src/app/(dashboard)/cash-advances/page.tsx'),'utf8');
-const layoutName='frontend/src/components/layout/DashboardLayout.tsx',layout=fs.readFileSync(path.join(root,layoutName),'utf8');
-assert.equal(layout.split('\n').filter(line=>!line.includes('key: "cash_advances"')).join('\n'),require('node:child_process').execFileSync('git',['show','f91b92f:'+layoutName],{cwd:root,encoding:'utf8'}),'Only one menu entry may be added; all existing menu layout stays identical');
+require('./legacy-regression-support.cjs').menuContract('cash_advances','/cash-advances');
 
 const walk=x=>!x||typeof x!=='object'?[]:Array.isArray(x)?x.flatMap(walk):[x,...walk(x.props?.children)];
 const text=x=>x==null||typeof x==='boolean'?'':typeof x!=='object'?String(x):Array.isArray(x)?x.map(text).join(''):text(x.props?.children);
@@ -37,7 +36,7 @@ if(require.main===module)(async()=>{
  // Manual names remain names, account selection sends the account ID, upload failure never creates a record.
  for(const manual of [true,false]){h=harness();t=await h.render();await button(t,'新建垫款单').props.onClick();t=await h.render();if(manual){const radios=walk(t).filter(n=>n.type==='input'&&n.props.type==='radio');radios[1].props.onChange();t=await h.render();change(labelled(t,'垫款人姓名'),'外部垫款人');}else change(labelled(t,'垫款账号'),'4');t=await h.render();change(field(t,'金额'),'20.50');t=await h.render();change(field(t,'用途请选择用途工资采购费用其他'),'other');t=await h.render();await find(t,n=>n.type==='form').props.onSubmit({preventDefault(){}});await new Promise(r=>setTimeout(r,0));assert.equal(h.writes[0].body.payer_id,manual?null:4);assert.equal(h.writes[0].body.payer_name,manual?'外部垫款人':null);}
  h=harness('warehouse_admin',true,{uploadFail:true});t=await h.render();await button(t,'新建垫款单').props.onClick();t=await h.render();change(field(t,'金额'),'10');t=await h.render();change(field(t,'用途请选择用途工资采购费用其他'),'expense');t=await h.render();labelled(t,'凭证照片').props.onChange({target:{files:[new Blob(['photo'])]}});t=await h.render();await find(t,n=>n.type==='form').props.onSubmit({preventDefault(){}});await new Promise(r=>setTimeout(r,0));assert.equal(h.writes.length,0);assert(h.messages.some(m=>m[1]==='照片上传失败'));
- h=harness('staff');t=await h.render();change(labelled(t,'状态筛选'),'confirmed');t=await h.render();assert(h.reads.some(r=>r.includes('status=confirmed')));assert(source.includes('overflow-y-auto min-h-0 min-w-0'));assert(!source.includes('/repay'));
+ h=harness('staff');t=await h.render();change(labelled(t,'状态筛选'),'confirmed');t=await h.render();assert(h.reads.some(r=>r.includes('status=confirmed')));assert(source.includes('overflow-y-auto min-h-0 min-w-0'));assert(source.includes('CashAdvanceRepaymentModal'));assert(!walk(t).some(n=>n.type==='button'&&text(n)==='归还'));assert.equal(h.writes.length,0);
  const readOnly=harness('staff',false,{reportView:true});const readTree=await readOnly.render();assert(text(readTree).includes('报表只读明细'));assert(readOnly.reads.some(r=>r.startsWith('/reports/cost-funds-debt/advances?')));assert(!walk(readTree).some(n=>n.type==='button'&&text(n)==='新建垫款单'));assert.equal(readOnly.writes.length,0);
  console.log('PASS: role/grant visibility, supervisor voucher registration, admin confirmation/rejection, debt refresh, payer modes, filters, upload failure, mobile scroll structure');
 })().catch(e=>{console.error(e);process.exitCode=1;});
