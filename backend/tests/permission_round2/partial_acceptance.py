@@ -76,7 +76,11 @@ async def main():
                 assert sum(float(x['amount']) for x in snapshot['items'] if x['status']=='approved')==expected
             return await call(f'approve-{rid}-{mode}',1,f'/reimbursement/{rid}/review',decisions(rid,mode),check=check if mode!='reject' else None)
         for rid,mode in [(200,'partial'),(201,'full')]:
-            await sample(rid);await verify(rid);await approve(rid,mode)
+            await sample(rid);await verify(rid)
+            # Round-three shared capabilities must preserve the round-two approval page.
+            def approve_capability(a,b,result):assert result['capabilities']['can_approve'] is True
+            await call(f'approval-capability-{rid}',1,f'/reimbursement/{rid}',method='GET',check=approve_capability)
+            await approve(rid,mode)
             def capability(a,b,r):assert r['can_fund_pay'] is True
             await call(f'capability-{rid}',3,f'/reimbursement/{rid}',method='GET',check=capability)
             await call(f'cannot-reapprove-{rid}',1,f'/reimbursement/{rid}/review',decisions(rid,'full'),409 if mode=='partial' else 400)

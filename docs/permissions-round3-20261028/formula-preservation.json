@@ -1,0 +1,8 @@
+{
+  "baseline": "e6cc888187d8ecf21abe56118565879edc4c0312",
+  "AST_equal": {
+    "_compute_employee_records": true,
+    "_rollback_advance_deductions": true
+  },
+  "limits": "_prepare_payroll含角色/员工范围/离职事实守卫，不宣称整个模块源码相同；库存计价与金额公式文件未改。"
+}

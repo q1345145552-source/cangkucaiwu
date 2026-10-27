@@ -80,13 +80,15 @@ def test_real_logins_self_only_four_employee_pages_and_management_roles(tmp_path
             assert sup.status_code == 200 and [x['id'] for x in sup.json()['data']] == [20]
             roles = []
             # 本轮 ManagementRouter 默认挂 require_business_user：超级管理员不再进业务页面，
-            # 只保留仓库管理员/财务/主管三个业务角色，各自可见本仓工资单。
-            for uid in (1, 3, 4):
+            # 第三轮仅管理员/财务可见本仓管理工资；主管只保留本人入口。
+            for uid in (1, 3):
                 response = await c.get('/api/v1/payroll', headers=tokens[uid])
                 assert response.status_code == 200, response.text
                 assert {x['id'] for x in response.json()['data']} == {1, 2, 3, 20, 99}
                 roles.append({'role':(await c.get('/api/v1/auth/me', headers=tokens[uid])).json()['role'],
                     'status':response.status_code, 'record_ids':[x['id'] for x in response.json()['data']]})
+            supervisor = await c.get('/api/v1/payroll', headers=tokens[4])
+            assert supervisor.status_code == 403 and supervisor.json() == {'detail':'无权查看工资数据'}
             super_admin = await c.get('/api/v1/payroll', headers=tokens[2])
             assert super_admin.status_code == 403
             assert super_admin.json() == {'detail':'超级管理员请使用各仓库管理员账号操作'}
@@ -132,7 +134,7 @@ def test_real_logins_self_only_four_employee_pages_and_management_roles(tmp_path
             for uid in (3, 4):
                 await set_perms(factory, uid, [])
                 response = await c.get('/api/v1/payroll', headers=tokens[uid])
-                assert response.status_code == 403 and '无此操作权限' in response.text
+                assert response.status_code == 403 and ('无此操作权限' in response.text if uid == 3 else '无权查看工资数据' in response.text)
     asyncio.run(run())
 
 
@@ -142,7 +144,7 @@ def dependency_calls(route):
 
 def test_single_self_exception_and_guard_on_every_management_route():
     routes = [r for r in app.routes if isinstance(r, APIRoute) and r.endpoint.__module__ == payroll.__name__]
-    assert len(routes) == 21 and len(MANAGEMENT_ROUTES) == 20
+    assert len(routes) == 22 and len(MANAGEMENT_ROUTES) == 21
     self_routes = [r for r in routes if r.endpoint is payroll.my_payslip]
     assert len(self_routes) == 1
     # 本人工资单是唯一例外，且不挂非劳工守卫；可见范围仍由本人身份和仓库校验决定。

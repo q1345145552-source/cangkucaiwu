@@ -1,0 +1,1187 @@
+........F..FF.F......................FF....FFFF.....FFFFFFFFFFFFFFFF.FFF [ 25%]
+F.FF...............F.....F..F.F..............................F.......... [ 50%]
+.........................s.....FFFFF..F.............FFFFFFFFFFFF.FF.FFFF [ 76%]
+FF...................F....F.s.FFFFF..F...........................F.      [100%]
+=================================== FAILURES ===================================
+_ test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[2] _
+../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:61: in test_three_endpoints_disabled_for_every_authenticated_role_without_any_write
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:53: in run
+    assert response.status_code == 400 and response.json() == {"detail": REVERSAL_DISABLED_MESSAGE}, response.text
+E   AssertionError: {"detail":"超级管理员请使用各仓库管理员账号操作"}
+E   assert (403 == 400)
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[5] _
+../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:61: in test_three_endpoints_disabled_for_every_authenticated_role_without_any_write
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:53: in run
+    assert response.status_code == 400 and response.json() == {"detail": REVERSAL_DISABLED_MESSAGE}, response.text
+E   AssertionError: {"detail":"无权访问"}
+E   assert (403 == 400)
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required _
+../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:75: in test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:72: in run
+    assert response.status_code == 400 and response.json()["detail"] == REVERSAL_DISABLED_MESSAGE
+E   assert (403 == 400)
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate _
+../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:117: in test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate
+    assert without_advance_void_query(without_disabled_gate(current)) == old
+E   assert 'from app.ser...["data"][0]\n' == 'from app.ser...ata": data}\n'
+E     
+E     Skipping 304 identical leading characters in diff, use -v to show
+E     - age_totals
+E     + age_totals, employee_advance_usage_totals
+E     + from app.services.cash_advance_reference import cash_advance_numbers, cash_advance_reference
+E       from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
+E     + from app.services.full_day_leave import full_day_net_hours...
+E     
+E     ...Full output truncated (2334 lines hidden), use '-vv' to show
+_________________ test_disburse_reverse_reissue_and_reports[1] _________________
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:85: in test_disburse_reverse_reissue_and_reports
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:42: in run
+    r=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert r.status_code==200,r.text
+E   AssertionError: {"detail":"公司账户余额不足"}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+_________________ test_disburse_reverse_reissue_and_reports[4] _________________
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:85: in test_disburse_reverse_reissue_and_reports
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:42: in run
+    r=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert r.status_code==200,r.text
+E   AssertionError: {"detail":"公司账户余额不足"}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+________ test_batch_one_expense_per_payroll_one_account_and_idempotence ________
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:124: in test_batch_one_expense_per_payroll_one_account_and_idempotence
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:113: in run
+    r=await c.post('/api/v1/payroll/batch-disburse',headers=auth(1),json=body);assert r.status_code==200,r.text
+E   AssertionError: {"detail":"公司账户余额不足"}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+_____________ test_failed_expense_rolls_back_whole_payment[False] ______________
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:146: in test_failed_expense_rolls_back_whole_payment
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:143: in run
+    r=await c.post(path,headers=auth(1),json=body);assert r.status_code==500,r.text
+E   AssertionError: {"detail":"公司账户余额不足"}
+E   assert 400 == 500
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+______________ test_failed_expense_rolls_back_whole_payment[True] ______________
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:146: in test_failed_expense_rolls_back_whole_payment
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:143: in run
+    r=await c.post(path,headers=auth(1),json=body);assert r.status_code==500,r.text
+E   AssertionError: {"detail":"公司账户余额不足"}
+E   assert 400 == 500
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+____________ test_failed_revocation_rolls_back_expense_and_payroll _____________
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:161: in test_failed_revocation_rolls_back_expense_and_payroll
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:153: in run
+    r=await c.post('/api/v1/payroll/2/disburse',headers=auth(1),json={'account_id':1});assert r.status_code==200,r.text
+E   AssertionError: {"detail":"公司账户余额不足"}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+____________ test_missing_category_rejects_without_changing_payroll ____________
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:215: in test_missing_category_rejects_without_changing_payroll
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_expense.py:213: in run
+    assert r.status_code==400 and '启动迁移' in r.text
+E   assert (400 == 400 and '启动迁移' in '{"detail":"公司账户余额不足"}')
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+E    +  and   '{"detail":"公司账户余额不足"}' = <Response [400 Bad Request]>.text
+_______ test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke _______
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:124: in test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:79: in run
+    assert (after_costs["count"], after_costs["amount"]) == (3, 7750)
+E   assert (2, 750.0) == (3, 7750)
+E     
+E     At index 0 diff: 2 != 3
+E     Use -v to get more diff
+_ test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow _
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:151: in test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:135: in run
+    assert await balances(c) == {1: 3000, 3: 20000}
+E   assert {1: 2250.0, 3: 20000.0} == {1: 3000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 2250.0} != {1: 3000}
+E     Use -v to get more diff
+__________ test_invalid_funding_never_changes_any_money[insufficient] __________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+____________ test_invalid_funding_never_changes_any_money[pending] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+____________ test_invalid_funding_never_changes_any_money[rejected] ____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+_____________ test_invalid_funding_never_changes_any_money[repaid] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+____________ test_invalid_funding_never_changes_any_money[currency] ____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+____________ test_invalid_funding_never_changes_any_money[foreign] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+____________ test_invalid_funding_never_changes_any_money[missing] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+_____________ test_invalid_funding_never_changes_any_money[mixed] ______________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+_________ test_invalid_funding_never_changes_any_money[company_mixed] __________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:175: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:174: in run
+    assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E   AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff)
+____ test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity _____
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:203: in test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:200: in run
+    assert await balances(c) == {1: 10000, 3: 20000}
+E   assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff
+____________ test_batch_aggregate_budget_and_atomic_rollback[False] ____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:233: in test_batch_aggregate_budget_and_atomic_rollback
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:232: in run
+    assert await balances(c) == {1: 10000, 3: 20000}
+E   assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff
+____________ test_batch_aggregate_budget_and_atomic_rollback[True] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:233: in test_batch_aggregate_budget_and_atomic_rollback
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:229: in run
+    assert r.status_code == (500 if fail else 400), r.text
+E   AssertionError: {"message":"已发放 2 条","count":2,"account_id":null,"funding_source":"cash_advance","cash_advance_id":1,"total_net":8000.0,"expenses":[{"payroll_record_id":1,"expense_record_id":null,"amount":1000.0},{"payroll_record_id":2,"expense_record_id":null,"amount":7000.0}]}
+E   assert 200 == 500
+E    +  where 200 = <Response [200 OK]>.status_code
+_____________ test_failed_revoke_restores_cost_usage_and_loan_link _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:250: in test_failed_revoke_restores_cost_usage_and_loan_link
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:248: in run
+    assert r.status_code == 500 and await finance_snapshot(f) == before
+E   assert (400 == 500)
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+_____________ test_old_disbursement_role_restrictions_preserved[2] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:279: in test_old_disbursement_role_restrictions_preserved
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:278: in run
+    assert await balances(c) == {1: 10000, 3: 20000}
+E   assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff
+_____________ test_old_disbursement_role_restrictions_preserved[3] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:279: in test_old_disbursement_role_restrictions_preserved
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:278: in run
+    assert await balances(c) == {1: 10000, 3: 20000}
+E   assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff
+_____________ test_old_disbursement_role_restrictions_preserved[5] _____________
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:279: in test_old_disbursement_role_restrictions_preserved
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:278: in run
+    assert await balances(c) == {1: 10000, 3: 20000}
+E   assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 9250.0} != {1: 10000}
+E     Use -v to get more diff
+_____ test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost _____
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:296: in test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py:292: in run
+    assert await balances(c) == {1: 3000, 3: 20000}
+E   assert {1: 2250.0, 3: 20000.0} == {1: 3000, 3: 20000}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {1: 2250.0} != {1: 3000}
+E     Use -v to get more diff
+_ test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow _
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:152: in test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:114: in run
+    assert data["status"] == "paid" and data["account_balance"] == 8000
+E   AssertionError: assert ('paid' == 'paid'
+E     
+E       paid and 7250.0 == 8000)
+___ test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost ___
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:194: in test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:167: in run
+    assert (await costs(c))["amount"] == 2750 and (await costs(c))["count"] == 3
+E   assert (5750.0 == 2750)
+______ test_payment_and_revoke_failures_rollback_everything[cash_advance] ______
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:278: in test_payment_and_revoke_failures_rollback_everything
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:277: in run
+    assert r.status_code == 500 and await snapshot(f) == before
+E   assert (400 == 500)
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+____________ test_cny_account_and_advance_are_independent_from_thb _____________
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:314: in test_cny_account_and_advance_are_independent_from_thb
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:306: in run
+    assert (await balances(c))[1] == 10000
+E   assert 9250.0 == 10000
+_____ test_decimal_item_sums_and_partially_approved_total_used_for_payment _____
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:387: in test_decimal_item_sums_and_partially_approved_total_used_for_payment
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py:383: in run
+    assert r.json()["payment"]["amount"] == .3 and r.json()["account_balance"] == 9999.7
+E   assert (0.3 == 0.3 and 9249.7 == 9999.7)
+___________ test_source_money_cost_ledger_and_void[company_account] ____________
+../permissions-round3-baseline/backend/tests/test_employee_advance_funding.py:117: in test_source_money_cost_ledger_and_void
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_employee_advance_funding.py:98: in run
+    assert len(costs['data']) == 1 and costs['data'][0]['category_name'] == '员工预支'
+E   AssertionError: assert (2 == 1)
+E    +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])
+___________________ test_salary_functions_and_cap_unchanged ____________________
+../permissions-round3-baseline/backend/tests/test_employee_advance_funding.py:290: in test_salary_functions_and_cap_unchanged
+    before = ast.parse(without_reference_readers(before_full_day_guards(subprocess.check_output(['git','show','3e19093:'+name]).decode())))
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:466: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['git', 'show', '3e19093:backend/app/api/v1/payroll.py']' returned non-zero exit status 128.
+----------------------------- Captured stderr call -----------------------------
+fatal: not a git repository (or any of the parent directories): .git
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[False-2] _____
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:117: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:115: in run
+    assert response.status_code == 403 and response.json() == {"detail": "只有仓库管理员可以作废预支"}
+E   AssertionError: assert (403 == 403 and {'detail': '超...使用各仓库管理员账号操作'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '超级管理员请使用各仓库管理员账号操作'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[False-3] _____
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:117: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:115: in run
+    assert response.status_code == 403 and response.json() == {"detail": "只有仓库管理员可以作废预支"}
+E   AssertionError: assert (403 == 403 and {'detail': '无此操作权限，需要: 员工预支'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无此操作权限，需要: 员工预支'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[False-4] _____
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:117: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:115: in run
+    assert response.status_code == 403 and response.json() == {"detail": "只有仓库管理员可以作废预支"}
+E   AssertionError: assert (403 == 403 and {'detail': '无此操作权限，需要: 员工预支'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无此操作权限，需要: 员工预支'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[False-5] _____
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:117: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:115: in run
+    assert response.status_code == 403 and response.json() == {"detail": "只有仓库管理员可以作废预支"}
+E   AssertionError: assert (403 == 403 and {'detail': '无权访问'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无权访问'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[True-2] ______
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:117: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:115: in run
+    assert response.status_code == 403 and response.json() == {"detail": "只有仓库管理员可以作废预支"}
+E   AssertionError: assert (403 == 403 and {'detail': '超...使用各仓库管理员账号操作'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '超级管理员请使用各仓库管理员账号操作'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[True-5] ______
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:117: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_employee_advance_void.py:115: in run
+    assert response.status_code == 403 and response.json() == {"detail": "只有仓库管理员可以作废预支"}
+E   AssertionError: assert (403 == 403 and {'detail': '无权访问'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无权访问'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_________ test_full_repayment_money_ledger_and_costs_exactly_unchanged _________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:115: in test_full_repayment_money_ledger_and_costs_exactly_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:88: in run
+    assert data["account"]["current_balance"] == 7000
+E   assert 6250.0 == 7000
+____ test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance ____
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:149: in test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:126: in run
+    assert part["account"]["current_balance"] == 9000
+E   assert 8250.0 == 9000
+___________ test_admin_only_repayment_upload_accounts_and_revoke[2] ____________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:171: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:167: in run
+    assert r.status_code == 403 and r.json()["detail"] == "只有仓库管理员可以归还垫款", r.text
+E   AssertionError: {"detail":"超级管理员请使用各仓库管理员账号操作"}
+E   assert (403 == 403 and '超级管理员请使用各仓库管理员账号操作' == '只有仓库管理员可以归还垫款'
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     - 只有仓库管理员可以归还垫款
+E     + 超级管理员请使用各仓库管理员账号操作)
+___________ test_admin_only_repayment_upload_accounts_and_revoke[3] ____________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:171: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:170: in run
+    assert (await balance(c))["current_balance"] == 9000
+E   assert 8250.0 == 9000
+___________ test_admin_only_repayment_upload_accounts_and_revoke[4] ____________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:171: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:170: in run
+    assert (await balance(c))["current_balance"] == 9000
+E   assert 8250.0 == 9000
+___________ test_admin_only_repayment_upload_accounts_and_revoke[5] ____________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:171: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:167: in run
+    assert r.status_code == 403 and r.json()["detail"] == "只有仓库管理员可以归还垫款", r.text
+E   AssertionError: {"detail":"无权访问"}
+E   assert (403 == 403 and '无权访问' == '只有仓库管理员可以归还垫款'
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     - 只有仓库管理员可以归还垫款
+E     + 无权访问)
+_ test_repayment_validation_no_partial_financial_writes[fields0-\u4e0d\u80fd\u8d85\u8fc7\u5269\u4f59\u672a\u8fd8] _
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:184: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:182: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+_ test_repayment_validation_no_partial_financial_writes[fields1-\u8bf7\u9009\u62e9\u5f52\u8fd8\u8d26\u6237] _
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:184: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:182: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+_ test_repayment_validation_no_partial_financial_writes[fields2-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247] _
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:184: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:182: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+_ test_repayment_validation_no_partial_financial_writes[fields3-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247] _
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:184: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:182: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+_ test_repayment_validation_no_partial_financial_writes[fields4-\u51ed\u8bc1\u7167\u7247\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93\u7684\u57ab\u6b3e\u5355] _
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:184: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:182: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+_ test_repayment_validation_no_partial_financial_writes[fields5-\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247\u4e0d\u5b58\u5728\uff0c\u8bf7\u91cd\u65b0\u4e0a\u4f20] _
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:184: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:182: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+__________ test_full_reversal_inactive_account_and_multiple_payments ___________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:226: in test_full_reversal_inactive_account_and_multiple_payments
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:219: in run
+    assert b["advance"]["status"] == "repaid" and b["account"]["current_balance"] == 7000
+E   AssertionError: assert ('repaid' == 'repaid'
+E     
+E       repaid and 6250.0 == 7000)
+_____________ test_history_failure_rolls_back_repayment_and_revoke _____________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:243: in test_history_failure_rolls_back_repayment_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:240: in run
+    assert (await ledger(c))["total_expense"] == 1000 and (await balance(c))["current_balance"] == 9000
+E   assert (1000.0 == 1000 and 8250.0 == 9000)
+_ test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies _
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:291: in test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:281: in run
+    assert (await balance(c))["current_balance"] == 10000
+E   assert 9250.0 == 10000
+________ test_invalid_money_does_not_change_balance_or_create_flows[0] _________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:301: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:300: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+________ test_invalid_money_does_not_change_balance_or_create_flows[-1] ________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:301: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:300: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+_______ test_invalid_money_does_not_change_balance_or_create_flows[NaN] ________
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:301: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:300: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+_____ test_invalid_money_does_not_change_balance_or_create_flows[Infinity] _____
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:301: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:300: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+______ test_invalid_money_does_not_change_balance_or_create_flows[1.001] _______
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:301: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py:300: in run
+    assert (await ledger(c))["total"] == 0 and (await balance(c))["current_balance"] == 10000
+E   assert (0 == 0 and 9250.0 == 10000)
+___________ test_payment_and_repayment_business_functions_unchanged ____________
+../permissions-round3-baseline/backend/tests/test_cash_advance_documents.py:210: in test_payment_and_repayment_business_functions_unchanged
+    assert current == original
+E   assert "from app.ser...'data': data}" == "from app.ser...'data': data}"
+E     
+E     Skipping 55909 identical leading characters in diff, use -v to show
+E       垫款单')
+E     -     return (await payment_account(db, wh_id, req.account_id), None)
+E     ?     ^^ ^^^^^                                                -------
+E     +     account = await payment_account(db, wh_id, req.account_id)
+E     ?     ^^^^^^ ^^^...
+E     
+E     ...Full output truncated (368 lines hidden), use '-vv' to show
+_____________ test_pending_1000_approved_only_after_manual_recalc ______________
+../permissions-round3-baseline/backend/tests/test_advance_payroll_approval_audit.py:78: in test_pending_1000_approved_only_after_manual_recalc
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_advance_payroll_approval_audit.py:30: in run
+    assert pending.status_code == 200, pending.text
+E   AssertionError: {"detail":"公司账户余额不足（可用 0.00）"}
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+________________ test_only_warehouse_admin_can_review[False-2] _________________
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:63: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:61: in run
+    assert r.status_code==403 and r.json()=={'detail':'只有仓库管理员可以审批预支'}
+E   AssertionError: assert (403 == 403 and {'detail': '超...使用各仓库管理员账号操作'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '超级管理员请使用各仓库管理员账号操作'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+________________ test_only_warehouse_admin_can_review[False-3] _________________
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:63: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:61: in run
+    assert r.status_code==403 and r.json()=={'detail':'只有仓库管理员可以审批预支'}
+E   AssertionError: assert (403 == 403 and {'detail': '无此操作权限，需要: 员工预支'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无此操作权限，需要: 员工预支'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+________________ test_only_warehouse_admin_can_review[False-4] _________________
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:63: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:61: in run
+    assert r.status_code==403 and r.json()=={'detail':'只有仓库管理员可以审批预支'}
+E   AssertionError: assert (403 == 403 and {'detail': '无此操作权限，需要: 员工预支'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无此操作权限，需要: 员工预支'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+________________ test_only_warehouse_admin_can_review[False-5] _________________
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:63: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:61: in run
+    assert r.status_code==403 and r.json()=={'detail':'只有仓库管理员可以审批预支'}
+E   AssertionError: assert (403 == 403 and {'detail': '无权访问'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无权访问'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+_________________ test_only_warehouse_admin_can_review[True-2] _________________
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:63: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:61: in run
+    assert r.status_code==403 and r.json()=={'detail':'只有仓库管理员可以审批预支'}
+E   AssertionError: assert (403 == 403 and {'detail': '超...使用各仓库管理员账号操作'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '超级管理员请使用各仓库管理员账号操作'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+_________________ test_only_warehouse_admin_can_review[True-5] _________________
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:63: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round3-baseline/backend/tests/test_round18_advance_review.py:61: in run
+    assert r.status_code==403 and r.json()=={'detail':'只有仓库管理员可以审批预支'}
+E   AssertionError: assert (403 == 403 and {'detail': '无权访问'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '无权访问'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+____________________ test_unchanged_review_and_payroll_math ____________________
+../permissions-round3-baseline/backend/tests/test_advance_manager_recipients.py:202: in test_unchanged_review_and_payroll_math
+    assert {k:v for k,v in before.items() if k not in changed}=={k:v for k,v in after.items() if k not in changed}
+E   assert {'_advance_ap...e_params=[])'} == {'_advance_ap...e_params=[])'}
+E     
+E     Omitting 3 identical items, use -vv to show
+E     Right contains 1 more item:
+E     {'advance_detail': "AsyncFunctionDef(name='advance_detail', "
+E                        "args=arguments(posonlyargs=[], args=[arg(arg='advance_id', "
+E                        "annotation=Name(id='int', ctx=Load())), "
+E                        "arg(arg='current_user', annotation=Name(id='User', "...
+E     
+E     ...Full output truncated (31 lines hidden), use '-vv' to show
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_procurement_controls_round9.py: 335 warnings
+tests/test_disabled_financial_reversals.py: 159 warnings
+tests/test_payroll_labor_boundary.py: 190 warnings
+tests/test_payroll_expense.py: 21 warnings
+tests/test_payroll_cash_advance.py: 107 warnings
+tests/test_reimbursement_payments.py: 321 warnings
+tests/test_employee_advance_funding.py: 122 warnings
+tests/test_employee_advance_limit.py: 67 warnings
+tests/test_employee_advance_void.py: 97 warnings
+tests/test_cash_advance_repayments.py: 192 warnings
+tests/test_cash_advance_documents.py: 97 warnings
+tests/test_advance_payroll_approval_audit.py: 3 warnings
+tests/test_round18_advance_review.py: 52 warnings
+tests/test_advance_manager_recipients.py: 57 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[1]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[2]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[3]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[4]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[5]
+tests/test_disabled_financial_reversals.py::test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required
+tests/test_disabled_financial_reversals.py::test_revoked_history_amounts_and_ledger_readback_unchanged
+  /private/tmp/permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py:25: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for table in Base.metadata.sorted_tables}
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round3-env/logs/regression-baseline.xml -
+=========================== short test summary info ============================
+FAILED ../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[2]
+FAILED ../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[5]
+FAILED ../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py::test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required
+FAILED ../permissions-round3-baseline/backend/tests/test_disabled_financial_reversals.py::test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_expense.py::test_disburse_reverse_reissue_and_reports[1]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_expense.py::test_disburse_reverse_reissue_and_reports[4]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_expense.py::test_batch_one_expense_per_payroll_one_account_and_idempotence
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_expense.py::test_failed_expense_rolls_back_whole_payment[False]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_expense.py::test_failed_expense_rolls_back_whole_payment[True]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_expense.py::test_failed_revocation_rolls_back_expense_and_payroll
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_expense.py::test_missing_category_rejects_without_changing_payroll
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[insufficient]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[pending]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[rejected]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[repaid]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[currency]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[foreign]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[missing]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[mixed]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[company_mixed]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[False]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[True]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_failed_revoke_restores_cost_usage_and_loan_link
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[2]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[3]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[5]
+FAILED ../permissions-round3-baseline/backend/tests/test_payroll_cash_advance.py::test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost
+FAILED ../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py::test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+FAILED ../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py::test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+FAILED ../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py::test_payment_and_revoke_failures_rollback_everything[cash_advance]
+FAILED ../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py::test_cny_account_and_advance_are_independent_from_thb
+FAILED ../permissions-round3-baseline/backend/tests/test_reimbursement_payments.py::test_decimal_item_sums_and_partially_approved_total_used_for_payment
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_funding.py::test_source_money_cost_ledger_and_void[company_account]
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_funding.py::test_salary_functions_and_cap_unchanged
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[False-2]
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[False-3]
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[False-4]
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[False-5]
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[True-2]
+FAILED ../permissions-round3-baseline/backend/tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[True-5]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_full_repayment_money_ledger_and_costs_exactly_unchanged
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[2]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[3]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[4]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[5]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields0-\u4e0d\u80fd\u8d85\u8fc7\u5269\u4f59\u672a\u8fd8]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields1-\u8bf7\u9009\u62e9\u5f52\u8fd8\u8d26\u6237]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields2-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields3-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields4-\u51ed\u8bc1\u7167\u7247\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93\u7684\u57ab\u6b3e\u5355]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields5-\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247\u4e0d\u5b58\u5728\uff0c\u8bf7\u91cd\u65b0\u4e0a\u4f20]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_full_reversal_inactive_account_and_multiple_payments
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_history_failure_rolls_back_repayment_and_revoke
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[0]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[-1]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[NaN]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[Infinity]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[1.001]
+FAILED ../permissions-round3-baseline/backend/tests/test_cash_advance_documents.py::test_payment_and_repayment_business_functions_unchanged
+FAILED ../permissions-round3-baseline/backend/tests/test_advance_payroll_approval_audit.py::test_pending_1000_approved_only_after_manual_recalc
+FAILED ../permissions-round3-baseline/backend/tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[False-2]
+FAILED ../permissions-round3-baseline/backend/tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[False-3]
+FAILED ../permissions-round3-baseline/backend/tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[False-4]
+FAILED ../permissions-round3-baseline/backend/tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[False-5]
+FAILED ../permissions-round3-baseline/backend/tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[True-2]
+FAILED ../permissions-round3-baseline/backend/tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[True-5]
+FAILED ../permissions-round3-baseline/backend/tests/test_advance_manager_recipients.py::test_unchanged_review_and_payroll_math

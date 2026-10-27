@@ -1,4 +1,5 @@
 "use client";
+import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import type { MessageResponse } from "@/lib/api";
 import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -47,7 +48,7 @@ function templateTypeBadge(tt?: string): string {
   return "bg-amber-50 text-amber-700";
 }
 
-export default function PayrollPage() {
+function PayrollPageContent() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
@@ -93,7 +94,10 @@ export default function PayrollPage() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [zoomedSignature, setZoomedSignature] = useState<string | null>(null);
   const [revokeModal, setRevokeModal] = useState<any>(null);
-  const canOperate = user?.role === "warehouse_admin" || user?.role === "supervisor";
+  const canOperate = user?.role === "warehouse_admin" || user?.role === "staff";
+  const [pendingResignations, setPendingResignations] = useState<{employee_id:number;name:string;resignation_date:string}[]>([]);
+  useEffect(() => { if (canOperate) void api.get<{data:{employee_id:number;name:string;resignation_date:string}[]}>("/payroll/pending-resignations").then(r => setPendingResignations(r.data)).catch(() => setPendingResignations([])); }, [canOperate]);
+
 
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
@@ -525,8 +529,8 @@ export default function PayrollPage() {
 
   async function handleBatchDisburse() {
     if (!selectedIds.length) return;
-    const eligible = records.filter(r => selectedIds.includes(r.id) && !r.voided && r.status === "confirmed" && !r.disbursed);
-    if (!eligible.length) { toast("error", "请选择已确认且未发放的工资单"); return; }
+    const eligible = records.filter(r => selectedIds.includes(r.id));
+    if (eligible.length !== selectedIds.length || eligible.some(r => !r.capabilities?.can_pay)) { toast("error", "选中工资单含不可发放项，请刷新并核对全部选择"); return; }
     openDisburseModal({ batch_records: eligible, selected_count: selectedIds.length });
   }
 
@@ -539,6 +543,7 @@ export default function PayrollPage() {
     setRecalcWarning(hasNotLast);
   }
 
+  if (user && !canOperate) return <p className="p-4 text-gray-600">工资管理由财务和管理员办理。请从员工自助查看本人工资条。</p>;
   return (
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
@@ -616,7 +621,7 @@ export default function PayrollPage() {
               className="border border-blue-300 text-blue-600 flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-blue-50">
               <Download size={16}/> 导出Excel
             </button>
-            {canOperate && records.length > 0 && (
+            {user?.role === "warehouse_admin" && records.some(r => r.capabilities?.can_confirm) && (
               <button onClick={handleConfirmAll}
                 className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">
                 <CheckCircle size={16}/> 全部确认
@@ -626,6 +631,7 @@ export default function PayrollPage() {
         </div>
       </div>
 
+      {pendingResignations.length > 0 && <div className="p-3 mb-4 bg-amber-50 rounded-lg"><p>离职待核算</p>{pendingResignations.map(e => <button key={e.employee_id} className="btn-secondary m-1" onClick={() => { setSingleEmployees([{id:e.employee_id,name:e.name}]);setSingleEmpId(e.employee_id);setSingleEndDate(e.resignation_date);setShowSingleModal(true); }}>{e.name} · {e.resignation_date} 核算</button>)}</div>}
       {/* Summary Card */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="bg-white rounded-xl border p-4">
@@ -675,11 +681,11 @@ export default function PayrollPage() {
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
           <span className="text-sm font-medium text-blue-700">已选 {selectedIds.length} 条</span>
           <div className="flex gap-2">
-            <button onClick={handleBatchConfirm} disabled={calculating}
-              className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 disabled:opacity-50">批量确认</button>
-            <button onClick={handleBatchDisburse} disabled={calculating}
+            {user?.role === "warehouse_admin" && <button onClick={handleBatchConfirm} disabled={calculating}
+              className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 disabled:opacity-50">批量确认</button>}
+            <button onClick={handleBatchDisburse} disabled={calculating || !records.filter(r => selectedIds.includes(r.id)).every(r => r.capabilities?.can_pay)}
               className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 disabled:opacity-50">批量发放</button>
-            <button onClick={openBatchRecalc} disabled={calculating}
+            <button onClick={openBatchRecalc} disabled={calculating || !records.filter(r => selectedIds.includes(r.id)).every(r => r.capabilities?.can_rework)}
               className="bg-amber-500 text-white px-3 py-1.5 rounded text-sm hover:bg-amber-600 disabled:opacity-50">批量作废重算</button>
           </div>
         </div>
@@ -779,14 +785,14 @@ export default function PayrollPage() {
                   </td>
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-x-2 gap-y-1 flex-wrap">
-                      {!r.voided && r.status !== "confirmed" && canOperate && (
+                      {user?.role === "warehouse_admin" && r.capabilities?.can_confirm && (
                         <button onClick={() => handleConfirm(r.id)}
                           className="text-green-600 hover:text-green-800 text-xs font-medium inline-flex items-center gap-1"
                           title="确认">
                           <CheckCircle size={14}/>确认
                         </button>
                       )}
-                      {!r.voided && r.status === "confirmed" && !r.disbursed && canOperate && (
+                      {canOperate && r.capabilities?.can_pay && (
                         <button onClick={() => openDisburseModal(r)} disabled={disbursing === r.id}
                           className="text-blue-600 hover:text-blue-800 text-xs font-medium inline-flex items-center gap-1"
                           title="发放">
@@ -805,7 +811,7 @@ export default function PayrollPage() {
                         title="查看工资单">
                         <Eye size={14}/>查看工资单
                       </button>
-                      {!r.voided && canOperate && (
+                      {canOperate && r.capabilities?.can_rework && (
                         <button onClick={() => openRecalcOne(r.id, !!r.is_last_record)}
                           className="text-amber-500 hover:text-amber-700 text-xs font-medium inline-flex items-center gap-1"
                           title="作废重算">
@@ -1367,3 +1373,5 @@ export default function PayrollPage() {
     </div>
   );
 }
+
+export default function PayrollPage() { return <FinancialIdentityBoundary><PayrollPageContent /></FinancialIdentityBoundary>; }

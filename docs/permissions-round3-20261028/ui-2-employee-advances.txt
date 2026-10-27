@@ -1,0 +1,33 @@
+SYNTHETIC WH1
+S
+员工预支
+记预支
+
+已预支 (THB)
+
+261
+
+预支人数
+
+3
+
+全部审批状态
+待核验
+待批准
+待出款
+已通过
+已驳回
+全部员工
+SYNTHETIC EMP 1
+SYNTHETIC EMP 2
+SYNTHETIC EMP 3
+员工	预支金额	预支日期	所属周期	已结清金额	已预支	状态	来源	审批状态	操作人	备注	操作
+SYNTHETIC EMP 1	10 THB	2026-10-20	2026-10 下半月	0	10	待结算	垫款单 #7	已出款	SYNTHETIC supervisor 2	-	
+SYNTHETIC EMP 1	10 THB	2026-10-20	2026-10 下半月	0	10	待结算	公司账户	已出款	SYNTHETIC supervisor 2	-	
+SYNTHETIC EMP 1	10 THB	2026-10-20	2026-10 下半月	0	10	待结算	公司账户	已出款	SYNTHETIC supervisor 2	-	
+SYNTHETIC EMP 1	10 THB	2026-10-20	2026-10 下半月	0	10	待结算	备用金	已出款	SYNTHETIC supervisor 2	-	
+SYNTHETIC EMP 1	11 THB	2026-10-20	2026-10 下半月	0	11	待结算	公司账户	待出款	SYNTHETIC supervisor 2	-	
+SYNTHETIC EMP 3	10 THB	2026-10-20	2026-10 下半月	0	10	待结算	公司账户	已出款	SYNTHETIC supervisor 2	-	
+SYNTHETIC EMP 1	50 THB	2026-10-20	2026-10 下半月	50	0	已随工资结清	公司账户	已出款	SYNTHETIC supervisor 2	-	
+SYNTHETIC EMP 3	100 THB	2026-10-20	2026-10 上半月	0	100	待结算	公司账户	待核验	SYNTHETIC staff 3	-	
+SYNTHETIC EMP 2	100 THB	2026-10-20	2026-10 上半月	0	100	待结算	公司账户	待核验	SYNTHETIC supervisor 2	-	

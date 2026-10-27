@@ -1,3 +1,5 @@
+from app.services import financial_authorization as duties
+from app.core.round2_access import mutation_scope, own_scope
 from fastapi.responses import StreamingResponse
 from fastapi import Body, APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +25,7 @@ from app.services import payable_creation as creation
 from app.services import purchase_matching as matching
 from app.services import cost_identity as costs
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(mutation_scope)])
 
 class BillCreate(BaseModel):
     supplier_id: int; bill_number: str; bill_date: str; due_date: str
@@ -84,7 +86,7 @@ async def list_bills(
 
     return {
         "data": [{
-            "id": b.id, "warehouse_id": b.warehouse_id, "supplier_id": b.supplier_id,
+            "id": b.id, "capabilities": await duties.bill_capabilities(db,current_user,b), "warehouse_id": b.warehouse_id, "supplier_id": b.supplier_id,
             "supplier_name": smap.get(b.supplier_id, ""),
             "bill_number": b.bill_number,
             "bill_date": b.bill_date.isoformat() if b.bill_date else None,
@@ -262,7 +264,7 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
                    db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无权限")
     await matching.scope_lock(db,warehouse_id)
     b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id).with_for_update()
@@ -311,7 +313,7 @@ async def void_bill(bill_id: int, void_reason: str = None,
     """作废账单（留痕，不真删）。仅仓库管理员/主管可操作。"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
         raise HTTPException(403, "无权限")
     await costs.lock(db,warehouse_id)
     b = (await db.execute(select(PayableBill).where(PayableBill.id == bill_id).with_for_update())).scalar_one_or_none()
@@ -586,13 +588,16 @@ async def list_plans(current_user: User = Depends(check_staff_permission(_PLAN_P
         await db.flush()
     except: pass
 
-    return {"data": [{"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_ids": p.bill_ids, "bill_attachment": p.bill_attachment, "remark": p.remark} for p in plans]}
+    return {"data": [{"id": p.id, "capabilities": await duties.plan_capabilities(db,current_user,p), "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_ids": p.bill_ids, "bill_attachment": p.bill_attachment, "remark": p.remark} for p in plans]}
 
 @router.post("/plans", dependencies=[Depends(require_non_labor)])
 async def create_plan(req: PlanCreate, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)),
                       db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    duties.accountant(current_user)
+    if not req.bill_ids or len(set(req.bill_ids)) != len(req.bill_ids):
+        raise HTTPException(400, '请选择不重复的应付账单')
     wh_ids = get_wh_ids(current_user)
     total = 0
     if req.bill_ids:
@@ -603,6 +608,10 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(check_staff_
         for b in bills:
             if b.warehouse_id not in wh_ids:
                 raise HTTPException(403, "计划中包含非本仓库的账单")
+        for bill in bills:
+            own_scope(current_user,bill.warehouse_id)
+            if bill.warehouse_id != get_wh_id(current_user):
+                raise HTTPException(403,'计划中的账单必须全部属于当前仓库')
         # 统计口径：排除已作废账单，且排除未生效(待审批/已驳回)采购单对应的账单
         po_ids = {b.purchase_order_id for b in bills if b.purchase_order_id}
         non_confirmed_po_ids = set()
@@ -621,6 +630,7 @@ async def create_plan(req: PlanCreate, current_user: User = Depends(check_staff_
         created_by=current_user.id,
     )
     db.add(p); await db.flush()
+    await duties.evidence(db,current_user,p,'plan_prepare',duties.payload(p,{'status'}))
     # Save as template if requested
     if req.save_as_template and req.bill_ids:
         tmpl = PlanTemplate(
@@ -779,6 +789,7 @@ async def payable_timeline(current_user: User = Depends(check_staff_permission(_
 async def execute_plan(plan_id: int, account_id: int = None, current_user: User = Depends(check_staff_permission(_PLAN_PERMISSION)), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    duties.accountant(current_user)
     await matching.scope_lock(db,warehouse_id)
     result = await db.execute(select(PayablePlan).where(PayablePlan.id == plan_id).with_for_update())
     p = result.scalar_one_or_none()
@@ -787,21 +798,27 @@ async def execute_plan(plan_id: int, account_id: int = None, current_user: User 
         raise HTTPException(403, "无权限")
     if p.status != PlanStatus.PENDING.value:
         raise HTTPException(400, "该计划已执行或已取消")
-    wh_ids = [warehouse_id]
-    paid_count = 0
-    if p.bill_ids:
-        from app.services.flow_rules import should_settle_bill
-        bills = (await db.execute(select(PayableBill).where(PayableBill.id.in_(p.bill_ids)).order_by(PayableBill.id).with_for_update())).scalars().all()
-        for b in bills:
-            # 仅结算本仓库、且尚未付清的账单（幂等：已付清的跳过，不重复计入现金流出）
-            if not should_settle_bill(b.warehouse_id, b.status, b.paid_amount, b.amount, wh_ids, PayableStatus.PAID.value):
-                continue
-            from app.services.payable_payment import record_payment
-            from app.services.wallet import money
-            await bill_detail(db,b.id,warehouse_id)
-            await record_payment(db, b, money(b.amount) - money(b.paid_amount), account_id,
-                b.payment_method or "银行转账", current_user)
-            paid_count += 1
+    await duties.proof(db,p,'plan_prepare',duties.payload(p,{'status'}))
+    from app.services.wallet import money
+    if not p.bill_ids or len(set(p.bill_ids)) != len(p.bill_ids):
+        raise HTTPException(409,'付款计划账单无效')
+    bills=(await db.execute(select(PayableBill).where(PayableBill.id.in_(p.bill_ids)).order_by(PayableBill.id).with_for_update())).scalars().all()
+    if len(bills)!=len(p.bill_ids):raise HTTPException(409,'计划中包含不存在的账单')
+    for bill in bills:
+        if bill.warehouse_id!=warehouse_id:raise HTTPException(403,'计划中包含外仓账单')
+        if bill.status in ('paid','voided'):raise HTTPException(409,'计划中包含已付或作废账单')
+        await duties.execute_bill(db,current_user,bill)
+    if len({b.currency or 'THB' for b in bills})!=1:
+        raise HTTPException(409,'同一执行批次不能混合币种')
+    if sum(money(b.amount)-money(b.paid_amount) for b in bills)!=money(p.total_amount):
+        raise HTTPException(409,'计划金额已失效，请按当前剩余应付重新生成计划')
+    paid_count=0
+    from app.services.payable_payment import record_payment
+    for bill in bills:
+        await bill_detail(db,bill.id,warehouse_id)
+        await record_payment(db,bill,money(bill.amount)-money(bill.paid_amount),account_id,
+            bill.payment_method or '银行转账',current_user)
+        paid_count+=1
     p.status = PlanStatus.EXECUTED.value
     await db.flush()
     return {"message": f"计划执行成功，已结算 {paid_count} 笔账单"}
@@ -829,7 +846,7 @@ async def plan_detail(plan_id: int, current_user: User = Depends(check_staff_per
             "status": b.status, "paid_amount": b.paid_amount,
         } for b in bills]
     return {
-        "plan": {"id": p.id, "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_attachment": p.bill_attachment, "remark": p.remark},
+        "plan": {"id": p.id, "capabilities": await duties.plan_capabilities(db,current_user,p), "plan_name": p.plan_name, "planned_date": p.planned_date.isoformat() if p.planned_date else None, "total_amount": p.total_amount, "status": p.status, "bill_attachment": p.bill_attachment, "remark": p.remark},
         "bills": bills_data,
         "bill_count": len(bills_data),
     }
@@ -1002,3 +1019,28 @@ async def payable_trend(
         prev_order = order; prev_spending = spending
 
     return {"data": data, "warnings": warnings}
+
+
+@router.post("/{bill_id}/verify-payment")
+async def verify_bill_payment(bill_id: int, current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
+    duties.accountant(current_user)
+    await matching.scope_lock(db,warehouse_id)
+    bill=(await db.execute(select(PayableBill).where(PayableBill.id==bill_id,PayableBill.warehouse_id==warehouse_id).with_for_update())).scalar_one_or_none()
+    if bill is None:raise HTTPException(404,'应付不存在或不属于当前仓库')
+    if bill.status in ('paid','voided'):raise HTTPException(409,'该账单不能核验')
+    await duties.independent(db,current_user,bill.created_by)
+    await duties.evidence(db,current_user,bill,'bill_verify',await duties.bill_payload(db,bill))
+    return {'message':'应付已核验，采购/匹配确认不等于资金批准'}
+
+@router.post("/{bill_id}/approve-payment")
+async def approve_bill_payment(bill_id: int, current_user: User = Depends(check_staff_permission(_PAYABLE_PERMISSION)), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse)):
+    duties.approver(current_user)
+    await matching.scope_lock(db,warehouse_id)
+    bill=(await db.execute(select(PayableBill).where(PayableBill.id==bill_id,PayableBill.warehouse_id==warehouse_id).with_for_update())).scalar_one_or_none()
+    if bill is None:raise HTTPException(404,'应付不存在或不属于当前仓库')
+    if bill.status in ('paid','voided'):raise HTTPException(409,'该账单不能批准')
+    await duties.independent(db,current_user,bill.created_by)
+    value=await duties.bill_payload(db,bill)
+    await duties.proof(db,bill,'bill_verify',value)
+    await duties.evidence(db,current_user,bill,'bill_approve',value)
+    return {'message':'资金已批准，等待独立财务执行；未付款'}

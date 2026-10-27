@@ -1,3 +1,5 @@
+from app.services import financial_authorization as duties
+from app.core.round2_access import mutation_scope, own_scope
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,13 +23,13 @@ from datetime import datetime
 from typing import Optional, Literal
 import json
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(mutation_scope)])
 
 
 def _approval_fields(advance):
     return {
         "approval_status": advance.approval_status,
-        "approval_status_label": ADVANCE_APPROVAL_LABELS.get(advance.approval_status, advance.approval_status),
+        "approval_status_label": {'pending':'待核验','verified':'待批准','approved_ready':'待出款','approved':'已出款','rejected':'已驳回'}.get(advance.approval_status, advance.approval_status),
         "reviewer_id": advance.reviewer_id,
         "reviewed_at": advance.reviewed_at.isoformat() if advance.reviewed_at else None,
         "reject_reason": advance.reject_reason,
@@ -106,12 +108,7 @@ async def create_advance(
 
     limit_check = await check_advance_limit(db, emp, req.amount, currency, adv_dt)
 
-    approval_status = AdvanceApprovalStatus.APPROVED.value
-    if current_user.role == Role.SUPERVISOR:
-        owners, _ = await employee_account_roles(db, [emp])
-        owner = owners.get(emp.id)
-        if emp.user_id == current_user.id or emp.id == current_user.attendance_employee_id or (owner and owner.id == current_user.id):
-            approval_status = AdvanceApprovalStatus.PENDING.value
+    approval_status = AdvanceApprovalStatus.PENDING.value
 
     adv = EmployeeAdvance(
         warehouse_id=wh_id,
@@ -136,7 +133,7 @@ async def create_advance(
     db.add(adv)
     await db.flush()
 
-    await apply_advance_funding(db, adv, current_user)
+    # Request registration does not approve or move funds.
 
     message = "预支记录已创建"
     if limit_check.get("warning"):
@@ -174,7 +171,7 @@ async def list_advances(
     employee_id: Optional[int] = None,
     period: Optional[str] = None,
     advance_id: Optional[int] = None,
-    approval_status: Optional[Literal["pending", "approved", "rejected", "待审批", "已通过", "已驳回"]] = None,
+    approval_status: Optional[Literal["pending", "verified", "approved_ready", "approved", "rejected", "待审批", "已通过", "已驳回"]] = None,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -214,6 +211,7 @@ async def list_advances(
         "data": [{
             "id": r.id,
             **_approval_fields(r),
+            "capabilities": await duties.advance_capabilities(db,current_user,r),
             **cash_advance_reference(r, advance_numbers),
             **_void_fields(r),
             "voided_by_name": op_map.get(r.voided_by).display_name if op_map.get(r.voided_by) else "",
@@ -389,6 +387,8 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
     ).with_for_update())).scalar_one_or_none()
     if advance is None:
         raise HTTPException(404, "预支记录不存在")
+    own_scope(current_user, advance.warehouse_id)
+    await duties.independent(db, current_user, *await duties.advance_people(db,advance))
     if advance.is_voided:
         raise HTTPException(400, "该预支已作废，不能审批")
     if action == "reject":
@@ -401,16 +401,18 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
         raise HTTPException(400, "该预支已通过" if action == "approve" else "该预支已通过，不能驳回")
     if advance.approval_status == AdvanceApprovalStatus.REJECTED.value:
         raise HTTPException(400, "该预支已驳回，不能审批通过" if action == "approve" else "该预支已驳回")
-    if advance.approval_status != AdvanceApprovalStatus.PENDING.value:
+    if advance.approval_status not in ('pending', 'verified'):
         raise HTTPException(400, "只有待审批的预支可以审批")
     before = {"amount": advance.amount, **_approval_fields(advance)}
-    advance.approval_status = (AdvanceApprovalStatus.APPROVED.value if action == "approve"
+    if action == "approve":
+        await duties.proof(db,advance,'advance_verify',await duties.advance_payload(db,advance))
+    advance.approval_status = ("approved_ready" if action == "approve"
                                else AdvanceApprovalStatus.REJECTED.value)
     advance.reviewer_id = current_user.id
     advance.reviewed_at = thai_now()
     advance.reject_reason = reason if action == "reject" else None
     if action == "approve":
-        await apply_advance_funding(db, advance, current_user)
+        await duties.evidence(db,current_user,advance,'advance_approve',await duties.advance_payload(db,advance))
     await record_history(db, module="employee_advances", record_id=advance.id,
         operator=current_user, operation_type=action, before=before,
         after={"amount": advance.amount, **_approval_fields(advance)}, warehouse_id=wh_id)
@@ -439,3 +441,32 @@ async def advance_detail(advance_id: int,
     if not result["data"]:
         raise HTTPException(404, "预支记录不存在")
     return result["data"][0]
+
+
+@router.post("/{advance_id}/verify")
+async def verify_advance(advance_id: int, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)), db: AsyncSession = Depends(get_db)):
+    duties.accountant(current_user)
+    row=(await db.execute(select(EmployeeAdvance).where(EmployeeAdvance.id==advance_id).with_for_update())).scalar_one_or_none()
+    if row is None:raise HTTPException(404,'预支不存在')
+    own_scope(current_user,row.warehouse_id)
+    await duties.independent(db,current_user,*await duties.advance_people(db,row))
+    if row.is_voided or row.approval_status != 'pending':raise HTTPException(409,'只能核验待处理申请')
+    row.approval_status='verified'
+    await duties.evidence(db,current_user,row,'advance_verify',await duties.advance_payload(db,row))
+    return {'message':'凭证已核验，尚未批准或出款','id':row.id,'approval_status':row.approval_status}
+
+@router.post("/{advance_id}/execute")
+async def execute_advance(advance_id: int, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)), db: AsyncSession = Depends(get_db)):
+    row=(await db.execute(select(EmployeeAdvance).where(EmployeeAdvance.id==advance_id).with_for_update())).scalar_one_or_none()
+    if row is None:raise HTTPException(404,'预支不存在')
+    own_scope(current_user,row.warehouse_id)
+    await duties.executor(db,current_user,*await duties.advance_people(db,row))
+    if row.is_voided or row.approval_status != 'approved_ready' or row.expense_record_id or row.fund_item_id:
+        raise HTTPException(409,'该预支未经有效批准或已经执行')
+    await duties.proof(db,row,'advance_approve',await duties.advance_payload(db,row))
+    if not row.funding_source or not row.expense_tracking_enabled:
+        raise HTTPException(409,'历史预支缺少可验证资金来源，请先独立核对')
+    row.approval_status='approved'
+    await apply_advance_funding(db,row,current_user)
+    await duties.evidence(db,current_user,row,'advance_execute',await duties.advance_payload(db,row))
+    return {'message':'预支已执行','id':row.id,**_approval_fields(row)}

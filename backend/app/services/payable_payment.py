@@ -9,6 +9,8 @@ from app.services.data_history import record_history
 
 
 async def record_payment(db, bill, value, account_id, method, operator, request_key=None):
+    from app.services.financial_authorization import execute_bill
+    await execute_bill(db,operator,bill)
     if request_key:
         old = (await db.execute(select(PayablePayment).where(PayablePayment.request_key == request_key))).scalar_one_or_none()
         if old:

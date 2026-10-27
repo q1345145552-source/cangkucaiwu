@@ -1,3 +1,5 @@
+from app.services import financial_authorization as duties
+from app.core.round2_access import mutation_scope, own_scope
 """垫款登记、确认与归还；归还记录按用途计入实际支出，不重复写支出表。"""
 import os
 import uuid
@@ -27,7 +29,7 @@ from app.services.cash_advance_payroll import payroll_usage_totals, usage_amount
 from app.services.cash_advance_usage import reimbursement_usage_totals, reimbursement_usage, employee_advance_usage_totals, employee_advance_usage
 from app.services import cash_advance_documents as documents
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(mutation_scope)])
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
 PERMISSION = MENU_PERMISSIONS_BY_KEY["cash_advances"].label
 
@@ -39,8 +41,8 @@ async def _reader(user=Depends(check_staff_permission(PERMISSION))):
 
 
 async def _creator(user=Depends(get_current_user)):
-    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "只有仓库管理员和主管可以新建垫款单")
+    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "只有仓库管理员、主管或财务可以新建垫款单")
     await check_staff_permission(PERMISSION)(user)
     return user
 
@@ -51,9 +53,8 @@ async def _reviewer(user=Depends(get_current_user)):
     return user
 
 
-async def _repayer(user=Depends(get_current_user)):
-    if user.role != Role.WAREHOUSE_ADMIN:
-        raise HTTPException(403, "只有仓库管理员可以归还垫款")
+async def _repayer(user=Depends(check_staff_permission(PERMISSION))):
+    duties.accountant(user)
     return user
 
 
@@ -136,13 +137,13 @@ async def _used_ids(db, ids):
 
 def _can_edit(row, user, used):
     return (row.id not in used and row.repaid_amount == 0 and
-        (row.status == "pending" and user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) or
+        (row.status == "pending" and (user.role == Role.WAREHOUSE_ADMIN or user.role in (Role.SUPERVISOR, Role.STAFF) and row.created_by_id == user.id) or
          row.status == "confirmed" and user.role == Role.WAREHOUSE_ADMIN))
 
 
 async def _with_documents(db, row, user):
     links = (await documents.links_map(db, [row]))[row.id]
-    return {**_serialize(row), "linked_documents": links,
+    return {**_serialize(row), "capabilities": await duties.cash_capabilities(db,user,row), "linked_documents": links,
         "linked_documents_total": float(sum((documents.money(d["amount"]) for d in links), Decimal(0))),
         "can_edit": _can_edit(row, user, await _used_ids(db, [row.id]))}
 
@@ -217,7 +218,7 @@ async def list_advances(
     advances = await employee_advance_usage_totals(db, rows)
     linked = await documents.links_map(db, rows)
     used_ids = await _used_ids(db, [r.id for r in rows]) if rows else set()
-    return {"data": [{**_serialize(r), **usage_amounts(r, used[r.id], other[r.id], advances[r.id]),
+    return {"data": [{**_serialize(r), "capabilities": await duties.cash_capabilities(db,user,r), **usage_amounts(r, used[r.id], other[r.id], advances[r.id]),
         "linked_documents": linked[r.id], "linked_documents_total": float(sum((documents.money(d["amount"]) for d in linked[r.id]), Decimal(0))),
         "can_edit": _can_edit(r, user, used_ids)} for r in rows],
             "total": total, "page": page, "page_size": page_size}
@@ -260,7 +261,7 @@ async def create_advance(req: CashAdvanceCreate, user=Depends(_creator), db: Asy
     payer_id, payer_name = await _validate_payer(req, user, wid, db)
     linked = await documents.resolve(db, wid, req.currency, req.linked_documents)
     documents.validate_difference(req.amount, linked, req.amount_difference_note)
-    confirmed = user.role == Role.WAREHOUSE_ADMIN
+    confirmed = False
     now = thai_now()
     row = CashAdvance(warehouse_id=wid, payer_id=payer_id, payer_name=payer_name,
         advance_date=req.advance_date, amount=req.amount, currency=req.currency, purpose=req.purpose,
@@ -285,6 +286,8 @@ async def edit_advance(advance_id: int, req: CashAdvanceCreate, user=Depends(_cr
     if row is None: raise HTTPException(404, "垫款单不存在或不属于当前仓库")
     if not _can_edit(row, user, await _used_ids(db, [row.id])):
         raise HTTPException(400, "仅待确认单可由主管或管理员编辑；未使用且未归还的已确认单仅管理员可编辑")
+    if user.role != Role.WAREHOUSE_ADMIN and row.created_by_id != user.id:
+        raise HTTPException(403,'只能编辑本人录入的待处理申请')
     before = await _with_documents(db, row, user)
     payer_id, payer_name = await _validate_payer(req, user, wid, db)
     linked = await documents.resolve(db, wid, req.currency, req.linked_documents)
@@ -292,6 +295,9 @@ async def edit_advance(advance_id: int, req: CashAdvanceCreate, user=Depends(_cr
     for key in ("advance_date", "amount", "currency", "purpose", "description", "voucher_path", "amount_difference_note"):
         setattr(row, key, getattr(req, key))
     row.payer_id, row.payer_name = payer_id, payer_name
+    row.status='pending';row.reviewed_by_id=None;row.reviewed_at=None
+    await duties.evidence(db,user,row,'cash_verify',{'invalidated':True})
+    await duties.evidence(db,user,row,'cash_approve',{'invalidated':True})
     await documents.save_links(db, row, linked)
     result = await _with_documents(db, row, user)
     await record_history(db, module="cash_advances", record_id=row.id, operator=user,
@@ -311,11 +317,18 @@ async def _review(advance_id, reason, user, db):
     if row is None: raise HTTPException(404, "垫款单不存在或不属于当前仓库")
     if row.status != "pending":
         raise HTTPException(400, f"该垫款单{STATUS_LABELS[row.status]}，不能重复确认或驳回")
+    own_scope(user,row.warehouse_id)
+    if row.payer_id is None:raise HTTPException(409,'请先关联可验证的垫款人账号，不能自动批准匿名历史资金')
+    await duties.independent(db,user,row.payer_id,row.created_by_id)
+    if reason is None:
+        await duties.proof(db,row,'cash_verify',await duties.cash_payload(db,row))
     before = _serialize(row)
     row.status = "rejected" if reason is not None else "confirmed"
     row.reject_reason = reason
     row.reviewed_by_id, row.reviewed_by_name, row.reviewed_at = user.id, user.display_name, thai_now()
     await db.flush()
+    if reason is None:
+        await duties.evidence(db,user,row,'cash_approve',await duties.cash_payload(db,row))
     result = _serialize(row)
     await record_history(db, module="cash_advances", record_id=row.id, operator=user,
         operation_type="reject" if reason is not None else "confirm", before=before, after=result, warehouse_id=row.warehouse_id)
@@ -410,6 +423,10 @@ async def list_repayments(advance_id: int, user=Depends(_reader), db: AsyncSessi
 async def repay_advance(advance_id: int, req: RepaymentRequest, user=Depends(_repayer), db: AsyncSession = Depends(get_db)):
     wid = _warehouse(user)
     loan = await _loan(db, advance_id, wid, lock=True)
+    own_scope(user,loan.warehouse_id)
+    if loan.payer_id is None:raise HTTPException(409,'请先核对并关联垫款人账号')
+    await duties.executor(db,user,loan.payer_id,loan.created_by_id)
+    await duties.proof(db,loan,'cash_approve',await duties.cash_payload(db,loan))
     if not req.account_id: raise HTTPException(400, "请选择归还账户")
     voucher = (req.voucher_path or "").strip()
     parts = voucher.split("/")
@@ -439,6 +456,10 @@ async def repay_advance(advance_id: int, req: RepaymentRequest, user=Depends(_re
     if account.status not in (None, "active"): raise HTTPException(400, "归还账户已停用")
     if (account.currency or "THB").upper() != loan.currency:
         raise HTTPException(400, f"归还账户币种必须与垫款单一致（{loan.currency}）")
+    from app.services.wallet import money
+    balance = (await current_account_balances(db, [account]))[account.id]
+    if balance < money(req.amount):
+        raise HTTPException(400, "公司账户余额不足，不能执行归还")
     before = _serialize(loan)
     row = CashAdvanceRepayment(cash_advance_id=loan.id, warehouse_id=wid, repayment_date=req.repayment_date,
         amount=req.amount, account_id=account.id, account_name=account.account_name, currency=loan.currency,
@@ -486,3 +507,15 @@ async def revoke_repayment(repayment_id: int, req: RevokeRepaymentRequest | None
     await record_history(db, module="cash_advances", record_id=loan.id, operator=user, operation_type="revoke_repayment",
         before=before, after=result, warehouse_id=wid)
     return result
+
+
+@router.post("/{advance_id}/verify")
+async def verify_advance(advance_id: int, user=Depends(_reader), db: AsyncSession = Depends(get_db)):
+    duties.accountant(user)
+    row=await _loan(db,advance_id,_warehouse(user),lock=True)
+    own_scope(user,row.warehouse_id)
+    if row.payer_id is None:raise HTTPException(409,'请先关联可验证的垫款人账号，不能自动批准匿名历史资金')
+    await duties.independent(db,user,row.payer_id,row.created_by_id)
+    if row.status!='pending':raise HTTPException(409,'只能核验待处理垫款')
+    await duties.evidence(db,user,row,'cash_verify',await duties.cash_payload(db,row))
+    return {'message':'垫款凭证已核验，等待管理员确认，尚未出款'}

@@ -1,4 +1,5 @@
 "use client";
+import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import CashAdvanceLink from "@/components/CashAdvanceLink";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
@@ -16,7 +17,7 @@ function todayStr(): string {
 const SOURCE_LABELS: Record<string, string> = { company_account: "公司账户", cash_advance: "垫款单", expense_fund: "备用金" };
 const STATUS_LABELS: Record<string, string> = { unpaid: "待结算", partial: "部分结清", deducted: "已随工资结清", voided: "已作废" };
 
-export default function EmployeeAdvancePage() {
+function EmployeeAdvancePageContent() {
   const canWrite = useMenuPermission("employee_advances");
   const { toast } = useToast(); const { user } = useAuth() as { user: any }; const router = useRouter();
   const [rows, setRows] = useState<any[]>([]);
@@ -47,7 +48,7 @@ export default function EmployeeAdvancePage() {
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
     const status = new URLSearchParams(window.location.search).get("approval_status") || "";
-    setApprovalStatus(["pending", "approved", "rejected"].includes(status) ? status : "");
+    setApprovalStatus(["pending", "verified", "approved_ready", "approved", "rejected"].includes(status) ? status : "");
     setFiltersReady(true); loadRefs();
   }, []);
   useEffect(() => { if (filtersReady) load(); }, [filtersReady, filterEmp, filterPeriod, approvalStatus]);
@@ -63,6 +64,10 @@ export default function EmployeeAdvancePage() {
     finally { setReviewing(null); }
   }
 
+  async function executeStage(id: number, action: "verify" | "execute") {
+    try { await api.post(`/employee-advances/${id}/${action}`, {}); toast("success", action === "verify" ? "核验完成，尚未出款" : "出款完成"); void load(); }
+    catch (error: unknown) { toast("error", error instanceof Error ? error.message : "操作失败"); }
+  }
   async function load() {
     setLoading(true);
     try {
@@ -187,7 +192,7 @@ export default function EmployeeAdvancePage() {
       {/* 筛选 */}
       <div className="flex gap-2 items-center mb-3 flex-wrap">
         <select aria-label="审批状态" value={approvalStatus} onChange={e => setApprovalStatus(e.target.value)} className="border rounded-lg px-3 py-2 text-sm bg-white">
-          <option value="">全部审批状态</option><option value="pending">待审批</option><option value="approved">已通过</option><option value="rejected">已驳回</option>
+          <option value="">全部审批状态</option><option value="pending">待核验</option><option value="verified">待批准</option><option value="approved_ready">待出款</option><option value="approved">已通过</option><option value="rejected">已驳回</option>
         </select>
         <select value={filterEmp || ""} onChange={e => setFilterEmp(+e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
@@ -246,11 +251,13 @@ export default function EmployeeAdvancePage() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-center">{r.cash_advance_number ? <CashAdvanceLink id={r.cash_advance_id} number={r.cash_advance_number} /> : r.funding_source_label || SOURCE_LABELS[r.funding_source || "company_account"]}</td>
-                  <td className="px-3 py-3 text-center whitespace-nowrap">{r.approval_status_label || r.approval_status}</td>
+                  <td className="px-3 py-3 text-center whitespace-nowrap">{r.capabilities?.workflow_stage || r.approval_status_label || r.approval_status}</td>
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-gray-500 max-w-32 truncate" title={r.remark}>{r.remark || "-"}</td>
                   <td className="px-3 py-3 text-center">
-                    {user?.role === "warehouse_admin" && !r.is_voided && r.status !== "voided" && r.approval_status === "pending" && <div className="flex gap-2 mb-2 whitespace-nowrap">
+                    {r.capabilities?.can_verify && ["staff", "warehouse_admin"].includes(user?.role || "") && <button className="btn-secondary btn-xs" onClick={() => executeStage(r.id, "verify")}>核验</button>}
+                    {r.capabilities?.can_execute && ["staff", "warehouse_admin"].includes(user?.role || "") && <button className="btn-primary btn-xs" onClick={() => executeStage(r.id, "execute")}>出款</button>}
+                    {user?.role === "warehouse_admin" && r.capabilities?.can_approve && <div className="flex gap-2 mb-2 whitespace-nowrap">
                       <button disabled={reviewing !== null} onClick={() => review(r.id)} className="text-green-700 disabled:opacity-50">通过</button>
                       <button disabled={reviewing !== null} onClick={() => { setRejectId(r.id); setRejectReason(""); }} className="text-red-600">驳回</button>
                     </div>}
@@ -364,3 +371,5 @@ export default function EmployeeAdvancePage() {
     </div>
   );
 }
+
+export default function EmployeeAdvancePage() { return <FinancialIdentityBoundary><EmployeeAdvancePageContent /></FinancialIdentityBoundary>; }

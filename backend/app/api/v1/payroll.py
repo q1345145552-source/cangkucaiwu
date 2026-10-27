@@ -1,3 +1,5 @@
+from app.services import financial_authorization as duties
+from app.core.round2_access import mutation_scope
 from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount
 from app.services.cash_advance_payroll import lock_payroll_advance, payroll_usage_totals, usage_amounts, PAYROLL_CURRENCY
 from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
@@ -44,13 +46,13 @@ async def reject_labor_management_payroll(
 ):
     # 管理端全部拦截；本人专用工资单仍由原有员工身份、档案和仓库校验处理。
     if (
-        current_user.role == Role.WAREHOUSE_LABOR
+        current_user.role in (Role.WAREHOUSE_LABOR, Role.SUPERVISOR)
         and request.scope["route"].endpoint is not my_payslip
     ):
         raise HTTPException(403, "无权查看工资数据")
 
 
-router = APIRouter(dependencies=[Depends(reject_labor_management_payroll)])
+router = APIRouter(dependencies=[Depends(mutation_scope), Depends(reject_labor_management_payroll)])
 
 
 class CalculateRequest(BaseModel):
@@ -75,8 +77,11 @@ async def calculate_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以计算工资")
+
+    if req.recalc_employee_id is not None or req.recalc_start_date is not None:
+        raise HTTPException(400, '重算参数只能通过工资重算接口使用')
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -91,8 +96,11 @@ async def preview_payroll(
     db: AsyncSession = Depends(get_db),
 ):
     """算工资预览：做跟算工资一样的检查，但不写任何数据，返回检查结果。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以计算工资")
+
+    if req.recalc_employee_id is not None or req.recalc_start_date is not None:
+        raise HTTPException(400, '重算参数只能通过工资重算接口使用')
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -225,6 +233,18 @@ def _leave_summary(info) -> str | None:
 async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req: CalculateRequest) -> dict:
     """准备阶段（不写任何数据）：确定结束日、查员工、算水位线/起点、校验、查待补打卡。
     返回计算所需的所有数据 + 检查结果，供 _calc_payroll 和预览接口共用。"""
+    duties.accountant(current_user)
+    if req.employee_ids:
+        ids = set(req.employee_ids)
+        valid = set((await db.execute(select(Employee.id).where(Employee.id.in_(ids), Employee.warehouse_id == wh_id))).scalars())
+        if len(ids) != len(req.employee_ids) or valid != ids:
+            raise HTTPException(403, '包含无权核算的员工或重复员工')
+    if req.is_resignation and req.recalc_employee_id is None:
+        if not req.employee_ids or len(req.employee_ids) != 1:
+            raise HTTPException(400, '离职核算必须指定一名已离职员工')
+        leaving = await db.get(Employee, req.employee_ids[0])
+        if leaving.status != 'resigned' or not leaving.resignation_date or req.end_date != leaving.resignation_date.isoformat():
+            raise HTTPException(400, '离职核算必须使用已记录的离职事实和日期')
     today = thai_today()
     yesterday = today - timedelta(days=1)
     cap_note = ""
@@ -289,9 +309,10 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
     else:
         emp_q = select(Employee).where(
             Employee.warehouse_id == wh_id,
-            Employee.status != "resigned",
             Employee.is_deleted == False,
         )
+        if not req.is_resignation:
+            emp_q = emp_q.where(Employee.status != "resigned")
         if req.employee_ids:
             emp_q = emp_q.where(Employee.id.in_(req.employee_ids))
         employees = (await db.execute(emp_q)).scalars().all()
@@ -1153,8 +1174,8 @@ async def single_settle(
     db: AsyncSession = Depends(get_db),
 ):
     """单人结算：选员工 + 截止日期，从当前周期开始算到截止日。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "只有仓库管理员/主管可以单人结算")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+        raise HTTPException(403, "只有仓库管理员或财务可以单人结算")
 
     wh_id = get_wh_id(current_user)
     if not wh_id:
@@ -1172,13 +1193,13 @@ async def single_settle(
         raise HTTPException(404, "员工不存在")
     if emp.is_deleted:
         raise HTTPException(400, f"员工 {emp.name} 已删除，不能结算")
-    if emp.status == "resigned":
-        raise HTTPException(400, f"员工 {emp.name} 已离职，不能结算")
+    if emp.status == "resigned" and (not emp.resignation_date or d != emp.resignation_date):
+        raise HTTPException(400, "离职结算截止日必须为已记录的离职日")
 
     period = d.strftime("%Y-%m")
     half = "first_half" if d.day <= 15 else "second_half"
     return await calculate_payroll(
-        CalculateRequest(period=period, half=half, employee_ids=[req.employee_id], end_date=req.end_date),
+        CalculateRequest(period=period, half=half, employee_ids=[req.employee_id], end_date=req.end_date, is_resignation=emp.status == "resigned"),
         current_user, db,
     )
 
@@ -1312,6 +1333,7 @@ async def list_payroll(
     return {
         "data": [{
             "id": r.id,
+            "capabilities": await duties.payroll_capabilities(db,current_user,r),
             "employee_id": r.employee_id,
             "disbursed": r.disbursed,
             "disbursed_at": r.disbursed_at.isoformat() if r.disbursed_at else None,
@@ -1393,7 +1415,7 @@ async def payroll_summary(
             summary_q = summary_q.where(PayrollRecord.period == period)
         if half:
             summary_q = summary_q.where(PayrollRecord.half == half)
-    records = (await db.execute(summary_q)).scalars().all()
+    records = (await db.execute(summary_q.with_for_update())).scalars().all()
 
     confirmed = sum(1 for r in records if r.status == "confirmed")
     distinct_employees = len({r.employee_id for r in records})
@@ -1425,7 +1447,7 @@ async def export_payroll(
     db: AsyncSession = Depends(get_db),
 ):
     """导出当前筛选出的工资单为 Excel（参数与列表一致）。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员/主管可以导出工资")
 
     wh_id = get_wh_id(current_user)
@@ -1509,9 +1531,10 @@ async def confirm_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以确认工资")
 
+    duties.approver(current_user)
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         raise HTTPException(400, "请先选择仓库")
@@ -1519,7 +1542,7 @@ async def confirm_payroll(
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
             PayrollRecord.warehouse_id == wh_id,
-        )
+        ).with_for_update()
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
@@ -1528,6 +1551,7 @@ async def confirm_payroll(
     if r.status == "confirmed":
         raise HTTPException(400, "该工资单已确认")
 
+    await duties.confirm_payroll(db, current_user, r)
     r.status = "confirmed"
     r.confirmed_by = current_user.id
     r.confirmed_at = thai_now()
@@ -1543,9 +1567,10 @@ async def confirm_all_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以确认工资")
 
+    duties.approver(current_user)
     wh_id = get_wh_id(current_user)
     if wh_id is None:
         raise HTTPException(400, "请先选择仓库")
@@ -1573,11 +1598,13 @@ async def confirm_all_payroll(
         conf_q = conf_q.where(PayrollRecord.period == period)
         if half:
             conf_q = conf_q.where(PayrollRecord.half == half)
-    records = (await db.execute(conf_q)).scalars().all()
+    records = (await db.execute(conf_q.with_for_update())).scalars().all()
 
     if not records:
         raise HTTPException(404, f"{scope} 没有待确认的工资单")
 
+    for r in records:
+        await duties.confirm_payroll(db, current_user, r)
     now = thai_now()
     total_net = 0
     for r in records:
@@ -1601,8 +1628,8 @@ class BatchIdsRequest(BaseModel):
 async def _batch_fetch(db: AsyncSession, wh_id: int, record_ids: List[int], lock: bool = False):
     """拉取并校验：只返回当前仓库的记录；id 数量不符说明有越权/不存在记录。"""
     ids = list(dict.fromkeys(record_ids or []))
-    if not ids:
-        raise HTTPException(400, "请选择要操作的记录")
+    if not ids or len(ids) != len(record_ids):
+        raise HTTPException(400, "请选择不重复的记录")
     query = select(PayrollRecord).where(
         PayrollRecord.id.in_(ids), PayrollRecord.warehouse_id == wh_id,
     ).order_by(PayrollRecord.id)
@@ -1620,12 +1647,15 @@ async def batch_confirm_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以确认工资")
+    duties.approver(current_user)
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
-    records = await _batch_fetch(db, wh_id, req.record_ids)
+    records = await _batch_fetch(db, wh_id, req.record_ids, lock=True)
+    for r in records:
+        await duties.confirm_payroll(db, current_user, r)
     now = thai_now()
     cnt = 0
     for r in records:
@@ -1667,7 +1697,7 @@ async def payroll_cash_advance_sources(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员和主管可以选择工资垫款单")
     wh_id = get_wh_id(current_user)
     if wh_id is None:
@@ -1694,12 +1724,14 @@ async def batch_disburse_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以发放工资")
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
     records = await _batch_fetch(db, wh_id, req.record_ids, lock=True)
+    for r in records:
+        await duties.execute_payroll(db, current_user, r)
     eligible = [r for r in records if not r.voided and r.status == "confirmed" and not r.disbursed]
     account, advance = await _disbursement_funding(db, wh_id, req, eligible)
     now = thai_now()
@@ -1725,12 +1757,14 @@ async def batch_delete_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以删除工资记录")
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
-    records = await _batch_fetch(db, wh_id, req.record_ids)
+    records = await _batch_fetch(db, wh_id, req.record_ids, lock=True)
+    for record in records:
+        await duties.draft_payroll(db, current_user, record)
     deleted = 0
     for r in records:
         if r.voided:
@@ -1763,10 +1797,11 @@ async def _recalc_one(db: AsyncSession, current_user: User, wh_id: int, record_i
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
             PayrollRecord.warehouse_id == wh_id,
-        )
+        ).with_for_update()
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
+    await duties.draft_payroll(db, current_user, r)
     if r.voided:
         raise HTTPException(400, "这张单已经作废过了")
     if r.disbursed:
@@ -1844,10 +1879,11 @@ async def _void_one(db: AsyncSession, current_user: User, wh_id: int, record_id:
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
             PayrollRecord.warehouse_id == wh_id,
-        )
+        ).with_for_update()
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
+    await duties.draft_payroll(db, current_user, r)
     if r.voided:
         raise HTTPException(400, "这张单已经作废过了")
     if r.disbursed:
@@ -1894,8 +1930,8 @@ async def recalc_payroll(
     db: AsyncSession = Depends(get_db),
 ):
     """单张重算：作废旧单 + 用旧区间生成新单。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "只有仓库管理员/主管可以重算工资")
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+        raise HTTPException(403, "只有仓库管理员或财务可以重算工资")
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
@@ -1910,15 +1946,17 @@ async def batch_recalc_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    """批量重算：逐张处理，能算的作废重算，不能算的跳过并说明原因。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
-        raise HTTPException(403, "只有仓库管理员/主管可以重算工资")
+    """批量重算：先核对全部记录，任一失败则整批回滚。"""
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
+        raise HTTPException(403, "只有仓库管理员或财务可以重算工资")
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
     if not req.void_reason or not str(req.void_reason).strip():
         raise HTTPException(400, "请填写作废原因")
-    records = await _batch_fetch(db, wh_id, req.record_ids)
+    records = await _batch_fetch(db, wh_id, req.record_ids, lock=True)
+    for record in records:
+        await duties.draft_payroll(db, current_user, record)
 
     emp_ids = {r.employee_id for r in records}
     emp_map = {}
@@ -1930,20 +1968,12 @@ async def batch_recalc_payroll(
     skipped = []
     for r in records:
         name = emp_map.get(r.employee_id).name if emp_map.get(r.employee_id) else ""
-        try:
-            async with db.begin_nested():
-                if req.mode == "void":
-                    result = await _void_one(db, current_user, wh_id, r.id, req.void_reason)
-                else:
-                    result = await _recalc_one(db, current_user, wh_id, r.id, req.void_reason)
-            if req.mode == "void":
-                success.append({"record_id": r.id, "name": name})
-            else:
-                success.append({"record_id": r.id, "name": name, "new_record_id": result["new_record_id"]})
-        except HTTPException as e:
-            skipped.append({"record_id": r.id, "name": name, "reason": str(e.detail)})
-        except Exception as e:
-            skipped.append({"record_id": r.id, "name": name, "reason": str(e) or "操作失败"})
+        if req.mode == "void":
+            await _void_one(db, current_user, wh_id, r.id, req.void_reason)
+            success.append({"record_id": r.id, "name": name})
+        else:
+            result = await _recalc_one(db, current_user, wh_id, r.id, req.void_reason)
+            success.append({"record_id": r.id, "name": name, "new_record_id": result["new_record_id"]})
 
     await db.flush()
     return {
@@ -1961,7 +1991,7 @@ async def delete_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以删除工资记录")
 
     wh_id = get_wh_id(current_user)
@@ -1971,10 +2001,11 @@ async def delete_payroll(
         select(PayrollRecord).where(
             PayrollRecord.id == record_id,
             PayrollRecord.warehouse_id == wh_id,
-        )
+        ).with_for_update()
     )).scalar_one_or_none()
     if not r:
         raise HTTPException(404, "工资记录不存在")
+    await duties.draft_payroll(db, current_user, r)
     if r.voided:
         raise HTTPException(400, "这张工资单已作废 不能操作")
 
@@ -1992,7 +2023,7 @@ async def delete_period_payroll(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete all payroll records for a period (to allow recalculation)"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以操作")
 
     wh_id = get_wh_id(current_user)
@@ -2005,7 +2036,10 @@ async def delete_period_payroll(
     )
     if half:
         summary_q = summary_q.where(PayrollRecord.half == half)
-    records = (await db.execute(summary_q)).scalars().all()
+    records = (await db.execute(summary_q.with_for_update())).scalars().all()
+
+    for record in records:
+        await duties.draft_payroll(db, current_user, record)
 
     # 已离职/已删除员工的工资单不删（重算不会重新生成，删了就再也补不回来）
     emp_ids = {r.employee_id for r in records}
@@ -2047,7 +2081,7 @@ async def disburse_payroll(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以发放工资")
 
     wh_id = get_wh_id(current_user)
@@ -2068,6 +2102,7 @@ async def disburse_payroll(
     if r.disbursed:
         raise HTTPException(400, "该工资单已发放")
 
+    await duties.execute_payroll(db, current_user, r)
     account, advance = await _disbursement_funding(db, wh_id, req, [r])
     expense_amount(r)
 
@@ -2115,7 +2150,7 @@ async def revoke_disbursement(
     db: AsyncSession = Depends(get_db),
 ):
     """撤销发放：把已发放的工资单退回「已确认未发放」状态。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员/主管可以撤销发放")
 
     wh_id = get_wh_id(current_user)
@@ -2167,10 +2202,31 @@ async def revoke_disbursement(
 
 # ═══ Employee Self-View Payslip ═══════════════
 
+async def payroll_self_identity(request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role == Role.STAFF:
+        emp=(await db.execute(select(Employee).where(Employee.user_id==user.id,Employee.warehouse_id==user.warehouse_id,Employee.is_deleted==False))).scalar_one_or_none()
+        if emp is None:raise HTTPException(403,'请先关联本人正式员工档案')
+        user._employee_view=True;user._attendance_employee=emp
+        user._active_wh_id=emp.warehouse_id;user._warehouse_ids=[emp.warehouse_id]
+        return user
+    return await employee_access(_PERMISSION,self_only=True)(request,user,db)
+
+@router.get("/pending-resignations")
+async def pending_resignations(current_user: User = Depends(check_staff_permission(_PERMISSION)), db: AsyncSession = Depends(get_db)):
+    duties.accountant(current_user)
+    wh_id=get_wh_id(current_user)
+    employees=(await db.execute(select(Employee).where(Employee.warehouse_id==wh_id,Employee.status=='resigned',Employee.resignation_date.is_not(None),Employee.is_deleted==False))).scalars().all()
+    result=[]
+    for employee in employees:
+        latest=(await db.execute(select(func.max(PayrollRecord.settle_end_date)).where(PayrollRecord.employee_id==employee.id,PayrollRecord.warehouse_id==wh_id,PayrollRecord.voided==False))).scalar()
+        if latest is None or latest<employee.resignation_date:
+            result.append({'employee_id':employee.id,'name':employee.name,'resignation_date':employee.resignation_date.isoformat(),'last_settled_date':latest.isoformat() if latest else None})
+    return {'data':result}
+
 @router.get("/my-payslip")
 async def my_payslip(
     period: str = None,
-    current_user: User = Depends(employee_access(_PERMISSION, self_only=True)),
+    current_user: User = Depends(payroll_self_identity),
     db: AsyncSession = Depends(get_db),
 ):
     """Employee views their own payslip; attendance supervisors require the explicit linked archive."""
@@ -2263,7 +2319,7 @@ async def settlement_progress(
     db: AsyncSession = Depends(get_db),
 ):
     """结算进度：所有在职员工各自已结算到哪天（没有工资单=从未结算），最落后的在前。"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以查看结算进度")
     wh_ids = get_wh_ids(current_user)
     if not wh_ids:

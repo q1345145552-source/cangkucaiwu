@@ -1,0 +1,196 @@
+/private/tmp/permissions-round3-20261028/backend/tests/permission_round2/fixtures.py:84: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round3-20261028/backend/tests/permission_round2/fixtures.py:91: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+A-create-2 403 PASS
+A-update-2 403 PASS
+A-delete-2 403 PASS
+B-create-2 403 PASS
+B-update-2 403 PASS
+B-toggle-2 403 PASS
+B-delete-2 403 PASS
+A-create-3 403 PASS
+A-update-3 403 PASS
+A-delete-3 403 PASS
+B-create-3 403 PASS
+B-update-3 403 PASS
+B-toggle-3 403 PASS
+B-delete-3 403 PASS
+A-create-4 403 PASS
+A-update-4 403 PASS
+A-delete-4 403 PASS
+B-create-4 403 PASS
+B-update-4 403 PASS
+B-toggle-4 403 PASS
+B-delete-4 403 PASS
+A-create-5 403 PASS
+A-update-5 403 PASS
+A-delete-5 403 PASS
+B-create-5 403 PASS
+B-update-5 403 PASS
+B-toggle-5 403 PASS
+B-delete-5 403 PASS
+A-create-6 403 PASS
+A-update-6 403 PASS
+A-delete-6 403 PASS
+B-create-6 403 PASS
+B-update-6 403 PASS
+B-toggle-6 403 PASS
+B-delete-6 403 PASS
+A-create-7 401 PASS
+A-update-7 401 PASS
+A-delete-7 401 PASS
+B-create-7 401 PASS
+B-update-7 401 PASS
+B-toggle-7 401 PASS
+B-delete-7 401 PASS
+A-admin-create 200 PASS
+A-admin-foreign 403 PASS
+A-forged-header 403 PASS
+A-employee-2-user_id 403 PASS
+A-employee-2-employee_no 403 PASS
+A-employee-2-password 403 PASS
+A-bind-2 403 PASS
+A-employee-3-user_id 403 PASS
+A-employee-3-employee_no 403 PASS
+A-employee-3-password 403 PASS
+A-bind-3 403 PASS
+A-supervisor-resign-business-only 200 PASS
+A-finance-delete-business-only 200 PASS
+B-admin-create 200 PASS
+B-admin-update-without-header 200 PASS
+B-admin-extra-field 422 PASS
+B-admin-cross 403 PASS
+B-admin-forged-header 403 PASS
+B-admin-toggle 200 PASS
+B-finance-select 200 PASS
+B-admin-delete-unused 200 PASS
+C-open-2 403 PASS
+C-direct-topup-2 403 PASS
+C-batch-approve-2 403 PASS
+D-fund-settings-2 403 PASS
+D-ot-2 403 PASS
+C-open-3 403 PASS
+C-direct-topup-3 403 PASS
+C-batch-approve-3 403 PASS
+D-fund-settings-3 403 PASS
+D-ot-3 403 PASS
+C-open-4 403 PASS
+C-direct-topup-4 403 PASS
+C-batch-approve-4 403 PASS
+D-fund-settings-4 403 PASS
+D-ot-4 403 PASS
+D-admin-forbidden-unknown 403 PASS
+D-admin-forbidden-purchase_approval_threshold 403 PASS
+D-admin-forbidden-overtime_monthly_limit 403 PASS
+D-admin-forbidden-purchase_duty_separation_v1 403 PASS
+D-admin-fund-valid 200 PASS
+D-admin-fund-nan 400 PASS
+C-supervisor-own-expense 200 PASS
+C-supervisor-other-expense 403 PASS
+C-approve-before-verify 409 PASS
+C-finance-verify-expense 200 PASS
+C-edit-verified-expense-resets 200 PASS
+C-stale-verification-rejected 409 PASS
+C-finance-reverify-expense 200 PASS
+C-admin-approve-expense 200 PASS
+C-supervisor-request 200 PASS
+C-supervisor-approve 403 PASS
+C-finance-approve 403 PASS
+C-execute-unapproved 409 PASS
+C-finance-verify 200 PASS
+C-admin-approve 200 PASS
+C-supervisor-execute 403 PASS
+C-cross-account-execute 400 PASS
+C-finance-execute 200 PASS
+C-execute-retry 409 PASS
+B-delete-account-with-flow 400 PASS
+C-finance-own-request 200 PASS
+C-finance-own-verify 403 PASS
+C-finance-B-verify 200 PASS
+C-finance-own-approve 403 PASS
+C-admin-approve-finance 200 PASS
+C-finance-own-pay 403 PASS
+C-admin-pay-finance 200 PASS
+C-on-behalf-own-verify 403 PASS
+C-legacy-approved-not-executable 409 PASS
+C-foreign-request 403 PASS
+E-foreign 400 PASS
+E-same-warehouse-other-parent 400 PASS
+E-mixed 400 PASS
+E-duplicate 400 PASS
+E-missing 400 PASS
+E-invalid-state 400 PASS
+E-valid 409 ['status expected 200, got 409', "database assertion: KeyError('approved_amount')"]
+E-reversal-still-disabled 400 PASS
+C-concurrent-request 200 PASS
+C-concurrent-verify 200 PASS
+C-concurrent-approve 200 PASS
+C-concurrent-execute [200, 409] True
+C-linked-employee-self-verify 403 PASS
+C-linked-employee-self-execute 403 PASS
+C-on-behalf-independent-verify 200 PASS
+C-on-behalf-independent-approve 200 PASS
+C-on-behalf-self-pay 403 PASS
+C-on-behalf-independent-pay 200 PASS
+A-finance-own-password 200 PASS
+A-admin-update-local 200 PASS
+A-admin-enable-local 200 PASS
+A-admin-delete-new 200 PASS
+B-authorized-secondary-no-header-audit 200 PASS
+C-void-selected-warehouse-mismatch 404 PASS
+B-selected-warehouse-mismatch 403 PASS
+B-supervisor-transfer-denied 403 PASS
+C-rollback-request 200 PASS
+C-rollback-verify 200 PASS
+C-rollback-approve 200 PASS
+C-execution-transaction-rollback 500 PASS
+C-retry-after-rollback 200 PASS
+E-linked-mixed-reject-atomic 400 PASS
+C-linked-finance-verify 200 PASS
+E-linked-valid-admin-approve 200 PASS
+C-linked-payment-capability-1 200 PASS
+C-linked-payment-capability-2 200 PASS
+C-linked-payment-capability-3 200 PASS
+C-linked-supervisor-payment 403 PASS
+C-linked-forged-header 403 PASS
+C-linked-independent-payment 200 PASS
+C-linked-repeat-payment 400 PASS
+C-legacy-paid-no-reexecution 409 PASS
+C-state-only-no-approval-proof 409 PASS
+D-supervisor-price-threshold 403 PASS
+D-finance-price-threshold 403 PASS
+C-finance-queue 200 PASS
+C-finance-no-menu 403 PASS
+A-employee-create-2 403 PASS
+D-special-rule-2-/suppliers/purchase-approval-threshold 403 PASS
+D-special-rule-2-/suppliers/concentration-threshold 403 PASS
+D-special-rule-2-/expense-approvals/threshold 403 PASS
+A-employee-create-3 403 PASS
+D-special-rule-3-/suppliers/purchase-approval-threshold 403 PASS
+D-special-rule-3-/suppliers/concentration-threshold 403 PASS
+D-special-rule-3-/expense-approvals/threshold 403 PASS
+D-bulk-rule-2 403 PASS
+D-bulk-rule-3 403 PASS
+D-admin-forged-header-rule 403 PASS
+A-finance-no-grants 403 PASS
+B-finance-no-grants 403 PASS
+C-finance-no-grants 403 PASS
+A-admin-secondary-warehouse-outside-scope 403 PASS
+A-admin-linked-login-disable 200 PASS
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round3-env/rerun_round2.py", line 11, in <module>
+    asyncio.run(g['main']())
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/private/tmp/permissions-round3-20261028/backend/tests/permission_round2/run_acceptance.py", line 262, in main
+    if FAIL:raise AssertionError(FAIL)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ['E-valid: status expected 200, got 409', "E-valid: database assertion: KeyError('approved_amount')"]

@@ -1,4 +1,5 @@
 "use client";
+import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import { useEffect, useRef, useState } from "react";
 import { api, getActiveWarehouseId, getToken } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +10,7 @@ import CashAdvanceRepaymentModal from "@/components/CashAdvanceRepaymentModal";
 import CashAdvanceRepaymentHistory from "@/components/CashAdvanceRepaymentHistory";
 
 interface Advance {
+  capabilities?: {can_verify?:boolean;can_approve?:boolean;can_repay?:boolean;workflow_stage?:string};
   id: number; payer_id: number | null; payer_name: string; advance_date: string;
   amount: number; currency: string; purpose: string; purpose_label: string; status: string; status_label: string;
   outstanding_amount: number; repaid_amount: number; description: string | null; voucher_path: string | null;
@@ -34,13 +36,13 @@ const currencyAmounts = (amounts: CurrencyAmount[], legacy: number | null) => am
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const newForm = () => ({ payer_id: "", payer_name: "", advance_date: today(), amount: "", currency: "THB", purpose: "", description: "", amount_difference_note: "" });
 
-export default function CashAdvancesPage() {
+function CashAdvancesPageContent() {
   const { user } = useAuth() as { user: any };
   const advancePermission = useMenuPermission("cash_advances"), reportPermission = useMenuPermission("reports");
   const [reportView, setReportView] = useState(false), [queryReady, setQueryReady] = useState(false);
   const [reportFilter, setReportFilter] = useState({ payer_id: "", payer_name: "", currency: "" });
   const canView = reportView ? reportPermission : advancePermission;
-  const canCreate = queryReady && !reportView && canView && ["warehouse_admin", "supervisor"].includes(user?.role);
+  const canCreate = queryReady && !reportView && canView && ["warehouse_admin", "supervisor", "staff"].includes(user?.role);
   const canReview = queryReady && !reportView && user?.role === "warehouse_admin";
   const { toast } = useToast();
   const [rows, setRows] = useState<Advance[]>([]);
@@ -170,6 +172,10 @@ export default function CashAdvancesPage() {
     finally { setReviewing(null); }
   }
 
+  async function verify(id: number) {
+    try { await api.post(`/cash-advances/${id}/verify`, {}); toast("success", "已核验，等待批准"); void load(); }
+    catch (error: unknown) { toast("error", error instanceof Error ? error.message : "核验失败"); }
+  }
   if (!canView) return <p className="text-sm text-gray-500">无此操作权限</p>;
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -191,15 +197,16 @@ export default function CashAdvancesPage() {
       <table className="w-full text-sm whitespace-nowrap"><thead className="bg-gray-50 text-gray-500"><tr>{["日期", "垫款人", "金额", "用途", "状态", "剩余未还", "资金使用", "关联单据", "说明 / 凭证", "操作"].map(title => <th key={title} className="text-left px-4 py-3">{title}</th>)}</tr></thead>
         <tbody className="divide-y">{rows.map(row => <tr key={row.id} className="cursor-pointer hover:bg-gray-50" onClick={() => { if (!reportView) setHistoryAdvance(row); }}>
           <td className="px-4 py-3">{row.advance_date}</td><td className="px-4 py-3">{row.payer_name}</td><td className="px-4 py-3">{money(row.amount)} {currencyName(row.currency)}</td><td className="px-4 py-3">{row.purpose_label}</td>
-          <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${STATUS_STYLES[row.status]}`}>{row.status_label}</span>{row.reject_reason && <p className="whitespace-normal max-w-48 text-xs text-red-600 mt-2">{row.reject_reason}</p>}</td>
+          <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${STATUS_STYLES[row.status]}`}>{row.capabilities?.workflow_stage || row.status_label}</span>{row.reject_reason && <p className="whitespace-normal max-w-48 text-xs text-red-600 mt-2">{row.reject_reason}</p>}</td>
           <td className="px-4 py-3">{money(row.outstanding_amount)} {currencyName(row.currency)}</td>
           <td className="px-4 py-3"><p>工资 {money(row.payroll_used_amount || 0)} · 报销 {money(row.reimbursement_used_amount || 0)} {currencyName(row.currency)}</p>{!!row.employee_advance_used_amount && <p>用于员工预支 {money(row.employee_advance_used_amount)} {currencyName(row.currency)}</p>}<p className="text-xs text-gray-500 mt-1">可用 {money(row.available_amount || 0)}</p></td>
           <td className="px-4 py-3">{!reportView && !!row.linked_documents?.length ? <button type="button" className="text-blue-600" onClick={event => { event.stopPropagation(); detailVersion.current++; setDocumentDetail(null); setDetailError(""); setDetailLoading(false); setDocumentsAdvance(row); }}>查看 {row.linked_documents.length} 张单据</button> : "—"}</td>
           <td className="px-4 py-3"><p className="whitespace-normal max-w-56">{row.description || "—"}</p>{row.amount_difference_note && <p className="whitespace-normal max-w-56 text-xs text-gray-500">差额备注：{row.amount_difference_note}</p>}{row.voucher_path && <a href={`/${row.voucher_path}`} onClick={event => event.stopPropagation()} target="_blank" rel="noreferrer" className="text-blue-600">查看凭证</a>}</td>
           <td className="px-4 py-3" onClick={event => event.stopPropagation()}><div className="flex gap-3">
             {canCreate && row.can_edit && <button type="button" className="text-blue-600" onClick={() => void openForm(row)}>编辑</button>}
-            {canReview && row.status === "pending" && <><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></>}
-            {canReview && row.status === "confirmed" && row.outstanding_amount > 0 && <button type="button" onClick={() => setRepayAdvance(row)} className="text-blue-600">归还</button>}
+            {!reportView && ["staff","warehouse_admin"].includes(user?.role) && row.capabilities?.can_verify && <button onClick={() => verify(row.id)} className="text-blue-600">核验</button>}
+            {canReview && row.capabilities?.can_approve && <><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></>}
+            {!reportView && ["staff","warehouse_admin"].includes(user?.role) && row.capabilities?.can_repay && row.outstanding_amount > 0 && <button type="button" onClick={() => setRepayAdvance(row)} className="text-blue-600">归还</button>}
             <button type="button" onClick={() => setHistoryAdvance(row)} className="text-gray-600" disabled={reportView}>{reportView ? "只读" : "归还记录"}</button>
           </div></td>
         </tr>)}{!rows.length && <tr><td colSpan={10} className="text-center text-gray-400 py-10">{loading ? "加载中..." : "暂无垫款单"}</td></tr>}</tbody>
@@ -256,3 +263,5 @@ export default function CashAdvancesPage() {
     </div></div>}
   </div>;
 }
+
+export default function CashAdvancesPage() { return <FinancialIdentityBoundary><CashAdvancesPageContent /></FinancialIdentityBoundary>; }

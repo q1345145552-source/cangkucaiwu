@@ -74,7 +74,7 @@ async def check_advance_limit(db, employee, amount, currency, advance_date):
         EmployeeAdvance.not_voided(),
         or_(EmployeeAdvance.status.is_(None), EmployeeAdvance.status != "deducted"),
         EmployeeAdvance.approval_status.in_((
-            AdvanceApprovalStatus.APPROVED.value, AdvanceApprovalStatus.PENDING.value,
+            AdvanceApprovalStatus.APPROVED.value, AdvanceApprovalStatus.PENDING.value, "verified", "approved_ready",
         )),
     ))).scalars().all()
     rates = {}

@@ -1,5 +1,7 @@
 "use client";
+import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { useAuth } from "@/hooks/useAuth";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState } from "react";
 import DataTable from "@/components/common/DataTable";
@@ -9,8 +11,10 @@ import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { Calendar, Play, Download, Eye, X, ChevronRight, FileText } from "lucide-react";
 
-export default function PaymentPlansPage() {
-  const canWriteWallet = useMenuPermission("payment_plans");
+function PaymentPlansPageContent() {
+  const { user } = useAuth();
+  const planPermission = useMenuPermission("payment_plans");
+  const canWriteWallet = planPermission && ["staff", "warehouse_admin"].includes(user?.role || "");
   const { toast } = useToast(); const router = useRouter();
   const [executePlan, setExecutePlan] = useState<any>(null);
   const [accountId, setAccountId] = useState(0);
@@ -151,7 +155,7 @@ export default function PaymentPlansPage() {
 
       {/* 操作栏 */}
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setShowForm(true)} className="btn-primary">新建计划</button>
+        {canWriteWallet && <button onClick={() => setShowForm(true)} className="btn-primary">新建计划</button>}
         <button onClick={() => handleExport()} className="btn-secondary flex items-center gap-1"><Download size={16} />导出全部</button>
       </div>
 
@@ -198,7 +202,7 @@ export default function PaymentPlansPage() {
         )},
         { key: "id", label: "操作", render: (_: any, row: any) => (
           <div className="flex items-center gap-1">
-            {canWriteWallet && row.status === "pending" && <button onClick={() => openExecute(row)} className="btn-primary btn-xs flex items-center gap-0.5"><Play size={12} />执行</button>}
+            {canWriteWallet && row.capabilities?.can_execute && <button onClick={() => openExecute(row)} className="btn-primary btn-xs flex items-center gap-0.5"><Play size={12} />执行</button>}
             <button onClick={() => handleViewDetail(row.id)} className="btn-secondary btn-xs">详情</button>
             <button onClick={() => handleExport(row.id)} className="btn-secondary btn-xs"><Download size={12} /></button>
           </div>
@@ -345,3 +349,5 @@ export default function PaymentPlansPage() {
     </>
   );
 }
+
+export default function PaymentPlansPage() { return <FinancialIdentityBoundary><PaymentPlansPageContent /></FinancialIdentityBoundary>; }

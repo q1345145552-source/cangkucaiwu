@@ -1,4 +1,5 @@
 "use client";
+import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -22,7 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
   paid: "bg-blue-50 text-blue-700", fund_linked: "bg-purple-50 text-purple-700",
 };
 
-export default function ReimbursementPage() {
+function ReimbursementPageContent() {
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const isAdmin = user?.role === "warehouse_admin";
   const now = new Date();
@@ -215,12 +216,17 @@ export default function ReimbursementPage() {
     setReviewDecisions(prev => ({ ...prev, [itemId]: decision }));
   }
 
+  async function workflowAction(id: number, action: "verify" | "return-to-draft") {
+    try { await api.post(`/reimbursement/${id}/${action}`, {}); toast("success", action === "verify" ? "已核验，等待管理员批准" : "已退回，请重新核验"); void load(); }
+    catch (error: unknown) { toast("error", error instanceof Error ? error.message : "操作失败"); }
+  }
   async function reviewOne(reimbId: number) {
     const items = reimbItems[reimbId] || [];
     if (items.length === 0) { toast("error", "请先展开查看明细"); return; }
+    if (items.some(it => !reviewDecisions[it.id])) { toast("error", "请明确决定全部明细"); return; }
     const decisions = items.map((it: any) => ({
       item_id: it.id,
-      status: reviewDecisions[it.id] || "rejected",
+      status: reviewDecisions[it.id],
       remark: "",
     }));
     try {
@@ -406,20 +412,22 @@ export default function ReimbursementPage() {
                         <td className="px-4 py-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[row.status] || "bg-gray-50 text-gray-600"}`}>
                             {row.status === "fund_linked" && <Lock size={10} className="inline mr-0.5" />}
-                            {STATUS_LABELS[row.status] || row.status}
+                            {row.capabilities?.workflow_stage || STATUS_LABELS[row.status] || row.status}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
                             <button onClick={() => viewDetail(row.id)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">详情</button>
-                            {row.status === "pending" && (
+                            {row.status === "pending" && (isAdmin || row.employee_id === user?.id) && (
                               <button onClick={() => openEdit(row)} className="px-2 py-1 rounded text-xs bg-amber-50 text-amber-700 hover:bg-amber-100">编辑</button>
                             )}
                             {isAdmin && (
                               <button onClick={() => setDeletingRow(row)} className="px-2 py-1 rounded text-xs bg-red-50 text-red-600 hover:bg-red-100">删除</button>
                             )}
+                            {row.capabilities?.can_verify && (isAdmin || user?.role === "staff") && <button onClick={() => workflowAction(row.id, "verify")} className="btn-secondary btn-xs">核验凭证</button>}
+                            {row.capabilities?.can_return && isAdmin && <button onClick={() => workflowAction(row.id, "return-to-draft")} className="btn-secondary btn-xs">退回重审</button>}
                             <button onClick={() => openHistory(row)} className="px-2 py-1 rounded text-xs bg-gray-50 text-gray-600 hover:bg-gray-100">历史</button>
-                            {(row.status === "approved" || row.status === "partially_approved") && (row.is_fund_linked === "1" ? row.can_fund_pay && (isAdmin || user?.role === "staff") : isAdmin) && (
+                            {row.capabilities?.can_pay && (isAdmin || user?.role === "staff") && (
                               <button onClick={() => { markPaid(row); }} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">付款</button>
                             )}
                           </div>
@@ -488,7 +496,7 @@ export default function ReimbursementPage() {
                           <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex items-center gap-1"><Lock size={10} />备用金</span>
                         )}
                       </div>
-                      <button onClick={e => { e.stopPropagation(); reviewOne(reimb.id); }}
+                      <button disabled={!reimb.capabilities?.can_approve} onClick={e => { e.stopPropagation(); reviewOne(reimb.id); }}
                         className="btn-primary text-xs bg-green-600 hover:bg-green-700 py-1 px-3 flex items-center gap-1">
                         <CheckCircle size={13} />审批
                       </button>
@@ -675,3 +683,5 @@ export default function ReimbursementPage() {
     </>
   );
 }
+
+export default function ReimbursementPage() { return <FinancialIdentityBoundary><ReimbursementPageContent /></FinancialIdentityBoundary>; }

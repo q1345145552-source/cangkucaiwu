@@ -568,7 +568,6 @@ async def resign_employee(
     req: ResignRequest,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
-    _payroll_permission: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["payroll"].label)),
 ):
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以操作")
@@ -588,31 +587,16 @@ async def resign_employee(
     except:
         raise HTTPException(400, "日期格式错误，应为 YYYY-MM-DD")
 
+    from app.core.timezone import thai_today
+    if resign_dt >= thai_today():
+        raise HTTPException(400, "离职日必须早于今天，请在离职日结束后办理")
+
     # Capture original status for payroll calculation & 人效时薪估算
     emp_original_status = e.status
     if emp_original_status != "resigned":
         e.pre_resign_status = emp_original_status
 
-    # 自动结算：调用工资页面同一套计算逻辑（员工ID + 结算截止日=离职日）
-    payroll_msg = ""
-    try:
-        from app.api.v1.payroll import _calc_payroll, CalculateRequest
-        period = resign_dt.strftime("%Y-%m")
-        half = "first_half" if resign_dt.day <= 15 else "second_half"
-        r = await _calc_payroll(
-            db, current_user, e.warehouse_id,
-            CalculateRequest(period=period, half=half, employee_ids=[employee_id], end_date=req.resignation_date, is_resignation=True),
-        )
-        if r.get("record_count", 0) > 0:
-            payroll_msg = f"，已生成离职结算工资单（结算到 {resign_dt.isoformat()}）"
-        else:
-            # 本期已经结算过（记录数 0）：不是错误，照常办离职
-            payroll_msg = f"，本期工资已结算过，跳过"
-    except HTTPException:
-        # 真正结算失败（缺薪资/扣款模板、打卡不完整等）：不标离职，原样返回原因
-        raise
-    except Exception as ex:
-        raise HTTPException(400, f"离职结算失败：{str(ex)}")
+    payroll_msg = "，离职事实已记录，请由财务在工资页办理离职核算，再由管理员确认、独立财务发放"
 
     # Update employee
     e.status = "resigned"

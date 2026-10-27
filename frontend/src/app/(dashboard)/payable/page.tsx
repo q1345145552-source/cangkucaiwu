@@ -1,4 +1,5 @@
 "use client";
+import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
@@ -28,7 +29,7 @@ function summaryCurrencies(values?:Record<string,number|null>, known:Record<stri
   return Object.entries(values).map(([currency,value])=>summaryAmount(value,known[currency] || 0,currency)).join("；") || "暂无有效应付";
 }
 
-export default function PayablePage() {
+function PayablePageContent() {
   const cost=useCostIdentity();
   const { t } = useI18n();
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
@@ -73,6 +74,10 @@ export default function PayablePage() {
 
   useEffect(() => { if (!getToken()) router.push("/login"); load(); loadSuppliers(); loadStats(); }, [page, listFilters]);
 
+  async function paymentStage(id: number, action: "verify-payment" | "approve-payment") {
+    try { await api.post(`/payable/${id}/${action}`, {}); toast("success", action === "verify-payment" ? "已核验，等待资金批准" : "已批准，等待独立财务付款"); void load(); }
+    catch (error: unknown) { toast("error", error instanceof Error ? error.message : "操作失败"); }
+  }
   async function load() {
     const request=++listRequest.current;setLoading(true);setData([]);setListError("");
     try {
@@ -472,11 +477,11 @@ export default function PayablePage() {
           }
         },
         { key: "paid_amount", label: "已付", align: "right", render: (v: any, row: any) => v==null ? "未记录，待核实" : fmtMoney(v, row.currency) },
-        { key: "status", label: "状态", render: (v: any) => <span className={statusColors[v] || ""}>{statusLabels[v] || v}</span> },
+        { key: "status", label: "状态", render: (v: string, row: { capabilities?: { workflow_stage?: string } }) => <span className={statusColors[v] || ""}>{row.capabilities?.workflow_stage || statusLabels[v] || v}</span> },
         { key: "detail", label: "明细", render: (v: any) => v ? <span className="text-xs text-gray-500 max-w-32 truncate block" title={v}>{v.length > 12 ? v.slice(0, 12) + "..." : v}</span> : "-" },
         { key: "bill_attachment", label: "附件", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "账单附件")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
         { key: "payment_voucher", label: "凭证", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "付款凭证")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
-        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1"><button onClick={()=>setBillDetailId(row.id)} className="btn-secondary btn-xs">详情</button>{canWriteBill && hasPendingPayment(row.id) && <button onClick={()=>openPayModal(row)} className="btn-secondary btn-xs">核对上次付款</button>}{row.need_boss_confirm === "true" && row.status !== "voided" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{canWriteBill && row.status !== "paid" && row.status !== "voided" && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}{canWriteBill && row.status !== "voided" && <button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>}{canWriteBill && row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
+        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{["staff","warehouse_admin"].includes(user?.role || "") && row.capabilities?.can_verify && <button onClick={()=>paymentStage(row.id,"verify-payment")} className="btn-secondary btn-xs">核验付款依据</button>}{user?.role === "warehouse_admin" && row.capabilities?.can_approve && <button onClick={()=>paymentStage(row.id,"approve-payment")} className="btn-secondary btn-xs">批准资金</button>}<button onClick={()=>setBillDetailId(row.id)} className="btn-secondary btn-xs">详情</button>{canWriteBill && hasPendingPayment(row.id) && <button onClick={()=>openPayModal(row)} className="btn-secondary btn-xs">核对上次付款</button>}{row.need_boss_confirm === "true" && row.status !== "voided" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{["staff","warehouse_admin"].includes(user?.role || "") && row.capabilities?.can_pay && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}{canWriteBill && row.status !== "voided" && <button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>}{user?.role === "warehouse_admin" && row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} rowClassName={(row) => row.status === "voided" ? "opacity-50" : ""} />}
 
       {billDetailId>0 && <PayableDetail billId={billDetailId} revision={detailRevision} onClose={()=>setBillDetailId(0)} onPay={bill=>{setBillDetailId(0);openPayModal(bill);}} onConfirm={confirmBoss}/>}
@@ -795,3 +800,5 @@ export default function PayablePage() {
     </>
   );
 }
+
+export default function PayablePage() { return <FinancialIdentityBoundary><PayablePageContent /></FinancialIdentityBoundary>; }

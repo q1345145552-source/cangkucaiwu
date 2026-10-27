@@ -77,6 +77,8 @@ async def validate_funding(db, source, warehouse_id, amount, *, currency=None,
         loan = (await db.execute(query)).scalar_one_or_none()
         if loan is None:
             raise HTTPException(400, "垫款单不存在或不属于当前仓库")
+        from app.services.financial_authorization import proof, cash_payload
+        await proof(db, loan, 'cash_approve', await cash_payload(db, loan))
         if loan.status != "confirmed":
             raise HTTPException(400, "只能使用已确认的垫款单")
         selected_currency = currency or "THB"

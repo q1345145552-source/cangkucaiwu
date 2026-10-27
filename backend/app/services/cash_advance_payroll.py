@@ -72,6 +72,8 @@ async def lock_payroll_advance(db, warehouse_id, advance_id, records):
     ).with_for_update())).scalar_one_or_none()
     if advance is None:
         raise HTTPException(400, "垫款单不存在或不属于当前仓库")
+    from app.services.financial_authorization import proof, cash_payload
+    await proof(db, advance, 'cash_approve', await cash_payload(db, advance))
     if advance.status != "confirmed":
         raise HTTPException(400, "只能使用已确认的垫款单发放工资")
     if advance.currency != PAYROLL_CURRENCY:

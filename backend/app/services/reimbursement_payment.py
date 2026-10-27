@@ -106,6 +106,8 @@ async def lock_advance(db, r, advance_id, amount):
         CashAdvance.id == advance_id, CashAdvance.warehouse_id == r.warehouse_id,
     ).with_for_update())).scalar_one_or_none()
     if advance is None: raise HTTPException(400, "垫款单不存在或不属于当前仓库")
+    from app.services.financial_authorization import proof, cash_payload
+    await proof(db, advance, 'cash_approve', await cash_payload(db, advance))
     if advance.status != "confirmed": raise HTTPException(400, "只能使用已确认的垫款单")
     if advance.currency != (r.currency or "THB").upper(): raise HTTPException(400, "垫款单币种与报销单不一致")
     from app.services.cash_advance_payroll import payroll_usage_totals
@@ -185,6 +187,8 @@ async def result(db, r, p, account=None):
 
 
 async def pay(db, r, req, user):
+    from app.services.financial_authorization import execute_reimbursement
+    await execute_reimbursement(db, user, r)
     if r.status not in ("approved", "partially_approved"):
         raise HTTPException(400, "该报销单已付款" if r.status == "paid" else "仅已审批状态可付款")
     if r.expense_record_id is not None or await active_payment_map(db, [r]):

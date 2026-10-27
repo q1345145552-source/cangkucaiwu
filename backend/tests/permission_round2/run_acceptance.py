@@ -131,6 +131,8 @@ async def main():
         # Parent/child batch atomicity and valid path.
         for label,items in [('foreign',[{'item_id':8,'status':'approved'}]),('same-warehouse-other-parent',[{'item_id':2,'status':'approved'}]),('mixed',[{'item_id':1,'status':'approved'},{'item_id':8,'status':'approved'}]),('duplicate',[{'item_id':1,'status':'approved'},{'item_id':1,'status':'rejected'}]),('missing',[{'item_id':999,'status':'approved'}]),('invalid-state',[{'item_id':1,'status':'paid'}])]:
             await call('E-'+label,1,'POST','/reimbursement/1/review',{'items':items},400)
+        # Round three requires independent verification before ordinary reimbursement approval.
+        await call('E-valid-independent-verification',4,'POST','/reimbursement/1/verify')
         await call('E-valid',1,'POST','/reimbursement/1/review',{'items':[{'item_id':1,'status':'approved'}]},check=lambda b,a,r: (r['approved_amount']==100) or (_ for _ in ()).throw(AssertionError('amount')))
         await call('E-reversal-still-disabled',1,'POST','/reimbursement/1/revoke-payment',{'reason':'SYNTHETIC'},400)
         # Concurrent execution: aggregate before/after; no per-request diff attribution while overlapping.
