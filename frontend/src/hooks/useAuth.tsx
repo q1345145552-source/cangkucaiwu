@@ -20,18 +20,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const saved = localStorage.getItem("user");
-    if (saved && getToken()) {
-      try { const cached: unknown = JSON.parse(saved); if (isAuthUser(cached)) setUser(cached); } catch {}
-    }
+    // Cached role/menu grants are not authorization. Wait for a live /me response.
+    let active = true;
+    const requestedToken = getToken();
+    if (requestedToken) api.get<AuthUser>("/auth/me").then(fresh => {
+      if (active && requestedToken === getToken() && isAuthUser(fresh)) { setUser(fresh); localStorage.setItem("user", JSON.stringify(fresh)); }
+    }).catch(() => { if (active && requestedToken === getToken()) setUser(null); }).finally(() => { if (active) setLoading(false); });
+    else setLoading(false);
     const refresh = (event: Event) => {
       if (!("detail" in event)) return;
       const refreshed: unknown = event.detail;
       if (refreshed === null || isAuthUser(refreshed)) setUser(refreshed);
     };
     window.addEventListener("auth-user-refreshed", refresh);
-    setLoading(false);
-    return () => window.removeEventListener("auth-user-refreshed", refresh);
+    return () => { active = false; window.removeEventListener("auth-user-refreshed", refresh); };
   }, []);
 
   async function doLogin(username: string, password: string) {

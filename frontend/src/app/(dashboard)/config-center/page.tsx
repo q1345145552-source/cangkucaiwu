@@ -130,7 +130,7 @@ export default function ConfigCenterPage() {
           </div>
         </div>
         <div className="text-xs text-gray-400 mt-3">顺序：上班 &lt; 迟到半小时 &lt; 迟到1小时 &lt; 午休开始 &lt; 午休结束 &lt; 早退1小时 &lt; 早退半小时 &lt; 下班</div>
-        {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，仓库管理员和已授权主管可修改</div>}
+        {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，只有仓库管理员可修改</div>}
         {editable && (
           <button onClick={save} disabled={saving} className="btn-primary mt-4">
             {saving ? "保存中..." : "保存作息"}
@@ -164,7 +164,7 @@ export default function ConfigCenterPage() {
             <p className="text-xs text-gray-400 mt-1">超过这个比例会红色预警</p>
           </div>
         </div>
-        {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，仓库管理员和已授权主管可修改</div>}
+        {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，只有仓库管理员可修改</div>}
         {editable && (
           <button onClick={saveThresholds} disabled={savingThresholds} className="btn-primary mt-4">
             {savingThresholds ? "保存中..." : "保存审批门槛"}

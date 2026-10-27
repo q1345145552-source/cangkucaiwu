@@ -1,3 +1,4 @@
+from app.core.round2_access import require_account_manager, mutation_scope, own_scope, login_target_scope
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
@@ -111,12 +112,13 @@ async def list_available_permissions(current_user: User = Depends(get_current_us
     """完整菜单权限清单；原八项 key/label 保持中文值以兼容老账号。"""
     return [item.as_dict() for item in MENU_PERMISSIONS]
 
-@router.post("")
+@router.post("", dependencies=[Depends(mutation_scope)])
 async def create_user(
     req: UserCreate,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
+    require_account_manager(current_user, platform=True)
     # Role hierarchy check: can only create users with lower role
     from app.core.permissions import ROLE_HIERARCHY
     if ROLE_HIERARCHY.get(current_user.role, 0) <= ROLE_HIERARCHY.get(req.role, 0):
@@ -154,6 +156,8 @@ async def create_user(
     if req.role in (Role.STAFF, Role.SUPERVISOR) and not warehouse_ids:
         raise HTTPException(status_code=400, detail="创建该角色用户时必须指定所属仓库")
 
+    for wid in warehouse_ids:
+        own_scope(current_user, wid)
     primary_wh = warehouse_ids[0] if warehouse_ids else None
     req.warehouse_id = primary_wh
 
@@ -181,18 +185,20 @@ async def create_user(
 
     return {"id": user.id, "message": "用户创建成功"}
 
-@router.put("/{user_id}")
+@router.put("/{user_id}", dependencies=[Depends(mutation_scope)])
 async def update_user(
     user_id: int,
     req: UserUpdate,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
+    require_account_manager(current_user, platform=True)
     result = await db.execute(select(User).where(User.id == user_id).with_for_update())
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
+    own_scope(current_user, user.warehouse_id)
     # 权限：只能编辑比自己级别低的角色
     # - 超管：可编辑除超管外的所有角色
     # - 管理员：可编辑主管/财务/劳工（限自己仓库），不能改角色
@@ -217,6 +223,8 @@ async def update_user(
         # 角色不能改
         if req.role is not None and req.role != user.role:
             raise HTTPException(status_code=403, detail="无权修改用户角色")
+
+    await login_target_scope(db, current_user, user)
 
     # 修改前快照（用于修改日志）
     before_uws = (await db.execute(
@@ -267,6 +275,8 @@ async def update_user(
                 if wid not in managed:
                     raise HTTPException(status_code=403, detail="无权限将用户分配到该仓库")
 
+        for wid in new_wh_ids:
+            own_scope(current_user, wid)
         primary_wh = new_wh_ids[0] if new_wh_ids else None
         user.warehouse_id = primary_wh
         # 同步更新 user_warehouses 关联：只删该删的、只加该加的，避免先插后删触发唯一键冲突
@@ -368,13 +378,14 @@ async def _delete_staff_or_labor(db: AsyncSession, user_id: int, username: str):
     await db.commit()
 
 
-@router.delete("/{user_id}")
+@router.delete("/{user_id}", dependencies=[Depends(mutation_scope)])
 async def delete_user(
     user_id: int,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     """删除用户：仓库管理员可删除自己仓库的财务/劳工；超级管理员删除仓库管理员（级联）。"""
+    require_account_manager(current_user, platform=True)
     import traceback
     import logging
     logger = logging.getLogger("delete_user")
@@ -388,6 +399,8 @@ async def delete_user(
         if not user:
             raise HTTPException(status_code=404, detail="用户不存在")
 
+        own_scope(current_user, user.warehouse_id)
+        await login_target_scope(db, current_user, user)
         # 删除前快照（用于修改日志）
         before_uws = (await db.execute(
             select(UserWarehouse).where(UserWarehouse.user_id == user_id)

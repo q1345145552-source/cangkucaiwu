@@ -1,3 +1,7 @@
+from app.core.round2_access import require_account_manager, mutation_scope, own_scope
+from app.services.data_history import record_history
+from fastapi.encoders import jsonable_encoder
+from pydantic import ConfigDict
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -6,7 +10,17 @@ from app.models.customer import PaymentAccount
 from app.models.user import User
 from app.core.timezone import thai_today
 from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role, require_non_labor
-from app.schemas.business import PaymentAccountCreate
+from app.schemas.business import PaymentAccountCreate as AccountFields
+
+class PaymentAccountCreate(AccountFields):
+    model_config = ConfigDict(extra="forbid")
+
+def audit_fields(account):
+    values = {key: getattr(account, key) for key in AccountFields.model_fields}
+    for key in ("account_number", "account_holder", "remark"):
+        values[key] = "[已隐藏]" if values[key] else None
+    return jsonable_encoder(values)
+
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.services.account_balances import current_account_balances
@@ -37,10 +51,10 @@ class TransferRequest(BaseModel):
     remark: str | None = None
 
 
-@router.post("/transfers", dependencies=[Depends(require_non_labor)])
+@router.post("/transfers", dependencies=[Depends(require_non_labor), Depends(mutation_scope)])
 async def create_transfer(req: TransferRequest, user=Depends(check_staff_permission_any(_PERMISSION, "运营收支")),
                           db: AsyncSession = Depends(get_db)):
-    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF): raise HTTPException(403, "无权限")
+    if user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF): raise HTTPException(403, "无权限")
     from app.models.wallet import AccountTransfer
     from app.services.wallet import positive_money
     from app.services.data_history import record_history
@@ -110,9 +124,10 @@ async def list_accounts(request: Request, current_user: User = Depends(check_sta
         "nature_options": ACCOUNT_NATURES, "warehouse_ids": scope,
         "wallet_balances_by_currency": owner_wallet_summary(accs, balances)}
 
-@router.post("")
-async def create_account(req: PaymentAccountCreate, current_user: User = Depends(check_staff_permission(_PERMISSION)),
+@router.post("", dependencies=[Depends(mutation_scope)])
+async def create_account(request: Request, req: PaymentAccountCreate, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
+    require_account_manager(current_user)
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
@@ -120,21 +135,31 @@ async def create_account(req: PaymentAccountCreate, current_user: User = Depends
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "无法确定仓库")
+    own_scope(current_user, wh_id)
+    request.state.audit_warehouse_id = wh_id
     values = req.model_dump()
     if req.account_type=='cash' and not req.account_number.strip():values['account_number']='-'
     values["opening_balance_date"] = req.opening_balance_date or thai_today().replace(day=1)
     a = PaymentAccount(warehouse_id=wh_id, **values)
-    db.add(a); await db.flush(); return {"id": a.id, "message": "创建成功"}
+    db.add(a)
+    await db.flush()
+    await record_history(db, module="accounts", record_id=a.id, operator=current_user, operation_type="create", after=audit_fields(a), warehouse_id=a.warehouse_id)
+    return {"id": a.id, "message": "创建成功"}
 
-@router.put("/{account_id}", dependencies=[Depends(require_non_labor)])
-async def update_account(account_id: int, req: PaymentAccountCreate,
+@router.put("/{account_id}", dependencies=[Depends(require_non_labor), Depends(mutation_scope)])
+async def update_account(request: Request, account_id: int, req: PaymentAccountCreate,
                          current_user: User = Depends(check_staff_permission(_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
+    require_account_manager(current_user)
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id).with_for_update())
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
+    own_scope(current_user, a.warehouse_id)
+    request.state.audit_warehouse_id = a.warehouse_id
+    before_values = {key: getattr(a, key) for key in AccountFields.model_fields}
+    before = audit_fields(a)
     if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能修改自己仓库的账户")
     if req.currency.upper() != (a.currency or "THB").upper():
@@ -166,31 +191,43 @@ async def update_account(account_id: int, req: PaymentAccountCreate,
         req.opening_balance_date = a.opening_balance_date or thai_today().replace(day=1)
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(a, k, v)
+    after = audit_fields(a)
+    changed = {key for key in req.model_fields_set if before_values[key] != getattr(a, key)}
+    await record_history(db, module="accounts", record_id=a.id, operator=current_user, operation_type="edit", before={k: before[k] for k in changed}, after={k: after[k] for k in changed}, warehouse_id=a.warehouse_id)
     await db.flush(); return {"message": "更新成功"}
 
-@router.put("/{account_id}/toggle-status", dependencies=[Depends(require_non_labor)])
-async def toggle_account_status(account_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
+@router.put("/{account_id}/toggle-status", dependencies=[Depends(require_non_labor), Depends(mutation_scope)])
+async def toggle_account_status(request: Request, account_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                                 db: AsyncSession = Depends(get_db)):
+    require_account_manager(current_user)
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id))
+    result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id).with_for_update())
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
+    own_scope(current_user, a.warehouse_id)
+    request.state.audit_warehouse_id = a.warehouse_id
+    before = audit_fields(a)
     if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作自己仓库的账户")
     a.status = "inactive" if a.status == "active" else "active"
+    await record_history(db, module="accounts", record_id=a.id, operator=current_user, operation_type="edit", before={"status": before["status"]}, after={"status": a.status}, warehouse_id=a.warehouse_id)
     await db.flush(); return {"message": "状态已切换", "status": a.status}
 
-@router.delete("/{account_id}")
-async def delete_account(account_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
+@router.delete("/{account_id}", dependencies=[Depends(mutation_scope)])
+async def delete_account(request: Request, account_id: int, current_user: User = Depends(check_staff_permission(_PERMISSION)),
                          db: AsyncSession = Depends(get_db)):
+    require_account_manager(current_user)
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "无权限")
-    result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id))
+    result = await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id).with_for_update())
     a = result.scalar_one_or_none()
     if not a: raise HTTPException(404, "账户不存在")
+    own_scope(current_user, a.warehouse_id)
+    request.state.audit_warehouse_id = a.warehouse_id
+    before = audit_fields(a)
     if current_user.role != Role.SUPER_ADMIN and a.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能删除自己仓库的账户")
     if (await db.execute(select(EmployeeAdvance.id).where(EmployeeAdvance.payment_account_id == a.id).limit(1))).first():
@@ -205,4 +242,5 @@ async def delete_account(account_id: int, current_user: User = Depends(check_sta
     flows = flow_query(db, [a.warehouse_id])
     if (await db.execute(select(flows.c.id).where(flows.c.account_id == a.id).limit(1))).first():
         raise HTTPException(400, "该账户已有资金记录，不能删除，请停用")
+    await record_history(db, module="accounts", record_id=a.id, operator=current_user, operation_type="delete", before=before, warehouse_id=a.warehouse_id)
     await db.delete(a); await db.flush(); return {"message": "删除成功"}

@@ -419,7 +419,7 @@ export default function ReimbursementPage() {
                               <button onClick={() => setDeletingRow(row)} className="px-2 py-1 rounded text-xs bg-red-50 text-red-600 hover:bg-red-100">删除</button>
                             )}
                             <button onClick={() => openHistory(row)} className="px-2 py-1 rounded text-xs bg-gray-50 text-gray-600 hover:bg-gray-100">历史</button>
-                            {(row.status === "approved" || row.status === "partially_approved") && isAdmin && (
+                            {(row.status === "approved" || row.status === "partially_approved") && (row.is_fund_linked === "1" ? row.can_fund_pay && (isAdmin || user?.role === "staff") : isAdmin) && (
                               <button onClick={() => { markPaid(row); }} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">付款</button>
                             )}
                           </div>

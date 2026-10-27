@@ -74,7 +74,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 and (is_login or not any(s in path for s in _SKIP))
             ):
                 user_id = login_user_id if is_login else _extract_user_id(request.headers.get("Authorization", ""))
-                warehouse_id = getattr(request.state, "audit_login_warehouse_id", None) if is_login else _extract_warehouse_id(request.headers.get("X-Warehouse-ID", ""))
+                warehouse_id = getattr(request.state, "audit_login_warehouse_id", None) if is_login else getattr(request.state, "audit_warehouse_id", _extract_warehouse_id(request.headers.get("X-Warehouse-ID", "")))
                 module, target_id = _parse_path(path)
                 action = "login" if is_login else {"POST": "create", "PUT": "edit", "PATCH": "edit", "DELETE": "delete"}.get(method, method.lower())
                 client_ip = get_client_ip(request)

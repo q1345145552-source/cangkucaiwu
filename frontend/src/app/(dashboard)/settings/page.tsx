@@ -122,7 +122,7 @@ export default function SettingsPage() {
     } catch (err: any) { toast("error", err.message || "保存失败"); }
   }
   useEffect(() => {
-    if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
+    if (user?.role === "warehouse_admin") {
       setNewUser(prev => ({ ...prev, role: "staff" }));
     } else if (user?.role === "super_admin") {
       setNewUser(prev => ({ ...prev, role: "warehouse_admin" }));
@@ -306,7 +306,7 @@ export default function SettingsPage() {
         <h1 className="page-title">{t("settings")}</h1>
         <div className="flex gap-3 mt-2">
           <button onClick={()=>setTab("profile")} className={`px-4 py-1.5 rounded text-sm ${tab==="profile"?"bg-primary text-white":"border"}`}>{isLabor ? t("settings") : "个人设置"}</button>
-          {(user?.role === "super_admin" || user?.role === "warehouse_admin" || user?.role === "supervisor") && (
+          {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
             <button onClick={()=>setTab("users")} className={`px-4 py-1.5 rounded text-sm ${tab==="users"?"bg-primary text-white":"border"}`}>用户管理</button>
           )}
           {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
@@ -353,7 +353,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === "users" && (
+      {tab === "users" && (user?.role === "warehouse_admin" || user?.role === "super_admin") && (
         <div>
           <div className="bg-white rounded-xl p-4 shadow-sm mb-4 max-w-md">
             <h3 className="font-semibold mb-3 flex items-center gap-2"><UserPlus size={18}/> {t("create_user")}</h3>
@@ -365,10 +365,6 @@ export default function SettingsPage() {
                 {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
                 {user?.role === "warehouse_admin" && (<>
                   <option value="supervisor">仓库主管</option>
-                  <option value="staff">仓库财务</option>
-                  <option value="warehouse_labor">仓库劳工</option>
-                </>)}
-                {user?.role === "supervisor" && (<>
                   <option value="staff">仓库财务</option>
                   <option value="warehouse_labor">仓库劳工</option>
                 </>)}
@@ -444,7 +440,7 @@ export default function SettingsPage() {
                           <Pencil size={12} /> 编辑
                         </button>
                       )}
-                      {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (u.role === "staff" || u.role === "warehouse_labor") && (
+                      {(user?.role === "warehouse_admin") && (u.role === "staff" || u.role === "warehouse_labor") && (
                         <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
                           <Trash2 size={12} /> 删除
                         </button>
@@ -472,7 +468,7 @@ export default function SettingsPage() {
                   <div><label className="form-label text-xs">用户名</label><input className="form-input text-sm" value={editUsername} onChange={e => setEditUsername(e.target.value)} /></div>
                   <div><label className="form-label text-xs">显示名</label><input className="form-input text-sm" value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} /></div>
                   <div><label className="form-label text-xs">重置密码（留空表示不改）</label><input type="password" className="form-input text-sm" value={editPassword} onChange={e => setEditPassword(e.target.value)} autoComplete="new-password" placeholder="留空不修改密码" /></div>
-                  {(user?.role === "super_admin" || user?.role === "warehouse_admin" || user?.role === "supervisor") && (
+                  {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
                     <div><label className="form-label text-xs">所属仓库</label>
                       {(editUser.role === "supervisor" || editUser.role === "warehouse_admin") ? (
                         <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">

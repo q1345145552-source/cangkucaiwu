@@ -1,3 +1,4 @@
+from app.core.round2_access import mutation_scope
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -746,9 +747,10 @@ async def get_price_threshold(current_user: User = Depends(get_current_user), db
     return {"threshold": threshold}
 
 
-@_fixed_routes.put("/price-threshold")
+@_fixed_routes.put("/price-threshold", dependencies=[Depends(mutation_scope)])
 async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
+    ensure_config_editor(current_user)
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
@@ -919,7 +921,7 @@ async def get_approval_threshold(current_user: User = Depends(check_staff_permis
     return {"threshold": threshold}
 
 
-@_fixed_routes.put("/purchase-approval-threshold")
+@_fixed_routes.put("/purchase-approval-threshold", dependencies=[Depends(mutation_scope)])
 async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     """按当前选中仓库，仓库管理员或已授权主管设置门槛。"""
     ensure_config_editor(current_user)
@@ -1409,7 +1411,7 @@ async def get_concentration_threshold(current_user: User = Depends(check_staff_p
     return {"threshold": await _get_concentration_threshold(db, wh_id)}
 
 
-@_fixed_routes.put("/concentration-threshold")
+@_fixed_routes.put("/concentration-threshold", dependencies=[Depends(mutation_scope)])
 async def set_concentration_threshold(req: ConcentrationThresholdSet,
                                       current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     ensure_config_editor(current_user)

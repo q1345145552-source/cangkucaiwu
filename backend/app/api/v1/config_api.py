@@ -1,3 +1,4 @@
+from app.core.round2_access import mutation_scope
 """配置中心：仓库作息 + 审批门槛（本轮审批门槛仅占位）。"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,10 +64,10 @@ async def get_work_schedule_settings(current_user: User = Depends(check_staff_pe
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
     sched = await get_work_schedule(db, wh_id)
-    return {**sched, "editable": current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR), "warehouse_id": wh_id}
+    return {**sched, "editable": current_user.role == Role.WAREHOUSE_ADMIN, "warehouse_id": wh_id}
 
 
-@router.put("/work-schedule")
+@router.put("/work-schedule", dependencies=[Depends(mutation_scope)])
 async def set_work_schedule_settings(req: WorkScheduleSet, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     """保存仓库作息（仓库管理员或已授权主管）。校验时间顺序：上班 < 迟到半小时 < 迟到1小时 < 午休开始 < 午休结束 < 早退1小时 < 早退半小时 < 下班。"""
     ensure_config_editor(current_user)

@@ -46,14 +46,38 @@ async def environment(tmp_path, monkeypatch):
                 account_number="CNY", opening_balance=30000, currency="CNY", status="active"))
             await db.commit()
         await set_perms(f, 4, ["备用金管理", "员工预支"])
+        await set_perms(f, 3, ["备用金管理"])
         r = await c.post(BASE + "/accounts", headers=auth(1), json={"employee_id": 4, "fund_limit": 20000})
         assert r.status_code == 200, r.text
         yield engine, f, c, r.json()["id"]
 
 
+async def prepare_recharge(c, fid, amount=10000):
+    accounts = (await c.get(BASE + '/accounts', headers=auth(1))).json()['data']
+    fund = next(a for a in accounts if a['id'] == fid)
+    requested = await c.post(BASE + '/recharge/request', headers=auth(fund['employee_id']), json={'amount': amount})
+    assert requested.status_code == 200, requested.text
+    rid = requested.json()['id']
+    verified = await c.post(BASE + '/recharge/review', headers=auth(3), json={'request_id': rid, 'action': 'verify'})
+    assert verified.status_code == 200, verified.text
+    approved = await c.post(BASE + '/recharge/review', headers=auth(1), json={'request_id': rid, 'action': 'approve'})
+    assert approved.status_code == 200 and approved.json()['status'] == 'approved_ready', approved.text
+    return rid
+
 async def topup(c, fid, *, uid=1, amount=10000, **extra):
-    return await c.post(f"{BASE}/accounts/{fid}/topup", headers=auth(uid), json={
-        "amount": amount, "payment_account_id": 1, "receive_date": "2026-10-10", **extra})
+    if uid != 1:
+        return await c.post(f'{BASE}/accounts/{fid}/topup', headers=auth(uid), json={'amount': amount, **extra})
+    accounts = (await c.get(BASE + '/accounts', headers=auth(1))).json()['data']
+    if not any(a['id'] == fid for a in accounts):
+        return await c.post(f'{BASE}/accounts/{fid}/topup', headers=auth(1), json={'amount': amount, **extra})
+    rid = await prepare_recharge(c, fid, amount)
+    return await c.post(BASE + '/recharge/execute', headers=auth(3), json={
+        'request_id': rid, 'action': 'execute', 'payment_account_id': 1, 'receive_date': '2026-10-10', **extra})
+
+async def approve_expense(c, ids):
+    verified = await c.post(BASE + '/review/batch', headers=auth(3), json={'item_ids': ids, 'action': 'verify'})
+    assert verified.status_code == 200, verified.text
+    return await c.post(BASE + '/review/batch', headers=auth(1), json={'item_ids': ids, 'action': 'approve'})
 
 
 async def receipt(c, fid, uid=4):
@@ -110,7 +134,7 @@ def test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links(tmp
             for key in ("expense_count", "unified_count", "flow_count", "company_flow_count", "expense_amount", "unified_amount", "flow_amount", "company_flow_amount", "company_cash"):
                 assert after_spend[key] == after_pay[key]
             assert after_spend["fund"]["total_spent"] == 2000 and after_spend["fund"]["available"] == 8000
-            review = await c.post(BASE + "/review/batch", headers=auth(1), json={"item_ids": [iid], "action": "approve"})
+            review = await approve_expense(c, [iid])
             assert review.status_code == 200, review.text
             final = await values(c, fid)
             assert final == after_spend  # 审核通过同样不再新增成本或资金记录。
@@ -147,26 +171,27 @@ def test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links(tmp
 
 
 @pytest.mark.parametrize("uid", [1, 3, 4])
-def test_original_roles_and_recharge_approval_one_expense_and_repeat_denied(tmp_path, monkeypatch, uid):
+def test_roles_require_verification_approval_and_independent_execution(tmp_path, monkeypatch, uid):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
-            await set_perms(f, uid, ["备用金管理"])
-            req = await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000, "reason": "日常耗材"})
-            assert req.status_code == 200, req.text
-            rid = req.json()["id"]
-            r = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid,
-                "action": "approve", "payment_account_id": 1, "receive_date": "2026-10-12"})
-            assert r.status_code == 200 and r.json()["recharge_request_id"] == rid, r.text
-            repeat = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid, "action": "approve", "payment_account_id": 1})
-            assert repeat.status_code == 400 and repeat.json()["detail"] == "该申请已处理"
+            req = await c.post(BASE + '/recharge/request', headers=auth(4), json={'amount':1000})
+            assert req.status_code == 200
+            rid = req.json()['id']
+            blocked = await c.post(BASE + '/recharge/review', headers=auth(uid), json={'request_id':rid,'action':'approve','payment_account_id':1})
+            assert blocked.status_code == (409 if uid == 1 else 403)
+            direct = await c.post(f'{BASE}/accounts/{fid}/topup', headers=auth(uid), json={'amount':500,'payment_account_id':1})
+            assert direct.status_code == 403
+            async with f() as db:
+                assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 0
+                assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+            rid = await prepare_recharge(c, fid, 1000)
+            paid = await c.post(BASE+'/recharge/execute', headers=auth(3), json={'request_id':rid,'action':'execute','payment_account_id':1})
+            assert paid.status_code == 200 and paid.json()['recharge_request_id'] == rid
+            repeat = await c.post(BASE+'/recharge/execute', headers=auth(3), json={'request_id':rid,'action':'execute','payment_account_id':1})
+            assert repeat.status_code == 409
             async with f() as db:
                 assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 1
                 assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 1
-            direct = await topup(c, fid, uid=uid, amount=500)
-            assert direct.status_code == 200, direct.text
-            await set_perms(f, uid, [])
-            if uid != 1:
-                assert (await topup(c, fid, uid=uid, amount=1)).status_code == 403
     asyncio.run(run())
 
 
@@ -196,18 +221,18 @@ def test_history_failure_rolls_back_account_fund_expense_and_approval(tmp_path, 
         async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
             rid = None
             if via_request:
-                rid = (await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000})).json()["id"]
+                rid = await prepare_recharge(c, fid, 1000)
             async def fail(db, **kwargs):
                 await db.flush()
                 raise HTTPException(500, "模拟拨付留痕失败")
             monkeypatch.setattr(s, "record_history", fail)
-            r = await c.post(BASE + "/recharge/review", headers=auth(1), json={"request_id": rid, "action": "approve", "payment_account_id": 1}) if via_request else await topup(c, fid)
+            r = await c.post(BASE + "/recharge/execute", headers=auth(3), json={"request_id": rid, "action": "execute", "payment_account_id": 1}) if via_request else await topup(c, fid)
             assert r.status_code == 500, r.text
             state = await values(c, fid)
             assert state["company_cash"] == 20000 and state["fund"]["available"] == 0 and state["expense_count"] == state["flow_count"] == 0
             async with f() as db:
                 assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
-                if rid: assert (await db.get(FundRechargeRequest, rid)).status == "pending"
+                if rid: assert (await db.get(FundRechargeRequest, rid)).status == "approved_ready"
     asyncio.run(run())
 
 
@@ -295,6 +320,12 @@ def test_new_fund_employee_advance_records_usage_without_second_cost(tmp_path, m
         current = ast.parse((root / path).read_text())
         old = ast.parse(subprocess.check_output(["git", "show", f"3e19093:{path}"], cwd=root, text=True))
         excluded = {"payroll_cash_advance_sources", "lock_advance"}
+        # Only the fund-linked execution authorization branch is new; all other pay logic is compared.
+        if path.endswith("reimbursement_payment.py"):
+            function = next(n for n in current.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "pay")
+            for node in ast.walk(function):
+                if isinstance(node, ast.If) and any(isinstance(child, ast.ImportFrom) and child.module == "app.services.fund_authorization" for child in node.orelse):
+                    node.orelse = [child for child in node.orelse if not (isinstance(child, ast.ImportFrom) and child.module == "app.services.fund_authorization") and not (isinstance(child, ast.Expr) and isinstance(child.value, ast.Await) and isinstance(child.value.value, ast.Call) and isinstance(child.value.value.func, ast.Name) and child.value.value.func.id == "approved_item_execution")]
         def actions(tree):
             return {n.name: ast.dump(n, include_attributes=False) for n in tree.body
                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in excluded}
@@ -309,6 +340,9 @@ def test_all_warehouse_admin_review_uses_request_warehouse_not_primary(tmp_path,
                 db.add(UserWarehouse(user_id=1, warehouse_id=2))
                 db.add(User(id=7, username="other_supervisor", display_name="另一仓主管", role="supervisor", password_hash="unused", warehouse_id=2, extra_permissions=["备用金管理"]))
                 db.add(UserWarehouse(user_id=7, warehouse_id=2))
+                db.add(User(id=9,username="other_finance",display_name="异仓财务",role="staff",password_hash="unused",warehouse_id=2,extra_permissions=["备用金管理"]))
+                await db.flush()
+                db.add(UserWarehouse(user_id=9,warehouse_id=2))
                 (await db.get(PaymentAccount, 2)).opening_balance = 20000
                 await db.commit()
             headers = {**auth(1), "X-Warehouse-ID": "2"}
@@ -316,9 +350,13 @@ def test_all_warehouse_admin_review_uses_request_warehouse_not_primary(tmp_path,
             assert r.status_code == 200, r.text
             req = await c.post(BASE + "/recharge/request", headers=auth(7), json={"amount": 1000})
             assert req.status_code == 200, req.text
-            result = await c.post(BASE + "/recharge/review", headers={**auth(1), "X-Warehouse-ID": "all"},
-                json={"request_id": req.json()["id"], "action": "approve", "payment_account_id": 2})
-            assert result.status_code == 200 and result.json()["warehouse_id"] == 2, result.text
+            rid=req.json()['id']
+            verified=await c.post(BASE+'/recharge/review',headers=auth(9),json={'request_id':rid,'action':'verify'})
+            assert verified.status_code==200,verified.text
+            approved=await c.post(BASE+'/recharge/review',headers={**auth(1),'X-Warehouse-ID':'all'},json={'request_id':rid,'action':'approve'})
+            assert approved.status_code==200,approved.text
+            result=await c.post(BASE+'/recharge/execute',headers=auth(9),json={'request_id':rid,'action':'execute','payment_account_id':2})
+            assert result.status_code==200 and result.json()['warehouse_id']==2,result.text
     asyncio.run(run())
 
 

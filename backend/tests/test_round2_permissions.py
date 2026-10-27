@@ -125,7 +125,8 @@ def test_every_endpoint(tmp_path, monkeypatch, method, path, module, body, uid, 
                 super_business_denied = uid == 2 and (method, path) not in {
                     ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
                 }
-                expected = 403 if staff_business_denied or super_business_denied else 200
+                account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
+                expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
                 assert response.status_code == expected, response.text
                 if expected == 403:
                     assert not response.json()['detail'].startswith('无此操作权限')

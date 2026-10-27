@@ -30,6 +30,7 @@ async def environment(tmp_path, monkeypatch):
         async with engine.begin() as conn:
             await service.backfill_reimbursement_categories(conn)
         await set_perms(f, 4, ["报销管理"])
+        await set_perms(f, 3, ["报销管理", "备用金管理"])
         async with f() as db:
             db.add(PaymentAccount(id=3, warehouse_id=1, account_name="测试银行", account_type="bank", account_number="bank", opening_balance=20000, currency="THB", status="active"))
             db.add(PaymentAccount(id=4, warehouse_id=1, account_name="人民币账户", account_type="cash", account_number="cny", opening_balance=30000, currency="CNY", status="active"))
@@ -45,6 +46,9 @@ async def approved(c, *, amount=2000, currency="THB", fund=False):
     assert r.status_code == 200, r.text
     rid = r.json()["id"]
     detail = (await c.get(f"{BASE}/{rid}", headers=auth(1))).json()
+    if fund:
+        verified = await c.post('/api/v1/expense-fund/review/batch', headers=auth(3), json={'item_ids':[detail['fund_item_id']], 'action':'verify'})
+        assert verified.status_code == 200, verified.text
     r = await c.post(f"{BASE}/{rid}/review", headers=auth(1), json={"items": [{"item_id": i["id"], "status": "approved"} for i in detail["items"]]})
     assert r.status_code == 200 and r.json()["approved_amount"] == amount, r.text
     return rid
@@ -57,6 +61,8 @@ async def upload(c, rid, uid=1):
 
 
 async def pay(c, rid, path, *, uid=1, **fields):
+    if fields.get('funding_source') == 'expense_fund' and uid == 1:
+        uid = 3  # The independent authorized finance executor; approval remains administrator-only.
     return await c.post(f"{BASE}/{rid}/pay", headers=auth(uid), json={"funding_source": "company_account",
         "payment_account_id": 1, "payment_method": "cash", "payment_voucher_path": path, **fields})
 
@@ -188,33 +194,24 @@ def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp
     asyncio.run(run())
 
 
-@pytest.mark.usefixtures("retained_reversal_code")
-def test_fund_path_does_not_deduct_twice_and_revoke_repay_refund_once(tmp_path, monkeypatch):
+def test_fund_path_does_not_deduct_twice_and_reversal_stays_disabled(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             rid = await approved(c, fund=True)
             before_cost, before_balance, before_flow = await costs(c), await balances(c), await ledger(c)
             async with f() as db: assert (await db.get(ExpenseFund, 1)).remaining_balance == 3000
-            r = await c.post(f"{BASE}/{rid}/pay", headers=auth(1), json={"funding_source": "expense_fund"})
-            assert r.status_code == 200, r.text
-            assert r.json()["expense_record_id"] is None and r.json()["payment"]["funding_source"] == "expense_fund"
-            assert await costs(c) == before_cost and await balances(c) == before_balance and await ledger(c) == before_flow
-            async with f() as db: assert (await db.get(ExpenseFund, 1)).remaining_balance == 3000
-            revoked = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "撤销备用金付款"})
-            assert revoked.status_code == 200, revoked.text
-            async with f() as db:
-                assert (await db.get(ExpenseFund, 1)).remaining_balance == 5000
-                assert (await db.get(Reimbursement, rid)).fund_item_id is None
-                assert not (await db.execute(select(ExpenseFundItem))).scalars().all()
-            retry = await c.post(f"{BASE}/{rid}/pay", headers=auth(1), json={"funding_source": "expense_fund"})
-            assert retry.status_code == 200, retry.text
-            async with f() as db:
-                assert (await db.get(ExpenseFund, 1)).remaining_balance == 3000
-                assert len((await db.execute(select(ExpenseFundItem))).scalars().all()) == 1
-            assert await costs(c) == before_cost and await balances(c) == before_balance
-            assert (await c.post(f"{BASE}/{rid}/pay", headers=auth(1), json={"funding_source": "expense_fund"})).status_code == 400
-            async with f() as db: assert (await db.get(ExpenseFund, 1)).remaining_balance == 3000
-            print("REIMB_FUND", {"before_pay": 3000, "after_pay": 3000, "after_revoke": 5000, "after_repay": 3000, "cost_unchanged": 750})
+            denied=await c.post(f'{BASE}/{rid}/pay',headers=auth(4),json={'funding_source':'expense_fund'})
+            assert denied.status_code==403
+            r=await c.post(f'{BASE}/{rid}/pay',headers=auth(3),json={'funding_source':'expense_fund'})
+            assert r.status_code==200,r.text
+            assert r.json()['expense_record_id'] is None and r.json()['payment']['funding_source']=='expense_fund'
+            assert await costs(c)==before_cost and await balances(c)==before_balance and await ledger(c)==before_flow
+            before=await snapshot(f)
+            revoked=await c.post(f'{BASE}/{rid}/revoke-payment',headers=auth(1),json={'reason':'不得恢复撤销'})
+            assert revoked.status_code==400 and '撤销功能已停用' in revoked.text
+            retry=await c.post(f'{BASE}/{rid}/pay',headers=auth(3),json={'funding_source':'expense_fund'})
+            assert retry.status_code==400 and await snapshot(f)==before
+            async with f() as db:assert (await db.get(ExpenseFund,1)).remaining_balance==3000
     asyncio.run(run())
 
 
@@ -317,86 +314,37 @@ def test_cny_account_and_advance_are_independent_from_thb(tmp_path, monkeypatch)
     asyncio.run(run())
 
 
-@pytest.mark.usefixtures("retained_reversal_code")
-def test_fund_review_auto_payment_history_and_single_refund_after_reject_or_revoke(tmp_path, monkeypatch):
+def test_fund_review_separates_approval_payment_and_unpaid_rejection(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             async def make():
-                r = await c.post(BASE, headers=auth(4), json={"submit_date": "2026-10-18", "currency": "THB", "is_fund_linked": "1", "items": [{"category": "交通费", "amount": 2000}]})
-                assert r.status_code == 200, r.text
-                detail = (await c.get(f"{BASE}/{r.json()['id']}", headers=auth(1))).json()
-                return detail["id"], detail["fund_item_id"]
+                r=await c.post(BASE,headers=auth(4),json={'submit_date':'2026-10-18','currency':'THB','is_fund_linked':'1','items':[{'category':'交通费','amount':2000}]})
+                assert r.status_code==200,r.text
+                detail=(await c.get(f"{BASE}/{r.json()['id']}",headers=auth(1))).json()
+                return detail['id'],detail['fund_item_id']
             async def remaining():
-                async with f() as db: return (await db.get(ExpenseFund, 1)).remaining_balance
-            async def review(item, action):
-                return await c.post("/api/v1/expense-fund/review/batch", headers=auth(1), json={"item_ids": [item], "action": action, "remark": "备用金审核验收"})
-            before_balances, before_costs = await balances(c), await costs(c)
-            rid, item = await make()
-            assert await remaining() == 3000
-            r = await review(item, "approve")
-            assert r.status_code == 200, r.text
-            detail = (await c.get(f"{BASE}/{rid}", headers=auth(1))).json()
-            assert detail["status"] == "paid" and detail["funding_source"] == "expense_fund"
-            hist = (await c.get(f"{BASE}/{rid}/payments", headers=auth(1))).json()
-            assert hist["total"] == 1 and hist["data"][0]["paid_by_id"] == 1
-            assert await remaining() == 3000 and await costs(c) == before_costs and await balances(c) == before_balances
-            assert (await review(item, "approve")).status_code == 200
-            assert (await c.get(f"{BASE}/{rid}/payments", headers=auth(1))).json()["total"] == 1
-            r = await review(item, "reject")
-            assert r.status_code == 200, r.text
-            assert await remaining() == 5000
-            hist = (await c.get(f"{BASE}/{rid}/payments", headers=auth(1))).json()
-            assert hist["data"][0]["status"] == "revoked"
-            assert (await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "防重复退款"})).status_code == 400
-            assert await remaining() == 5000
-            rid2, item2 = await make()
-            assert (await review(item2, "approve")).status_code == 200
-            r = await c.post(f"{BASE}/{rid2}/revoke-payment", headers=auth(1), json={"reason": "撤销备用金付款"})
-            assert r.status_code == 200, r.text
-            assert r.json()["status"] == "approved" and await remaining() == 5000
-            assert (await review(item2, "reject")).status_code == 200
-            assert await remaining() == 5000
-            assert await costs(c) == before_costs and await balances(c) == before_balances
-            print("REIMB_FUND_AUTO", {"after_create": 3000, "after_approve": 3000, "after_reject_or_revoke": 5000, "duplicate_refund": False})
-    asyncio.run(run())
-
-
-@pytest.mark.usefixtures("retained_reversal_code")
-def test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_reason(tmp_path, monkeypatch):
-    async def run():
-        async with environment(tmp_path, monkeypatch) as (_, f, c):
-            async with f() as db:
-                db.add_all([Reimbursement(id=100, warehouse_id=1, employee_id=4, submit_date=datetime(2026, 10, 18), total_amount=1700,
-                    currency="THB", status="paid", paid_at=datetime(2026, 10, 18)),
-                    Reimbursement(id=101, warehouse_id=2, employee_id=4, submit_date=datetime(2026, 10, 18), total_amount=2000, currency="THB", status="approved")])
-                await db.commit()
-            before = await snapshot(f)
-            hist = await c.get(BASE + "/100/payments", headers=auth(1))
-            assert hist.status_code == 200 and hist.json()["is_legacy_payment"] and hist.json()["data"] == []
-            revoke = await c.post(BASE + "/100/revoke-payment", headers=auth(1), json={"reason": "旧单不推断"})
-            assert revoke.status_code == 400 and await snapshot(f) == before
-            for method, route, kwargs in [
-                ("get", BASE + "/101/payments", {}), ("get", BASE + "/payment-sources?reimbursement_id=101", {}),
-                ("post", BASE + "/101/pay", {"json": {}}), ("post", BASE + "/101/revoke-payment", {"json": {"reason": "越仓"}}),
-                ("post", BASE + "/payment-voucher", {"data": {"reimbursement_id": 101}, "files": {"file": ("x.png", png(), "image/png")}}),
-            ]:
-                response = await getattr(c, method)(route, headers=auth(1), **kwargs)
-                assert response.status_code == 403, response.text
-            rid = await approved(c)
-            for uid in (3, 4):
-                await set_perms(f, uid, [])
-                assert (await c.get(BASE + f"/payment-sources?reimbursement_id={rid}", headers=auth(uid))).status_code == 403
-                assert (await c.post(f"{BASE}/{rid}/pay", headers=auth(uid), json={})).json()["detail"].startswith("无此操作权限")
-                await set_perms(f, uid, ["报销管理"])
-            for uid in (2, 5):
-                assert (await c.get(BASE + f"/payment-sources?reimbursement_id={rid}", headers=auth(uid))).status_code == 403
-            photo = await upload(c, rid)
-            assert (await pay(c, rid, photo, uid=3)).status_code == 200
-            for body in ({}, {"reason": "   "}):
-                resp = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json=body)
-                assert resp.status_code == 400 and resp.json()["detail"] == "请填写撤销原因"
-            assert (await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "测试后恢复"})).status_code == 200
-            assert (await pay(c, rid, photo, uid=4)).status_code == 200
+                async with f() as db:return (await db.get(ExpenseFund,1)).remaining_balance
+            async def review(item,action,uid=1):
+                return await c.post('/api/v1/expense-fund/review/batch',headers=auth(uid),json={'item_ids':[item],'action':action})
+            before_balances,before_costs=await balances(c),await costs(c)
+            rid,item=await make();assert await remaining()==3000
+            assert (await review(item,'verify',3)).status_code==200
+            r=await review(item,'approve');assert r.status_code==200,r.text
+            detail=(await c.get(f'{BASE}/{rid}',headers=auth(1))).json();assert detail['status']=='approved'
+            assert (await c.get(f'{BASE}/{rid}/payments',headers=auth(1))).json()['total']==0
+            assert await remaining()==3000
+            paid=await c.post(f'{BASE}/{rid}/pay',headers=auth(3),json={'funding_source':'expense_fund'});assert paid.status_code==200,paid.text
+            history=(await c.get(f'{BASE}/{rid}/payments',headers=auth(1))).json()
+            assert history['total']==1 and history['data'][0]['paid_by_id']==3
+            before=await snapshot(f)
+            for action in ('approve','reject'):assert (await review(item,action)).status_code==409
+            assert (await c.post(f'{BASE}/{rid}/revoke-payment',headers=auth(1),json={'reason':'防重复退款'})).status_code==400
+            assert await snapshot(f)==before and await remaining()==3000
+            rid2,item2=await make();assert await remaining()==1000
+            assert (await review(item2,'reject')).status_code==200
+            assert await remaining()==3000
+            assert (await review(item2,'reject')).status_code==409
+            assert await remaining()==3000 and await costs(c)==before_costs and await balances(c)==before_balances
     asyncio.run(run())
 
 
@@ -436,4 +384,43 @@ def test_decimal_item_sums_and_partially_approved_total_used_for_payment(tmp_pat
             assert (await costs(c))["amount"] == 750.3
             r = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "小数验收"})
             assert r.status_code == 200 and r.json()["status"] == "partially_approved" and r.json()["account_balance"] == 10000
+    asyncio.run(run())
+
+
+@pytest.mark.usefixtures("retained_reversal_code")
+def test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_reason(tmp_path, monkeypatch):
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            async with f() as db:
+                db.add_all([Reimbursement(id=100, warehouse_id=1, employee_id=4, submit_date=datetime(2026, 10, 18), total_amount=1700,
+                    currency="THB", status="paid", paid_at=datetime(2026, 10, 18)),
+                    Reimbursement(id=101, warehouse_id=2, employee_id=4, submit_date=datetime(2026, 10, 18), total_amount=2000, currency="THB", status="approved")])
+                await db.commit()
+            before = await snapshot(f)
+            hist = await c.get(BASE + "/100/payments", headers=auth(1))
+            assert hist.status_code == 200 and hist.json()["is_legacy_payment"] and hist.json()["data"] == []
+            revoke = await c.post(BASE + "/100/revoke-payment", headers=auth(1), json={"reason": "旧单不推断"})
+            assert revoke.status_code == 400 and await snapshot(f) == before
+            for method, route, kwargs in [
+                ("get", BASE + "/101/payments", {}), ("get", BASE + "/payment-sources?reimbursement_id=101", {}),
+                ("post", BASE + "/101/pay", {"json": {}}), ("post", BASE + "/101/revoke-payment", {"json": {"reason": "越仓"}}),
+                ("post", BASE + "/payment-voucher", {"data": {"reimbursement_id": 101}, "files": {"file": ("x.png", png(), "image/png")}}),
+            ]:
+                response = await getattr(c, method)(route, headers=auth(1), **kwargs)
+                assert response.status_code == 403, response.text
+            rid = await approved(c)
+            for uid in (3, 4):
+                await set_perms(f, uid, [])
+                assert (await c.get(BASE + f"/payment-sources?reimbursement_id={rid}", headers=auth(uid))).status_code == 403
+                assert (await c.post(f"{BASE}/{rid}/pay", headers=auth(uid), json={})).json()["detail"].startswith("无此操作权限")
+                await set_perms(f, uid, ["报销管理"])
+            for uid in (2, 5):
+                assert (await c.get(BASE + f"/payment-sources?reimbursement_id={rid}", headers=auth(uid))).status_code == 403
+            photo = await upload(c, rid)
+            assert (await pay(c, rid, photo, uid=3)).status_code == 200
+            for body in ({}, {"reason": "   "}):
+                resp = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json=body)
+                assert resp.status_code == 400 and resp.json()["detail"] == "请填写撤销原因"
+            assert (await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "测试后恢复"})).status_code == 200
+            assert (await pay(c, rid, photo, uid=4)).status_code == 200
     asyncio.run(run())

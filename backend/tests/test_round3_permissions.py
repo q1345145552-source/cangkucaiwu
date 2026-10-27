@@ -119,6 +119,8 @@ async def call(client, method, path, body, uid):
 
 
 def business_status(uid, path, method):
+    if uid in (3, 4) and method == "POST" and path in ("/employees", "/employees/bind-existing-accounts"):
+        return 403
     if path.startswith(('/employees', '/salary-templates', '/deduction-templates')):
         return 200
     if path == '/payroll/my-payslip':

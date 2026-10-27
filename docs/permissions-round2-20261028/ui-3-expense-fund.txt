@@ -1,0 +1,47 @@
+海外仓财务管理系统
+仪表盘
+财务(仓库运营)
+财务(日常开支)
+供应商管理
+修改日志
+拼单
+员工管理
+配置中心
+系统设置
+SYNTHETIC WH1
+中文
+S
+SYNTHETIC staff 3
+备用金
+管理
+审核
+1
+开销审核
+1
+充值申请
+11
+11 条待审核充值申请
+申请人	申请金额	当前余额	事由	申请时间	状态	操作
+SYNTHETIC supervisor 2	+฿5	฿595	SYNTHETIC UI approved_ready	2026/10/28 02:21:48	待执行	
+执行拨付
+
+SYNTHETIC supervisor 2	+฿5	฿595	SYNTHETIC UI verified	2026/10/28 02:21:48	待批准	
+
+SYNTHETIC supervisor 2	+฿5	฿595	SYNTHETIC UI pending	2026/10/28 02:21:48	待核验	
+核验
+
+SYNTHETIC supervisor 2	+฿3	฿595	no matching evidence	2026/10/28 02:19:56	待执行	
+
+SYNTHETIC supervisor 2	+฿15	฿595	-	2026/10/28 02:19:55	已执行	
+
+SYNTHETIC supervisor 2	+฿10	฿100	delegated linked employee	2026/10/28 02:19:54	待核验	
+
+SYNTHETIC supervisor 2	+฿20	฿595	-	2026/10/28 02:19:54	已执行	
+
+SYNTHETIC supervisor 2	+฿10	฿595	legacy no evidence	2026/10/28 02:19:53	历史已处理（不可直接执行）	
+
+SYNTHETIC supervisor 2	+฿10	฿560	on behalf finance	2026/10/28 02:19:53	已执行	
+
+SYNTHETIC staff 3	+฿50	฿560	SYNTHETIC FINANCE	2026/10/28 02:19:53	已执行	
+
+SYNTHETIC supervisor 2	+฿100	฿595	SYNTHETIC	2026/10/28 02:19:53	历史已处理（不可直接执行）	

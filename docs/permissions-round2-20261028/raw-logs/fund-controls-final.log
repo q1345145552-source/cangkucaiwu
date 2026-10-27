@@ -1,0 +1,43 @@
+...........F                                                             [100%]
+=================================== FAILURES ===================================
+___________ test_original_financial_functions_and_formula_preserved ____________
+
+    def test_original_financial_functions_and_formula_preserved():
+        root=Path(__file__).resolve().parents[2]
+        for path in ("backend/app/api/v1/reimbursement.py","backend/app/api/v1/payroll.py","backend/app/api/v1/employee_advance.py","backend/app/services/flow_rules.py"):
+            previous=subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True)
+            if path.endswith('/reimbursement.py'):
+                def actions(source): return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef) and n.name != 'review_reimb'}
+>               assert actions((root/path).read_text()) == actions(previous)
+E               assert {'_payment_re...ams=[])', ...} == {'_payment_re...ams=[])', ...}
+E                 
+E                 Omitting 7 identical items, use -vv to show
+E                 Differing items:
+E                 {'submit_reimb': "AsyncFunctionDef(name='submit_reimb', args=arguments(posonlyargs=[], args=[arg(arg='reimb_id', annot...pends', ctx=Load()), args=[Name(id='require_non_labor', ctx=Load())], keywords=[])], ctx=Load()))])], type_params=[])"} != {'submit_reimb': "AsyncFunctionDef(name='submit_reimb', args=arguments(posonlyargs=[], args=[arg(arg='reimb_id', annot...', ctx=Load()), attr='post', ctx=Load()), args=[Constant(value='/{reimb_id}/submit')], keywords=[])], type_params=[])"}
+E                 {'list_reimbursements': "AsyncFun...
+E                 
+E                 ...Full output truncated (8 lines hidden), use '-vv' to show
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:177: AssertionError
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_fund_item_controls.py: 261 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_fund_item_controls.py: 11 warnings
+  /private/tmp/permissions-round2-20261028/backend/app/api/v1/expense_fund.py:177: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    receive_date=datetime.utcnow(), amount=0, purpose="",
+
+tests/test_fund_item_controls.py: 11 warnings
+  /private/tmp/permissions-round2-20261028/backend/app/api/v1/expense_fund.py:814: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rr.reviewed_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round2-env/logs/fund-controls-final.xml -
+=========================== short test summary info ============================
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_original_financial_functions_and_formula_preserved
+1 failed, 11 passed, 295 warnings in 4.82s

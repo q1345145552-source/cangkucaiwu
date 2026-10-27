@@ -1,0 +1,12 @@
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert((await page.getByRole('button',{name:'核验',exact:true}).count())>0)
+
+    at /private/tmp/permissions-round2-20261028/backend/tests/permission_round2/browser_acceptance.cjs:24:6 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

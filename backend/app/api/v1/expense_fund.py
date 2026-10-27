@@ -1,3 +1,5 @@
+from app.core.round2_access import require_account_manager, mutation_scope, own_scope, mutation_ids
+from app.services import fund_authorization as duties
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -141,21 +143,23 @@ class CreateAccountReq(BaseModel):
 
 
 # ==== Account Overview ====
-@router.post("/accounts")
+@router.post("/accounts", dependencies=[Depends(mutation_scope)])
 async def create_account(
     req: CreateAccountReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("备用金管理")),
 ):
+    require_account_manager(current_user)
     """手动为指定员工创建备用金账户"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)
+    own_scope(current_user, wh_id)
     # 验证员工属于本仓库
-    emp = (await db.execute(select(User).where(User.id == req.employee_id, User.warehouse_id.in_(get_wh_ids(current_user))))).scalar_one_or_none()
+    emp = (await db.execute(select(User).where(User.id == req.employee_id, User.warehouse_id == wh_id))).scalar_one_or_none()
     if not emp:
         raise HTTPException(404, "无此员工")
     # 检查是否已有活跃账户
@@ -176,6 +180,8 @@ async def create_account(
     )
     db.add(account)
     await db.flush()
+    await duties.evidence(db, current_user, account, 'account_create',
+        {'employee_id': account.employee_id, 'fund_limit': account.fund_limit, 'alert_threshold': account.alert_threshold}, wh_id)
     return {"id": account.id, "message": "备用金账户创建成功"}
 
 @router.get("/employees")
@@ -240,6 +246,8 @@ async def list_accounts(
             ExpenseFundItem.review_status != ReviewStatus.REJECTED.value, ExpenseFundItem.not_voided(),
         ))).scalar() or 0)
         result.append({
+            "can_record": a.status == 'active' and (current_user.role == Role.WAREHOUSE_ADMIN or a.employee_id in await duties.identities(db, current_user)),
+            "can_request": a.status == 'active' and a.employee_id == current_user.id,
             "id": a.id, "employee_id": a.employee_id,
             "employee_name": umap.get(a.employee_id, ""),
             "currency": a.currency or "THB",
@@ -292,36 +300,14 @@ async def list_disbursements(account_id: int, current_user: User = Depends(get_c
     return {"data": data, "total": len(data), "allocation_basis": "先拨先用；旧资金原拨付编号缺失时明确显示历史余额"}
 
 
-@router.post("/accounts/{account_id}/topup")
+@router.post("/accounts/{account_id}/topup", dependencies=[Depends(mutation_scope)])
 async def topup_account(
     account_id: int, req: TopUpReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("备用金管理")),
 ):
-    """给备用金账户充值，余额不能超过上限"""
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-
-    account = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id).with_for_update())).scalar_one_or_none()
-    if not account:
-        raise HTTPException(404, "账户不存在")
-    if account.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "只能操作本仓库的备用金账户")
-    if req.amount is None or req.amount <= 0:
-        raise HTTPException(400, "充值金额必须大于0")
-
-    validate_amount(req.amount)
-    new_balance = (account.remaining_balance or 0) + req.amount
-    limit = account.fund_limit or 5000
-    if new_balance > limit:
-        raise HTTPException(400, f"超出账户上限（{limit:,.0f}），当前余额 {account.remaining_balance:,.0f}，最多可充 {limit - (account.remaining_balance or 0):,.0f}")
-
-    result = await create_disbursement(db, account, req.amount, req.payment_account_id,
-        current_user, receive_date=req.receive_date)
-    return {"message": "充值成功，已记入运营支出", **result}
+    raise HTTPException(403, "直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行")
 
 
 # ==== Items (开销) ====
@@ -352,20 +338,26 @@ async def list_items(
     } for i in items]}
 
 
-@router.put("/accounts/{account_id}/items/{item_id}")
+@router.put("/accounts/{account_id}/items/{item_id}", dependencies=[Depends(mutation_scope)])
 async def edit_item(account_id: int, item_id: int, req: FundItemUpdate,
     current_user: User = Depends(_item_editor), db: AsyncSession = Depends(get_db)):
-    fund, item = await item_controls.lock_manual_item(db, account_id, item_id, get_wh_ids(current_user), action="edit")
-    return await item_controls.update(db, fund, item, req.model_dump(exclude_unset=True), current_user, _required_receipt)
+    fund, item = await item_controls.lock_manual_item(db, account_id, item_id, mutation_ids(current_user), action="edit")
+    verified = item.review_status == 'verified'
+    result = await item_controls.update(db, fund, item, req.model_dump(exclude_unset=True), current_user, _required_receipt)
+    if verified:
+        item.review_status = 'pending'
+        await duties.evidence(db, current_user, item, 'item_reset', duties.item_payload(item, fund), fund.warehouse_id)
+        result['review_status'] = 'pending'
+    return result
 
 
-@router.delete("/accounts/{account_id}/items/{item_id}")
+@router.delete("/accounts/{account_id}/items/{item_id}", dependencies=[Depends(mutation_scope)])
 async def void_item(account_id: int, item_id: int, req: FundItemVoid | None = None,
     current_user: User = Depends(_item_voider), db: AsyncSession = Depends(get_db)):
-    fund, item = await item_controls.lock_manual_item(db, account_id, item_id, get_wh_ids(current_user), action="void")
+    fund, item = await item_controls.lock_manual_item(db, account_id, item_id, mutation_ids(current_user), action="void")
     return await item_controls.void(db, fund, item, req.reason if req else None, current_user)
 
-@router.post("/accounts/{account_id}/items", dependencies=[Depends(require_non_labor)])
+@router.post("/accounts/{account_id}/items", dependencies=[Depends(require_non_labor), Depends(mutation_scope)])
 async def add_item(
     account_id: int, req: FundItemCreate,
     current_user: User = Depends(get_current_user),
@@ -381,6 +373,7 @@ async def add_item(
         raise HTTPException(404, "账户不存在")
     if account.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库的备用金账户")
+    await duties.recorder(db, current_user, account)
     costs.number(req.request_key,'登记请求编号',100)
     await costs.lock(db,account.warehouse_id)
     account=(await db.execute(select(ExpenseFund).where(ExpenseFund.id==account_id).with_for_update().execution_options(populate_existing=True))).scalar_one()
@@ -424,7 +417,7 @@ async def add_item(
 
 
 # ==== Upload Receipt ====
-@router.post("/accounts/{account_id}/upload-receipt")
+@router.post("/accounts/{account_id}/upload-receipt", dependencies=[Depends(mutation_scope)])
 async def upload_new_item_receipt(
     account_id: int, file: UploadFile = File(...),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
@@ -440,11 +433,12 @@ async def upload_new_item_receipt(
         raise HTTPException(404, "账户不存在")
     if account.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作本仓库的备用金账户")
+    await duties.recorder(db, current_user, account)
     result = await _save_receipt(file, account)
     return {"message": "凭证上传成功", "receipt": result["path"]}
 
 
-@router.post("/accounts/{account_id}/items/{item_id}/upload-receipt")
+@router.post("/accounts/{account_id}/items/{item_id}/upload-receipt", dependencies=[Depends(mutation_scope)])
 async def upload_receipt(
     account_id: int, item_id: int,
     current_user: User = Depends(_item_editor),
@@ -452,9 +446,13 @@ async def upload_receipt(
     file: UploadFile = File(...),
     _perm=Depends(check_staff_permission("备用金管理")),
 ):
-    account, item = await item_controls.lock_manual_item(db, account_id, item_id, get_wh_ids(current_user), action="edit")
+    account, item = await item_controls.lock_manual_item(db, account_id, item_id, mutation_ids(current_user), action="edit")
     result = await _save_receipt(file, account)
+    verified = item.review_status == 'verified'
     await item_controls.update(db, account, item, {"receipt": result["path"]}, current_user, _required_receipt)
+    if verified:
+        item.review_status = 'pending'
+        await duties.evidence(db, current_user, item, 'item_reset', duties.item_payload(item, account), account.warehouse_id)
     return {"message": "凭证上传成功", "receipt": item.receipt}
 
 
@@ -478,7 +476,7 @@ async def list_pending_reviews(
 
     filters = [
         ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
-        ExpenseFundItem.review_status == ReviewStatus.PENDING.value,
+        ExpenseFundItem.review_status.in_(["pending", "verified"]),
         ExpenseFundItem.not_voided(),
     ]
     if employee_id:
@@ -516,6 +514,9 @@ async def list_pending_reviews(
             wh_map = {w.id: w.name for w in whs}
 
     return {"data": [{
+        "can_verify": i.review_status == 'pending' and current_user.role in (Role.STAFF, Role.WAREHOUSE_ADMIN) and funds_map[i.fund_id].employee_id not in await duties.identities(db, current_user),
+        "can_approve": i.review_status == 'verified' and current_user.role == Role.WAREHOUSE_ADMIN and funds_map[i.fund_id].employee_id not in await duties.identities(db, current_user),
+        "can_reject": current_user.role == Role.WAREHOUSE_ADMIN and funds_map[i.fund_id].employee_id not in await duties.identities(db, current_user),
         "id": i.id, "fund_id": i.fund_id,
         "employee_id": funds_map.get(i.fund_id, ExpenseFund()).employee_id,
         "employee_name": emp_map.get(funds_map.get(i.fund_id, ExpenseFund()).employee_id, ""),
@@ -529,20 +530,69 @@ async def list_pending_reviews(
         "review_status": i.review_status, "review_remark": i.review_remark,
     } for i in items], "total": total, "page": page, "page_size": page_size}
 
-@router.post("/review/batch")
+@router.post("/review/batch", dependencies=[Depends(mutation_scope)])
 async def batch_review(
     req: BatchReviewReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("备用金管理")),
 ):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无审核权限")
-
-    new_status = "approved" if req.action == "approve" else "rejected"
-    wh_ids = get_wh_ids(current_user)
+    if req.action not in ('verify', 'approve', 'reject'):
+        raise HTTPException(400, '审核动作无效')
+    if req.action == 'verify':
+        if current_user.role not in (Role.STAFF, Role.WAREHOUSE_ADMIN):
+            raise HTTPException(403, '只有财务或管理员可以核验')
+    else:
+        require_account_manager(current_user)
+    if not req.item_ids or len(set(req.item_ids)) != len(req.item_ids):
+        raise HTTPException(400, '请选择不重复的开销明细')
+    wh_ids = mutation_ids(current_user)
+    # Lock the same warehouse boundary as cost registration before validating the whole batch.
+    for wid in sorted(wh_ids):
+        await costs.lock(db, wid)
+    # Reimbursement payment locks its parent before the fund item; use that order here too.
+    await db.execute(select(Reimbursement).where(Reimbursement.fund_item_id.in_(req.item_ids),
+        Reimbursement.is_fund_linked == '1').order_by(Reimbursement.id).with_for_update())
+    rows = (await db.execute(select(ExpenseFundItem, ExpenseFund).join(
+        ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id).where(
+        ExpenseFundItem.id.in_(req.item_ids)).order_by(ExpenseFundItem.id).with_for_update())).all()
+    if len(rows) != len(req.item_ids):
+        raise HTTPException(400, '开销明细不存在')
+    for item, fund in rows:
+        own_scope(current_user, fund.warehouse_id)
+        from app.models import ExpenseApproval
+        from app.models.employee_advance import EmployeeAdvance
+        if (await db.execute(select(ExpenseApproval.id).where(ExpenseApproval.fund_item_id == item.id).limit(1))).first():
+            raise HTTPException(400, '费用审批联动开销请在原费用审批处理')
+        if (await db.execute(select(EmployeeAdvance.id).where(EmployeeAdvance.fund_item_id == item.id,
+            EmployeeAdvance.funding_source == 'expense_fund', EmployeeAdvance.not_voided()).limit(1))).first():
+            raise HTTPException(400, '员工预支关联开销请在员工预支中处理')
+        await duties.independent(db, current_user, fund.employee_id)
+        if item.is_voided:
+            raise HTTPException(400, '该开销已作废，不能审核')
+        if item.review_status not in ('pending', 'verified'):
+            raise HTTPException(409, '只有待核验或待批准的开销可以处理')
+        linked = (await db.execute(select(Reimbursement).where(Reimbursement.fund_item_id == item.id,
+            Reimbursement.is_fund_linked == '1'))).scalar_one_or_none()
+        if linked:
+            if linked.warehouse_id != fund.warehouse_id or linked.status == 'paid':
+                raise HTTPException(409, '关联报销归属或状态不合法')
+            await duties.independent(db, current_user, linked.employee_id)
+        if req.action == 'verify' and item.review_status != 'pending':
+            raise HTTPException(409, '该开销已核验')
+        if req.action == 'approve':
+            if item.review_status != 'verified':
+                raise HTTPException(409, '请先完成凭证核验')
+            await duties.proof(db, item, 'item_verify', duties.item_payload(item, fund), fund.warehouse_id)
+        if req.action != 'reject' and not linked and not (item.receipt or '').strip():
+            raise HTTPException(400, '该开销没有凭证，请先上传开销凭证')
+    if req.action == 'verify':
+        for item, fund in rows:
+            item.review_status = 'verified'
+            await duties.evidence(db, current_user, item, 'item_verify', duties.item_payload(item, fund), fund.warehouse_id)
+        await db.flush()
+        return {'message': '凭证已核验，尚未批准或付款', 'count': len(rows)}
+    new_status = 'approved' if req.action == 'approve' else 'rejected'
     processed = 0
 
     warehouses=(await db.execute(select(ExpenseFund.warehouse_id).join(ExpenseFundItem,ExpenseFundItem.fund_id==ExpenseFund.id)
@@ -590,6 +640,9 @@ async def batch_review(
         if item_id not in await item_controls.linked_ids(db,[item_id]):
             await costs.sync(db,'fund_item',item,current_user,skip_suspicion=req.action!='approve',
                 confirmation=(req.cost_confirmations or {}).get(item_id,req.cost_confirmation))
+        fund = next(fund for row, fund in rows if row.id == item.id)
+        await duties.evidence(db, current_user, item, 'item_' + req.action,
+            duties.item_payload(item, fund), fund.warehouse_id)
         processed += 1
 
         # Sync with linked reimbursement（仅在状态真正发生变化时执行一次）
@@ -597,10 +650,9 @@ async def batch_review(
             reimb = linked_reimb
             if reimb:
                 if req.action == "approve":
-                    reimb.status = ReimbStatus.PAID.value
-                    reimb.paid_at = datetime.utcnow()
-                    from app.services.reimbursement_payment import sync_fund_review_payment
-                    await sync_fund_review_payment(db, reimb, current_user, approved=True)
+                    reimb.status = ReimbStatus.APPROVED.value
+                    reimb.reviewer_id = current_user.id
+                    # Approval alone never creates a payment record or changes the reserved balance.
                 elif req.action == "reject":
                     # Restore balance and unlock reimbursement（仅当之前不是已驳回）
                     from app.services.flow_rules import can_refund_fund_item
@@ -620,7 +672,7 @@ async def batch_review(
 
 
 # ==== Recharge Requests (申请-审核模式) ====
-@router.post("/recharge/request")
+@router.post("/recharge/request", dependencies=[Depends(mutation_scope)])
 async def submit_recharge_request(
     req: RechargeRequestCreate,
     current_user: User = Depends(get_current_user),
@@ -637,8 +689,12 @@ async def submit_recharge_request(
 
     wh_id = get_wh_id(current_user)
 
-    # Find or create the fund account for this user
-    fund = await ensure_account(db, wh_id, current_user.id, current_user.id)
+    own_scope(current_user, wh_id)
+    validate_amount(req.amount)
+    fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.warehouse_id == wh_id,
+        ExpenseFund.employee_id == current_user.id, ExpenseFund.status == 'active'))).scalar_one_or_none()
+    if fund is None:
+        raise HTTPException(400, '请先由仓库管理员开立备用金账户')
 
     rr = FundRechargeRequest(
         fund_id=fund.id,
@@ -673,7 +729,7 @@ async def list_recharge_requests(
         Warehouse, FundRechargeRequest.warehouse_id == Warehouse.id
     ).where(FundRechargeRequest.warehouse_id.in_(get_wh_ids(current_user)))
 
-    if current_user.role == Role.STAFF:
+    if current_user.role == Role.SUPERVISOR:
         query = query.where(FundRechargeRequest.applicant_id == current_user.id)
 
     if status:
@@ -682,7 +738,7 @@ async def list_recharge_requests(
         query = query.where(FundRechargeRequest.applicant_id == applicant_id)
 
     count_q = select(func.count(FundRechargeRequest.id)).where(FundRechargeRequest.warehouse_id.in_(get_wh_ids(current_user)))
-    if current_user.role == Role.STAFF:
+    if current_user.role == Role.SUPERVISOR:
         count_q = count_q.where(FundRechargeRequest.applicant_id == current_user.id)
     if status:
         count_q = count_q.where(FundRechargeRequest.status == status)
@@ -700,6 +756,7 @@ async def list_recharge_requests(
     result = []
     for rr, fund, applicant, wh in rows:
         result.append({
+            **await duties.recharge_capabilities(db, current_user, rr, fund),
             "id": rr.id, "fund_id": rr.fund_id, "warehouse_id": rr.warehouse_id,
             "warehouse_name": wh.name,
             "applicant_id": rr.applicant_id, "applicant_name": applicant.display_name,
@@ -716,56 +773,89 @@ async def list_recharge_requests(
 
     return {"data": result, "total": total, "page": page, "page_size": page_size}
 
-@router.post("/recharge/review")
+@router.post("/recharge/review", dependencies=[Depends(mutation_scope)])
 async def review_recharge_request(
     req: RechargeRequestReview,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("备用金管理")),
 ):
-    """管理员审核充值申请"""
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无审核权限")
-
-    rr = (await db.execute(select(FundRechargeRequest).where(FundRechargeRequest.id == req.request_id).with_for_update())).scalar_one_or_none()
-    if not rr:
-        raise HTTPException(404, "申请不存在")
-    if rr.status != "pending":
-        raise HTTPException(400, "该申请已处理")
-
-    wh_id = get_wh_id(current_user)
-    if rr.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "无权审核其他仓库的申请")
-
-    if req.action == "approve":
-        rr.status = "approved"
-        rr.reviewer_id = current_user.id
-        rr.review_remark = ""
-        rr.reviewed_at = datetime.utcnow()
-
-        fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == rr.fund_id,
-            ExpenseFund.warehouse_id == rr.warehouse_id).with_for_update())).scalar_one_or_none()
-        if fund is None:
-            raise HTTPException(404, "备用金账户不存在")
-        result = await create_disbursement(db, fund, rr.amount, req.payment_account_id,
-            current_user, receive_date=req.receive_date, request_id=rr.id)
-
-        await db.flush()
-        return {"message": "充值申请已通过，已记入运营支出", **result}
-
-    elif req.action == "reject":
-        rr.status = "rejected"
-        rr.reviewer_id = current_user.id
-        rr.review_remark = req.remark or "已驳回"
-        rr.reviewed_at = datetime.utcnow()
-
-        await db.flush()
-        return {"message": "充值申请已驳回"}
-
+    if req.action not in ('verify', 'approve', 'reject'):
+        raise HTTPException(400, '请选择核验、批准或驳回')
+    if req.action == 'verify':
+        if current_user.role not in (Role.STAFF, Role.WAREHOUSE_ADMIN):
+            raise HTTPException(403, '只有财务或管理员可以核验凭证')
     else:
-        raise HTTPException(400, "无效操作，请选择通过或驳回")
+        require_account_manager(current_user)
+    rr = (await db.execute(select(FundRechargeRequest).where(
+        FundRechargeRequest.id == req.request_id).with_for_update())).scalar_one_or_none()
+    if rr is None:
+        raise HTTPException(404, '申请不存在')
+    own_scope(current_user, rr.warehouse_id)
+    fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == rr.fund_id,
+        ExpenseFund.warehouse_id == rr.warehouse_id).with_for_update())).scalar_one_or_none()
+    if fund is None or fund.status != 'active':
+        raise HTTPException(400, '备用金账户不存在或已停用')
+    await duties.independent(db, current_user, rr.applicant_id, fund.employee_id)
+    if (await db.execute(select(ExpenseFundDisbursement.id).where(
+            ExpenseFundDisbursement.recharge_request_id == rr.id))).first():
+        raise HTTPException(409, '该申请已执行，不能重复处理')
+    payload = duties.recharge_payload(rr, fund)
+    if req.action == 'verify':
+        if rr.status != 'pending':
+            raise HTTPException(409, '只有待核验申请可以核验')
+        rr.status = 'verified'
+    elif req.action == 'approve':
+        if rr.status != 'verified':
+            raise HTTPException(409, '请先完成独立凭证核验')
+        await duties.proof(db, rr, 'recharge_verify', payload, rr.warehouse_id)
+        rr.status = 'approved_ready'
+        rr.reviewer_id = current_user.id
+        rr.reviewed_at = datetime.utcnow()
+    else:
+        if rr.status not in ('pending', 'verified', 'approved_ready'):
+            raise HTTPException(409, '当前状态不能驳回')
+        rr.status = 'rejected'
+    rr.review_remark = req.remark
+    await duties.evidence(db, current_user, rr, 'recharge_' + req.action, payload, rr.warehouse_id)
+    await db.flush()
+    return {'message': {'verify': '凭证已核验，等待管理员批准', 'approve': '已批准，等待独立付款人执行', 'reject': '已驳回'}[req.action], 'status': rr.status}
+
+
+@router.post('/recharge/execute', dependencies=[Depends(mutation_scope)])
+async def execute_recharge(req: RechargeRequestReview, current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission('备用金管理'))):
+    rr = (await db.execute(select(FundRechargeRequest).where(
+        FundRechargeRequest.id == req.request_id).with_for_update())).scalar_one_or_none()
+    if rr is None:
+        raise HTTPException(404, '申请不存在')
+    own_scope(current_user, rr.warehouse_id)
+    await costs.lock(db, rr.warehouse_id)
+    fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == rr.fund_id,
+        ExpenseFund.warehouse_id == rr.warehouse_id).with_for_update())).scalar_one_or_none()
+    if fund is None:
+        raise HTTPException(400, '备用金账户不存在')
+    await duties.executor(db, current_user, rr.applicant_id, fund.employee_id)
+    existing = (await db.execute(select(ExpenseFundDisbursement).where(
+        ExpenseFundDisbursement.recharge_request_id == rr.id))).scalar_one_or_none()
+    if existing or rr.status == 'executed':
+        raise HTTPException(409, '该申请已经执行，未重复产生资金记录')
+    if rr.status != 'approved_ready':
+        raise HTTPException(409, '申请尚未取得有效管理员批准，不能执行')
+    payload = duties.recharge_payload(rr, fund)
+    approval = await duties.proof(db, rr, 'recharge_approve', payload, rr.warehouse_id)
+    if approval.operator_id != rr.reviewer_id or approval.operator_id in (rr.applicant_id, fund.employee_id):
+        raise HTTPException(409, '批准记录不合法')
+    if fund.status != 'active':
+        raise HTTPException(400, '备用金账户已停用')
+    if (fund.remaining_balance or 0) + rr.amount > (fund.fund_limit or 5000):
+        raise HTTPException(400, '拨付后余额超出既有备用金上限')
+    result = await create_disbursement(db, fund, rr.amount, req.payment_account_id,
+        current_user, receive_date=req.receive_date, request_id=rr.id)
+    rr.status = 'executed'
+    await duties.evidence(db, current_user, rr, 'recharge_execute', payload, rr.warehouse_id)
+    await db.flush()
+    return {'message': '拨付已执行', 'status': rr.status, **result}
 
 # ==== System Settings ====
 @router.get("/settings")
@@ -781,13 +871,22 @@ async def fund_settings(
     alert_threshold = await get_setting(db, wh_id, "fund_alert_threshold", "500")
     return {"fund_limit": float(fund_limit), "fund_alert_threshold": float(alert_threshold)}
 
-@router.post("/settings")
+@router.post("/settings", dependencies=[Depends(mutation_scope)])
 async def update_settings(
     req: SettingsUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("备用金管理")),
 ):
+    require_account_manager(current_user)
+    if req.key not in {'fund_limit', 'fund_alert_threshold'}:
+        raise HTTPException(403, '此入口只允许备用金上限和提醒余额，其他设置须使用专用入口')
+    try:
+        value = Decimal(req.value)
+        if not value.is_finite() or value < 0:
+            raise ValueError
+    except (ValueError, ArithmeticError):
+        raise HTTPException(400, '备用金设置必须是非负有限数字')
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -797,7 +896,7 @@ async def update_settings(
         raise HTTPException(403, "采购职责配置必须通过老板专属入口并核对版本，不能由备用金设置改写")
     wh_id = get_wh_id(current_user)
     existing = (await db.execute(select(SystemSetting).where(
-        SystemSetting.warehouse_id.in_(get_wh_ids(current_user)), SystemSetting.key == req.key
+        SystemSetting.warehouse_id == wh_id, SystemSetting.key == req.key
     ))).scalar_one_or_none()
     if existing:
         existing.value = req.value

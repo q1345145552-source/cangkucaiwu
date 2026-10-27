@@ -20,10 +20,10 @@ def test_all_reads_writes_and_editable(tmp_path,monkeypatch,uid,grant):
     read=await c.get('/api/v1'+path,headers=auth(uid))
     expected=200 if uid==1 or (uid in (3,4) and grant) or (uid==2 and path==PATHS[3]) else 403
     assert read.status_code==expected,(path,read.text)
-    if path==PATHS[0] and expected==200:assert read.json()['editable']==(uid in (1,4))
+    if path==PATHS[0] and expected==200:assert read.json()['editable']==(uid == 1)
     write=await c.put('/api/v1'+path,headers=auth(uid),json=body(path))
-    assert write.status_code==(200 if uid==1 or (uid==4 and grant) else 403),(path,write.text)
-    if uid==3 and grant:assert write.json()=={'detail':'财务只能查看配置中心'}
+    assert write.status_code==(200 if uid==1 else 403),(path,write.text)
+    if uid==3 and grant:assert write.json()=={'detail':'只有仓库管理员可以修改规则设置'}
     if uid in (3,4) and not grant:
      assert read.json()['detail'].startswith('无此操作权限')
      assert write.json()['detail'].startswith('无此操作权限')
@@ -32,28 +32,31 @@ def test_all_reads_writes_and_editable(tmp_path,monkeypatch,uid,grant):
  asyncio.run(run())
 
 
-def test_supervisor_save_restore_and_warehouse(tmp_path,monkeypatch):
+def test_supervisor_denied_admin_save_restore_and_warehouse(tmp_path,monkeypatch):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,f,c):
    await set_perms(f,4,['配置中心'])
    old=await snapshot(f)
-   original=(await c.get('/api/v1'+PATHS[0],headers=auth(4))).json()
+   original=(await c.get('/api/v1'+PATHS[0],headers=auth(1))).json()
    changed={**default_work_schedule(),'morning_start':'08:30','late_half':'08:35','late_one':'08:50','overtime_limit':65}
-   saved=await c.put('/api/v1'+PATHS[0],headers={**auth(4),'X-Warehouse-ID':'2'},json=changed)
-   assert saved.status_code==200,saved.text
-   assert saved.json()['morning_start']=='08:30' and saved.json()['overtime_limit']==65
+   for uid in (1,4):
+    denied=await c.put('/api/v1'+PATHS[0],headers={**auth(uid),'X-Warehouse-ID':'2'},json=changed)
+    assert denied.status_code==403,denied.text
+   for path in PATHS:
+    denied=await c.put('/api/v1'+path,headers=auth(4),json=body(path));assert denied.status_code==403
+   saved=await c.put('/api/v1'+PATHS[0],headers=auth(1),json=changed)
+   assert saved.status_code==200 and saved.json()['overtime_limit']==65,saved.text
    read=(await c.get('/api/v1'+PATHS[0],headers=auth(4))).json()
-   assert read['editable'] and read['warehouse_id']==1 and read['morning_start']=='08:30'
+   assert not read['editable'] and read['warehouse_id']==1 and read['morning_start']=='08:30'
    for path in PATHS[1:]:
-    r=await c.put('/api/v1'+path,headers=auth(4),json={'threshold':80});assert r.status_code==200,r.text
+    r=await c.put('/api/v1'+path,headers=auth(1),json={'threshold':80});assert r.status_code==200,r.text
     assert (await c.get('/api/v1'+path,headers=auth(4))).json()['threshold']==80
    async with f() as db:
     assert await get_work_schedule(db,2)==default_work_schedule()
     assert not (await db.execute(select(SystemSetting).where(SystemSetting.warehouse_id==2))).scalars().all()
-   restored=await c.put('/api/v1'+PATHS[0],headers=auth(4),json={k:original[k] for k in default_work_schedule()})
+   restored=await c.put('/api/v1'+PATHS[0],headers=auth(1),json={k:original[k] for k in default_work_schedule()})
    assert restored.status_code==200 and restored.json()['morning_start']==original['morning_start']
    assert await snapshot(f)==old
-   print('CONFIG_SUPERVISOR',json.dumps({'saved':saved.json(),'read':read,'restored':restored.json()},ensure_ascii=False))
  asyncio.run(run())
 
 
@@ -62,11 +65,11 @@ def test_validation_unchanged_and_atomic(tmp_path,monkeypatch,field,value,messag
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,f,c):
    await set_perms(f,4,['配置中心'])
-   r=await c.put('/api/v1'+PATHS[0],headers=auth(4),json={**default_work_schedule(),field:value})
+   r=await c.put('/api/v1'+PATHS[0],headers=auth(1),json={**default_work_schedule(),field:value})
    assert r.status_code==400 and message in r.json()['detail']
    async with f() as db:assert await get_work_schedule(db,1)==default_work_schedule()
    for path in PATHS[1:3]:
-    r=await c.put('/api/v1'+path,headers=auth(4),json={'threshold':-1});assert r.status_code==400
+    r=await c.put('/api/v1'+path,headers=auth(1),json={'threshold':-1});assert r.status_code==400
  asyncio.run(run())
 
 
@@ -85,7 +88,7 @@ def test_shared_reads_and_no_concentration_write_bypass(tmp_path,monkeypatch):
 
 def test_only_config_access_changed_business_tail_identical():
  root=Path(__file__).resolve().parents[2]
- allowed={'config_api':{'get_work_schedule_settings','set_work_schedule_settings','get_attendance_times'},'expense_approval':{'set_threshold'},'suppliers':{'get_approval_threshold','set_approval_threshold','set_concentration_threshold'},'history':set()}
+ allowed={'config_api':{'get_work_schedule_settings','set_work_schedule_settings','get_attendance_times'},'expense_approval':{'set_threshold'},'suppliers':{'get_approval_threshold','set_approval_threshold','set_concentration_threshold','set_price_threshold'},'history':set()}
  for name,changed in allowed.items():
   p=f'backend/app/api/v1/{name}.py'
   def funcs(s):return {n.name:n for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
@@ -109,7 +112,7 @@ def test_shared_times_are_limited_without_config_permission(tmp_path,monkeypatch
   async with hr_environment(tmp_path,monkeypatch) as (_,f,c):
    await set_perms(f,4,['配置中心'])
    changed={**default_work_schedule(),'morning_start':'08:30','late_half':'08:35','late_one':'08:50'}
-   assert (await c.put('/api/v1/config/work-schedule',headers=auth(4),json=changed)).status_code==200
+   assert (await c.put('/api/v1/config/work-schedule',headers=auth(1),json=changed)).status_code==200
    await set_perms(f,4,[])
    assert (await c.get('/api/v1/config/work-schedule',headers=auth(4))).status_code==403
    r=await c.get('/api/v1/config/attendance-times',headers=auth(4))

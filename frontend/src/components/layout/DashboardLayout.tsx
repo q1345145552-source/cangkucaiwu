@@ -181,15 +181,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (!token) { router.push("/login"); return; }
     api.post("/auth/attachment-session", {}).catch(() => {});
     
-    // Try stored user first
-    const stored = localStorage.getItem("user");
-    if (stored) {
-      try {
-        const savedUser = JSON.parse(stored);
-        // 管理端权限以本次 /me 返回为准，避免撤权后短暂显示旧菜单。
-        if (savedUser.role !== "staff" && savedUser.role !== "supervisor") setUser(savedUser);
-      } catch {}
-    }
+    // Wait for this token's live identity; cached administrator menus are not capabilities.
 
     // Fetch /me for warehouse list
     api.get<any>("/auth/me").then(async me => {
@@ -197,6 +189,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         const permissions = await api.get<MenuPermission[]>("/users/permissions");
         setMenuPermissions(permissions);
       }
+      if (getToken() !== token) return;
       setUser(me);
       localStorage.setItem("user", JSON.stringify(me));
       window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: me }));

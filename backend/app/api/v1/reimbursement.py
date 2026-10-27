@@ -1,3 +1,5 @@
+from app.services.fund_authorization import reimbursement_payment_capability
+from app.core.round2_access import mutation_scope, own_scope
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -140,6 +142,7 @@ async def list_reimbursements(
         "submit_date": r.submit_date.isoformat() if r.submit_date else None,
         "total_amount": r.total_amount, "currency": r.currency, "status": r.status,
         "is_fund_linked": r.is_fund_linked or "0", "fund_item_id": r.fund_item_id,
+        "can_fund_pay": await reimbursement_payment_capability(db, current_user, r),
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
         **payments.payment_fields(r, paid.get(r.id), can_revoke=current_user.role == Role.WAREHOUSE_ADMIN),
         **cash_advance_reference(r, advance_numbers),
@@ -318,6 +321,7 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
         "id": r.id, "warehouse_id": r.warehouse_id, "employee_id": r.employee_id,
         "employee_name": employee.display_name if employee else "",
         "is_fund_linked": r.is_fund_linked or "0", "fund_item_id": r.fund_item_id,
+        "can_fund_pay": await reimbursement_payment_capability(db, current_user, r),
         "submit_date": r.submit_date.isoformat() if r.submit_date else None,
         "total_amount": r.total_amount, "currency": r.currency, "status": r.status,
         "review_remark": r.review_remark, "paid_at": r.paid_at.isoformat() if r.paid_at else None,
@@ -427,7 +431,7 @@ async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_u
     r.status = ReimbStatus.PENDING.value
     await db.flush(); return {"message": "已提交审批"}
 
-@router.post("/{reimb_id}/review")
+@router.post("/{reimb_id}/review", dependencies=[Depends(mutation_scope)])
 async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db),
                        _perm=Depends(check_staff_permission("报销管理"))):
@@ -444,19 +448,42 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
     from app.services.flow_rules import is_reviewable_reimb, can_refund_fund_item
     if not is_reviewable_reimb(r.status):
         raise HTTPException(400, f"当前状态（{r.status}）不可审批")
-    r.reviewer_id = current_user.id; r.review_remark = req.overall_remark
+    own_scope(current_user, r.warehouse_id)
+    if not req.items:
+        raise HTTPException(400, "请选择待审核明细")
+    decisions = {}
+    for entry in req.items:
+        item_id = entry.get("item_id")
+        status = entry.get("status")
+        if type(item_id) is not int or item_id in decisions or status not in ("approved", "rejected"):
+            raise HTTPException(400, "审核明细编号重复或审核状态无效")
+        decisions[item_id] = status
+    items = (await db.execute(select(ReimbursementItem).where(
+        ReimbursementItem.reimbursement_id == r.id).order_by(ReimbursementItem.id).with_for_update())).scalars().all()
+    by_id = {item.id: item for item in items}
+    if any(item_id not in by_id or by_id[item_id].review_status not in ("pending", "approved", "rejected") for item_id in decisions):
+        raise HTTPException(400, "审核明细不存在、不属于当前报销单或状态不合法")
+    if r.is_fund_linked == "1" and r.fund_item_id:
+        linked = (await db.execute(select(ExpenseFundItem, ExpenseFund).join(
+            ExpenseFund, ExpenseFundItem.fund_id == ExpenseFund.id).where(
+            ExpenseFundItem.id == r.fund_item_id).with_for_update())).first()
+        if not linked or linked[1].warehouse_id != r.warehouse_id or linked[1].employee_id != r.employee_id:
+            raise HTTPException(400, "关联备用金归属不合法")
+        from app.core.round2_access import require_account_manager
+        from app.services import fund_authorization as duties
+        require_account_manager(current_user)
+        await duties.independent(db, current_user, r.employee_id, linked[1].employee_id)
+        if linked[0].review_status != 'verified':
+            raise HTTPException(409, '请先完成关联备用金凭证核验')
+        await duties.proof(db, linked[0], 'item_verify', duties.item_payload(*linked), r.warehouse_id)
 
-    approved_count = 0; rejected_count = 0; approved_amount = 0
-    for item_data in req.items:
-        item = (await db.execute(select(ReimbursementItem).where(ReimbursementItem.id == item_data["item_id"]))).scalar_one_or_none()
-        if not item: continue
-        status = item_data.get("status", "rejected")
-        item.review_status = status
-        if status == "approved":
-            approved_count += 1
-            approved_amount += item.amount
-        else:
-            rejected_count += 1
+    r.reviewer_id = current_user.id
+    r.review_remark = req.overall_remark
+    for item_id, status in decisions.items():
+        by_id[item_id].review_status = status
+    approved_count = sum(item.review_status == "approved" for item in items)
+    rejected_count = sum(item.review_status != "approved" for item in items)
+    approved_amount = sum(item.amount for item in items if item.review_status == "approved")
 
     if rejected_count == 0:
         r.status = ReimbStatus.APPROVED.value
@@ -464,6 +491,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
             fund_item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id))).scalar_one_or_none()
             if fund_item:
                 fund_item.review_status = ReviewStatus.APPROVED.value
+                await duties.evidence(db, current_user, fund_item, 'item_approve', duties.item_payload(*linked), r.warehouse_id)
     elif approved_count > 0:
         r.status = ReimbStatus.PARTIALLY_APPROVED.value
     else:
@@ -479,7 +507,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
     r.total_amount = approved_amount
     await db.flush(); return {"message": "审批完成", "status": r.status, "approved_amount": approved_amount}
 
-@router.post("/{reimb_id}/pay")
+@router.post("/{reimb_id}/pay", dependencies=[Depends(mutation_scope)])
 async def pay_reimb(reimb_id: int, req: ReimbPay | None = None, current_user: User = Depends(get_current_user),
                     db: AsyncSession = Depends(get_db),
                     _perm=Depends(check_staff_permission("报销管理"))):
@@ -488,6 +516,7 @@ async def pay_reimb(reimb_id: int, req: ReimbPay | None = None, current_user: Us
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     r = await _payment_reimb(db, reimb_id, current_user, lock=True)
+    own_scope(current_user, r.warehouse_id)
     return await payments.pay(db, r, req or ReimbPay(), current_user)
 
 @router.get("/{reimb_id}/payments")

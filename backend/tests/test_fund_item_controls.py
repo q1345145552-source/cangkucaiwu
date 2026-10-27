@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.models import ExpenseFundItem, EmployeeAdvance, Reimbursement, User, UserWarehouse
 from app.models.data_change_history import DataChangeHistory
 from app.services import fund_item_controls as controls
-from tests.test_fund_disbursement import environment, spend, topup, receipt, values, BASE
+from tests.test_fund_disbursement import approve_expense, environment, spend, topup, receipt, values, BASE
 from tests.test_round2_permissions import auth, set_perms, png
 from tests.test_cash_advances import finance_snapshot
 
@@ -70,7 +70,7 @@ def test_approved_cannot_edit_void_or_replace_receipt(tmp_path,monkeypatch):
     async def run():
         async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
             await topup(c,fid);iid,url=await path_for(c,fid)
-            assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})).status_code==200
+            assert (await approve_expense(c, [iid])).status_code==200
             before=await finance_snapshot(f)
             changed=await c.put(url,headers=auth(1),json={"amount":1500})
             deleted=await c.request("DELETE",url,headers=auth(1),json={"reason":"不能动已通过"})
@@ -171,7 +171,12 @@ def test_amount_validation_currency_and_rejected_entry(tmp_path,monkeypatch):
 def test_original_financial_functions_and_formula_preserved():
     root=Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/reimbursement.py","backend/app/api/v1/payroll.py","backend/app/api/v1/employee_advance.py","backend/app/services/flow_rules.py"):
-        assert (root/path).read_text()==subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True)
+        previous=subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True)
+        if path.endswith('/reimbursement.py'):
+            def actions(source): return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef) and n.name != 'review_reimb'}
+            assert actions((root/path).read_text()) == actions(previous)
+        else:
+            assert (root/path).read_text() == previous
     path="backend/app/services/fund_disbursement.py"
     def functions(source):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef)}
     old=functions(subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True));now=functions((root/path).read_text())

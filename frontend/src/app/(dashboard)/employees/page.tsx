@@ -152,7 +152,7 @@ export default function EmployeesPage() {
     if ((!form.nationality || form.nationality === "泰国") && (form.thai_id_number || "").trim() && !/^[0-9]{13}$/.test(form.thai_id_number.trim())) { toast("error", "身份证号必须为十三位数字"); return; }
     if (form.nationality && form.nationality !== "泰国" && !(form.passport_number || "").trim()) { toast("error", "外籍员工必须填写护照号"); return; }
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
-    if (!(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
+    if (user?.role === "warehouse_admin" && !(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
     if (!form.salary_template_id) { toast("error", "请选择薪资模板"); return; }
     if (form.status === "regular" && !form.promotion_date) { toast("error", "请选择转正日期"); return; }
     if (!editingId) {
@@ -165,6 +165,7 @@ export default function EmployeesPage() {
     }
     try {
       const payload: any = { ...form };
+      if (user?.role !== "warehouse_admin") { delete payload.employee_no; delete payload.password; delete payload.user_id; }
       // Hidden fields are omitted, so switching nationality never clears old documents.
       if (form.nationality === "泰国") {
         for (const key of ["passport_number", "passport_expiry", "work_permit_number", "work_permit_expiry"]) delete payload[key];
@@ -514,14 +515,14 @@ export default function EmployeesPage() {
                 <button onClick={saveMaxLimit} className="text-xs bg-blue-500 text-white px-2 py-1 rounded">保存</button>
               </div>
             )}
-            <button onClick={bindExistingAccounts} disabled={binding}
+            {user?.role === "warehouse_admin" && <button onClick={bindExistingAccounts} disabled={binding}
               className="border border-blue-300 text-blue-600 px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-50 disabled:opacity-50">
               <Link2 size={16}/>{binding ? "绑定中..." : "绑定已有账号"}
-            </button>
-            <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}
+            </button>}
+            {user?.role === "warehouse_admin" && <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}
               className="bg-primary text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1">
               <UserPlus size={16}/>新建员工
-            </button>
+            </button>}
           </div>
         )}
 
@@ -749,11 +750,11 @@ export default function EmployeesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="form-label text-xs mb-1 block">工号（登录用户名） <span className="text-red-400">*</span></label>
-                  <input className="form-input py-2 w-full" value={form.employee_no} onChange={e => setForm({...form, employee_no: e.target.value})} placeholder="如: 001" autoComplete="off" />
+                  <input className="form-input py-2 w-full" disabled={user?.role !== "warehouse_admin"} value={form.employee_no} onChange={e => setForm({...form, employee_no: e.target.value})} placeholder="如: 001" autoComplete="off" />
                 </div>
                 <div>
                   <label className="form-label text-xs mb-1 block">密码 {editingId ? <span className="text-gray-400">(留空不修改)</span> : <span className="text-red-400">*</span>}</label>
-                  <input type="password" className="form-input py-2 w-full" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder={editingId ? "留空表示不修改" : "至少6位"} autoComplete="new-password" />
+                  <input type="password" className="form-input py-2 w-full" disabled={user?.role !== "warehouse_admin"} value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder={editingId ? "留空表示不修改" : "至少6位"} autoComplete="new-password" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1344,7 +1345,7 @@ export default function EmployeesPage() {
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Trash2 size={18} className="text-red-500"/> 删除员工档案</h3>
             <p className="text-sm text-gray-600 mb-1">确定要删除员工「{deleteTarget.name}」吗？</p>
-            <p className="text-xs text-gray-400 mb-4">删除后该员工从列表隐藏，关联的打卡记录、工资单、加班记录都会保留；绑定登录账号将被禁用。</p>
+            <p className="text-xs text-gray-400 mb-4">删除后该员工从列表隐藏，关联的打卡记录、工资单、加班记录都会保留。{user?.role === "warehouse_admin" ? "绑定登录账号将按账号权限停用。" : "本次只修改员工档案，不停用登录账号；账号状态由仓库管理员处理。"}</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteTarget(null)} className="btn-secondary text-sm px-4 py-2">取消</button>
               <button onClick={handleDeleteEmployee} disabled={deleting}

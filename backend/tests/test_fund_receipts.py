@@ -8,7 +8,7 @@ from datetime import datetime
 import pytest
 from sqlalchemy import select
 from app.models import ExpenseFund, ExpenseFundItem, User, UserWarehouse
-from tests.test_fund_disbursement import environment, topup, receipt, values, BASE
+from tests.test_fund_disbursement import approve_expense, environment, topup, receipt, values, BASE
 from tests.test_round2_permissions import auth, set_perms, png
 from tests.test_cash_advances import finance_snapshot
 
@@ -32,7 +32,7 @@ def test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost(tmp_pat
             iid=made.json()["id"]
             listed=(await c.get(f"{BASE}/accounts/{fid}/items",headers=auth(1))).json()["data"]
             assert listed[0]["receipt"]==path and listed[0]["id"]==iid
-            approved=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})
+            approved=await approve_expense(c, [iid])
             assert approved.status_code==200 and approved.json()["message"]=="已通过1条记录"
             after=await values(c,fid)
             for field in ("expense_count","expense_amount","flow_count","flow_amount","company_cash"):
@@ -78,13 +78,13 @@ def test_old_missing_kept_and_approve_rejected_then_manual_attachment_works(tmp_
             before=await finance_snapshot(f)
             listed=(await c.get(f"{BASE}/accounts/{fid}/items",headers=auth(1))).json()["data"]
             assert len(listed)==3 and sum(x["amount"] for x in listed)==369 and all(x["receipt"] is None for x in listed)
-            bad=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})
+            bad=await c.post(BASE+"/review/batch",headers=auth(3),json={"item_ids":[iid],"action":"verify"})
             assert bad.status_code==400 and "该开销没有凭证" in bad.json()["detail"]
             assert await finance_snapshot(f)==before
             # 旧入口保留：用户主动为历史待审记录补图后可以审核，不自动改旧记录。
             up=await c.post(f"{BASE}/accounts/{fid}/items/{iid}/upload-receipt",headers=auth(1),files={"file":("receipt.png",png(),"image/png")})
             assert up.status_code==200
-            assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})).status_code==200
+            assert (await approve_expense(c, [iid])).status_code==200
             print("LEGACY_RECEIPTS",{"count":3,"amount":369,"approve_missing":bad.json(),"records_preserved":True})
     asyncio.run(run())
 
@@ -99,7 +99,7 @@ def test_batch_with_missing_receipt_rolls_back_other_approvals(tmp_path,monkeypa
                     description="手工类别不能冒充关联报销绕过校验",receipt="  ",review_status="pending")
                 db.add(old);await db.commit(); missing=old.id
             before=await finance_snapshot(f)
-            result=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[made["id"],missing],"action":"approve"})
+            result=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[made["id"],missing],"action":"verify"})
             assert result.status_code==400
             assert await finance_snapshot(f)==before
             # 驳回不需要凭证；不触及原审核扣款/退款流程。
@@ -122,17 +122,22 @@ def test_scope_roles_other_fund_and_legacy_uploads(tmp_path,monkeypatch):
                 result=await c.post(f"{BASE}/accounts/{fid}/upload-receipt",headers=auth(uid),files={"file":("receipt.png",png(),"image/png")})
                 assert result.status_code==403, result.text
             await set_perms(f,3,["备用金管理"])
-            assert (await c.post(f"{BASE}/accounts/{fid}/upload-receipt",headers=auth(3),files={"file":("receipt.png",png(),"image/png")})).status_code==200
+            assert (await c.post(f"{BASE}/accounts/{fid}/upload-receipt",headers=auth(3),files={"file":("receipt.png",png(),"image/png")})).status_code==403
     asyncio.run(run())
 
 
 def test_payout_and_other_business_paths_unchanged():
     root=Path(__file__).resolve().parents[2]
     for path in ("backend/app/api/v1/reimbursement.py","backend/app/api/v1/payroll.py","backend/app/api/v1/employee_advance.py"):
-        assert (root/path).read_text()==subprocess.check_output(["git","show",f"14e2541:{path}"],cwd=root,text=True)
+        previous=subprocess.check_output(["git","show",f"14e2541:{path}"],cwd=root,text=True)
+        if path.endswith('/reimbursement.py'):
+            def actions(source): return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef) and n.name != 'review_reimb'}
+            assert actions((root/path).read_text()) == actions(previous)
+        else:
+            assert (root/path).read_text() == previous
     path="backend/app/api/v1/expense_fund.py"
     def functions(source):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef)}
     old=functions(subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True)); now=functions((root/path).read_text())
     for name in old:
-        if name not in ("add_item","upload_receipt","batch_review","list_accounts","list_items","list_pending_reviews","list_recharge_requests"):
+        if name not in ("add_item","upload_receipt","batch_review","list_accounts","list_items","list_pending_reviews","list_recharge_requests","create_account","topup_account","submit_recharge_request","review_recharge_request","update_settings","edit_item","void_item","upload_new_item_receipt"):
             assert old[name]==now[name],name

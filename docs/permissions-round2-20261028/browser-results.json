@@ -1,0 +1,408 @@
+{
+  "results": [
+    {
+      "uid": 1,
+      "url": "/accounts",
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC warehouse_admin 1",
+        "内部转账",
+        "新建账户",
+        "",
+        "编辑",
+        "删除"
+      ],
+      "reviewButtons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC warehouse_admin 1",
+        "内部转账",
+        "新建账户",
+        "",
+        "编辑",
+        "删除"
+      ],
+      "requests": [
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/accounts",
+          "status": 200
+        }
+      ],
+      "artifact": "ui-1-accounts.png",
+      "passed": true
+    },
+    {
+      "uid": 1,
+      "url": "/expense-fund",
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC warehouse_admin 1",
+        "新建备用金",
+        "管理",
+        "审核",
+        "开销",
+        "开销",
+        "开销",
+        "申请补充",
+        "开销",
+        "开销"
+      ],
+      "reviewButtons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC warehouse_admin 1",
+        "管理",
+        "审核2",
+        "开销审核2",
+        "充值申请11",
+        "驳回",
+        "批准",
+        "驳回",
+        "核验",
+        "驳回",
+        "驳回",
+        "核验",
+        "驳回"
+      ],
+      "requests": [
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/accounts",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/accounts",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/employees",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/employees",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/review/pending",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/recharge/requests",
+          "status": 200
+        }
+      ],
+      "artifact": "ui-1-expense-fund.png",
+      "passed": true
+    },
+    {
+      "uid": 2,
+      "url": "/accounts",
+      "buttons": [
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 2"
+      ],
+      "reviewButtons": [
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 2"
+      ],
+      "requests": [
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/accounts",
+          "status": 200
+        }
+      ],
+      "artifact": "ui-2-accounts.png",
+      "passed": true
+    },
+    {
+      "uid": 2,
+      "url": "/expense-fund",
+      "buttons": [
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 2",
+        "管理",
+        "申请补充",
+        "开销"
+      ],
+      "reviewButtons": [
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 2",
+        "管理",
+        "申请补充",
+        "开销"
+      ],
+      "requests": [
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/accounts",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/employees",
+          "status": 200
+        }
+      ],
+      "artifact": "ui-2-expense-fund.png",
+      "passed": true
+    },
+    {
+      "uid": 3,
+      "url": "/accounts",
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC staff 3",
+        "内部转账"
+      ],
+      "reviewButtons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC staff 3",
+        "内部转账"
+      ],
+      "requests": [
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/accounts",
+          "status": 200
+        }
+      ],
+      "artifact": "ui-3-accounts.png",
+      "passed": true
+    },
+    {
+      "uid": 3,
+      "url": "/expense-fund",
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC staff 3",
+        "管理",
+        "审核",
+        "申请补充",
+        "开销",
+        "开销"
+      ],
+      "reviewButtons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC staff 3",
+        "管理",
+        "审核1",
+        "开销审核1",
+        "充值申请11",
+        "执行拨付",
+        "核验"
+      ],
+      "requests": [
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/accounts",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/employees",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/review/pending",
+          "status": 200
+        },
+        {
+          "path": "/api/v1/expense-fund/recharge/requests",
+          "status": 200
+        }
+      ],
+      "artifact": "ui-3-expense-fund.png",
+      "passed": true
+    },
+    {
+      "id": "account-switch-stale-admin-cache",
+      "from": 1,
+      "to": 2,
+      "passed": true,
+      "body": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\n员工自助\nSYNTHETIC WH1\n中文\nS\nSYNTHETIC supervisor 2\n收款账户\n老板钱包余额\n\n现金户和企业户都属于老板钱包，按真实账户余额相加，各币种分开。包含停用账户的余额；备用金另记台账，不在本组重复相加。\n\n泰铢（THB）\n\n现金户 ฿0.00 ＋ 企业户 ฿0.00\n\n已分类钱包小计 ฿0.00\n\n未分类账户余额 ฿99,805.00（1 户）\n\n存在未分类账户，完整老板钱包余额尚未确认。\n\n全部收款账户余额 ฿99,805.00，请先确认旧账户性质。\n\n账户名称\t账户性质\t账户持有人\t类型\t开户银行\t账号\t币种\t期初余额\t当前余额\t状态\t操作\nSYNTHETIC ACCOUNT 1现金\t\n未分类\n\t-\t现金\t-\t-\t泰铢\t100,000\t99,805\t启用\t"
+    },
+    {
+      "id": "account-switch-stale-admin-cache",
+      "from": 1,
+      "to": 3,
+      "passed": true,
+      "body": "海外仓财务管理系统\n仪表盘\n财务(仓库运营)\n财务(日常开支)\n供应商管理\n修改日志\n拼单\n员工管理\n配置中心\n系统设置\nSYNTHETIC WH1\n中文\nS\nSYNTHETIC staff 3\n收款账户\n内部转账\n老板钱包余额\n\n现金户和企业户都属于老板钱包，按真实账户余额相加，各币种分开。包含停用账户的余额；备用金另记台账，不在本组重复相加。\n\n泰铢（THB）\n\n现金户 ฿0.00 ＋ 企业户 ฿0.00\n\n已分类钱包小计 ฿0.00\n\n未分类账户余额 ฿99,805.00（1 户）\n\n存在未分类账户，完整老板钱包余额尚未确认。\n\n全部收款账户余额 ฿99,805.00，请先确认旧账户性质。\n\n账户名称\t账户性质\t账户持有人\t类型\t开户银行\t账号\t币种\t期初余额\t当前余额\t状态\t操作\nSYNTHETIC ACCOUNT 1现金\t\n未分类\n\t-\t现金\t-\t-\t泰铢\t100,000\t99,805\t启用\t"
+    },
+    {
+      "id": "account-switch-stale-admin-cache",
+      "from": 1,
+      "to": 6,
+      "passed": true,
+      "body": "海外仓财务管理系统\n仪表盘\nSYNTHETIC WH1\n中文\nS\nSYNTHETIC supervisor 6\n收款账户\n无此操作权限，需要: 收款账户 / 工资 / 应付账款 / 付款计划 / 到账流水 / 账期管理 / 费用审批 / 运营收支 / 其他收支重试"
+    }
+  ],
+  "errors": []
+}

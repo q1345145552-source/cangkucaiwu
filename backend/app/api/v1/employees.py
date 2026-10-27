@@ -1,3 +1,4 @@
+from app.core.round2_access import require_account_manager, mutation_scope, own_scope, login_target_scope
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
@@ -275,7 +276,7 @@ async def list_employees(
         "total": total, "page": page, "page_size": page_size,
     }
 
-@router.post("")
+@router.post("", dependencies=[Depends(mutation_scope)])
 async def create_employee(
     req: EmployeeCreate,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
@@ -288,6 +289,8 @@ async def create_employee(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
+    require_account_manager(current_user)
+    own_scope(current_user, wh_id)
     validate_identity(req.model_dump())
 
     # === 工号与登录账号校验 ===
@@ -406,7 +409,7 @@ async def create_employee(
     await db.flush()
     return {"id": e.id, "employee_no": employee_no, "message": "员工创建成功", **identity_result(e)}
 
-@router.put("/{employee_id}")
+@router.put("/{employee_id}", dependencies=[Depends(mutation_scope)])
 async def update_employee(
     employee_id: int,
     req: EmployeeUpdate,
@@ -424,7 +427,17 @@ async def update_employee(
     if e.warehouse_id not in wh_ids:
         raise HTTPException(403, "只能编辑自己仓库的员工")
     
+    own_scope(current_user, e.warehouse_id)
     updates = req.model_dump(exclude_unset=True)
+    if set(updates) & {"user_id", "employee_no", "password"}:
+        require_account_manager(current_user)
+    if "user_id" in updates and updates["user_id"] is not None:
+        target = await db.get(User, updates["user_id"])
+        if target is None or target.warehouse_id != e.warehouse_id:
+            raise HTTPException(403, "关联账号不属于员工仓库")
+        await login_target_scope(db, current_user, target)
+        if target.role != Role.WAREHOUSE_LABOR and target.id != e.user_id:
+            raise HTTPException(403, "不能通过员工档案变更管理账号关联")
     validate_identity({**{field: getattr(e, field) for field in (*IDENTITY_FIELDS, "passport_number")}, **updates})
 
     # === 工号 / 密码：同步登录账号（与员工档案字段分离处理）===
@@ -442,6 +455,13 @@ async def update_employee(
     linked_user = None
     if e.user_id:
         linked_user = (await db.execute(select(User).where(User.id == e.user_id))).scalar_one_or_none()
+
+    if linked_user and 'user_id' in updates:
+        await login_target_scope(db, current_user, linked_user)
+    if linked_user and (employee_no is not None or password):
+        await login_target_scope(db, current_user, linked_user)
+        if linked_user.role != Role.WAREHOUSE_LABOR:
+            raise HTTPException(403, '非劳工登录账号请通过账号管理入口修改')
 
     if employee_no:
         # 工号唯一性（含禁用账号；排除当前已绑定账号）
@@ -542,7 +562,7 @@ async def update_employee(
     await db.flush()
     return {"message": "更新成功", **identity_result(e)}
 
-@router.post("/{employee_id}/resign")
+@router.post("/{employee_id}/resign", dependencies=[Depends(mutation_scope)])
 async def resign_employee(
     employee_id: int,
     req: ResignRequest,
@@ -561,6 +581,7 @@ async def resign_employee(
     if e.warehouse_id not in wh_ids:
         raise HTTPException(403, "只能操作自己仓库的员工")
     
+    own_scope(current_user, e.warehouse_id)
     # Parse resignation date
     try:
         resign_dt = datetime.strptime(req.resignation_date, "%Y-%m-%d").date()
@@ -603,8 +624,9 @@ async def resign_employee(
         e.blacklist_reason = req.blacklist_reason or "被辞退"
 
     # Disable linked user account
-    linked_user = await _find_linked_user(db, e)
-    if linked_user:
+    linked_user = await db.get(User, e.user_id) if e.user_id else None
+    if linked_user and current_user.role == Role.WAREHOUSE_ADMIN:
+        await login_target_scope(db, current_user, linked_user)
         linked_user.is_active = False
 
     # 写修改日志：谁在什么时候给谁办离职
@@ -622,7 +644,7 @@ async def resign_employee(
             "reason": req.reason,
             "note": req.note or "",
             "blacklisted": bool(e.blacklisted),
-            "account_disabled": bool(linked_user),
+            "account_disabled": bool(linked_user and current_user.role == Role.WAREHOUSE_ADMIN),
         },
         warehouse_id=e.warehouse_id,
     )
@@ -642,7 +664,7 @@ async def resign_employee(
     }
 
 
-@router.delete("/{employee_id}")
+@router.delete("/{employee_id}", dependencies=[Depends(mutation_scope)])
 async def delete_employee(
     employee_id: int,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
@@ -660,6 +682,7 @@ async def delete_employee(
     if e.is_deleted:
         raise HTTPException(400, "该员工已删除")
 
+    own_scope(current_user, e.warehouse_id)
     e.is_deleted = True
     e.deleted_by = current_user.id
     e.deleted_at = thai_now()
@@ -667,13 +690,14 @@ async def delete_employee(
     # 禁用关联登录账号，防止已删除员工继续登录/打卡
     if e.user_id:
         linked = (await db.execute(select(User).where(User.id == e.user_id))).scalar_one_or_none()
-        if linked:
+        if linked and current_user.role == Role.WAREHOUSE_ADMIN:
+            await login_target_scope(db, current_user, linked)
             linked.is_active = False
     await db.flush()
     return {"message": f"已删除员工 {e.name}（软删除，数据保留）", "employee_id": e.id}
 
 
-@router.post("/bind-existing-accounts")
+@router.post("/bind-existing-accounts", dependencies=[Depends(mutation_scope)])
 async def bind_existing_accounts(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
@@ -686,6 +710,8 @@ async def bind_existing_accounts(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
+    require_account_manager(current_user)
+    own_scope(current_user, wh_id)
     # 未绑定账号的在职员工（排除已删除/离职）
     unbound_emps = (await db.execute(
         select(Employee).where(
@@ -733,6 +759,7 @@ async def bind_existing_accounts(
         if not u and e.name:
             u = by_display.get((wh_id, e.name))
         if u:
+            await login_target_scope(db, current_user, u)
             e.user_id = u.id
             bound += 1
             details.append({"employee_id": e.id, "name": e.name, "username": u.username})

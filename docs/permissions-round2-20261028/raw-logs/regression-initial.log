@@ -1,0 +1,2142 @@
+........................................................................ [ 45%]
+..........F....F.......F..FFF..F........FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.. [ 91%]
+.........FFFF                                                            [100%]
+=================================== FAILURES ===================================
+_______________ test_every_endpoint[super-admin-GET /recharge/1] _______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_every_endpoint_super_admi2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x134426fc0>
+method = 'GET', path = '/recharge/1', module = 'recharge', body = None, uid = 2
+granted = False
+
+    @pytest.mark.parametrize('method,path,module,body', CASES, ids=[f'{m} {p}' for m,p,_,_ in CASES])
+    @pytest.mark.parametrize('uid,granted', [(3, False), (4, False), (3, True), (4, True), (1, False), (2, False)],
+                             ids=['staff-deny','supervisor-deny','staff-allow','supervisor-allow','admin','super-admin'])
+    def test_every_endpoint(tmp_path, monkeypatch, method, path, module, body, uid, granted):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, factory, client):
+                if granted:
+                    await set_perms(factory, uid, [MENU_PERMISSIONS_BY_KEY[module].label])
+                response = await request(client, method, path, body, uid)
+                if uid in (3, 4) and not granted:
+                    assert response.status_code == 403, response.text
+                    assert response.json()['detail'].startswith('无此操作权限'), response.text
+                else:
+                    # 保留旧业务规则：财务不能新建/删除客户和账户；超管多数业务操作原本被拒。
+                    staff_business_denied = uid == 3 and (method, path) in {
+                        ('POST','/customers'), ('DELETE','/customers/3'),
+                        ('POST','/accounts'), ('DELETE','/accounts/1'),
+                    }
+                    super_business_denied = uid == 2 and (method, path) not in {
+                        ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
+                    }
+                    account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
+                    expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
+                    assert response.status_code == expected, response.text
+                    if expected == 403:
+                        assert not response.json()['detail'].startswith('无此操作权限')
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, factory, client):
+            if granted:
+                await set_perms(factory, uid, [MENU_PERMISSIONS_BY_KEY[module].label])
+            response = await request(client, method, path, body, uid)
+            if uid in (3, 4) and not granted:
+                assert response.status_code == 403, response.text
+                assert response.json()['detail'].startswith('无此操作权限'), response.text
+            else:
+                # 保留旧业务规则：财务不能新建/删除客户和账户；超管多数业务操作原本被拒。
+                staff_business_denied = uid == 3 and (method, path) in {
+                    ('POST','/customers'), ('DELETE','/customers/3'),
+                    ('POST','/accounts'), ('DELETE','/accounts/1'),
+                }
+                super_business_denied = uid == 2 and (method, path) not in {
+                    ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
+                }
+                account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
+                expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
+>               assert response.status_code == expected, response.text
+E               AssertionError: {"detail":"超级管理员请使用各仓库管理员账号操作"}
+E               assert 403 == 200
+E                +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:130: AssertionError
+______________ test_every_endpoint[super-admin-GET /customers/1] _______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_every_endpoint_super_admi7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1345f8860>
+method = 'GET', path = '/customers/1', module = 'customers', body = None
+uid = 2, granted = False
+
+    @pytest.mark.parametrize('method,path,module,body', CASES, ids=[f'{m} {p}' for m,p,_,_ in CASES])
+    @pytest.mark.parametrize('uid,granted', [(3, False), (4, False), (3, True), (4, True), (1, False), (2, False)],
+                             ids=['staff-deny','supervisor-deny','staff-allow','supervisor-allow','admin','super-admin'])
+    def test_every_endpoint(tmp_path, monkeypatch, method, path, module, body, uid, granted):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, factory, client):
+                if granted:
+                    await set_perms(factory, uid, [MENU_PERMISSIONS_BY_KEY[module].label])
+                response = await request(client, method, path, body, uid)
+                if uid in (3, 4) and not granted:
+                    assert response.status_code == 403, response.text
+                    assert response.json()['detail'].startswith('无此操作权限'), response.text
+                else:
+                    # 保留旧业务规则：财务不能新建/删除客户和账户；超管多数业务操作原本被拒。
+                    staff_business_denied = uid == 3 and (method, path) in {
+                        ('POST','/customers'), ('DELETE','/customers/3'),
+                        ('POST','/accounts'), ('DELETE','/accounts/1'),
+                    }
+                    super_business_denied = uid == 2 and (method, path) not in {
+                        ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
+                    }
+                    account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
+                    expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
+                    assert response.status_code == expected, response.text
+                    if expected == 403:
+                        assert not response.json()['detail'].startswith('无此操作权限')
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, factory, client):
+            if granted:
+                await set_perms(factory, uid, [MENU_PERMISSIONS_BY_KEY[module].label])
+            response = await request(client, method, path, body, uid)
+            if uid in (3, 4) and not granted:
+                assert response.status_code == 403, response.text
+                assert response.json()['detail'].startswith('无此操作权限'), response.text
+            else:
+                # 保留旧业务规则：财务不能新建/删除客户和账户；超管多数业务操作原本被拒。
+                staff_business_denied = uid == 3 and (method, path) in {
+                    ('POST','/customers'), ('DELETE','/customers/3'),
+                    ('POST','/accounts'), ('DELETE','/accounts/1'),
+                }
+                super_business_denied = uid == 2 and (method, path) not in {
+                    ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
+                }
+                account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
+                expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
+>               assert response.status_code == expected, response.text
+E               AssertionError: {"detail":"超级管理员请使用各仓库管理员账号操作"}
+E               assert 403 == 200
+E                +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:130: AssertionError
+______ test_every_endpoint[super-admin-POST /upload/recharge-screenshot] _______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_every_endpoint_super_admi15')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1343c1a30>
+method = 'POST', path = '/upload/recharge-screenshot', module = 'recharge'
+body = 'upload', uid = 2, granted = False
+
+    @pytest.mark.parametrize('method,path,module,body', CASES, ids=[f'{m} {p}' for m,p,_,_ in CASES])
+    @pytest.mark.parametrize('uid,granted', [(3, False), (4, False), (3, True), (4, True), (1, False), (2, False)],
+                             ids=['staff-deny','supervisor-deny','staff-allow','supervisor-allow','admin','super-admin'])
+    def test_every_endpoint(tmp_path, monkeypatch, method, path, module, body, uid, granted):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, factory, client):
+                if granted:
+                    await set_perms(factory, uid, [MENU_PERMISSIONS_BY_KEY[module].label])
+                response = await request(client, method, path, body, uid)
+                if uid in (3, 4) and not granted:
+                    assert response.status_code == 403, response.text
+                    assert response.json()['detail'].startswith('无此操作权限'), response.text
+                else:
+                    # 保留旧业务规则：财务不能新建/删除客户和账户；超管多数业务操作原本被拒。
+                    staff_business_denied = uid == 3 and (method, path) in {
+                        ('POST','/customers'), ('DELETE','/customers/3'),
+                        ('POST','/accounts'), ('DELETE','/accounts/1'),
+                    }
+                    super_business_denied = uid == 2 and (method, path) not in {
+                        ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
+                    }
+                    account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
+                    expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
+                    assert response.status_code == expected, response.text
+                    if expected == 403:
+                        assert not response.json()['detail'].startswith('无此操作权限')
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, factory, client):
+            if granted:
+                await set_perms(factory, uid, [MENU_PERMISSIONS_BY_KEY[module].label])
+            response = await request(client, method, path, body, uid)
+            if uid in (3, 4) and not granted:
+                assert response.status_code == 403, response.text
+                assert response.json()['detail'].startswith('无此操作权限'), response.text
+            else:
+                # 保留旧业务规则：财务不能新建/删除客户和账户；超管多数业务操作原本被拒。
+                staff_business_denied = uid == 3 and (method, path) in {
+                    ('POST','/customers'), ('DELETE','/customers/3'),
+                    ('POST','/accounts'), ('DELETE','/accounts/1'),
+                }
+                super_business_denied = uid == 2 and (method, path) not in {
+                    ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
+                }
+                account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
+                expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
+>               assert response.status_code == expected, response.text
+E               AssertionError: {"detail":"超级管理员请使用各仓库管理员账号操作"}
+E               assert 403 == 200
+E                +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:130: AssertionError
+_________________________ test_warehouse_isolation[1] __________________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_warehouse_isolation_1_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x136153d40>, uid = 1
+
+    @pytest.mark.parametrize('uid', [1, 3, 4])
+    def test_warehouse_isolation(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, factory, client):
+                await set_perms(factory, uid, list(ROUND2_PERMISSIONS))
+                for path in ('/recharge','/customers','/accounts'):
+                    result = await client.get('/api/v1' + path, headers=auth(uid))
+                    assert result.status_code == 200, result.text
+                    assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+                for method, path, body in [
+                    ('GET','/recharge/2',None), ('PUT','/recharge/2',RECHARGE), ('DELETE','/recharge/2',None),
+                    ('GET','/customers/2',None), ('PUT','/customers/2',{'company_name':'越权'}), ('DELETE','/customers/2',None),
+                    ('PUT','/accounts/2',ACCOUNT), ('PUT','/accounts/2/toggle-status',None), ('DELETE','/accounts/2',None),
+                ]:
+                    result = await request(client, method, path, body, uid)
+                    assert result.status_code == 403, result.text
+                response = await client.post('/api/v1/upload/recharge-screenshot', headers=auth(uid),
+                                             data={'recharge_id':'2'}, files={'file':('test.png',png(),'image/png')})
+                assert response.status_code == 403, response.text
+                # 本仓申报也不能通过提交外仓客户 ID 绕过隔离。
+                for method, path in [('POST', '/recharge'), ('PUT', '/recharge/1')]:
+                    response = await client.request(method, '/api/v1' + path, headers=auth(uid),
+                                                    json={**RECHARGE, 'customer_id': 2})
+                    assert response.status_code == 403, response.text
+                    assert response.json()['detail'] == '只能使用申报所属仓库的客户'
+                # 伪造仓库请求头不能扩大仓库范围。
+                result = await client.get('/api/v1/customers', headers={**auth(uid),'X-Warehouse-ID':'2'})
+                assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:198: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, factory, client):
+            await set_perms(factory, uid, list(ROUND2_PERMISSIONS))
+            for path in ('/recharge','/customers','/accounts'):
+                result = await client.get('/api/v1' + path, headers=auth(uid))
+                assert result.status_code == 200, result.text
+                assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+            for method, path, body in [
+                ('GET','/recharge/2',None), ('PUT','/recharge/2',RECHARGE), ('DELETE','/recharge/2',None),
+                ('GET','/customers/2',None), ('PUT','/customers/2',{'company_name':'越权'}), ('DELETE','/customers/2',None),
+                ('PUT','/accounts/2',ACCOUNT), ('PUT','/accounts/2/toggle-status',None), ('DELETE','/accounts/2',None),
+            ]:
+                result = await request(client, method, path, body, uid)
+                assert result.status_code == 403, result.text
+            response = await client.post('/api/v1/upload/recharge-screenshot', headers=auth(uid),
+                                         data={'recharge_id':'2'}, files={'file':('test.png',png(),'image/png')})
+            assert response.status_code == 403, response.text
+            # 本仓申报也不能通过提交外仓客户 ID 绕过隔离。
+            for method, path in [('POST', '/recharge'), ('PUT', '/recharge/1')]:
+                response = await client.request(method, '/api/v1' + path, headers=auth(uid),
+                                                json={**RECHARGE, 'customer_id': 2})
+                assert response.status_code == 403, response.text
+                assert response.json()['detail'] == '只能使用申报所属仓库的客户'
+            # 伪造仓库请求头不能扩大仓库范围。
+            result = await client.get('/api/v1/customers', headers={**auth(uid),'X-Warehouse-ID':'2'})
+>           assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+E           KeyError: 'data'
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:197: KeyError
+_________________________ test_warehouse_isolation[3] __________________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_warehouse_isolation_3_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1362e3800>, uid = 3
+
+    @pytest.mark.parametrize('uid', [1, 3, 4])
+    def test_warehouse_isolation(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, factory, client):
+                await set_perms(factory, uid, list(ROUND2_PERMISSIONS))
+                for path in ('/recharge','/customers','/accounts'):
+                    result = await client.get('/api/v1' + path, headers=auth(uid))
+                    assert result.status_code == 200, result.text
+                    assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+                for method, path, body in [
+                    ('GET','/recharge/2',None), ('PUT','/recharge/2',RECHARGE), ('DELETE','/recharge/2',None),
+                    ('GET','/customers/2',None), ('PUT','/customers/2',{'company_name':'越权'}), ('DELETE','/customers/2',None),
+                    ('PUT','/accounts/2',ACCOUNT), ('PUT','/accounts/2/toggle-status',None), ('DELETE','/accounts/2',None),
+                ]:
+                    result = await request(client, method, path, body, uid)
+                    assert result.status_code == 403, result.text
+                response = await client.post('/api/v1/upload/recharge-screenshot', headers=auth(uid),
+                                             data={'recharge_id':'2'}, files={'file':('test.png',png(),'image/png')})
+                assert response.status_code == 403, response.text
+                # 本仓申报也不能通过提交外仓客户 ID 绕过隔离。
+                for method, path in [('POST', '/recharge'), ('PUT', '/recharge/1')]:
+                    response = await client.request(method, '/api/v1' + path, headers=auth(uid),
+                                                    json={**RECHARGE, 'customer_id': 2})
+                    assert response.status_code == 403, response.text
+                    assert response.json()['detail'] == '只能使用申报所属仓库的客户'
+                # 伪造仓库请求头不能扩大仓库范围。
+                result = await client.get('/api/v1/customers', headers={**auth(uid),'X-Warehouse-ID':'2'})
+                assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:198: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, factory, client):
+            await set_perms(factory, uid, list(ROUND2_PERMISSIONS))
+            for path in ('/recharge','/customers','/accounts'):
+                result = await client.get('/api/v1' + path, headers=auth(uid))
+                assert result.status_code == 200, result.text
+                assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+            for method, path, body in [
+                ('GET','/recharge/2',None), ('PUT','/recharge/2',RECHARGE), ('DELETE','/recharge/2',None),
+                ('GET','/customers/2',None), ('PUT','/customers/2',{'company_name':'越权'}), ('DELETE','/customers/2',None),
+                ('PUT','/accounts/2',ACCOUNT), ('PUT','/accounts/2/toggle-status',None), ('DELETE','/accounts/2',None),
+            ]:
+                result = await request(client, method, path, body, uid)
+                assert result.status_code == 403, result.text
+            response = await client.post('/api/v1/upload/recharge-screenshot', headers=auth(uid),
+                                         data={'recharge_id':'2'}, files={'file':('test.png',png(),'image/png')})
+            assert response.status_code == 403, response.text
+            # 本仓申报也不能通过提交外仓客户 ID 绕过隔离。
+            for method, path in [('POST', '/recharge'), ('PUT', '/recharge/1')]:
+                response = await client.request(method, '/api/v1' + path, headers=auth(uid),
+                                                json={**RECHARGE, 'customer_id': 2})
+                assert response.status_code == 403, response.text
+                assert response.json()['detail'] == '只能使用申报所属仓库的客户'
+            # 伪造仓库请求头不能扩大仓库范围。
+            result = await client.get('/api/v1/customers', headers={**auth(uid),'X-Warehouse-ID':'2'})
+>           assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+E           KeyError: 'data'
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:197: KeyError
+_________________________ test_warehouse_isolation[4] __________________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_warehouse_isolation_4_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1363ae270>, uid = 4
+
+    @pytest.mark.parametrize('uid', [1, 3, 4])
+    def test_warehouse_isolation(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, factory, client):
+                await set_perms(factory, uid, list(ROUND2_PERMISSIONS))
+                for path in ('/recharge','/customers','/accounts'):
+                    result = await client.get('/api/v1' + path, headers=auth(uid))
+                    assert result.status_code == 200, result.text
+                    assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+                for method, path, body in [
+                    ('GET','/recharge/2',None), ('PUT','/recharge/2',RECHARGE), ('DELETE','/recharge/2',None),
+                    ('GET','/customers/2',None), ('PUT','/customers/2',{'company_name':'越权'}), ('DELETE','/customers/2',None),
+                    ('PUT','/accounts/2',ACCOUNT), ('PUT','/accounts/2/toggle-status',None), ('DELETE','/accounts/2',None),
+                ]:
+                    result = await request(client, method, path, body, uid)
+                    assert result.status_code == 403, result.text
+                response = await client.post('/api/v1/upload/recharge-screenshot', headers=auth(uid),
+                                             data={'recharge_id':'2'}, files={'file':('test.png',png(),'image/png')})
+                assert response.status_code == 403, response.text
+                # 本仓申报也不能通过提交外仓客户 ID 绕过隔离。
+                for method, path in [('POST', '/recharge'), ('PUT', '/recharge/1')]:
+                    response = await client.request(method, '/api/v1' + path, headers=auth(uid),
+                                                    json={**RECHARGE, 'customer_id': 2})
+                    assert response.status_code == 403, response.text
+                    assert response.json()['detail'] == '只能使用申报所属仓库的客户'
+                # 伪造仓库请求头不能扩大仓库范围。
+                result = await client.get('/api/v1/customers', headers={**auth(uid),'X-Warehouse-ID':'2'})
+                assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:198: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, factory, client):
+            await set_perms(factory, uid, list(ROUND2_PERMISSIONS))
+            for path in ('/recharge','/customers','/accounts'):
+                result = await client.get('/api/v1' + path, headers=auth(uid))
+                assert result.status_code == 200, result.text
+                assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+            for method, path, body in [
+                ('GET','/recharge/2',None), ('PUT','/recharge/2',RECHARGE), ('DELETE','/recharge/2',None),
+                ('GET','/customers/2',None), ('PUT','/customers/2',{'company_name':'越权'}), ('DELETE','/customers/2',None),
+                ('PUT','/accounts/2',ACCOUNT), ('PUT','/accounts/2/toggle-status',None), ('DELETE','/accounts/2',None),
+            ]:
+                result = await request(client, method, path, body, uid)
+                assert result.status_code == 403, result.text
+            response = await client.post('/api/v1/upload/recharge-screenshot', headers=auth(uid),
+                                         data={'recharge_id':'2'}, files={'file':('test.png',png(),'image/png')})
+            assert response.status_code == 403, response.text
+            # 本仓申报也不能通过提交外仓客户 ID 绕过隔离。
+            for method, path in [('POST', '/recharge'), ('PUT', '/recharge/1')]:
+                response = await client.request(method, '/api/v1' + path, headers=auth(uid),
+                                                json={**RECHARGE, 'customer_id': 2})
+                assert response.status_code == 403, response.text
+                assert response.json()['detail'] == '只能使用申报所属仓库的客户'
+            # 伪造仓库请求头不能扩大仓库范围。
+            result = await client.get('/api/v1/customers', headers={**auth(uid),'X-Warehouse-ID':'2'})
+>           assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+E           KeyError: 'data'
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:197: KeyError
+_________________ test_route_inventory_has_no_missing_endpoint _________________
+
+    def test_route_inventory_has_no_missing_endpoint():
+        actual = {(method, route.path.removeprefix('/api/v1')) for route in app.routes
+                  if getattr(route,'path','').startswith(('/api/v1/recharge','/api/v1/customers','/api/v1/accounts'))
+                  or getattr(route,'path','') == '/api/v1/upload/recharge-screenshot'
+                  for method in route.methods}
+        expected = {(method, path.replace('/1','/{recharge_id}') if path.startswith('/recharge/') else
+                     path.replace('/1','/{customer_id}').replace('/3','/{customer_id}') if path.startswith('/customers/') else
+                     path.replace('/1','/{account_id}') if path.startswith('/accounts/') else path)
+                    for method,path,_,_ in CASES}
+>       assert actual == expected
+E       AssertionError: assert {('DELETE', '...er_id}'), ...} == {('DELETE', '...er_id}'), ...}
+E         
+E         Extra items in the left set:
+E         ('POST', '/accounts/transfers')
+E         ('GET', '/customers/{customer_id}/receivables')
+E         ('POST', '/customers/{customer_id}/receipts/link')
+E         Use -v to get more diff
+
+../permissions-round2-20261028/backend/tests/test_round2_permissions.py:254: AssertionError
+___ test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links ___
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_10000_disburse_2000_spend0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137332930>
+
+    def test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                old_payroll = await snapshot(f)
+                r = await topup(c, fid)
+                assert r.status_code == 200, r.text
+                paid = r.json()
+                assert paid["expense_record_id"] and paid["disbursement_id"] and paid["account_balance"] == 10000
+                after_pay = await values(c, fid)
+                assert after_pay["expense_count"] == after_pay["unified_count"] == after_pay["flow_count"] == after_pay["company_flow_count"] == 1
+                assert after_pay["expense_amount"] == after_pay["unified_amount"] == after_pay["flow_amount"] == after_pay["company_flow_amount"] == 10000
+                assert after_pay["company_cash"] == 10000 and after_pay["fund"]["total_topped_up"] == 10000 and after_pay["fund"]["available"] == 10000
+                item = await spend(c, fid)
+                assert item.status_code == 200, item.text
+                iid = item.json()["id"]
+                assert item.json()["cost_record_only"] and item.json()["disbursement_sources"] == [{"disbursement_id": paid["disbursement_id"], "amount": 2000, "label": f"拨付 #{paid['disbursement_id']}"}]
+                up = await c.post(f"{BASE}/accounts/{fid}/items/{iid}/upload-receipt", headers=auth(1), files={"file": ("receipt.png", png(), "image/png")})
+                assert up.status_code == 200, up.text
+                after_spend = await values(c, fid)
+                for key in ("expense_count", "unified_count", "flow_count", "company_flow_count", "expense_amount", "unified_amount", "flow_amount", "company_flow_amount", "company_cash"):
+                    assert after_spend[key] == after_pay[key]
+                assert after_spend["fund"]["total_spent"] == 2000 and after_spend["fund"]["available"] == 8000
+                review = await c.post(BASE + "/review/batch", headers=auth(1), json={"item_ids": [iid], "action": "approve"})
+                assert review.status_code == 200, review.text
+                final = await values(c, fid)
+                assert final == after_spend  # 审核通过同样不再新增成本或资金记录。
+                history = await c.get(f"{BASE}/accounts/{fid}/disbursements", headers=auth(1))
+                assert history.status_code == 200, history.text
+                row = history.json()["data"][0]
+                assert row["expense_record_id"] == paid["expense_record_id"] and row["used_amount"] == 2000
+                assert row["items"][0]["item_id"] == iid and row["items"][0]["receipt"] == up.json()["receipt"]
+                for view in ("records", "unified"):
+                    cost = (await c.get("/api/v1/income-expense/expense", headers=auth(1), params={**RANGE, "cost_view": view})).json()["data"][0]
+                    assert cost["fund_disbursement_id"] == paid["disbursement_id"] and cost["fund_id"] == fid and cost["is_read_only"]
+                async with f() as db:
+                    exp = await db.get(ExpenseRecord, paid["expense_record_id"])
+                    cat = await db.get(IncomeExpenseCategory, exp.category_id)
+                    assert cat.name == "备用金拨付" and cat.category_group == "operating"
+                    assert exp.expense_date == datetime(2026, 10, 10) and "supervisor" in exp.remark and "仓1" in exp.remark
+                    assert await db.get(ExpenseFundItem, iid)
+                report = await c.get("/api/v1/reports/cost-funds-debt", headers=auth(1), params=RANGE)
+                assert report.status_code == 200, report.text
+                thb = next(b for b in report.json()["currencies"] if b["currency"] == "THB")
+                assert thb["costs"]["total"] == 10000 and thb["reconciliation"]["company_outflow"] == 10000 and thb["reconciliation"]["balanced"]
+                previews = (await c.get("/api/v1/reports/previews", headers=auth(1), params=RANGE)).json()
+                assert previews["previews"]["income-expense"]["total_expense"] == 10000
+                monthly = (await c.get("/api/v1/income-expense/monthly-summary", headers=auth(1), params=RANGE)).json()
+                assert monthly["total_expense"] == 10000
+                assert (await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 500})).status_code == 200
+                requests = (await c.get(BASE + "/recharge/requests", headers=auth(1))).json()["data"]
+                assert requests[0]["available"] == 8000
+                assert await snapshot(f) == old_payroll
+                print("FUND_DISBURSEMENT_MAIN", json.dumps({"payment_response": paid,
+                    "after_disbursement": after_pay, "after_spend_2000": after_spend,
+                    "after_approve": final, "final_cost_total": thb["costs"]["total"]}, ensure_ascii=False))
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            old_payroll = await snapshot(f)
+            r = await topup(c, fid)
+>           assert r.status_code == 200, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert 403 == 200
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:96: AssertionError
+__ test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[1] __
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_original_roles_and_rechar0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137300170>, uid = 1
+
+    @pytest.mark.parametrize("uid", [1, 3, 4])
+    def test_original_roles_and_recharge_approval_one_expense_and_repeat_denied(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                await set_perms(f, uid, ["备用金管理"])
+                req = await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000, "reason": "日常耗材"})
+                assert req.status_code == 200, req.text
+                rid = req.json()["id"]
+                r = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid,
+                    "action": "approve", "payment_account_id": 1, "receive_date": "2026-10-12"})
+                assert r.status_code == 200 and r.json()["recharge_request_id"] == rid, r.text
+                repeat = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid, "action": "approve", "payment_account_id": 1})
+                assert repeat.status_code == 400 and repeat.json()["detail"] == "该申请已处理"
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 1
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 1
+                direct = await topup(c, fid, uid=uid, amount=500)
+                assert direct.status_code == 200, direct.text
+                await set_perms(f, uid, [])
+                if uid != 1:
+                    assert (await topup(c, fid, uid=uid, amount=1)).status_code == 403
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            await set_perms(f, uid, ["备用金管理"])
+            req = await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000, "reason": "日常耗材"})
+            assert req.status_code == 200, req.text
+            rid = req.json()["id"]
+            r = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid,
+                "action": "approve", "payment_account_id": 1, "receive_date": "2026-10-12"})
+>           assert r.status_code == 200 and r.json()["recharge_request_id"] == rid, r.text
+E           AssertionError: {"detail":"请先完成独立凭证核验"}
+E           assert (409 == 200)
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:159: AssertionError
+__ test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[3] __
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_original_roles_and_rechar1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x135553fe0>, uid = 3
+
+    @pytest.mark.parametrize("uid", [1, 3, 4])
+    def test_original_roles_and_recharge_approval_one_expense_and_repeat_denied(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                await set_perms(f, uid, ["备用金管理"])
+                req = await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000, "reason": "日常耗材"})
+                assert req.status_code == 200, req.text
+                rid = req.json()["id"]
+                r = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid,
+                    "action": "approve", "payment_account_id": 1, "receive_date": "2026-10-12"})
+                assert r.status_code == 200 and r.json()["recharge_request_id"] == rid, r.text
+                repeat = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid, "action": "approve", "payment_account_id": 1})
+                assert repeat.status_code == 400 and repeat.json()["detail"] == "该申请已处理"
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 1
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 1
+                direct = await topup(c, fid, uid=uid, amount=500)
+                assert direct.status_code == 200, direct.text
+                await set_perms(f, uid, [])
+                if uid != 1:
+                    assert (await topup(c, fid, uid=uid, amount=1)).status_code == 403
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            await set_perms(f, uid, ["备用金管理"])
+            req = await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000, "reason": "日常耗材"})
+            assert req.status_code == 200, req.text
+            rid = req.json()["id"]
+            r = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid,
+                "action": "approve", "payment_account_id": 1, "receive_date": "2026-10-12"})
+>           assert r.status_code == 200 and r.json()["recharge_request_id"] == rid, r.text
+E           AssertionError: {"detail":"只有仓库管理员可以管理账号或账户配置"}
+E           assert (403 == 200)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:159: AssertionError
+__ test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[4] __
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_original_roles_and_rechar2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1372b9190>, uid = 4
+
+    @pytest.mark.parametrize("uid", [1, 3, 4])
+    def test_original_roles_and_recharge_approval_one_expense_and_repeat_denied(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                await set_perms(f, uid, ["备用金管理"])
+                req = await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000, "reason": "日常耗材"})
+                assert req.status_code == 200, req.text
+                rid = req.json()["id"]
+                r = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid,
+                    "action": "approve", "payment_account_id": 1, "receive_date": "2026-10-12"})
+                assert r.status_code == 200 and r.json()["recharge_request_id"] == rid, r.text
+                repeat = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid, "action": "approve", "payment_account_id": 1})
+                assert repeat.status_code == 400 and repeat.json()["detail"] == "该申请已处理"
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 1
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 1
+                direct = await topup(c, fid, uid=uid, amount=500)
+                assert direct.status_code == 200, direct.text
+                await set_perms(f, uid, [])
+                if uid != 1:
+                    assert (await topup(c, fid, uid=uid, amount=1)).status_code == 403
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            await set_perms(f, uid, ["备用金管理"])
+            req = await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000, "reason": "日常耗材"})
+            assert req.status_code == 200, req.text
+            rid = req.json()["id"]
+            r = await c.post(BASE + "/recharge/review", headers=auth(uid), json={"request_id": rid,
+                "action": "approve", "payment_account_id": 1, "receive_date": "2026-10-12"})
+>           assert r.status_code == 200 and r.json()["recharge_request_id"] == rid, r.text
+E           AssertionError: {"detail":"只有仓库管理员可以管理账号或账户配置"}
+E           assert (403 == 200)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:159: AssertionError
+_ test_account_guards_leave_all_three_ledgers_unchanged[None-\u8bf7\u9009\u62e9\u5907\u7528\u91d1\u62e8\u4ed8\u8d26\u6237] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_account_guards_leave_all_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13514a120>
+case = None, detail = '请选择备用金拨付账户'
+
+    @pytest.mark.parametrize("case,detail", [(None, "请选择备用金拨付账户"), (2, "付款账户不存在或不属于当前仓库"), (3, "付款账户币种必须与备用金账户一致"), (999, "付款账户不存在或不属于当前仓库"), ("inactive", "付款账户已停用"), ("poor", "付款账户余额不足")])
+    def test_account_guards_leave_all_three_ledgers_unchanged(tmp_path, monkeypatch, case, detail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                if case in ("inactive", "poor"):
+                    async with f() as db:
+                        account = await db.get(PaymentAccount, 1)
+                        if case == "inactive": account.status = "inactive"
+                        else: account.opening_balance = 500
+                        await db.commit()
+                r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+                assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    assert fund.amount == fund.remaining_balance == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            if case in ("inactive", "poor"):
+                async with f() as db:
+                    account = await db.get(PaymentAccount, 1)
+                    if case == "inactive": account.status = "inactive"
+                    else: account.opening_balance = 500
+                    await db.commit()
+            r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+>           assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert (403 == 400)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:184: AssertionError
+_ test_account_guards_leave_all_three_ledgers_unchanged[2-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_account_guards_leave_all_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13611f5f0>, case = 2
+detail = '付款账户不存在或不属于当前仓库'
+
+    @pytest.mark.parametrize("case,detail", [(None, "请选择备用金拨付账户"), (2, "付款账户不存在或不属于当前仓库"), (3, "付款账户币种必须与备用金账户一致"), (999, "付款账户不存在或不属于当前仓库"), ("inactive", "付款账户已停用"), ("poor", "付款账户余额不足")])
+    def test_account_guards_leave_all_three_ledgers_unchanged(tmp_path, monkeypatch, case, detail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                if case in ("inactive", "poor"):
+                    async with f() as db:
+                        account = await db.get(PaymentAccount, 1)
+                        if case == "inactive": account.status = "inactive"
+                        else: account.opening_balance = 500
+                        await db.commit()
+                r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+                assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    assert fund.amount == fund.remaining_balance == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            if case in ("inactive", "poor"):
+                async with f() as db:
+                    account = await db.get(PaymentAccount, 1)
+                    if case == "inactive": account.status = "inactive"
+                    else: account.opening_balance = 500
+                    await db.commit()
+            r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+>           assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert (403 == 400)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:184: AssertionError
+_ test_account_guards_leave_all_three_ledgers_unchanged[3-\u4ed8\u6b3e\u8d26\u6237\u5e01\u79cd\u5fc5\u987b\u4e0e\u5907\u7528\u91d1\u8d26\u6237\u4e00\u81f4] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_account_guards_leave_all_2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1362e3680>, case = 3
+detail = '付款账户币种必须与备用金账户一致'
+
+    @pytest.mark.parametrize("case,detail", [(None, "请选择备用金拨付账户"), (2, "付款账户不存在或不属于当前仓库"), (3, "付款账户币种必须与备用金账户一致"), (999, "付款账户不存在或不属于当前仓库"), ("inactive", "付款账户已停用"), ("poor", "付款账户余额不足")])
+    def test_account_guards_leave_all_three_ledgers_unchanged(tmp_path, monkeypatch, case, detail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                if case in ("inactive", "poor"):
+                    async with f() as db:
+                        account = await db.get(PaymentAccount, 1)
+                        if case == "inactive": account.status = "inactive"
+                        else: account.opening_balance = 500
+                        await db.commit()
+                r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+                assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    assert fund.amount == fund.remaining_balance == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            if case in ("inactive", "poor"):
+                async with f() as db:
+                    account = await db.get(PaymentAccount, 1)
+                    if case == "inactive": account.status = "inactive"
+                    else: account.opening_balance = 500
+                    await db.commit()
+            r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+>           assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert (403 == 400)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:184: AssertionError
+_ test_account_guards_leave_all_three_ledgers_unchanged[999-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_account_guards_leave_all_3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13116de20>
+case = 999, detail = '付款账户不存在或不属于当前仓库'
+
+    @pytest.mark.parametrize("case,detail", [(None, "请选择备用金拨付账户"), (2, "付款账户不存在或不属于当前仓库"), (3, "付款账户币种必须与备用金账户一致"), (999, "付款账户不存在或不属于当前仓库"), ("inactive", "付款账户已停用"), ("poor", "付款账户余额不足")])
+    def test_account_guards_leave_all_three_ledgers_unchanged(tmp_path, monkeypatch, case, detail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                if case in ("inactive", "poor"):
+                    async with f() as db:
+                        account = await db.get(PaymentAccount, 1)
+                        if case == "inactive": account.status = "inactive"
+                        else: account.opening_balance = 500
+                        await db.commit()
+                r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+                assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    assert fund.amount == fund.remaining_balance == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            if case in ("inactive", "poor"):
+                async with f() as db:
+                    account = await db.get(PaymentAccount, 1)
+                    if case == "inactive": account.status = "inactive"
+                    else: account.opening_balance = 500
+                    await db.commit()
+            r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+>           assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert (403 == 400)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:184: AssertionError
+_ test_account_guards_leave_all_three_ledgers_unchanged[inactive-\u4ed8\u6b3e\u8d26\u6237\u5df2\u505c\u7528] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_account_guards_leave_all_4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13339fd10>
+case = 'inactive', detail = '付款账户已停用'
+
+    @pytest.mark.parametrize("case,detail", [(None, "请选择备用金拨付账户"), (2, "付款账户不存在或不属于当前仓库"), (3, "付款账户币种必须与备用金账户一致"), (999, "付款账户不存在或不属于当前仓库"), ("inactive", "付款账户已停用"), ("poor", "付款账户余额不足")])
+    def test_account_guards_leave_all_three_ledgers_unchanged(tmp_path, monkeypatch, case, detail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                if case in ("inactive", "poor"):
+                    async with f() as db:
+                        account = await db.get(PaymentAccount, 1)
+                        if case == "inactive": account.status = "inactive"
+                        else: account.opening_balance = 500
+                        await db.commit()
+                r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+                assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    assert fund.amount == fund.remaining_balance == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            if case in ("inactive", "poor"):
+                async with f() as db:
+                    account = await db.get(PaymentAccount, 1)
+                    if case == "inactive": account.status = "inactive"
+                    else: account.opening_balance = 500
+                    await db.commit()
+            r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+>           assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert (403 == 400)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:184: AssertionError
+_ test_account_guards_leave_all_three_ledgers_unchanged[poor-\u4ed8\u6b3e\u8d26\u6237\u4f59\u989d\u4e0d\u8db3] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_account_guards_leave_all_5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13571b500>
+case = 'poor', detail = '付款账户余额不足'
+
+    @pytest.mark.parametrize("case,detail", [(None, "请选择备用金拨付账户"), (2, "付款账户不存在或不属于当前仓库"), (3, "付款账户币种必须与备用金账户一致"), (999, "付款账户不存在或不属于当前仓库"), ("inactive", "付款账户已停用"), ("poor", "付款账户余额不足")])
+    def test_account_guards_leave_all_three_ledgers_unchanged(tmp_path, monkeypatch, case, detail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                if case in ("inactive", "poor"):
+                    async with f() as db:
+                        account = await db.get(PaymentAccount, 1)
+                        if case == "inactive": account.status = "inactive"
+                        else: account.opening_balance = 500
+                        await db.commit()
+                r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+                assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    assert fund.amount == fund.remaining_balance == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 0
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:190: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            if case in ("inactive", "poor"):
+                async with f() as db:
+                    account = await db.get(PaymentAccount, 1)
+                    if case == "inactive": account.status = "inactive"
+                    else: account.opening_balance = 500
+                    await db.commit()
+            r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+>           assert r.status_code == 400 and r.json()["detail"] == detail, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert (403 == 400)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:184: AssertionError
+___ test_history_failure_rolls_back_account_fund_expense_and_approval[False] ___
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_history_failure_rolls_bac0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13625f350>
+via_request = False
+
+    @pytest.mark.parametrize("via_request", [False, True])
+    def test_history_failure_rolls_back_account_fund_expense_and_approval(tmp_path, monkeypatch, via_request):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                rid = None
+                if via_request:
+                    rid = (await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000})).json()["id"]
+                async def fail(db, **kwargs):
+                    await db.flush()
+                    raise HTTPException(500, "模拟拨付留痕失败")
+                monkeypatch.setattr(s, "record_history", fail)
+                r = await c.post(BASE + "/recharge/review", headers=auth(1), json={"request_id": rid, "action": "approve", "payment_account_id": 1}) if via_request else await topup(c, fid)
+                assert r.status_code == 500, r.text
+                state = await values(c, fid)
+                assert state["company_cash"] == 20000 and state["fund"]["available"] == 0 and state["expense_count"] == state["flow_count"] == 0
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+                    if rid: assert (await db.get(FundRechargeRequest, rid)).status == "pending"
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:211: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            rid = None
+            if via_request:
+                rid = (await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000})).json()["id"]
+            async def fail(db, **kwargs):
+                await db.flush()
+                raise HTTPException(500, "模拟拨付留痕失败")
+            monkeypatch.setattr(s, "record_history", fail)
+            r = await c.post(BASE + "/recharge/review", headers=auth(1), json={"request_id": rid, "action": "approve", "payment_account_id": 1}) if via_request else await topup(c, fid)
+>           assert r.status_code == 500, r.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert 403 == 500
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:205: AssertionError
+___ test_history_failure_rolls_back_account_fund_expense_and_approval[True] ____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_history_failure_rolls_bac1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1364bb4a0>
+via_request = True
+
+    @pytest.mark.parametrize("via_request", [False, True])
+    def test_history_failure_rolls_back_account_fund_expense_and_approval(tmp_path, monkeypatch, via_request):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                rid = None
+                if via_request:
+                    rid = (await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000})).json()["id"]
+                async def fail(db, **kwargs):
+                    await db.flush()
+                    raise HTTPException(500, "模拟拨付留痕失败")
+                monkeypatch.setattr(s, "record_history", fail)
+                r = await c.post(BASE + "/recharge/review", headers=auth(1), json={"request_id": rid, "action": "approve", "payment_account_id": 1}) if via_request else await topup(c, fid)
+                assert r.status_code == 500, r.text
+                state = await values(c, fid)
+                assert state["company_cash"] == 20000 and state["fund"]["available"] == 0 and state["expense_count"] == state["flow_count"] == 0
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(ExpenseFundDisbursement))).scalar_one() == 0
+                    if rid: assert (await db.get(FundRechargeRequest, rid)).status == "pending"
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:211: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            rid = None
+            if via_request:
+                rid = (await c.post(BASE + "/recharge/request", headers=auth(4), json={"amount": 1000})).json()["id"]
+            async def fail(db, **kwargs):
+                await db.flush()
+                raise HTTPException(500, "模拟拨付留痕失败")
+            monkeypatch.setattr(s, "record_history", fail)
+            r = await c.post(BASE + "/recharge/review", headers=auth(1), json={"request_id": rid, "action": "approve", "payment_account_id": 1}) if via_request else await topup(c, fid)
+>           assert r.status_code == 500, r.text
+E           AssertionError: {"detail":"请先完成独立凭证核验"}
+E           assert 409 == 500
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:205: AssertionError
+___ test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals ____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_legacy_audit_preserved_an0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x136f840b0>
+
+    def test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (engine, f, c, fid):
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    fund.amount = fund.remaining_balance = 5000
+                    fund.receive_date = datetime(2026, 10, 1)
+                    for amount, status in [(1000, "approved"), (500, "approved"), (300, "pending"), (200, "rejected")]:
+                        db.add(ExpenseFundItem(fund_id=fid, expense_date=datetime(2026, 10, 3), category="历史耗材",
+                            amount=amount, currency="THB", description="历史记录", review_status=status, cost_record_only=False))
+                    cat = IncomeExpenseCategory(warehouse_id=1, type="expense", name="历史备用金开销", category_group="operating", status="active")
+                    db.add(cat); await db.flush()
+                    db.add(ExpenseRecord(warehouse_id=1, category_id=cat.id, account_id=1, amount=400, currency="THB", expense_date=datetime(2026, 10, 2), remark="历史人工登记，不猜测来源"))
+                    await db.commit()
+                    before = await audit(db, [1])
+                    old_rows = [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).order_by(ExpenseFundItem.id))).all()]
+                async with engine.begin() as conn:
+                    await s.backfill_fund_disbursement_categories(conn)
+                    await s.backfill_fund_disbursement_categories(conn)
+                assert before["legacy_merged_operating_costs"] == [{"warehouse_id": 1, "currency": "THB", "count": 2, "amount": 1500}]
+                assert before["legacy_ledger_item_rows"] == [{"warehouse_id": 1, "currency": "THB", "count": 4, "amount": 2000}]
+                assert before["formal_expenses_with_fund_category_name"] == [{"warehouse_id": 1, "currency": "THB", "count": 1, "amount": 400}]
+                paid = await topup(c, fid, amount=1000)
+                assert paid.status_code == 200, paid.text
+                item = await spend(c, fid, amount=200)
+                assert item.status_code == 200, item.text
+                async with f() as db:
+                    after = await audit(db, [1])
+                    assert before == after
+                    assert [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).where(ExpenseFundItem.cost_record_only == False).order_by(ExpenseFundItem.id))).all()] == old_rows
+                state = await values(c, fid)
+                assert state["expense_amount"] == 1400 and state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
+                assert (await c.get(f"{BASE}/accounts/{fid}/items", headers=auth(1))).json()["data"]
+                print("FUND_LEGACY_AUDIT", json.dumps({"before": before, "after": after,
+                    "after_new_disbursement_and_spend": state}, ensure_ascii=False))
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (engine, f, c, fid):
+            async with f() as db:
+                fund = await db.get(ExpenseFund, fid)
+                fund.amount = fund.remaining_balance = 5000
+                fund.receive_date = datetime(2026, 10, 1)
+                for amount, status in [(1000, "approved"), (500, "approved"), (300, "pending"), (200, "rejected")]:
+                    db.add(ExpenseFundItem(fund_id=fid, expense_date=datetime(2026, 10, 3), category="历史耗材",
+                        amount=amount, currency="THB", description="历史记录", review_status=status, cost_record_only=False))
+                cat = IncomeExpenseCategory(warehouse_id=1, type="expense", name="历史备用金开销", category_group="operating", status="active")
+                db.add(cat); await db.flush()
+                db.add(ExpenseRecord(warehouse_id=1, category_id=cat.id, account_id=1, amount=400, currency="THB", expense_date=datetime(2026, 10, 2), remark="历史人工登记，不猜测来源"))
+                await db.commit()
+                before = await audit(db, [1])
+                old_rows = [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).order_by(ExpenseFundItem.id))).all()]
+            async with engine.begin() as conn:
+                await s.backfill_fund_disbursement_categories(conn)
+                await s.backfill_fund_disbursement_categories(conn)
+            assert before["legacy_merged_operating_costs"] == [{"warehouse_id": 1, "currency": "THB", "count": 2, "amount": 1500}]
+            assert before["legacy_ledger_item_rows"] == [{"warehouse_id": 1, "currency": "THB", "count": 4, "amount": 2000}]
+            assert before["formal_expenses_with_fund_category_name"] == [{"warehouse_id": 1, "currency": "THB", "count": 1, "amount": 400}]
+            paid = await topup(c, fid, amount=1000)
+>           assert paid.status_code == 200, paid.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert 403 == 200
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:237: AssertionError
+_________ test_fifo_sources_multiple_disbursements_and_cross_warehouse _________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_fifo_sources_multiple_dis0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13785ce90>
+
+    def test_fifo_sources_multiple_disbursements_and_cross_warehouse(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                a = (await topup(c, fid, amount=3000)).json()["disbursement_id"]
+                assert (await spend(c, fid, amount=2500)).status_code == 200
+                b = (await topup(c, fid, amount=5000)).json()["disbursement_id"]
+                item = await spend(c, fid, amount=1500)
+                assert item.status_code == 200, item.text
+                assert [(p["disbursement_id"], p["amount"]) for p in item.json()["disbursement_sources"]] == [(a, 500), (b, 1000)]
+                state = await values(c, fid)
+                assert state["expense_amount"] == state["flow_amount"] == 8000 and state["fund"]["available"] == 4000
+                async with f() as db:
+                    other = ExpenseFund(warehouse_id=2, employee_id=6, amount=0, remaining_balance=0, receive_date=datetime(2026, 10, 1), purpose="外仓")
+                    db.add(other); await db.commit(); other_id = other.id
+                assert (await topup(c, other_id, amount=1)).status_code == 403
+                assert (await c.get(f"{BASE}/accounts/{other_id}/disbursements", headers=auth(1))).status_code == 404
+                # 只能从业务模块维护联动支出，不能绕过拨付随意改变金额或删支出。
+                eid = (await c.get(f"{BASE}/accounts/{fid}/disbursements", headers=auth(1))).json()["data"][0]["expense_record_id"]
+                blocked = await c.delete(f"/api/v1/income-expense/expense/{eid}", headers=auth(1))
+                assert blocked.status_code == 400 and "备用金拨付联动支出" in blocked.text
+                blocked = await c.delete("/api/v1/accounts/1", headers=auth(1))
+                assert blocked.status_code == 400 and "备用金拨付记录" in blocked.text
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:274: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+>           a = (await topup(c, fid, amount=3000)).json()["disbursement_id"]
+E           KeyError: 'disbursement_id'
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:255: KeyError
+_______ test_new_fund_employee_advance_records_usage_without_second_cost _______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_new_fund_employee_advance0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1378f10d0>
+
+    def test_new_fund_employee_advance_records_usage_without_second_cost(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                assert (await topup(c, fid)).status_code == 200
+                r = await c.post("/api/v1/employee-advances", headers=auth(1), json={"employee_id": 1,
+                    "amount": 1000, "advance_date": "2026-10-11", "funding_source": "expense_fund", "fund_account_id": fid})
+                assert r.status_code == 200 and r.json()["expense_record_id"] is None, r.text
+                state = await values(c, fid)
+                assert state["expense_count"] == state["flow_count"] == 1
+                assert state["expense_amount"] == state["unified_amount"] == state["flow_amount"] == 10000
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 1
+                    assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 1
+                assert state["fund"]["available"] == 9000
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:291: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+>           assert (await topup(c, fid)).status_code == 200
+E           assert 403 == 200
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:280: AssertionError
+______ test_all_warehouse_admin_review_uses_request_warehouse_not_primary ______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_all_warehouse_admin_revie0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1378abc80>
+
+    def test_all_warehouse_admin_review_uses_request_warehouse_not_primary(tmp_path, monkeypatch):
+        async def run():
+            from app.models import UserWarehouse
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                async with f() as db:
+                    db.add(UserWarehouse(user_id=1, warehouse_id=2))
+                    db.add(User(id=7, username="other_supervisor", display_name="另一仓主管", role="supervisor", password_hash="unused", warehouse_id=2, extra_permissions=["备用金管理"]))
+                    db.add(UserWarehouse(user_id=7, warehouse_id=2))
+                    (await db.get(PaymentAccount, 2)).opening_balance = 20000
+                    await db.commit()
+                headers = {**auth(1), "X-Warehouse-ID": "2"}
+                r = await c.post(BASE + "/accounts", headers=headers, json={"employee_id": 7, "fund_limit": 20000})
+                assert r.status_code == 200, r.text
+                req = await c.post(BASE + "/recharge/request", headers=auth(7), json={"amount": 1000})
+                assert req.status_code == 200, req.text
+                result = await c.post(BASE + "/recharge/review", headers={**auth(1), "X-Warehouse-ID": "all"},
+                    json={"request_id": req.json()["id"], "action": "approve", "payment_account_id": 2})
+                assert result.status_code == 200 and result.json()["warehouse_id"] == 2, result.text
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:322: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        from app.models import UserWarehouse
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            async with f() as db:
+                db.add(UserWarehouse(user_id=1, warehouse_id=2))
+                db.add(User(id=7, username="other_supervisor", display_name="另一仓主管", role="supervisor", password_hash="unused", warehouse_id=2, extra_permissions=["备用金管理"]))
+                db.add(UserWarehouse(user_id=7, warehouse_id=2))
+                (await db.get(PaymentAccount, 2)).opening_balance = 20000
+                await db.commit()
+            headers = {**auth(1), "X-Warehouse-ID": "2"}
+            r = await c.post(BASE + "/accounts", headers=headers, json={"employee_id": 7, "fund_limit": 20000})
+            assert r.status_code == 200, r.text
+            req = await c.post(BASE + "/recharge/request", headers=auth(7), json={"amount": 1000})
+            assert req.status_code == 200, req.text
+            result = await c.post(BASE + "/recharge/review", headers={**auth(1), "X-Warehouse-ID": "all"},
+                json={"request_id": req.json()["id"], "action": "approve", "payment_account_id": 2})
+>           assert result.status_code == 200 and result.json()["warehouse_id"] == 2, result.text
+E           AssertionError: {"detail":"请先完成独立凭证核验"}
+E           assert (409 == 200)
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:321: AssertionError
+_____ test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb _____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_cny_disbursement_cost_flo0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1379f7e90>
+
+    def test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                async with f() as db:
+                    (await db.get(ExpenseFund, fid)).currency = "CNY"
+                    await db.commit()
+                paid = await topup(c, fid, amount=1000, payment_account_id=3)
+                assert paid.status_code == 200 and paid.json()["account_balance"] == 29000, paid.text
+                item = await c.post(f"{BASE}/accounts/{fid}/items", headers=auth(4), json={"request_key":"cny-fund-regression","amount": 200,
+                    "expense_date": "2026-10-11", "category": "耗材", "currency": "CNY", "description": "人民币耗材", "receipt": await receipt(c, fid)})
+                assert item.status_code == 200, item.text
+                r = await c.get("/api/v1/reports/cost-funds-debt", headers=auth(1), params=RANGE)
+                assert r.status_code == 200, r.text
+                cny = next(b for b in r.json()["currencies"] if b["currency"] == "CNY")
+                thb = next(b for b in r.json()["currencies"] if b["currency"] == "THB")
+                assert cny["costs"]["total"] == cny["reconciliation"]["company_outflow"] == 1000
+                assert cny["funds"]["data"][0]["closing_balance"] == 29000
+                assert thb["costs"]["total"] == thb["reconciliation"]["company_outflow"] == 0
+                fund = (await c.get(BASE + "/accounts", headers=auth(1))).json()["data"][0]
+                assert fund["available"] == 800
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:345: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+            async with f() as db:
+                (await db.get(ExpenseFund, fid)).currency = "CNY"
+                await db.commit()
+            paid = await topup(c, fid, amount=1000, payment_account_id=3)
+>           assert paid.status_code == 200 and paid.json()["account_balance"] == 29000, paid.text
+E           AssertionError: {"detail":"直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行"}
+E           assert (403 == 200)
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_disbursement.py:332: AssertionError
+__________ test_supervisor_denied_admin_edit_void_history_and_balance __________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_supervisor_denied_admin_e0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137974f80>
+
+    def test_supervisor_denied_admin_edit_void_history_and_balance(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid); iid,url=await path_for(c,fid)
+                before=await values(c,fid)
+                edit_denied=await c.put(url,headers=auth(4),json={"amount":1500})
+                delete_denied=await c.request("DELETE",url,headers=auth(4),json={"reason":"主管不许作废"})
+                photo_denied=await c.post(url+"/upload-receipt",headers=auth(4),files={"file":("photo.png",png(),"image/png")})
+                assert edit_denied.status_code==403 and edit_denied.json()["detail"]=="开销记录只有仓库管理员可以修改"
+                assert delete_denied.status_code==403 and delete_denied.json()["detail"]=="开销记录只有仓库管理员可以删除"
+                assert photo_denied.status_code==403 and photo_denied.json()["detail"]==edit_denied.json()["detail"]
+                changed=await c.put(url,headers=auth(1),json={"amount":1500,"category":"办公用品","description":"老板核对金额"})
+                assert changed.status_code==200 and changed.json()["amount"]==1500 and changed.json()["category"]=="办公用品",changed.text
+                replacement=await receipt(c,fid,uid=1)
+                changed_photo=await c.put(url,headers=auth(1),json={"receipt":replacement})
+                assert changed_photo.status_code==200 and changed_photo.json()["receipt"]==replacement
+                after_edit=await values(c,fid);assert before["fund"]["available"]==8000 and after_edit["fund"]["available"]==8500
+                assert (await c.request("DELETE",url,headers=auth(1),json={"reason":"  "})).status_code==400
+                voided=await c.request("DELETE",url,headers=auth(1),json={"reason":"重复登记，保留记录作废"})
+                assert voided.status_code==200,voided.text
+                data=voided.json();assert data["review_status"]=="voided" and data["is_voided"] and data["voided_by"]==1 and data["voided_at"]
+                after_void=await values(c,fid);assert after_void["fund"]["available"]==10000 and after_void["fund"]["total_spent"]==0
+                for name in ("expense_count","expense_amount","flow_count","flow_amount","company_cash"):
+                    assert before[name]==after_void[name]
+                listed=(await c.get(f"{BASE}/accounts/{fid}/items",headers=auth(1))).json()["data"]
+                assert len(listed)==1 and listed[0]["review_status"]=="voided" and not listed[0]["can_edit"] and not listed[0]["can_void"]
+                history=(await c.get(f"/api/v1/history?module=expense_fund_item&record_id={iid}",headers=auth(1))).json()["data"]
+                identity_history=[r for r in history if r['operation_type']=='cost_identity']
+                assert len(identity_history)==4 and sorted(r['operator_id'] for r in identity_history)==[1,1,1,4]
+                assert all(r['created_at'] for r in identity_history)
+                history=[r for r in history if r['operation_type']!='cost_identity']
+                assert len(history)==3 and {r["operation_type"] for r in history}=={"edit","void"}
+                amount_log=next(row for row in history if row["operation_type"]=="edit" and row["before_data"]["amount"]!=row["after_data"]["amount"])
+                assert amount_log["before_data"]["amount"]==2000 and amount_log["after_data"]["amount"]==1500
+                assert all(row["operator_id"]==1 and row["created_at"] for row in history)
+                assert next(row for row in history if row["operation_type"]=="void")["after_data"]["void_reason"]=="重复登记，保留记录作废"
+                async with f() as db:assert (await db.get(ExpenseFundItem,iid)).amount==1500
+                for action in ("approve","reject"):
+                    assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":action})).status_code==400
+                assert (await c.put(url,headers=auth(1),json={"amount":100})).status_code==400
+                assert (await c.request("DELETE",url,headers=auth(1),json={"reason":"再作废"})).status_code==400
+                print("FUND_CONTROL_ACTUAL",json.dumps({"supervisor_edit":{"status":403,"body":edit_denied.json()},"supervisor_delete":{"status":403,"body":delete_denied.json()},"edited":changed.json(),"voided":data,"available":[before["fund"]["available"],after_edit["fund"]["available"],after_void["fund"]["available"]],"amount_log":amount_log,"history":history},ensure_ascii=False))
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:27: in run
+    await topup(c,fid); iid,url=await path_for(c,fid)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x137975280>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+______________ test_approved_cannot_edit_void_or_replace_receipt _______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_approved_cannot_edit_void0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137c89e80>
+
+    def test_approved_cannot_edit_void_or_replace_receipt(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);iid,url=await path_for(c,fid)
+                assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})).status_code==200
+                before=await finance_snapshot(f)
+                changed=await c.put(url,headers=auth(1),json={"amount":1500})
+                deleted=await c.request("DELETE",url,headers=auth(1),json={"reason":"不能动已通过"})
+                photo=await c.post(url+"/upload-receipt",headers=auth(1),files={"file":("receipt.png",png(),"image/png")})
+                assert changed.status_code==photo.status_code==400 and changed.json()["detail"]=="该开销已审核通过 不能修改"
+                assert deleted.status_code==400 and deleted.json()["detail"]=="该开销已审核通过 不能作废"
+                assert before==await finance_snapshot(f)
+                print("APPROVED_CONTROL",json.dumps({"edit":changed.json(),"void":deleted.json()},ensure_ascii=False))
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:72: in run
+    await topup(c,fid);iid,url=await path_for(c,fid)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x137c89580>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+___________________ test_other_roles_cannot_change_record[2] ___________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_other_roles_cannot_change0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137c1a990>, uid = 2
+
+    @pytest.mark.parametrize("uid",[2,3,5])
+    def test_other_roles_cannot_change_record(tmp_path,monkeypatch,uid):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+                assert (await c.put(url,headers=auth(uid),json={"amount":100})).status_code==403
+                assert (await c.request("DELETE",url,headers=auth(uid),json={"reason":"无权"})).status_code==403
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:89: in run
+    await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x130bfec90>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+___________________ test_other_roles_cannot_change_record[3] ___________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_other_roles_cannot_change1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137c1b710>, uid = 3
+
+    @pytest.mark.parametrize("uid",[2,3,5])
+    def test_other_roles_cannot_change_record(tmp_path,monkeypatch,uid):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+                assert (await c.put(url,headers=auth(uid),json={"amount":100})).status_code==403
+                assert (await c.request("DELETE",url,headers=auth(uid),json={"reason":"无权"})).status_code==403
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:89: in run
+    await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x137b36cc0>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+___________________ test_other_roles_cannot_change_record[5] ___________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_other_roles_cannot_change2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137fbeab0>, uid = 5
+
+    @pytest.mark.parametrize("uid",[2,3,5])
+    def test_other_roles_cannot_change_record(tmp_path,monkeypatch,uid):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+                assert (await c.put(url,headers=auth(uid),json={"amount":100})).status_code==403
+                assert (await c.request("DELETE",url,headers=auth(uid),json={"reason":"无权"})).status_code==403
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:89: in run
+    await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x137f342f0>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+_______________ test_warehouse_scope_and_protected_linked_items ________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_warehouse_scope_and_prote0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x150891610>
+
+    def test_warehouse_scope_and_protected_linked_items(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);iid,url=await path_for(c,fid)
+                async with f() as db:
+                    db.add(User(id=7,username="other",display_name="外仓老板",password_hash="unused",role="warehouse_admin",warehouse_id=2))
+                    db.add(UserWarehouse(user_id=7,warehouse_id=2));await db.commit()
+                for suffix, method, body in [("","PUT",{"amount":100}),("","DELETE",{"reason":"跨仓"})]:
+                    assert (await c.request(method,url+suffix,headers=auth(7),json=body)).status_code==404
+                assert (await c.put(f"{BASE}/accounts/999/items/{iid}",headers=auth(1),json={"amount":100})).status_code==404
+                async with f() as db:
+                    a=EmployeeAdvance(warehouse_id=1,employee_id=1,amount=100,advance_date=datetime(2026,10,19).date(),period="2026-10",fund_account_id=fid,fund_item_id=iid,approval_status="pending")
+                    db.add(a);await db.commit()
+                assert (await c.put(url,headers=auth(1),json={"amount":100})).status_code==400
+                assert (await c.request("DELETE",url,headers=auth(1),json={"reason":"误走入口"})).status_code==400
+                async with f() as db:
+                    a=(await db.execute(select(EmployeeAdvance))).scalars().one();a.fund_item_id=None
+                    db.add(Reimbursement(warehouse_id=1,employee_id=4,submit_date=datetime(2026,10,19),total_amount=2000,status="fund_linked",fund_item_id=iid,is_fund_linked="1"));await db.commit()
+                assert (await c.put(url,headers=auth(1),json={"amount":100})).status_code==400
+                assert (await c.request("DELETE",url,headers=auth(1),json={"reason":"误走入口"})).status_code==400
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:115: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:98: in run
+    await topup(c,fid);iid,url=await path_for(c,fid)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x150892450>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+______________ test_history_failure_rolls_back_every_change[edit] ______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_history_failure_rolls_bac2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x150835d30>
+operation = 'edit'
+
+    @pytest.mark.parametrize("operation",["edit","void","receipt"])
+    def test_history_failure_rolls_back_every_change(tmp_path,monkeypatch,operation):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+                async def fail(*args,**kwargs):raise HTTPException(500,"模拟留痕失败")
+                monkeypatch.setattr(controls,"record_history",fail)
+                if operation=="edit":result=await c.put(url,headers=auth(1),json={"amount":1000})
+                elif operation=="void":result=await c.request("DELETE",url,headers=auth(1),json={"reason":"回滚验收"})
+                else:result=await c.post(url+"/upload-receipt",headers=auth(1),files={"file":("receipt.png",png(),"image/png")})
+                assert result.status_code==500 and before==await finance_snapshot(f)
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:122: in run
+    await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x15086b470>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+______________ test_history_failure_rolls_back_every_change[void] ______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_history_failure_rolls_bac3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x137d8da00>
+operation = 'void'
+
+    @pytest.mark.parametrize("operation",["edit","void","receipt"])
+    def test_history_failure_rolls_back_every_change(tmp_path,monkeypatch,operation):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+                async def fail(*args,**kwargs):raise HTTPException(500,"模拟留痕失败")
+                monkeypatch.setattr(controls,"record_history",fail)
+                if operation=="edit":result=await c.put(url,headers=auth(1),json={"amount":1000})
+                elif operation=="void":result=await c.request("DELETE",url,headers=auth(1),json={"reason":"回滚验收"})
+                else:result=await c.post(url+"/upload-receipt",headers=auth(1),files={"file":("receipt.png",png(),"image/png")})
+                assert result.status_code==500 and before==await finance_snapshot(f)
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:122: in run
+    await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x137d8f530>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+____________ test_history_failure_rolls_back_every_change[receipt] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_history_failure_rolls_bac4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x150809010>
+operation = 'receipt'
+
+    @pytest.mark.parametrize("operation",["edit","void","receipt"])
+    def test_history_failure_rolls_back_every_change(tmp_path,monkeypatch,operation):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+                async def fail(*args,**kwargs):raise HTTPException(500,"模拟留痕失败")
+                monkeypatch.setattr(controls,"record_history",fail)
+                if operation=="edit":result=await c.put(url,headers=auth(1),json={"amount":1000})
+                elif operation=="void":result=await c.request("DELETE",url,headers=auth(1),json={"reason":"回滚验收"})
+                else:result=await c.post(url+"/upload-receipt",headers=auth(1),files={"file":("receipt.png",png(),"image/png")})
+                assert result.status_code==500 and before==await finance_snapshot(f)
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:122: in run
+    await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x15086c800>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+______ test_void_restores_all_available_queries_and_preserves_legacy_rows ______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_void_restores_all_availab0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x136f855b0>
+
+    def test_void_restores_all_available_queries_and_preserves_legacy_rows(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid)
+                async with f() as db:
+                    old=ExpenseFundItem(fund_id=fid,expense_date=datetime(2026,9,1),category="旧开销",amount=123,description="原样保留",review_status="pending",cost_record_only=False)
+                    db.add(old);await db.commit();oldid=old.id
+                iid,url=await path_for(c,fid)
+                before=await finance_snapshot(f)
+                assert (await c.request("DELETE",url,headers=auth(1),json={"reason":"不占额度"})).status_code==200
+                after=await finance_snapshot(f)
+                assert before["expense_fund_items"][0]==after["expense_fund_items"][0]
+                assert len(before["expense_fund_items"])==len(after["expense_fund_items"])==2
+                from app.services.employee_advance_funding import fund_available_amount
+                from app.models import ExpenseFund
+                async with f() as db: assert await fund_available_amount(db,await db.get(ExpenseFund,fid))==9877
+                rows=(await c.get(f"{BASE}/accounts/{fid}/disbursements",headers=auth(1))).json()["data"]
+                assert rows[0]["used_amount"]==123 and iid not in [x["item_id"] for x in rows[0]["items"]]
+                assert (await c.post(BASE+"/recharge/request",headers=auth(4),json={"amount":100})).status_code==200
+                req=(await c.get(BASE+"/recharge/requests",headers=auth(1))).json()["data"][0]
+                assert req["available"]==9877
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:153: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:139: in run
+    iid,url=await path_for(c,fid)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x137b5bc20>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 -123.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+______________ test_amount_validation_currency_and_rejected_entry ______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_amount_validation_currenc0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1352a1d60>
+
+    def test_amount_validation_currency_and_rejected_entry(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);iid,url=await path_for(c,fid)
+                assert (await c.put(url,headers=auth(1),json={"amount":11000})).status_code==400
+                assert (await c.put(url,headers=auth(1),json={"amount":0})).status_code==422
+                assert (await c.put(url,headers=auth(1),json={"currency":"CNY"})).status_code==400
+                assert (await c.put(url,headers=auth(1),json={"receipt":""})).status_code==400
+                assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"reject"})).status_code==200
+                before=(await values(c,fid))["fund"]["available"]
+                assert (await c.request("DELETE",url,headers=auth(1),json={"reason":"已驳回记录保留作废"})).status_code==200
+                assert (await values(c,fid))["fund"]["available"]==before==10000
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:159: in run
+    await topup(c,fid);iid,url=await path_for(c,fid)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x137b34320>, fid = 1
+
+    async def path_for(c,fid):
+>       result=await spend(c,fid);assert result.status_code==200,result.text
+E       AssertionError: {"detail":"超出备用金可用余额（可用 0.00），请先充值或核减"}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:20: AssertionError
+___________ test_original_financial_functions_and_formula_preserved ____________
+
+    def test_original_financial_functions_and_formula_preserved():
+        root=Path(__file__).resolve().parents[2]
+        for path in ("backend/app/api/v1/reimbursement.py","backend/app/api/v1/payroll.py","backend/app/api/v1/employee_advance.py","backend/app/services/flow_rules.py"):
+>           assert (root/path).read_text()==subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True)
+E           assert 'from app.cor...: "类别添加成功"}\n' == 'from fastapi...: "类别添加成功"}\n'
+E             
+E             + from app.core.round2_access import mutation_scope, own_scope
+E               from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
+E               from sqlalchemy.ext.asyncio import AsyncSession
+E               from sqlalchemy import select, func
+E               from app.core.timezone import thai_now, thai_today
+E               from datetime import datetime, timedelta...
+E             
+E             ...Full output truncated (584 lines hidden), use '-vv' to show
+
+../permissions-round2-20261028/backend/tests/test_fund_item_controls.py:174: AssertionError
+_____ test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost _____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_missing_rejected_uploaded0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x13788bb60>
+
+    def test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                assert (await topup(c,fid)).status_code==200
+                before=await values(c,fid); snapshot=await finance_snapshot(f)
+                bad=await c.post(f"{BASE}/accounts/{fid}/items",headers=auth(4),json=BODY)
+                assert bad.status_code==400 and bad.json()=={"detail":"请上传开销凭证"}
+                assert await finance_snapshot(f)==snapshot
+                path=await receipt(c,fid)
+                assert path.startswith(f"/uploads/fund_receipts/1/{fid}/")
+                assert await finance_snapshot(f)==snapshot  # 上传本身不生成任何账目。
+                made=await c.post(f"{BASE}/accounts/{fid}/items",headers=auth(4),json={**BODY,"receipt":path})
+                assert made.status_code==200, made.text
+                assert made.json()["receipt"]==path
+                iid=made.json()["id"]
+                listed=(await c.get(f"{BASE}/accounts/{fid}/items",headers=auth(1))).json()["data"]
+                assert listed[0]["receipt"]==path and listed[0]["id"]==iid
+                approved=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})
+                assert approved.status_code==200 and approved.json()["message"]=="已通过1条记录"
+                after=await values(c,fid)
+                for field in ("expense_count","expense_amount","flow_count","flow_amount","company_cash"):
+                    assert before[field]==after[field]
+                assert after["fund"]["available"]==8000
+                print("FUND_RECEIPT_ACTUAL",json.dumps({"missing":{"status":bad.status_code,"body":bad.json()},"uploaded_receipt":path,"created":made.json(),"list_row":listed[0],"approved":approved.json()},ensure_ascii=False))
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+>           assert (await topup(c,fid)).status_code==200
+E           assert 403 == 200
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:21: AssertionError
+___ test_old_missing_kept_and_approve_rejected_then_manual_attachment_works ____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_old_missing_kept_and_appr0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x150f9c350>
+
+    def test_old_missing_kept_and_approve_rejected_then_manual_attachment_works(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid)
+                async with f() as db:
+                    for status in ("pending","approved","rejected"):
+                        db.add(ExpenseFundItem(fund_id=fid,expense_date=datetime(2026,9,1),category="旧耗材",amount=123,
+                            description="历史无凭证",receipt=None,review_status=status,cost_record_only=False))
+                    await db.commit()
+                    old=(await db.execute(select(ExpenseFundItem).order_by(ExpenseFundItem.id))).scalars().all()
+                    iid=old[0].id
+                before=await finance_snapshot(f)
+                listed=(await c.get(f"{BASE}/accounts/{fid}/items",headers=auth(1))).json()["data"]
+                assert len(listed)==3 and sum(x["amount"] for x in listed)==369 and all(x["receipt"] is None for x in listed)
+                bad=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})
+                assert bad.status_code==400 and "该开销没有凭证" in bad.json()["detail"]
+                assert await finance_snapshot(f)==before
+                # 旧入口保留：用户主动为历史待审记录补图后可以审核，不自动改旧记录。
+                up=await c.post(f"{BASE}/accounts/{fid}/items/{iid}/upload-receipt",headers=auth(1),files={"file":("receipt.png",png(),"image/png")})
+                assert up.status_code==200
+                assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})).status_code==200
+                print("LEGACY_RECEIPTS",{"count":3,"amount":369,"approve_missing":bad.json(),"records_preserved":True})
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:89: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+            await topup(c,fid)
+            async with f() as db:
+                for status in ("pending","approved","rejected"):
+                    db.add(ExpenseFundItem(fund_id=fid,expense_date=datetime(2026,9,1),category="旧耗材",amount=123,
+                        description="历史无凭证",receipt=None,review_status=status,cost_record_only=False))
+                await db.commit()
+                old=(await db.execute(select(ExpenseFundItem).order_by(ExpenseFundItem.id))).scalars().all()
+                iid=old[0].id
+            before=await finance_snapshot(f)
+            listed=(await c.get(f"{BASE}/accounts/{fid}/items",headers=auth(1))).json()["data"]
+            assert len(listed)==3 and sum(x["amount"] for x in listed)==369 and all(x["receipt"] is None for x in listed)
+            bad=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"approve"})
+>           assert bad.status_code==400 and "该开销没有凭证" in bad.json()["detail"]
+E           assert (409 == 400)
+E            +  where 409 = <Response [409 Conflict]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:82: AssertionError
+__________ test_batch_with_missing_receipt_rolls_back_other_approvals __________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_batch_with_missing_receip0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1539e89e0>
+
+    def test_batch_with_missing_receipt_rolls_back_other_approvals(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid); path=await receipt(c,fid)
+                made=(await c.post(f"{BASE}/accounts/{fid}/items",headers=auth(4),json={**BODY,"receipt":path})).json()
+                async with f() as db:
+                    old=ExpenseFundItem(fund_id=fid,expense_date=datetime(2026,9,1),category="报销",amount=100,
+                        description="手工类别不能冒充关联报销绕过校验",receipt="  ",review_status="pending")
+                    db.add(old);await db.commit(); missing=old.id
+                before=await finance_snapshot(f)
+                result=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[made["id"],missing],"action":"approve"})
+                assert result.status_code==400
+                assert await finance_snapshot(f)==before
+                # 驳回不需要凭证；不触及原审核扣款/退款流程。
+                assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[missing],"action":"reject","remark":"无有效凭证"})).status_code==200
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+            await topup(c,fid); path=await receipt(c,fid)
+            made=(await c.post(f"{BASE}/accounts/{fid}/items",headers=auth(4),json={**BODY,"receipt":path})).json()
+            async with f() as db:
+                old=ExpenseFundItem(fund_id=fid,expense_date=datetime(2026,9,1),category="报销",amount=100,
+                    description="手工类别不能冒充关联报销绕过校验",receipt="  ",review_status="pending")
+                db.add(old);await db.commit(); missing=old.id
+            before=await finance_snapshot(f)
+>           result=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[made["id"],missing],"action":"approve"})
+E           KeyError: 'id'
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:102: KeyError
+________________ test_scope_roles_other_fund_and_legacy_uploads ________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-410/test_scope_roles_other_fund_an0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x153dbfd70>
+
+    def test_scope_roles_other_fund_and_legacy_uploads(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);path=await receipt(c,fid)
+                async with f() as db:
+                    db.add(User(id=7,username="other",display_name="外仓",password_hash="unused",role="warehouse_admin",warehouse_id=2))
+                    db.add(UserWarehouse(user_id=7,warehouse_id=2))
+                    other=ExpenseFund(warehouse_id=1,employee_id=1,receive_date=datetime(2026,10,19),amount=1000,purpose="另一账户",remaining_balance=1000)
+                    db.add(other);await db.commit();oid=other.id
+                assert (await c.post(f"{BASE}/accounts/{oid}/items",headers=auth(1),json={**BODY,"amount":100,"receipt":path})).status_code==400
+                for uid in (2,5,7):
+                    await set_perms(f,uid,["备用金管理"])
+                    result=await c.post(f"{BASE}/accounts/{fid}/upload-receipt",headers=auth(uid),files={"file":("receipt.png",png(),"image/png")})
+                    assert result.status_code==403, result.text
+                await set_perms(f,3,["备用金管理"])
+                assert (await c.post(f"{BASE}/accounts/{fid}/upload-receipt",headers=auth(3),files={"file":("receipt.png",png(),"image/png")})).status_code==200
+>       asyncio.run(run())
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+            await topup(c,fid);path=await receipt(c,fid)
+            async with f() as db:
+                db.add(User(id=7,username="other",display_name="外仓",password_hash="unused",role="warehouse_admin",warehouse_id=2))
+                db.add(UserWarehouse(user_id=7,warehouse_id=2))
+                other=ExpenseFund(warehouse_id=1,employee_id=1,receive_date=datetime(2026,10,19),amount=1000,purpose="另一账户",remaining_balance=1000)
+                db.add(other);await db.commit();oid=other.id
+            assert (await c.post(f"{BASE}/accounts/{oid}/items",headers=auth(1),json={**BODY,"amount":100,"receipt":path})).status_code==400
+            for uid in (2,5,7):
+                await set_perms(f,uid,["备用金管理"])
+                result=await c.post(f"{BASE}/accounts/{fid}/upload-receipt",headers=auth(uid),files={"file":("receipt.png",png(),"image/png")})
+                assert result.status_code==403, result.text
+            await set_perms(f,3,["备用金管理"])
+>           assert (await c.post(f"{BASE}/accounts/{fid}/upload-receipt",headers=auth(3),files={"file":("receipt.png",png(),"image/png")})).status_code==200
+E           assert 403 == 200
+E            +  where 403 = <Response [403 Forbidden]>.status_code
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:125: AssertionError
+________________ test_payout_and_other_business_paths_unchanged ________________
+
+    def test_payout_and_other_business_paths_unchanged():
+        root=Path(__file__).resolve().parents[2]
+        for path in ("backend/app/api/v1/reimbursement.py","backend/app/api/v1/payroll.py","backend/app/api/v1/employee_advance.py"):
+>           assert (root/path).read_text()==subprocess.check_output(["git","show",f"14e2541:{path}"],cwd=root,text=True)
+E           assert 'from app.cor...: "类别添加成功"}\n' == 'from fastapi...: "类别添加成功"}\n'
+E             
+E             + from app.core.round2_access import mutation_scope, own_scope
+E               from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
+E               from sqlalchemy.ext.asyncio import AsyncSession
+E               from sqlalchemy import select, func
+E               from app.core.timezone import thai_now, thai_today
+E               from datetime import datetime, timedelta...
+E             
+E             ...Full output truncated (584 lines hidden), use '-vv' to show
+
+../permissions-round2-20261028/backend/tests/test_fund_receipts.py:132: AssertionError
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_round2_permissions.py: 209 warnings
+tests/test_procurement_controls_round9.py: 335 warnings
+tests/test_fund_disbursement.py: 63 warnings
+tests/test_fund_item_controls.py: 66 warnings
+tests/test_fund_receipts.py: 65 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_fund_disbursement.py: 18 warnings
+tests/test_fund_item_controls.py: 11 warnings
+tests/test_fund_receipts.py: 15 warnings
+  /private/tmp/permissions-round2-20261028/backend/app/api/v1/expense_fund.py:177: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    receive_date=datetime.utcnow(), amount=0, purpose="",
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED ../permissions-round2-20261028/backend/tests/test_round2_permissions.py::test_every_endpoint[super-admin-GET /recharge/1]
+FAILED ../permissions-round2-20261028/backend/tests/test_round2_permissions.py::test_every_endpoint[super-admin-GET /customers/1]
+FAILED ../permissions-round2-20261028/backend/tests/test_round2_permissions.py::test_every_endpoint[super-admin-POST /upload/recharge-screenshot]
+FAILED ../permissions-round2-20261028/backend/tests/test_round2_permissions.py::test_warehouse_isolation[1]
+FAILED ../permissions-round2-20261028/backend/tests/test_round2_permissions.py::test_warehouse_isolation[3]
+FAILED ../permissions-round2-20261028/backend/tests/test_round2_permissions.py::test_warehouse_isolation[4]
+FAILED ../permissions-round2-20261028/backend/tests/test_round2_permissions.py::test_route_inventory_has_no_missing_endpoint
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[1]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[3]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[4]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[None-\u8bf7\u9009\u62e9\u5907\u7528\u91d1\u62e8\u4ed8\u8d26\u6237]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[2-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[3-\u4ed8\u6b3e\u8d26\u6237\u5e01\u79cd\u5fc5\u987b\u4e0e\u5907\u7528\u91d1\u8d26\u6237\u4e00\u81f4]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[999-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[inactive-\u4ed8\u6b3e\u8d26\u6237\u5df2\u505c\u7528]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[poor-\u4ed8\u6b3e\u8d26\u6237\u4f59\u989d\u4e0d\u8db3]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_history_failure_rolls_back_account_fund_expense_and_approval[False]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_history_failure_rolls_back_account_fund_expense_and_approval[True]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_fifo_sources_multiple_disbursements_and_cross_warehouse
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_new_fund_employee_advance_records_usage_without_second_cost
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_all_warehouse_admin_review_uses_request_warehouse_not_primary
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_disbursement.py::test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_supervisor_denied_admin_edit_void_history_and_balance
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_approved_cannot_edit_void_or_replace_receipt
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_other_roles_cannot_change_record[2]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_other_roles_cannot_change_record[3]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_other_roles_cannot_change_record[5]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_warehouse_scope_and_protected_linked_items
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_history_failure_rolls_back_every_change[edit]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_history_failure_rolls_back_every_change[void]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_history_failure_rolls_back_every_change[receipt]
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_void_restores_all_available_queries_and_preserves_legacy_rows
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_amount_validation_currency_and_rejected_entry
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_item_controls.py::test_original_financial_functions_and_formula_preserved
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_receipts.py::test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_receipts.py::test_old_missing_kept_and_approve_rejected_then_manual_attachment_works
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_receipts.py::test_batch_with_missing_receipt_rolls_back_other_approvals
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_receipts.py::test_scope_roles_other_fund_and_legacy_uploads
+FAILED ../permissions-round2-20261028/backend/tests/test_fund_receipts.py::test_payout_and_other_business_paths_unchanged

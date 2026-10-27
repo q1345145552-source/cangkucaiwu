@@ -17,11 +17,14 @@ import {
 
 export default function ExpenseFundPage() {
   const cost=useCostIdentity();
+  const requestEpoch = useRef(0);
   const receiptCache=useRef<{file:File;path:string}|null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
   const isAdmin = user?.role === "warehouse_admin";
+  const canReview = isAdmin || user?.role === "staff";
+  const requestStates: Record<string, string> = {pending: "待核验", verified: "待批准", approved_ready: "待执行", executed: "已执行", approved: "历史已处理（不可直接执行）", rejected: "已驳回"};
 
   // ====== Tab ======
   const [tab, setTab] = useState<"manage" | "review">("manage");
@@ -73,7 +76,19 @@ export default function ExpenseFundPage() {
   const [rechargeHistory, setRechargeHistory] = useState<Record<number, any[]>>({});
   const [rechargeHistoryLoading, setRechargeHistoryLoading] = useState<Record<number, boolean>>({});
 
-  useEffect(() => { if (!getToken()) router.push("/login"); loadAll(); }, []);
+  useEffect(() => {
+    const reset = () => {
+      requestEpoch.current++;
+      setShowCreate(false); setShowTopUp(false); setShowExpense(false); setVoidTarget(null);
+      setAccounts([]); setItems({}); setReviewData([]); setRechargeData([]); setSelectedIds(new Set());
+      setRechargeHistory({}); setDisbursements({}); setTab("manage");
+      if (!getToken()) router.push("/login");
+      else if (user) loadAll();
+    };
+    reset();
+    window.addEventListener("warehouse-changed", reset);
+    return () => { requestEpoch.current++; window.removeEventListener("warehouse-changed", reset); };
+  }, [user]);
 
   async function loadAll() {
     await loadAccounts();
@@ -82,17 +97,21 @@ export default function ExpenseFundPage() {
 
   // ====== Management logic ======
   async function loadAccounts() {
+    const epoch = requestEpoch.current;
     setLoading(true);
     try {
       const r = await api.get<any>("/expense-fund/accounts");
+      if (epoch !== requestEpoch.current) return;
       setAccounts(r.data || []);
     } catch (err) { console.error(err); }
     setLoading(false);
   }
 
   async function loadEmployees() {
+    const epoch = requestEpoch.current;
     try {
       const r = await api.get<any>("/expense-fund/employees");
+      if (epoch !== requestEpoch.current) return;
       setEmployees(r.data || []);
       const emps = (r.data || []).map((a: any) => ({ id: a.id, name: a.display_name }));
       const seen = new Set<number>();
@@ -130,7 +149,7 @@ export default function ExpenseFundPage() {
     setRechargeReviewId(request?.id ?? null);
     setTopUpDate(new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }));
     setPaymentAccountId(""); setPaymentAccounts([]); setShowTopUp(true);
-    if (isAdmin) {
+    if (request) {
       try {
         const r = await api.get<any>("/expense-fund/payment-accounts");
         const matching = (r.data || []).filter((a: any) => (a.currency || "THB") === (acc.currency || "THB"));
@@ -141,16 +160,12 @@ export default function ExpenseFundPage() {
   }
   async function doTopUp() {
     if (!topUpAccount || !topUpAmount || topUpBusy) return;
-    if (isAdmin && !paymentAccountId) { toast("error", "请选择备用金拨付账户"); return; }
+    if (rechargeReviewId !== null && !paymentAccountId) { toast("error", "请选择备用金拨付账户"); return; }
     setTopUpBusy(true);
     try {
-      if (isAdmin) {
-        // 管理员直接充值
-        const fields = { payment_account_id: +paymentAccountId, receive_date: topUpDate };
-        const r = rechargeReviewId !== null
-          ? await api.post<MessageResponse>("/expense-fund/recharge/review", { request_id: rechargeReviewId, action: "approve", ...fields })
-          : await api.post<MessageResponse>(`/expense-fund/accounts/${topUpAccount.id}/topup`, { amount: +topUpAmount, ...fields });
-        toast("success", r.message || "充值成功");
+      if (rechargeReviewId !== null) {
+        const r = await api.post<MessageResponse>("/expense-fund/recharge/execute", { request_id: rechargeReviewId, action: "execute", payment_account_id: +paymentAccountId, receive_date: topUpDate });
+        toast("success", r.message || "拨付已执行");
       } else {
         // 财务提交充值申请
         const r = await api.post<MessageResponse>("/expense-fund/recharge/request", { amount: +topUpAmount, reason: topUpReason });
@@ -238,6 +253,7 @@ export default function ExpenseFundPage() {
   }, [tab, reviewTab]);
 
   async function loadReviews() {
+    const epoch = requestEpoch.current;
     setReviewLoading(true);
     try {
       const params = new URLSearchParams({ page_size: "100" });
@@ -246,6 +262,7 @@ export default function ExpenseFundPage() {
       if (endDate) params.set("end_date", endDate);
       if (selCurrency) params.set("currency", selCurrency);
       const r = await api.get<any>(`/expense-fund/review/pending?${params.toString()}`);
+      if (epoch !== requestEpoch.current) return;
       setReviewData(r.data || []);
     } catch (err) { console.error("审核数据加载失败:", err); }
     setReviewLoading(false); setSelectedIds(new Set());
@@ -259,7 +276,7 @@ export default function ExpenseFundPage() {
     setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
 
-  async function doReview(action: "approve" | "reject",costConfirmations:Record<number,CostConfirmation>={}) {
+  async function doReview(action: "approve" | "reject" | "verify",costConfirmations:Record<number,CostConfirmation>={}) {
     if (selectedIds.size === 0) { toast("error", "请先勾选要审核的记录"); return; }
     try {
       await api.post("/expense-fund/review/batch", { item_ids: Array.from(selectedIds), action,cost_confirmations:costConfirmations, remark: action === "reject" ? rejectRemark : undefined });
@@ -268,9 +285,9 @@ export default function ExpenseFundPage() {
     } catch (err: any) { if(!cost.capture(err,data=>doReview(action,{...costConfirmations,[Number(data.target_ref?.split(':')[1])]:data})))toast("error", err.message || "审核失败"); }
   }
 
-  async function approveOne(id: number,costConfirmation?:CostConfirmation) {
+  async function approveOne(id: number,costConfirmation?:CostConfirmation, action: "approve" | "verify" = "approve") {
     try {
-      await api.post("/expense-fund/review/batch", { item_ids: [id], action: "approve",cost_confirmation:costConfirmation });
+      await api.post("/expense-fund/review/batch", { item_ids: [id], action,cost_confirmation:costConfirmation });
       toast("success", "已通过"); loadReviews();
     } catch (err: any) { if(!cost.capture(err,data=>approveOne(id,data)))toast("error", err.message || "审核失败"); }
   }
@@ -287,17 +304,25 @@ export default function ExpenseFundPage() {
 
   // Recharge Request functions
   async function loadRechargeRequests() {
+    const epoch = requestEpoch.current;
     setRechargeLoading(true);
     try {
-      const r = await api.get<any>("/expense-fund/recharge/requests?status=pending&page_size=100");
+      const r = await api.get<any>("/expense-fund/recharge/requests?page_size=100");
+      if (epoch !== requestEpoch.current) return;
       setRechargeData(r.data || []);
     } catch (err) { console.error(err); }
     setRechargeLoading(false);
   }
-  async function approveRecharge(reqId: number) {
+  async function executeRecharge(reqId: number) {
     const request = rechargeData.find(r => r.id === reqId);
     if (request) await openTopUp({ id: request.fund_id, employee_name: request.applicant_name,
       currency: request.currency, current_balance: request.current_balance, available: request.available, fund_limit: request.fund_limit }, request);
+  }
+  async function reviewRecharge(reqId: number, action: "verify" | "approve") {
+    try {
+      const result = await api.post<MessageResponse>("/expense-fund/recharge/review", {request_id: reqId, action});
+      toast("success", result.message || "操作成功"); loadRechargeRequests();
+    } catch (err) { toast("error", err instanceof Error ? err.message : "操作失败"); }
   }
   async function loadDisbursements(id: number) {
     try {
@@ -358,7 +383,7 @@ export default function ExpenseFundPage() {
         >
           <Wallet size={15} />管理
         </button>
-        {isAdmin && (
+        {canReview && (
           <button
             onClick={() => setTab("review")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
@@ -450,8 +475,8 @@ export default function ExpenseFundPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => openTopUp(acc)} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100 transition-colors flex items-center gap-1"><ArrowUp size={12} />充值</button>
-                              <button onClick={() => openExpense(acc)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-1"><FileText size={12} />开销</button>
+                              {acc.can_request && <button onClick={() => openTopUp(acc)} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100 transition-colors flex items-center gap-1"><ArrowUp size={12} />申请补充</button>}
+                              {acc.can_record && <button onClick={() => openExpense(acc)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-1"><FileText size={12} />开销</button>}
                             </div>
                           </td>
                         </tr>
@@ -541,8 +566,8 @@ export default function ExpenseFundPage() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2 mt-3">
-                                <button onClick={() => openTopUp(acc)} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100 transition-colors flex items-center gap-1"><RefreshCw size={11} />充值</button>
-                                <button onClick={() => openExpense(acc)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-1"><Plus size={11} />添加开销</button>
+                                {acc.can_request && <button onClick={() => openTopUp(acc)} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100 transition-colors flex items-center gap-1"><RefreshCw size={11} />申请补充</button>}
+                                {acc.can_record && <button onClick={() => openExpense(acc)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-1"><Plus size={11} />添加开销</button>}
                               </div>
                             </td>
                           </tr>
@@ -559,7 +584,7 @@ export default function ExpenseFundPage() {
           {/* === Modals for management === */}
 
           {/* New account modal */}
-          {showCreate && (
+          {isAdmin && showCreate && (
             <div className="modal-overlay z-50" onClick={() => setShowCreate(false)}>
               <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
                 <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2">
@@ -636,10 +661,10 @@ export default function ExpenseFundPage() {
               <div className="bg-green-50 rounded-lg p-3">
                 <div className="text-xs text-green-600 mb-1">{topUpAccount?.employee_name}</div>
                 <div className="flex items-center justify-between text-sm"><span className="text-gray-500">当前余额</span><span className="font-bold text-green-700">{fmtMoney(topUpAccount?.available ?? topUpAccount?.current_balance, topUpAccount?.currency)}</span></div>
-                <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">{fmtMoney(topUpAccount?.fund_limit || 5000, topUpAccount?.currency)}</span></div>{!isAdmin && (<div className="mt-3"><label className="form-label text-xs">充值事由</label><input className="form-input text-sm" value={topUpReason} onChange={e => setTopUpReason(e.target.value)} placeholder="请输入充值原因" /></div>)}
+                <div className="flex items-center justify-between text-sm mt-1"><span className="text-gray-500">账户上限</span><span className="font-medium text-gray-700">{fmtMoney(topUpAccount?.fund_limit || 5000, topUpAccount?.currency)}</span></div>{rechargeReviewId === null && (<div className="mt-3"><label className="form-label text-xs">充值事由</label><input className="form-input text-sm" value={topUpReason} onChange={e => setTopUpReason(e.target.value)} placeholder="请输入充值原因" /></div>)}
               </div>
               <div><label className="form-label">充值金额</label><input type="number" className="form-input text-lg font-bold" value={topUpAmount} onChange={e => setTopUpAmount(e.target.value)} placeholder="输入金额" autoFocus readOnly={rechargeReviewId !== null} /></div>
-              {isAdmin && <>
+              {rechargeReviewId !== null && <>
                 <div><label className="form-label">拨付日期</label><input aria-label="拨付日期" type="date" className="form-input" value={topUpDate} onChange={e => setTopUpDate(e.target.value)} /></div>
                 <div><label className="form-label">公司付款账户</label><select aria-label="公司付款账户" className="form-input" value={paymentAccountId} onChange={e => setPaymentAccountId(e.target.value)}><option value="">请选择备用金拨付账户</option>{paymentAccounts.map(a => <option key={a.id} value={a.id}>{a.account_name}（{fmtMoney(a.current_balance, a.currency)}）</option>)}</select>
                 {!paymentAccounts.length && <p className="text-xs text-red-500 mt-1">没有同币种可用账户，请先到收款账户中建立或启用账户</p>}</div>
@@ -647,7 +672,7 @@ export default function ExpenseFundPage() {
             </div>
             <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm">取消</button>
-              <button onClick={doTopUp} disabled={topUpBusy || (isAdmin && !paymentAccounts.length)} className="btn-primary text-sm bg-green-600 hover:bg-green-700">{topUpBusy ? "提交中…" : "确认充值"}</button>
+              <button onClick={doTopUp} disabled={topUpBusy || (rechargeReviewId !== null && !paymentAccounts.length)} className="btn-primary text-sm bg-green-600 hover:bg-green-700">{topUpBusy ? "提交中…" : rechargeReviewId !== null ? "执行拨付" : "提交补充申请"}</button>
             </div>
           </div>
         </div>
@@ -655,7 +680,7 @@ export default function ExpenseFundPage() {
 
 
       {/* ========== REVIEW TAB ========== */}
-      {tab === "review" && (
+      {canReview && tab === "review" && (
         <>
           {/* Sub-tabs */}
           <div className="flex items-center gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-gray-100 w-fit">
@@ -701,8 +726,9 @@ export default function ExpenseFundPage() {
               <button onClick={loadReviews} className="btn-primary text-sm flex items-center gap-1 py-1.5"><Search size={14} />查询</button>
               {selectedIds.size > 0 && (
                 <div className="flex items-center gap-2 ml-auto">
-                  <button onClick={() => doReview("approve")} className="btn-primary text-sm bg-green-600 hover:bg-green-700 flex items-center gap-1"><CheckC size={15} />通过所选 ({selectedIds.size})</button>
-                  <button onClick={() => doReview("reject")} className="btn-secondary text-sm text-red-600 border-red-300 hover:bg-red-50 flex items-center gap-1"><XCircle size={15} />驳回所选</button>
+                  {isAdmin && <button onClick={() => doReview("approve")} className="btn-primary text-sm bg-green-600 hover:bg-green-700 flex items-center gap-1"><CheckC size={15} />通过所选 ({selectedIds.size})</button>}
+                  {isAdmin && <button onClick={() => doReview("reject")} className="btn-secondary text-sm text-red-600 border-red-300 hover:bg-red-50 flex items-center gap-1"><XCircle size={15} />驳回所选</button>}
+                  <button className="btn-secondary" onClick={() => doReview("verify")}>核验所选</button>
                   <input className="form-input text-sm py-1 w-36" placeholder="驳回原因" value={rejectRemark} onChange={e => setRejectRemark(e.target.value)} />
                 </div>
               )}
@@ -756,8 +782,9 @@ export default function ExpenseFundPage() {
                         <td className="px-3 py-3 text-center"><span className="px-2 py-0.5 rounded-full text-xs bg-yellow-50 text-yellow-700 font-medium">待审核</span></td>
                         <td className="px-3 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            <button onClick={() => approveOne(row.id)} className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过"><CheckC size={16} /></button>
-                            <button onClick={() => rejectOne(row.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回"><XCircle size={16} /></button>
+                            {canReview && row.can_verify && <button onClick={() => approveOne(row.id, undefined, "verify")} className="btn-secondary">核验</button>}
+                            {isAdmin && row.can_approve && <button onClick={() => approveOne(row.id)} className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过"><CheckC size={16} /></button>}
+                            {isAdmin && row.can_reject && <button onClick={() => rejectOne(row.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回"><XCircle size={16} /></button>}
                           </div>
                         </td>
                       </tr>
@@ -807,16 +834,16 @@ export default function ExpenseFundPage() {
                             <td className="px-3 py-3 text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleString("zh-CN") : "-"}</td>
                             <td className="px-3 py-3 text-center">
                               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.status === "pending" ? "bg-yellow-50 text-yellow-700" : r.status === "approved" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
-                                {r.status === "pending" ? "待审核" : r.status === "approved" ? "已通过" : "已驳回"}
+                                {requestStates[r.status] || r.status}
                               </span>
                             </td>
                             <td className="px-3 py-3 text-center">
-                              {r.status === "pending" && (
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <button onClick={() => approveRecharge(r.id)} className="p-1 rounded hover:bg-green-50 text-green-600" title="通过"><CheckC size={16} /></button>
-                                  <button onClick={() => rejectRecharge(r.id)} className="p-1 rounded hover:bg-red-50 text-red-500" title="驳回"><XCircle size={16} /></button>
-                                </div>
-                              )}
+                              <div className="flex items-center justify-center gap-2">
+                                {canReview && r.can_verify && <button className="btn-secondary" onClick={() => reviewRecharge(r.id, "verify")}>核验</button>}
+                                {isAdmin && r.can_approve && <button className="btn-primary" onClick={() => reviewRecharge(r.id, "approve")}>批准</button>}
+                                {canReview && r.can_execute && <button className="btn-primary" onClick={() => executeRecharge(r.id)}>执行拨付</button>}
+                                {isAdmin && r.can_reject && <button className="btn-secondary" onClick={() => rejectRecharge(r.id)}>驳回</button>}
+                              </div>
                             </td>
                           </tr>
                         ))}

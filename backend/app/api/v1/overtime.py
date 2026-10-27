@@ -1,3 +1,4 @@
+from app.core.round2_access import mutation_scope
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -772,13 +773,13 @@ async def get_overtime_limit(
     return {"max_hours": limit, "warehouse_id": wh_id}
 
 
-@router.put("/limit")
+@router.put("/limit", dependencies=[Depends(mutation_scope)])
 async def set_overtime_limit(
     req: OvertimeLimitSet,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role != Role.WAREHOUSE_ADMIN:
         raise HTTPException(403, "只有仓库管理员可以设置加班上限")
 
     wh_id = get_wh_id(current_user)

@@ -211,6 +211,8 @@ async def pay(db, r, req, user):
         else: advance = await lock_advance(db, r, req.cash_advance_id, amount)
     else:
         fund, item = await fund_details(db, r)
+        from app.services.fund_authorization import approved_item_execution
+        await approved_item_execution(db, user, r, fund, item)
     r.funding_source = source
     r.payment_account_id = account.id if account else None
     r.cash_advance_id = advance.id if advance else None

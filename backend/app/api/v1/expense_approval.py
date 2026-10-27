@@ -1,3 +1,4 @@
+from app.core.round2_access import mutation_scope
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -348,7 +349,7 @@ async def get_threshold(
     return {"threshold": await _get_threshold(db, wh_id), "warehouse_id": wh_id}
 
 
-@router.put("/threshold")
+@router.put("/threshold", dependencies=[Depends(mutation_scope)])
 async def set_threshold(
     req: ThresholdSet,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)),

@@ -1,0 +1,23 @@
+{
+  "registered_in_round2_scope": 52,
+  "target_exercised": 36,
+  "unexercised": [
+    "GET /api/v1/users",
+    "GET /api/v1/users/permissions",
+    "PUT /api/v1/suppliers/purchase-match-policy",
+    "GET /api/v1/expense-fund/employees",
+    "GET /api/v1/expense-fund/accounts",
+    "GET /api/v1/expense-fund/payment-accounts",
+    "GET /api/v1/expense-fund/accounts/{account_id}/disbursements",
+    "GET /api/v1/expense-fund/accounts/{account_id}/items",
+    "POST /api/v1/expense-fund/accounts/{account_id}/upload-receipt",
+    "POST /api/v1/expense-fund/accounts/{account_id}/items/{item_id}/upload-receipt",
+    "GET /api/v1/expense-fund/review/pending",
+    "GET /api/v1/expense-fund/settings",
+    "GET /api/v1/expense-fund/balance",
+    "GET /api/v1/expense-fund/alert",
+    "GET /api/v1/reimbursement",
+    "GET /api/v1/config/work-schedule"
+  ],
+  "note": "路由级覆盖不代表全部字段/状态组合覆盖；批量核验/批准/驳回分别见目标请求，不以注册一条接口宣称动作全覆盖。"
+}

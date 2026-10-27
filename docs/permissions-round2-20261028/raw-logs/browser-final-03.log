@@ -1,0 +1,11 @@
+AssertionError [ERR_ASSERTION]: Local runtime must load the repository Tailwind configuration and CSS
+    at /private/tmp/permissions-round2-20261028/backend/tests/permission_round2/browser_acceptance.cjs:18:3
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:502:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

@@ -13,8 +13,8 @@ import { Edit, Trash2, Power, PowerOff } from "lucide-react";
 export default function AccountsPage() {
   const hasWalletPermission = useMenuPermission("accounts");
   const { user } = useAuth() as { user: { role: string } | null };
-  const canWriteWallet = hasWalletPermission && ["warehouse_admin", "supervisor", "staff"].includes(user?.role || "");
-  const canCreateAccount = canWriteWallet && ["warehouse_admin", "supervisor"].includes(user?.role || "");
+  const canWriteWallet = hasWalletPermission && ["warehouse_admin", "staff"].includes(user?.role || "");
+  const canCreateAccount = hasWalletPermission && user?.role === "warehouse_admin";
   const { toast } = useToast(); const router = useRouter();
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferring, setTransferring] = useState(false);
@@ -141,7 +141,7 @@ export default function AccountsPage() {
       </span>
     )},
     { key: "id", label: "操作", render: (_: any, row: any) => (
-      canWriteWallet && <div className="flex items-center gap-1">
+      canCreateAccount && <div className="flex items-center gap-1">
         <button onClick={() => handleToggleStatus(row)} className={`btn-xs flex items-center gap-0.5 ${row.status === "active" ? "text-orange-600 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"} px-2 py-1 rounded`} title={row.status === "active" ? "停用" : "启用"}>
           {row.status === "active" ? <PowerOff size={12} /> : <Power size={12} />}
         </button>
@@ -165,7 +165,7 @@ export default function AccountsPage() {
       </>}
 
       {/* 新建/编辑弹窗 */}
-      {showForm && (
+      {canCreateAccount && showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
