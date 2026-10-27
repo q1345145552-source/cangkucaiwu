@@ -149,6 +149,7 @@ async def get_max_limit(
     return {"max_employees": max_val, "current_count": active_count or 0}
 
 @router.put("/max-limit")
+@read_projection("employee")
 async def set_max_limit(
     max_employees: int,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
@@ -281,6 +282,7 @@ async def list_employees(
     }
 
 @router.post("", dependencies=[Depends(mutation_scope)])
+@read_projection("employee")
 async def create_employee(
     req: EmployeeCreate,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
@@ -414,6 +416,7 @@ async def create_employee(
     return {"id": e.id, "employee_no": employee_no, "message": "员工创建成功", **identity_result(e)}
 
 @router.put("/{employee_id}", dependencies=[Depends(mutation_scope)])
+@read_projection("employee")
 async def update_employee(
     employee_id: int,
     req: EmployeeUpdate,
@@ -571,6 +574,7 @@ async def update_employee(
     return {"message": "更新成功", **identity_result(e)}
 
 @router.post("/{employee_id}/resign", dependencies=[Depends(mutation_scope)])
+@read_projection("employee")
 async def resign_employee(
     employee_id: int,
     req: ResignRequest,
@@ -659,6 +663,7 @@ async def resign_employee(
 
 
 @router.delete("/{employee_id}", dependencies=[Depends(mutation_scope)])
+@read_projection("employee")
 async def delete_employee(
     employee_id: int,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
@@ -692,6 +697,7 @@ async def delete_employee(
 
 
 @router.post("/bind-existing-accounts", dependencies=[Depends(mutation_scope)])
+@read_projection("employee")
 async def bind_existing_accounts(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
@@ -799,6 +805,7 @@ class BatchTemplateSet(BaseModel):
 
 
 @router.post("/batch-set-templates")
+@read_projection("employee")
 async def batch_set_templates(
     req: BatchTemplateSet,
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
@@ -856,6 +863,7 @@ async def batch_set_templates(
 # ═══ Photo Upload ════════════════════════════
 
 @router.post("/{employee_id}/photo")
+@read_projection("employee")
 async def upload_employee_photo(
     employee_id: int,
     file: UploadFile = File(...),
@@ -894,6 +902,7 @@ async def upload_employee_photo(
 # ═══ Passport & Work Permit Photo Upload ═══════
 
 @router.post("/{employee_id}/passport-photo")
+@read_projection("employee")
 async def upload_passport_photo(
     employee_id: int,
     file: UploadFile = File(...),
@@ -929,6 +938,7 @@ async def upload_passport_photo(
 
 
 @router.post("/{employee_id}/work-permit-photo")
+@read_projection("employee")
 async def upload_work_permit_photo(
     employee_id: int,
     file: UploadFile = File(...),

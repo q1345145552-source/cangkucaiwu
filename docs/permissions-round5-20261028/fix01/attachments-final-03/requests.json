@@ -1,0 +1,2558 @@
+[
+  {
+    "id": "upload-payroll",
+    "user": 3,
+    "method": "POST",
+    "path": "/upload",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "path": "uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+      "thumb_path": "uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb_thumb.jpg",
+      "filename": "payroll.png",
+      "size": 68
+    },
+    "database_diff": {
+      "audit_logs": {
+        "before": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ],
+        "after": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ]
+      }
+    },
+    "errors": []
+  },
+  {
+    "id": "payroll-1",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-2",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-3",
+    "user": 3,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-4",
+    "user": 4,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-5",
+    "user": 5,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-6",
+    "user": 6,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-7",
+    "user": 7,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 401,
+    "actual": 401,
+    "response": {
+      "detail": "User not found or inactive"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-8",
+    "user": 8,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-11",
+    "user": 11,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payroll-foreign-header",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/d933f9eb71e0413998741503feb94cbb.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问所选仓库"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "upload-leave",
+    "user": 3,
+    "method": "POST",
+    "path": "/upload",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "path": "uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+      "thumb_path": "uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61_thumb.jpg",
+      "filename": "leave.png",
+      "size": 68
+    },
+    "database_diff": {
+      "audit_logs": {
+        "before": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ],
+        "after": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 9,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.319492+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ]
+      }
+    },
+    "errors": []
+  },
+  {
+    "id": "leave-1",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-2",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-3",
+    "user": 3,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-4",
+    "user": 4,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-5",
+    "user": 5,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-6",
+    "user": 6,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-7",
+    "user": 7,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 401,
+    "actual": 401,
+    "response": {
+      "detail": "User not found or inactive"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-8",
+    "user": 8,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-11",
+    "user": 11,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "leave-foreign-header",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问所选仓库"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "invalid-binding-old-leave-link",
+    "user": 5,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "revoked-supervisor-old-leave-link",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/82bbc1291c5340d4b931b2185005bc61.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "upload-clock",
+    "user": 3,
+    "method": "POST",
+    "path": "/upload",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "path": "uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+      "thumb_path": "uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6_thumb.jpg",
+      "filename": "clock.png",
+      "size": 68
+    },
+    "database_diff": {
+      "audit_logs": {
+        "before": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 9,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.319492+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ],
+        "after": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 9,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.319492+00:00"
+          },
+          {
+            "id": 10,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.661710+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ]
+      }
+    },
+    "errors": []
+  },
+  {
+    "id": "clock-1",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-2",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-3",
+    "user": 3,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-4",
+    "user": 4,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-5",
+    "user": 5,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-6",
+    "user": 6,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-7",
+    "user": 7,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 401,
+    "actual": 401,
+    "response": {
+      "detail": "User not found or inactive"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-8",
+    "user": 8,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-11",
+    "user": 11,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "clock-foreign-header",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/9c66c11b16c84ec5aea48816394e20d6.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问所选仓库"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "upload-overtime",
+    "user": 3,
+    "method": "POST",
+    "path": "/upload",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "path": "uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+      "thumb_path": "uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559_thumb.jpg",
+      "filename": "overtime.png",
+      "size": 68
+    },
+    "database_diff": {
+      "audit_logs": {
+        "before": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 9,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.319492+00:00"
+          },
+          {
+            "id": 10,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.661710+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ],
+        "after": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 9,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.319492+00:00"
+          },
+          {
+            "id": 10,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.661710+00:00"
+          },
+          {
+            "id": 11,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.980371+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ]
+      }
+    },
+    "errors": []
+  },
+  {
+    "id": "overtime-1",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-2",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-3",
+    "user": 3,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-4",
+    "user": 4,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-5",
+    "user": 5,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-6",
+    "user": 6,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-7",
+    "user": 7,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 401,
+    "actual": 401,
+    "response": {
+      "detail": "User not found or inactive"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-8",
+    "user": 8,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-11",
+    "user": 11,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "overtime-foreign-header",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/b1813158e9bf49af88f754c931f25559.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问所选仓库"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "upload-payment",
+    "user": 3,
+    "method": "POST",
+    "path": "/upload",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "path": "uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+      "thumb_path": "uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7_thumb.jpg",
+      "filename": "payment.png",
+      "size": 68
+    },
+    "database_diff": {
+      "audit_logs": {
+        "before": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 9,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.319492+00:00"
+          },
+          {
+            "id": 10,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.661710+00:00"
+          },
+          {
+            "id": 11,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.980371+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ],
+        "after": [
+          {
+            "id": 2,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:15.882175+00:00"
+          },
+          {
+            "id": 3,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:17.836236+00:00"
+          },
+          {
+            "id": 4,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.183595+00:00"
+          },
+          {
+            "id": 5,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.532855+00:00"
+          },
+          {
+            "id": 6,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:18.876080+00:00"
+          },
+          {
+            "id": 7,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:19.282626+00:00"
+          },
+          {
+            "id": 8,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:47.989604+00:00"
+          },
+          {
+            "id": 9,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.319492+00:00"
+          },
+          {
+            "id": 10,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.661710+00:00"
+          },
+          {
+            "id": 11,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:48.980371+00:00"
+          },
+          {
+            "id": 12,
+            "user_id": 3,
+            "warehouse_id": null,
+            "action_type": "create",
+            "module": "upload",
+            "target_id": null,
+            "detail": {
+              "method": "POST",
+              "path": "/api/v1/upload",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:49.273462+00:00"
+          },
+          {
+            "id": 1,
+            "user_id": 2,
+            "warehouse_id": null,
+            "action_type": "edit",
+            "module": "employees",
+            "target_id": 1,
+            "detail": {
+              "method": "PUT",
+              "path": "/api/v1/employees/1",
+              "status": 200
+            },
+            "ip_address": "127.0.0.1",
+            "ip_country": "内网",
+            "ip_region": "",
+            "ip_city": "",
+            "created_at": "2026-10-27 22:31:14.517533+00:00"
+          }
+        ]
+      }
+    },
+    "errors": []
+  },
+  {
+    "id": "payment-1",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-2",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-3",
+    "user": 3,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-4",
+    "user": 4,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 200,
+    "actual": 200,
+    "response": {
+      "bytes": 68,
+      "sha256": "6b1048f8a6d40bac0b2954c18fefa40c4ea7a96120fc2e54b7317c0e43c2bbec"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-5",
+    "user": 5,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-6",
+    "user": 6,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-7",
+    "user": 7,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 401,
+    "actual": 401,
+    "response": {
+      "detail": "User not found or inactive"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-8",
+    "user": 8,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-11",
+    "user": 11,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "payment-foreign-header",
+    "user": 1,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问所选仓库"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "revoked-finance-payment-link",
+    "user": 4,
+    "method": "GET",
+    "path": "/uploads/1/2026-10-28/e2e4cbd8961e4968bb307ffd22d905c7.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "encoded-parent-foreign-file",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1/%2e%2e/2/audit/passport-8.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "double-slash-private-file",
+    "user": 2,
+    "method": "GET",
+    "path": "/uploads/1//audit/passport-1.png",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无权访问"
+    },
+    "database_diff": {},
+    "errors": []
+  }
+]

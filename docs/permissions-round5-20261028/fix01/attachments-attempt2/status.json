@@ -1,0 +1,9 @@
+{
+  "requests": 60,
+  "failures": [
+    "payroll-4: expected 200, actual 403",
+    "payroll-4: not actual PNG bytes",
+    "payment-4: expected 200, actual 403",
+    "payment-4: not actual PNG bytes"
+  ]
+}

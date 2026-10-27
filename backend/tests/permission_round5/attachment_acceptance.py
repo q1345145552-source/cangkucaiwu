@@ -2,7 +2,8 @@
 from fixtures import *
 from app.models.reimbursement_payment import ReimbursementPayment
 from app.models.clock_in_records import ClockInRecord
-OUT=ROOT/'docs/permissions-round5-20261028'/os.environ.get('ROUND5_ATTACH_RUN','attachments-final');OUT.mkdir(exist_ok=True)
+OUT=ROOT/'docs/permissions-round5-20261028'/os.environ.get('ROUND5_ATTACH_RUN',os.environ.get('ROUND5_RUN','attachments-final'));OUT.mkdir(parents=True,exist_ok=True)
+assert not (OUT/'requests.json').exists(), 'Use a fresh evidence directory; never overwrite previous requests'
 async def main():
  engine=create_async_engine(URL);factory=async_sessionmaker(engine,expire_on_commit=False);database._engine=engine;database._session_maker=factory;records=[];fail=[]
  async with AsyncClient(transport=ASGITransport(app=app,raise_app_exceptions=False),base_url='http://round5.local') as client:

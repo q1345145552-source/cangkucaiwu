@@ -86,7 +86,7 @@ def remove_fields(value, fields):
 def project(kind,user,data):
     if kind == 'employee':
         fields=set()
-        if not financial_reader(user,'payroll'):fields |= PAY_FIELDS
+        if not financial_reader(user,'payroll'):fields |= PAY_FIELDS | {'warnings'}
         if user.role != Role.WAREHOUSE_ADMIN:fields |= DOCUMENT_FIELDS
         return remove_fields(data,fields)
     if kind == 'supplier' and user.role != Role.WAREHOUSE_ADMIN:

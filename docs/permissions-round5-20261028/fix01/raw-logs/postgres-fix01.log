@@ -1,0 +1,35 @@
+2026-10-28 05:29:30.217 +07 [86451] LOG:  starting PostgreSQL 16.2 on aarch64-apple-darwin23.5.0, compiled by Apple clang version 15.0.0 (clang-1500.0.40.1), 64-bit
+2026-10-28 05:29:30.218 +07 [86451] LOG:  listening on IPv6 address "::1", port 5432
+2026-10-28 05:29:30.218 +07 [86451] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2026-10-28 05:29:30.218 +07 [86451] LOG:  listening on Unix socket "/tmp/.s.PGSQL.5432"
+2026-10-28 05:29:30.233 +07 [86454] LOG:  database system was shut down at 2026-10-28 05:22:59 +07
+2026-10-28 05:29:30.236 +07 [86451] LOG:  database system is ready to accept connections
+2026-10-28 05:29:54.568 +07 [86451] LOG:  received fast shutdown request
+2026-10-28 05:29:54.568 +07 [86451] LOG:  aborting any active transactions
+2026-10-28 05:29:54.568 +07 [86451] LOG:  background worker "logical replication launcher" (PID 86457) exited with exit code 1
+2026-10-28 05:29:54.569 +07 [86452] LOG:  shutting down
+2026-10-28 05:29:54.569 +07 [86452] LOG:  checkpoint starting: shutdown immediate
+2026-10-28 05:29:54.571 +07 [86452] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.002 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/2E7E57F0, redo lsn=0/2E7E57F0
+2026-10-28 05:29:54.573 +07 [86451] LOG:  database system is shut down
+2026-10-28 05:29:54.693 +07 [86502] LOG:  starting PostgreSQL 16.2 on aarch64-apple-darwin23.5.0, compiled by Apple clang version 15.0.0 (clang-1500.0.40.1), 64-bit
+2026-10-28 05:29:54.694 +07 [86502] LOG:  listening on IPv4 address "127.0.0.1", port 65489
+2026-10-28 05:29:54.694 +07 [86502] LOG:  listening on Unix socket "/private/tmp/permissions-round5-env/socket/.s.PGSQL.65489"
+2026-10-28 05:29:54.697 +07 [86505] LOG:  database system was shut down at 2026-10-28 05:29:54 +07
+2026-10-28 05:29:54.699 +07 [86502] LOG:  database system is ready to accept connections
+2026-10-28 05:30:50.981 +07 [86654] ERROR:  relation "intentionally_missing_table" does not exist at character 15
+2026-10-28 05:30:50.981 +07 [86654] STATEMENT:  SELECT * FROM intentionally_missing_table
+2026-10-28 05:30:51.895 +07 [86661] ERROR:  null value in column "warehouse_id" of relation "system_settings" violates not-null constraint
+2026-10-28 05:30:51.895 +07 [86661] DETAIL:  Failing row contains (1, null, supervisor_perms_backfilled_v1, true, null, 2026-10-28 05:30:51.512053+07).
+2026-10-28 05:30:51.895 +07 [86661] STATEMENT:  
+	                        INSERT INTO system_settings (warehouse_id, key, value)
+	                        SELECT MIN(id), 'supervisor_perms_backfilled_v1', 'true' FROM warehouses
+	                    
+2026-10-28 05:30:53.878 +07 [86503] LOG:  checkpoint starting: immediate force wait
+2026-10-28 05:30:54.365 +07 [86503] LOG:  checkpoint complete: wrote 5332 buffers (32.5%); 0 WAL file(s) added, 4 removed, 0 recycled; write=0.158 s, sync=0.129 s, total=0.488 s; sync files=7612, longest=0.001 s, average=0.001 s; distance=71343 kB, estimate=71343 kB; lsn=0/32DA4230, redo lsn=0/32D914C8
+2026-10-28 05:32:53.916 +07 [86502] LOG:  received fast shutdown request
+2026-10-28 05:32:53.916 +07 [86502] LOG:  aborting any active transactions
+2026-10-28 05:32:53.917 +07 [86502] LOG:  background worker "logical replication launcher" (PID 86508) exited with exit code 1
+2026-10-28 05:32:53.917 +07 [86503] LOG:  shutting down
+2026-10-28 05:32:53.917 +07 [86503] LOG:  checkpoint starting: shutdown immediate
+2026-10-28 05:32:54.137 +07 [86503] LOG:  checkpoint complete: wrote 4137 buffers (25.3%); 0 WAL file(s) added, 3 removed, 0 recycled; write=0.074 s, sync=0.065 s, total=0.221 s; sync files=3832, longest=0.001 s, average=0.001 s; distance=38398 kB, estimate=68048 kB; lsn=0/35310D88, redo lsn=0/35310D88
+2026-10-28 05:32:54.141 +07 [86502] LOG:  database system is shut down
