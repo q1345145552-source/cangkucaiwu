@@ -1,0 +1,357 @@
+{
+  "result": [
+    {
+      "id": "UI-0",
+      "uid": 2,
+      "url": "/payroll",
+      "actual_url": "http://127.0.0.1:65332/payroll",
+      "width": 1440,
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "员工自助",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 2",
+        "15号",
+        "月末",
+        " 计算工资",
+        " 单人结算",
+        " 导出Excel",
+        " 全部确认",
+        " 结算进度（4 人）展开",
+        "确认",
+        "查看工资单",
+        "作废重算",
+        "发放",
+        "查看工资单",
+        "作废重算",
+        "查看工资单",
+        "作废重算"
+      ],
+      "requests": [
+        {
+          "url": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll/settlement-progress",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll/summary",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll",
+          "status": 200
+        }
+      ],
+      "artifact": "page-2-payroll-1440.png",
+      "text": "page-2-payroll-1440.txt"
+    },
+    {
+      "id": "UI-1",
+      "uid": 3,
+      "url": "/payroll",
+      "actual_url": "http://127.0.0.1:65332/payroll",
+      "width": 1440,
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC staff 3",
+        " 导出Excel",
+        " 结算进度（0 人）展开",
+        "查看工资单",
+        "查看工资单",
+        "查看工资单"
+      ],
+      "requests": [
+        {
+          "url": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll/settlement-progress",
+          "status": 403
+        },
+        {
+          "url": "/api/v1/payroll",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll/summary",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll",
+          "status": 200
+        }
+      ],
+      "artifact": "page-3-payroll-1440.png",
+      "text": "page-3-payroll-1440.txt"
+    },
+    {
+      "id": "UI-2",
+      "uid": 2,
+      "url": "/accounts",
+      "actual_url": "http://127.0.0.1:65332/accounts",
+      "width": 1440,
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "员工自助",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 2",
+        "内部转账",
+        "新建账户",
+        "",
+        "编辑",
+        "删除"
+      ],
+      "requests": [
+        {
+          "url": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/accounts",
+          "status": 200
+        }
+      ],
+      "artifact": "page-2-accounts-1440.png",
+      "text": "page-2-accounts-1440.txt"
+    },
+    {
+      "id": "UI-3",
+      "uid": 3,
+      "url": "/accounts",
+      "actual_url": "http://127.0.0.1:65332/accounts",
+      "width": 1440,
+      "buttons": [
+        "",
+        "财务(仓库运营)",
+        "财务(日常开支)",
+        "供应商管理",
+        "拼单",
+        "员工管理",
+        "系统设置",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC staff 3",
+        "内部转账",
+        "",
+        "编辑",
+        "删除"
+      ],
+      "requests": [
+        {
+          "url": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/accounts",
+          "status": 200
+        }
+      ],
+      "artifact": "page-3-accounts-1440.png",
+      "text": "page-3-accounts-1440.txt"
+    },
+    {
+      "id": "UI-4",
+      "uid": 2,
+      "url": "/clock-in",
+      "actual_url": "http://127.0.0.1:65332/clock-in",
+      "width": 390,
+      "buttons": [
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 2",
+        "ဘာသာစကား",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "requests": [
+        {
+          "url": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/clock-in/today",
+          "status": 200
+        }
+      ],
+      "artifact": "page-2-clock-in-390.png",
+      "text": "page-2-clock-in-390.txt"
+    },
+    {
+      "id": "UI-5",
+      "uid": 3,
+      "url": "/clock-in",
+      "actual_url": "http://127.0.0.1:65332/clock-in",
+      "width": 390,
+      "buttons": [
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC staff 3",
+        "ဘာသာစကား",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "requests": [
+        {
+          "url": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/clock-in/today",
+          "status": 403
+        }
+      ],
+      "artifact": "page-3-clock-in-390.png",
+      "text": "page-3-clock-in-390.txt"
+    },
+    {
+      "id": "UI-6",
+      "uid": 6,
+      "url": "/payroll",
+      "actual_url": "http://127.0.0.1:65332/payroll",
+      "width": 1440,
+      "buttons": [
+        "",
+        "",
+        "SYNTHETIC WH1",
+        "中文",
+        "SSYNTHETIC supervisor 6",
+        "15号",
+        "月末",
+        " 计算工资",
+        " 单人结算",
+        " 导出Excel",
+        " 结算进度（0 人）展开",
+        ""
+      ],
+      "requests": [
+        {
+          "url": "/api/v1/auth/me",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/auth/attachment-session",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/users/permissions",
+          "status": 200
+        },
+        {
+          "url": "/api/v1/payroll",
+          "status": 403
+        },
+        {
+          "url": "/api/v1/payroll/settlement-progress",
+          "status": 403
+        }
+      ],
+      "artifact": "page-6-payroll-1440.png",
+      "text": "page-6-payroll-1440.txt"
+    },
+    {
+      "id": "UI-account-switch",
+      "from": 2,
+      "to": 6,
+      "reload": true,
+      "previous_employee_data_visible": false,
+      "limitation": "Does not test multiple tabs, in-flight stale responses, or switching without reload"
+    }
+  ],
+  "errors": []
+}

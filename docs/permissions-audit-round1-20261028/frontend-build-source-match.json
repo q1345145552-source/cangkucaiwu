@@ -1,0 +1,677 @@
+[
+  {
+    "path": "frontend/src/types/index.ts",
+    "same": true,
+    "sha256": "36373042f7b41a099a7a8abc0494f0c0ab7b1b422aa85990be47a61c9b20cd51"
+  },
+  {
+    "path": "frontend/src/types/auth.ts",
+    "same": true,
+    "sha256": "fd634c78679eb08a1d029f51c9498456cacfe0d5e782506cdb7e1ac554786619"
+  },
+  {
+    "path": "frontend/src/app/client-shell.tsx",
+    "same": true,
+    "sha256": "fe5c45257107d510d61f09ee9ff900b24df2902a8c8d27b12ecaf6cae6a047c8"
+  },
+  {
+    "path": "frontend/src/app/layout.tsx",
+    "same": true,
+    "sha256": "9e513ab03f5f907a0307d1bec6cc925053135175be622a50653eb860b4b573df"
+  },
+  {
+    "path": "frontend/src/app/page.tsx",
+    "same": true,
+    "sha256": "7b69f0a20d0467377b4f6a90ff2dfa71a2681f5f0342017fcdfb19bde8c7b5fb"
+  },
+  {
+    "path": "frontend/src/app/globals.css",
+    "same": true,
+    "sha256": "5fed90ec37ccb8cff9711c3a9daeb97136167d6ac94283f4ec7aa6cdc6f6018d"
+  },
+  {
+    "path": "frontend/src/components/ExcelImportDialog.tsx",
+    "same": true,
+    "sha256": "95b4cd02e0f3153666f2f80d78ec0d78d805333f9323790831729048487ab706"
+  },
+  {
+    "path": "frontend/src/components/ProcurementControls.tsx",
+    "same": true,
+    "sha256": "6c458f2409316ec9a61132b1ff45a398c6e1354b5b8edb7cff06351a24f2de2f"
+  },
+  {
+    "path": "frontend/src/components/AccountNatureSummary.tsx",
+    "same": true,
+    "sha256": "c2b6b41d4c4bd525085c87f5b03a55027a2648d661aa249cdfb8dcfe35830098"
+  },
+  {
+    "path": "frontend/src/components/PurchaseQuotePreview.tsx",
+    "same": true,
+    "sha256": "ceef23dcc76fff95587984bd5b6642fae2423c766a541d1735d9278b3f8f2582"
+  },
+  {
+    "path": "frontend/src/components/CashAdvanceRepaymentHistory.tsx",
+    "same": true,
+    "sha256": "4e052a1860c592fe981953f121e04abd12f82d695288348c8d2886fe17a925c6"
+  },
+  {
+    "path": "frontend/src/components/MakeupBatchHistory.tsx",
+    "same": true,
+    "sha256": "83d98ad8d1eecbde699ce50314410cc878cd1819eae1233e49e8e963562f0bd1"
+  },
+  {
+    "path": "frontend/src/components/CostIdentity.tsx",
+    "same": true,
+    "sha256": "2fd433b0426ca5284b933a73b77504cd17d1c0108552e2678e8b59324be20284"
+  },
+  {
+    "path": "frontend/src/components/SkuProductMapping.tsx",
+    "same": true,
+    "sha256": "de28253c7d2d37ce41d160b16b051699fb0935dc98125ec4b1f4e9ed10bb01da"
+  },
+  {
+    "path": "frontend/src/components/BatchMakeupModal.tsx",
+    "same": true,
+    "sha256": "0e153846004cc6ba3b69a71bc82991e08e70f64ac897b65c5577fbf180b9e414"
+  },
+  {
+    "path": "frontend/src/components/StructuredSpecifications.tsx",
+    "same": true,
+    "sha256": "6841fa73a62f1e6dfa9c8e0b1d85b7c9e4fa6acf5387b0f5649d1abf25afaf03"
+  },
+  {
+    "path": "frontend/src/components/InternalTransferSummary.tsx",
+    "same": true,
+    "sha256": "75ba570e2595fba7fd80d37c45ea11264134452cf9966c49897e4441e49c830a"
+  },
+  {
+    "path": "frontend/src/components/CustomerReceivable.tsx",
+    "same": true,
+    "sha256": "91d4154870cc8355ce8c358aeca97fbf3cb68e47739fa12f68559ae3de8dd8fd"
+  },
+  {
+    "path": "frontend/src/components/ProcurementRiskReview.tsx",
+    "same": true,
+    "sha256": "5e6222a9ef36d0abdfc01168430eec04fccd4aad5934bcdcff67b6452b05eecb"
+  },
+  {
+    "path": "frontend/src/components/TrendCharts.tsx",
+    "same": true,
+    "sha256": "d5cd51557c311a5d7bfe59d882480595a335adb3237096ab2d3e03f21aa38cfd"
+  },
+  {
+    "path": "frontend/src/components/PurchaseReceiptInfo.tsx",
+    "same": true,
+    "sha256": "80022a89717d780e325a860937627a373561c764a346cf5f80fdfd8f9a1ef72b"
+  },
+  {
+    "path": "frontend/src/components/CashAdvanceRepaymentModal.tsx",
+    "same": true,
+    "sha256": "13cef542a0bdc57b1b39db6401cbc934ebdca399c2a06305e3ed0427ece24c1f"
+  },
+  {
+    "path": "frontend/src/components/ReimbursementPaymentHistory.tsx",
+    "same": true,
+    "sha256": "5fb24aab7dfe974ffbab11906d30ac4fe06da7ba47159f3b9d708f3414187c24"
+  },
+  {
+    "path": "frontend/src/components/InventoryBoard.tsx",
+    "same": true,
+    "sha256": "1186824b3cb317b6d9b93904ac5923a21e85ce4930e60e3fcafbb591515de323"
+  },
+  {
+    "path": "frontend/src/components/WarehouseSummary.tsx",
+    "same": true,
+    "sha256": "4ed3e7710dd37e87fc32a7be29ca2d7fd321f43a8959393cb2e9ba4405485ae3"
+  },
+  {
+    "path": "frontend/src/components/ProcurementReviewHistory.tsx",
+    "same": true,
+    "sha256": "0801b75b789682ccbe08bb0aae4622f2d6f0ec20c3a7e536ad5637e2ea567354"
+  },
+  {
+    "path": "frontend/src/components/WalletAccountSelect.tsx",
+    "same": true,
+    "sha256": "2b0293b3cb8e96e84bdb73e24f5bee0502270dddc68278999a361e834ed98dfb"
+  },
+  {
+    "path": "frontend/src/components/ClockRecordsGrid.tsx",
+    "same": true,
+    "sha256": "13434118e910b93797980cb57a04e672a8bb02d603847ea9aeac04285798dfb9"
+  },
+  {
+    "path": "frontend/src/components/ProcurementInfo.tsx",
+    "same": true,
+    "sha256": "368d46a86dd21748f482c6170b29392a4230d382d6f067b0dd6075ba04ab00f4"
+  },
+  {
+    "path": "frontend/src/components/ReimbursementPaymentModal.tsx",
+    "same": true,
+    "sha256": "6bb6563104c54991a1482cd21eed292c4868b975f7ad2d68d22b1780480fd089"
+  },
+  {
+    "path": "frontend/src/components/SafeImage.tsx",
+    "same": true,
+    "sha256": "6a93ffcd36ab52be35b23296c2d34655312012b6f2803d0e15b20e5df05a1828"
+  },
+  {
+    "path": "frontend/src/components/OperatingReport.tsx",
+    "same": true,
+    "sha256": "038fe63ef5198e1f0f5543ef759fba9a5c8d443c3ad7a74dd8c7ae91b1320dd7"
+  },
+  {
+    "path": "frontend/src/components/PayableDetail.tsx",
+    "same": true,
+    "sha256": "04762a3b3cc8a3094935aa5ef2f91a9b61f7706f1bfc2e7bb511e77d15a6d989"
+  },
+  {
+    "path": "frontend/src/components/ProcurementRiskBoard.tsx",
+    "same": true,
+    "sha256": "defcfe392038e8f316032065de2f40e840694e754a947755f77cd4f9560b34e6"
+  },
+  {
+    "path": "frontend/src/components/ProcurementDutyFields.tsx",
+    "same": true,
+    "sha256": "1dc9075b944534c055e925979e1fc23f50f4a725edbd348a3071f5feb8e97cb8"
+  },
+  {
+    "path": "frontend/src/components/InventoryAnalysis.tsx",
+    "same": true,
+    "sha256": "ad9ee12e89d902400114eccca57459dd4adbcdd66925d80be036d60fd7f2e636"
+  },
+  {
+    "path": "frontend/src/components/MakeupDisplay.tsx",
+    "same": true,
+    "sha256": "873b30387fe7f075febd7447564ae06972261483eedbc34136f87eca509ac166"
+  },
+  {
+    "path": "frontend/src/components/BossTodos.tsx",
+    "same": true,
+    "sha256": "ca4318c53ba6394f8ccd7895f8ae0f10afda4b7427f36020894c254fb710475d"
+  },
+  {
+    "path": "frontend/src/components/EmployeeLanguage.tsx",
+    "same": true,
+    "sha256": "490102f5726579571cdd65f6bafd7093bf2ee7942a8f3b493874e254ac158d5c"
+  },
+  {
+    "path": "frontend/src/components/InventoryControls.tsx",
+    "same": true,
+    "sha256": "d5a6a76dae481b8b2949f3788be882b92937d39ef9b9ae850a6755cc279c7ac5"
+  },
+  {
+    "path": "frontend/src/components/PayableDuplicateDialog.tsx",
+    "same": true,
+    "sha256": "064ebf5e9ee714f200d99c5d1b736f8e22576768f0c7e177e106f5941fd0f8c7"
+  },
+  {
+    "path": "frontend/src/components/ProcurementMonthReport.tsx",
+    "same": true,
+    "sha256": "e7d155e57a5e7b9eba1372da1d9772ae062f659bec329deb16fe4c6ebd013d07"
+  },
+  {
+    "path": "frontend/src/components/ProductImportDialog.tsx",
+    "same": true,
+    "sha256": "271f3c0f1434f5c63c73f33c6507ac144c9ce08b1d300a20f79ac6e7c3b6d9e4"
+  },
+  {
+    "path": "frontend/src/components/SupplierQuoteEditor.tsx",
+    "same": true,
+    "sha256": "37f324c726b865c64c20999862cff61b2524fe86c94cd4c7339762630c570d7d"
+  },
+  {
+    "path": "frontend/src/components/CashAdvanceLink.tsx",
+    "same": true,
+    "sha256": "e2562fb6e7fa1641ad49b0808a3dbd3c3d265881f46a71cb5cba16ac646baab1"
+  },
+  {
+    "path": "frontend/src/components/CreditShipments.tsx",
+    "same": true,
+    "sha256": "98ca8b3acd5e9904933df37ab281b25aaa3ea14f0476bd4e8bb12352290978c1"
+  },
+  {
+    "path": "frontend/src/hooks/useEmployeeView.tsx",
+    "same": true,
+    "sha256": "fecd520cae2249db69aede7674491925f3bed14cde9612ba0148e45b2d9b8d87"
+  },
+  {
+    "path": "frontend/src/hooks/useI18n.ts",
+    "same": true,
+    "sha256": "0bc91c8c3da707b79606dc429a20aca25cd29ee530d6cac0c4dc4ffd3cc40ed5"
+  },
+  {
+    "path": "frontend/src/hooks/useAuth.tsx",
+    "same": true,
+    "sha256": "81080572c4b31d20d551e35fc11ca2a455f358bca316779db8de89dc58cfe52f"
+  },
+  {
+    "path": "frontend/src/hooks/useMenuPermission.ts",
+    "same": true,
+    "sha256": "93477ed935dafbd0a5d99f3f30bdf674b43a46b7ece4a2fc85c5d0908a7991ff"
+  },
+  {
+    "path": "frontend/src/hooks/useSupplierAccess.ts",
+    "same": true,
+    "sha256": "6890d3d139b444b4158195456163a989e69efb2b7294184fa20f0215a16bc499"
+  },
+  {
+    "path": "frontend/src/lib/specifications.ts",
+    "same": true,
+    "sha256": "ef5fa66cad584a6bf6fdc2f58fabff8ee4b3565e90e1a7ebf5026176a7faaf42"
+  },
+  {
+    "path": "frontend/src/lib/image.ts",
+    "same": true,
+    "sha256": "a5b518f49105cb08c60601a296ee3ca0c745bb507c369bacc768a170cbe07dc2"
+  },
+  {
+    "path": "frontend/src/lib/manualWallet.ts",
+    "same": true,
+    "sha256": "6be551328f85a0d7d71026b84ac35ed3396cd8ce480e8250bb44ce9750346601"
+  },
+  {
+    "path": "frontend/src/lib/incomingSubmission.ts",
+    "same": true,
+    "sha256": "406ab8464bafedc6da390683b48b2e9160949769b892100dbe06b040a4cba0aa"
+  },
+  {
+    "path": "frontend/src/lib/currency.ts",
+    "same": true,
+    "sha256": "71fdef89cae3368d105968f4b5b65a38579780255ee0e7958135f33963ebead5"
+  },
+  {
+    "path": "frontend/src/lib/payablePayment.ts",
+    "same": true,
+    "sha256": "bd8721d508bb720f9c520b0796a72c34f6f456a6c4ba0a6102f8eb08495fa847"
+  },
+  {
+    "path": "frontend/src/lib/excelImport.ts",
+    "same": true,
+    "sha256": "159922e40c4a2a17f7452ab20155dfe7fb547204e2152ec85c17ec15c46b5ea0"
+  },
+  {
+    "path": "frontend/src/lib/api.ts",
+    "same": true,
+    "sha256": "ac5c3614d13153a7724e7381e2098ba117a64d3eee6c9dd3655f61482648e1ff"
+  },
+  {
+    "path": "frontend/src/lib/procurementControlRequest.ts",
+    "same": true,
+    "sha256": "3c6f31fa834f5bfac8d6173e9387e71e1e2d25e49f471de2308368dead6477e2"
+  },
+  {
+    "path": "frontend/src/lib/financial-reversals.ts",
+    "same": true,
+    "sha256": "0a2ae4868f075fa7110c966921b07aee1a516d4bb160f452546e51ab70a44e6f"
+  },
+  {
+    "path": "frontend/src/lib/inventoryRequest.ts",
+    "same": true,
+    "sha256": "387657573f80a6f1c934a60e9bc3cc8ef9b40c1527b824213e6545068f2abcfb"
+  },
+  {
+    "path": "frontend/src/lib/registrationRequest.ts",
+    "same": true,
+    "sha256": "174f2660e4d74c9a5d9f2cb5cfc2ca186affcdfafd034edeb1f5f206cd274813"
+  },
+  {
+    "path": "frontend/src/lib/makeup-display.ts",
+    "same": true,
+    "sha256": "90a22515b6ba1ef74f6323c8036b5ab28252d2084746343179382a72360c3658"
+  },
+  {
+    "path": "frontend/src/lib/thai-time.ts",
+    "same": true,
+    "sha256": "9248c37977b5298f0da0df45bf9010b06df2abe6487c1a043163ab3e08a11ee2"
+  },
+  {
+    "path": "frontend/src/lib/retiredEntries.ts",
+    "same": true,
+    "sha256": "26e6eea63688bf4d038a09bdcb939590d067acffe941592459fea6c372bcd407"
+  },
+  {
+    "path": "frontend/src/i18n/zh.json",
+    "same": true,
+    "sha256": "07e3a36ea10b64cea4f17e0fecbb99787939217634c1f0edf0e0cc5358bb76a1"
+  },
+  {
+    "path": "frontend/src/i18n/my.json",
+    "same": true,
+    "sha256": "4463113f81910a4e74f7aeec73a77758093700c74318b9d5aa74f94029632c17"
+  },
+  {
+    "path": "frontend/src/i18n/th.json",
+    "same": true,
+    "sha256": "b0bfa89510f751ee9b0fd235a394eed8f73f14c96ff0a10d193f367662d3c617"
+  },
+  {
+    "path": "frontend/src/app/login/page.tsx",
+    "same": true,
+    "sha256": "372bf654b294ce5226cdb70c13e0902e292530d20ed2ae45627848e4da29b05a"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/attendance/page.tsx",
+    "same": true,
+    "sha256": "a8ed608d08965f42a8999d232e10e6dfd7cb2a4eb35ee1fe8e3a58e3299a5360"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/customers/page.tsx",
+    "same": true,
+    "sha256": "f2b6f1327d3c3e5cd5650e7d5f78720b871aa4710a035a92fc9386b190f2c190"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/reconciliation/page.tsx",
+    "same": true,
+    "sha256": "43f14b4b012b8fd60037cfc3cd34cf4a5df534cbed382ec5d37da0a0a9a736d2"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/audit-logs/page.tsx",
+    "same": true,
+    "sha256": "d81124b39244ccfeab663e70359b0c19591462350ed3d5bfcf485a488e3b2344"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/settings/page.tsx",
+    "same": true,
+    "sha256": "10535921e1ca5bf00d8e4757de05e1a0fba278c4ffe4d1af7fcc41cf11411364"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/credit/page.tsx",
+    "same": true,
+    "sha256": "afa02facc9c58668ca0af5d6e01cb788a3d3a6e3e36c4fe6dbd5c8ebe34f1367"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/ledger/page.tsx",
+    "same": true,
+    "sha256": "a4269e86ee8d42bfbebdc18b376c3a2b7d9382de79532c04f2cd3ad2fe8c3b58"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/warehouses/page.tsx",
+    "same": true,
+    "sha256": "c990e6671176cf9f3953b864b4419acadf7063db32024477d5bf5f2a31c6415d"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/employee-advances/page.tsx",
+    "same": true,
+    "sha256": "1b35062f244e9ded8bc1e3a2f3ecd04b8dd7f176e4db6408dc08b6d94fff5ac4"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "same": true,
+    "sha256": "2f5c938e6cd446d99365bd33a7148ca84e873c3a19ea7bc4508e2482ef8b8205"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/cash-advances/page.tsx",
+    "same": true,
+    "sha256": "4404581cee195b492f063b58040ba1b20ee0512e1b34c0896a338e1cb07a2860"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/income-expense/page.tsx",
+    "same": true,
+    "sha256": "c16ee48314802919d87280835b3686e0726ffb9c57fb20c5da85cacf45054ae8"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/clock-in/page.tsx",
+    "same": true,
+    "sha256": "e1c982a0efaeaaa92a9b8c7e03a9e2d1cb9dda76786f7a787c8008c334febbe7"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/deduction-templates/page.tsx",
+    "same": true,
+    "sha256": "0544bc47f8a7788090597c0fec346dee935e47b93883298301b610b6efc0d80a"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/my-payslip/page.tsx",
+    "same": true,
+    "sha256": "152922cc090707bd3e204c84408874739eec25773658eb147457c15c5b68c006"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/my-overtime/page.tsx",
+    "same": true,
+    "sha256": "8334f7b18bbbc1693691ae71257da57d8ff0676864bbc2992d62b36c4d58162f"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/supplier-skus/page.tsx",
+    "same": true,
+    "sha256": "68edd9d1dfcc1c767fecf518b40033007741bb76768404cd43a458a0acb76c43"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/dashboard/page.tsx",
+    "same": true,
+    "sha256": "bdf91267d8f797b510348b29d0a5ad1ecf4555cf27aaf701fa896452d9017e84"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/other-income-expense/page.tsx",
+    "same": true,
+    "sha256": "80446aaf7c88924c817145510495d6aed0498d7aeb36128b7f285aa29b213c1c"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/employee-deductions/page.tsx",
+    "same": true,
+    "sha256": "305742dbc292e5b56b368464a9460535238e86af9a6f8a536be08f62eba4d676"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/fund-review/page.tsx",
+    "same": true,
+    "sha256": "b193c01224985bc859ed9605d3df0e9066b7adc4aae0b9218be396138bb87c07"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/concentration/page.tsx",
+    "same": true,
+    "sha256": "dd160534f2173882bae3030a19758c13fd102680e421be21162adb0d850a47bf"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/accounts/page.tsx",
+    "same": true,
+    "sha256": "7bec43a73b5d32cc81bb5b1be81586e04bcf1430decdd11e82542601eafa6379"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/expense-fund/page.tsx",
+    "same": true,
+    "sha256": "d0c71c56d9b07909eb9c894cbcb92682d1a2797c024ab3fad4b69587144f778d"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/inventory/page.tsx",
+    "same": true,
+    "sha256": "0989faa3394de072e7e05ab60e418626d5d635e7ccdd0fe3ea7c4abc7134f8b1"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/recharge/page.tsx",
+    "same": true,
+    "sha256": "9ac57bd5b0625426b279e4d3d39465d64739b3bc7553836b3234fa23253dd00b"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/labor-efficiency/page.tsx",
+    "same": true,
+    "sha256": "d73b4b391606e353e150d15b2132c19c58ec8654ddd0e4ed13654cfd64b21aba"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/expense-approvals/page.tsx",
+    "same": true,
+    "sha256": "ec5cce4fe50231c1d53753eec5c374b3576a66b1ba62f64b4c084d708a6519bf"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/market/page.tsx",
+    "same": true,
+    "sha256": "f019bfcc53fb7f6531de519129a80e3480c20697a184bef7af15ad64322aa1c8"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/my-attendance/page.tsx",
+    "same": true,
+    "sha256": "0e603c0e6cc66e0eb3df5a6d34118adccd0b99a344baf29a404a75aa1676db3d"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/payment-plans/page.tsx",
+    "same": true,
+    "sha256": "ccfb3914a1f35b57568726dbb8118c4f9128e93cf0c57d9b4201e9636df89060"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/incoming/page.tsx",
+    "same": true,
+    "sha256": "3b97d74c2cf1680cb7f1a861cf067be9bd55189744fee5f0ee60688ab433ab1e"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/payroll/page.tsx",
+    "same": true,
+    "sha256": "dd5734b579b47f1e46af8aea2bad87b811a19d3caf76f6afabd068f3ee090927"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/clock-records/page.tsx",
+    "same": true,
+    "sha256": "4357a8336daeab7fd05dde8c2c28460f3df41fc11ed3cd7d138e7355ec1e5e1e"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/config-center/page.tsx",
+    "same": true,
+    "sha256": "685fd1a7e1da4411c6432dc5b0d16412a7912cb78a71dcd4af79bcf7e785e259"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/categories/page.tsx",
+    "same": true,
+    "sha256": "53a144a746473aabeef55f7afcb70b8e1b62a4fe86de9315b88c7a84891e16b7"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/overtime/page.tsx",
+    "same": true,
+    "sha256": "8d20eae308e66287e7b7bd1ddaf58f560cefd327178f7b55e4a5d7306d666b7f"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/salary-templates/page.tsx",
+    "same": true,
+    "sha256": "57bbbd005453f2d63b1f29821181fa138f3e6ec62a6efbd22a11123eb9df4eb2"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/group-order/page.tsx",
+    "same": true,
+    "sha256": "ebccbc0c326367adcbb3cf3550fc63f38916267998d63ece964fac05e601cc3a"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/my-leave/page.tsx",
+    "same": true,
+    "sha256": "70700fac42f4e5a965dd304f0828c812850b013d68a072c37dc3fb885871ea4e"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/modification-logs/page.tsx",
+    "same": true,
+    "sha256": "e47e1c37ab194e2baeba9484b5ebc5ffa0e25341a15cf882b57cf200d7d71cad"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/reimbursement/page.tsx",
+    "same": true,
+    "sha256": "f4e883ab1e7d3ebe8340bc55a769ddd4301ff81791ee52f8168e05518c0219b0"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/reports/page.tsx",
+    "same": true,
+    "sha256": "1c06ce14fe1ff823110d4296f61545fab4996644af8b650c52e019d9a0e46db4"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "same": true,
+    "sha256": "4639e6239d9e348d5fae33137304c18fc5d0d38ea5c49285014b7fabb7d46257"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "same": true,
+    "sha256": "b3d7f7e07ee21c031fafd9a3b04b3cc96bcf535d365b27ca606630a4cde83db8"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/operating/page.tsx",
+    "same": true,
+    "sha256": "038a81b6c1217d1570232be2a4b81eea986c7952c5574fc23c3a56b11f83958f"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/expense-identities/[source]/[id]/page.tsx",
+    "same": true,
+    "sha256": "1ffaf463eb956c5e84f7e61c4af632678b5cb18e5359f66fa885757068adfae4"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/suppliers/monthly-price-report/page.tsx",
+    "same": true,
+    "sha256": "d76a4946ce9dca09ccaa2ea09be0fcd04d6c1c14edd3c3fe28c6a19bd56911e0"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/suppliers/controls/page.tsx",
+    "same": true,
+    "sha256": "250ccbe99f04ba54732314805fa90babd20403141ad8df7ac2e3f204d5a1593c"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/suppliers/risk/page.tsx",
+    "same": true,
+    "sha256": "5f8eaf052d3297bb54541a73227e55237bf070a3b51ad276d587a7f6efe4965a"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/suppliers/purchase-orders/[id]/page.tsx",
+    "same": true,
+    "sha256": "d0cb66e9976d22b0780eec014d6ec3429762225a3d3880538695c6ef89972289"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/suppliers/risk/reviews/page.tsx",
+    "same": true,
+    "sha256": "758e1e68ee18ab66fad61111fab89ec8a02f4a3ff4da3a4733f19a26af6edf7d"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/cash-advances/[id]/page.tsx",
+    "same": true,
+    "sha256": "e71d0519c0b2cb06081922f9d3495695db8ab468c7c00468df5c8f1841b4db87"
+  },
+  {
+    "path": "frontend/src/app/(dashboard)/reports/cost-funds-debt/page.tsx",
+    "same": true,
+    "sha256": "0629b0c17006092ebbb07e479f36ff0bdcafa38f8fe8c21e9096854364c7ce58"
+  },
+  {
+    "path": "frontend/src/components/ui/BackToTop.tsx",
+    "same": true,
+    "sha256": "106984736362b586d1e1bea15d4c6676d3c2a63f0eb28ebc2990e815776792ca"
+  },
+  {
+    "path": "frontend/src/components/ui/ConfirmDialog.tsx",
+    "same": true,
+    "sha256": "d2e8d6de55dd629509e92ccbb10fd8c5a3046dc46560880ddc103169c4c265b1"
+  },
+  {
+    "path": "frontend/src/components/ui/SearchableSelect.tsx",
+    "same": true,
+    "sha256": "3cac5b9765a87cd12380903833e09c0f2352ea3de08dc942346f5cb7fc0e3fc8"
+  },
+  {
+    "path": "frontend/src/components/ui/Toast.tsx",
+    "same": true,
+    "sha256": "d0eab9807302cec97b1f175469ecb7546c0c0f6c093a60bb563c4d95f29c0ea7"
+  },
+  {
+    "path": "frontend/src/components/settings/AttendanceToggle.tsx",
+    "same": true,
+    "sha256": "7deee91986789cf15a08ffc651aef9f7aabdc650aadc3b2fd761812e27f9b14b"
+  },
+  {
+    "path": "frontend/src/components/layout/DashboardLayout.tsx",
+    "same": true,
+    "sha256": "7c70f4dff318147f53ff0040aa63f2148798d4b4aa3d186867ee46288e839b07"
+  },
+  {
+    "path": "frontend/src/components/common/DataTable.tsx",
+    "same": true,
+    "sha256": "a5866358faba58ef1aeb223989ad65362a9c857c00771eaf7f00d4bbfa99ba70"
+  },
+  {
+    "path": "frontend/src/components/common/FormModal.tsx",
+    "same": true,
+    "sha256": "b6a42d884f4b3a451149dbd5c6122a1b503877d4f2d9230b2f185e3598baf8e4"
+  },
+  {
+    "path": "frontend/package.json",
+    "same": true,
+    "sha256": "2fcaf4d83137ecaa2fce74c1637bc9d8132896fc1ecac437e183cb3932ba408e"
+  },
+  {
+    "path": "frontend/next.config.js",
+    "same": true,
+    "sha256": "1282ab18f3692c24c52e7c37767bc0952527390189f0d94bc727294dc77c1dce"
+  },
+  {
+    "path": "frontend/postcss.config.js",
+    "same": true,
+    "sha256": "fa650b380adfabb151a0b352f7135e107e6352345f899060f1c5c231228f94bf"
+  }
+]

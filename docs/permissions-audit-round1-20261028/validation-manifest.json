@@ -1,0 +1,114 @@
+{
+  "baseline": "854e389c30aa9e62169d746a13f499c7815591ec",
+  "branch": "codex/permissions-audit-round1-20261028",
+  "worktree": "/private/tmp/permissions-audit-round1-20261028",
+  "prerequisite_commit": "854e389c30aa9e62169d746a13f499c7815591ec",
+  "no_production_connection": true,
+  "no_push": true,
+  "no_deploy": true,
+  "database_url": "postgresql+asyncpg://audit_local@127.0.0.1:65329/audit_round1",
+  "isolation_directory": "/private/tmp/permissions-audit-round1-env",
+  "python": "/tmp/supplier01-py312/bin/python",
+  "postgres_bin": "/tmp/supplier01-pgserver/pgserver/pginstall/bin",
+  "auth": "real JWT using explicit synthetic signing key; real get_current_user reads synthetic User/UserWarehouse rows",
+  "files_redirected": "UPLOAD_DIR plus clock_in/attendance runtime directories only, no auth stubs",
+  "startup_migrations": "not run; ASGI lifespan off; synthetic schema metadata creation only",
+  "evidence_basis": "local baseline only, not deployed behavior",
+  "runs": [
+    {
+      "command": "AUDIT_DATABASE_URL=<synthetic localhost URL> /tmp/supplier01-py312/bin/python /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/run_audit.py",
+      "cwd": "/private/tmp/permissions-audit-round1-env",
+      "log": "api-run-second.log",
+      "exit_code": 0,
+      "requests": 121,
+      "meaning": "current behavior only; final replay asserts saved states"
+    },
+    {
+      "command": "AUDIT_DATABASE_URL=<synthetic localhost URL> /tmp/supplier01-py312/bin/python /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/run_audit.py",
+      "cwd": "/private/tmp/permissions-audit-round1-20261028",
+      "log": "api-run-third.log",
+      "exit_code": 0,
+      "requests": 143,
+      "meaning": "current behavior only; final replay asserts saved states"
+    },
+    {
+      "command": "AUDIT_DATABASE_URL=<synthetic localhost URL> /tmp/supplier01-py312/bin/python /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/run_audit.py",
+      "cwd": "/private/tmp/permissions-audit-round1-env",
+      "log": "api-observation.log",
+      "exit_code": 0,
+      "requests": 162,
+      "meaning": "current behavior only; final replay asserts saved states"
+    },
+    {
+      "command": "AUDIT_DATABASE_URL=<synthetic localhost URL> /tmp/supplier01-py312/bin/python /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/run_audit.py",
+      "cwd": "/private/tmp/permissions-audit-round1-env",
+      "log": "api-replay.log",
+      "exit_code": 0,
+      "requests": 162,
+      "meaning": "current behavior only; final replay asserts saved states"
+    },
+    {
+      "command": "AUDIT_DATABASE_URL=<synthetic localhost URL> /tmp/supplier01-py312/bin/python /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/run_audit.py",
+      "cwd": "/private/tmp/permissions-audit-round1-env",
+      "log": "api-expanded-observation.log",
+      "exit_code": 0,
+      "requests": 172,
+      "meaning": "current behavior only; final replay asserts saved states"
+    },
+    {
+      "command": "AUDIT_DATABASE_URL=<synthetic localhost URL> /tmp/supplier01-py312/bin/python /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/run_audit.py",
+      "cwd": "/private/tmp/permissions-audit-round1-env",
+      "log": "api-final.log",
+      "exit_code": 0,
+      "requests": 172,
+      "meaning": "current behavior only; final replay asserts saved states"
+    },
+    {
+      "command": "PYTHONPATH=/private/tmp/permissions-audit-round1-20261028/backend DATABASE_URL=<synthetic localhost URL> INCOMING_TEST_DATABASE_URL=<same local URL> SECRET_KEY=<synthetic> SUPPLIER09_REPORT=<local report> /tmp/supplier01-py312/bin/python -m pytest -q /private/tmp/permissions-audit-round1-20261028/backend/tests/test_procurement_controls_round9.py -k \"defaults_versions_owner or self_approval_exception\"",
+      "cwd": "/private/tmp/permissions-audit-round1-env",
+      "exit_code": 0,
+      "passed": 2,
+      "log": "procurement-run.log",
+      "unchanged_existing_tests": true
+    },
+    {
+      "command": "node backend/tests/permission_audit_round1/browser_audit.cjs",
+      "cwd": "/private/tmp/permissions-audit-round1-20261028",
+      "exit_code": 0,
+      "page_scenarios": 7,
+      "account_switch_reload": 1,
+      "page_errors": 0,
+      "log": "browser-run.log",
+      "build_reused": "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028",
+      "source_files_compared": 135
+    },
+    {
+      "command": "/tmp/supplier01-py312/bin/python backend/tests/permission_audit_round1/inventory.py",
+      "cwd": "/private/tmp/permissions-audit-round1-20261028",
+      "exit_code": 0,
+      "registered_actions": 418
+    },
+    {
+      "command": "/tmp/supplier01-py312/bin/python backend/tests/permission_audit_round1/expand_matrix.py",
+      "cwd": "/private/tmp/permissions-audit-round1-20261028",
+      "exit_code": 0,
+      "matrix_rows": 476
+    },
+    {
+      "command": "/tmp/supplier01-py312/bin/python backend/tests/permission_audit_round1/write_findings.py",
+      "cwd": "/private/tmp/permissions-audit-round1-20261028",
+      "exit_code": 0,
+      "findings": 19
+    }
+  ],
+  "initial_fixture_failure": {
+    "log": "api-run-initial.log",
+    "cause": "synthetic ExpenseFund missing nonnullable purpose; corrected fixture only",
+    "requests": 0,
+    "passed": false,
+    "exit_code": null,
+    "exit_code_note": "首次异步执行的最终退出码未单独采集；日志明确0请求及夹具失败，不计通过"
+  },
+  "services_stopped": true,
+  "synthetic_database_dropped": true
+}

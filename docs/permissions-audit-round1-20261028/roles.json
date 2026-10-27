@@ -1,0 +1,112 @@
+{
+  "roles": {
+    "1": [
+      "warehouse_admin",
+      1
+    ],
+    "2": [
+      "supervisor",
+      1
+    ],
+    "3": [
+      "staff",
+      1
+    ],
+    "4": [
+      "staff",
+      1
+    ],
+    "5": [
+      "warehouse_labor",
+      1
+    ],
+    "6": [
+      "supervisor",
+      1
+    ],
+    "7": [
+      "staff",
+      1
+    ],
+    "8": [
+      "warehouse_admin",
+      2
+    ]
+  },
+  "expanded_permissions": [
+    "充值申报",
+    "客户档案",
+    "收款账户",
+    "员工档案",
+    "工资",
+    "薪资模板",
+    "扣款模板",
+    "考勤",
+    "请假",
+    "加班",
+    "应付账款",
+    "付款计划",
+    "采购分析",
+    "拼单",
+    "配置中心",
+    "系统设置",
+    "人效",
+    "报表中心",
+    "资金流水",
+    "对账",
+    "费用审批",
+    "市场",
+    "到账流水",
+    "备用金管理",
+    "报销管理",
+    "运营收支",
+    "垫款单",
+    "账期管理",
+    "操作日志",
+    "供应商管理",
+    "标准SKU目录",
+    "耗材库存",
+    "标准SKU管理",
+    "其他收支",
+    "修改日志",
+    "员工扣款",
+    "员工预支",
+    "recharge",
+    "customers",
+    "accounts",
+    "employees",
+    "payroll",
+    "salary_templates",
+    "deduction_templates",
+    "attendance",
+    "leave",
+    "overtime",
+    "payable",
+    "payment_plans",
+    "concentration",
+    "group_order",
+    "config_center",
+    "settings",
+    "labor_efficiency",
+    "reports",
+    "ledger",
+    "reconciliation",
+    "expense_approval",
+    "market",
+    "cash_advances",
+    "sku_catalog",
+    "inventory",
+    "sku_catalog_manage",
+    "modification_logs",
+    "employee_deductions",
+    "employee_advances"
+  ],
+  "disabled_uid": 7,
+  "no_extra_permissions_uid": 6,
+  "employee_bindings": {
+    "2": 2,
+    "3": 3,
+    "4": 4
+  },
+  "identities": "synthetic only"
+}

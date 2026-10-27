@@ -1,0 +1,9 @@
+{
+  "root": "/private/tmp/permissions-audit-round1-env",
+  "port": 65329,
+  "database_url": "postgresql+asyncpg://audit_local@127.0.0.1:65329/audit_round1",
+  "baseline": "854e389c30aa9e62169d746a13f499c7815591ec",
+  "auth": "real JWT and DB-backed get_current_user; synthetic signing key",
+  "startup": "ASGI no lifespan, no migrations, fixture schema only",
+  "encoding": "UTF8 (database created from template0)"
+}

@@ -1,0 +1,1837 @@
+{
+  "registered_http_actions": 418,
+  "module_counts": {
+    "A08": 104,
+    "A06": 36,
+    "A01": 12,
+    "A10": 43,
+    "A02": 6,
+    "A03": 21,
+    "A05": 87,
+    "OUT": 19,
+    "A09": 18,
+    "A07": 51,
+    "A04": 21
+  },
+  "api_exercised_routes": 59,
+  "api_unexercised": [
+    {
+      "id": "A08-001",
+      "route": "GET /api/v1/inventory",
+      "source": "backend/app/api/v1/inventory.py:96"
+    },
+    {
+      "id": "A08-002",
+      "route": "GET /api/v1/inventory/catalog",
+      "source": "backend/app/api/v1/inventory.py:115"
+    },
+    {
+      "id": "A08-003",
+      "route": "GET /api/v1/inventory/policy",
+      "source": "backend/app/api/v1/inventory.py:128"
+    },
+    {
+      "id": "A08-004",
+      "route": "PUT /api/v1/inventory/policy",
+      "source": "backend/app/api/v1/inventory.py:134"
+    },
+    {
+      "id": "A08-005",
+      "route": "POST /api/v1/inventory/openings",
+      "source": "backend/app/api/v1/inventory.py:139"
+    },
+    {
+      "id": "A08-006",
+      "route": "GET /api/v1/inventory/pending-receipts",
+      "source": "backend/app/api/v1/inventory.py:144"
+    },
+    {
+      "id": "A08-007",
+      "route": "POST /api/v1/inventory/pending-receipts/{ident}/resolve",
+      "source": "backend/app/api/v1/inventory.py:156"
+    },
+    {
+      "id": "A08-008",
+      "route": "GET /api/v1/inventory/accounts/{account_id}",
+      "source": "backend/app/api/v1/inventory.py:161"
+    },
+    {
+      "id": "A08-009",
+      "route": "POST /api/v1/inventory/accounts/{account_id}/issues",
+      "source": "backend/app/api/v1/inventory.py:174"
+    },
+    {
+      "id": "A08-010",
+      "route": "POST /api/v1/inventory/movements/{movement_id}/returns",
+      "source": "backend/app/api/v1/inventory.py:179"
+    },
+    {
+      "id": "A08-011",
+      "route": "POST /api/v1/inventory/movements/{movement_id}/reverse",
+      "source": "backend/app/api/v1/inventory.py:184"
+    },
+    {
+      "id": "A08-012",
+      "route": "GET /api/v1/inventory/counts",
+      "source": "backend/app/api/v1/inventory.py:189"
+    },
+    {
+      "id": "A08-013",
+      "route": "POST /api/v1/inventory/accounts/{account_id}/counts",
+      "source": "backend/app/api/v1/inventory.py:202"
+    },
+    {
+      "id": "A08-014",
+      "route": "POST /api/v1/inventory/counts/{count_id}/review",
+      "source": "backend/app/api/v1/inventory.py:207"
+    },
+    {
+      "id": "A08-015",
+      "route": "GET /api/v1/inventory/accounts/{account_id}/controls",
+      "source": "backend/app/api/v1/inventory.py:212"
+    },
+    {
+      "id": "A08-016",
+      "route": "PUT /api/v1/inventory/accounts/{account_id}/controls",
+      "source": "backend/app/api/v1/inventory.py:219"
+    },
+    {
+      "id": "A08-017",
+      "route": "GET /api/v1/inventory/analysis",
+      "source": "backend/app/api/v1/inventory.py:229"
+    },
+    {
+      "id": "A08-018",
+      "route": "GET /api/v1/inventory/analysis/export",
+      "source": "backend/app/api/v1/inventory.py:234"
+    },
+    {
+      "id": "A08-020",
+      "route": "PUT /api/v1/supplier-controls/policy",
+      "source": "backend/app/api/v1/procurement_controls.py:39"
+    },
+    {
+      "id": "A08-021",
+      "route": "GET /api/v1/supplier-controls/orders/{po_id}/context",
+      "source": "backend/app/api/v1/procurement_controls.py:42"
+    },
+    {
+      "id": "A08-022",
+      "route": "GET /api/v1/supplier-controls/exceptions",
+      "source": "backend/app/api/v1/procurement_controls.py:45"
+    },
+    {
+      "id": "A08-023",
+      "route": "POST /api/v1/supplier-controls/exceptions",
+      "source": "backend/app/api/v1/procurement_controls.py:59"
+    },
+    {
+      "id": "A08-024",
+      "route": "POST /api/v1/supplier-controls/exceptions/{ident}/revoke",
+      "source": "backend/app/api/v1/procurement_controls.py:62"
+    },
+    {
+      "id": "A08-025",
+      "route": "GET /api/v1/supplier-controls/exceptions/{ident}",
+      "source": "backend/app/api/v1/procurement_controls.py:66"
+    },
+    {
+      "id": "A08-026",
+      "route": "GET /api/v1/supplier-risk",
+      "source": "backend/app/api/v1/procurement_risk.py:36"
+    },
+    {
+      "id": "A08-027",
+      "route": "GET /api/v1/supplier-risk/export",
+      "source": "backend/app/api/v1/procurement_risk.py:43"
+    },
+    {
+      "id": "A08-028",
+      "route": "GET /api/v1/supplier-risk/signals/{signal_id}",
+      "source": "backend/app/api/v1/procurement_risk.py:48"
+    },
+    {
+      "id": "A08-029",
+      "route": "POST /api/v1/supplier-risk/signals/{signal_id}/reviews",
+      "source": "backend/app/api/v1/procurement_risk.py:63"
+    },
+    {
+      "id": "A08-030",
+      "route": "GET /api/v1/supplier-risk/reviews",
+      "source": "backend/app/api/v1/procurement_risk.py:67"
+    },
+    {
+      "id": "A08-031",
+      "route": "GET /api/v1/supplier-risk/reviews/export",
+      "source": "backend/app/api/v1/procurement_risk.py:73"
+    },
+    {
+      "id": "A08-032",
+      "route": "GET /api/v1/supplier-price-report",
+      "source": "backend/app/api/v1/procurement_report.py:15"
+    },
+    {
+      "id": "A08-033",
+      "route": "GET /api/v1/supplier-price-report/export",
+      "source": "backend/app/api/v1/procurement_report.py:19"
+    },
+    {
+      "id": "A08-034",
+      "route": "GET /api/v1/supplier-price-report/orders/{order_id}/lines/{line_ref}",
+      "source": "backend/app/api/v1/procurement_report.py:24"
+    },
+    {
+      "id": "A08-035",
+      "route": "GET /api/v1/supplier-quotes/suppliers/{supplier_id}",
+      "source": "backend/app/api/v1/supplier_quotes.py:33"
+    },
+    {
+      "id": "A08-036",
+      "route": "POST /api/v1/supplier-quotes/products/{product_id}",
+      "source": "backend/app/api/v1/supplier_quotes.py:47"
+    },
+    {
+      "id": "A08-037",
+      "route": "PUT /api/v1/supplier-quotes/{quote_id}",
+      "source": "backend/app/api/v1/supplier_quotes.py:51"
+    },
+    {
+      "id": "A08-038",
+      "route": "GET /api/v1/supplier-quotes/{quote_id}/revisions",
+      "source": "backend/app/api/v1/supplier_quotes.py:56"
+    },
+    {
+      "id": "A08-039",
+      "route": "POST /api/v1/supplier-quotes/purchase-preview",
+      "source": "backend/app/api/v1/supplier_quotes.py:62"
+    },
+    {
+      "id": "A08-040",
+      "route": "GET /api/v1/sku-catalog/reference",
+      "source": "backend/app/api/v1/sku_catalog.py:44"
+    },
+    {
+      "id": "A08-041",
+      "route": "GET /api/v1/sku-catalog",
+      "source": "backend/app/api/v1/sku_catalog.py:52"
+    },
+    {
+      "id": "A08-042",
+      "route": "POST /api/v1/sku-catalog",
+      "source": "backend/app/api/v1/sku_catalog.py:58"
+    },
+    {
+      "id": "A08-043",
+      "route": "PUT /api/v1/sku-catalog/{sku_id}",
+      "source": "backend/app/api/v1/sku_catalog.py:62"
+    },
+    {
+      "id": "A08-044",
+      "route": "GET /api/v1/sku-catalog/products/{product_id}/candidates",
+      "source": "backend/app/api/v1/sku_catalog.py:66"
+    },
+    {
+      "id": "A08-045",
+      "route": "POST /api/v1/sku-catalog/products/{product_id}/mapping",
+      "source": "backend/app/api/v1/sku_catalog.py:74"
+    },
+    {
+      "id": "A08-046",
+      "route": "GET /api/v1/sku-catalog/products/{product_id}/mapping-history",
+      "source": "backend/app/api/v1/sku_catalog.py:78"
+    },
+    {
+      "id": "A08-047",
+      "route": "GET /api/v1/sku-catalog/history-candidates",
+      "source": "backend/app/api/v1/sku_catalog.py:85"
+    },
+    {
+      "id": "A08-048",
+      "route": "GET /api/v1/sku-catalog/tags",
+      "source": "backend/app/api/v1/sku_catalog.py:91"
+    },
+    {
+      "id": "A08-049",
+      "route": "POST /api/v1/sku-catalog/tags",
+      "source": "backend/app/api/v1/sku_catalog.py:96"
+    },
+    {
+      "id": "A08-050",
+      "route": "PUT /api/v1/sku-catalog/tags/{tag_id}",
+      "source": "backend/app/api/v1/sku_catalog.py:105"
+    },
+    {
+      "id": "A08-051",
+      "route": "GET /api/v1/sku-catalog/suppliers/{supplier_id}/tags",
+      "source": "backend/app/api/v1/sku_catalog.py:118"
+    },
+    {
+      "id": "A08-052",
+      "route": "PUT /api/v1/sku-catalog/suppliers/{supplier_id}/tags",
+      "source": "backend/app/api/v1/sku_catalog.py:126"
+    },
+    {
+      "id": "A06-001",
+      "route": "GET /api/v1/expense-identities/suppliers",
+      "source": "backend/app/api/v1/cost_identity.py:17"
+    },
+    {
+      "id": "A06-002",
+      "route": "GET /api/v1/expense-identities/{source}/{source_id}",
+      "source": "backend/app/api/v1/cost_identity.py:22"
+    },
+    {
+      "id": "A01-001",
+      "route": "POST /api/v1/auth/attachment-session",
+      "source": "backend/app/api/v1/auth.py:21"
+    },
+    {
+      "id": "A01-002",
+      "route": "POST /api/v1/auth/login",
+      "source": "backend/app/api/v1/auth.py:46"
+    },
+    {
+      "id": "A01-003",
+      "route": "GET /api/v1/auth/me",
+      "source": "backend/app/api/v1/auth.py:84"
+    },
+    {
+      "id": "A01-004",
+      "route": "POST /api/v1/auth/change-password",
+      "source": "backend/app/api/v1/auth.py:111"
+    },
+    {
+      "id": "A01-005",
+      "route": "GET /api/v1/users",
+      "source": "backend/app/api/v1/users.py:29"
+    },
+    {
+      "id": "A01-006",
+      "route": "GET /api/v1/users/permissions",
+      "source": "backend/app/api/v1/users.py:109"
+    },
+    {
+      "id": "A10-001",
+      "route": "GET /api/v1/dashboard/stats",
+      "source": "backend/app/api/v1/dashboard.py:26"
+    },
+    {
+      "id": "A10-002",
+      "route": "GET /api/v1/dashboard/pending-tasks",
+      "source": "backend/app/api/v1/dashboard.py:81"
+    },
+    {
+      "id": "A10-003",
+      "route": "GET /api/v1/dashboard/warehouse-summary",
+      "source": "backend/app/api/v1/dashboard.py:145"
+    },
+    {
+      "id": "A10-004",
+      "route": "GET /api/v1/dashboard/trends",
+      "source": "backend/app/api/v1/dashboard.py:182"
+    },
+    {
+      "id": "A10-005",
+      "route": "GET /api/v1/dashboard/cockpit",
+      "source": "backend/app/api/v1/dashboard.py:192"
+    },
+    {
+      "id": "A10-006",
+      "route": "GET /api/v1/dashboard/boss-todos",
+      "source": "backend/app/api/v1/dashboard.py:494"
+    },
+    {
+      "id": "A10-007",
+      "route": "GET /api/v1/customers/{customer_id}/receivables",
+      "source": "backend/app/api/v1/customers.py:36"
+    },
+    {
+      "id": "A10-008",
+      "route": "POST /api/v1/customers/{customer_id}/receipts/link",
+      "source": "backend/app/api/v1/customers.py:56"
+    },
+    {
+      "id": "A10-009",
+      "route": "GET /api/v1/customers",
+      "source": "backend/app/api/v1/customers.py:69"
+    },
+    {
+      "id": "A10-010",
+      "route": "POST /api/v1/customers",
+      "source": "backend/app/api/v1/customers.py:119"
+    },
+    {
+      "id": "A10-011",
+      "route": "GET /api/v1/customers/{customer_id}",
+      "source": "backend/app/api/v1/customers.py:134"
+    },
+    {
+      "id": "A10-012",
+      "route": "PUT /api/v1/customers/{customer_id}",
+      "source": "backend/app/api/v1/customers.py:146"
+    },
+    {
+      "id": "A10-013",
+      "route": "DELETE /api/v1/customers/{customer_id}",
+      "source": "backend/app/api/v1/customers.py:161"
+    },
+    {
+      "id": "A01-010",
+      "route": "GET /api/v1/warehouses",
+      "source": "backend/app/api/v1/warehouses.py:14"
+    },
+    {
+      "id": "A01-011",
+      "route": "POST /api/v1/warehouses",
+      "source": "backend/app/api/v1/warehouses.py:31"
+    },
+    {
+      "id": "A01-012",
+      "route": "PUT /api/v1/warehouses/{warehouse_id}",
+      "source": "backend/app/api/v1/warehouses.py:51"
+    },
+    {
+      "id": "A02-001",
+      "route": "POST /api/v1/accounts/transfers",
+      "source": "backend/app/api/v1/payment_accounts.py:40"
+    },
+    {
+      "id": "A02-003",
+      "route": "POST /api/v1/accounts",
+      "source": "backend/app/api/v1/payment_accounts.py:113"
+    },
+    {
+      "id": "A02-006",
+      "route": "DELETE /api/v1/accounts/{account_id}",
+      "source": "backend/app/api/v1/payment_accounts.py:184"
+    },
+    {
+      "id": "A08-053",
+      "route": "GET /api/v1/suppliers",
+      "source": "backend/app/api/v1/suppliers.py:1706"
+    },
+    {
+      "id": "A08-054",
+      "route": "POST /api/v1/suppliers",
+      "source": "backend/app/api/v1/suppliers.py:1741"
+    },
+    {
+      "id": "A08-055",
+      "route": "GET /api/v1/suppliers/purchase-match-policy",
+      "source": "backend/app/api/v1/suppliers.py:42"
+    },
+    {
+      "id": "A08-056",
+      "route": "PUT /api/v1/suppliers/purchase-match-policy",
+      "source": "backend/app/api/v1/suppliers.py:49"
+    },
+    {
+      "id": "A08-057",
+      "route": "GET /api/v1/suppliers/categories",
+      "source": "backend/app/api/v1/suppliers.py:389"
+    },
+    {
+      "id": "A08-058",
+      "route": "POST /api/v1/suppliers/categories",
+      "source": "backend/app/api/v1/suppliers.py:395"
+    },
+    {
+      "id": "A08-059",
+      "route": "GET /api/v1/suppliers/import-template/products",
+      "source": "backend/app/api/v1/suppliers.py:401"
+    },
+    {
+      "id": "A08-060",
+      "route": "GET /api/v1/suppliers/import-template/logistics",
+      "source": "backend/app/api/v1/suppliers.py:423"
+    },
+    {
+      "id": "A08-061",
+      "route": "POST /api/v1/suppliers/import/products",
+      "source": "backend/app/api/v1/suppliers.py:446"
+    },
+    {
+      "id": "A08-062",
+      "route": "POST /api/v1/suppliers/import/logistics",
+      "source": "backend/app/api/v1/suppliers.py:460"
+    },
+    {
+      "id": "A08-063",
+      "route": "GET /api/v1/suppliers/price-threshold",
+      "source": "backend/app/api/v1/suppliers.py:738"
+    },
+    {
+      "id": "A08-065",
+      "route": "GET /api/v1/suppliers/price-stats",
+      "source": "backend/app/api/v1/suppliers.py:775"
+    },
+    {
+      "id": "A08-066",
+      "route": "GET /api/v1/suppliers/price-trend",
+      "source": "backend/app/api/v1/suppliers.py:805"
+    },
+    {
+      "id": "A08-067",
+      "route": "GET /api/v1/suppliers/price-anomalies",
+      "source": "backend/app/api/v1/suppliers.py:827"
+    },
+    {
+      "id": "A08-068",
+      "route": "GET /api/v1/suppliers/non-lowest-records",
+      "source": "backend/app/api/v1/suppliers.py:851"
+    },
+    {
+      "id": "A08-069",
+      "route": "GET /api/v1/suppliers/non-lowest-summary",
+      "source": "backend/app/api/v1/suppliers.py:879"
+    },
+    {
+      "id": "A08-070",
+      "route": "GET /api/v1/suppliers/purchase-approval-threshold",
+      "source": "backend/app/api/v1/suppliers.py:909"
+    },
+    {
+      "id": "A08-072",
+      "route": "GET /api/v1/suppliers/purchase-approvals",
+      "source": "backend/app/api/v1/suppliers.py:946"
+    },
+    {
+      "id": "A08-073",
+      "route": "PUT /api/v1/suppliers/purchase-approvals/{po_id}/approve",
+      "source": "backend/app/api/v1/suppliers.py:1016"
+    },
+    {
+      "id": "A08-074",
+      "route": "PUT /api/v1/suppliers/purchase-approvals/{po_id}/reject",
+      "source": "backend/app/api/v1/suppliers.py:1063"
+    },
+    {
+      "id": "A08-075",
+      "route": "GET /api/v1/suppliers/purchase-orders",
+      "source": "backend/app/api/v1/suppliers.py:1090"
+    },
+    {
+      "id": "A08-076",
+      "route": "GET /api/v1/suppliers/purchase-orders/{po_id}",
+      "source": "backend/app/api/v1/suppliers.py:1137"
+    },
+    {
+      "id": "A08-077",
+      "route": "GET /api/v1/suppliers/purchase-orders/{po_id}/receipts/{event_id}/photo",
+      "source": "backend/app/api/v1/suppliers.py:1144"
+    },
+    {
+      "id": "A08-078",
+      "route": "POST /api/v1/suppliers/purchase-orders/{po_id}/receive",
+      "source": "backend/app/api/v1/suppliers.py:1170"
+    },
+    {
+      "id": "A08-079",
+      "route": "POST /api/v1/suppliers/purchase-orders/{po_id}/mark-sent",
+      "source": "backend/app/api/v1/suppliers.py:1182"
+    },
+    {
+      "id": "A08-080",
+      "route": "POST /api/v1/suppliers/purchase-orders/{po_id}/receipt",
+      "source": "backend/app/api/v1/suppliers.py:1201"
+    },
+    {
+      "id": "A08-081",
+      "route": "POST /api/v1/suppliers/purchase-orders/{po_id}/mark-shipped",
+      "source": "backend/app/api/v1/suppliers.py:1230"
+    },
+    {
+      "id": "A08-082",
+      "route": "GET /api/v1/suppliers/purchase-orders/{po_id}/pdf",
+      "source": "backend/app/api/v1/suppliers.py:1250"
+    },
+    {
+      "id": "A08-083",
+      "route": "GET /api/v1/suppliers/purchase-receipt-discrepancies",
+      "source": "backend/app/api/v1/suppliers.py:1276"
+    },
+    {
+      "id": "A08-084",
+      "route": "GET /api/v1/suppliers/concentration-threshold",
+      "source": "backend/app/api/v1/suppliers.py:1404"
+    },
+    {
+      "id": "A08-085",
+      "route": "PUT /api/v1/suppliers/concentration-threshold",
+      "source": "backend/app/api/v1/suppliers.py:1412"
+    },
+    {
+      "id": "A08-086",
+      "route": "GET /api/v1/suppliers/concentration",
+      "source": "backend/app/api/v1/suppliers.py:1434"
+    },
+    {
+      "id": "A08-087",
+      "route": "GET /api/v1/suppliers/concentration-trend",
+      "source": "backend/app/api/v1/suppliers.py:1464"
+    },
+    {
+      "id": "A08-088",
+      "route": "GET /api/v1/suppliers/compare-prices",
+      "source": "backend/app/api/v1/suppliers.py:1527"
+    },
+    {
+      "id": "A08-089",
+      "route": "GET /api/v1/suppliers/compare-logistics",
+      "source": "backend/app/api/v1/suppliers.py:1572"
+    },
+    {
+      "id": "A08-090",
+      "route": "POST /api/v1/suppliers/ai-compare",
+      "source": "backend/app/api/v1/suppliers.py:1669"
+    },
+    {
+      "id": "A08-091",
+      "route": "GET /api/v1/suppliers/procurement-summary",
+      "source": "backend/app/api/v1/suppliers.py:1791"
+    },
+    {
+      "id": "A08-092",
+      "route": "POST /api/v1/suppliers/{supplier_id}/import/products",
+      "source": "backend/app/api/v1/suppliers.py:471"
+    },
+    {
+      "id": "A08-093",
+      "route": "POST /api/v1/suppliers/{supplier_id}/import/logistics",
+      "source": "backend/app/api/v1/suppliers.py:485"
+    },
+    {
+      "id": "A08-094",
+      "route": "GET /api/v1/suppliers/{supplier_id}/products",
+      "source": "backend/app/api/v1/suppliers.py:496"
+    },
+    {
+      "id": "A08-095",
+      "route": "POST /api/v1/suppliers/{supplier_id}/products",
+      "source": "backend/app/api/v1/suppliers.py:550"
+    },
+    {
+      "id": "A08-096",
+      "route": "DELETE /api/v1/suppliers/{supplier_id}/products/{product_id}",
+      "source": "backend/app/api/v1/suppliers.py:567"
+    },
+    {
+      "id": "A08-097",
+      "route": "POST /api/v1/suppliers/{supplier_id}/purchase-order",
+      "source": "backend/app/api/v1/suppliers.py:586"
+    },
+    {
+      "id": "A08-098",
+      "route": "GET /api/v1/suppliers/{supplier_id}/logistics-prices",
+      "source": "backend/app/api/v1/suppliers.py:1494"
+    },
+    {
+      "id": "A08-099",
+      "route": "POST /api/v1/suppliers/{supplier_id}/logistics-prices",
+      "source": "backend/app/api/v1/suppliers.py:1503"
+    },
+    {
+      "id": "A08-100",
+      "route": "DELETE /api/v1/suppliers/{supplier_id}/logistics-prices/{price_id}",
+      "source": "backend/app/api/v1/suppliers.py:1514"
+    },
+    {
+      "id": "A08-101",
+      "route": "PUT /api/v1/suppliers/{supplier_id}",
+      "source": "backend/app/api/v1/suppliers.py:1754"
+    },
+    {
+      "id": "A08-102",
+      "route": "DELETE /api/v1/suppliers/{supplier_id}",
+      "source": "backend/app/api/v1/suppliers.py:1771"
+    },
+    {
+      "id": "A08-103",
+      "route": "GET /api/v1/suppliers/{supplier_id}",
+      "source": "backend/app/api/v1/suppliers.py:1944"
+    },
+    {
+      "id": "A08-104",
+      "route": "GET /api/v1/suppliers/{supplier_id}/ai-evaluation",
+      "source": "backend/app/api/v1/suppliers.py:1966"
+    },
+    {
+      "id": "A06-003",
+      "route": "GET /api/v1/recharge",
+      "source": "backend/app/api/v1/recharge.py:31"
+    },
+    {
+      "id": "A06-004",
+      "route": "POST /api/v1/recharge",
+      "source": "backend/app/api/v1/recharge.py:82"
+    },
+    {
+      "id": "A06-005",
+      "route": "GET /api/v1/recharge/{recharge_id}",
+      "source": "backend/app/api/v1/recharge.py:115"
+    },
+    {
+      "id": "A06-006",
+      "route": "PUT /api/v1/recharge/{recharge_id}",
+      "source": "backend/app/api/v1/recharge.py:124"
+    },
+    {
+      "id": "A06-007",
+      "route": "DELETE /api/v1/recharge/{recharge_id}",
+      "source": "backend/app/api/v1/recharge.py:161"
+    },
+    {
+      "id": "A06-008",
+      "route": "GET /api/v1/incoming",
+      "source": "backend/app/api/v1/incoming.py:22"
+    },
+    {
+      "id": "A06-009",
+      "route": "POST /api/v1/incoming",
+      "source": "backend/app/api/v1/incoming.py:59"
+    },
+    {
+      "id": "A06-010",
+      "route": "GET /api/v1/incoming/by-request/{request_key}",
+      "source": "backend/app/api/v1/incoming.py:72"
+    },
+    {
+      "id": "A06-011",
+      "route": "POST /api/v1/incoming/{incoming_id}/screenshot",
+      "source": "backend/app/api/v1/incoming.py:93"
+    },
+    {
+      "id": "A06-012",
+      "route": "GET /api/v1/incoming/{incoming_id}/screenshot",
+      "source": "backend/app/api/v1/incoming.py:123"
+    },
+    {
+      "id": "A06-013",
+      "route": "POST /api/v1/incoming/batch-import",
+      "source": "backend/app/api/v1/incoming.py:131"
+    },
+    {
+      "id": "A06-014",
+      "route": "POST /api/v1/incoming/import-excel",
+      "source": "backend/app/api/v1/incoming.py:153"
+    },
+    {
+      "id": "A06-015",
+      "route": "GET /api/v1/incoming/template",
+      "source": "backend/app/api/v1/incoming.py:194"
+    },
+    {
+      "id": "A06-016",
+      "route": "GET /api/v1/reconciliation/unmatched",
+      "source": "backend/app/api/v1/reconciliation.py:19"
+    },
+    {
+      "id": "A06-017",
+      "route": "POST /api/v1/reconciliation/manual-match",
+      "source": "backend/app/api/v1/reconciliation.py:75"
+    },
+    {
+      "id": "A06-018",
+      "route": "POST /api/v1/reconciliation/unmatch",
+      "source": "backend/app/api/v1/reconciliation.py:116"
+    },
+    {
+      "id": "A06-019",
+      "route": "GET /api/v1/reconciliation/results",
+      "source": "backend/app/api/v1/reconciliation.py:149"
+    },
+    {
+      "id": "A06-020",
+      "route": "GET /api/v1/reconciliation/export",
+      "source": "backend/app/api/v1/reconciliation.py:240"
+    },
+    {
+      "id": "A06-021",
+      "route": "GET /api/v1/income-expense/categories",
+      "source": "backend/app/api/v1/income_expense.py:48"
+    },
+    {
+      "id": "A06-022",
+      "route": "POST /api/v1/income-expense/categories",
+      "source": "backend/app/api/v1/income_expense.py:66"
+    },
+    {
+      "id": "A06-023",
+      "route": "GET /api/v1/income-expense/income",
+      "source": "backend/app/api/v1/income_expense.py:81"
+    },
+    {
+      "id": "A06-024",
+      "route": "POST /api/v1/income-expense/income",
+      "source": "backend/app/api/v1/income_expense.py:103"
+    },
+    {
+      "id": "A06-025",
+      "route": "PUT /api/v1/income-expense/income/{income_id}",
+      "source": "backend/app/api/v1/income_expense.py:130"
+    },
+    {
+      "id": "A06-026",
+      "route": "DELETE /api/v1/income-expense/income/{income_id}",
+      "source": "backend/app/api/v1/income_expense.py:151"
+    },
+    {
+      "id": "A06-027",
+      "route": "GET /api/v1/income-expense/expense",
+      "source": "backend/app/api/v1/income_expense.py:168"
+    },
+    {
+      "id": "A06-028",
+      "route": "GET /api/v1/income-expense/expense/export",
+      "source": "backend/app/api/v1/income_expense.py:189"
+    },
+    {
+      "id": "A06-030",
+      "route": "PUT /api/v1/income-expense/expense/{expense_id}",
+      "source": "backend/app/api/v1/income_expense.py:288"
+    },
+    {
+      "id": "A06-031",
+      "route": "DELETE /api/v1/income-expense/expense/{expense_id}",
+      "source": "backend/app/api/v1/income_expense.py:410"
+    },
+    {
+      "id": "A06-033",
+      "route": "GET /api/v1/income-expense/ledger/export",
+      "source": "backend/app/api/v1/income_expense.py:479"
+    },
+    {
+      "id": "A06-034",
+      "route": "GET /api/v1/income-expense/income/export",
+      "source": "backend/app/api/v1/income_expense.py:520"
+    },
+    {
+      "id": "A06-035",
+      "route": "GET /api/v1/income-expense/monthly-summary",
+      "source": "backend/app/api/v1/income_expense.py:566"
+    },
+    {
+      "id": "A06-036",
+      "route": "GET /api/v1/income-expense/operating-dashboard",
+      "source": "backend/app/api/v1/income_expense.py:585"
+    },
+    {
+      "id": "A03-002",
+      "route": "GET /api/v1/expense-fund/employees",
+      "source": "backend/app/api/v1/expense_fund.py:181"
+    },
+    {
+      "id": "A03-003",
+      "route": "GET /api/v1/expense-fund/accounts",
+      "source": "backend/app/api/v1/expense_fund.py:204"
+    },
+    {
+      "id": "A03-004",
+      "route": "GET /api/v1/expense-fund/payment-accounts",
+      "source": "backend/app/api/v1/expense_fund.py:259"
+    },
+    {
+      "id": "A03-005",
+      "route": "GET /api/v1/expense-fund/accounts/{account_id}/disbursements",
+      "source": "backend/app/api/v1/expense_fund.py:275"
+    },
+    {
+      "id": "A03-007",
+      "route": "GET /api/v1/expense-fund/accounts/{account_id}/items",
+      "source": "backend/app/api/v1/expense_fund.py:328"
+    },
+    {
+      "id": "A03-008",
+      "route": "PUT /api/v1/expense-fund/accounts/{account_id}/items/{item_id}",
+      "source": "backend/app/api/v1/expense_fund.py:355"
+    },
+    {
+      "id": "A03-009",
+      "route": "DELETE /api/v1/expense-fund/accounts/{account_id}/items/{item_id}",
+      "source": "backend/app/api/v1/expense_fund.py:362"
+    },
+    {
+      "id": "A03-010",
+      "route": "POST /api/v1/expense-fund/accounts/{account_id}/items",
+      "source": "backend/app/api/v1/expense_fund.py:368"
+    },
+    {
+      "id": "A03-011",
+      "route": "POST /api/v1/expense-fund/accounts/{account_id}/upload-receipt",
+      "source": "backend/app/api/v1/expense_fund.py:427"
+    },
+    {
+      "id": "A03-012",
+      "route": "POST /api/v1/expense-fund/accounts/{account_id}/items/{item_id}/upload-receipt",
+      "source": "backend/app/api/v1/expense_fund.py:447"
+    },
+    {
+      "id": "A03-013",
+      "route": "GET /api/v1/expense-fund/review/pending",
+      "source": "backend/app/api/v1/expense_fund.py:462"
+    },
+    {
+      "id": "A03-016",
+      "route": "GET /api/v1/expense-fund/recharge/requests",
+      "source": "backend/app/api/v1/expense_fund.py:655"
+    },
+    {
+      "id": "A03-018",
+      "route": "GET /api/v1/expense-fund/settings",
+      "source": "backend/app/api/v1/expense_fund.py:771"
+    },
+    {
+      "id": "A03-021",
+      "route": "GET /api/v1/expense-fund/alert",
+      "source": "backend/app/api/v1/expense_fund.py:821"
+    },
+    {
+      "id": "A05-001",
+      "route": "GET /api/v1/reimbursement/payment-sources",
+      "source": "backend/app/api/v1/reimbursement.py:56"
+    },
+    {
+      "id": "A05-002",
+      "route": "POST /api/v1/reimbursement/payment-voucher",
+      "source": "backend/app/api/v1/reimbursement.py:82"
+    },
+    {
+      "id": "A05-003",
+      "route": "GET /api/v1/reimbursement",
+      "source": "backend/app/api/v1/reimbursement.py:97"
+    },
+    {
+      "id": "A05-004",
+      "route": "POST /api/v1/reimbursement",
+      "source": "backend/app/api/v1/reimbursement.py:148"
+    },
+    {
+      "id": "A05-005",
+      "route": "GET /api/v1/reimbursement/export",
+      "source": "backend/app/api/v1/reimbursement.py:212"
+    },
+    {
+      "id": "A05-006",
+      "route": "GET /api/v1/reimbursement/categories",
+      "source": "backend/app/api/v1/reimbursement.py:277"
+    },
+    {
+      "id": "A05-007",
+      "route": "GET /api/v1/reimbursement/{reimb_id}",
+      "source": "backend/app/api/v1/reimbursement.py:302"
+    },
+    {
+      "id": "A05-008",
+      "route": "PUT /api/v1/reimbursement/{reimb_id}",
+      "source": "backend/app/api/v1/reimbursement.py:331"
+    },
+    {
+      "id": "A05-009",
+      "route": "DELETE /api/v1/reimbursement/{reimb_id}",
+      "source": "backend/app/api/v1/reimbursement.py:364"
+    },
+    {
+      "id": "A05-010",
+      "route": "POST /api/v1/reimbursement/{reimb_id}/submit",
+      "source": "backend/app/api/v1/reimbursement.py:414"
+    },
+    {
+      "id": "A05-013",
+      "route": "GET /api/v1/reimbursement/{reimb_id}/payments",
+      "source": "backend/app/api/v1/reimbursement.py:493"
+    },
+    {
+      "id": "A05-015",
+      "route": "POST /api/v1/reimbursement/categories",
+      "source": "backend/app/api/v1/reimbursement.py:515"
+    },
+    {
+      "id": "A05-016",
+      "route": "GET /api/v1/payable",
+      "source": "backend/app/api/v1/payable.py:40"
+    },
+    {
+      "id": "A05-017",
+      "route": "POST /api/v1/payable",
+      "source": "backend/app/api/v1/payable.py:108"
+    },
+    {
+      "id": "A05-018",
+      "route": "POST /api/v1/payable/{bill_id}/upload-voucher",
+      "source": "backend/app/api/v1/payable.py:217"
+    },
+    {
+      "id": "A05-019",
+      "route": "POST /api/v1/payable/{bill_id}/upload-attachment",
+      "source": "backend/app/api/v1/payable.py:238"
+    },
+    {
+      "id": "A05-021",
+      "route": "PUT /api/v1/payable/{bill_id}/confirm",
+      "source": "backend/app/api/v1/payable.py:280"
+    },
+    {
+      "id": "A05-022",
+      "route": "PUT /api/v1/payable/{bill_id}/void",
+      "source": "backend/app/api/v1/payable.py:307"
+    },
+    {
+      "id": "A05-023",
+      "route": "PUT /api/v1/payable/{bill_id}",
+      "source": "backend/app/api/v1/payable.py:361"
+    },
+    {
+      "id": "A05-024",
+      "route": "GET /api/v1/payable/stats",
+      "source": "backend/app/api/v1/payable.py:541"
+    },
+    {
+      "id": "A05-025",
+      "route": "GET /api/v1/payable/{bill_id}/detail",
+      "source": "backend/app/api/v1/payable.py:556"
+    },
+    {
+      "id": "A05-026",
+      "route": "GET /api/v1/payable/plans",
+      "source": "backend/app/api/v1/payable.py:564"
+    },
+    {
+      "id": "A05-027",
+      "route": "POST /api/v1/payable/plans",
+      "source": "backend/app/api/v1/payable.py:591"
+    },
+    {
+      "id": "A05-028",
+      "route": "GET /api/v1/payable/cashflow-prediction",
+      "source": "backend/app/api/v1/payable.py:636"
+    },
+    {
+      "id": "A05-030",
+      "route": "GET /api/v1/payable/supplier-statement",
+      "source": "backend/app/api/v1/payable.py:701"
+    },
+    {
+      "id": "A05-031",
+      "route": "GET /api/v1/payable/plan-templates",
+      "source": "backend/app/api/v1/payable.py:734"
+    },
+    {
+      "id": "A05-032",
+      "route": "DELETE /api/v1/payable/plan-templates/{template_id}",
+      "source": "backend/app/api/v1/payable.py:744"
+    },
+    {
+      "id": "A05-033",
+      "route": "GET /api/v1/payable/timeline",
+      "source": "backend/app/api/v1/payable.py:755"
+    },
+    {
+      "id": "A05-035",
+      "route": "GET /api/v1/payable/plans/{plan_id}/detail",
+      "source": "backend/app/api/v1/payable.py:810"
+    },
+    {
+      "id": "A05-036",
+      "route": "POST /api/v1/payable/plans/{plan_id}/upload-attachment",
+      "source": "backend/app/api/v1/payable.py:838"
+    },
+    {
+      "id": "A05-038",
+      "route": "GET /api/v1/payable/monthly-order",
+      "source": "backend/app/api/v1/payable.py:891"
+    },
+    {
+      "id": "A05-039",
+      "route": "POST /api/v1/payable/monthly-order",
+      "source": "backend/app/api/v1/payable.py:907"
+    },
+    {
+      "id": "A05-040",
+      "route": "GET /api/v1/payable/trend",
+      "source": "backend/app/api/v1/payable.py:936"
+    },
+    {
+      "id": "A05-041",
+      "route": "GET /api/v1/credit/shipments",
+      "source": "backend/app/api/v1/credit.py:48"
+    },
+    {
+      "id": "A05-042",
+      "route": "GET /api/v1/credit",
+      "source": "backend/app/api/v1/credit.py:80"
+    },
+    {
+      "id": "A05-043",
+      "route": "POST /api/v1/credit",
+      "source": "backend/app/api/v1/credit.py:124"
+    },
+    {
+      "id": "A05-044",
+      "route": "PUT /api/v1/credit/{credit_id}",
+      "source": "backend/app/api/v1/credit.py:157"
+    },
+    {
+      "id": "A05-045",
+      "route": "GET /api/v1/credit/{credit_id}/detail",
+      "source": "backend/app/api/v1/credit.py:179"
+    },
+    {
+      "id": "A05-046",
+      "route": "POST /api/v1/credit/{credit_id}/shipment",
+      "source": "backend/app/api/v1/credit.py:237"
+    },
+    {
+      "id": "A05-047",
+      "route": "PUT /api/v1/credit/{credit_id}/shipment/{shipment_id}",
+      "source": "backend/app/api/v1/credit.py:248"
+    },
+    {
+      "id": "A05-048",
+      "route": "POST /api/v1/credit/{credit_id}/shipment/{shipment_id}/void",
+      "source": "backend/app/api/v1/credit.py:259"
+    },
+    {
+      "id": "A05-049",
+      "route": "POST /api/v1/credit/{credit_id}/payment",
+      "source": "backend/app/api/v1/credit.py:274"
+    },
+    {
+      "id": "A05-050",
+      "route": "GET /api/v1/credit/dashboard",
+      "source": "backend/app/api/v1/credit.py:329"
+    },
+    {
+      "id": "A05-051",
+      "route": "GET /api/v1/credit/assessment",
+      "source": "backend/app/api/v1/credit.py:487"
+    },
+    {
+      "id": "A05-052",
+      "route": "GET /api/v1/credit/assessment/export",
+      "source": "backend/app/api/v1/credit.py:500"
+    },
+    {
+      "id": "A05-053",
+      "route": "GET /api/v1/credit/alerts",
+      "source": "backend/app/api/v1/credit.py:540"
+    },
+    {
+      "id": "OUT-001",
+      "route": "POST /api/v1/market/image",
+      "source": "backend/app/api/v1/market.py:46"
+    },
+    {
+      "id": "OUT-002",
+      "route": "GET /api/v1/market",
+      "source": "backend/app/api/v1/market.py:65"
+    },
+    {
+      "id": "OUT-003",
+      "route": "POST /api/v1/market",
+      "source": "backend/app/api/v1/market.py:110"
+    },
+    {
+      "id": "OUT-004",
+      "route": "GET /api/v1/market/review-list",
+      "source": "backend/app/api/v1/market.py:122"
+    },
+    {
+      "id": "OUT-005",
+      "route": "PUT /api/v1/market/{item_id}/review",
+      "source": "backend/app/api/v1/market.py:136"
+    },
+    {
+      "id": "OUT-006",
+      "route": "POST /api/v1/market/{item_id}/purchase",
+      "source": "backend/app/api/v1/market.py:148"
+    },
+    {
+      "id": "OUT-007",
+      "route": "PUT /api/v1/market/{item_id}/confirm",
+      "source": "backend/app/api/v1/market.py:165"
+    },
+    {
+      "id": "OUT-008",
+      "route": "GET /api/v1/group-order",
+      "source": "backend/app/api/v1/group_order.py:59"
+    },
+    {
+      "id": "OUT-009",
+      "route": "POST /api/v1/group-order",
+      "source": "backend/app/api/v1/group_order.py:117"
+    },
+    {
+      "id": "OUT-010",
+      "route": "POST /api/v1/group-order/{go_id}/join",
+      "source": "backend/app/api/v1/group_order.py:130"
+    },
+    {
+      "id": "OUT-011",
+      "route": "GET /api/v1/group-order/{go_id}/participants",
+      "source": "backend/app/api/v1/group_order.py:168"
+    },
+    {
+      "id": "OUT-012",
+      "route": "GET /api/v1/group-order/history",
+      "source": "backend/app/api/v1/group_order.py:179"
+    },
+    {
+      "id": "OUT-013",
+      "route": "GET /api/v1/group-order/{go_id}",
+      "source": "backend/app/api/v1/group_order.py:226"
+    },
+    {
+      "id": "OUT-014",
+      "route": "PUT /api/v1/group-order/{go_id}/close",
+      "source": "backend/app/api/v1/group_order.py:250"
+    },
+    {
+      "id": "OUT-015",
+      "route": "PUT /api/v1/group-order/{go_id}/complete",
+      "source": "backend/app/api/v1/group_order.py:282"
+    },
+    {
+      "id": "OUT-016",
+      "route": "PUT /api/v1/group-order/{go_id}/cancel",
+      "source": "backend/app/api/v1/group_order.py:303"
+    },
+    {
+      "id": "OUT-017",
+      "route": "PUT /api/v1/group-order/participant/{participant_id}/ban",
+      "source": "backend/app/api/v1/group_order.py:324"
+    },
+    {
+      "id": "A10-015",
+      "route": "GET /api/v1/reports/cost-funds-debt/costs",
+      "source": "backend/app/api/v1/cost_funds_debt.py:31"
+    },
+    {
+      "id": "A10-016",
+      "route": "GET /api/v1/reports/cost-funds-debt/flows",
+      "source": "backend/app/api/v1/cost_funds_debt.py:43"
+    },
+    {
+      "id": "A10-017",
+      "route": "GET /api/v1/reports/cost-funds-debt/advances",
+      "source": "backend/app/api/v1/cost_funds_debt.py:55"
+    },
+    {
+      "id": "A10-019",
+      "route": "GET /api/v1/reports/recharge-summary",
+      "source": "backend/app/api/v1/reports.py:138"
+    },
+    {
+      "id": "A10-020",
+      "route": "GET /api/v1/reports/incoming-summary",
+      "source": "backend/app/api/v1/reports.py:154"
+    },
+    {
+      "id": "A10-022",
+      "route": "GET /api/v1/reports/payable",
+      "source": "backend/app/api/v1/reports.py:201"
+    },
+    {
+      "id": "A10-023",
+      "route": "GET /api/v1/reports/expense-fund",
+      "source": "backend/app/api/v1/reports.py:224"
+    },
+    {
+      "id": "A10-024",
+      "route": "GET /api/v1/reports/reimbursement",
+      "source": "backend/app/api/v1/reports.py:245"
+    },
+    {
+      "id": "A10-025",
+      "route": "GET /api/v1/reports/credit",
+      "source": "backend/app/api/v1/reports.py:262"
+    },
+    {
+      "id": "A10-026",
+      "route": "GET /api/v1/reports/reconciliation-diff",
+      "source": "backend/app/api/v1/reports.py:292"
+    },
+    {
+      "id": "A10-028",
+      "route": "POST /api/v1/upload",
+      "source": "backend/app/api/v1/upload.py:21"
+    },
+    {
+      "id": "A10-029",
+      "route": "POST /api/v1/upload/recharge-screenshot",
+      "source": "backend/app/api/v1/upload.py:48"
+    },
+    {
+      "id": "A09-001",
+      "route": "GET /api/v1/settings/boss-contact",
+      "source": "backend/app/api/v1/settings_api.py:27"
+    },
+    {
+      "id": "A09-002",
+      "route": "PUT /api/v1/settings/boss-contact",
+      "source": "backend/app/api/v1/settings_api.py:42"
+    },
+    {
+      "id": "A09-003",
+      "route": "GET /api/v1/settings/logs",
+      "source": "backend/app/api/v1/settings_api.py:67"
+    },
+    {
+      "id": "A09-004",
+      "route": "POST /api/v1/settings/backup",
+      "source": "backend/app/api/v1/settings_api.py:102"
+    },
+    {
+      "id": "A09-005",
+      "route": "GET /api/v1/config/attendance-times",
+      "source": "backend/app/api/v1/config_api.py:43"
+    },
+    {
+      "id": "A09-006",
+      "route": "GET /api/v1/config/work-schedule",
+      "source": "backend/app/api/v1/config_api.py:57"
+    },
+    {
+      "id": "A09-007",
+      "route": "PUT /api/v1/config/work-schedule",
+      "source": "backend/app/api/v1/config_api.py:69"
+    },
+    {
+      "id": "A09-008",
+      "route": "GET /api/v1/rates",
+      "source": "backend/app/api/v1/exchange_rates.py:16"
+    },
+    {
+      "id": "A09-009",
+      "route": "POST /api/v1/rates",
+      "source": "backend/app/api/v1/exchange_rates.py:49"
+    },
+    {
+      "id": "A09-010",
+      "route": "GET /api/v1/rates/query",
+      "source": "backend/app/api/v1/exchange_rates.py:76"
+    },
+    {
+      "id": "A07-001",
+      "route": "GET /api/v1/employees/max-limit",
+      "source": "backend/app/api/v1/employees.py:128"
+    },
+    {
+      "id": "A07-002",
+      "route": "PUT /api/v1/employees/max-limit",
+      "source": "backend/app/api/v1/employees.py:147"
+    },
+    {
+      "id": "A07-004",
+      "route": "POST /api/v1/employees",
+      "source": "backend/app/api/v1/employees.py:278"
+    },
+    {
+      "id": "A07-007",
+      "route": "DELETE /api/v1/employees/{employee_id}",
+      "source": "backend/app/api/v1/employees.py:645"
+    },
+    {
+      "id": "A07-008",
+      "route": "POST /api/v1/employees/bind-existing-accounts",
+      "source": "backend/app/api/v1/employees.py:676"
+    },
+    {
+      "id": "A07-009",
+      "route": "POST /api/v1/employees/batch-set-templates",
+      "source": "backend/app/api/v1/employees.py:779"
+    },
+    {
+      "id": "A07-010",
+      "route": "POST /api/v1/employees/{employee_id}/photo",
+      "source": "backend/app/api/v1/employees.py:836"
+    },
+    {
+      "id": "A07-011",
+      "route": "POST /api/v1/employees/{employee_id}/passport-photo",
+      "source": "backend/app/api/v1/employees.py:874"
+    },
+    {
+      "id": "A07-012",
+      "route": "POST /api/v1/employees/{employee_id}/work-permit-photo",
+      "source": "backend/app/api/v1/employees.py:909"
+    },
+    {
+      "id": "A07-013",
+      "route": "GET /api/v1/employees/{employee_id}/summary",
+      "source": "backend/app/api/v1/employees.py:948"
+    },
+    {
+      "id": "A07-016",
+      "route": "GET /api/v1/clock-in/records",
+      "source": "backend/app/api/v1/clock_in.py:235"
+    },
+    {
+      "id": "A07-017",
+      "route": "POST /api/v1/clock-in/makeup",
+      "source": "backend/app/api/v1/clock_in.py:344"
+    },
+    {
+      "id": "A07-018",
+      "route": "POST /api/v1/clock-in/batch-makeup",
+      "source": "backend/app/api/v1/clock_in.py:470"
+    },
+    {
+      "id": "A07-019",
+      "route": "GET /api/v1/clock-in/makeup-batches",
+      "source": "backend/app/api/v1/clock_in.py:567"
+    },
+    {
+      "id": "A07-020",
+      "route": "POST /api/v1/clock-in/makeup-batches/{batch_id}/revoke",
+      "source": "backend/app/api/v1/clock_in.py:591"
+    },
+    {
+      "id": "A07-021",
+      "route": "GET /api/v1/clock-in/makeup-count",
+      "source": "backend/app/api/v1/clock_in.py:618"
+    },
+    {
+      "id": "A07-023",
+      "route": "GET /api/v1/clock-in/photos",
+      "source": "backend/app/api/v1/clock_in.py:812"
+    },
+    {
+      "id": "A07-028",
+      "route": "PUT /api/v1/attendance/leaves/{leave_id}/reject",
+      "source": "backend/app/api/v1/attendance.py:347"
+    },
+    {
+      "id": "A07-029",
+      "route": "POST /api/v1/attendance/rest-days",
+      "source": "backend/app/api/v1/attendance.py:367"
+    },
+    {
+      "id": "A07-030",
+      "route": "GET /api/v1/attendance/rest-days",
+      "source": "backend/app/api/v1/attendance.py:412"
+    },
+    {
+      "id": "A07-031",
+      "route": "DELETE /api/v1/attendance/rest-days/{rest_day_id}",
+      "source": "backend/app/api/v1/attendance.py:454"
+    },
+    {
+      "id": "A07-032",
+      "route": "POST /api/v1/attendance/absences",
+      "source": "backend/app/api/v1/attendance.py:472"
+    },
+    {
+      "id": "A07-033",
+      "route": "DELETE /api/v1/attendance/absences/{absence_id}",
+      "source": "backend/app/api/v1/attendance.py:503"
+    },
+    {
+      "id": "A07-034",
+      "route": "GET /api/v1/attendance/calendar",
+      "source": "backend/app/api/v1/attendance.py:516"
+    },
+    {
+      "id": "A07-037",
+      "route": "POST /api/v1/overtime/{overtime_id}/confirm",
+      "source": "backend/app/api/v1/overtime.py:341"
+    },
+    {
+      "id": "A07-038",
+      "route": "POST /api/v1/overtime/{task_id}/dispute",
+      "source": "backend/app/api/v1/overtime.py:414"
+    },
+    {
+      "id": "A07-039",
+      "route": "GET /api/v1/overtime",
+      "source": "backend/app/api/v1/overtime.py:495"
+    },
+    {
+      "id": "A07-041",
+      "route": "GET /api/v1/overtime/monthly-hours",
+      "source": "backend/app/api/v1/overtime.py:702"
+    },
+    {
+      "id": "A07-042",
+      "route": "GET /api/v1/overtime/limit",
+      "source": "backend/app/api/v1/overtime.py:763"
+    },
+    {
+      "id": "A07-044",
+      "route": "DELETE /api/v1/overtime/{overtime_id}",
+      "source": "backend/app/api/v1/overtime.py:815"
+    },
+    {
+      "id": "A04-002",
+      "route": "POST /api/v1/payroll/preview",
+      "source": "backend/app/api/v1/payroll.py:87"
+    },
+    {
+      "id": "A04-003",
+      "route": "POST /api/v1/payroll/single-settle",
+      "source": "backend/app/api/v1/payroll.py:1149"
+    },
+    {
+      "id": "A04-005",
+      "route": "GET /api/v1/payroll/summary",
+      "source": "backend/app/api/v1/payroll.py:1371"
+    },
+    {
+      "id": "A04-008",
+      "route": "POST /api/v1/payroll/confirm-all",
+      "source": "backend/app/api/v1/payroll.py:1538"
+    },
+    {
+      "id": "A04-010",
+      "route": "GET /api/v1/payroll/cash-advance-sources",
+      "source": "backend/app/api/v1/payroll.py:1665"
+    },
+    {
+      "id": "A04-011",
+      "route": "POST /api/v1/payroll/batch-disburse",
+      "source": "backend/app/api/v1/payroll.py:1691"
+    },
+    {
+      "id": "A04-012",
+      "route": "POST /api/v1/payroll/batch-delete",
+      "source": "backend/app/api/v1/payroll.py:1722"
+    },
+    {
+      "id": "A04-013",
+      "route": "POST /api/v1/payroll/{record_id}/recalc",
+      "source": "backend/app/api/v1/payroll.py:1889"
+    },
+    {
+      "id": "A04-014",
+      "route": "POST /api/v1/payroll/batch-recalc",
+      "source": "backend/app/api/v1/payroll.py:1907"
+    },
+    {
+      "id": "A04-015",
+      "route": "DELETE /api/v1/payroll/{record_id}",
+      "source": "backend/app/api/v1/payroll.py:1958"
+    },
+    {
+      "id": "A04-016",
+      "route": "DELETE /api/v1/payroll/period/{period}",
+      "source": "backend/app/api/v1/payroll.py:1987"
+    },
+    {
+      "id": "A04-020",
+      "route": "GET /api/v1/payroll/settlement-progress",
+      "source": "backend/app/api/v1/payroll.py:2260"
+    },
+    {
+      "id": "A10-030",
+      "route": "GET /api/v1/history/operators",
+      "source": "backend/app/api/v1/history.py:43"
+    },
+    {
+      "id": "A10-031",
+      "route": "GET /api/v1/history",
+      "source": "backend/app/api/v1/history.py:56"
+    },
+    {
+      "id": "A10-032",
+      "route": "GET /api/v1/history/export",
+      "source": "backend/app/api/v1/history.py:91"
+    },
+    {
+      "id": "A10-033",
+      "route": "GET /api/v1/efficiency/summary",
+      "source": "backend/app/api/v1/efficiency.py:561"
+    },
+    {
+      "id": "A10-034",
+      "route": "GET /api/v1/efficiency/trend",
+      "source": "backend/app/api/v1/efficiency.py:626"
+    },
+    {
+      "id": "A10-035",
+      "route": "GET /api/v1/efficiency/compare",
+      "source": "backend/app/api/v1/efficiency.py:656"
+    },
+    {
+      "id": "A10-036",
+      "route": "GET /api/v1/efficiency/daily-orders",
+      "source": "backend/app/api/v1/efficiency.py:713"
+    },
+    {
+      "id": "A10-037",
+      "route": "PUT /api/v1/efficiency/order-count",
+      "source": "backend/app/api/v1/efficiency.py:731"
+    },
+    {
+      "id": "A10-038",
+      "route": "GET /api/v1/efficiency/standard",
+      "source": "backend/app/api/v1/efficiency.py:769"
+    },
+    {
+      "id": "A10-039",
+      "route": "GET /api/v1/efficiency/standards",
+      "source": "backend/app/api/v1/efficiency.py:782"
+    },
+    {
+      "id": "A10-040",
+      "route": "PUT /api/v1/efficiency/standard",
+      "source": "backend/app/api/v1/efficiency.py:809"
+    },
+    {
+      "id": "A10-041",
+      "route": "PUT /api/v1/efficiency/manual-hour",
+      "source": "backend/app/api/v1/efficiency.py:856"
+    },
+    {
+      "id": "A10-042",
+      "route": "DELETE /api/v1/efficiency/manual-hour",
+      "source": "backend/app/api/v1/efficiency.py:907"
+    },
+    {
+      "id": "A05-055",
+      "route": "GET /api/v1/employee-advances/funding-options",
+      "source": "backend/app/api/v1/employee_advance.py:147"
+    },
+    {
+      "id": "A05-056",
+      "route": "GET /api/v1/employee-advances/recipients",
+      "source": "backend/app/api/v1/employee_advance.py:160"
+    },
+    {
+      "id": "A05-057",
+      "route": "GET /api/v1/employee-advances",
+      "source": "backend/app/api/v1/employee_advance.py:172"
+    },
+    {
+      "id": "A05-058",
+      "route": "GET /api/v1/employee-advances/summary",
+      "source": "backend/app/api/v1/employee_advance.py:242"
+    },
+    {
+      "id": "A05-059",
+      "route": "GET /api/v1/employee-advances/my-debt",
+      "source": "backend/app/api/v1/employee_advance.py:273"
+    },
+    {
+      "id": "A05-060",
+      "route": "DELETE /api/v1/employee-advances/{advance_id}",
+      "source": "backend/app/api/v1/employee_advance.py:321"
+    },
+    {
+      "id": "A05-062",
+      "route": "POST /api/v1/employee-advances/{advance_id}/reject",
+      "source": "backend/app/api/v1/employee_advance.py:428"
+    },
+    {
+      "id": "A05-063",
+      "route": "GET /api/v1/employee-advances/{advance_id}",
+      "source": "backend/app/api/v1/employee_advance.py:434"
+    },
+    {
+      "id": "A09-011",
+      "route": "GET /api/v1/salary-templates",
+      "source": "backend/app/api/v1/salary_template.py:53"
+    },
+    {
+      "id": "A09-012",
+      "route": "POST /api/v1/salary-templates",
+      "source": "backend/app/api/v1/salary_template.py:85"
+    },
+    {
+      "id": "A09-014",
+      "route": "DELETE /api/v1/salary-templates/{template_id}",
+      "source": "backend/app/api/v1/salary_template.py:156"
+    },
+    {
+      "id": "A09-015",
+      "route": "GET /api/v1/deduction-templates",
+      "source": "backend/app/api/v1/deduction_template.py:54"
+    },
+    {
+      "id": "A09-016",
+      "route": "POST /api/v1/deduction-templates",
+      "source": "backend/app/api/v1/deduction_template.py:88"
+    },
+    {
+      "id": "A09-017",
+      "route": "PUT /api/v1/deduction-templates/{template_id}",
+      "source": "backend/app/api/v1/deduction_template.py:118"
+    },
+    {
+      "id": "A09-018",
+      "route": "DELETE /api/v1/deduction-templates/{template_id}",
+      "source": "backend/app/api/v1/deduction_template.py:151"
+    },
+    {
+      "id": "A07-045",
+      "route": "POST /api/v1/employee-deductions",
+      "source": "backend/app/api/v1/employee_deduction.py:31"
+    },
+    {
+      "id": "A07-046",
+      "route": "GET /api/v1/employee-deductions",
+      "source": "backend/app/api/v1/employee_deduction.py:80"
+    },
+    {
+      "id": "A07-047",
+      "route": "DELETE /api/v1/employee-deductions/{deduction_id}",
+      "source": "backend/app/api/v1/employee_deduction.py:129"
+    },
+    {
+      "id": "A07-048",
+      "route": "GET /api/v1/employee-deductions/fixed",
+      "source": "backend/app/api/v1/employee_deduction.py:164"
+    },
+    {
+      "id": "A07-049",
+      "route": "POST /api/v1/employee-deductions/fixed",
+      "source": "backend/app/api/v1/employee_deduction.py:190"
+    },
+    {
+      "id": "A07-050",
+      "route": "PUT /api/v1/employee-deductions/fixed/{deduction_id}",
+      "source": "backend/app/api/v1/employee_deduction.py:221"
+    },
+    {
+      "id": "A07-051",
+      "route": "DELETE /api/v1/employee-deductions/fixed/{deduction_id}",
+      "source": "backend/app/api/v1/employee_deduction.py:253"
+    },
+    {
+      "id": "A05-064",
+      "route": "POST /api/v1/expense-approvals",
+      "source": "backend/app/api/v1/expense_approval.py:191"
+    },
+    {
+      "id": "A05-065",
+      "route": "GET /api/v1/expense-approvals",
+      "source": "backend/app/api/v1/expense_approval.py:252"
+    },
+    {
+      "id": "A05-066",
+      "route": "GET /api/v1/expense-approvals/summary",
+      "source": "backend/app/api/v1/expense_approval.py:307"
+    },
+    {
+      "id": "A05-067",
+      "route": "GET /api/v1/expense-approvals/threshold",
+      "source": "backend/app/api/v1/expense_approval.py:339"
+    },
+    {
+      "id": "A05-068",
+      "route": "PUT /api/v1/expense-approvals/threshold",
+      "source": "backend/app/api/v1/expense_approval.py:351"
+    },
+    {
+      "id": "A05-069",
+      "route": "PUT /api/v1/expense-approvals/{approval_id}",
+      "source": "backend/app/api/v1/expense_approval.py:377"
+    },
+    {
+      "id": "A05-071",
+      "route": "POST /api/v1/expense-approvals/{approval_id}/reject",
+      "source": "backend/app/api/v1/expense_approval.py:476"
+    },
+    {
+      "id": "A05-073",
+      "route": "GET /api/v1/cash-advances/document-options",
+      "source": "backend/app/api/v1/cash_advance.py:150"
+    },
+    {
+      "id": "A05-074",
+      "route": "GET /api/v1/cash-advances/payers",
+      "source": "backend/app/api/v1/cash_advance.py:160"
+    },
+    {
+      "id": "A05-075",
+      "route": "GET /api/v1/cash-advances/summary",
+      "source": "backend/app/api/v1/cash_advance.py:168"
+    },
+    {
+      "id": "A05-076",
+      "route": "GET /api/v1/cash-advances",
+      "source": "backend/app/api/v1/cash_advance.py:193"
+    },
+    {
+      "id": "A05-077",
+      "route": "POST /api/v1/cash-advances/voucher",
+      "source": "backend/app/api/v1/cash_advance.py:226"
+    },
+    {
+      "id": "A05-078",
+      "route": "POST /api/v1/cash-advances",
+      "source": "backend/app/api/v1/cash_advance.py:257"
+    },
+    {
+      "id": "A05-079",
+      "route": "PUT /api/v1/cash-advances/{advance_id}",
+      "source": "backend/app/api/v1/cash_advance.py:280"
+    },
+    {
+      "id": "A05-080",
+      "route": "GET /api/v1/cash-advances/{advance_id}/documents/{link_id}",
+      "source": "backend/app/api/v1/cash_advance.py:302"
+    },
+    {
+      "id": "A05-081",
+      "route": "POST /api/v1/cash-advances/{advance_id}/confirm",
+      "source": "backend/app/api/v1/cash_advance.py:325"
+    },
+    {
+      "id": "A05-082",
+      "route": "POST /api/v1/cash-advances/{advance_id}/reject",
+      "source": "backend/app/api/v1/cash_advance.py:330"
+    },
+    {
+      "id": "A05-083",
+      "route": "GET /api/v1/cash-advances/repayment-accounts",
+      "source": "backend/app/api/v1/cash_advance.py:380"
+    },
+    {
+      "id": "A05-084",
+      "route": "POST /api/v1/cash-advances/repayment-voucher",
+      "source": "backend/app/api/v1/cash_advance.py:391"
+    },
+    {
+      "id": "A05-085",
+      "route": "GET /api/v1/cash-advances/{advance_id}/repayments",
+      "source": "backend/app/api/v1/cash_advance.py:396"
+    },
+    {
+      "id": "A05-086",
+      "route": "POST /api/v1/cash-advances/{advance_id}/repayments",
+      "source": "backend/app/api/v1/cash_advance.py:409"
+    },
+    {
+      "id": "OUT-018",
+      "route": "GET /",
+      "source": "backend/app/main.py:28"
+    },
+    {
+      "id": "OUT-019",
+      "route": "GET /health",
+      "source": "backend/app/main.py:32"
+    }
+  ],
+  "out_of_scope": [
+    "POST /api/v1/market/image",
+    "GET /api/v1/market",
+    "POST /api/v1/market",
+    "GET /api/v1/market/review-list",
+    "PUT /api/v1/market/{item_id}/review",
+    "POST /api/v1/market/{item_id}/purchase",
+    "PUT /api/v1/market/{item_id}/confirm",
+    "GET /api/v1/group-order",
+    "POST /api/v1/group-order",
+    "POST /api/v1/group-order/{go_id}/join",
+    "GET /api/v1/group-order/{go_id}/participants",
+    "GET /api/v1/group-order/history",
+    "GET /api/v1/group-order/{go_id}",
+    "PUT /api/v1/group-order/{go_id}/close",
+    "PUT /api/v1/group-order/{go_id}/complete",
+    "PUT /api/v1/group-order/{go_id}/cancel",
+    "PUT /api/v1/group-order/participant/{participant_id}/ban",
+    "GET /",
+    "GET /health"
+  ],
+  "unmatched_requests": [],
+  "warning": "仅登记清单全量；未声称静态语义、角色组合、字段、状态或页面全覆盖。"
+}

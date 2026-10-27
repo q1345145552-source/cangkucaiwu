@@ -1,0 +1,581 @@
+{
+  "policy": {
+    "initial": {
+      "revision": 0,
+      "no_self_approve": false,
+      "no_self_receive": false,
+      "warehouse_id": 1,
+      "version": "663306e57c3a02be9bd08d19e2a2a4a6d5ad2c89ed7e6f9668fac9db85584fb5",
+      "scope": "不可自批仅控制原人工通过/驳回；低金额自动生效和原应付时点不变。不可自收仅控制真实实收登记，不控制供应商签字回执。默认关闭；历史不回填不追罚。"
+    },
+    "saved": {
+      "message": "采购职责配置已保存",
+      "policy": {
+        "revision": 1,
+        "no_self_approve": true,
+        "no_self_receive": true,
+        "warehouse_id": 1,
+        "version": "67d72509c5951dae3c2a7092eaa27b976928141ba443d87f7c297bd3e9263dfc",
+        "scope": "不可自批仅控制原人工通过/驳回；低金额自动生效和原应付时点不变。不可自收仅控制真实实收登记，不控制供应商签字回执。默认关闭；历史不回填不追罚。"
+      },
+      "duty_execution_id": 1,
+      "duty_operator_id": 1
+    },
+    "repeat": {
+      "message": "采购职责配置已保存",
+      "policy": {
+        "revision": 1,
+        "no_self_approve": true,
+        "no_self_receive": true,
+        "warehouse_id": 1,
+        "version": "67d72509c5951dae3c2a7092eaa27b976928141ba443d87f7c297bd3e9263dfc",
+        "scope": "不可自批仅控制原人工通过/驳回；低金额自动生效和原应付时点不变。不可自收仅控制真实实收登记，不控制供应商签字回执。默认关闭；历史不回填不追罚。"
+      },
+      "duty_execution_id": 1,
+      "duty_operator_id": 1,
+      "replayed": true
+    }
+  },
+  "approval": {
+    "denied": {
+      "detail": {
+        "code": "procurement_duty_changed",
+        "message": "采购人不能核准自己的采购，请老板明确授权例外",
+        "request_key": "self-denied",
+        "not_executed": true
+      }
+    },
+    "grant": {
+      "data": {
+        "id": 1,
+        "warehouse_id": 1,
+        "purchase_order_id": 4,
+        "action": "approve",
+        "operator_id": 1,
+        "policy_version": "67d72509c5951dae3c2a7092eaa27b976928141ba443d87f7c297bd3e9263dfc",
+        "business_version": "f8273a9f9cdf37308e54b1c37acc80260dce241e727d9ab9abb930f1dfc729f6",
+        "granted_by": 1,
+        "reason": "老板明确批准一次同人操作，合成测试",
+        "expires_at": "2026-10-28T02:12:15.436681+07:00",
+        "created_at": "2026-10-27T18:12:15.437265+00:00",
+        "status": "active",
+        "used_at": null,
+        "used_request_key": null,
+        "revoked_by": null,
+        "revoked_at": null,
+        "revoke_reason": null
+      },
+      "message": "一次性例外已授权；仍须原业务权限，成功一次后失效"
+    },
+    "approved": {
+      "message": "审批通过，应付账单已生成",
+      "payable_bill_id": 4,
+      "payable_bill_number": "PO-PO202610280112154065731",
+      "duty_execution_id": 2,
+      "duty_operator_id": 1
+    },
+    "repeat": {
+      "message": "审批通过，应付账单已生成",
+      "payable_bill_id": 4,
+      "payable_bill_number": "PO-PO202610280112154065731",
+      "duty_execution_id": 2,
+      "duty_operator_id": 1,
+      "replayed": true
+    },
+    "other": {
+      "message": "审批通过，应付账单已生成",
+      "payable_bill_id": 5,
+      "payable_bill_number": "PO-PO202610280112155358231",
+      "duty_execution_id": 3,
+      "duty_operator_id": 4
+    },
+    "auto": {
+      "message": "采购单已创建，应付账单已自动生成",
+      "order": {
+        "id": 6,
+        "order_number": "PO202610280112156091551",
+        "total_amount": 8.0,
+        "items": [
+          {
+            "product_name": "历史同SKU叫法",
+            "spec": "38cm PE单只",
+            "line_id": "6843bf5d13c141cfa004b3800bb3d184",
+            "unit": "个",
+            "product_id": 2,
+            "sku_mapping": {
+              "standard_sku_id": 1,
+              "sku_snapshot": {
+                "id": 1,
+                "warehouse_id": 1,
+                "code": "BAG-38",
+                "name": "标准袋",
+                "attributes": {
+                  "material": "PE",
+                  "packaging": "single",
+                  "width": {
+                    "unit": "cm",
+                    "value": 38
+                  }
+                },
+                "base_unit": "piece",
+                "category_id": null,
+                "active": true,
+                "revision": 1,
+                "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                "original_unit": "个",
+                "base_unit_factor": "1",
+                "confirmed_by": 1,
+                "confirmed_at": "2026-10-28T01:12:15.123430+07:00"
+              },
+              "catalog_attributes": {
+                "material": "PE",
+                "packaging": "single",
+                "width": {
+                  "unit": "cm",
+                  "value": 38
+                }
+              },
+              "base_unit_factor": "1.00000000",
+              "product_version": "6ac3672101fd046083cb905830f831ffe224a983050f458d82350061dc4bbb78",
+              "mapping_status": "mapped",
+              "mapping_label": "已人工映射",
+              "comparable": true,
+              "base_quantity": "1.00000000"
+            },
+            "unit_price": "8",
+            "quantity": 1,
+            "subtotal": 8.0,
+            "subtotal_exact": "8",
+            "currency": "THB",
+            "reason": "合成测试人工选择",
+            "pricing_snapshot": {
+              "product_id": 2,
+              "product_name": "历史同SKU叫法",
+              "quantity": "1",
+              "unit": "个",
+              "currency": "THB",
+              "requirements": {
+                "quality_tags": [],
+                "max_lead_days": null
+              },
+              "selected_quote": {
+                "id": 1,
+                "code": "Q-1EED36CA3E",
+                "warehouse_id": 1,
+                "product_id": 2,
+                "revision_id": 3,
+                "revision": 2,
+                "version": "9401c16af76be120342dc42b16718a6fd93effbb219cb6d452698e9a25d9c359",
+                "terms": {
+                  "currency": "THB",
+                  "unit": "piece",
+                  "original_unit": "个",
+                  "base_unit": "piece",
+                  "base_unit_factor": "1",
+                  "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                  "valid_from": "2026-10-01",
+                  "valid_to": "2026-10-31",
+                  "fees": {
+                    "tax_mode": "included",
+                    "tax_rate": null,
+                    "freight_mode": "included",
+                    "freight_terms": "",
+                    "other_fees": "none"
+                  },
+                  "quality_tags": [
+                    "A级"
+                  ],
+                  "lead_days": 2,
+                  "active": true,
+                  "tiers": [
+                    {
+                      "min_quantity": "1",
+                      "max_quantity": null,
+                      "unit_price": "8"
+                    }
+                  ]
+                },
+                "product_binding": {
+                  "product_version": "6ac3672101fd046083cb905830f831ffe224a983050f458d82350061dc4bbb78",
+                  "sku_id": 1,
+                  "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                  "sku_mapping": {
+                    "standard_sku_id": 1,
+                    "sku_snapshot": {
+                      "id": 1,
+                      "warehouse_id": 1,
+                      "code": "BAG-38",
+                      "name": "标准袋",
+                      "attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit": "piece",
+                      "category_id": null,
+                      "active": true,
+                      "revision": 1,
+                      "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                      "original_unit": "个",
+                      "base_unit_factor": "1",
+                      "confirmed_by": 1,
+                      "confirmed_at": "2026-10-28T01:12:15.123430+07:00"
+                    },
+                    "catalog_attributes": {
+                      "material": "PE",
+                      "packaging": "single",
+                      "width": {
+                        "unit": "cm",
+                        "value": 38
+                      }
+                    },
+                    "base_unit_factor": "1.00000000",
+                    "product_version": "6ac3672101fd046083cb905830f831ffe224a983050f458d82350061dc4bbb78",
+                    "mapping_status": "mapped",
+                    "mapping_label": "已人工映射",
+                    "comparable": true
+                  },
+                  "supplier_id": 1
+                },
+                "operator_name": "测试账号1",
+                "created_at": "2026-10-27T18:12:15.272282+00:00",
+                "supplier_id": 1,
+                "supplier_name": "本仓供应商",
+                "product_name": "历史同SKU叫法",
+                "quantity": "1",
+                "tier": {
+                  "min_quantity": "1",
+                  "max_quantity": null,
+                  "unit_price": "8"
+                },
+                "comparable_price": "8",
+                "eligible": true,
+                "exclusions": [],
+                "is_lowest": false
+              },
+              "eligible_candidates": [
+                {
+                  "id": 1,
+                  "code": "Q-1EED36CA3E",
+                  "warehouse_id": 1,
+                  "product_id": 2,
+                  "revision_id": 3,
+                  "revision": 2,
+                  "version": "9401c16af76be120342dc42b16718a6fd93effbb219cb6d452698e9a25d9c359",
+                  "terms": {
+                    "currency": "THB",
+                    "unit": "piece",
+                    "original_unit": "个",
+                    "base_unit": "piece",
+                    "base_unit_factor": "1",
+                    "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                    "valid_from": "2026-10-01",
+                    "valid_to": "2026-10-31",
+                    "fees": {
+                      "tax_mode": "included",
+                      "tax_rate": null,
+                      "freight_mode": "included",
+                      "freight_terms": "",
+                      "other_fees": "none"
+                    },
+                    "quality_tags": [
+                      "A级"
+                    ],
+                    "lead_days": 2,
+                    "active": true,
+                    "tiers": [
+                      {
+                        "min_quantity": "1",
+                        "max_quantity": null,
+                        "unit_price": "8"
+                      }
+                    ]
+                  },
+                  "product_binding": {
+                    "product_version": "6ac3672101fd046083cb905830f831ffe224a983050f458d82350061dc4bbb78",
+                    "sku_id": 1,
+                    "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                    "sku_mapping": {
+                      "standard_sku_id": 1,
+                      "sku_snapshot": {
+                        "id": 1,
+                        "warehouse_id": 1,
+                        "code": "BAG-38",
+                        "name": "标准袋",
+                        "attributes": {
+                          "material": "PE",
+                          "packaging": "single",
+                          "width": {
+                            "unit": "cm",
+                            "value": 38
+                          }
+                        },
+                        "base_unit": "piece",
+                        "category_id": null,
+                        "active": true,
+                        "revision": 1,
+                        "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                        "original_unit": "个",
+                        "base_unit_factor": "1",
+                        "confirmed_by": 1,
+                        "confirmed_at": "2026-10-28T01:12:15.123430+07:00"
+                      },
+                      "catalog_attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit_factor": "1.00000000",
+                      "product_version": "6ac3672101fd046083cb905830f831ffe224a983050f458d82350061dc4bbb78",
+                      "mapping_status": "mapped",
+                      "mapping_label": "已人工映射",
+                      "comparable": true
+                    },
+                    "supplier_id": 1
+                  },
+                  "operator_name": "测试账号1",
+                  "created_at": "2026-10-27T18:12:15.272282+00:00",
+                  "supplier_id": 1,
+                  "supplier_name": "本仓供应商",
+                  "product_name": "历史同SKU叫法",
+                  "quantity": "1",
+                  "tier": {
+                    "min_quantity": "1",
+                    "max_quantity": null,
+                    "unit_price": "8"
+                  },
+                  "comparable_price": "8",
+                  "eligible": true,
+                  "exclusions": [],
+                  "is_lowest": false
+                },
+                {
+                  "id": 2,
+                  "code": "Q-CF2A723308",
+                  "warehouse_id": 1,
+                  "product_id": 3,
+                  "revision_id": 2,
+                  "revision": 1,
+                  "version": "9ad34000c21d51e4aa88d51953de6c465a8f2296d06c95bbfdb66878d07da2ba",
+                  "terms": {
+                    "currency": "THB",
+                    "unit": "piece",
+                    "original_unit": "个",
+                    "base_unit": "piece",
+                    "base_unit_factor": "1",
+                    "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                    "valid_from": "2026-10-01",
+                    "valid_to": "2026-10-31",
+                    "fees": {
+                      "tax_mode": "included",
+                      "tax_rate": null,
+                      "freight_mode": "included",
+                      "freight_terms": "",
+                      "other_fees": "none"
+                    },
+                    "quality_tags": [
+                      "A级"
+                    ],
+                    "lead_days": 2,
+                    "active": true,
+                    "tiers": [
+                      {
+                        "min_quantity": "1",
+                        "max_quantity": null,
+                        "unit_price": "7"
+                      }
+                    ]
+                  },
+                  "product_binding": {
+                    "product_version": "5f85154f23f51b2e9e6239c26c906ca4f0261ca352f2b5e1ab0a9d598cf68953",
+                    "sku_id": 1,
+                    "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                    "sku_mapping": {
+                      "standard_sku_id": 1,
+                      "sku_snapshot": {
+                        "id": 1,
+                        "warehouse_id": 1,
+                        "code": "BAG-38",
+                        "name": "标准袋",
+                        "attributes": {
+                          "material": "PE",
+                          "packaging": "single",
+                          "width": {
+                            "unit": "cm",
+                            "value": 38
+                          }
+                        },
+                        "base_unit": "piece",
+                        "category_id": null,
+                        "active": true,
+                        "revision": 1,
+                        "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                        "original_unit": "个",
+                        "base_unit_factor": "1",
+                        "confirmed_by": 1,
+                        "confirmed_at": "2026-10-28T01:12:15.249000+07:00"
+                      },
+                      "catalog_attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit_factor": "1.00000000",
+                      "product_version": "5f85154f23f51b2e9e6239c26c906ca4f0261ca352f2b5e1ab0a9d598cf68953",
+                      "mapping_status": "mapped",
+                      "mapping_label": "已人工映射",
+                      "comparable": true
+                    },
+                    "supplier_id": 3
+                  },
+                  "operator_name": "测试账号1",
+                  "created_at": "2026-10-27T18:12:15.253187+00:00",
+                  "supplier_id": 3,
+                  "supplier_name": "同开票方别名",
+                  "product_name": "另一供应商同SKU",
+                  "quantity": "1",
+                  "tier": {
+                    "min_quantity": "1",
+                    "max_quantity": null,
+                    "unit_price": "7"
+                  },
+                  "comparable_price": "7",
+                  "eligible": true,
+                  "exclusions": [],
+                  "is_lowest": true
+                }
+              ],
+              "excluded_candidates": [],
+              "lowest": [
+                2
+              ],
+              "lowest_comparable_price": "7",
+              "non_lowest": true,
+              "requires_reason": true,
+              "reason": null,
+              "mode": "quote",
+              "base_quantity": "1",
+              "unit_price": "8",
+              "subtotal": "8",
+              "blockers": [],
+              "message": "同SKU、同币种、同明确费用口径，按本次数量的基本单位单价比较；不自动替换供应商",
+              "effective_date": "2026-10-26",
+              "comparison_reference": {
+                "sku_id": 1,
+                "currency": "THB",
+                "fees": {
+                  "tax_mode": "included",
+                  "tax_rate": null,
+                  "freight_mode": "included",
+                  "freight_terms": "",
+                  "other_fees": "none"
+                }
+              },
+              "input_line": 1,
+              "preview_version": "14ba784adf6bd50ecb90d2e86741107fb79a1d7a3d15dd75708601b45d7f9223",
+              "evaluated_at": "2026-10-28T01:12:15.608088+07:00",
+              "selection_reason": "合成测试人工选择",
+              "amount_basis": "quoted_goods_only",
+              "amount_note": "采购及应付按所选报价商品价登记，不自动另加税或运费；未含费用须按明确条款另外核定，不代表落地总成本。",
+              "historical_price_review": {
+                "basis": "same_sku_known_terms",
+                "note": "同SKU及版本、同币种、同基本单位和明确费用口径的历史采购行均价参考；不是当前最低报价或真实损失。",
+                "threshold": "10.0",
+                "evaluated_at": "2026-10-28T01:12:15.608880+07:00",
+                "comparison_key": {
+                  "sku_id": 1,
+                  "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                  "base_unit": "piece",
+                  "currency": "THB",
+                  "fees": {
+                    "tax_mode": "included",
+                    "tax_rate": null,
+                    "freight_mode": "included",
+                    "freight_terms": "",
+                    "other_fees": "none"
+                  }
+                },
+                "reference_unit": "piece",
+                "product_id": 2,
+                "product_name": "历史同SKU叫法",
+                "spec": "38cm PE单只",
+                "currency": "THB",
+                "quantity": "1",
+                "original_unit": "个",
+                "unit_price": "8",
+                "factor": "1",
+                "historical_avg": "8.5",
+                "average_normalized_price": "8.5",
+                "current_normalized_price": "8",
+                "exceed_percent": "-5.9",
+                "is_anomaly": false,
+                "samples": [
+                  {
+                    "history_id": 1,
+                    "purchase_order_id": 2,
+                    "quantity": 1,
+                    "original_unit": "个",
+                    "original_price": "10",
+                    "factor": "1",
+                    "normalized_price": "10",
+                    "created_at": "2026-09-20T00:00:00+00:00"
+                  },
+                  {
+                    "history_id": 2,
+                    "purchase_order_id": 3,
+                    "quantity": 10,
+                    "original_unit": "个",
+                    "original_price": "8",
+                    "factor": "1",
+                    "normalized_price": "8",
+                    "created_at": "2026-10-27T18:12:15.313091+00:00"
+                  },
+                  {
+                    "history_id": 3,
+                    "purchase_order_id": 4,
+                    "quantity": 100,
+                    "original_unit": "个",
+                    "original_price": "8",
+                    "factor": "1",
+                    "normalized_price": "8",
+                    "created_at": "2026-10-27T18:12:15.447381+00:00"
+                  },
+                  {
+                    "history_id": 4,
+                    "purchase_order_id": 5,
+                    "quantity": 101,
+                    "original_unit": "个",
+                    "original_price": "8",
+                    "factor": "1",
+                    "normalized_price": "8",
+                    "created_at": "2026-10-27T18:12:15.540775+00:00"
+                  }
+                ],
+                "excluded": [],
+                "available": true,
+                "unavailable_reason": null,
+                "confirmed": false,
+                "confirmed_by": null
+              }
+            }
+          }
+        ],
+        "status": "confirmed"
+      },
+      "pending": false,
+      "approval_threshold": 10000.0,
+      "payable_bill_id": 6,
+      "payable_bill_number": "PO-PO202610280112156091551",
+      "anomalies": []
+    }
+  }
+}

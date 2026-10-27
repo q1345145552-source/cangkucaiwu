@@ -1,0 +1,20 @@
+[
+  {
+    "port": 65330,
+    "pid": 56453,
+    "command": "/tmp/supplier01-py312/bin/python /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/browser_fixture.py",
+    "signal": "SIGTERM"
+  },
+  {
+    "port": 65331,
+    "pid": 56512,
+    "command": "next-server (v14.2.35)",
+    "signal": "SIGTERM"
+  },
+  {
+    "port": 65332,
+    "pid": 56511,
+    "command": "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node /private/tmp/permissions-audit-round1-20261028/backend/tests/permission_audit_round1/browser_proxy.cjs",
+    "signal": "SIGTERM"
+  }
+]
