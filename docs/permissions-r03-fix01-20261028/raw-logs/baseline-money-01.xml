@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="9" skipped="0" tests="9" time="4.879" timestamp="2026-10-28T03:42:03.556019+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_payroll_expense" name="test_disburse_reverse_reissue_and_reports[1]" time="0.364"><failure message="assert (1234.56 == 1234.56 and False)&#10; +  where False = any(&lt;generator object test_disburse_reverse_reissue_and_reports.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x11750d970&gt;)">backend/tests/test_payroll_expense.py:84: in test_disburse_reverse_reissue_and_reports
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_payroll_expense.py:59: in run
+    assert ledger.json()['total_expense']==1234.56 and any('员工工资' in x['remark'] for x in ledger.json()['data'])
+E   assert (1234.56 == 1234.56 and False)
+E    +  where False = any(&lt;generator object test_disburse_reverse_reissue_and_reports.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x11750d970&gt;)</failure></testcase><testcase classname="tests.test_payroll_expense" name="test_disburse_reverse_reissue_and_reports[4]" time="0.254"><failure message="assert (1234.56 == 1234.56 and False)&#10; +  where False = any(&lt;generator object test_disburse_reverse_reissue_and_reports.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x120397c60&gt;)">backend/tests/test_payroll_expense.py:84: in test_disburse_reverse_reissue_and_reports
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_payroll_expense.py:59: in run
+    assert ledger.json()['total_expense']==1234.56 and any('员工工资' in x['remark'] for x in ledger.json()['data'])
+E   assert (1234.56 == 1234.56 and False)
+E    +  where False = any(&lt;generator object test_disburse_reverse_reissue_and_reports.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x120397c60&gt;)</failure></testcase><testcase classname="tests.test_payroll_cash_advance" name="test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke" time="0.316"><failure message="assert (2, 750.0) == (3, 7750)&#10;  &#10;  At index 0 diff: 2 != 3&#10;  Use -v to get more diff">backend/tests/test_payroll_cash_advance.py:123: in test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_payroll_cash_advance.py:78: in run
+    assert (after_costs["count"], after_costs["amount"]) == (3, 7750)
+E   assert (2, 750.0) == (3, 7750)
+E     
+E     At index 0 diff: 2 != 3
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_cash_advance_repayments" name="test_full_repayment_money_ledger_and_costs_exactly_unchanged" time="0.428"><failure message="assert (3000.0 == 3000 and False is True)">backend/tests/test_cash_advance_repayments.py:115: in test_full_repayment_money_ledger_and_costs_exactly_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cash_advance_repayments.py:94: in run
+    assert flows["data"][0]["amount"] == 3000 and flows["data"][0]["is_non_cost_flow"] is True
+E   assert (3000.0 == 3000 and False is True)</failure></testcase><testcase classname="tests.test_cash_advance_repayments" name="test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies" time="0.370"><failure message="AssertionError: assert {'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}&#10;  &#10;  Differing items:&#10;  {'/income-expense/monthly-summary?start_date=2026-10-01&amp;end_date=2026-10-31&amp;category_group=operating': {'basis': '公司钱包...包规则统计', 'end_date': '2026-10-31', 'expense_by_currency': {'CNY': 3000.0, 'THB': 750.0}, 'income_by_currency': {}, ...}} != {'/income-expense/monthly-summary?start_date=2026-10-01&amp;end_date=2026-10-31&amp;category_group=operating': {'basis': '公司钱包...次，备用金拨付及垫款归还按原钱包规则统计', 'end_date': '2026-10-31', 'expense_by_currency': {'THB': 750.0}, 'income_by_currency': {}, ...}}&#10;  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收...&#10;  &#10;  ...Full output truncated (3 lines hidden), use '-vv' to show">backend/tests/test_cash_advance_repayments.py:287: in test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cash_advance_repayments.py:285: in run
+    assert await cost_totals(c) == costs
+E   AssertionError: assert {'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}
+E     
+E     Differing items:
+E     {'/income-expense/monthly-summary?start_date=2026-10-01&amp;end_date=2026-10-31&amp;category_group=operating': {'basis': '公司钱包...包规则统计', 'end_date': '2026-10-31', 'expense_by_currency': {'CNY': 3000.0, 'THB': 750.0}, 'income_by_currency': {}, ...}} != {'/income-expense/monthly-summary?start_date=2026-10-01&amp;end_date=2026-10-31&amp;category_group=operating': {'basis': '公司钱包...次，备用金拨付及垫款归还按原钱包规则统计', 'end_date': '2026-10-31', 'expense_by_currency': {'THB': 750.0}, 'income_by_currency': {}, ...}}
+E     {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收...
+E     
+E     ...Full output truncated (3 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_reimbursement_payments" name="test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow" time="0.387"><failure message="assert (4, 7750.0) == (3, 2750)&#10;  &#10;  At index 0 diff: 4 != 3&#10;  Use -v to get more diff">backend/tests/test_reimbursement_payments.py:151: in test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_reimbursement_payments.py:117: in run
+    assert (cost["count"], cost["amount"]) == (3, 2750)
+E   assert (4, 7750.0) == (3, 2750)
+E     
+E     At index 0 diff: 4 != 3
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_reimbursement_payments" name="test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost" time="0.287"><failure message="assert (5750.0 == 2750)">backend/tests/test_reimbursement_payments.py:192: in test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_reimbursement_payments.py:165: in run
+    assert (await costs(c))["amount"] == 2750 and (await costs(c))["count"] == 3
+E   assert (5750.0 == 2750)</failure></testcase><testcase classname="tests.test_reimbursement_payments" name="test_decimal_item_sums_and_partially_approved_total_used_for_payment" time="0.253"><failure message="assert 5750.3 == 750.3">backend/tests/test_reimbursement_payments.py:382: in test_decimal_item_sums_and_partially_approved_total_used_for_payment
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_reimbursement_payments.py:379: in run
+    assert (await costs(c))["amount"] == 750.3
+E   assert 5750.3 == 750.3</failure></testcase><testcase classname="tests.test_employee_advance_funding" name="test_source_money_cost_ledger_and_void[company_account]" time="0.289"><failure message="AssertionError: assert (2 == 1)&#10; +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])">backend/tests/test_employee_advance_funding.py:117: in test_source_money_cost_ledger_and_void
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_employee_advance_funding.py:98: in run
+    assert len(costs['data']) == 1 and costs['data'][0]['category_name'] == '员工预支'
+E   AssertionError: assert (2 == 1)
+E    +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])</failure></testcase></testsuite></testsuites>

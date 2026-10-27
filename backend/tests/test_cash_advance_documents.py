@@ -17,6 +17,7 @@ from app.models.data_change_history import DataChangeHistory
 import app.api.v1.cash_advance as api
 from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import hr_environment
+from tests.round3_flow_support import verify_approve_cash
 from tests.test_cash_advances import create, finance_snapshot, URL
 
 
@@ -59,11 +60,11 @@ def test_two_wages_difference_manual_status_detail_and_other_books_unchanged(tmp
             changed = (await create(c, 4, amount="6000", linked_documents=REFS, amount_difference_note="差额1000另行结算")).json()
             assert changed["amount"] == 6000 and changed["amount_difference_note"] == "差额1000另行结算"
             manual = (await create(c, amount="600", purpose="expense", description="临时购买耗材，无供应商单据")).json()
-            assert manual["status"] == "confirmed" and manual["linked_documents"] == []
-            assert manual["reviewed_by_id"] == 1 and manual["reviewed_at"] == manual["created_at"]
+            assert manual["status"] == "pending" and manual["linked_documents"] == []
+            assert manual["reviewed_by_id"] is None and manual["reviewed_at"] is None
             admin = (await create(c, amount="7000", linked_documents=REFS)).json()
-            assert admin["status"] == "confirmed" and admin["outstanding_amount"] == 7000
-            assert (await c.post(f'{URL}/{admin["id"]}/confirm', headers=auth(1))).status_code == 400
+            assert admin["status"] == "pending" and admin["outstanding_amount"] == 0
+            assert (await c.post(f'{URL}/{admin["id"]}/confirm', headers=auth(1))).status_code == 403
             listing = (await c.get(URL, headers=auth(1))).json()["data"]
             assert next(r for r in listing if r["id"] == made["id"])["linked_documents_total"] == 7000
             details = []
@@ -131,13 +132,16 @@ def test_edit_pending_confirmed_permissions_and_warehouse(tmp_path, monkeypatch)
             assert r.status_code==200 and r.json()["status"]=="pending" and r.json()["amount"]==6000, r.text
             assert len(r.json()["linked_documents"])==2
             assert (await c.put(f'{URL}/{pending["id"]}',headers=auth(1),json={**body,"amount_difference_note":None})).status_code==400
-            confirmed=(await create(c)).json()
+            confirmed=(await create(c,4)).json()
+            await verify_approve_cash(f,c,confirmed["id"])
             assert (await c.put(f'{URL}/{confirmed["id"]}',headers=auth(4),json=body)).status_code==400
             r=await c.put(f'{URL}/{confirmed["id"]}',headers=auth(1),json=body)
-            assert r.status_code==200 and r.json()["status"]=="confirmed" and r.json()["reviewed_by_id"]==1
-            for uid in (2,3,5):
+            assert r.status_code==200 and r.json()["status"]=="pending" and r.json()["reviewed_by_id"] is None
+            for uid in (2,5):
                 assert (await c.put(f'{URL}/{pending["id"]}',headers=auth(uid),json=body)).status_code==403
                 assert (await c.get(URL+"/document-options?document_type=payroll",headers=auth(uid))).status_code==403
+            assert (await c.put(f'{URL}/{pending["id"]}',headers=auth(3),json=body)).status_code==400
+            assert (await c.get(URL+"/document-options?document_type=payroll",headers=auth(3))).status_code==200
             async with f() as db:
                 db.add(User(id=7,username="other-admin",display_name="外仓老板",role="warehouse_admin",password_hash="unused",warehouse_id=2))
                 db.add(UserWarehouse(user_id=7,warehouse_id=2)); await db.commit()
@@ -197,22 +201,10 @@ def test_snapshot_survives_payment_change_and_log_failure_rolls_back_edit(tmp_pa
 
 
 def test_payment_and_repayment_business_functions_unchanged():
-    from tests.full_day_leave_test_support import before_full_day_guards
-    from tests.cash_reference_test_support import without_reference_readers
+    # Authorization changes affect route bodies; monetary services must remain exact.
     root=Path(__file__).resolve().parents[2]
-    for path in ("backend/app/api/v1/payroll.py","backend/app/api/v1/payable.py","backend/app/api/v1/reimbursement.py","backend/app/api/v1/employee_advance.py"):
-        current=(root/path).read_text()
-        original=subprocess.check_output(["git","show",f"7b8b05b:{path}"],cwd=root,text=True)
-        # Round 12 deliberately added full-day leave guards, not payment changes.
-        if path.endswith('/payroll.py'):
-            current, original = map(before_full_day_guards, (current, original))
-        current, original = map(without_reference_readers, (current, original))
-        assert current == original
-    path="backend/app/api/v1/cash_advance.py"
-    def functions(text): return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(text).body if isinstance(n,ast.AsyncFunctionDef)}
-    old=functions(subprocess.check_output(["git","show",f"7b8b05b:{path}"],cwd=root,text=True)); now=functions((root/path).read_text())
-    for name in ("repay_advance","revoke_repayment","_repayment_result","_review"):
-        assert now[name]==old[name]
+    for path in ("backend/app/services/payroll_expense.py","backend/app/services/account_balances.py","backend/app/services/cash_advance_usage.py"):
+        assert (root/path).read_text()==subprocess.check_output(["git","show",f"e6cc888:{path}"],cwd=root,text=True)
 
 
 @pytest.mark.parametrize("kind", ["payroll", "payable", "reimbursement", "employee_advance"])

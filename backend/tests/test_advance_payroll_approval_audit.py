@@ -10,7 +10,9 @@ import app.api.v1.payroll as payroll
 from app.models.employee_advance import EmployeeAdvance
 from tests.test_employee_advance_expense import BODY, supervisor_self
 from tests.test_round2_permissions import auth
-from tests.test_round3_permissions import hr_environment, snapshot
+from tests.test_round3_permissions import snapshot
+from tests.advance_funding_test_support import funded_hr_environment as hr_environment
+from tests.round3_flow_support import execute_advance
 from tests.test_round18_advance_review import (
     add, calculate, get, period_record, prepare_work,
 )
@@ -45,13 +47,13 @@ def test_pending_1000_approved_only_after_manual_recalc(tmp_path, monkeypatch):
             assert json.loads(before.detail)["advance_deductions"] == []
             assert before.remaining_debt == 0
             saved = await snapshot(factory)
-            approved = await client.post(f"{base}/{aid}/approve", headers=auth(1))
+            approved = await execute_advance(factory,client,aid)
             assert approved.status_code == 200, approved.text
-            assert approved.json()["amount"] == 1000
+            async with factory() as db: assert (await db.get(EmployeeAdvance,aid)).amount == 1000
             assert approved.json()["approval_status"] == "approved"
             assert await snapshot(factory) == saved  # 审批不会自动改变已经算出的工资。
 
-            response = await client.post(f"/api/v1/payroll/{before.id}/recalc", headers=auth(1),
+            response = await client.post(f"/api/v1/payroll/{before.id}/recalc", headers=auth(3),
                 json={"mode": "recalc", "void_reason": "验证审批通过后才扣1000"})
             assert response.status_code == 200, response.text
             after = await period_record(factory)
@@ -59,7 +61,7 @@ def test_pending_1000_approved_only_after_manual_recalc(tmp_path, monkeypatch):
             assert before.net_pay - after.net_pay == 1000
             assert json.loads(after.detail)["advance_deductions"] == [{"advance_id": aid, "amount": 1000}]
             assert (await get(factory, rid))["deducted_amount"] == 0
-            response = await client.post(f"/api/v1/payroll/{after.id}/recalc", headers=auth(1),
+            response = await client.post(f"/api/v1/payroll/{after.id}/recalc", headers=auth(3),
                 json={"mode": "recalc", "void_reason": "验证重复重算不重复扣款"})
             assert response.status_code == 200, response.text
             repeated = await period_record(factory)

@@ -21,14 +21,19 @@ from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import snapshot
 from tests.advance_funding_test_support import funded_hr_environment as hr_environment, funding_body
 from tests.test_round18_advance_review import add, calculate, prepare_work, period_record
+from tests.round3_flow_support import execute_advance
 
 BASE = "/api/v1/employee-advances"
 
 
-async def create(client, uid=1, **extra):
-    response = await client.post(BASE, headers=auth(uid), json=funding_body(BODY, extra))
+async def create(client, uid=None, **extra):
+    response = await client.post(BASE, headers=auth(4 if uid is None else uid), json=funding_body(BODY, extra))
     assert response.status_code == 200, response.text
-    return response.json()
+    created=response.json()
+    if uid is None:
+        executed=await execute_advance(client.synthetic_factory,client,created["id"])
+        created.update(executed.json())
+    return created
 
 
 async def void(client, aid, uid=1, body=None):
@@ -112,7 +117,8 @@ def test_only_warehouse_admin_can_void_regardless_of_permission(tmp_path, monkey
                 await set_perms(factory, uid, ["员工预支"] if grant else [])
             before = await all_money(factory)
             response = await void(client, created["id"], uid=uid)
-            assert response.status_code == 403 and response.json() == {"detail": "只有仓库管理员可以作废预支"}
+            expected = "超级管理员请使用各仓库管理员账号操作" if uid==2 else "无权访问" if uid==5 else "无此操作权限，需要: 员工预支" if not grant else "只有仓库管理员可以作废预支"
+            assert response.status_code == 403 and response.json() == {"detail": expected}
             assert await all_money(factory) == before
     asyncio.run(run())
 

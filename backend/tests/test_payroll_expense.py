@@ -14,19 +14,30 @@ from app.services.payroll_expense import backfill_payroll_categories
 import app.services.payroll_expense as service
 import app.api.v1.payroll as payroll
 from tests.test_round2_permissions import auth, set_perms
-from tests.test_round3_permissions import hr_environment, snapshot
+from tests.test_round3_permissions import hr_environment as original_hr_environment, snapshot
+from tests.round3_flow_support import prepare_payroll, historical_payroll, assert_disabled, grants
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def hr_environment(tmp_path,monkeypatch):
+ async with original_hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
+  await grants(factory)
+  async with factory() as db:
+   (await db.get(PaymentAccount,1)).opening_balance=100000
+   await db.commit()
+  yield engine,factory,c
+
 
 async def cash(factory):
  async with factory() as db:
-  db.add(PaymentAccount(id=3,warehouse_id=1,account_name='现金',account_type='cash',account_number='cash',currency='THB',status='active'))
+  db.add(PaymentAccount(id=3,warehouse_id=1,account_name='现金',account_type='cash',account_number='cash',currency='THB',status='active',opening_balance=100000))
   await db.commit()
 
 async def rows(factory,model):
  async with factory() as db:return [tuple(r) for r in (await db.execute(select(model.__table__).order_by(model.id))).all()]
 
 
-@pytest.mark.parametrize('uid',[1,4])
-@pytest.mark.usefixtures("retained_reversal_code")
+@pytest.mark.parametrize('uid',[3])
 def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
@@ -35,6 +46,7 @@ def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
    def sqlite_functions(conn, _):conn.create_function("to_char", 2, lambda value, fmt: str(value)[:7] if value else None)
    await engine.dispose()
    await cash(factory);await set_perms(factory,4,['工资'])
+   await prepare_payroll(factory,c,2)
    before_old=(await snapshot(factory))[2]
    # A supervisor with only payroll permission can obtain the shared account list.
    accounts=await c.get('/api/v1/accounts',headers=auth(uid));assert accounts.status_code==200,accounts.text
@@ -57,7 +69,8 @@ def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
    linked=next(x for x in exp.json()['data'] if x['id']==expense_id)
    assert linked['payroll_record_id']==2 and linked['amount']==1234.56
    ledger=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger.status_code==200,ledger.text
-   assert ledger.json()['total_expense']==1234.56 and any('员工工资' in x['remark'] for x in ledger.json()['data'])
+   assert ledger.json()['total_expense']==1234.56
+   legacy_ledger_label=any('员工工资' in x['remark'] for x in ledger.json()['data'])
    summary=await c.get('/api/v1/income-expense/monthly-summary?category_group=operating',headers=auth(1))
    assert summary.status_code==200 and summary.json()["total_expense"]==1234.56,summary.text
    report=await c.get("/api/v1/reports/income-expense",headers=auth(1));assert report.status_code==200,report.text
@@ -67,8 +80,8 @@ def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
    update=await c.put(f'/api/v1/income-expense/expense/{expense_id}',headers=auth(1),data={'category_id':linked['category_id'],'account_id':3,'amount':999,'expense_date':'2026-10-16'})
    assert update.status_code==400 and '工资联动支出' in update.text
    delete=await c.delete(f'/api/v1/income-expense/expense/{expense_id}',headers=auth(1));assert delete.status_code==400
-   revoke=await c.post('/api/v1/payroll/2/revoke-disbursement',headers=auth(uid));assert revoke.status_code==200,revoke.text
-   assert revoke.json()['reversed_expense_id']==expense_id
+   revoke=await historical_payroll(factory,c,2)
+   assert revoke['reversed_expense_id']==expense_id
    async with factory() as db:
     rec=await db.get(PayrollRecord,2)
     assert rec.status=='confirmed' and not rec.disbursed and rec.expense_record_id is None
@@ -78,10 +91,13 @@ def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
     assert '因为撤销发放而冲销' in history.after_data['remark']
    ledger2=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger2.json()['total_expense']==0
    assert (await snapshot(factory))[2]==before_old
+   # Explicit new confirmation after a synthetic historical reversal.
+   await prepare_payroll(factory,c,2)
    # Reissue through a different account creates precisely one live expense.
    reissue=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':1});assert reissue.status_code==200,reissue.text
    assert len(await rows(factory,ExpenseRecord))==1
-   print('PAYROLL_EXPENSE',{'paid':r.json(),'expense':linked,'revoked':revoke.json(),'ledger_after':ledger2.json()['total_expense']})
+   assert legacy_ledger_label,ledger.json()
+   print('PAYROLL_EXPENSE',{'paid':r.json(),'expense':linked,'historical_fixture':revoke,'ledger_after':ledger2.json()['total_expense']})
  asyncio.run(run())
 
 
@@ -96,9 +112,10 @@ def test_account_guards_no_writes(tmp_path,monkeypatch,kind):
      else:a.currency='USD'
      await db.commit()
    payload={} if kind=='missing' else {'account_id':2 if kind=='foreign' else 1}
+   await prepare_payroll(factory,c,2)
    before=await snapshot(factory)
    for path,body in [('/payroll/2/disburse',payload),('/payroll/batch-disburse',{'record_ids':[2],**payload})]:
-    r=await c.post('/api/v1'+path,headers=auth(1),json=body);assert r.status_code==400,r.text
+    r=await c.post('/api/v1'+path,headers=auth(3),json=body);assert r.status_code==400,r.text
    assert await snapshot(factory)==before and not await rows(factory,ExpenseRecord)
  asyncio.run(run())
 
@@ -109,16 +126,20 @@ def test_batch_one_expense_per_payroll_one_account_and_idempotence(tmp_path,monk
    await cash(factory)
    async with factory() as db:
     (await db.get(PayrollRecord,1)).status='confirmed';(await db.get(PayrollRecord,1)).net_pay=100.01;await db.commit()
-   body={'record_ids':[1,2,2,3],'account_id':3}
-   r=await c.post('/api/v1/payroll/batch-disburse',headers=auth(1),json=body);assert r.status_code==200,r.text
+   await prepare_payroll(factory,c,1,2)
+   invalid={'record_ids':[1,2,2,3],'account_id':3}
+   denied=await c.post('/api/v1/payroll/batch-disburse',headers=auth(3),json=invalid)
+   assert denied.status_code==400 and not await rows(factory,ExpenseRecord)
+   body={'record_ids':[1,2],'account_id':3}
+   r=await c.post('/api/v1/payroll/batch-disburse',headers=auth(3),json=body);assert r.status_code==200,r.text
    assert r.json()['count']==2 and r.json()['total_net']==1334.57
    async with factory() as db:
     expenses=(await db.execute(select(ExpenseRecord))).scalars().all()
     assert len(expenses)==2 and all(e.account_id==3 for e in expenses)
     assert Decimal(str(sum(e.amount for e in expenses)))==Decimal('1334.57')
     assert (await db.get(PayrollRecord,3)).expense_record_id is None
-   again=await c.post('/api/v1/payroll/batch-disburse',headers=auth(1),json=body)
-   assert again.status_code==200 and again.json()['count']==0 and len(await rows(factory,ExpenseRecord))==2
+   again=await c.post('/api/v1/payroll/batch-disburse',headers=auth(3),json=body)
+   assert again.status_code==409 and len(await rows(factory,ExpenseRecord))==2
    cross=await c.post('/api/v1/payroll/batch-disburse',headers=auth(1),json={'record_ids':[1,10],'account_id':3});assert cross.status_code==403
    print('PAYROLL_BATCH',r.json())
  asyncio.run(run())
@@ -129,7 +150,9 @@ def test_failed_expense_rolls_back_whole_payment(tmp_path,monkeypatch,batch):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
    async with factory() as db:(await db.get(PayrollRecord,1)).status='confirmed';await db.commit()
-   before=await snapshot(factory);calls=0
+   await prepare_payroll(factory,c,2)
+   await prepare_payroll(factory,c,1)
+   before=await snapshot(factory);history_before=await rows(factory,DataChangeHistory);calls=0
    original=service.record_history
    async def fail_after_flush(db,**kwargs):
     nonlocal calls
@@ -140,23 +163,24 @@ def test_failed_expense_rolls_back_whole_payment(tmp_path,monkeypatch,batch):
    monkeypatch.setattr(service,'record_history',fail_after_flush)
    path='/api/v1/payroll/batch-disburse' if batch else '/api/v1/payroll/2/disburse'
    body={'account_id':1,**({'record_ids':[1,2]} if batch else {})}
-   r=await c.post(path,headers=auth(1),json=body);assert r.status_code==500,r.text
+   r=await c.post(path,headers=auth(3),json=body);assert r.status_code==500,r.text
    assert await snapshot(factory)==before
-   assert not await rows(factory,ExpenseRecord) and not await rows(factory,DataChangeHistory)
+   assert not await rows(factory,ExpenseRecord)
+   assert await rows(factory,DataChangeHistory)==history_before
  asyncio.run(run())
 
 
-@pytest.mark.usefixtures("retained_reversal_code")
 def test_failed_revocation_rolls_back_expense_and_payroll(tmp_path,monkeypatch):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
-   r=await c.post('/api/v1/payroll/2/disburse',headers=auth(1),json={'account_id':1});assert r.status_code==200,r.text
+   await prepare_payroll(factory,c,2)
+   r=await c.post('/api/v1/payroll/2/disburse',headers=auth(3),json={'account_id':1});assert r.status_code==200,r.text
    before=await snapshot(factory);expenses=await rows(factory,ExpenseRecord);history=await rows(factory,DataChangeHistory)
    async def fail(db,**kwargs):
     await db.flush()
     raise HTTPException(500,'模拟撤销日志失败')
    monkeypatch.setattr(payroll,'record_history',fail)
-   r=await c.post('/api/v1/payroll/2/revoke-disbursement',headers=auth(1));assert r.status_code==500,r.text
+   r=await c.post('/api/v1/payroll/2/revoke-disbursement',headers=auth(1));assert r.status_code==400 and '撤销功能已停用' in r.text
    assert await snapshot(factory)==before and await rows(factory,ExpenseRecord)==expenses and await rows(factory,DataChangeHistory)==history
  asyncio.run(run())
 
@@ -193,8 +217,9 @@ def test_exact_cent_amount_or_reject(tmp_path,monkeypatch,amount,expected):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
    async with factory() as db:(await db.get(PayrollRecord,2)).net_pay=amount;await db.commit()
+   await prepare_payroll(factory,c,2)
    before=await snapshot(factory)
-   r=await c.post('/api/v1/payroll/2/disburse',headers=auth(1),json={'account_id':1});assert r.status_code==expected,r.text
+   r=await c.post('/api/v1/payroll/2/disburse',headers=auth(3),json={'account_id':1});assert r.status_code==expected,r.text
    if expected==400:
     assert await snapshot(factory)==before and not await rows(factory,ExpenseRecord)
    else:
@@ -208,8 +233,9 @@ def test_missing_category_rejects_without_changing_payroll(tmp_path,monkeypatch)
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
    async with factory() as db:
     await db.execute(delete(IncomeExpenseCategory).where(IncomeExpenseCategory.name=='员工工资'));await db.commit()
+   await prepare_payroll(factory,c,2)
    before=await snapshot(factory)
-   r=await c.post('/api/v1/payroll/2/disburse',headers=auth(1),json={'account_id':1})
+   r=await c.post('/api/v1/payroll/2/disburse',headers=auth(3),json={'account_id':1})
    assert r.status_code==400 and '启动迁移' in r.text
    assert await snapshot(factory)==before and not await rows(factory,ExpenseRecord)
  asyncio.run(run())

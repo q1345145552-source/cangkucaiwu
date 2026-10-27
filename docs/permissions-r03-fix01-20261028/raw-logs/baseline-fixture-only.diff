@@ -1,0 +1,171 @@
+diff --git a/backend/tests/test_cash_advance_repayments.py b/backend/tests/test_cash_advance_repayments.py
+index 60a785e..85417f7 100644
+--- a/backend/tests/test_cash_advance_repayments.py
++++ b/backend/tests/test_cash_advance_repayments.py
+@@ -29,7 +29,7 @@ async def environment(tmp_path, monkeypatch):
+         await engine.dispose()
+         async with factory() as db:
+             account = await db.get(PaymentAccount, 1)
+-            account.opening_balance, account.account_name, account.account_type = 10000, "测试现金", "cash"
++            account.opening_balance, account.account_name, account.account_type = 10750, "测试现金", "cash"
+             account.status, account.currency = "active", "THB"
+             for amount in (500, 250):
+                 db.add(ExpenseRecord(warehouse_id=1, category_id=1, account_id=1, amount=amount, currency="THB", expense_date=datetime(2026, 10, 18), remark="原有运营支出"))
+@@ -88,7 +88,7 @@ def test_full_repayment_money_ledger_and_costs_exactly_unchanged(tmp_path, monke
+             assert data["account"]["current_balance"] == 7000
+             after = await balance(c)
+             assert old_balance["current_balance"] == 10000 and after["current_balance"] == 7000
+-            assert after["opening_balance"] == old_balance["opening_balance"] == 10000
++            assert after["opening_balance"] == old_balance["opening_balance"] == 10750
+             flows = await ledger(c)
+             assert flows["total"] == 1 and flows["total_expense"] == 3000 and len(flows["data"]) == 1
+             assert flows["data"][0]["amount"] == 3000 and flows["data"][0]["is_non_cost_flow"] is True
+@@ -115,7 +115,6 @@ def test_full_repayment_money_ledger_and_costs_exactly_unchanged(tmp_path, monke
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -150,7 +149,6 @@ def test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance(tmp_p
+ 
+ 
+ @pytest.mark.parametrize("uid", [2, 3, 4, 5])
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_admin_only_repayment_upload_accounts_and_revoke(tmp_path, monkeypatch, uid):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -209,7 +207,6 @@ def test_pending_rejected_inactive_cross_warehouse_and_currency_are_blocked(tmp_
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_full_reversal_inactive_account_and_multiple_payments(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -226,7 +223,6 @@ def test_full_reversal_inactive_account_and_multiple_payments(tmp_path, monkeypa
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_history_failure_rolls_back_repayment_and_revoke(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+diff --git a/backend/tests/test_payroll_cash_advance.py b/backend/tests/test_payroll_cash_advance.py
+index 30695fd..d957789 100644
+--- a/backend/tests/test_payroll_cash_advance.py
++++ b/backend/tests/test_payroll_cash_advance.py
+@@ -63,7 +63,6 @@ async def usage(c, aid):
+     return r.json()
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (f, c):
+@@ -124,7 +123,6 @@ def test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke(tmp_path, m
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (f, c):
+@@ -175,7 +173,6 @@ def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (f, c):
+@@ -233,7 +230,6 @@ def test_batch_aggregate_budget_and_atomic_rollback(tmp_path, monkeypatch, fail)
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_failed_revoke_restores_cost_usage_and_loan_link(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (f, c):
+diff --git a/backend/tests/test_payroll_expense.py b/backend/tests/test_payroll_expense.py
+index fd8b02d..4ad2216 100644
+--- a/backend/tests/test_payroll_expense.py
++++ b/backend/tests/test_payroll_expense.py
+@@ -18,7 +18,7 @@ from tests.test_round3_permissions import hr_environment, snapshot
+ 
+ async def cash(factory):
+  async with factory() as db:
+-  db.add(PaymentAccount(id=3,warehouse_id=1,account_name='现金',account_type='cash',account_number='cash',currency='THB',status='active'))
++  db.add(PaymentAccount(id=3,warehouse_id=1,account_name='现金',account_type='cash',account_number='cash',currency='THB',status='active',opening_balance=100000))
+   await db.commit()
+ 
+ async def rows(factory,model):
+@@ -26,7 +26,6 @@ async def rows(factory,model):
+ 
+ 
+ @pytest.mark.parametrize('uid',[1,4])
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
+  async def run():
+   async with hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
+@@ -146,7 +145,6 @@ def test_failed_expense_rolls_back_whole_payment(tmp_path,monkeypatch,batch):
+  asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_failed_revocation_rolls_back_expense_and_payroll(tmp_path,monkeypatch):
+  async def run():
+   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
+diff --git a/backend/tests/test_reimbursement_payments.py b/backend/tests/test_reimbursement_payments.py
+index eef251d..979ab76 100644
+--- a/backend/tests/test_reimbursement_payments.py
++++ b/backend/tests/test_reimbursement_payments.py
+@@ -100,7 +100,6 @@ async def usage(c, aid):
+     return r.json()
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -152,7 +151,6 @@ def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -251,7 +249,6 @@ def test_validation_no_partial_money_changes(tmp_path, monkeypatch, kind):
+ 
+ 
+ @pytest.mark.parametrize("source", ["company_account", "cash_advance", "expense_fund"])
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_payment_and_revoke_failures_rollback_everything(tmp_path, monkeypatch, source):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -279,7 +276,6 @@ def test_payment_and_revoke_failures_rollback_everything(tmp_path, monkeypatch,
+ 
+ 
+ @pytest.mark.parametrize("uid", [3, 4, 5, 2])
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_only_warehouse_admin_can_revoke(tmp_path, monkeypatch, uid):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -365,7 +361,6 @@ def test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_ba
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_decimal_item_sums_and_partially_approved_total_used_for_payment(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):
+@@ -387,7 +382,6 @@ def test_decimal_item_sums_and_partially_approved_total_used_for_payment(tmp_pat
+     asyncio.run(run())
+ 
+ 
+-@pytest.mark.usefixtures("retained_reversal_code")
+ def test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_reason(tmp_path, monkeypatch):
+     async def run():
+         async with environment(tmp_path, monkeypatch) as (_, f, c):

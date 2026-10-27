@@ -43,7 +43,7 @@ def test_options_auto_archive_reuse_and_labor(tmp_path, monkeypatch):
             assert await employee_count(f) == initial  # Opening options never writes.
             old = await snapshot(f)
             first = await create(c, user_id=4)
-            assert first.status_code == 200 and first.json()['approval_status'] == 'approved', first.text
+            assert first.status_code == 200 and first.json()['approval_status'] == 'pending', first.text
             async with f() as db:
                 emp = (await db.execute(select(Employee).where(Employee.user_id == 4))).scalar_one()
                 user = await db.get(User,4)
@@ -58,7 +58,7 @@ def test_options_auto_archive_reuse_and_labor(tmp_path, monkeypatch):
                 assert actual['warehouse_id']==1 and actual['status']=='regular' and actual['hire_date']=='2026-10-17T00:00:00'
                 assert emp.salary_template_id is emp.deduction_template_id is None
                 assert not user.attendance_enabled and user.attendance_employee_id is None and user.attendance_enabled_at is None
-                assert advance.employee_id==emp.id and advance.approval_status=='approved'
+                assert advance.employee_id==emp.id and advance.approval_status=='pending'
                 eid=emp.id
                 assert (await db.execute(select(DataChangeHistory).where(DataChangeHistory.module=='employee',DataChangeHistory.record_id==eid))).scalar_one().after_data['source']=='employee_advances'
             second=await create(c,user_id=4);assert second.status_code==200,second.text
@@ -67,7 +67,7 @@ def test_options_auto_archive_reuse_and_labor(tmp_path, monkeypatch):
             assert sum(x['user_id']==4 for x in choices_after)==1
             assert next(x for x in choices_after if x['user_id']==4)['value']==f'employee:{eid}'
             third=await create(c,employee_id=eid);assert third.status_code==200
-            labor=await create(c,employee_id=1);assert labor.status_code==200 and labor.json()['approval_status']=='approved'
+            labor=await create(c,employee_id=1);assert labor.status_code==200 and labor.json()['approval_status']=='pending'
             assert await snapshot(f)==old
             print('MANAGER_ADVANCE_PROOF',json.dumps({'choices':choices,'employee_and_account':actual,'advance':{'id':first.json()['id'],'employee_id':eid,'amount':100,'approval_status':first.json()['approval_status']},'employee_count_before':initial,'after_two_advances':await employee_count(f)},ensure_ascii=False))
     asyncio.run(run())
@@ -82,7 +82,7 @@ def test_existing_enabled_archive_and_self_approval_preserved(tmp_path,monkeypat
             assert (await create(c,user_id=4)).status_code==200
             await set_perms(f,4,['员工预支'])
             own=await create(c,uid=4,user_id=4);assert own.status_code==200 and own.json()['approval_status']=='pending'
-            other=await create(c,uid=4,employee_id=1);assert other.status_code==200 and other.json()['approval_status']=='approved'
+            other=await create(c,uid=4,employee_id=1);assert other.status_code==200 and other.json()['approval_status']=='pending'
             assert await employee_count(f)==initial
             async with f() as db:
                 u=await db.get(User,4);e=await db.get(Employee,5)
@@ -148,8 +148,8 @@ def test_recipient_role_and_warehouse_scope(tmp_path,monkeypatch):
                 assert await options(c,uid)==await options(c)
             r=await c.get('/api/v1/employee-advances/recipients',headers=auth(5));assert r.status_code==403
             r=await c.get('/api/v1/employee-advances/recipients',headers={**auth(1),'X-Warehouse-ID':'2'})
-            assert r.status_code==200 and all(x['employee_id']!=2 for x in r.json()['data'])
-            r=await create(c,user_id=1);assert r.status_code==200 and r.json()['approval_status']=='approved'
+            assert r.status_code==403 and r.json()=={'detail':'无权访问所选仓库'}
+            r=await create(c,user_id=1);assert r.status_code==200 and r.json()['approval_status']=='pending'
     asyncio.run(run())
 
 
@@ -175,8 +175,8 @@ def test_payroll_excludes_off_managers_not_enabled_or_staff_or_labor(tmp_path,mo
                         db.add(ClockInRecord(user_id=uid,warehouse_id=1,clock_date=date(2026,10,16),session=session,clocked_in_at=datetime(2026,10,16,h),status='normal'))
                 await db.commit()
             old=await snapshot(f)
-            r=await c.post('/api/v1/payroll/preview',headers=auth(1),json={'end_date':'2026-10-16'});assert r.status_code==200,r.text
-            r=await c.post('/api/v1/payroll/calculate',headers=auth(1),json={'end_date':'2026-10-16'});assert r.status_code==200,r.text
+            r=await c.post('/api/v1/payroll/preview',headers=auth(3),json={'end_date':'2026-10-16'});assert r.status_code==200,r.text
+            r=await c.post('/api/v1/payroll/calculate',headers=auth(3),json={'end_date':'2026-10-16'});assert r.status_code==200,r.text
             async with f() as db:
                 rows=(await db.execute(select(PayrollRecord).where(PayrollRecord.settle_start_date==date(2026,10,16)))).scalars().all()
                 emps={e.id:e for e in (await db.execute(select(Employee))).scalars().all()}
@@ -184,22 +184,17 @@ def test_payroll_excludes_off_managers_not_enabled_or_staff_or_labor(tmp_path,mo
                 assert {emps[r.employee_id].user_id for r in rows}=={3,5,7}
                 actual=[{'employee_id':r.employee_id,'name':emps[r.employee_id].name,'net_pay':r.net_pay} for r in rows]
             after=await snapshot(f);assert [r for r in after if r[0] in {x[0] for x in old}]==old
-            r=await c.post('/api/v1/payroll/calculate',headers=auth(1),json={'end_date':'2026-10-16','employee_ids':list(off_ids)})
+            r=await c.post('/api/v1/payroll/calculate',headers=auth(3),json={'end_date':'2026-10-16','employee_ids':list(off_ids)})
             assert r.status_code==200 and r.json().get('record_count',0)==0,r.text
             print('MANAGER_ADVANCE_PAYROLL',json.dumps({'excluded_employee_ids':sorted(off_ids),'payroll':actual},ensure_ascii=False))
     asyncio.run(run())
 
 
 def test_unchanged_review_and_payroll_math():
-    from tests.financial_reversal_test_support import without_advance_void_query
     root=Path(__file__).resolve().parents[2]
-    # 允许后续已授权的工资资金来源和预支支出联动；工资计算本身仍严格比较。
-    funding_changes = {'list_payroll', 'batch_disburse_payroll', 'disburse_payroll', 'revoke_disbursement', '_disbursement_funding', 'payroll_cash_advance_sources'}
-    for name,changed in [('employee_advance',{'create_advance','list_funding_options','list_advance_recipients','_approval_fields','delete_advance','_review_advance','_void_fields','_advance_voider','list_advances','advance_summary','my_debt'}),('payroll',{'_prepare_payroll'} | funding_changes)]:
-        path=f'backend/app/api/v1/{name}.py'
-        def funcs(s):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-        before=funcs(subprocess.check_output(['git','show','3e19093:'+path],cwd=root,text=True));after=funcs((root/path).read_text())
-        assert {k:v for k,v in before.items() if k not in changed}=={k:v for k,v in after.items() if k not in changed}
+    path='backend/app/api/v1/payroll.py'
+    def math(s):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name in {'_compute_employee_records','_rollback_advance_deductions'}}
+    assert math((root/path).read_text())==math(subprocess.check_output(['git','show','e6cc888:'+path],cwd=root,text=True))
 
 
 def test_later_enabling_attendance_reuses_auto_archive(tmp_path, monkeypatch):

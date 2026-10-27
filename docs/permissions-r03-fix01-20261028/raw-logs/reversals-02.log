@@ -1,0 +1,37 @@
+.....F..                                                                 [100%]
+=================================== FAILURES ===================================
+_ test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required _
+backend/tests/test_disabled_financial_reversals.py:80: in test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_disabled_financial_reversals.py:77: in run
+    assert response.status_code == 403
+E   assert 400 == 403
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_disabled_financial_reversals.py: 233 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[1]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[2]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[3]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[4]
+tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[5]
+tests/test_disabled_financial_reversals.py::test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required
+tests/test_disabled_financial_reversals.py::test_revoked_history_amounts_and_ledger_readback_unchanged
+  /private/tmp/permissions-round3-20261028/backend/tests/test_disabled_financial_reversals.py:26: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for table in Base.metadata.sorted_tables}
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED backend/tests/test_disabled_financial_reversals.py::test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required

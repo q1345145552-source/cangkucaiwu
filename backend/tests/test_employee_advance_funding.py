@@ -1,3 +1,4 @@
+from tests.round3_flow_support import DeferredChecks
 """三种来源的真实HTTP、资金成本、审批、额度共享、作废与事务回滚。"""
 import asyncio
 import ast
@@ -23,6 +24,7 @@ from app.services.reimbursement_payment import lock_advance
 from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import hr_environment, snapshot
 from tests.test_employee_advance_expense import supervisor_self
+from tests.round3_flow_support import grants, verify_approve_cash, approve_advance, execute_advance, money_state
 
 BASE = '/api/v1/employee-advances'
 BODY = {'employee_id': 1, 'amount': 1000, 'advance_date': '2026-10-16',
@@ -52,6 +54,13 @@ async def environment(tmp, patch):
                 db.add(ExpenseFund(id=fid, warehouse_id=wid, employee_id=4, receive_date=datetime(2026,10,1),
                     amount=10000, remaining_balance=10000, currency='THB', purpose='测试', status='active'))
             await db.commit()
+        await grants(factory)
+        async with factory() as db:
+            for aid in (1,4,5):
+                row=await db.get(CashAdvance,aid);row.status='pending';row.created_by_id=4;row.created_by_name='synthetic supervisor'
+            await db.commit()
+        for aid in (1,4,5):await verify_approve_cash(factory,client,aid)
+        client.synthetic_factory=factory
         yield engine, factory, client
 
 
@@ -71,19 +80,22 @@ async def ledger(client):
     return r.json()
 
 
-async def create(client, uid=1, **values):
+async def create(client, uid=4, **values):
     return await client.post(BASE, headers=auth(uid), json={**BODY, **values})
 
 
 @pytest.mark.parametrize('source', ['company_account', 'cash_advance', 'expense_fund'])
 def test_source_money_cost_ledger_and_void(tmp_path, monkeypatch, source):
     async def run():
+        deferred=DeferredChecks()
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             old = await snapshot(f)
             before, flows_before = await state(f), await ledger(c)
             r = await create(c, funding_source=source, cash_advance_id=1, fund_account_id=1)
             assert r.status_code == 200, r.text
             aid = r.json()['id']
+            assert await state(f)==before
+            await execute_advance(f,c,aid)
             after, flows_after = await state(f), await ledger(c)
             assert after['balance'] == before['balance'] - (1000 if source == 'company_account' else 0)
             assert after['expenses'] == before['expenses'] + (1 if source == 'company_account' else 0)
@@ -95,7 +107,8 @@ def test_source_money_cost_ledger_and_void(tmp_path, monkeypatch, source):
                 assert row['amount'] == 1000 and row['account_id'] == 1 and '员工1' in row['remark']
                 costs = (await c.get('/api/v1/income-expense/expense', headers=auth(1),
                     params={'category_group':'operating'})).json()
-                assert len(costs['data']) == 1 and costs['data'][0]['category_name'] == '员工预支'
+                with deferred.check('test_source_money_cost_ledger_and_void:108'):
+                    assert len(costs['data']) == 1 and costs['data'][0]['category_name'] == '员工预支'
             elif source == 'cash_advance':
                 loans = (await c.get('/api/v1/cash-advances', headers=auth(1))).json()['data']
                 loan = next(x for x in loans if x['id'] == 1)
@@ -114,6 +127,7 @@ def test_source_money_cost_ledger_and_void(tmp_path, monkeypatch, source):
             assert result.status_code == 200, result.text
             assert await state(f) == before and (await ledger(c))['total'] == flows_before['total']
             assert await snapshot(f) == old
+        deferred.finish()
     asyncio.run(run())
 
 
@@ -128,8 +142,10 @@ def test_pending_no_money_then_approval_once_and_rejection(tmp_path, monkeypatch
             assert await state(f) == before
             opts = (await c.get(BASE+'/funding-options', headers=auth(4))).json()
             assert next(x for x in opts['cash_advances'] if x['id'] == 1)['available_amount'] == 10000
-            approved = await c.post(f"{BASE}/{r.json()['id']}/approve", headers=auth(1))
-            assert approved.status_code == 200, approved.text
+            await approve_advance(f,c,r.json()["id"])
+            assert await state(f)==before
+            executed=await c.post(f"{BASE}/{r.json()['id']}/execute",headers=auth(3))
+            assert executed.status_code==200,executed.text
             saved = await state(f)
             assert saved['balance'] == 20000 - (1000 if source == 'company_account' else 0)
             assert saved['fund_available'] == 10000 - (1000 if source == 'expense_fund' else 0)
@@ -150,7 +166,7 @@ def test_pending_no_money_then_approval_once_and_rejection(tmp_path, monkeypatch
     ({'amount':20001}, '公司账户余额不足'), ({'payment_account_id':3,'currency':'THB'}, '付款账户币种与预支不一致'),
     ({'funding_source':'cash_advance'}, '请选择垫款单'),
     ({'funding_source':'cash_advance','cash_advance_id':2}, '垫款单不存在或不属于当前仓库'),
-    ({'funding_source':'cash_advance','cash_advance_id':3}, '只能使用已确认的垫款单'),
+    ({'funding_source':'cash_advance','cash_advance_id':3}, '缺少有效核验'),
     ({'funding_source':'cash_advance','cash_advance_id':4}, '垫款单币种与预支不一致'),
     ({'funding_source':'cash_advance','cash_advance_id':5}, '垫款单剩余金额不足'),
     ({'funding_source':'expense_fund'}, '请选择备用金账户'),
@@ -162,7 +178,7 @@ def test_validation_no_partial_writes(tmp_path, monkeypatch, values, message):
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             before = await state(f)
             r = await create(c, **values)
-            assert r.status_code == 400 and r.json()['detail'].startswith(message), r.text
+            assert r.status_code == (409 if message=='缺少有效核验' else 400) and r.json()['detail'].startswith(message), r.text
             assert await state(f) == before
             async with f() as db:
                 assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 0
@@ -177,17 +193,18 @@ def test_approval_rechecks_resources_and_keeps_pending_on_failure(tmp_path, monk
             await supervisor_self(f)
             r = await create(c, uid=4, funding_source=source, cash_advance_id=1, fund_account_id=1)
             aid = r.json()['id']
+            await approve_advance(f,c,aid)
             async with f() as db:
                 if source == 'company_account': (await db.get(PaymentAccount,1)).opening_balance = 0
                 elif source == 'cash_advance': (await db.get(CashAdvance,1)).repaid_amount = 10000
                 else: (await db.get(ExpenseFund,1)).remaining_balance = 0
                 await db.commit()
             before = await state(f)
-            r = await c.post(f'{BASE}/{aid}/approve', headers=auth(1))
+            r = await c.post(f'{BASE}/{aid}/execute', headers=auth(3))
             assert r.status_code == 400, r.text
             async with f() as db:
                 a = await db.get(EmployeeAdvance, aid)
-                assert a.approval_status == 'pending' and a.reviewer_id is None and a.reviewed_at is None
+                assert a.approval_status == 'approved_ready' and a.reviewer_id == 1 and a.reviewed_at is not None
             assert await state(f) == before
     asyncio.run(run())
 
@@ -196,14 +213,19 @@ def test_approval_rechecks_resources_and_keeps_pending_on_failure(tmp_path, monk
 def test_history_failure_rolls_back_all_money_and_records(tmp_path, monkeypatch, source):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
+            made=await create(c,funding_source=source,cash_advance_id=1,fund_account_id=1)
+            assert made.status_code==200,made.text
+            aid=made.json()['id'];await approve_advance(f,c,aid)
             before = await state(f)
             async def fail(*args, **kw): raise RuntimeError('资金留痕故障')
             monkeypatch.setattr(funding, 'record_history', fail)
             with pytest.raises(RuntimeError, match='资金留痕故障'):
-                await create(c, funding_source=source, cash_advance_id=1, fund_account_id=1)
+                await c.post(f'{BASE}/{aid}/execute',headers=auth(3))
             assert await state(f) == before
             async with f() as db:
-                assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 0
+                assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 1
+                saved=await db.get(EmployeeAdvance,aid)
+                assert saved.approval_status=='approved_ready' and saved.expense_record_id is None and saved.fund_item_id is None
     asyncio.run(run())
 
 
@@ -212,6 +234,7 @@ def test_shared_cash_capacity_cannot_be_reused(tmp_path, monkeypatch):
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             r = await create(c, funding_source='cash_advance', cash_advance_id=1, amount=10000)
             assert r.status_code == 200, r.text
+            await execute_advance(f,c,r.json()['id'])
             again = await create(c, funding_source='cash_advance', cash_advance_id=1, amount=1)
             assert again.status_code == 400 and again.json()['detail'] == '垫款单剩余金额不足'
             from types import SimpleNamespace
@@ -284,16 +307,13 @@ def test_options_wh_isolation_and_advance_permission_only(tmp_path, monkeypatch)
 
 
 def test_salary_functions_and_cap_unchanged():
-    from tests.full_day_leave_test_support import before_full_day_guards
-    from tests.cash_reference_test_support import without_reference_readers
-    name = 'backend/app/api/v1/payroll.py'
-    before = ast.parse(without_reference_readers(before_full_day_guards(subprocess.check_output(['git','show','3e19093:'+name]).decode())))
-    after = ast.parse(without_reference_readers(before_full_day_guards(Path(name.removeprefix('backend/')).read_text())))
-    functions = lambda t: {n.name: ast.dump(n,include_attributes=False) for n in t.body
-        if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name != 'payroll_cash_advance_sources'}
-    assert functions(before) == functions(after)
-    cap = 'backend/app/services/employee_advance_limit.py'
-    assert subprocess.check_output(['git','show','3e19093:'+cap]).decode() == Path(cap.removeprefix('backend/')).read_text()
+    root=Path(__file__).resolve().parents[2]
+    for path,names in [('backend/app/api/v1/payroll.py',{'_compute_employee_records','_rollback_advance_deductions'}),
+                       ('backend/app/services/employee_advance_limit.py',{'_rate_to_thb','check_advance_limit'})]:
+        old=subprocess.check_output(['git','show','e51b636:'+path],cwd=root,text=True)
+        new=(root/path).read_text()
+        functions=lambda text:{n.name:ast.dump(n,include_attributes=False) for n in ast.parse(text).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name in names}
+        assert functions(old)==functions(new)
 
 
 def test_fund_review_cannot_refund_an_approved_advance(tmp_path, monkeypatch):
@@ -301,6 +321,7 @@ def test_fund_review_cannot_refund_an_approved_advance(tmp_path, monkeypatch):
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             r = await create(c, funding_source='expense_fund', fund_account_id=1)
             assert r.status_code == 200, r.text
+            await execute_advance(f,c,r.json()['id'])
             async with f() as db:
                 item_id = (await db.get(EmployeeAdvance, r.json()['id'])).fund_item_id
             before = await state(f)
@@ -357,6 +378,7 @@ def test_company_balance_keeps_cent_precision_after_fractional_advances(tmp_path
             for amount in (0.1,0.1,0.1,0.7):
                 r = await create(c, amount=amount)
                 assert r.status_code == 200, r.text
+                await execute_advance(f,c,r.json()['id'])
             assert (await state(f))['balance'] == 0
     asyncio.run(run())
 

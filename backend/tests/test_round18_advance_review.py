@@ -13,11 +13,12 @@ import app.api.v1.employee_advance as advance_api
 import app.api.v1.payroll as payroll
 from tests.test_round2_permissions import auth,set_perms
 from tests.test_round3_permissions import snapshot
+from tests.round3_flow_support import execute_advance, approve_advance, post_ok
 from tests.advance_funding_test_support import funded_hr_environment as hr_environment
 
 async def add(factory,status='pending',amount=100,wid=1,eid=1):
  async with factory() as db:
-  r=EmployeeAdvance(warehouse_id=wid,employee_id=eid,amount=amount,advance_date=date(2026,10,16),period='2026-10',half='second_half',source='supervisor',status='unpaid',approval_status=status,deducted_amount=0)
+  r=EmployeeAdvance(warehouse_id=wid,employee_id=eid,amount=amount,advance_date=date(2026,10,16),period='2026-10',half='second_half',source='supervisor',status='unpaid',approval_status=status,deducted_amount=0,funding_source='company_account',payment_account_id=1,operator_id=4,expense_tracking_enabled=(status=='pending'))
   db.add(r);await db.commit();return r.id
 
 async def get(factory,aid):
@@ -31,8 +32,9 @@ def test_admin_review_reject_state_guards_and_history(tmp_path,monkeypatch):
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
    aid=await add(factory);rid=await add(factory)
    old=await snapshot(factory)
-   approved=await c.post(f'/api/v1/employee-advances/{aid}/approve',headers=auth(1));assert approved.status_code==200,approved.text
-   a=approved.json();assert a['approval_status']=='approved' and a['reviewer_id']==1 and a['reviewed_at'] and a['reject_reason'] is None
+   approved=await approve_advance(factory,c,aid)
+   a=approved.json();assert a['approval_status']=='approved_ready' and a['reviewer_id']==1 and a['reviewed_at'] and a['reject_reason'] is None
+   await post_ok(c,f'/employee-advances/{aid}/execute',3)
    rejected=await c.post(f'/api/v1/employee-advances/{rid}/reject',headers=auth(1),json={'reject_reason':' 不符合本次预支规则 '});assert rejected.status_code==200,rejected.text
    b=rejected.json();assert b['approval_status']=='rejected' and b['reviewer_id']==1 and b['reviewed_at'] and b['reject_reason']=='不符合本次预支规则'
    for path,body,message in [(f'{aid}/approve',None,'该预支已通过'),(f'{rid}/approve',None,'该预支已驳回，不能审批通过'),(f'{aid}/reject',{'reject_reason':'x'},'该预支已通过，不能驳回'),(f'{rid}/reject',{'reject_reason':'x'},'该预支已驳回')]:
@@ -40,8 +42,12 @@ def test_admin_review_reject_state_guards_and_history(tmp_path,monkeypatch):
    listing=await c.get('/api/v1/employee-advances',headers=auth(1));assert listing.status_code==200
    assert {x['approval_status'] for x in listing.json()['data']}=={'approved','rejected'}
    logs=await c.get('/api/v1/history?module=employee_advances',headers=auth(1));assert logs.status_code==200,logs.text
-   assert logs.json()['total']==2
-   for h in logs.json()['data']:
+   assert logs.json()['total']==3
+   funding=[h for h in logs.json()['data'] if h['operation_type']=='funding']
+   assert len(funding)==1 and funding[0]['operator_id']==3 and funding[0]['after_data']['amount']==100
+   review_logs=[h for h in logs.json()['data'] if h['operation_type'] in ('approve','reject')]
+   assert len(review_logs)==2
+   for h in review_logs:
     assert h['operator_id']==1 and h['created_at'] and h['after_data']['amount']==100 and h['after_data']['reviewed_at']
     assert h['operation_type'] in ('approve','reject') and h['warehouse_id']==1
    assert await snapshot(factory)==old
@@ -58,7 +64,8 @@ def test_only_warehouse_admin_can_review(tmp_path,monkeypatch,uid,grant):
    if uid in (3,4):await set_perms(factory,uid,['员工预支'] if grant else [])
    for action in ('approve','reject'):
     r=await c.post(f'/api/v1/employee-advances/{aid}/{action}',headers=auth(uid),json={'reject_reason':'测试'})
-    assert r.status_code==403 and r.json()=={'detail':'只有仓库管理员可以审批预支'}
+    expected='超级管理员请使用各仓库管理员账号操作' if uid==2 else '无权访问' if uid==5 else '无此操作权限，需要: 员工预支' if not grant else '只有仓库管理员可以审批预支'
+    assert r.status_code==403 and r.json()=={'detail':expected}
    assert (await get(factory,aid))['approval_status']=='pending'
  asyncio.run(run())
 
@@ -95,7 +102,7 @@ async def prepare_work(factory):
   await db.commit()
 
 async def calculate(c,end='2026-10-17'):
- r=await c.post('/api/v1/payroll/calculate',headers=auth(1),json={'end_date':end,'employee_ids':[1]});assert r.status_code==200,r.text
+ r=await c.post('/api/v1/payroll/calculate',headers=auth(3),json={'end_date':end,'employee_ids':[1]});assert r.status_code==200,r.text
 
 async def period_record(factory,day=16):
  async with factory() as db:
@@ -112,15 +119,15 @@ def test_pending_approved_manual_recalc_exactly_100_and_carry(tmp_path,monkeypat
    await calculate(c);first=await period_record(factory)
    assert first.base_pay==800 and first.advance_deduction==0 and first.net_pay==800
    saved=await snapshot(factory)
-   r=await c.post(f'/api/v1/employee-advances/{aid}/approve',headers=auth(1));assert r.status_code==200,r.text
+   r=await execute_advance(factory,c,aid)
    assert await snapshot(factory)==saved  # Approval never silently recalculates a paycheck.
-   r=await c.post(f'/api/v1/payroll/{first.id}/recalc',headers=auth(1),json={'mode':'recalc','void_reason':'第十八轮隔离验证'});assert r.status_code==200,r.text
+   r=await c.post(f'/api/v1/payroll/{first.id}/recalc',headers=auth(3),json={'mode':'recalc','void_reason':'第十八轮隔离验证'});assert r.status_code==200,r.text
    second=await period_record(factory)
    assert second.base_pay==800 and second.advance_deduction==100 and second.net_pay==700
    assert first.net_pay-second.net_pay==100
    assert (await get(factory,rejected))['deducted_amount']==0
    # Recalculate a second time: rollback and reapply exactly 100, never 200.
-   r=await c.post(f'/api/v1/payroll/{second.id}/recalc',headers=auth(1),json={'mode':'recalc','void_reason':'重复重算扣款回退验证'});assert r.status_code==200,r.text
+   r=await c.post(f'/api/v1/payroll/{second.id}/recalc',headers=auth(3),json={'mode':'recalc','void_reason':'重复重算扣款回退验证'});assert r.status_code==200,r.text
    assert (await period_record(factory)).net_pay==700
    current=await snapshot(factory);assert [row for row in current if row[0] in {x[0] for x in legacy}]==legacy
    print('ROUND18_PAYROLL',{'before_net':800,'before_deduction':0,'after_net':700,'after_deduction':100,'difference':100,'rejected_deduction':0})
@@ -145,7 +152,9 @@ def test_approved_remainder_rolls_to_next_period(tmp_path,monkeypatch):
 def test_review_history_failure_rolls_back(tmp_path,monkeypatch):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
-   aid=await add(factory);before=await get(factory,aid)
+   aid=await add(factory)
+   await post_ok(c,f'/employee-advances/{aid}/verify',3)
+   before=await get(factory,aid)
    async def fail(db,**kwargs):
     await db.flush()
     raise HTTPException(500,'模拟修改日志失败')
@@ -192,8 +201,8 @@ def test_supervisor_self_advance_end_to_end(tmp_path,monkeypatch):
    aid=r.json()['id'];await calculate(c);first=await period_record(factory)
    assert first.net_pay==800 and first.advance_deduction==0
    denied=await c.post(f'/api/v1/employee-advances/{aid}/approve',headers=auth(4));assert denied.status_code==403
-   approved=await c.post(f'/api/v1/employee-advances/{aid}/approve',headers=auth(1));assert approved.status_code==200
-   r=await c.post(f'/api/v1/payroll/{first.id}/recalc',headers=auth(1),json={'mode':'recalc','void_reason':'主管自己预支完整流程测试'})
+   approved=await execute_advance(factory,c,aid)
+   r=await c.post(f'/api/v1/payroll/{first.id}/recalc',headers=auth(3),json={'mode':'recalc','void_reason':'主管自己预支完整流程测试'})
    assert r.status_code==200,r.text
    second=await period_record(factory);assert second.net_pay==700 and second.advance_deduction==100
  asyncio.run(run())

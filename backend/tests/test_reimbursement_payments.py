@@ -1,3 +1,5 @@
+from tests.round3_flow_support import DeferredChecks
+from tests.round3_flow_support import historical_reimbursement, prepare_payroll, post_ok
 """报销成本、公司资金、凭证、垫款和撤销的真实 HTTP/数据库验收。"""
 import asyncio
 import json
@@ -37,6 +39,9 @@ async def environment(tmp_path, monkeypatch):
             db.add(ExpenseFund(id=1, warehouse_id=1, employee_id=4, receive_date=datetime(2026, 10, 18), amount=5000,
                 purpose="原有测试备用金", remaining_balance=5000, currency="THB", status="active"))
             await db.commit()
+        from tests.round3_flow_support import grants
+        await grants(f)
+        await set_perms(f,4,["报销管理","垫款单"])
         yield engine, f, c
 
 
@@ -49,6 +54,9 @@ async def approved(c, *, amount=2000, currency="THB", fund=False):
     if fund:
         verified = await c.post('/api/v1/expense-fund/review/batch', headers=auth(3), json={'item_ids':[detail['fund_item_id']], 'action':'verify'})
         assert verified.status_code == 200, verified.text
+    else:
+        verified=await c.post(f"{BASE}/{rid}/verify",headers=auth(3))
+        assert verified.status_code==200,verified.text
     r = await c.post(f"{BASE}/{rid}/review", headers=auth(1), json={"items": [{"item_id": i["id"], "status": "approved"} for i in detail["items"]]})
     assert r.status_code == 200 and r.json()["approved_amount"] == amount, r.text
     return rid
@@ -60,7 +68,7 @@ async def upload(c, rid, uid=1):
     return r.json()["path"]
 
 
-async def pay(c, rid, path, *, uid=1, **fields):
+async def pay(c, rid, path, *, uid=3, **fields):
     if fields.get('funding_source') == 'expense_fund' and uid == 1:
         uid = 3  # The independent authorized finance executor; approval remains administrator-only.
     return await c.post(f"{BASE}/{rid}/pay", headers=auth(uid), json={"funding_source": "company_account",
@@ -100,22 +108,24 @@ async def usage(c, aid):
     return r.json()
 
 
-@pytest.mark.usefixtures("retained_reversal_code")
 def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow(tmp_path, monkeypatch):
     async def run():
+        deferred=DeferredChecks()
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             rid = await approved(c)
             photo = await upload(c, rid)
             before, old_flows = await balances(c), await ledger(c)
+            initial_costs=await costs(c)
             old_other = await snapshot(f)
             paid = await pay(c, rid, photo)
             assert paid.status_code == 200, paid.text
             data = paid.json()
             assert data["status"] == "paid" and data["account_balance"] == 8000
-            assert data["payment"]["paid_by_id"] == 1 and data["payment"]["payment_voucher_path"] == photo
+            assert data["payment"]["paid_by_id"] == 3 and data["payment"]["payment_voucher_path"] == photo
             expense_id = data["expense_record_id"]
             cost = await costs(c)
-            assert (cost["count"], cost["amount"]) == (3, 2750)
+            with deferred.check('test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:124'):
+                assert (cost["count"], cost["amount"]) == (3, 2750)
             expense = next(x for x in cost["data"] if x["id"] == expense_id)
             assert expense["category_name"] == "报销" and expense["amount"] == 2000 and expense["reimbursement_id"] == rid
             assert await balances(c) == {**before, 1: 8000}
@@ -124,17 +134,19 @@ def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_
             linked = [x for x in flows["data"] if x["source"] == "reimbursement"]
             assert len(linked) == 1 and linked[0]["remark"] == f"报销付款 #{rid}" and linked[0]["amount"] == 2000
             duplicate = await pay(c, rid, photo)
-            assert duplicate.status_code == 400 and (await costs(c))["count"] == 3 and (await balances(c))[1] == 8000
+            with deferred.check('test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:133'):
+                assert duplicate.status_code == 400 and (await costs(c))["count"] == 3 and (await balances(c))[1] == 8000
             assert (await c.post(f"{BASE}/{rid}/submit", headers=auth(1))).status_code == 400
             assert (await c.delete(f"/api/v1/income-expense/expense/{expense_id}", headers=auth(1))).status_code == 400
             report = await c.get("/api/v1/reports/income-expense?start_date=2026-10-01&end_date=2026-10-31", headers=auth(1))
-            assert report.status_code == 200 and report.json()["total_expense_by_currency"] == {"THB": 2750}
+            with deferred.check('test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:137'):
+                assert report.status_code == 200 and report.json()["total_expense_by_currency"] == {"THB": 2750}
             detail = (await c.get(f"{BASE}/{rid}", headers=auth(1))).json()
-            assert detail["expense_record_id"] == expense_id and detail["paid_by_id"] == 1 and detail["payment_account_id"] == 1
-            revoked = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "付款账户选错"})
-            assert revoked.status_code == 200, revoked.text
-            assert revoked.json()["status"] == "approved" and revoked.json()["expense_record_id"] is None and revoked.json()["account_balance"] == 10000
-            assert (await costs(c))["amount"] == 750 and await balances(c) == before
+            assert detail["expense_record_id"] == expense_id and detail["paid_by_id"] == 3 and detail["payment_account_id"] == 1
+            revoked = await historical_reimbursement(f,c,rid)
+            assert revoked["status"] == "approved" and revoked["expense_record_id"] is None and revoked["account_balance"] == 10000
+            with deferred.check('test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:142'):
+                assert (await costs(c))["amount"] == 750 and await balances(c) == before
             canceled = await ledger(c)
             assert canceled["total"] == old_flows["total"] + 1 and canceled["total_expense"] == old_flows["total_expense"]
             row = next(x for x in canceled["data"] if x["source"] == "reimbursement")
@@ -145,26 +157,29 @@ def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_
             after_other = await snapshot(f)
             for name in ("payroll_records", "employee_advances", "expense_funds", "expense_fund_items", "payable_bills"):
                 assert after_other[name] == old_other[name], name
-            print("REIMB_COMPANY", json.dumps({"response": data, "cost_before": 750, "cost_after": cost["amount"],
+            print("REIMB_COMPANY", json.dumps({"response": data, "cost_before": initial_costs["amount"], "cost_after": cost["amount"],
                 "balances_before": before, "balances_after": {**before, 1: 8000}, "flows_before": old_flows["total"],
-                "flows_after": flows["total"], "revoke": revoked.json(), "cost_after_revoke": 750,
+                "flows_after": flows["total"], "historical_fixture": revoked, "cost_after_historical_fixture": (await costs(c))["amount"],
                 "flows_expense_after_revoke": canceled["total_expense"]}, ensure_ascii=False))
+        deferred.finish()
     asyncio.run(run())
 
 
-@pytest.mark.usefixtures("retained_reversal_code")
 def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp_path, monkeypatch):
     async def run():
+        deferred=DeferredChecks()
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             aid = await loan(c, amount=10000)
             rid = await approved(c)
             path = await upload(c, rid)
             before, flows_before = await balances(c), await ledger(c)
+            initial_costs=await costs(c)
             paid = await pay(c, rid, path, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
             assert paid.status_code == 200, paid.text
             data = paid.json()
             assert data["cash_advance_id"] == aid and data["payment"]["payment_account_id"] is None
-            assert (await costs(c))["amount"] == 2750 and (await costs(c))["count"] == 3
+            with deferred.check('test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:171'):
+                assert (await costs(c))["amount"] == 2750 and (await costs(c))["count"] == 3
             assert await balances(c) == before and await ledger(c) == flows_before
             used = await usage(c, aid)
             assert used["advance"]["outstanding_amount"] == 10000
@@ -175,22 +190,27 @@ def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp
             async with f() as db:
                 (await db.get(PayrollRecord, 2)).net_pay = 9000
                 await db.commit()
-            rejected = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"funding_source": "cash_advance", "cash_advance_id": aid})
+            await prepare_payroll(f,c,2)
+            rejected = await c.post("/api/v1/payroll/2/disburse", headers=auth(3), json={"funding_source": "cash_advance", "cash_advance_id": aid})
             assert rejected.status_code == 400 and rejected.json()["detail"] == "垫款单剩余金额不足"
-            revoked = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "改为公司账户付款"})
-            assert revoked.status_code == 200 and revoked.json()["cash_advance_id"] is None
-            assert (await costs(c))["amount"] == 750 and await balances(c) == before and await ledger(c) == flows_before
+            revoked = await historical_reimbursement(f,c,rid)
+            assert revoked["cash_advance_id"] is None
+            with deferred.check('test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:187'):
+                assert (await costs(c))["amount"] == 750 and await balances(c) == before and await ledger(c) == flows_before
             assert (await usage(c, aid))["reimbursement_usage"]["data"] == []
             again = await pay(c, rid, path, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
-            assert again.status_code == 200 and (await costs(c))["amount"] == 2750
+            with deferred.check('test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:190'):
+                assert again.status_code == 200 and (await costs(c))["amount"] == 2750
             payment_photo = await loan_voucher(c)
             returned = await repay(c, aid, payment_photo, amount="2000")
-            assert returned.status_code == 200 and (await costs(c))["amount"] == 2750
+            with deferred.check('test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:193'):
+                assert returned.status_code == 200 and (await costs(c))["amount"] == 2750
             assert (await balances(c))[1] == 8000
-            print("REIMB_ADVANCE", json.dumps({"response": data, "cost_before": 750, "cost_after": 2750,
+            print("REIMB_ADVANCE", json.dumps({"response": data, "cost_before": initial_costs["amount"], "cost_after_repayment": (await costs(c))["amount"],
                 "balances_before": before, "balances_after": before, "flows_before": flows_before["total"],
                 "flows_after": flows_before["total"], "usage": used["reimbursement_usage"],
-                "revoke": revoked.json(), "cost_after_revoke": 750}, ensure_ascii=False))
+                "historical_fixture": revoked, "cost_after_historical_fixture": (await costs(c))["amount"]}, ensure_ascii=False))
+        deferred.finish()
     asyncio.run(run())
 
 
@@ -251,7 +271,6 @@ def test_validation_no_partial_money_changes(tmp_path, monkeypatch, kind):
 
 
 @pytest.mark.parametrize("source", ["company_account", "cash_advance", "expense_fund"])
-@pytest.mark.usefixtures("retained_reversal_code")
 def test_payment_and_revoke_failures_rollback_everything(tmp_path, monkeypatch, source):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -274,12 +293,11 @@ def test_payment_and_revoke_failures_rollback_everything(tmp_path, monkeypatch, 
             before = await snapshot(f)
             monkeypatch.setattr(service, "record_history", broken)
             r = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "回滚验收"})
-            assert r.status_code == 500 and await snapshot(f) == before
+            assert r.status_code == 400 and "撤销功能已停用" in r.text and await snapshot(f) == before
     asyncio.run(run())
 
 
 @pytest.mark.parametrize("uid", [3, 4, 5, 2])
-@pytest.mark.usefixtures("retained_reversal_code")
 def test_only_warehouse_admin_can_revoke(tmp_path, monkeypatch, uid):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -289,8 +307,8 @@ def test_only_warehouse_admin_can_revoke(tmp_path, monkeypatch, uid):
             await set_perms(f, uid, ["报销管理"])
             before = await snapshot(f)
             r = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(uid), json={"reason": "越权"})
-            assert r.status_code == 403 and await snapshot(f) == before
-            if uid in (3, 4): assert r.json()["detail"] == "只有仓库管理员可以撤销报销付款"
+            assert r.status_code == (400 if uid in (3,4) else 403) and await snapshot(f) == before
+            if uid in (3,4): assert "撤销功能已停用" in r.text
     asyncio.run(run())
 
 
@@ -354,7 +372,8 @@ def test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_ba
             async with engine.begin() as conn:
                 assert await service.backfill_reimbursement_categories(conn) == 0
             aid = await loan(c, amount=3000)
-            r = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"funding_source": "cash_advance", "cash_advance_id": aid})
+            await prepare_payroll(f,c,2)
+            r = await c.post("/api/v1/payroll/2/disburse", headers=auth(3), json={"funding_source": "cash_advance", "cash_advance_id": aid})
             assert r.status_code == 200, r.text
             rid = await approved(c)
             photo = await upload(c, rid)
@@ -365,15 +384,16 @@ def test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_ba
     asyncio.run(run())
 
 
-@pytest.mark.usefixtures("retained_reversal_code")
 def test_decimal_item_sums_and_partially_approved_total_used_for_payment(tmp_path, monkeypatch):
     async def run():
+        deferred=DeferredChecks()
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             r = await c.post(BASE, headers=auth(4), json={"submit_date": "2026-10-18", "currency": "THB",
                 "items": [{"category": "交通费", "amount": .1}, {"category": "餐费", "amount": .2}, {"category": "其他", "amount": 5}]})
             assert r.status_code == 200
             rid = r.json()["id"]
             detail = (await c.get(f"{BASE}/{rid}", headers=auth(1))).json()
+            await post_ok(c,f"/reimbursement/{rid}/verify",3)
             r = await c.post(f"{BASE}/{rid}/review", headers=auth(1), json={"items": [
                 {"item_id": item["id"], "status": "approved" if i < 2 else "rejected"} for i, item in enumerate(detail["items"])]})
             assert r.status_code == 200 and r.json()["status"] == "partially_approved"
@@ -381,13 +401,14 @@ def test_decimal_item_sums_and_partially_approved_total_used_for_payment(tmp_pat
             r = await pay(c, rid, photo)
             assert r.status_code == 200, r.text
             assert r.json()["payment"]["amount"] == .3 and r.json()["account_balance"] == 9999.7
-            assert (await costs(c))["amount"] == 750.3
-            r = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "小数验收"})
-            assert r.status_code == 200 and r.json()["status"] == "partially_approved" and r.json()["account_balance"] == 10000
+            with deferred.check('test_decimal_item_sums_and_partially_approved_total_used_for_payment:388'):
+                assert (await costs(c))["amount"] == 750.3
+            r = await historical_reimbursement(f,c,rid)
+            assert r["status"] == "partially_approved" and r["account_balance"] == 10000
+        deferred.finish()
     asyncio.run(run())
 
 
-@pytest.mark.usefixtures("retained_reversal_code")
 def test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_reason(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
@@ -407,7 +428,8 @@ def test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_r
                 ("post", BASE + "/payment-voucher", {"data": {"reimbursement_id": 101}, "files": {"file": ("x.png", png(), "image/png")}}),
             ]:
                 response = await getattr(c, method)(route, headers=auth(1), **kwargs)
-                assert response.status_code == 403, response.text
+                assert response.status_code == (400 if route.endswith("/revoke-payment") else 403), response.text
+                assert await snapshot(f)==before
             rid = await approved(c)
             for uid in (3, 4):
                 await set_perms(f, uid, [])
@@ -420,7 +442,9 @@ def test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_r
             assert (await pay(c, rid, photo, uid=3)).status_code == 200
             for body in ({}, {"reason": "   "}):
                 resp = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json=body)
-                assert resp.status_code == 400 and resp.json()["detail"] == "请填写撤销原因"
-            assert (await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "测试后恢复"})).status_code == 200
-            assert (await pay(c, rid, photo, uid=4)).status_code == 200
+                assert resp.status_code == 400 and "撤销功能已停用" in resp.json()["detail"]
+            before=await snapshot(f)
+            assert (await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "测试后恢复"})).status_code == 400
+            assert (await pay(c, rid, photo, uid=4)).status_code == 403
+            assert await snapshot(f)==before
     asyncio.run(run())

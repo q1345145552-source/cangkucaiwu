@@ -22,6 +22,7 @@ from tests.test_round2_permissions import auth
 from tests.test_round3_permissions import snapshot
 from tests.advance_funding_test_support import funded_hr_environment as hr_environment, funding_body
 from tests.test_round18_advance_review import add, calculate, period_record, prepare_work
+from tests.round3_flow_support import execute_advance
 
 BASE = "/api/v1/employee-advances"
 
@@ -33,7 +34,7 @@ async def salary(factory, kind="monthly", amount=10000):
         await db.commit()
 
 
-async def create(client, amount, uid=1, **extra):
+async def create(client, amount, uid=4, **extra):
     return await client.post(BASE, headers=auth(uid), json=funding_body(BODY, {"amount": amount, **extra}))
 
 
@@ -66,7 +67,7 @@ def test_requested_monthly_10000_workflow_and_pending_reservation(tmp_path, monk
             old_payroll = await snapshot(factory)
             first = await create(client, 8000)
             assert first.status_code == 200, first.text
-            assert first.json()["approval_status"] == "approved"
+            assert first.json()["approval_status"] == "pending"
             assert first.json()["limit_check"] == {
                 "checked": True, "currency": "THB", "monthly_salary": 10000,
                 "occupied_amount": 0, "requested_amount": 8000,
@@ -88,6 +89,8 @@ def test_requested_monthly_10000_workflow_and_pending_reservation(tmp_path, monk
             assert exhausted.status_code == 400
             assert exhausted.json() == {"detail": "预支合计不能超过当月工资，当前可用 0.00 元"}
             assert await advances_and_costs(factory) == before
+            for advance_id in (first.json()["id"],pending.json()["id"],boundary.json()["id"]):
+                await execute_advance(factory,client,advance_id)
             # 核验结清后的额度；不新增作废或删除动作，不改生产历史。
             async with factory() as db:
                 rows = (await db.execute(select(EmployeeAdvance))).scalars().all()
@@ -274,6 +277,7 @@ def test_actual_payroll_settlement_restores_quota_without_formula_changes(tmp_pa
             response = await create(client, 1000)
             assert response.status_code == 200
             assert (await create(client, 10400)).status_code == 400
+            await execute_advance(factory,client,response.json()["id"])
             await calculate(client, "2026-10-18")
             pay = await period_record(factory)
             assert (pay.base_pay, pay.advance_deduction, pay.net_pay) == (1200, 1000, 200)
