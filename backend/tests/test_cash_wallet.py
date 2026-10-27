@@ -93,17 +93,18 @@ def test_manual_cash_concurrent_retries_and_independent_identical_amounts(tmp_pa
     async def run():
         import app.api.v1.income_expense as api
         async with cash_environment(tmp_path,monkeypatch) as (_,factory,c,cash,bank):
-            original=api.validate_manual_money
             for kind,payload in [('income',receipt(cash,'same-income')),('expense',payment(cash,'same-expense'))]:
+                # Synchronize the real HTTP clients before calling the app. The
+                # production cost lock serializes expense requests, so a barrier
+                # inside account validation cannot be reached by all ten clients.
                 barrier=asyncio.Barrier(10)
-                async def together(*args,**kwargs):
-                    await asyncio.wait_for(barrier.wait(),20);return await original(*args,**kwargs)
-                monkeypatch.setattr(api,'validate_manual_money',together)
                 args={'json':payload} if kind=='income' else {'data':payload}
-                replies=await asyncio.gather(*[c.post('/api/v1/income-expense/'+kind,headers=auth(1),**args) for _ in range(10)])
+                async def together():
+                    await asyncio.wait_for(barrier.wait(),20)
+                    return await c.post('/api/v1/income-expense/'+kind,headers=auth(1),**args)
+                replies=await asyncio.gather(*(together() for _ in range(10)))
                 assert all(r.status_code==200 for r in replies),[(r.status_code,r.text) for r in replies]
                 assert len({r.json()['id'] for r in replies})==1 and sum(r.json()['created'] for r in replies)==1
-                monkeypatch.setattr(api,'validate_manual_money',original)
                 for _ in range(3):
                     r=await c.post('/api/v1/income-expense/'+kind,headers=auth(1),**args);assert r.status_code==200 and not r.json()['created']
                 changed={**payload,'amount':payload['amount']+1}
