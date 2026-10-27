@@ -1,0 +1,65 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_receipt_preview_never_takes_account_write_locks _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-349/test_receipt_preview_never_tak0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1137a7d10>
+
+    def test_receipt_preview_never_takes_account_write_locks(tmp_path,monkeypatch):
+     async def run():
+      async with setup(tmp_path,monkeypatch) as (engine,f,c):
+       statements=[]
+       def trace(conn,cursor,statement,*args):statements.append(statement)
+       event.listen(engine.sync_engine,'before_cursor_execute',trace)
+       try:
+        path,blob=await workbook(c,'incoming');pre=await send(c,path,blob);assert pre['valid']
+       finally:event.remove(engine.sync_engine,'before_cursor_execute',trace)
+       assert not any('FOR UPDATE' in sql.upper() for sql in statements),statements
+       writes=[sql for sql in statements if sql.lstrip().upper().startswith(('INSERT','UPDATE','DELETE'))]
+       assert not writes,writes
+       # A real concurrent account writer must not block read-only preview.
+       async with f() as holder:
+        await holder.execute(select(PaymentAccount).where(PaymentAccount.id==1).with_for_update())
+        result=await asyncio.wait_for(send(c,path,blob),2);assert result['valid']
+       assert await count(f,IncomingFlow)==0
+>    asyncio.run(run())
+
+backend/tests/test_excel_import_review.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     async with setup(tmp_path,monkeypatch) as (engine,f,c):
+      statements=[]
+      def trace(conn,cursor,statement,*args):statements.append(statement)
+      event.listen(engine.sync_engine,'before_cursor_execute',trace)
+      try:
+       path,blob=await workbook(c,'incoming');pre=await send(c,path,blob);assert pre['valid']
+      finally:event.remove(engine.sync_engine,'before_cursor_execute',trace)
+      assert not any('FOR UPDATE' in sql.upper() for sql in statements),statements
+      writes=[sql for sql in statements if sql.lstrip().upper().startswith(('INSERT','UPDATE','DELETE'))]
+>     assert not writes,writes
+E     AssertionError: ['INSERT INTO audit_logs (user_id, warehouse_id, action_type, module, target_id, detail, ip_address, ip_country, ip_re...NTEGER, $6::JSON, $7::VARCHAR, $8::VARCHAR, $9::VARCHAR, $10::VARCHAR) RETURNING audit_logs.id, audit_logs.created_at']
+E     assert not ['INSERT INTO audit_logs (user_id, warehouse_id, action_type, module, target_id, detail, ip_address, ip_country, ip_re...NTEGER, $6::JSON, $7::VARCHAR, $8::VARCHAR, $9::VARCHAR, $10::VARCHAR) RETURNING audit_logs.id, audit_logs.created_at']
+
+backend/tests/test_excel_import_review.py:45: AssertionError
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_excel_import_review.py::test_receipt_preview_never_takes_account_write_locks
+tests/test_excel_import_review.py::test_receipt_preview_never_takes_account_write_locks
+tests/test_excel_import_review.py::test_receipt_preview_never_takes_account_write_locks
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED backend/tests/test_excel_import_review.py::test_receipt_preview_never_takes_account_write_locks

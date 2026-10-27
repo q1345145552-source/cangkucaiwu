@@ -1,0 +1,21 @@
+
+==================================== ERRORS ====================================
+______________ ERROR collecting tests/test_excel_import_review.py ______________
+ImportError while importing test module '/Users/xiongliu/Desktop/海外仓财务系统/backend/tests/test_excel_import_review.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+backend/tests/test_excel_import_review.py:8: in <module>
+    from app.models.expense_fund import PaymentAccount
+E   ImportError: cannot import name 'PaymentAccount' from 'app.models.expense_fund' (/Users/xiongliu/Desktop/海外仓财务系统/backend/app/models/expense_fund.py)
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/xiongliu/Desktop/海外仓财务系统/docs/excel-import-review-20261027/before.xml -
+=========================== short test summary info ============================
+ERROR backend/tests/test_excel_import_review.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!

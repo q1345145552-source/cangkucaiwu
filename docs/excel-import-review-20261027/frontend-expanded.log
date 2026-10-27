@@ -1,0 +1,16 @@
+{
+  "passed": 11,
+  "checks": [
+    "401/403/500, wrong content type and non-Excel bytes never download; valid workbook revokes its URL",
+    "file validation rejects xls, empty and oversized files",
+    "object/row errors and non-JSON failures remain understandable",
+    "actual modal preview/ack, double click guard, lost response and original-request retry save exactly once",
+    "row failure details render and prevent whole-batch confirmation",
+    "HTTP 200 with zero saved rows never reports success and retains original-request retry",
+    "warehouse and account switches invalidate existing preview and confirmation",
+    "same File can be previewed again after modal close; parent inputs reset on selection",
+    "replacement file resets preview and explicit confirmation before any new response",
+    "late failure from a replaced endpoint cannot contaminate its new preview; original request remains recoverable",
+    "in-flight account/warehouse switch suppresses old response; return to original scope retries exact original key and file"
+  ]
+}

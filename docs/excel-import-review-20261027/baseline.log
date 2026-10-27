@@ -1,0 +1,174 @@
+FFF..                                                                    [100%]
+=================================== FAILURES ===================================
+________ test_preview_cannot_be_confirmed_by_another_account[incoming] _________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-345/test_preview_cannot_be_confirm0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107fbb3e0>
+kind = 'incoming'
+
+    @pytest.mark.parametrize('kind',['incoming','logistics'])
+    def test_preview_cannot_be_confirmed_by_another_account(tmp_path,monkeypatch,kind):
+     async def run():
+      async with setup(tmp_path,monkeypatch) as (_,f,c):
+       async with f() as db:(await db.get(User,3)).extra_permissions=['到账流水','供应商管理'];await db.commit()
+       path,blob=await workbook(c,kind);pre=await send(c,path,blob)
+       await send(c,path,blob,{'mode':'confirm','request_key':'cross-user','preview_version':pre['preview_version']},uid=3,code=409)
+       assert await count(f,IncomingFlow)==0 and await count(f,SupplierCrossBorderPrice)==0 and await count(f,ProductImportOperation)==0
+       own=await send(c,path,blob,uid=3)
+       saved=await send(c,path,blob,{'mode':'confirm','request_key':'cross-user','preview_version':own['preview_version']},uid=3)
+       assert saved['imported']==2
+>    asyncio.run(run())
+
+backend/tests/test_excel_import_review.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_excel_import_review.py:27: in run
+    await send(c,path,blob,{'mode':'confirm','request_key':'cross-user','preview_version':pre['preview_version']},uid=3,code=409)
+backend/tests/test_excel_import_repair.py:25: in send
+    return await request(c,'POST',path,uid=uid,warehouse=warehouse,code=code,files={'file':(name,content,MIME)},data=data or {})
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x108527c20>, method = 'POST'
+path = '/incoming/import-excel', uid = 3, warehouse = '1', code = 409
+kwargs = {'data': {'mode': 'confirm', 'preview_version': '7eef7a0d7b1590f0927969012b5042366af590826c69135fe83c9f5c01aabaf9', 'r...x00\n\x00\x84\x02\x00\x00M\x15\x00\x00\x00\x00', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}}
+uuid = <module 'uuid' from '/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/uuid.py'>
+r = <Response [200 OK]>, @py_assert1 = 200, @py_assert3 = False
+@py_format5 = '200\n{200 = <Response [200 OK]>.status_code\n} == 409'
+@py_format7 = '(\'POST\', \'/incoming/import-excel\', 200, \'{"imported":2,"existing":0,"message":"成功导入2条，已有0条未重复录入","id":"cross-user","mode":"confirmed","errors":[]}\')\n>assert 200\n{200 = <Response [200 OK]>.status_code\n} == 409'
+
+    async def request(c, method, path, uid=1, warehouse='1', code=200, **kwargs):
+        # New creation contract uses request IDs; keep the original round01 financial assertions intact.
+        import uuid
+        if method=='POST' and path.endswith('/purchase-order'):
+            kwargs['json'].setdefault('request_key',uuid.uuid4().hex)
+        if method=='POST' and path=='/payable':
+            kwargs['data'].setdefault('request_key',uuid.uuid4().hex)
+        r=await c.request(method,'/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':warehouse},**kwargs)
+>       assert r.status_code==code,(method,path,r.status_code,r.text)
+E       AssertionError: ('POST', '/incoming/import-excel', 200, '{"imported":2,"existing":0,"message":"成功导入2条，已有0条未重复录入","id":"cross-user","mode":"confirmed","errors":[]}')
+E       assert 200 == 409
+E        +  where 200 = <Response [200 OK]>.status_code
+
+backend/tests/test_supplier_workflow_round1.py:54: AssertionError
+________ test_preview_cannot_be_confirmed_by_another_account[logistics] ________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-345/test_preview_cannot_be_confirm1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109a310a0>
+kind = 'logistics'
+
+    @pytest.mark.parametrize('kind',['incoming','logistics'])
+    def test_preview_cannot_be_confirmed_by_another_account(tmp_path,monkeypatch,kind):
+     async def run():
+      async with setup(tmp_path,monkeypatch) as (_,f,c):
+       async with f() as db:(await db.get(User,3)).extra_permissions=['到账流水','供应商管理'];await db.commit()
+       path,blob=await workbook(c,kind);pre=await send(c,path,blob)
+       await send(c,path,blob,{'mode':'confirm','request_key':'cross-user','preview_version':pre['preview_version']},uid=3,code=409)
+       assert await count(f,IncomingFlow)==0 and await count(f,SupplierCrossBorderPrice)==0 and await count(f,ProductImportOperation)==0
+       own=await send(c,path,blob,uid=3)
+       saved=await send(c,path,blob,{'mode':'confirm','request_key':'cross-user','preview_version':own['preview_version']},uid=3)
+       assert saved['imported']==2
+>    asyncio.run(run())
+
+backend/tests/test_excel_import_review.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_excel_import_review.py:27: in run
+    await send(c,path,blob,{'mode':'confirm','request_key':'cross-user','preview_version':pre['preview_version']},uid=3,code=409)
+backend/tests/test_excel_import_repair.py:25: in send
+    return await request(c,'POST',path,uid=uid,warehouse=warehouse,code=code,files={'file':(name,content,MIME)},data=data or {})
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x1098e39e0>, method = 'POST'
+path = '/suppliers/1/import/logistics', uid = 3, warehouse = '1', code = 409
+kwargs = {'data': {'mode': 'confirm', 'preview_version': '4f6c80e812e2cd358bf0212ad7eaa59618e33ade414e07cce24ee434d0279020', 'r...x00\n\x00\x84\x02\x00\x009\x15\x00\x00\x00\x00', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}}
+uuid = <module 'uuid' from '/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/uuid.py'>
+r = <Response [200 OK]>, @py_assert1 = 200, @py_assert3 = False
+@py_format5 = '200\n{200 = <Response [200 OK]>.status_code\n} == 409'
+@py_format7 = '(\'POST\', \'/suppliers/1/import/logistics\', 200, \'{"mode":"confirmed","imported":2,"errors":[],"message":"已整批保存2条物流报价，未覆盖旧报价","id":1}\')\n>assert 200\n{200 = <Response [200 OK]>.status_code\n} == 409'
+
+    async def request(c, method, path, uid=1, warehouse='1', code=200, **kwargs):
+        # New creation contract uses request IDs; keep the original round01 financial assertions intact.
+        import uuid
+        if method=='POST' and path.endswith('/purchase-order'):
+            kwargs['json'].setdefault('request_key',uuid.uuid4().hex)
+        if method=='POST' and path=='/payable':
+            kwargs['data'].setdefault('request_key',uuid.uuid4().hex)
+        r=await c.request(method,'/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':warehouse},**kwargs)
+>       assert r.status_code==code,(method,path,r.status_code,r.text)
+E       AssertionError: ('POST', '/suppliers/1/import/logistics', 200, '{"mode":"confirmed","imported":2,"errors":[],"message":"已整批保存2条物流报价，未覆盖旧报价","id":1}')
+E       assert 200 == 409
+E        +  where 200 = <Response [200 OK]>.status_code
+
+backend/tests/test_supplier_workflow_round1.py:54: AssertionError
+_____________ test_receipt_preview_never_takes_account_write_locks _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-345/test_receipt_preview_never_tak0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10b08df10>
+
+    def test_receipt_preview_never_takes_account_write_locks(tmp_path,monkeypatch):
+     async def run():
+      async with setup(tmp_path,monkeypatch) as (engine,f,c):
+       statements=[]
+       def trace(conn,cursor,statement,*args):statements.append(statement)
+       event.listen(engine.sync_engine,'before_cursor_execute',trace)
+       try:
+        path,blob=await workbook(c,'incoming');pre=await send(c,path,blob);assert pre['valid']
+       finally:event.remove(engine.sync_engine,'before_cursor_execute',trace)
+       assert not any('FOR UPDATE' in sql.upper() for sql in statements),statements
+       assert not any(sql.lstrip().upper().startswith(('INSERT','UPDATE','DELETE')) for sql in statements)
+       # A real concurrent account writer must not block read-only preview.
+       async with f() as holder:
+        await holder.execute(select(PaymentAccount).where(PaymentAccount.id==1).with_for_update())
+        result=await asyncio.wait_for(send(c,path,blob),2);assert result['valid']
+       assert await count(f,IncomingFlow)==0
+>    asyncio.run(run())
+
+backend/tests/test_excel_import_review.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     async with setup(tmp_path,monkeypatch) as (engine,f,c):
+      statements=[]
+      def trace(conn,cursor,statement,*args):statements.append(statement)
+      event.listen(engine.sync_engine,'before_cursor_execute',trace)
+      try:
+       path,blob=await workbook(c,'incoming');pre=await send(c,path,blob);assert pre['valid']
+      finally:event.remove(engine.sync_engine,'before_cursor_execute',trace)
+>     assert not any('FOR UPDATE' in sql.upper() for sql in statements),statements
+E     AssertionError: ['SELECT users.id, users.username, users.password_hash, users.display_name, users.role, users.warehouse_id, users.line...ccounts.id = $1::INTEGER AND payment_accounts.warehouse_id = $2::INTEGER ORDER BY payment_accounts.id FOR UPDATE', ...]
+E     assert not True
+E      +  where True = any(<generator object test_receipt_preview_never_takes_account_write_locks.<locals>.run.<locals>.<genexpr> at 0x109cc9220>)
+
+backend/tests/test_excel_import_review.py:43: AssertionError
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_excel_import_review.py: 51 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/xiongliu/Desktop/海外仓财务系统/docs/excel-import-review-20261027/baseline.xml -
+=========================== short test summary info ============================
+FAILED backend/tests/test_excel_import_review.py::test_preview_cannot_be_confirmed_by_another_account[incoming]
+FAILED backend/tests/test_excel_import_review.py::test_preview_cannot_be_confirmed_by_another_account[logistics]
+FAILED backend/tests/test_excel_import_review.py::test_receipt_preview_never_takes_account_write_locks

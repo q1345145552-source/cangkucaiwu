@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.781" timestamp="2026-10-27T22:42:56.628081+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_wallet_integrity" name="test_purchase_advance_repayment_matches_procurement_card_report_and_supplier_chart" time="0.312"><failure message="assert 0.0 == 300.0&#10; +  where 300.0 = next(&lt;generator object test_purchase_advance_repayment_matches_procurement_card_report_and_supplier_chart.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x109d3db10&gt;)">tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-355/test_purchase_advance_repaymen0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x109a66e10&gt;
+
+    def test_purchase_advance_repayment_matches_procurement_card_report_and_supplier_chart(tmp_path,monkeypatch):
+        async def run():
+            from app.models.cash_advance_repayment import CashAdvanceRepayment
+            async with clean(tmp_path,monkeypatch) as (f,c):
+                async with f() as db:
+                    loan=CashAdvance(warehouse_id=1,payer_id=4,payer_name='测试主管',advance_date=date(2026,10,1),amount=1000,
+                        purpose='purchase',status='confirmed',currency='THB',repaid_amount=300,created_by_id=1,created_by_name='老板')
+                    db.add(loan);await db.flush()
+                    db.add(CashAdvanceRepayment(cash_advance_id=loan.id,warehouse_id=1,repayment_date=date(2026,10,10),amount=300,
+                        account_id=1,account_name='现金',currency='THB',payment_method='cash',voucher_path='historical.png',created_by_id=1,
+                        created_by_name='老板',status='active'));await db.commit()
+                cockpit=await get(c,'/dashboard/cockpit')
+                report=await get(c,'/reports/cost-funds-debt',**RANGE)
+                block=next(b for b in report['currencies'] if b['currency']=='THB')
+                card=cockpit['finance']['procurement']['expense'][0]['amount']
+                assert card==next(r['amount'] for r in block['costs']['data'] if r['name']=='采购')==300
+                assert sum(r['amount'] for r in cockpit['finance']['month']['expense'])==300
+                assert not cockpit['finance']['month']['operating_expense']
+                trends=await get(c,'/dashboard/trends')
+                assert sum(r['amount'] for r in trends['procurement_suppliers']['THB'])==300
+&gt;       asyncio.run(run())
+
+tests/test_wallet_integrity.py:253: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        from app.models.cash_advance_repayment import CashAdvanceRepayment
+        async with clean(tmp_path,monkeypatch) as (f,c):
+            async with f() as db:
+                loan=CashAdvance(warehouse_id=1,payer_id=4,payer_name='测试主管',advance_date=date(2026,10,1),amount=1000,
+                    purpose='purchase',status='confirmed',currency='THB',repaid_amount=300,created_by_id=1,created_by_name='老板')
+                db.add(loan);await db.flush()
+                db.add(CashAdvanceRepayment(cash_advance_id=loan.id,warehouse_id=1,repayment_date=date(2026,10,10),amount=300,
+                    account_id=1,account_name='现金',currency='THB',payment_method='cash',voucher_path='historical.png',created_by_id=1,
+                    created_by_name='老板',status='active'));await db.commit()
+            cockpit=await get(c,'/dashboard/cockpit')
+            report=await get(c,'/reports/cost-funds-debt',**RANGE)
+            block=next(b for b in report['currencies'] if b['currency']=='THB')
+            card=cockpit['finance']['procurement']['expense'][0]['amount']
+&gt;           assert card==next(r['amount'] for r in block['costs']['data'] if r['name']=='采购')==300
+E           assert 0.0 == 300.0
+E            +  where 300.0 = next(&lt;generator object test_purchase_advance_repayment_matches_procurement_card_report_and_supplier_chart.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x109d3db10&gt;)
+
+tests/test_wallet_integrity.py:248: AssertionError</failure></testcase></testsuite></testsuites>

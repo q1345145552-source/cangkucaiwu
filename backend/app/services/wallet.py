@@ -128,15 +128,25 @@ async def totals(db, warehouse_ids, start, end):
     ).group_by(q.c.currency, q.c.type))).all()
 
 
-async def lock_account(db, warehouse_id, account_id, currency):
+async def _checked_account(db, warehouse_id, account_id, currency, *, lock):
     if not account_id: raise HTTPException(400, '请选择付款或收款账户')
-    account = (await db.execute(select(PaymentAccount).where(PaymentAccount.id == account_id,
-        PaymentAccount.warehouse_id == warehouse_id).order_by(PaymentAccount.id).with_for_update()
-        .execution_options(populate_existing=True))).scalar_one_or_none()
+    query = select(PaymentAccount).where(PaymentAccount.id == account_id,
+        PaymentAccount.warehouse_id == warehouse_id).order_by(PaymentAccount.id)
+    if lock: query = query.with_for_update()
+    account = (await db.execute(query.execution_options(populate_existing=True))).scalar_one_or_none()
     if account is None: raise HTTPException(400, '账户不存在或不属于当前仓库')
     if account.status not in (None, 'active'): raise HTTPException(400, '账户已停用')
     if (account.currency or 'THB') != currency: raise HTTPException(400, '账户币种不一致')
     return account
+
+
+async def lock_account(db, warehouse_id, account_id, currency):
+    return await _checked_account(db, warehouse_id, account_id, currency, lock=True)
+
+
+async def read_account(db, warehouse_id, account_id, currency):
+    """Same account eligibility checks, without write locks for read-only previews."""
+    return await _checked_account(db, warehouse_id, account_id, currency, lock=False)
 
 
 def grouped_totals(rows):

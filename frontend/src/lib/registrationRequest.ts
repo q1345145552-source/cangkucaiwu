@@ -63,3 +63,13 @@ export async function submitRegistration<T>(kind:string,resource:string|number,p
   running.set(id,task);
   try{return await task;}finally{if(running.get(id)===task)running.delete(id);}
 }
+
+
+// Only an under-lock server proof that this exact Excel request has not committed can
+// unfreeze its payload. Keep the key so competing retries cannot create a second batch.
+export function acceptExcelImportRejection(kind:string,resource:string|number,detail:any):void {
+  const id=slot(kind,resource),draft=registrationDraft(kind,resource);
+  if(!kind.startsWith('excel:') || running.has(id) || !draft || detail?.code!=='excel_import_not_saved' || detail.not_created!==true || detail.request_key!==draft.key)
+    throw Error('尚未取得原导入请求未保存的明确结果，请保留原请求核对');
+  sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
+}

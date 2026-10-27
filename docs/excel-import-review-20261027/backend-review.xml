@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="5" time="4.337" timestamp="2026-10-27T22:32:08.232145+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_excel_import_review" name="test_preview_cannot_be_confirmed_by_another_account[incoming]" time="1.044" /><testcase classname="tests.test_excel_import_review" name="test_preview_cannot_be_confirmed_by_another_account[logistics]" time="0.551" /><testcase classname="tests.test_excel_import_review" name="test_receipt_preview_never_takes_account_write_locks" time="0.326"><failure message="assert not True&#10; +  where True = any(&lt;generator object test_receipt_preview_never_takes_account_write_locks.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x108e87d30&gt;)">tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-347/test_receipt_preview_never_tak0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x108d2c0b0&gt;
+
+    def test_receipt_preview_never_takes_account_write_locks(tmp_path,monkeypatch):
+     async def run():
+      async with setup(tmp_path,monkeypatch) as (engine,f,c):
+       statements=[]
+       def trace(conn,cursor,statement,*args):statements.append(statement)
+       event.listen(engine.sync_engine,'before_cursor_execute',trace)
+       try:
+        path,blob=await workbook(c,'incoming');pre=await send(c,path,blob);assert pre['valid']
+       finally:event.remove(engine.sync_engine,'before_cursor_execute',trace)
+       assert not any('FOR UPDATE' in sql.upper() for sql in statements),statements
+       assert not any(sql.lstrip().upper().startswith(('INSERT','UPDATE','DELETE')) for sql in statements)
+       # A real concurrent account writer must not block read-only preview.
+       async with f() as holder:
+        await holder.execute(select(PaymentAccount).where(PaymentAccount.id==1).with_for_update())
+        result=await asyncio.wait_for(send(c,path,blob),2);assert result['valid']
+       assert await count(f,IncomingFlow)==0
+&gt;    asyncio.run(run())
+
+backend/tests/test_excel_import_review.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     async with setup(tmp_path,monkeypatch) as (engine,f,c):
+      statements=[]
+      def trace(conn,cursor,statement,*args):statements.append(statement)
+      event.listen(engine.sync_engine,'before_cursor_execute',trace)
+      try:
+       path,blob=await workbook(c,'incoming');pre=await send(c,path,blob);assert pre['valid']
+      finally:event.remove(engine.sync_engine,'before_cursor_execute',trace)
+      assert not any('FOR UPDATE' in sql.upper() for sql in statements),statements
+&gt;     assert not any(sql.lstrip().upper().startswith(('INSERT','UPDATE','DELETE')) for sql in statements)
+E     assert not True
+E      +  where True = any(&lt;generator object test_receipt_preview_never_takes_account_write_locks.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x108e87d30&gt;)
+
+backend/tests/test_excel_import_review.py:44: AssertionError</failure></testcase><testcase classname="tests.test_excel_import_review" name="test_post_insert_exception_rolls_back_then_original_request_concurrently_recovers[incoming]" time="0.517" /><testcase classname="tests.test_excel_import_review" name="test_post_insert_exception_rolls_back_then_original_request_concurrently_recovers[logistics]" time="0.481" /></testsuite></testsuites>
