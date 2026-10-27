@@ -62,12 +62,44 @@ def item_payload(item, fund):
             'currency': item.currency, 'receipt': item.receipt, 'description': item.description,
             'expense_date': item.expense_date.isoformat()}
 
+def same_payment_amount(left, right):
+    # Reuse the existing payment precision/tolerance; do not change stored reservations.
+    from app.services.reimbursement_payment import money
+    return money(left) == money(right)
+
+async def item_review_payload(db, item, fund):
+    """Bind linked approvals to every detail, including rejected lines and reserved amount."""
+    from app.models.reimbursement import Reimbursement, ReimbursementItem
+    payload = item_payload(item, fund)
+    reimb = (await db.execute(select(Reimbursement).where(
+        Reimbursement.fund_item_id == item.id, Reimbursement.is_fund_linked == '1'))).scalar_one_or_none()
+    if reimb is not None:
+        details = (await db.execute(select(ReimbursementItem).where(
+            ReimbursementItem.reimbursement_id == reimb.id).order_by(ReimbursementItem.id))).scalars().all()
+        payload['reimbursement'] = {
+            'id': reimb.id, 'warehouse_id': reimb.warehouse_id, 'employee_id': reimb.employee_id,
+            'currency': reimb.currency, 'total_amount': str(reimb.total_amount), 'status': reimb.status,
+            'items': [{'id': d.id, 'amount': str(d.amount), 'status': d.review_status,
+                       'category': d.category, 'description': d.description, 'receipt': d.receipt} for d in details],
+        }
+    return payload
+
 async def approved_item_execution(db, user, reimb, fund, item):
+    from decimal import Decimal
     own_scope(user, fund.warehouse_id)
     await executor(db, user, reimb.employee_id, fund.employee_id)
     if item.review_status != 'approved':
         raise HTTPException(409, '备用金开销尚未取得管理员批准')
-    await proof(db, item, 'item_approve', item_payload(item, fund), fund.warehouse_id)
+    payload = await item_review_payload(db, item, fund)
+    linked = payload.get('reimbursement', {})
+    details = linked.get('items', [])
+    if (linked.get('id') != reimb.id or reimb.warehouse_id != fund.warehouse_id
+            or reimb.employee_id != fund.employee_id or reimb.currency != item.currency
+            or not details or any(d['status'] not in ('approved', 'rejected') for d in details)
+            or not same_payment_amount(sum(Decimal(d['amount']) for d in details), item.amount)
+            or not same_payment_amount(sum(Decimal(d['amount']) for d in details if d['status'] == 'approved'), reimb.total_amount)):
+        raise HTTPException(409, '报销明细、批准金额与备用金记录不一致，请核对')
+    await proof(db, item, 'item_approve', payload, fund.warehouse_id)
 
 async def recharge_capabilities(db, user, rr, fund):
     own = bool({rr.applicant_id, fund.employee_id} & await identities(db, user))

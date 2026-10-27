@@ -444,7 +444,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
     if not r: raise HTTPException(404, "报销单不存在")
     if r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能审批本仓库的报销单")
-    # 状态前置：仅待审批/转入备用金审核/部分通过 可再审批，已付款或已驳回不可重复审批（防重复退款）
+    # 普通报销保留原再审规则；关联备用金还必须满足下方核验守卫，已批准快照不可改审。
     from app.services.flow_rules import is_reviewable_reimb, can_refund_fund_item
     if not is_reviewable_reimb(r.status):
         raise HTTPException(400, f"当前状态（{r.status}）不可审批")
@@ -475,7 +475,13 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
         await duties.independent(db, current_user, r.employee_id, linked[1].employee_id)
         if linked[0].review_status != 'verified':
             raise HTTPException(409, '请先完成关联备用金凭证核验')
-        await duties.proof(db, linked[0], 'item_verify', duties.item_payload(*linked), r.warehouse_id)
+        await duties.proof(db, linked[0], 'item_verify', await duties.item_review_payload(db, *linked), r.warehouse_id)
+        if any(decisions.get(item.id, item.review_status) not in ('approved', 'rejected') for item in items):
+            raise HTTPException(400, '关联备用金报销必须明确决定全部明细后才能批准')
+        from decimal import Decimal
+        if (not duties.same_payment_amount(sum(Decimal(str(item.amount)) for item in items), linked[0].amount)
+                or r.currency != linked[0].currency):
+            raise HTTPException(409, '报销明细金额或币种与备用金记录不一致')
 
     r.reviewer_id = current_user.id
     r.review_remark = req.overall_remark
@@ -487,11 +493,6 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
 
     if rejected_count == 0:
         r.status = ReimbStatus.APPROVED.value
-        if r.is_fund_linked == "1" and r.fund_item_id:
-            fund_item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id))).scalar_one_or_none()
-            if fund_item:
-                fund_item.review_status = ReviewStatus.APPROVED.value
-                await duties.evidence(db, current_user, fund_item, 'item_approve', duties.item_payload(*linked), r.warehouse_id)
     elif approved_count > 0:
         r.status = ReimbStatus.PARTIALLY_APPROVED.value
     else:
@@ -505,6 +506,11 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
                     fund.remaining_balance = (fund.remaining_balance or 0) + fund_item.amount
                 fund_item.review_status = ReviewStatus.REJECTED.value
     r.total_amount = approved_amount
+    if r.is_fund_linked == '1' and r.fund_item_id and approved_count > 0:
+        linked[0].review_status = ReviewStatus.APPROVED.value
+        await db.flush()
+        await duties.evidence(db, current_user, linked[0], 'item_approve',
+            await duties.item_review_payload(db, *linked), r.warehouse_id)
     await db.flush(); return {"message": "审批完成", "status": r.status, "approved_amount": approved_amount}
 
 @router.post("/{reimb_id}/pay", dependencies=[Depends(mutation_scope)])

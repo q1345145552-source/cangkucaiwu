@@ -575,21 +575,31 @@ async def batch_review(
         linked = (await db.execute(select(Reimbursement).where(Reimbursement.fund_item_id == item.id,
             Reimbursement.is_fund_linked == '1'))).scalar_one_or_none()
         if linked:
-            if linked.warehouse_id != fund.warehouse_id or linked.status == 'paid':
+            if (linked.warehouse_id != fund.warehouse_id or linked.employee_id != fund.employee_id
+                    or linked.status not in ('pending', 'fund_linked')):
                 raise HTTPException(409, '关联报销归属或状态不合法')
             await duties.independent(db, current_user, linked.employee_id)
+            from app.models.reimbursement import ReimbursementItem
+            details = (await db.execute(select(ReimbursementItem).where(
+                ReimbursementItem.reimbursement_id == linked.id).with_for_update())).scalars().all()
+            from decimal import Decimal
+            if (not details or any(d.review_status != 'pending' for d in details)
+                    or not duties.same_payment_amount(sum(Decimal(str(d.amount)) for d in details), item.amount)
+                    or not duties.same_payment_amount(linked.total_amount, item.amount)
+                    or linked.currency != item.currency):
+                raise HTTPException(409, '关联报销明细已经审核或金额不一致，请在报销明细入口处理')
         if req.action == 'verify' and item.review_status != 'pending':
             raise HTTPException(409, '该开销已核验')
         if req.action == 'approve':
             if item.review_status != 'verified':
                 raise HTTPException(409, '请先完成凭证核验')
-            await duties.proof(db, item, 'item_verify', duties.item_payload(item, fund), fund.warehouse_id)
+            await duties.proof(db, item, 'item_verify', await duties.item_review_payload(db, item, fund), fund.warehouse_id)
         if req.action != 'reject' and not linked and not (item.receipt or '').strip():
             raise HTTPException(400, '该开销没有凭证，请先上传开销凭证')
     if req.action == 'verify':
         for item, fund in rows:
             item.review_status = 'verified'
-            await duties.evidence(db, current_user, item, 'item_verify', duties.item_payload(item, fund), fund.warehouse_id)
+            await duties.evidence(db, current_user, item, 'item_verify', await duties.item_review_payload(db, item, fund), fund.warehouse_id)
         await db.flush()
         return {'message': '凭证已核验，尚未批准或付款', 'count': len(rows)}
     new_status = 'approved' if req.action == 'approve' else 'rejected'
@@ -641,8 +651,6 @@ async def batch_review(
             await costs.sync(db,'fund_item',item,current_user,skip_suspicion=req.action!='approve',
                 confirmation=(req.cost_confirmations or {}).get(item_id,req.cost_confirmation))
         fund = next(fund for row, fund in rows if row.id == item.id)
-        await duties.evidence(db, current_user, item, 'item_' + req.action,
-            duties.item_payload(item, fund), fund.warehouse_id)
         processed += 1
 
         # Sync with linked reimbursement（仅在状态真正发生变化时执行一次）
@@ -652,6 +660,10 @@ async def batch_review(
                 if req.action == "approve":
                     reimb.status = ReimbStatus.APPROVED.value
                     reimb.reviewer_id = current_user.id
+                    details = (await db.execute(select(ReimbursementItem).where(
+                        ReimbursementItem.reimbursement_id == reimb.id))).scalars().all()
+                    for detail in details:
+                        detail.review_status = 'approved'
                     # Approval alone never creates a payment record or changes the reserved balance.
                 elif req.action == "reject":
                     # Restore balance and unlock reimbursement（仅当之前不是已驳回）
@@ -665,6 +677,9 @@ async def batch_review(
                     from app.services.reimbursement_payment import sync_fund_review_payment
                     await sync_fund_review_payment(db, reimb, current_user, approved=False, reason=req.remark)
 
+        await db.flush()
+        await duties.evidence(db, current_user, item, 'item_' + req.action,
+            await duties.item_review_payload(db, item, fund), fund.warehouse_id)
     await db.flush()
 
     labels = {"approve": "通过", "reject": "驳回"}
