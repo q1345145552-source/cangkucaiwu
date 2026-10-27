@@ -1,0 +1,32 @@
+2026-10-28 04:32:31.659 +07 [79332] LOG:  starting PostgreSQL 16.2 on aarch64-apple-darwin23.5.0, compiled by Apple clang version 15.0.0 (clang-1500.0.40.1), 64-bit
+2026-10-28 04:32:31.660 +07 [79332] LOG:  listening on IPv4 address "127.0.0.1", port 65389
+2026-10-28 04:32:31.660 +07 [79332] LOG:  listening on Unix socket "/private/tmp/permissions-round4-env/socket/.s.PGSQL.65389"
+2026-10-28 04:32:31.663 +07 [79335] LOG:  database system was shut down at 2026-10-28 04:21:47 +07
+2026-10-28 04:32:31.666 +07 [79332] LOG:  database system is ready to accept connections
+2026-10-28 04:34:50.426 +07 [79638] ERROR:  relation "intentionally_missing_table" does not exist at character 15
+2026-10-28 04:34:50.426 +07 [79638] STATEMENT:  SELECT * FROM intentionally_missing_table
+2026-10-28 04:34:51.308 +07 [79641] ERROR:  null value in column "warehouse_id" of relation "system_settings" violates not-null constraint
+2026-10-28 04:34:51.308 +07 [79641] DETAIL:  Failing row contains (1, null, supervisor_perms_backfilled_v1, true, null, 2026-10-28 04:34:50.92878+07).
+2026-10-28 04:34:51.308 +07 [79641] STATEMENT:  
+	                        INSERT INTO system_settings (warehouse_id, key, value)
+	                        SELECT MIN(id), 'supervisor_perms_backfilled_v1', 'true' FROM warehouses
+	                    
+2026-10-28 04:34:52.877 +07 [79333] LOG:  checkpoint starting: immediate force wait
+2026-10-28 04:34:53.626 +07 [79333] LOG:  checkpoint complete: wrote 5428 buffers (33.1%); 0 WAL file(s) added, 0 removed, 6 recycled; write=0.251 s, sync=0.188 s, total=0.749 s; sync files=11463, longest=0.001 s, average=0.001 s; distance=100569 kB, estimate=100569 kB; lsn=0/1957BCC8, redo lsn=0/1957BC90
+2026-10-28 04:37:41.562 +07 [80097] ERROR:  relation "intentionally_missing_table" does not exist at character 15
+2026-10-28 04:37:41.562 +07 [80097] STATEMENT:  SELECT * FROM intentionally_missing_table
+2026-10-28 04:37:42.391 +07 [80101] ERROR:  null value in column "warehouse_id" of relation "system_settings" violates not-null constraint
+2026-10-28 04:37:42.391 +07 [80101] DETAIL:  Failing row contains (1, null, supervisor_perms_backfilled_v1, true, null, 2026-10-28 04:37:42.065652+07).
+2026-10-28 04:37:42.391 +07 [80101] STATEMENT:  
+	                        INSERT INTO system_settings (warehouse_id, key, value)
+	                        SELECT MIN(id), 'supervisor_perms_backfilled_v1', 'true' FROM warehouses
+	                    
+2026-10-28 04:37:43.945 +07 [79333] LOG:  checkpoint starting: immediate force wait
+2026-10-28 04:37:44.762 +07 [79333] LOG:  checkpoint complete: wrote 6296 buffers (38.4%); 0 WAL file(s) added, 0 removed, 7 recycled; write=0.306 s, sync=0.192 s, total=0.817 s; sync files=12702, longest=0.001 s, average=0.001 s; distance=112201 kB, estimate=112201 kB; lsn=0/2030E0E0, redo lsn=0/2030E0A8
+2026-10-28 04:38:29.858 +07 [79332] LOG:  received fast shutdown request
+2026-10-28 04:38:29.859 +07 [79332] LOG:  aborting any active transactions
+2026-10-28 04:38:29.859 +07 [79332] LOG:  background worker "logical replication launcher" (PID 79338) exited with exit code 1
+2026-10-28 04:38:29.859 +07 [79333] LOG:  shutting down
+2026-10-28 04:38:29.859 +07 [79333] LOG:  checkpoint starting: shutdown immediate
+2026-10-28 04:38:29.942 +07 [79333] LOG:  checkpoint complete: wrote 2975 buffers (18.2%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.009 s, sync=0.034 s, total=0.083 s; sync files=1939, longest=0.001 s, average=0.001 s; distance=19865 kB, estimate=102967 kB; lsn=0/21674760, redo lsn=0/21674760
+2026-10-28 04:38:29.945 +07 [79332] LOG:  database system is shut down

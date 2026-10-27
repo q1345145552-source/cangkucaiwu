@@ -3,6 +3,8 @@
 These supplement, never replace, each route's menu, object and state checks.
 """
 from fastapi import Depends, HTTPException, Request
+from pydantic import BaseModel
+from fastapi.params import Form as FormParameter
 from sqlalchemy import select, event, inspect
 from app.core.permissions import Role
 from app.core.round2_access import mutation_scope
@@ -45,13 +47,21 @@ def action_guard(policy):
             user._warehouse_ids = user._mutation_warehouse_ids
             user._all_warehouse_ids = user._mutation_warehouse_ids
         module = request.scope['route'].endpoint.__module__.rsplit('.', 1)[-1]
-        if module == 'employees' and request.headers.get('content-type', '').startswith('application/json'):
-            body = await request.json()
+        if module == 'employees' and any(isinstance(field.type_, type) and issubclass(field.type_, BaseModel)
+                for field in request.scope['route'].dependant.body_params):
+            if request.headers.get('content-type') == '':
+                raise HTTPException(415, 'Content-Type不能为空，请使用JSON媒体类型')
+            # Inspect JSON-model routes regardless of media type. Invalid/non-JSON
+            # bodies remain subject to the framework's model validation.
+            try:
+                body = await request.json()
+            except (ValueError, UnicodeDecodeError):
+                body = None
             protected = {'daily_wage', 'base_salary', 'salary_template_id', 'deduction_template_id',
                          'bank_account_number', 'bank_name', 'bank_account_holder', 'user_id', 'employee_no', 'password'}
             if isinstance(body, dict) and protected.intersection(body) and user.role != Role.WAREHOUSE_ADMIN:
                 raise HTTPException(403, '薪资、扣款、银行及账号字段只能由仓库管理员修改')
-        if request.headers.get('content-type', '').split(';')[0] in ('multipart/form-data', 'application/x-www-form-urlencoded'):
+        if any(isinstance(field.field_info, FormParameter) for field in request.scope['route'].dependant.body_params):
             allowed = {f.name for f in request.scope['route'].dependant.body_params}
             if set(await request.form()) - allowed:
                 raise HTTPException(400, '请求包含不允许的字段')

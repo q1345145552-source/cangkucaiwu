@@ -1,0 +1,12 @@
+{
+  "round": 4,
+  "result": "rejected_requires_fix",
+  "head": "ec2666f915db561554d666b32de445d59a4ec835",
+  "originalAcceptance": "275 requests independent exit0",
+  "additionalProbe": "276 requests exit1; other user receipt association accepted 200 instead of403, database insert confirmed",
+  "finding": "personal_finance.py content-type startswith application/json condition skips receipt ownership for valid application/vnd.review+json",
+  "normalEnvironment": "/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/permissions-r4-review-8hwp2j5n",
+  "probeEnvironment": "/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/permissions-r4-review-gg8y1sn_",
+  "isolatedPostgresStopped": true,
+  "limits": "Not final acceptance; remaining code/regression review resumes after fix. No push/deploy/production or valuation changes."
+}

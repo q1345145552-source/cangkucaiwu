@@ -1,0 +1,6 @@
+{
+  "requests": 276,
+  "failures": [
+    "REVIEW-vendor-json-other-receipt: expected 403, actual 200"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "branch": "codex/permissions-round4-20261028",
+  "baseline": "ec2666f915db561554d666b32de445d59a4ec835",
+  "tracked_changes": [
+    "backend/app/api/v1/reimbursement.py",
+    "backend/app/core/personal_finance.py",
+    "backend/app/core/round4_access.py",
+    "docs/permissions-round4-20261028/CONTINUATION.md",
+    "docs/permissions-round4-20261028/REPORT.md"
+  ],
+  "model_diff": [],
+  "frontend_diff": [],
+  "financial_calculation_changes": "No pre-existing service changed; added personal_receipts authorization service only. Inventory models/formulas and financial amounts untouched."
+}

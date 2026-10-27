@@ -1,0 +1,6 @@
+{
+  "pg_ctl_exit": 0,
+  "lsof_exit": 1,
+  "listeners": "",
+  "note": "Only own synthetic PG started for fix01; stopped. No API/frontend service was started."
+}

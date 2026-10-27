@@ -1,3 +1,5 @@
+最新状态：原交付未通过独立验收，第四轮fix01补修见 ../permissions-r04-fix01-20261028/REPORT.md 与该目录COMMIT-HANDOFF.md。以下保留原交付提交记录。
+
 # 第四轮实际提交交接
 
 工作树：/private/tmp/permissions-round4-20261028

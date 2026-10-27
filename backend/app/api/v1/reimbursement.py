@@ -1,4 +1,5 @@
 from app.core.personal_finance import personal_finance_access
+from app.services.personal_receipts import require_personal_receipts
 from app.services import financial_authorization as finance
 from app.services.fund_authorization import identities
 from app.services.fund_authorization import reimbursement_payment_capability
@@ -163,6 +164,7 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
                                 _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    await require_personal_receipts(db, current_user, (item.receipt for item in req.items))
     wh_id = get_wh_id(current_user)
     total = sum(i.amount for i in req.items)
 
@@ -348,6 +350,7 @@ async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depen
                      _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    await require_personal_receipts(db, current_user, (item.receipt for item in req.items))
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id).with_for_update())
     r = result.scalar_one_or_none()
     if not r: raise HTTPException(404, "报销单不存在")

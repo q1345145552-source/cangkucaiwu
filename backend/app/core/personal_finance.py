@@ -33,18 +33,9 @@ def personal_finance_access(permissions):
             obj = await db.get(model, int(request.path_params[key]))
             if obj is None or obj.warehouse_id != user._attendance_employee.warehouse_id or obj.employee_id not in user._personal_user_ids:
                 raise HTTPException(403, '只能访问本人的申请或备用金账户')
-        if module == 'reimbursement' and request.method in ('POST', 'PUT') and request.headers.get('content-type', '').startswith('application/json'):
-            body = await request.json()
-            from app.api.secure_uploads import may_read
-            from types import SimpleNamespace
-            personal = SimpleNamespace(**{k:v for k,v in user.__dict__.items() if not k.startswith('_sa_')})
-            personal.extra_permissions = []
-            for item in body.get('items', []):
-                receipt = item.get('receipt') if isinstance(item, dict) else None
-                if receipt:
-                    parts = receipt.lstrip('/').split('/')
-                    if len(parts) < 3 or parts[0] != 'uploads' or not parts[1].isdigit() or not await may_read(db, personal, '/'.join(parts)):
-                        raise HTTPException(403, '本人申请不能关联他人附件')
+        if module == 'reimbursement' and endpoint.__name__ in ('create_reimbursement', 'edit_reimb'):
+            if request.headers.get('content-type') == '':
+                raise HTTPException(415, 'Content-Type不能为空，请使用JSON媒体类型')
         if module == 'employee_advance' and request.method == 'POST':
             body = await request.json()
             if body.get('employee_id') != user._attendance_employee.id or body.get('user_id') is not None:
