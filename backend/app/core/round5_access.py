@@ -126,14 +126,58 @@ def history_modules(user):
     return [m for m,key in HISTORY_MENUS.items() if has_menu(user,key) and (user.role != Role.SUPERVISOR or m in ONSITE_HISTORY)]
 
 
-def history_values(user, value):
-    if not isinstance(value,dict):return {'value':'[历史内容已隐藏]'} if value else value
+# History JSON can contain nested snapshots or serialized JSON, unlike the employee DTO.
+# Generic amount/rate names are salary data only in employee/payroll/template context.
+HISTORY_PAY_MODULES = {'employee', 'employees', 'payroll', 'salary_templates',
+    'deduction_templates', 'employee_deductions', 'employee_fixed_deductions'}
+HISTORY_PAY_CONTAINERS = {'salary_template', 'salary_templates', 'deduction_template',
+    'deduction_templates', 'payroll_records'}
+HISTORY_PAY_FIELDS = PAY_FIELDS | HISTORY_PAY_CONTAINERS | {'net_pay', 'base_pay', 'gross_pay',
+    'total_deductions', 'overtime_pay', 'overtime_half_hour_fee'}
+HISTORY_PAY_RULE_FIELDS = {'amount', 'hourly_rate', 'late_half_multiplier', 'late_one_multiplier',
+    'early_half_multiplier', 'early_one_multiplier', 'absence_extra_multiplier'}
+HISTORY_PRIVATE_FIELDS = DOCUMENT_FIELDS | {'password', 'password_hash', 'bank_account_number',
+    'bank_name', 'bank_account_holder', 'bank_account', 'bank', 'account_number', 'account_holder',
+    'token', 'access_token', 'secret', 'secret_key', 'receipt', 'receipts', 'receipt_path',
+    'voucher', 'voucher_path', 'payment_voucher_path', 'photo_path', 'photo_thumb_path', 'signature_path'}
+
+
+def history_values(user, value, module=None):
+    """Project response copies only; the stored audit record is never mutated."""
+    if not isinstance(value, dict):
+        return {'value': '[历史内容已隐藏]'} if value else value
     if user.role == Role.SUPERVISOR:
-        allowed={'name','position','status','date','hours','actual_hours','confirmed','quantity','operation_type'}
-        return {**{k:v for k,v in value.items() if k in allowed and isinstance(v,(str,int,float,bool,type(None)))},'changed_fields':sorted(value)}
-    hidden=DOCUMENT_FIELDS|{'password','password_hash','bank_account_number','account_number','account_holder','token','access_token',
-        'secret','secret_key','receipt','voucher','voucher_path','payment_voucher_path','photo_path','signature_path'}
-    return remove_fields(value,hidden)
+        allowed = {'name', 'position', 'status', 'date', 'hours', 'actual_hours',
+                   'confirmed', 'quantity', 'operation_type'}
+        return {**{k: v for k, v in value.items() if k in allowed
+                   and isinstance(v, (str, int, float, bool, type(None)))},
+                'changed_fields': sorted(value)}
+    hidden = set(HISTORY_PRIVATE_FIELDS)
+    if not financial_reader(user, 'payroll'):
+        hidden |= HISTORY_PAY_FIELDS
+        if module in HISTORY_PAY_MODULES:
+            hidden |= HISTORY_PAY_RULE_FIELDS
+
+    def redact(item):
+        if isinstance(item, dict):
+            # Field/value change records must not move a hidden value under "old"/"new".
+            for selector in ('field', 'key'):
+                field = item.get(selector)
+                if isinstance(field, str) and field in hidden:
+                    return {selector: field, 'redacted': True}
+            return {key: redact(child) for key, child in item.items() if key not in hidden}
+        if isinstance(item, list):
+            return [redact(child) for child in item]
+        if isinstance(item, str) and item.lstrip().startswith(('{', '[')):
+            import json
+            try:
+                decoded = json.loads(item)
+            except (ValueError, TypeError):
+                return '[无法安全解析的历史内容已隐藏]'
+            return json.dumps(redact(decoded), ensure_ascii=False)
+        return item
+
+    return redact(value)
 
 
 async def own_read_employee(db, user):

@@ -1,0 +1,1191 @@
+{
+  "original_unexercised_count": 169,
+  "newly_exercised": [
+    {
+      "id": "R05-152",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/settings/logs"
+    },
+    {
+      "id": "R05-184",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/history/operators"
+    }
+  ],
+  "remaining_unexercised": [
+    {
+      "id": "R05-001",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory"
+    },
+    {
+      "id": "R05-002",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/catalog"
+    },
+    {
+      "id": "R05-003",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/policy"
+    },
+    {
+      "id": "R05-004",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/pending-receipts"
+    },
+    {
+      "id": "R05-005",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/accounts/{account_id}"
+    },
+    {
+      "id": "R05-006",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/counts"
+    },
+    {
+      "id": "R05-007",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/accounts/{account_id}/controls"
+    },
+    {
+      "id": "R05-008",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/analysis"
+    },
+    {
+      "id": "R05-009",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/analysis/export"
+    },
+    {
+      "id": "R05-010",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/policy"
+    },
+    {
+      "id": "R05-011",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/orders/{po_id}/context"
+    },
+    {
+      "id": "R05-012",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/exceptions"
+    },
+    {
+      "id": "R05-013",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/exceptions/{ident}"
+    },
+    {
+      "id": "R05-014",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk"
+    },
+    {
+      "id": "R05-015",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/export"
+    },
+    {
+      "id": "R05-016",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/signals/{signal_id}"
+    },
+    {
+      "id": "R05-017",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/reviews"
+    },
+    {
+      "id": "R05-018",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/reviews/export"
+    },
+    {
+      "id": "R05-019",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-price-report"
+    },
+    {
+      "id": "R05-020",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-price-report/export"
+    },
+    {
+      "id": "R05-021",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-price-report/orders/{order_id}/lines/{line_ref}"
+    },
+    {
+      "id": "R05-022",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-quotes/suppliers/{supplier_id}"
+    },
+    {
+      "id": "R05-023",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-quotes/{quote_id}/revisions"
+    },
+    {
+      "id": "R05-024",
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/supplier-quotes/purchase-preview"
+    },
+    {
+      "id": "R05-025",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/reference"
+    },
+    {
+      "id": "R05-026",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog"
+    },
+    {
+      "id": "R05-027",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/products/{product_id}/candidates"
+    },
+    {
+      "id": "R05-028",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/products/{product_id}/mapping-history"
+    },
+    {
+      "id": "R05-029",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/history-candidates"
+    },
+    {
+      "id": "R05-030",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/tags"
+    },
+    {
+      "id": "R05-031",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/suppliers/{supplier_id}/tags"
+    },
+    {
+      "id": "R05-032",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-identities/suppliers"
+    },
+    {
+      "id": "R05-033",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-identities/{source}/{source_id}"
+    },
+    {
+      "id": "R05-034",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/auth/me"
+    },
+    {
+      "id": "R05-035",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/users"
+    },
+    {
+      "id": "R05-036",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/users/permissions"
+    },
+    {
+      "id": "R05-038",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/dashboard/pending-tasks"
+    },
+    {
+      "id": "R05-039",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/dashboard/warehouse-summary"
+    },
+    {
+      "id": "R05-042",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/dashboard/boss-todos"
+    },
+    {
+      "id": "R05-043",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/customers/{customer_id}/receivables"
+    },
+    {
+      "id": "R05-046",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/warehouses"
+    },
+    {
+      "id": "R05-049",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-match-policy"
+    },
+    {
+      "id": "R05-050",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/categories"
+    },
+    {
+      "id": "R05-051",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/import-template/products"
+    },
+    {
+      "id": "R05-052",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/import-template/logistics"
+    },
+    {
+      "id": "R05-053",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-threshold"
+    },
+    {
+      "id": "R05-054",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-stats"
+    },
+    {
+      "id": "R05-055",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-trend"
+    },
+    {
+      "id": "R05-056",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-anomalies"
+    },
+    {
+      "id": "R05-057",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/non-lowest-records"
+    },
+    {
+      "id": "R05-058",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/non-lowest-summary"
+    },
+    {
+      "id": "R05-059",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-approval-threshold"
+    },
+    {
+      "id": "R05-060",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-approvals"
+    },
+    {
+      "id": "R05-061",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-orders"
+    },
+    {
+      "id": "R05-062",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}"
+    },
+    {
+      "id": "R05-063",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/receipts/{event_id}/photo"
+    },
+    {
+      "id": "R05-065",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-receipt-discrepancies"
+    },
+    {
+      "id": "R05-066",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/concentration-threshold"
+    },
+    {
+      "id": "R05-067",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/concentration"
+    },
+    {
+      "id": "R05-068",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/concentration-trend"
+    },
+    {
+      "id": "R05-069",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/compare-prices"
+    },
+    {
+      "id": "R05-070",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/compare-logistics"
+    },
+    {
+      "id": "R05-071",
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/suppliers/ai-compare"
+    },
+    {
+      "id": "R05-072",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/procurement-summary"
+    },
+    {
+      "id": "R05-073",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}/products"
+    },
+    {
+      "id": "R05-074",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}/logistics-prices"
+    },
+    {
+      "id": "R05-075",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}"
+    },
+    {
+      "id": "R05-076",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}/ai-evaluation"
+    },
+    {
+      "id": "R05-080",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incoming/by-request/{request_key}"
+    },
+    {
+      "id": "R05-081",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incoming/{incoming_id}/screenshot"
+    },
+    {
+      "id": "R05-082",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incoming/template"
+    },
+    {
+      "id": "R05-083",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reconciliation/unmatched"
+    },
+    {
+      "id": "R05-085",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reconciliation/export"
+    },
+    {
+      "id": "R05-086",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/categories"
+    },
+    {
+      "id": "R05-087",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/income"
+    },
+    {
+      "id": "R05-089",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/expense/export"
+    },
+    {
+      "id": "R05-090",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/ledger"
+    },
+    {
+      "id": "R05-091",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/ledger/export"
+    },
+    {
+      "id": "R05-092",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/income/export"
+    },
+    {
+      "id": "R05-093",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/monthly-summary"
+    },
+    {
+      "id": "R05-094",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/operating-dashboard"
+    },
+    {
+      "id": "R05-095",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/employees"
+    },
+    {
+      "id": "R05-097",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/payment-accounts"
+    },
+    {
+      "id": "R05-098",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/accounts/{account_id}/disbursements"
+    },
+    {
+      "id": "R05-100",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/review/pending"
+    },
+    {
+      "id": "R05-102",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/settings"
+    },
+    {
+      "id": "R05-103",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/balance"
+    },
+    {
+      "id": "R05-104",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/alert"
+    },
+    {
+      "id": "R05-105",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/payment-sources"
+    },
+    {
+      "id": "R05-107",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/export"
+    },
+    {
+      "id": "R05-108",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/categories"
+    },
+    {
+      "id": "R05-110",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/{reimb_id}/payments"
+    },
+    {
+      "id": "R05-112",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/stats"
+    },
+    {
+      "id": "R05-113",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/{bill_id}/detail"
+    },
+    {
+      "id": "R05-114",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plans"
+    },
+    {
+      "id": "R05-115",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/cashflow-prediction"
+    },
+    {
+      "id": "R05-116",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/batch-export"
+    },
+    {
+      "id": "R05-117",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/supplier-statement"
+    },
+    {
+      "id": "R05-118",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plan-templates"
+    },
+    {
+      "id": "R05-119",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/timeline"
+    },
+    {
+      "id": "R05-120",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plans/{plan_id}/detail"
+    },
+    {
+      "id": "R05-121",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plans/export"
+    },
+    {
+      "id": "R05-122",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/monthly-order"
+    },
+    {
+      "id": "R05-123",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/trend"
+    },
+    {
+      "id": "R05-124",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/shipments"
+    },
+    {
+      "id": "R05-125",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit"
+    },
+    {
+      "id": "R05-126",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/{credit_id}/detail"
+    },
+    {
+      "id": "R05-127",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/dashboard"
+    },
+    {
+      "id": "R05-128",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/assessment"
+    },
+    {
+      "id": "R05-129",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/assessment/export"
+    },
+    {
+      "id": "R05-130",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/alerts"
+    },
+    {
+      "id": "R05-131",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/market"
+    },
+    {
+      "id": "R05-132",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/market/review-list"
+    },
+    {
+      "id": "R05-133",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order"
+    },
+    {
+      "id": "R05-134",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order/{go_id}/participants"
+    },
+    {
+      "id": "R05-135",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order/history"
+    },
+    {
+      "id": "R05-136",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order/{go_id}"
+    },
+    {
+      "id": "R05-137",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt"
+    },
+    {
+      "id": "R05-138",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt/costs"
+    },
+    {
+      "id": "R05-139",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt/flows"
+    },
+    {
+      "id": "R05-140",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt/advances"
+    },
+    {
+      "id": "R05-143",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/incoming-summary"
+    },
+    {
+      "id": "R05-145",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/payable"
+    },
+    {
+      "id": "R05-146",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/expense-fund"
+    },
+    {
+      "id": "R05-147",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/reimbursement"
+    },
+    {
+      "id": "R05-149",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/reconciliation-diff"
+    },
+    {
+      "id": "R05-150",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/operations"
+    },
+    {
+      "id": "R05-151",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/settings/boss-contact"
+    },
+    {
+      "id": "R05-153",
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/settings/backup"
+    },
+    {
+      "id": "R05-154",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/config/attendance-times"
+    },
+    {
+      "id": "R05-155",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/config/work-schedule"
+    },
+    {
+      "id": "R05-156",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/rates"
+    },
+    {
+      "id": "R05-157",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/rates/query"
+    },
+    {
+      "id": "R05-158",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employees/max-limit"
+    },
+    {
+      "id": "R05-162",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/records"
+    },
+    {
+      "id": "R05-163",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/makeup-batches"
+    },
+    {
+      "id": "R05-164",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/makeup-count"
+    },
+    {
+      "id": "R05-165",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/records/export"
+    },
+    {
+      "id": "R05-166",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/photos"
+    },
+    {
+      "id": "R05-167",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/makeup-requests"
+    },
+    {
+      "id": "R05-169",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/attendance/rest-days"
+    },
+    {
+      "id": "R05-170",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/attendance/calendar"
+    },
+    {
+      "id": "R05-171",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime"
+    },
+    {
+      "id": "R05-172",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime/pending"
+    },
+    {
+      "id": "R05-173",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime/monthly-hours"
+    },
+    {
+      "id": "R05-174",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime/limit"
+    },
+    {
+      "id": "R05-179",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payroll/cash-advance-sources"
+    },
+    {
+      "id": "R05-182",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payroll/settlement-progress"
+    },
+    {
+      "id": "R05-188",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/trend"
+    },
+    {
+      "id": "R05-189",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/compare"
+    },
+    {
+      "id": "R05-190",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/daily-orders"
+    },
+    {
+      "id": "R05-191",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/standard"
+    },
+    {
+      "id": "R05-192",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/standards"
+    },
+    {
+      "id": "R05-194",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-advances/recipients"
+    },
+    {
+      "id": "R05-196",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-advances/summary"
+    },
+    {
+      "id": "R05-201",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-deductions"
+    },
+    {
+      "id": "R05-202",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-deductions/fixed"
+    },
+    {
+      "id": "R05-204",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-approvals/summary"
+    },
+    {
+      "id": "R05-205",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-approvals/threshold"
+    },
+    {
+      "id": "R05-206",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/document-options"
+    },
+    {
+      "id": "R05-207",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/payers"
+    },
+    {
+      "id": "R05-208",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/summary"
+    },
+    {
+      "id": "R05-210",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/{advance_id}/documents/{link_id}"
+    },
+    {
+      "id": "R05-211",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/repayment-accounts"
+    },
+    {
+      "id": "R05-212",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/{advance_id}/repayments"
+    },
+    {
+      "id": "R05-214",
+      "methods": [
+        "GET"
+      ],
+      "path": "/"
+    },
+    {
+      "id": "R05-215",
+      "methods": [
+        "GET"
+      ],
+      "path": "/health"
+    }
+  ],
+  "note": "Original coverage snapshot retained. Route-level evidence is not all-field/all-role coverage."
+}

@@ -86,7 +86,7 @@ async def list_history(
             "id": h.id, "module": h.module, "record_id": h.record_id,
             "operator_id": h.operator_id, "operator_name": h.operator_name,
             "operation_type": h.operation_type,
-            "before_data": history_values(current_user,h.before_data), "after_data": history_values(current_user,h.after_data),
+            "before_data": history_values(current_user,h.before_data,h.module), "after_data": history_values(current_user,h.after_data,h.module),
             "warehouse_id": h.warehouse_id,
             "created_at": h.created_at.isoformat() if h.created_at else None,
         } for h in rows],
@@ -110,8 +110,8 @@ async def export_history(
     for row in rows:
         sheet.append([row.id, row.module, row.record_id, row.operator_id, row.operator_name,
                       row.operation_type, row.created_at.isoformat() if row.created_at else "",
-                      row.warehouse_id, json.dumps(history_values(current_user,row.before_data), ensure_ascii=False),
-                      json.dumps(history_values(current_user,row.after_data), ensure_ascii=False)])
+                      row.warehouse_id, json.dumps(history_values(current_user,row.before_data,row.module), ensure_ascii=False),
+                      json.dumps(history_values(current_user,row.after_data,row.module), ensure_ascii=False)])
         for cell in sheet[sheet.max_row]:
             if isinstance(cell.value, str):
                 cell.data_type = "s"

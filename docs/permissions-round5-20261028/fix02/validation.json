@@ -1,0 +1,80 @@
+{
+  "marker": "permissions7-r05-fix02-20261028",
+  "worktree": "/private/tmp/permissions-round5-20261028",
+  "branch": "codex/permissions-round5-20261028",
+  "baseline": "4bfdb4bb48660b90d89e561e90eca96f300c7692",
+  "source_sha256": {
+    "backend/app/core/round5_access.py": "ca88d78f8f211e089ba39a6f560f761a25130f1ca1bbcfd98f0e96a7770cc9cc",
+    "backend/app/api/v1/history.py": "4316e953f4e7af1ad42185e80f8a824b96ba93d3799b4f5bfb43cf5dae8c2d45",
+    "backend/tests/permission_round5/history_fields.py": "d35872e1d65a8695ffcf9def8f64d299c258da3cc26f8ab9e63a707a60fcb422"
+  },
+  "exit_codes": {
+    "fix02-after-01": "0",
+    "fix02-attachments": "0",
+    "fix02-shutdown": "0",
+    "fix02-setup": "0",
+    "fix02-before": "1",
+    "fix02-round4": "0",
+    "fix02-target": "0",
+    "fix02-final-02": "0",
+    "fix02-diff": "0",
+    "fix02-log-regression-current": "1",
+    "fix02-compile": "0",
+    "fix02-log-regression-baseline": "1",
+    "fix02-final": "1",
+    "fix02-writes": "0",
+    "regression-reads-03": "1"
+  },
+  "checks": {
+    "fix02-compile": {
+      "command": [
+        "/tmp/supplier01-py312/bin/python",
+        "-m",
+        "compileall",
+        "-q",
+        "backend/app/core/round5_access.py",
+        "backend/app/api/v1/history.py",
+        "backend/tests/permission_round5/history_fields.py"
+      ],
+      "exit": 0
+    },
+    "fix02-diff": {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "backend"
+      ],
+      "exit": 0
+    }
+  },
+  "frontend_files_verified_identical": 248,
+  "frontend_checks_reused": "Original tsc-final/build-clean-final exit0 and unchanged frontend browser evidence, not rerun in fix02",
+  "postgres_stopped": true,
+  "shutdown_command": [
+    "/private/tmp/supplier01-pgserver/pgserver/pginstall/bin/pg_ctl",
+    "-D",
+    "/private/tmp/permissions-round5-env/pgdata",
+    "stop",
+    "-m",
+    "fast"
+  ],
+  "commands": [
+    "cwd /private/tmp/permissions-round5-env; ROUND5_RUN=fix02/final-02 ROUND5_DATABASE_URL=postgresql+asyncpg://round5@127.0.0.1:65489/round5 /tmp/supplier01-py312/bin/python /private/tmp/permissions-round5-20261028/backend/tests/permission_round5/history_fields.py",
+    "Same URL/interpreter: write_responses.py ROUND5_RUN=fix02/writes; acceptance.py ROUND5_RUN=fix02/target; browser_setup.py ROUND5_RUN=fix02/setup; attachment_acceptance.py ROUND5_ATTACH_RUN=fix02/attachments",
+    "ROUND5_RUN=fix02-round4 /tmp/supplier01-py312/bin/python /private/tmp/permissions-round5-20261028/backend/tests/permission_round5/prior_targets.py round4",
+    "regression.py reads; exact command/cwd/DB in raw-logs/regression-reads-03.command.json",
+    "Original log regression commands on baseline and current in raw-logs/fix02-log-regression-*.command.json"
+  ],
+  "boundaries": {
+    "models_or_migrations": false,
+    "inventory_cost_policy_changed": false,
+    "production_access": false,
+    "push_fetch_deploy_ssh": false,
+    "other_chat_dispatch": false,
+    "original_raw_evidence_changed": false
+  },
+  "coverage": "Original169 retained;2 newly directly exercised;167 remain; no claim of all combinations",
+  "limitations": "Inherited8+5+1 failures and3 unverified assertions; additional10-test log regression4pass6fail baseline/current. No frontend rerun. Unknown arbitrary historical prose not exhaustively inspected."
+}

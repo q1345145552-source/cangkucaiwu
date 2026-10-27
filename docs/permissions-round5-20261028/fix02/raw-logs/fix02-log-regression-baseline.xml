@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="10" time="3.187" timestamp="2026-10-28T05:40:38.614211+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_modification_log_permissions" name="test_same_permission_for_list_operators_export[1-False]" time="0.275" /><testcase classname="tests.test_modification_log_permissions" name="test_same_permission_for_list_operators_export[2-False]" time="0.157"><failure message="assert (0 == 2)">tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:35: in run
+    elif path=='/history':assert r.json()['total']==2 and {x['id'] for x in r.json()['data']}=={101,102}
+E   assert (0 == 2)</failure></testcase><testcase classname="tests.test_modification_log_permissions" name="test_same_permission_for_list_operators_export[3-False]" time="0.165" /><testcase classname="tests.test_modification_log_permissions" name="test_same_permission_for_list_operators_export[3-True]" time="0.154"><failure message="assert (0 == 2)">tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:35: in run
+    elif path=='/history':assert r.json()['total']==2 and {x['id'] for x in r.json()['data']}=={101,102}
+E   assert (0 == 2)</failure></testcase><testcase classname="tests.test_modification_log_permissions" name="test_same_permission_for_list_operators_export[4-False]" time="0.162" /><testcase classname="tests.test_modification_log_permissions" name="test_same_permission_for_list_operators_export[4-True]" time="0.156"><failure message="assert (0 == 2)">tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:35: in run
+    elif path=='/history':assert r.json()['total']==2 and {x['id'] for x in r.json()['data']}=={101,102}
+E   assert (0 == 2)</failure></testcase><testcase classname="tests.test_modification_log_permissions" name="test_same_permission_for_list_operators_export[5-True]" time="0.162"><failure message="AssertionError: assert False&#10; +  where False = &lt;built-in method startswith of str object at 0x106fae380&gt;('无此操作权限')&#10; +    where &lt;built-in method startswith of str object at 0x106fae380&gt; = '无权访问'.startswith">tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:34: in run
+    if not allowed:assert r.json()['detail'].startswith('无此操作权限')
+E   AssertionError: assert False
+E    +  where False = &lt;built-in method startswith of str object at 0x106fae380&gt;('无此操作权限')
+E    +    where &lt;built-in method startswith of str object at 0x106fae380&gt; = '无权访问'.startswith</failure></testcase><testcase classname="tests.test_modification_log_permissions" name="test_migration_once_supervisor_only_and_real_read" time="0.196"><failure message="assert (200 == 200 and 0 == 2)&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tests/test_modification_log_permissions.py:75: in test_migration_once_supervisor_only_and_real_read
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:69: in run
+    sup=await c.get('/api/v1/history',headers=auth(4));assert sup.status_code==200 and sup.json()['total']==2
+E   assert (200 == 200 and 0 == 2)
+E    +  where 200 = &lt;Response [200 OK]&gt;.status_code</failure></testcase><testcase classname="tests.test_modification_log_permissions" name="test_migration_failure_rolls_back" time="0.162" /><testcase classname="tests.test_modification_log_permissions" name="test_warehouse_filter_and_export_exactly_match" time="0.161"><failure message="assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_modification_log_permissions.py:109: in test_warehouse_filter_and_export_exactly_match
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:102: in run
+    r=await c.get('/api/v1/history'+query,headers={**auth(4),'X-Warehouse-ID':'2'});assert r.status_code==200
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase></testsuite></testsuites>
