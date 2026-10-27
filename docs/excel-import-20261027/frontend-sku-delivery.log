@@ -1,0 +1,13 @@
+{
+  "passed": 8,
+  "checks": [
+    "multiple candidates require explicit choice; reason, unknown conversion, exact versions; lost response reuses same key/payload once",
+    "read-only mapping hides mutation and displays actual audit history",
+    "delayed product data cannot populate a different warehouse",
+    "actual Excel modal previews before writes; explicit per-row mapping and ack; original file/key/choices survive lost response",
+    "Excel row conflicts show exact row and disable batch confirmation",
+    "supplier importer without catalog-management grant can only select unmapped, readable candidates never grant writes",
+    "directory independent read grant does not reveal write controls; no grant denies page",
+    "actual catalog form submits structured attributes and basic unit via independent management grant"
+  ]
+}

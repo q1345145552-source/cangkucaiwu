@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Request, Form
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 import hashlib
@@ -137,6 +137,7 @@ async def batch_import(req: IncomingBatchImport, request: Request, current_user:
     scope = await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))
     if len(scope) != 1: raise HTTPException(400,'请先选择一个仓库')
     wh_id = scope[0].id
+    if not 1 <= len(req.records) <= 500: raise HTTPException(400,"每批必须包含1至500条到账")
     imported, existing = 0, 0
     context_hash = hashlib.sha256(json.dumps(req.records, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     for index, rec in enumerate(req.records):
@@ -148,6 +149,42 @@ async def batch_import(req: IncomingBatchImport, request: Request, current_user:
         imported += int(created)
         existing += int(not created)
     return {"imported": imported, "existing": existing, "message": f"成功导入{imported}条，已有{existing}条未重复录入"}
+
+@router.post("/import-excel")
+async def import_excel(request: Request, file: UploadFile = File(...), mode: str = Form("preview"),
+    preview_version: str = Form(None), request_key: str = Form(None),
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("到账流水"))):
+    from app.services.excel_import import read_upload
+    from app.services.incoming_import import preview
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF): raise HTTPException(403, "无权限")
+    scope = await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))
+    if len(scope) != 1: raise HTTPException(400,'请先选择一个仓库')
+    content = await read_upload(file)
+    if mode not in ('preview','confirm'): raise HTTPException(400,'请先预览，再明确确认')
+    if mode == 'confirm':
+        from app.services import sku_catalog as catalog
+        from app.services.payable_creation import fingerprint
+        from app.models import ProductImportOperation
+        await catalog.lock(db,scope[0].id)
+        key = 'incoming:' + catalog.label(request_key,'请求编号',64)
+        signature = fingerprint({'content':hashlib.sha256(content).hexdigest(),'version':preview_version,'operator_id':current_user.id})
+        old = (await db.execute(select(ProductImportOperation).where(ProductImportOperation.warehouse_id==scope[0].id,ProductImportOperation.request_key==key))).scalar_one_or_none()
+        if old:
+            if old.request_fingerprint != signature: raise HTTPException(409,'原请求内容不同，请核对已保存记录')
+            return {**old.result,'replayed':True}
+    current = await preview(db,scope[0].id,content)
+    if mode == 'preview': return current
+    records = [{k:v for k,v in row.items() if k != 'row_number'} for row in current['rows']]
+    if not current['valid']: raise HTTPException(422,{'message':'校验失败，整批未保存','errors':current['errors']})
+    if preview_version != current['preview_version']: raise HTTPException(409,'预览已变更，请重新预览')
+    try: batch = IncomingBatchImport(request_key=request_key,records=records)
+    except ValidationError: raise HTTPException(400,'缺少有效的原请求编号')
+    result = await batch_import(batch,request,current_user,db,_perm)
+    result = {**result,'id':request_key,'mode':'confirmed','errors':[]}
+    db.add(ProductImportOperation(warehouse_id=scope[0].id,request_key=key,request_fingerprint=signature,result=result,operator_id=current_user.id))
+    await db.flush()
+    return result
 
 @router.get("/template")
 async def download_template(current_user: User = Depends(get_current_user),
@@ -175,6 +212,9 @@ async def download_template(current_user: User = Depends(get_current_user),
     ws.column_dimensions['D'].width = 20
     ws.column_dimensions['E'].width = 12
     ws.column_dimensions['F'].width = 20
+    notes=wb.create_sheet("填写说明")
+    notes.append(["仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。最多500行、20列、2MB，不接受公式。删除示例行后填写；到账日期、金额、币种、收款账户编号必填，账户必须是本仓可用同币种账户，请在账户管理核对编号。先预览，再明确确认；错误行整批不保存。结果不明时使用原文件原请求重试，另一笔合法到账请发起新请求。"] )
+    notes.column_dimensions["A"].width=110
     import io; output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             headers={"Content-Disposition": "attachment; filename=incoming_template.xlsx"})

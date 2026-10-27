@@ -1,0 +1,165 @@
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/accounts/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/attendance/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/audit-logs/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/cash-advances/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/cash-advances/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/categories/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/clock-in/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/clock-records/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/concentration/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/config-center/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/credit/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/customers/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/dashboard/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/deduction-templates/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/employee-advances/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/employee-deductions/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/employees/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/expense-approvals/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/expense-fund/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/expense-identities/[source]/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/fund-review/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/group-order/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/income-expense/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/incoming/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/labor-efficiency/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/ledger/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/market/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/modification-logs/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/my-attendance/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/my-leave/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/my-overtime/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/my-payslip/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/operating/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/other-income-expense/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/overtime/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/payable/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/payment-plans/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/payroll/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/recharge/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/reconciliation/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/reimbursement/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/reports/cost-funds-debt/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/reports/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/salary-templates/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/settings/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/supplier-skus/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/suppliers/monthly-price-report/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/suppliers/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/suppliers/purchase-orders/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/(dashboard)/warehouses/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/login/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/tmp/excel-import-20261027-ui/.next/types/app/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/private/tmp/excel-import-20261027-ui/tsconfig.json'
+error TS6053: File '/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/supplier12-build-smkr42j0/node_modules/typescript/lib/lib.dom.d.ts' not found.
+  The file is in the program because:
+    Library 'lib.dom.d.ts' specified in compilerOptions
+error TS6053: File '/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/supplier12-build-smkr42j0/node_modules/typescript/lib/lib.dom.iterable.d.ts' not found.
+  The file is in the program because:
+    Library 'lib.dom.iterable.d.ts' specified in compilerOptions
+error TS6053: File '/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/supplier12-build-smkr42j0/node_modules/typescript/lib/lib.esnext.d.ts' not found.
+  The file is in the program because:
+    Library 'lib.esnext.d.ts' specified in compilerOptions

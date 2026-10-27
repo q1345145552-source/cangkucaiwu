@@ -1,10 +1,9 @@
 """Legacy Excel formats, read-only preview, explicit atomic confirmation and replay."""
-import io,json,hashlib,zipfile
+import json,hashlib
 from itertools import islice
 from types import SimpleNamespace
 from decimal import Decimal,InvalidOperation
 from fastapi import HTTPException
-from openpyxl import load_workbook
 from sqlalchemy import select
 from app.models import Supplier,SupplierProduct,StandardSKU,ProductImportOperation
 from app.services import sku_catalog as catalog
@@ -43,11 +42,8 @@ def duplicate_key(row):return tuple(row.get(k) or '' for k in ('supplier_id','pr
 async def preview(db,wid,user,content,supplier_id=None):
  if not content:raise HTTPException(400,'文件为空，请选择包含表头和数据的 xlsx 文件')
  if len(content)>2*1024*1024:raise HTTPException(400,'请选择2MB以内的xlsx文件')
- try:
-  with zipfile.ZipFile(io.BytesIO(content)) as z:
-   if sum(i.file_size for i in z.infolist())>20*1024*1024:raise ValueError('expanded workbook too large')
-  wb=load_workbook(io.BytesIO(content),read_only=True,data_only=False)
- except Exception:raise HTTPException(400,'无法读取xlsx文件或文件内容过大，未导入任何产品')
+ from app.services.excel_import import workbook
+ wb=workbook(content, allow_active_formulas=True)
  try:
   ws=wb.active
   if ws is None or not hasattr(ws,'iter_rows'):raise HTTPException(400,'文件没有可读取的表头，请使用产品导入模板')
@@ -77,8 +73,8 @@ async def preview(db,wid,user,content,supplier_id=None):
    total_rows+=1
    raw={k:cells_row[i].value if i<len(cells_row) else None for k,i in header.items()}
    marker=str(cells_row[0].value or '').strip()
-   legacy_marker=str(raw.get('supplier_name') or raw.get('product_name') or '').strip()
-   if marker.startswith('##') or legacy_marker.startswith(('示例:','示例：')):
+   legacy_example=raw.get('supplier_name') in ('示例: 耗材商A','示例：耗材商A') and raw.get('product_name')=='快递袋' and raw.get('spec')=='一打80个' and raw.get('spec_price')==80 and raw.get('unit_price')==1 and not any(c.data_type=='f' for c in cells_row)
+   if marker.startswith('##') or legacy_example:
     example_count+=1;skipped_rows.append({'row_number':number,'message':'跳过了示例行（不会导入）','blocking':False});continue
    entry={'row_number':number,'errors':[],'candidates':[],'catalog_visible':can_catalog,'skipped':False,
     'supplier_name':str(raw.get('supplier_name') or '').strip(),'product_name':str(raw.get('product_name') or '').strip()}

@@ -435,6 +435,9 @@ async def download_logistics_template(current_user: User = Depends(get_current_u
         ws.cell(row=2, column=c, value=v)
     for col, w in [('A',22),('B',10),('C',10),('D',10),('E',12),('F',10),('G',8)]:
         ws.column_dimensions[col].width = w
+    notes=wb.create_sheet("填写说明")
+    notes.append(["仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。最多500行、20列、2MB，不接受公式。请删除示例行后填写实际数据。先预览，确认后整批保存。供应商必须与所选入口一致，多供应商请使用批量入口。单供应商也支持不含供应商名称的旧6列表头，列顺序可调整；币种明确填写THB/CNY，时效可留空。"] )
+    notes.column_dimensions["A"].width=110
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             headers={"Content-Disposition": "attachment; filename=cross_border_logistics_template.xlsx"})
@@ -448,45 +451,21 @@ async def import_products(file: UploadFile = File(...), mode: str = Form("previe
                           _perm=Depends(check_staff_permission("供应商管理"))):
     from app.services import product_import
     product_import.validate_filename(file.filename)
-    content=await file.read(2*1024*1024+1)
+    from app.services.excel_import import read_upload
+    content=await read_upload(file)
     if mode=="preview":return await product_import.preview(db,warehouse_id,current_user,content)
     if mode!="confirm":raise HTTPException(400,"请选择预览或明确确认导入")
     return await product_import.confirm(db,warehouse_id,current_user,content,None,request_key,preview_version,choices)
 
 @_fixed_routes.post("/import/logistics")
-async def import_logistics(file: UploadFile = File(...), current_user: User = Depends(get_current_user),
-                            db: AsyncSession = Depends(get_db),
+async def import_logistics(file: UploadFile = File(...), mode: str = Form("preview"),
+    preview_version: str = Form(None), request_key: str = Form(None),
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
-    """批量导入跨境物流价格 Excel"""
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    from openpyxl import load_workbook
-    data = await file.read()
-    wb = load_workbook(io.BytesIO(data)); ws = wb.active
-    imported, skipped, errors = 0, 0, []
-    sups = (await db.execute(select(Supplier).where(Supplier.warehouse_id.in_(get_wh_ids(current_user))))).scalars().all()
-    sup_map = {s.name.strip(): s.id for s in sups}
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row or not row[0]: continue
-        sup_name = str(row[0]).strip()
-        if sup_name.startswith("示例"): continue
-        if sup_name not in sup_map:
-            errors.append(f"供应商「{sup_name}」不存在"); skipped += 1; continue
-        try:
-            p = SupplierCrossBorderPrice(
-                supplier_id=sup_map[sup_name],
-                transport_method=str(row[1] or "").strip(),
-                cargo_type=str(row[2] or "").strip(),
-                origin_warehouse=str(row[3] or "").strip(),
-                price_per_cbm=float(row[4] or 0),
-                estimated_days=str(row[5] or "").strip() if row[5] else None,
-                currency=str(row[6] or "CNY").strip(),
-            )
-            db.add(p); imported += 1
-        except Exception as e:
-            errors.append(f"行解析失败: {e}"); skipped += 1
-    await db.flush()
-    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条跨境物流价格"}
+    from app.services.logistics_import import execute
+    from app.services.excel_import import read_upload
+    return await execute(db, warehouse_id, current_user, await read_upload(file), None, mode, preview_version, request_key)
 
 # ═══ Per-Supplier Import ══════════════════════════
 @_supplier_routes.post("/{supplier_id}/import/products")
@@ -497,42 +476,21 @@ async def import_products_for_supplier(supplier_id: int, file: UploadFile = File
                           _perm=Depends(check_staff_permission("供应商管理"))):
     from app.services import product_import
     product_import.validate_filename(file.filename)
-    content=await file.read(2*1024*1024+1)
+    from app.services.excel_import import read_upload
+    content=await read_upload(file)
     if mode=="preview":return await product_import.preview(db,warehouse_id,current_user,content,supplier_id)
     if mode!="confirm":raise HTTPException(400,"请选择预览或明确确认导入")
     return await product_import.confirm(db,warehouse_id,current_user,content,supplier_id,request_key,preview_version,choices)
 
 @_supplier_routes.post("/{supplier_id}/import/logistics")
-async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = File(...),
-                                         current_user: User = Depends(get_current_user),
-                                         db: AsyncSession = Depends(get_db),
+async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = File(...), mode: str = Form("preview"),
+    preview_version: str = Form(None), request_key: str = Form(None),
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
-    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
-        raise HTTPException(403, "无权限")
-    await _require_supplier_owned(db, current_user, supplier_id)
-    from openpyxl import load_workbook
-    data = await file.read()
-    wb = load_workbook(io.BytesIO(data)); ws = wb.active
-    imported, skipped, errors = 0, 0, []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row or not row[0]: continue
-        tm = str(row[0] or "").strip()
-        if tm.startswith("示例"): continue
-        try:
-            p = SupplierCrossBorderPrice(
-                supplier_id=supplier_id,
-                transport_method=str(row[0] or "").strip(),
-                cargo_type=str(row[1] or "").strip() if len(row)>1 else "",
-                origin_warehouse=str(row[2] or "").strip() if len(row)>2 else "",
-                price_per_cbm=float(row[3] or 0) if len(row)>3 and row[3] else 0,
-                estimated_days=str(row[4] or "").strip() if len(row)>4 and row[4] else None,
-                currency=str(row[5] or "CNY").strip() if len(row)>5 else "CNY",
-            )
-            db.add(p); imported += 1
-        except Exception as e:
-            errors.append(f"行解析失败: {e}"); skipped += 1
-    await db.flush()
-    return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条跨境物流价格"}
+    from app.services.logistics_import import execute
+    from app.services.excel_import import read_upload
+    return await execute(db, warehouse_id, current_user, await read_upload(file), supplier_id, mode, preview_version, request_key)
 
 # ═══ Product CRUD ════════════════════════════════
 @_supplier_routes.get("/{supplier_id}/products")

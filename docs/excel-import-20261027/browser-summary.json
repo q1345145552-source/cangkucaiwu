@@ -1,0 +1,16 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "checks": [
+    "mobile account number reference is read-only and never picks a default",
+    "mobile incoming error row and same file reselect",
+    "backend committed receipt but proxy returned 503: mobile original-request retry recovered one receipt",
+    "mobile downloaded Chinese template to preview, confirm, save, displayed receipt",
+    "mobile supplier global multi-supplier downloaded template imports both warehouse suppliers",
+    "mobile single supplier entry names current supplier and saves explicit unmapped rows",
+    "mobile seven-column downloaded logistics template: Shenzhen remains warehouse, price is 800 CNY",
+    "mobile SKU product entry downloads own template, previews, confirms and displays saved product"
+  ]
+}

@@ -1,0 +1,13 @@
+user {"id":1,"username":"test-1","display_name":"测试账号1","role":"warehouse_admin","warehouse_id":1,"warehouse_name":"测试仓1","warehouses":[{"id":1,"name":"测试仓1","code":"TEST1"},{"id":2,"name":"测试仓2","code":"TEST2"}],"is_active":true,"extra_permissions":[],"attendance_enabled":false,"attendance_employee_id":null}
+{
+  "passed": 7,
+  "checks": [
+    "mobile account number reference is read-only and never picks a default",
+    "mobile incoming error row and same file reselect",
+    "mobile downloaded Chinese template to preview, confirm, save, displayed receipt",
+    "mobile supplier global multi-supplier downloaded template imports both warehouse suppliers",
+    "mobile single supplier entry names current supplier and saves explicit unmapped rows",
+    "mobile seven-column downloaded logistics template: Shenzhen remains warehouse, price is 800 CNY",
+    "mobile SKU product entry downloads own template, previews, confirms and displays saved product"
+  ]
+}
