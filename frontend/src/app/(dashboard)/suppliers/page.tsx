@@ -13,6 +13,8 @@ import { ApiError } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { registrationDraft, submitRegistration, acceptQuotePreviewRejection } from "@/lib/registrationRequest";
 import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
+import ExcelImportDialog from "@/components/ExcelImportDialog";
+import { downloadExcel, checkExcel } from "@/lib/excelImport";
 import ProductImportDialog from "@/components/ProductImportDialog";
 import SkuProductMapping from "@/components/SkuProductMapping";
 import SupplierQuoteEditor from "@/components/SupplierQuoteEditor";
@@ -95,6 +97,7 @@ export default function SuppliersPage() {
   const [aiCompareResult, setAiCompareResult] = useState("");
   // Import
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logisticsFile,setLogisticsFile] = useState<File|null>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
   const [importSupplierId, setImportSupplierId] = useState<number | null>(null);
   // Order
@@ -150,23 +153,7 @@ export default function SuppliersPage() {
   // ─── Import ───
   async function downloadTemplate(mode: string) {
     try {
-      const res = await fetch(`/api/v1/suppliers/import-template/${mode}`, {
-        headers: warehouseRequestHeaders(),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: "下载失败" }));
-        toast("error", err.detail || "下载失败");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = mode === "products" ? "products_import_template.xlsx" : "logistics_import_template.xlsx";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadExcel(`/suppliers/import-template/${mode}`,`${mode}_import_template.xlsx`);
     } catch (e: any) {
       toast("error", e.message || "下载失败");
     }
@@ -175,18 +162,10 @@ export default function SuppliersPage() {
   async function handleSupplierImport() {
     const file = fileInputRef.current?.files?.[0];
     const sid = importSupplierId;
-    if (!file || !sid) { toast("error", "请选择文件"); return; }
-    if(importMode==="products"){setProductImportFile(file);return;}
-    const fd = new FormData(); fd.append("file", file);
-    try {
-      const headers = warehouseRequestHeaders();
-      const res = await fetch(`/api/v1/suppliers/${sid}/import/${importMode}`, { method: "POST", headers, body: fd });
-      const r = await res.json();
-      if (res.ok) toast("success", r.message || "导入成功"); else toast("error", r.detail || "导入失败");
-      load();
-    } catch { toast("error", "导入失败"); }
+    if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
-    setImportSupplierId(null);
+    try { checkExcel(file); if(importMode === "products") setProductImportFile(file); else setLogisticsFile(file); }
+    catch(e:any) { toast("error",e.message); }
   }
 
   // ─── Products ───
@@ -579,7 +558,8 @@ export default function SuppliersPage() {
     <>
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       {cost.dialog}
-      {productImportFile&&<ProductImportDialog canMap={canManageCatalog} file={productImportFile} supplierId={importSupplierId||undefined} onClose={()=>{setProductImportFile(null);setImportSupplierId(null);if(fileInputRef.current)fileInputRef.current.value="";}} onImported={r=>{toast("success",r.message);load();}}/>}
+      {logisticsFile&&<ExcelImportDialog file={logisticsFile} endpoint={importSupplierId?`/suppliers/${importSupplierId}/import/logistics`:'/suppliers/import/logistics'} title={`物流报价预览 · ${data.find((s:any)=>s.id===importSupplierId)?.name||'本仓多供应商'}`} resource={importSupplierId||0} onClose={()=>{setLogisticsFile(null);setImportSupplierId(null);}} onImported={r=>{toast('success',r.message);load();}}/>}
+      {productImportFile&&<ProductImportDialog canMap={canManageCatalog} file={productImportFile} supplierName={data.find((s:any)=>s.id===importSupplierId)?.name} supplierId={importSupplierId||undefined} onClose={()=>{setProductImportFile(null);setImportSupplierId(null);if(fileInputRef.current)fileInputRef.current.value="";}} onImported={r=>{toast("success",r.message);load();}}/>}
       {quoteProductId>0&&<SupplierQuoteEditor supplierId={productSupplierId} productId={quoteProductId} canEdit={canManageCatalog} onClose={()=>setQuoteProductId(0)} onDone={()=>toast("success","报价版本已保存，旧采购快照不变")}/>}
       {mappingProductId>0&&<SkuProductMapping productId={mappingProductId} canEdit={canManageCatalog} onClose={()=>setMappingProductId(0)} onDone={()=>{toast("success","人工映射已保存，历史订单不变");openProducts(productSupplierId);}}/>}
       <div className="flex justify-between mb-4 flex-wrap gap-2">
@@ -601,7 +581,10 @@ export default function SuppliersPage() {
               {/* Template download */}
               <button onClick={() => downloadTemplate("products")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>耗材模板</button>
               <button onClick={() => downloadTemplate("logistics")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>物流模板</button>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleSupplierImport} className="hidden" />
+              <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('products');setTimeout(()=>fileInputRef.current?.click(),0);}}>多供应商耗材导入</button>
+              <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('logistics');setTimeout(()=>fileInputRef.current?.click(),0);}}>多供应商物流导入</button>
+              <p className="text-xs">仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。单供应商入口在对应供应商行。</p>
+              <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleSupplierImport} className="hidden" />
               <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }} className="hidden" />
               <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>

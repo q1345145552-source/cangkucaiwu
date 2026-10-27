@@ -1,0 +1,83 @@
+..........F............................................................. [ 90%]
+........                                                                 [100%]
+=================================== FAILURES ===================================
+_ test_excel_invalid_inputs_have_line_numbers_without_partial_writes[formula] __
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-340/test_excel_invalid_inputs_have5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x117494fe0>
+kind = 'formula'
+
+    @pytest.mark.parametrize('kind',['duplicate','existing','unit','json','same_code_specs','formula','foreign_supplier','unknown_header'])
+    def test_excel_invalid_inputs_have_line_numbers_without_partial_writes(tmp_path,monkeypatch,kind):
+     async def run():
+      async with fixture(tmp_path,monkeypatch) as (_,f,c,receipt):
+       s=await sku(c);row=['导入核对袋','新规格',None,2,'个','THB',None,None];rows=[row];headers=None;path='/suppliers/1/import/products'
+       if kind=='duplicate':rows=[row,row]
+       if kind=='existing':rows=[['耗材',None,None,100,'个','THB']]
+       if kind=='unit':rows=[[row[0],row[1],None,2,'神秘箱','THB']]
+       if kind=='json':rows=[[row[0],row[1],None,2,'个','THB',None,'{"width":1,"width":2}']]
+       if kind=='same_code_specs':rows=[[row[0],row[1],None,2,'个','THB',s['code'],json.dumps({**ATTRS,'material':'PVC'})]]
+       if kind=='formula':rows=[[row[0],row[1],None,'=1+1','个','THB']]
+       if kind=='foreign_supplier':path='/suppliers/import/products';headers=['供应商名称','产品名','产品规格','规格报价','单价'];rows=[['外仓供应商','外仓袋','旧',None,2]]
+       if kind=='unknown_header':headers=['产品名','产品规格','规格报价','单价','标准SKU编号'];rows=[['未知隐藏ID','新',None,2,999]]
+       blob=workbook(rows,headers);files={'file':('invalid.xlsx',blob,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};preview=await request(c,'POST',path,files=files)
+       assert preview['valid'] is False and preview['errors'] and all(e['row_number']>=1 for e in preview['errors'])
+       await request(c,'POST',path,code=422,files=files,data={'mode':'confirm','request_key':'invalid-'+kind,'preview_version':preview['preview_version'],'choices':json.dumps([{'row_number':r['row_number'],'decision':'unmapped','confirmed':True} for r in preview['rows']])})
+       async with f() as db:assert (await db.execute(select(func.count(SupplierProduct.id)))).scalar_one()==1
+       actual('invalid_'+kind,preview)
+>    asyncio.run(run())
+
+backend/tests/test_supplier_sku_round5.py:186: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+../../.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_supplier_sku_round5.py:181: in run
+    blob=workbook(rows,headers);files={'file':('invalid.xlsx',blob,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};preview=await request(c,'POST',path,files=files)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = <httpx.AsyncClient object at 0x1176dd250>, method = 'POST'
+path = '/suppliers/1/import/products', uid = 1, warehouse = '1', code = 200
+kwargs = {'files': {'file': ('invalid.xlsx', b'PK\x03\x04\x14\x00\x00\x00\x08\x00\x0e\xb1[]F\xc7MH\x95\x00\x00\x00\xcd\x00\x00\...\t\x00\t\x00>\x02\x00\x00^\x11\x00\x00\x00\x00', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}}
+uuid = <module 'uuid' from '/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/uuid.py'>
+r = <Response [400 Bad Request]>, @py_assert1 = 400, @py_assert3 = False
+@py_format5 = '400\n{400 = <Response [400 Bad Request]>.status_code\n} == 200'
+@py_format7 = '(\'POST\', \'/suppliers/1/import/products\', 400, \'{"detail":"Sheet第2行包含公式；请粘贴核实后的数值"}\')\n>assert 400\n{400 = <Response [400 Bad Request]>.status_code\n} == 200'
+
+    async def request(c, method, path, uid=1, warehouse='1', code=200, **kwargs):
+        # New creation contract uses request IDs; keep the original round01 financial assertions intact.
+        import uuid
+        if method=='POST' and path.endswith('/purchase-order'):
+            kwargs['json'].setdefault('request_key',uuid.uuid4().hex)
+        if method=='POST' and path=='/payable':
+            kwargs['data'].setdefault('request_key',uuid.uuid4().hex)
+        r=await c.request(method,'/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':warehouse},**kwargs)
+>       assert r.status_code==code,(method,path,r.status_code,r.text)
+E       AssertionError: ('POST', '/suppliers/1/import/products', 400, '{"detail":"Sheet第2行包含公式；请粘贴核实后的数值"}')
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+backend/tests/test_supplier_workflow_round1.py:54: AssertionError
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_supplier_sku_round5.py: 251 warnings
+tests/test_incoming_operations.py: 66 warnings
+tests/test_supplier_workflow_round1.py: 106 warnings
+tests/test_excel_import_repair.py: 181 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_supplier_workflow_round1.py::test_multi_member_selected_warehouse_lists_create_pdf_receipt_and_actions
+  /tmp/supplier01-py312/lib/python3.12/site-packages/reportlab/lib/rl_safe_eval.py:12: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    haveNameConstant = hasattr(ast,'NameConstant')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/xiongliu/Desktop/海外仓财务系统/docs/excel-import-20261027/backend-related.xml -
+=========================== short test summary info ============================
+FAILED backend/tests/test_supplier_sku_round5.py::test_excel_invalid_inputs_have_line_numbers_without_partial_writes[formula]

@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'../src');
 function compile(file,imports,globals={}) {
  const m={exports:{}};
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,
-  {module:m,exports:m.exports,require:n=>imports[n]||require(n),Date,JSON,Number,Promise,URLSearchParams,FormData,Blob,console,...globals});
+  {module:m,exports:m.exports,require:n=>imports[n]||(n==='@/components/ExcelImportDialog'?{__esModule:true,default:()=>null}:n==='@/lib/excelImport'?compile('lib/excelImport.ts',imports,{process:{env:{}}}):require(n)),Date,JSON,Number,Promise,URLSearchParams,FormData,Blob,console,...globals});
  return m.exports;
 }
 const submission=compile('lib/incomingSubmission.ts',{});

@@ -1,0 +1,103 @@
+src/app/(dashboard)/audit-logs/page.tsx(38,16): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/clock-in/page.tsx(177,53): error TS2339: Property 'display_name' does not exist on type 'never'.
+src/app/(dashboard)/concentration/page.tsx(56,24): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/concentration/page.tsx(137,71): error TS2322: Type '{ size: number; className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/app/(dashboard)/employees/page.tsx(342,24): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/employees/page.tsx(363,24): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/expense-approvals/page.tsx(68,22): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/expense-fund/page.tsx(23,25): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/expense-fund/page.tsx(121,24): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/expense-fund/page.tsx(152,26): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/expense-fund/page.tsx(156,26): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/expense-fund/page.tsx(603,176): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/income-expense/page.tsx(133,177): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/operating/page.tsx(499,171): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/operating/page.tsx(540,183): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/overtime/page.tsx(88,7): error TS2304: Cannot find name 'setLimitInput'.
+src/app/(dashboard)/overtime/page.tsx(121,24): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/overtime/page.tsx(201,67): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/payable/page.tsx(471,128): error TS2322: Type '{ size: number; className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/app/(dashboard)/payable/page.tsx(479,401): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/payable/page.tsx(526,189): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/payable/page.tsx(527,204): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/payable/page.tsx(529,208): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/payable/page.tsx(591,201): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/payable/page.tsx(592,216): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/payable/page.tsx(600,220): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/payable/page.tsx(673,80): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number | undefined'.
+  Type 'string' is not assignable to type 'number'.
+src/app/(dashboard)/payable/page.tsx(675,107): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/app/(dashboard)/payable/page.tsx(676,95): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/app/(dashboard)/payable/page.tsx(677,100): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/app/(dashboard)/payable/page.tsx(677,258): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/app/(dashboard)/payroll/page.tsx(95,28): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/payroll/page.tsx(95,64): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/payroll/page.tsx(286,24): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/payroll/page.tsx(425,24): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/recharge/page.tsx(249,123): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/recharge/page.tsx(300,184): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/reimbursement/page.tsx(27,25): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(97,31): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(97,67): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(97,120): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(125,15): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(125,51): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(127,22): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(130,13): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(165,25): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(176,35): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(225,78): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(309,19): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(309,51): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(309,87): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(312,19): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(312,51): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(321,19): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(321,55): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(365,24): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(366,24): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(371,24): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(442,30): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(447,31): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(447,67): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(452,30): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(475,27): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(475,59): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(475,95): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/settings/page.tsx(607,24): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/suppliers/page.tsx(556,26): error TS18046: 'r' is of type 'unknown'.
+src/app/(dashboard)/suppliers/page.tsx(576,25): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/suppliers/page.tsx(576,61): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/suppliers/page.tsx(612,23): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/suppliers/page.tsx(612,59): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/suppliers/page.tsx(680,180): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/suppliers/page.tsx(684,178): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/suppliers/page.tsx(893,239): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/app/(dashboard)/warehouses/page.tsx(31,15): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/(dashboard)/warehouses/page.tsx(31,47): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/login/page.tsx(31,13): error TS2349: This expression is not callable.
+  Type 'never' has no call signatures.
+src/components/ClockRecordsGrid.tsx(34,45): error TS2339: Property 'role' does not exist on type 'never'.
+src/components/ClockRecordsGrid.tsx(34,81): error TS2339: Property 'role' does not exist on type 'never'.
+src/components/ClockRecordsGrid.tsx(53,15): error TS2339: Property 'role' does not exist on type 'never'.
+src/components/ClockRecordsGrid.tsx(53,51): error TS2339: Property 'role' does not exist on type 'never'.
+src/components/ClockRecordsGrid.tsx(63,13): error TS2339: Property 'role' does not exist on type 'never'.
+src/components/ClockRecordsGrid.tsx(179,32): error TS2339: Property 'role' does not exist on type 'never'.
+src/components/layout/DashboardLayout.tsx(414,50): error TS2345: Argument of type 'string' is not assignable to parameter of type 'Locale'.

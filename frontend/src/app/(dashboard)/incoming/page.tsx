@@ -1,4 +1,6 @@
 "use client";
+import ExcelImportDialog from "@/components/ExcelImportDialog";
+import { downloadExcel, checkExcel, importScope } from "@/lib/excelImport";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
@@ -26,6 +28,8 @@ async function incomingRequest<T>(path: string, options: RequestInit = {}): Prom
 
 export default function IncomingPage() {
   const { toast } = useToast(); const router = useRouter();
+  const [accountGuide,setAccountGuide] = useState<{scope:string;rows:any[]}|null>(null);
+  const [excelFile,setExcelFile] = useState<File|null>(null);
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -241,24 +245,14 @@ export default function IncomingPage() {
       </div>
 
       {/* 操作按钮行 */}
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => {
-          const API = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
-          fetch(`${API}/incoming/template`, { headers: { "Authorization": `Bearer ${getToken()}` } })
-            .then(res => res.blob()).then(blob => {
-              const a = document.createElement("a"); a.href = window.URL.createObjectURL(blob);
-              a.download = "incoming_template.xlsx"; a.click();
-            });
-        }} className="btn-secondary flex items-center gap-1 h-9"><Download size={14} />下载模板</button>
-        <button onClick={() => {
-          const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls';
-          input.onchange = async (e: any) => {
-            const file = e.target.files?.[0]; if (!file) return;
-            alert('Excel导入功能：请确保文件包含 received_date, amount, currency, payer_name, account_id 列');
-          }; input.click();
-        }} className="btn-secondary h-9">批量导入Excel</button>
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <button onClick={async()=>{try{await downloadExcel('/incoming/template','incoming_template.xlsx');}catch(e:any){toast('error',e.message);}}} className="btn-secondary flex items-center gap-1 h-9"><Download size={14}/>下载模板</button>
+        <button className="btn-secondary" onClick={async()=>{const scope=importScope();try{const result=await api.get<any>('/accounts');if(scope===importScope())setAccountGuide({scope,rows:result.data||[]});}catch(e:any){toast('error',e.message);}}}>查看收款账户编号</button>
+        <label className="btn-secondary cursor-pointer">批量导入Excel<input type="file" accept=".xlsx" aria-label="到账Excel文件" className="hidden" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)try{checkExcel(file);setExcelFile(file);}catch(err:any){toast('error',err.message);}}}/></label>
       </div>
 
+      {accountGuide&&accountGuide.scope===importScope()&&<div className="card p-3 mb-4 text-sm space-y-1"><p>请将明确选择的编号填入Excel“收款账户编号”列。此处只读展示，不自动选择账户。</p>{accountGuide.rows.map(a=><p key={a.id}>编号 {a.id} · {a.account_name} · {a.currency||'THB'} · {a.status==='inactive'?'已停用，不可导入':'账户可用条件以导入校验为准'}</p>)}{!accountGuide.rows.length&&<p>未找到可查看的账户，请核对当前仓库和权限。</p>}<button className="btn-secondary" onClick={()=>setAccountGuide(null)}>收起账户编号</button></div>}
+      {excelFile&&<ExcelImportDialog file={excelFile} endpoint="/incoming/import-excel" title="到账流水Excel预览与确认" onClose={()=>setExcelFile(null)} onImported={r=>{toast('success',r.message);load();}}/>}
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : (
         <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
       )}

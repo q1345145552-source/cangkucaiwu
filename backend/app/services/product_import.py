@@ -1,10 +1,9 @@
 """Legacy Excel formats, read-only preview, explicit atomic confirmation and replay."""
-import io,json,hashlib,zipfile
+import json,hashlib
 from itertools import islice
 from types import SimpleNamespace
 from decimal import Decimal,InvalidOperation
 from fastapi import HTTPException
-from openpyxl import load_workbook
 from sqlalchemy import select
 from app.models import Supplier,SupplierProduct,StandardSKU,ProductImportOperation
 from app.services import sku_catalog as catalog
@@ -36,11 +35,8 @@ def duplicate_key(row):return tuple(row.get(k) or '' for k in ('supplier_id','pr
 
 async def preview(db,wid,user,content,supplier_id=None):
  if not content or len(content)>2*1024*1024:raise HTTPException(400,'请选择2MB以内的xlsx文件')
- try:
-  with zipfile.ZipFile(io.BytesIO(content)) as z:
-   if sum(i.file_size for i in z.infolist())>20*1024*1024:raise ValueError('expanded workbook too large')
-  wb=load_workbook(io.BytesIO(content),read_only=True,data_only=False)
- except Exception:raise HTTPException(400,'无法读取xlsx文件或文件内容过大，未导入任何产品')
+ from app.services.excel_import import workbook
+ wb=workbook(content, allow_active_formulas=True)
  try:
   ws=wb.active
   if (ws.max_row or 0)>501 or (ws.max_column or 0)>20:raise HTTPException(400,'每次最多500条、20列，请拆分文件')
@@ -65,13 +61,13 @@ async def preview(db,wid,user,content,supplier_id=None):
   for number,cells_row in enumerate(cells[1:],2):
    if not any(c.value not in (None,'') for c in cells_row):continue
    raw={k:cells_row[i].value if i<len(cells_row) else None for k,i in header.items()}
-   if str(raw.get('supplier_name') or raw.get('product_name') or '').startswith('示例:'):continue
+   if raw.get('supplier_name')=='示例: 耗材商A' and raw.get('product_name')=='快递袋' and raw.get('spec')=='一打80个' and raw.get('spec_price')==80 and raw.get('unit_price')==1 and not any(c.data_type=='f' for c in cells_row):continue
    entry={'row_number':number,'errors':[],'candidates':[],'catalog_visible':can_catalog}
    try:
     if any(c.data_type=='f' for c in cells_row):raise HTTPException(400,'不接受公式，请粘贴核实后的数值')
     name=catalog.label(raw.get('product_name'),'产品名',200);source=selected
     if selected:
-     if raw.get('supplier_name') not in (None,'') and str(raw['supplier_name']).strip()!=selected.name.strip():raise HTTPException(400,'文件供应商名称与当前所选供应商不一致')
+     if raw.get('supplier_name') not in (None,'') and str(raw['supplier_name']).strip()!=selected.name.strip():raise HTTPException(400,'文件供应商名称与当前所选供应商不一致；请使用供应商页面“多供应商耗材导入”入口或选择正确供应商')
     else:
      found=names.get(str(raw.get('supplier_name') or '').strip(),[])
      if len(found)!=1:raise HTTPException(400,'供应商名称不存在或不唯一，请指定本仓供应商后核对')

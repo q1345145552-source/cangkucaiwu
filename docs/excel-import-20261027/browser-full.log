@@ -1,0 +1,15 @@
+user {"id":1,"username":"test-1","display_name":"测试账号1","role":"warehouse_admin","warehouse_id":1,"warehouse_name":"测试仓1","warehouses":[{"id":1,"name":"测试仓1","code":"TEST1"},{"id":2,"name":"测试仓2","code":"TEST2"}],"is_active":true,"extra_permissions":[],"attendance_enabled":false,"attendance_employee_id":null}
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+page.waitForEvent: Timeout 30000ms exceeded while waiting for event "filechooser"
+=========================== logs ===========================
+waiting for event "filechooser"
+============================================================
+    at /private/tmp/excel-import-browser.cjs:25:14 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v24.19.0

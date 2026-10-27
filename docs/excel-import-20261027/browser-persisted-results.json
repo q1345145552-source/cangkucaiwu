@@ -1,0 +1,245 @@
+{
+  "incoming": {
+    "data": [
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "received_date": "2026-10-20T00:00:00",
+        "amount": 200.0,
+        "currency": "THB",
+        "account_id": 1,
+        "payer_name": "合成手机付款人",
+        "payment_method": "现金",
+        "remark": "隔离测试",
+        "match_status": "unmatched",
+        "entrant_name": "测试账号1",
+        "created_at": "2026-10-27T15:19:37.496546+00:00",
+        "request_key": "2c5cf4fe026c99c0672c80240fe7d8295a1a66ca02acd0ccd6193e56aa27b254",
+        "has_screenshot": false,
+        "customer_id": null,
+        "resolved_customer_id": null,
+        "customer_identity_conflict": false
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 20
+  },
+  "accounts": {
+    "data": [
+      {
+        "id": 1,
+        "warehouse_id": 1,
+        "account_name": "测试现金1",
+        "account_type": "cash",
+        "account_number": "-",
+        "account_nature": null,
+        "account_nature_label": null,
+        "belongs_to_owner_wallet": null,
+        "opening_balance": 10000.0,
+        "opening_balance_date": "2026-10-01",
+        "current_balance": 10200.0,
+        "bank_name": null,
+        "branch_name": null,
+        "account_holder": null,
+        "currency": "THB",
+        "status": "active",
+        "remark": null
+      },
+      {
+        "id": 3,
+        "warehouse_id": 1,
+        "account_name": "人民币账户",
+        "account_type": "cash",
+        "account_number": "-",
+        "account_nature": null,
+        "account_nature_label": null,
+        "belongs_to_owner_wallet": null,
+        "opening_balance": 10000.0,
+        "opening_balance_date": "2026-10-01",
+        "current_balance": 10000.0,
+        "bank_name": null,
+        "branch_name": null,
+        "account_holder": null,
+        "currency": "CNY",
+        "status": "active",
+        "remark": null
+      }
+    ],
+    "nature_options": [
+      {
+        "value": "cash",
+        "label": "现金户",
+        "description": "老板手边现金"
+      },
+      {
+        "value": "corporate",
+        "label": "企业户",
+        "description": "公司名下账户"
+      }
+    ],
+    "warehouse_ids": [
+      1
+    ],
+    "wallet_balances_by_currency": {
+      "CNY": {
+        "cash_balance": 0.0,
+        "corporate_balance": 0.0,
+        "unclassified_balance": 10000.0,
+        "unclassified_account_count": 1,
+        "account_count": 1,
+        "classified_wallet_balance": 0.0,
+        "wallet_total_complete": false,
+        "wallet_actual_balance": null,
+        "all_account_balance": 10000.0
+      },
+      "THB": {
+        "cash_balance": 0.0,
+        "corporate_balance": 0.0,
+        "unclassified_balance": 10200.0,
+        "unclassified_account_count": 1,
+        "account_count": 1,
+        "classified_wallet_balance": 0.0,
+        "wallet_total_complete": false,
+        "wallet_actual_balance": null,
+        "all_account_balance": 10200.0
+      }
+    }
+  },
+  "products1": {
+    "data": [
+      {
+        "id": 5,
+        "product_name": "手机SKU入口合成袋",
+        "spec": "12cm",
+        "spec_price": null,
+        "unit_price": 6.0,
+        "currency": "THB",
+        "unit": "个",
+        "remark": null,
+        "comparison_basis": "同仓同名称规格、同币种及原单位参考；不等同于已核实SKU比价",
+        "is_lowest": true,
+        "min_price": 6.0,
+        "min_supplier_name": "本仓供应商",
+        "price_diff": null,
+        "standard_sku_id": null,
+        "sku_snapshot": null,
+        "catalog_attributes": null,
+        "base_unit_factor": null,
+        "product_version": "62d5bdd2c53541aec532f164a0660ce930dde0fe7e82990d70cc6eebde68d709",
+        "mapping_status": "unmapped",
+        "mapping_label": "未映射/待核对",
+        "comparable": false
+      },
+      {
+        "id": 4,
+        "product_name": "手机单供应商合成袋",
+        "spec": "11cm",
+        "spec_price": null,
+        "unit_price": 5.0,
+        "currency": "THB",
+        "unit": "个",
+        "remark": null,
+        "comparison_basis": "同仓同名称规格、同币种及原单位参考；不等同于已核实SKU比价",
+        "is_lowest": true,
+        "min_price": 5.0,
+        "min_supplier_name": "本仓供应商",
+        "price_diff": null,
+        "standard_sku_id": null,
+        "sku_snapshot": null,
+        "catalog_attributes": null,
+        "base_unit_factor": null,
+        "product_version": "acd59449ed0d36da15d8b96d5528b21f50807822b81844a1e61dbf34b308e3e7",
+        "mapping_status": "unmapped",
+        "mapping_label": "未映射/待核对",
+        "comparable": false
+      },
+      {
+        "id": 2,
+        "product_name": "手机全局合成袋",
+        "spec": "10cm",
+        "spec_price": null,
+        "unit_price": 3.0,
+        "currency": "THB",
+        "unit": "个",
+        "remark": null,
+        "comparison_basis": "同仓同名称规格、同币种及原单位参考；不等同于已核实SKU比价",
+        "is_lowest": true,
+        "min_price": 3.0,
+        "min_supplier_name": "本仓供应商",
+        "price_diff": null,
+        "standard_sku_id": null,
+        "sku_snapshot": null,
+        "catalog_attributes": null,
+        "base_unit_factor": null,
+        "product_version": "74df793243b2466e466b2e9844099013c3dd729296454316ea0477021f508479",
+        "mapping_status": "unmapped",
+        "mapping_label": "未映射/待核对",
+        "comparable": false
+      },
+      {
+        "id": 1,
+        "product_name": "耗材",
+        "spec": null,
+        "spec_price": null,
+        "unit_price": 100.0,
+        "currency": "THB",
+        "unit": "个",
+        "remark": null,
+        "comparison_basis": "同仓同名称规格、同币种及原单位参考；不等同于已核实SKU比价",
+        "is_lowest": true,
+        "min_price": 100.0,
+        "min_supplier_name": "本仓供应商",
+        "price_diff": null,
+        "standard_sku_id": null,
+        "sku_snapshot": null,
+        "catalog_attributes": null,
+        "base_unit_factor": null,
+        "product_version": "46a20d74a8c9a23e91da681f1583724fc803984bcbccff1fa2ddde872efc0dd8",
+        "mapping_status": "unmapped",
+        "mapping_label": "未映射/待核对",
+        "comparable": false
+      }
+    ]
+  },
+  "products3": {
+    "data": [
+      {
+        "id": 3,
+        "product_name": "手机乙合成袋",
+        "spec": "20cm",
+        "spec_price": null,
+        "unit_price": 4.0,
+        "currency": "THB",
+        "unit": "个",
+        "remark": null,
+        "comparison_basis": "同仓同名称规格、同币种及原单位参考；不等同于已核实SKU比价",
+        "is_lowest": true,
+        "min_price": 4.0,
+        "min_supplier_name": "合成供应商乙",
+        "price_diff": null,
+        "standard_sku_id": null,
+        "sku_snapshot": null,
+        "catalog_attributes": null,
+        "base_unit_factor": null,
+        "product_version": "ce7ee6b0cf77b1414cb383bf4f10770e36068d241c7dd45aa38bc5a1f1116130",
+        "mapping_status": "unmapped",
+        "mapping_label": "未映射/待核对",
+        "comparable": false
+      }
+    ]
+  },
+  "logistics": {
+    "data": [
+      {
+        "id": 1,
+        "transport_method": "陆运",
+        "cargo_type": "普货",
+        "origin_warehouse": "深圳仓",
+        "price_per_cbm": 800.0,
+        "estimated_days": "5-7天",
+        "currency": "CNY"
+      }
+    ]
+  }
+}
