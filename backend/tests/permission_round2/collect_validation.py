@@ -1,3 +1,5 @@
+
+raise SystemExit('Historical collector superseded by permissions-r02-fix02-20261028; do not regenerate name-only root-cause conclusions. Use reconcile_failure_evidence.py.')
 import json,re,xml.etree.ElementTree as ET,subprocess,hashlib
 from pathlib import Path
 root=Path('/private/tmp/permissions-round2-20261028');out=root/'docs/permissions-round2-20261028';logs=Path('/private/tmp/permissions-round2-env/logs')

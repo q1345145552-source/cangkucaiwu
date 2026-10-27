@@ -1,4 +1,6 @@
 """Collect local fix01 logs and evidence; does not start services or contact remote systems."""
+
+raise SystemExit('Historical collector superseded by permissions-r02-fix02-20261028; do not regenerate name-only root-cause conclusions. Use reconcile_failure_evidence.py.')
 from pathlib import Path
 import hashlib,json,shutil,subprocess,xml.etree.ElementTree as ET
 ROOT=Path(__file__).resolve().parents[3]

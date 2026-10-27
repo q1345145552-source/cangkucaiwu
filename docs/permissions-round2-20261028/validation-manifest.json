@@ -94,5 +94,6 @@
     "frontend/src/hooks/useAuth.tsx": "9093e250d9a1cfcca6d1e11459ec49aab1b07ef0349ab0f6d366685563b7aba1"
   },
   "first_round_evidence_unchanged": true,
-  "local_services_stopped": true
+  "local_services_stopped": true,
+  "failure_comparison_correction": "See ../permissions-r02-fix02-20261028/failure-audit.json; failure names alone do not prove root causes. 47 non-source failures comparable; 5 source tests need historical/authorized-change review."
 }

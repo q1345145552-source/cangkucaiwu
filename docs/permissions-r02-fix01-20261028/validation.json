@@ -101,5 +101,13 @@
     "other_chat_dispatch": false,
     "old_evidence_modified": false
   },
-  "local_postgres_stopped": true
+  "local_postgres_stopped": true,
+  "candidate_baseline_regression_is_comparable": false,
+  "correction": {
+    "marker": "permissions7-r02-fix02-20261028",
+    "invalid_archive_comparisons": 4,
+    "reason": "Four baseline git show commands exited 128 before reaching source assertions. Old observations retained; equal failure names did not prove equal causes.",
+    "replacement_evidence": "../permissions-r02-fix02-20261028/failure-audit.json",
+    "targeted_worktree_reruns": "Three actual revisions, six tests each, all reached assertions; no new complete 81-test claim."
+  }
 }

@@ -1,0 +1,51 @@
+{
+  "marker": "permissions7-r02-fix02-20261028",
+  "refs": {
+    "bc903a5": "bc903a55c60c865f8eb95a4e6374ef5325ab4685",
+    "11d032a": "11d032a41d0d39d770285ce5367ea4d15a2e8e51",
+    "422ee2b": "422ee2b09b38059215737f4f839f2d4ebc670df1"
+  },
+  "test_file_hashes": {
+    "bc903a5": {
+      "test_fund_disbursement.py": "6e3e536d76e22588da72dcbb10e2282bc98fc029cbca0a85710c908913466836",
+      "test_fund_item_controls.py": "fa8a54b3d98a6abd22d1269262e88b2c61b10118e9cb071d2f558f632e0fb2cd",
+      "test_fund_receipts.py": "f7e5c67e85ce7cc9a26a26940c3acb8263fd23c0804a144e6a4cb7f222e09886",
+      "test_disabled_financial_reversals.py": "8a39863e3a0dd84c7a53941fb613b41b38167c622f430efb30bba7946a224e86",
+      "test_config_center_access.py": "ff5deee01677f41e657978317122c9ff44da06f7449a81fc658fdf96e043cf54"
+    },
+    "11d032a": {
+      "test_fund_disbursement.py": "1130d9f277991f9966bb3210c6be39c0b00de6612ce923b8b566ef54cf3fe2c0",
+      "test_fund_item_controls.py": "27244c3d0dc291d5ffba3cbd98e9ba5d84b28b422272d6558257768d47cd4067",
+      "test_fund_receipts.py": "970180ab73eea4e14873a344c06eda93b7b96195bbc9295720cedb5f4128e72e",
+      "test_disabled_financial_reversals.py": "8a39863e3a0dd84c7a53941fb613b41b38167c622f430efb30bba7946a224e86",
+      "test_config_center_access.py": "96fd26445d178e1c06e918d4acb8c750c18b0a0831bc03eecd73614ffdeaf360"
+    },
+    "422ee2b": {
+      "test_fund_disbursement.py": "1130d9f277991f9966bb3210c6be39c0b00de6612ce923b8b566ef54cf3fe2c0",
+      "test_fund_item_controls.py": "27244c3d0dc291d5ffba3cbd98e9ba5d84b28b422272d6558257768d47cd4067",
+      "test_fund_receipts.py": "970180ab73eea4e14873a344c06eda93b7b96195bbc9295720cedb5f4128e72e",
+      "test_disabled_financial_reversals.py": "8a39863e3a0dd84c7a53941fb613b41b38167c622f430efb30bba7946a224e86",
+      "test_config_center_access.py": "96fd26445d178e1c06e918d4acb8c750c18b0a0831bc03eecd73614ffdeaf360"
+    }
+  },
+  "selected_tests_identical_candidate_and_fix": true,
+  "database": "localhost 127.0.0.1:65359 synthetic round2",
+  "python": "/tmp/supplier01-py312/bin/python",
+  "each_rerun_count": 6,
+  "each_exit_code": {
+    "bc903a5": 1,
+    "11d032a": 1,
+    "422ee2b": 1
+  },
+  "old_47_non_source_failures_compared_without_unnecessary_rerun": true,
+  "source_assertion_tests_separately_reviewed": 5,
+  "business_code_changed_this_fix": false,
+  "production_access": false,
+  "push_fetch_deploy_ssh": false,
+  "local_postgres_stopped": true,
+  "worktree_heads": {
+    "bc903a5": "bc903a55c60c865f8eb95a4e6374ef5325ab4685",
+    "11d032a": "11d032a41d0d39d770285ce5367ea4d15a2e8e51",
+    "422ee2b": "422ee2b09b38059215737f4f839f2d4ebc670df1"
+  }
+}

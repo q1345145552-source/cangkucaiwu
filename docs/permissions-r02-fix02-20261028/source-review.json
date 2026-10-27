@@ -1,0 +1,522 @@
+{
+  "backend/app/api/v1/payroll.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "historical_assertions": {
+      "3e19093": {
+        "bc903a5": {
+          "changed": [
+            "_compute_employee_records",
+            "_disbursement_funding",
+            "batch_disburse_payroll",
+            "disburse_payroll",
+            "list_payroll",
+            "my_payslip",
+            "payroll_cash_advance_sources"
+          ],
+          "added": [
+            "payroll_detail",
+            "reject_labor_management_payroll"
+          ],
+          "removed": [],
+          "text_equal": false
+        },
+        "11d032a": {
+          "changed": [
+            "_compute_employee_records",
+            "_disbursement_funding",
+            "batch_disburse_payroll",
+            "disburse_payroll",
+            "list_payroll",
+            "my_payslip",
+            "payroll_cash_advance_sources"
+          ],
+          "added": [
+            "payroll_detail",
+            "reject_labor_management_payroll"
+          ],
+          "removed": [],
+          "text_equal": false
+        },
+        "422ee2b": {
+          "changed": [
+            "_compute_employee_records",
+            "_disbursement_funding",
+            "batch_disburse_payroll",
+            "disburse_payroll",
+            "list_payroll",
+            "my_payslip",
+            "payroll_cash_advance_sources"
+          ],
+          "added": [
+            "payroll_detail",
+            "reject_labor_management_payroll"
+          ],
+          "removed": [],
+          "text_equal": false
+        }
+      },
+      "14a0198": {
+        "bc903a5": {
+          "changed": [
+            "_compute_employee_records",
+            "_disbursement_funding",
+            "batch_disburse_payroll",
+            "disburse_payroll",
+            "export_payroll",
+            "list_payroll",
+            "my_payslip",
+            "payroll_cash_advance_sources",
+            "revoke_disbursement"
+          ],
+          "added": [
+            "payroll_detail",
+            "reject_labor_management_payroll"
+          ],
+          "removed": [],
+          "text_equal": false
+        },
+        "11d032a": {
+          "changed": [
+            "_compute_employee_records",
+            "_disbursement_funding",
+            "batch_disburse_payroll",
+            "disburse_payroll",
+            "export_payroll",
+            "list_payroll",
+            "my_payslip",
+            "payroll_cash_advance_sources",
+            "revoke_disbursement"
+          ],
+          "added": [
+            "payroll_detail",
+            "reject_labor_management_payroll"
+          ],
+          "removed": [],
+          "text_equal": false
+        },
+        "422ee2b": {
+          "changed": [
+            "_compute_employee_records",
+            "_disbursement_funding",
+            "batch_disburse_payroll",
+            "disburse_payroll",
+            "export_payroll",
+            "list_payroll",
+            "my_payslip",
+            "payroll_cash_advance_sources",
+            "revoke_disbursement"
+          ],
+          "added": [
+            "payroll_detail",
+            "reject_labor_management_payroll"
+          ],
+          "removed": [],
+          "text_equal": false
+        }
+      }
+    }
+  },
+  "backend/app/api/v1/reimbursement.py": {
+    "round2": {
+      "changed": [
+        "get_reimb_detail",
+        "list_reimbursements",
+        "pay_reimb",
+        "review_reimb"
+      ],
+      "added": [],
+      "removed": [],
+      "text_equal": false
+    },
+    "partial_fix": {
+      "changed": [
+        "review_reimb"
+      ],
+      "added": [],
+      "removed": [],
+      "text_equal": false
+    },
+    "historical_assertions": {
+      "4cbf9e8": {
+        "bc903a5": {
+          "changed": [
+            "create_reimbursement",
+            "edit_reimb",
+            "get_reimb_detail",
+            "list_reimb_categories",
+            "list_reimbursements",
+            "payment_history",
+            "submit_reimb"
+          ],
+          "added": [],
+          "removed": [],
+          "text_equal": false
+        },
+        "11d032a": {
+          "changed": [
+            "create_reimbursement",
+            "edit_reimb",
+            "get_reimb_detail",
+            "list_reimb_categories",
+            "list_reimbursements",
+            "pay_reimb",
+            "payment_history",
+            "review_reimb",
+            "submit_reimb"
+          ],
+          "added": [],
+          "removed": [],
+          "text_equal": false
+        },
+        "422ee2b": {
+          "changed": [
+            "create_reimbursement",
+            "edit_reimb",
+            "get_reimb_detail",
+            "list_reimb_categories",
+            "list_reimbursements",
+            "pay_reimb",
+            "payment_history",
+            "review_reimb",
+            "submit_reimb"
+          ],
+          "added": [],
+          "removed": [],
+          "text_equal": false
+        }
+      },
+      "14e2541": {
+        "bc903a5": {
+          "changed": [
+            "create_reimbursement",
+            "edit_reimb",
+            "get_reimb_detail",
+            "list_reimb_categories",
+            "list_reimbursements",
+            "payment_history",
+            "submit_reimb"
+          ],
+          "added": [],
+          "removed": [],
+          "text_equal": false
+        },
+        "11d032a": {
+          "changed": [
+            "create_reimbursement",
+            "edit_reimb",
+            "get_reimb_detail",
+            "list_reimb_categories",
+            "list_reimbursements",
+            "pay_reimb",
+            "payment_history",
+            "review_reimb",
+            "submit_reimb"
+          ],
+          "added": [],
+          "removed": [],
+          "text_equal": false
+        },
+        "422ee2b": {
+          "changed": [
+            "create_reimbursement",
+            "edit_reimb",
+            "get_reimb_detail",
+            "list_reimb_categories",
+            "list_reimbursements",
+            "pay_reimb",
+            "payment_history",
+            "review_reimb",
+            "submit_reimb"
+          ],
+          "added": [],
+          "removed": [],
+          "text_equal": false
+        }
+      }
+    }
+  },
+  "backend/app/api/v1/employee_advance.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/api/v1/expense_fund.py": {
+    "round2": {
+      "changed": [
+        "add_item",
+        "batch_review",
+        "create_account",
+        "edit_item",
+        "list_accounts",
+        "list_pending_reviews",
+        "list_recharge_requests",
+        "review_recharge_request",
+        "submit_recharge_request",
+        "topup_account",
+        "update_settings",
+        "upload_new_item_receipt",
+        "upload_receipt",
+        "void_item"
+      ],
+      "added": [
+        "execute_recharge"
+      ],
+      "removed": [],
+      "text_equal": false
+    },
+    "partial_fix": {
+      "changed": [
+        "batch_review"
+      ],
+      "added": [],
+      "removed": [],
+      "text_equal": false
+    }
+  },
+  "backend/app/api/v1/cash_advance.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/api/v1/clock_in.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/api/v1/config_api.py": {
+    "round2": {
+      "changed": [
+        "get_work_schedule_settings",
+        "set_work_schedule_settings"
+      ],
+      "added": [],
+      "removed": [],
+      "text_equal": false
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/api/v1/expense_approval.py": {
+    "round2": {
+      "changed": [
+        "set_threshold"
+      ],
+      "added": [],
+      "removed": [],
+      "text_equal": false
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "historical_assertions": {
+      "e970f41": {
+        "bc903a5": {
+          "changed": [
+            "_generate_operating_expense",
+            "_link_fund",
+            "approval_summary",
+            "approve_approval",
+            "create_approval",
+            "list_approvals",
+            "pay_approval",
+            "reject_approval",
+            "set_threshold",
+            "update_approval"
+          ],
+          "added": [
+            "_payment_result"
+          ],
+          "removed": [],
+          "text_equal": false
+        },
+        "11d032a": {
+          "changed": [
+            "_generate_operating_expense",
+            "_link_fund",
+            "approval_summary",
+            "approve_approval",
+            "create_approval",
+            "list_approvals",
+            "pay_approval",
+            "reject_approval",
+            "set_threshold",
+            "update_approval"
+          ],
+          "added": [
+            "_payment_result"
+          ],
+          "removed": [],
+          "text_equal": false
+        },
+        "422ee2b": {
+          "changed": [
+            "_generate_operating_expense",
+            "_link_fund",
+            "approval_summary",
+            "approve_approval",
+            "create_approval",
+            "list_approvals",
+            "pay_approval",
+            "reject_approval",
+            "set_threshold",
+            "update_approval"
+          ],
+          "added": [
+            "_payment_result"
+          ],
+          "removed": [],
+          "text_equal": false
+        }
+      }
+    }
+  },
+  "backend/app/api/v1/suppliers.py": {
+    "round2": {
+      "changed": [
+        "set_approval_threshold",
+        "set_concentration_threshold",
+        "set_price_threshold"
+      ],
+      "added": [],
+      "removed": [],
+      "text_equal": false
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/api/v1/history.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/services/reimbursement_payment.py": {
+    "round2": {
+      "changed": [
+        "pay"
+      ],
+      "added": [],
+      "removed": [],
+      "text_equal": false
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/services/account_balances.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/services/payroll_expense.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/services/fund_disbursement.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  },
+  "backend/app/services/flow_rules.py": {
+    "round2": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    },
+    "partial_fix": {
+      "changed": [],
+      "added": [],
+      "removed": [],
+      "text_equal": true
+    }
+  }
+}

@@ -1,0 +1,121 @@
+diff --git a/backend/app/api/v1/expense_fund.py b/backend/app/api/v1/expense_fund.py
+index 43914df..cd28938 100644
+--- a/backend/app/api/v1/expense_fund.py
++++ b/backend/app/api/v1/expense_fund.py
+@@ -575,21 +575,31 @@ async def batch_review(
+         linked = (await db.execute(select(Reimbursement).where(Reimbursement.fund_item_id == item.id,
+             Reimbursement.is_fund_linked == '1'))).scalar_one_or_none()
+         if linked:
+-            if linked.warehouse_id != fund.warehouse_id or linked.status == 'paid':
++            if (linked.warehouse_id != fund.warehouse_id or linked.employee_id != fund.employee_id
++                    or linked.status not in ('pending', 'fund_linked')):
+                 raise HTTPException(409, '关联报销归属或状态不合法')
+             await duties.independent(db, current_user, linked.employee_id)
++            from app.models.reimbursement import ReimbursementItem
++            details = (await db.execute(select(ReimbursementItem).where(
++                ReimbursementItem.reimbursement_id == linked.id).with_for_update())).scalars().all()
++            from decimal import Decimal
++            if (not details or any(d.review_status != 'pending' for d in details)
++                    or not duties.same_payment_amount(sum(Decimal(str(d.amount)) for d in details), item.amount)
++                    or not duties.same_payment_amount(linked.total_amount, item.amount)
++                    or linked.currency != item.currency):
++                raise HTTPException(409, '关联报销明细已经审核或金额不一致，请在报销明细入口处理')
+         if req.action == 'verify' and item.review_status != 'pending':
+             raise HTTPException(409, '该开销已核验')
+         if req.action == 'approve':
+             if item.review_status != 'verified':
+                 raise HTTPException(409, '请先完成凭证核验')
+-            await duties.proof(db, item, 'item_verify', duties.item_payload(item, fund), fund.warehouse_id)
++            await duties.proof(db, item, 'item_verify', await duties.item_review_payload(db, item, fund), fund.warehouse_id)
+         if req.action != 'reject' and not linked and not (item.receipt or '').strip():
+             raise HTTPException(400, '该开销没有凭证，请先上传开销凭证')
+     if req.action == 'verify':
+         for item, fund in rows:
+             item.review_status = 'verified'
+-            await duties.evidence(db, current_user, item, 'item_verify', duties.item_payload(item, fund), fund.warehouse_id)
++            await duties.evidence(db, current_user, item, 'item_verify', await duties.item_review_payload(db, item, fund), fund.warehouse_id)
+         await db.flush()
+         return {'message': '凭证已核验，尚未批准或付款', 'count': len(rows)}
+     new_status = 'approved' if req.action == 'approve' else 'rejected'
+@@ -641,8 +651,6 @@ async def batch_review(
+             await costs.sync(db,'fund_item',item,current_user,skip_suspicion=req.action!='approve',
+                 confirmation=(req.cost_confirmations or {}).get(item_id,req.cost_confirmation))
+         fund = next(fund for row, fund in rows if row.id == item.id)
+-        await duties.evidence(db, current_user, item, 'item_' + req.action,
+-            duties.item_payload(item, fund), fund.warehouse_id)
+         processed += 1
+ 
+         # Sync with linked reimbursement（仅在状态真正发生变化时执行一次）
+@@ -652,6 +660,10 @@ async def batch_review(
+                 if req.action == "approve":
+                     reimb.status = ReimbStatus.APPROVED.value
+                     reimb.reviewer_id = current_user.id
++                    details = (await db.execute(select(ReimbursementItem).where(
++                        ReimbursementItem.reimbursement_id == reimb.id))).scalars().all()
++                    for detail in details:
++                        detail.review_status = 'approved'
+                     # Approval alone never creates a payment record or changes the reserved balance.
+                 elif req.action == "reject":
+                     # Restore balance and unlock reimbursement（仅当之前不是已驳回）
+@@ -665,6 +677,9 @@ async def batch_review(
+                     from app.services.reimbursement_payment import sync_fund_review_payment
+                     await sync_fund_review_payment(db, reimb, current_user, approved=False, reason=req.remark)
+ 
++        await db.flush()
++        await duties.evidence(db, current_user, item, 'item_' + req.action,
++            await duties.item_review_payload(db, item, fund), fund.warehouse_id)
+     await db.flush()
+ 
+     labels = {"approve": "通过", "reject": "驳回"}
+diff --git a/backend/app/api/v1/reimbursement.py b/backend/app/api/v1/reimbursement.py
+index 0e9bf17..225769e 100644
+--- a/backend/app/api/v1/reimbursement.py
++++ b/backend/app/api/v1/reimbursement.py
+@@ -444,7 +444,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
+     if not r: raise HTTPException(404, "报销单不存在")
+     if r.warehouse_id not in get_wh_ids(current_user):
+         raise HTTPException(403, "只能审批本仓库的报销单")
+-    # 状态前置：仅待审批/转入备用金审核/部分通过 可再审批，已付款或已驳回不可重复审批（防重复退款）
++    # 普通报销保留原再审规则；关联备用金还必须满足下方核验守卫，已批准快照不可改审。
+     from app.services.flow_rules import is_reviewable_reimb, can_refund_fund_item
+     if not is_reviewable_reimb(r.status):
+         raise HTTPException(400, f"当前状态（{r.status}）不可审批")
+@@ -475,7 +475,13 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
+         await duties.independent(db, current_user, r.employee_id, linked[1].employee_id)
+         if linked[0].review_status != 'verified':
+             raise HTTPException(409, '请先完成关联备用金凭证核验')
+-        await duties.proof(db, linked[0], 'item_verify', duties.item_payload(*linked), r.warehouse_id)
++        await duties.proof(db, linked[0], 'item_verify', await duties.item_review_payload(db, *linked), r.warehouse_id)
++        if any(decisions.get(item.id, item.review_status) not in ('approved', 'rejected') for item in items):
++            raise HTTPException(400, '关联备用金报销必须明确决定全部明细后才能批准')
++        from decimal import Decimal
++        if (not duties.same_payment_amount(sum(Decimal(str(item.amount)) for item in items), linked[0].amount)
++                or r.currency != linked[0].currency):
++            raise HTTPException(409, '报销明细金额或币种与备用金记录不一致')
+ 
+     r.reviewer_id = current_user.id
+     r.review_remark = req.overall_remark
+@@ -487,11 +493,6 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
+ 
+     if rejected_count == 0:
+         r.status = ReimbStatus.APPROVED.value
+-        if r.is_fund_linked == "1" and r.fund_item_id:
+-            fund_item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id))).scalar_one_or_none()
+-            if fund_item:
+-                fund_item.review_status = ReviewStatus.APPROVED.value
+-                await duties.evidence(db, current_user, fund_item, 'item_approve', duties.item_payload(*linked), r.warehouse_id)
+     elif approved_count > 0:
+         r.status = ReimbStatus.PARTIALLY_APPROVED.value
+     else:
+@@ -505,6 +506,11 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
+                     fund.remaining_balance = (fund.remaining_balance or 0) + fund_item.amount
+                 fund_item.review_status = ReviewStatus.REJECTED.value
+     r.total_amount = approved_amount
++    if r.is_fund_linked == '1' and r.fund_item_id and approved_count > 0:
++        linked[0].review_status = ReviewStatus.APPROVED.value
++        await db.flush()
++        await duties.evidence(db, current_user, linked[0], 'item_approve',
++            await duties.item_review_payload(db, *linked), r.warehouse_id)
+     await db.flush(); return {"message": "审批完成", "status": r.status, "approved_amount": approved_amount}
+ 
+ @router.post("/{reimb_id}/pay", dependencies=[Depends(mutation_scope)])

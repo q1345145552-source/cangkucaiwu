@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="6" time="2.512" timestamp="2026-10-28T02:48:37.502831+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_fund_disbursement" name="test_new_fund_employee_advance_records_usage_without_second_cost" time="0.468"><failure message="assert {'_apply_payr...ams=[])', ...} == {'_apply_payr...ams=[])', ...}&#10;  &#10;  Omitting 31 identical items, use -vv to show&#10;  Differing items:&#10;  {'list_payroll': &quot;AsyncFunctionDef(name='list_payroll', args=arguments(posonlyargs=[], args=[arg(arg='period', annotat...lue=Name(id='router', ctx=Load()), attr='get', ctx=Load()), args=[Constant(value='')], keywords=[])], type_params=[])&quot;} != {'list_payroll': &quot;AsyncFunctionDef(name='list_payroll', args=arguments(posonlyargs=[], args=[arg(arg='period', annotat...lue=Name(id='router', ctx=Load()), attr='get', ctx=Load()), args=[Constant(value='')], keywords=[])], type_params=[])&quot;}&#10;  {'_compute_employee_records': &quot;A...&#10;  &#10;  ...Full output truncated (5677 lines hidden), use '-vv' to show">../permissions-fix02-bc903a5/backend/tests/test_fund_disbursement.py:301: in test_new_fund_employee_advance_records_usage_without_second_cost
+    assert actions(current) == actions(old)
+E   assert {'_apply_payr...ams=[])', ...} == {'_apply_payr...ams=[])', ...}
+E     
+E     Omitting 31 identical items, use -vv to show
+E     Differing items:
+E     {'list_payroll': "AsyncFunctionDef(name='list_payroll', args=arguments(posonlyargs=[], args=[arg(arg='period', annotat...lue=Name(id='router', ctx=Load()), attr='get', ctx=Load()), args=[Constant(value='')], keywords=[])], type_params=[])"} != {'list_payroll': "AsyncFunctionDef(name='list_payroll', args=arguments(posonlyargs=[], args=[arg(arg='period', annotat...lue=Name(id='router', ctx=Load()), attr='get', ctx=Load()), args=[Constant(value='')], keywords=[])], type_params=[])"}
+E     {'_compute_employee_records': "A...
+E     
+E     ...Full output truncated (5677 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_fund_item_controls" name="test_original_financial_functions_and_formula_preserved" time="0.014"><failure message="assert 'from fastapi...: &quot;类别添加成功&quot;}\n' == 'from fastapi...: &quot;类别添加成功&quot;}\n'&#10;  &#10;    from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form&#10;    from sqlalchemy.ext.asyncio import AsyncSession&#10;    from sqlalchemy import select, func&#10;    from app.core.timezone import thai_now, thai_today&#10;    from datetime import datetime, timedelta&#10;    from app.database import get_db...&#10;  &#10;  ...Full output truncated (542 lines hidden), use '-vv' to show">../permissions-fix02-bc903a5/backend/tests/test_fund_item_controls.py:174: in test_original_financial_functions_and_formula_preserved
+    assert (root/path).read_text()==subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True)
+E   assert 'from fastapi...: "类别添加成功"}\n' == 'from fastapi...: "类别添加成功"}\n'
+E     
+E       from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
+E       from sqlalchemy.ext.asyncio import AsyncSession
+E       from sqlalchemy import select, func
+E       from app.core.timezone import thai_now, thai_today
+E       from datetime import datetime, timedelta
+E       from app.database import get_db...
+E     
+E     ...Full output truncated (542 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_fund_receipts" name="test_payout_and_other_business_paths_unchanged" time="0.011"><failure message="assert 'from fastapi...: &quot;类别添加成功&quot;}\n' == 'from fastapi...: &quot;类别添加成功&quot;}\n'&#10;  &#10;    from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form&#10;    from sqlalchemy.ext.asyncio import AsyncSession&#10;    from sqlalchemy import select, func&#10;    from app.core.timezone import thai_now, thai_today&#10;    from datetime import datetime, timedelta&#10;    from app.database import get_db...&#10;  &#10;  ...Full output truncated (542 lines hidden), use '-vv' to show">../permissions-fix02-bc903a5/backend/tests/test_fund_receipts.py:132: in test_payout_and_other_business_paths_unchanged
+    assert (root/path).read_text()==subprocess.check_output(["git","show",f"14e2541:{path}"],cwd=root,text=True)
+E   assert 'from fastapi...: "类别添加成功"}\n' == 'from fastapi...: "类别添加成功"}\n'
+E     
+E       from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
+E       from sqlalchemy.ext.asyncio import AsyncSession
+E       from sqlalchemy import select, func
+E       from app.core.timezone import thai_now, thai_today
+E       from datetime import datetime, timedelta
+E       from app.database import get_db...
+E     
+E     ...Full output truncated (542 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_disabled_financial_reversals" name="test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate" time="0.014"><failure message="assert 'from app.ser...[&quot;data&quot;][0]\n' == 'from app.ser...ata&quot;: data}\n'&#10;  &#10;    from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount&#10;    from app.services.cash_advance_payroll import lock_payroll_advance, payroll_usage_totals, usage_amounts, PAYROLL_CURRENCY&#10;  - from app.services.cash_advance_usage import reimbursement_usage_totals&#10;  + from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals&#10;  ?                                                                       +++++++++++++++++++++++++++++++&#10;  + from app.services.cash_advance_reference import cash_advance_numbers, cash_advance_reference...&#10;  &#10;  ...Full output truncated (2336 lines hidden), use '-vv' to show">../permissions-fix02-bc903a5/backend/tests/test_disabled_financial_reversals.py:117: in test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate
+    assert without_advance_void_query(without_disabled_gate(current)) == old
+E   assert 'from app.ser...["data"][0]\n' == 'from app.ser...ata": data}\n'
+E     
+E       from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount
+E       from app.services.cash_advance_payroll import lock_payroll_advance, payroll_usage_totals, usage_amounts, PAYROLL_CURRENCY
+E     - from app.services.cash_advance_usage import reimbursement_usage_totals
+E     + from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
+E     ?                                                                       +++++++++++++++++++++++++++++++
+E     + from app.services.cash_advance_reference import cash_advance_numbers, cash_advance_reference...
+E     
+E     ...Full output truncated (2336 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_config_center_access" name="test_only_config_access_changed_business_tail_identical" time="0.054"><failure message="assert {'_check_mana...ams=[])', ...} == {'_check_mana...ams=[])', ...}&#10;  &#10;  Omitting 5 identical items, use -vv to show&#10;  Differing items:&#10;  {'_generate_operating_expense': &quot;AsyncFunctionDef(name='_generate_operating_expense', args=arguments(posonlyargs=[], a...', ctx=Load()), attr='purpose', ctx=Load()), conversion=-1)]))])], keywords=[]))], decorator_list=[], type_params=[])&quot;} != {'_generate_operating_expense': &quot;AsyncFunctionDef(name='_generate_operating_expense', args=arguments(posonlyargs=[], a...], value=Attribute(value=Name(id='expense', ctx=Load()), attr='id', ctx=Load()))], decorator_list=[], type_params=[])&quot;}&#10;  {'_link_fund': &quot;AsyncFunctionDef(...&#10;  &#10;  ...Full output truncated (1613 lines hidden), use '-vv' to show">../permissions-fix02-bc903a5/backend/tests/test_config_center_access.py:93: in test_only_config_access_changed_business_tail_identical
+    assert {k:ast.dump(v,include_attributes=False) for k,v in old.items() if k not in changed}=={k:ast.dump(v,include_attributes=False) for k,v in new.items() if k not in changed}
+E   assert {'_check_mana...ams=[])', ...} == {'_check_mana...ams=[])', ...}
+E     
+E     Omitting 5 identical items, use -vv to show
+E     Differing items:
+E     {'_generate_operating_expense': "AsyncFunctionDef(name='_generate_operating_expense', args=arguments(posonlyargs=[], a...', ctx=Load()), attr='purpose', ctx=Load()), conversion=-1)]))])], keywords=[]))], decorator_list=[], type_params=[])"} != {'_generate_operating_expense': "AsyncFunctionDef(name='_generate_operating_expense', args=arguments(posonlyargs=[], a...], value=Attribute(value=Name(id='expense', ctx=Load()), attr='id', ctx=Load()))], decorator_list=[], type_params=[])"}
+E     {'_link_fund': "AsyncFunctionDef(...
+E     
+E     ...Full output truncated (1613 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_fund_disbursement" name="test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals" time="0.389"><failure message="assert (6400.0 == 1400)">../permissions-fix02-bc903a5/backend/tests/test_fund_disbursement.py:249: in test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-fix02-bc903a5/backend/tests/test_fund_disbursement.py:245: in run
+    assert state["expense_amount"] == 1400 and state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
+E   assert (6400.0 == 1400)</failure></testcase></testsuite></testsuites>

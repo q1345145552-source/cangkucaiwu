@@ -1,0 +1,21 @@
+# 五项源码恒等测试的分段审查
+
+三个版本均为独立detached工作树，有本地历史对象；相同Python、依赖、合成数据库和pytest参数。11d032a与422ee2b这六项测试文件未变。bc903a5保留各自原测试，两个报销源码测试原为全文比较，第二轮已改成排除review_reimb的函数AST比较；不能把两种断言称为同一断言。
+
+|测试|真正失败的位置及旧差异|第二轮引入情况|结论|
+|---|---|---|---|
+|test_new_fund_employee_advance_records_usage_without_second_cost|真实开立/拨付/预支及不重复费用的断言均已执行通过，随后 payroll.py 与3e19093函数AST恒等失败；_compute_employee_records、_disbursement_funding、batch_disburse_payroll、disburse_payroll、list_payroll、my_payslip等在bc已不同|payroll.py从bc到11到422全文相同；后续未走到的reimbursement_payment.pay确有第二轮新增两行独立批准执行守卫，测试已显式排除该守卫|首个失败为同根因历史源码差异；不能用该失败证明后续所有函数断言已运行|
+|test_original_financial_functions_and_formula_preserved|bc的reimbursement.py全文已不等于4cbf9e8。11/422的排除review后的AST仍不等；历史已有create_reimbursement、edit_reimb、get_reimb_detail、list_reimb_categories、list_reimbursements、payment_history、submit_reimb变化|第二轮新增get_reimb_detail/list_reimbursements的can_fund_pay；pay_reimb新增仓库mutation_scope及own_scope；review_reimb为明确授权修复且已从这条旧AST断言排除|历史差异叠加本轮授权变更，不能称完全相同历史错误；旧恒等预期需要按授权边界重设计，本次保留原断言和失败|
+|test_payout_and_other_business_paths_unchanged|同上，但参照14e2541；bc全文、11/422函数AST均失败|相同三个未被排除的函数产生第二轮授权差异；后续expense_fund比较因前面的失败未执行，不能称其全通过|历史差异叠加授权变更；不能以同名失败证明资金计算完全不变|
+|test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate|第一轮便在payroll.py去除指定停用守卫后的全文与14a0198不相等，首循环已停|payroll.py在本轮三版本全文相同，首个失败同根因。后续未执行的reimbursement.py/expense_fund.py及付款服务包含本轮授权/交接变更，不能声称所有后续字节恒等|首失败为历史差异；后续存在授权变更，必须依靠分段差异及真实行为证据|
+|test_only_config_access_changed_business_tail_identical|expense_approval.py除set_threshold外的函数与e970f41恒等失败，包括_generate_operating_expense、_link_fund、approval_summary、approve_approval、create_approval、list_approvals、pay_approval、reject_approval、update_approval，bc已存在|本轮此文件只改set_threshold的作用域守卫，已在旧测试allowed中排除；上述首失败函数从bc到422没有修改|首个失败为同根因旧差异，字典输出顺序不同不是新的函数差异|
+
+## 精确差异及业务证据
+
+[函数级完整比较](source-review.json)列出每个文件、历史参照、三个版本改变/增加/删除的函数，避免pytest截断信息或字典随机顺序误导。[第二轮完整相关差异](relevant-round2.diff)和[部分批准补修差异](partial-fix.diff)保留实际代码。
+
+- 报销列表/详情新增的两处字段是`can_fund_pay: await reimbursement_payment_capability(...)`，没有更改金额。付款入口新增mutation_scope和own_scope，服务`pay`仅在expense_fund分支新增导入和调用approved_item_execution；其余付款金额、流水生成代码未改。
+- review_reimb批量校验/事务/批准证据及备用金核验→批准→执行拆分属于明确授权，不能继续要求这些动作源码恒等。部分批准补修在reimbursement.py只改review_reimb，在expense_fund.py只改batch_review；fund_authorization服务负责快照与执行核对（不在旧源码断言范围），本次无再修改。
+- payroll.py、employee_advance.py、cash_advance.py、clock_in.py、account_balances.py、payroll_expense.py、fund_disbursement.py、flow_rules.py从bc到11到422在此审查中全文相同。未使用这一事实代替行为验证。
+- 保留第二轮176条/177请求与部分批准84条/85请求真实路由证据，覆盖合法核验批准执行、独立付款、自付拒绝、跨仓、父子明细归属、部分30元支付一次、并发/失败回滚及停用撤销。这262请求也由协调在新集群独立复跑通过（协调提供目录`/private/tmp/permission-r2-fix-review-mq2r4fni`）；本次不冒称重新执行262请求。
+- 本次无业务改动、无旧测试断言改动，不skip/xfail、不放宽类型。不为使静态旧断言变绿而恢复旧权限。真正的旧业务失败仍待后续处理，不能因其为旧问题就宣称功能正确。

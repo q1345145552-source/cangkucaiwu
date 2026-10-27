@@ -1,0 +1,14 @@
+[
+  "/tmp/supplier01-py312/bin/python",
+  "-m",
+  "pytest",
+  "/private/tmp/permissions-fix02-422ee2b/backend/tests/test_fund_disbursement.py::test_new_fund_employee_advance_records_usage_without_second_cost",
+  "/private/tmp/permissions-fix02-422ee2b/backend/tests/test_fund_item_controls.py::test_original_financial_functions_and_formula_preserved",
+  "/private/tmp/permissions-fix02-422ee2b/backend/tests/test_fund_receipts.py::test_payout_and_other_business_paths_unchanged",
+  "/private/tmp/permissions-fix02-422ee2b/backend/tests/test_disabled_financial_reversals.py::test_original_handlers_and_calculations_are_byte_identical_after_removing_only_outer_gate",
+  "/private/tmp/permissions-fix02-422ee2b/backend/tests/test_config_center_access.py::test_only_config_access_changed_business_tail_identical",
+  "/private/tmp/permissions-fix02-422ee2b/backend/tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals",
+  "-vv",
+  "--tb=short",
+  "--junitxml=/private/tmp/permissions-fix02-env/logs/422ee2b.xml"
+]
