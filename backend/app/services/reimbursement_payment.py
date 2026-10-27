@@ -114,8 +114,7 @@ async def lock_advance(db, r, advance_id, amount):
     wages = (await payroll_usage_totals(db, [advance]))[advance.id]
     expenses = (await reimbursement_usage_totals(db, [advance]))[advance.id]
     advances = (await employee_advance_usage_totals(db, [advance]))[advance.id]
-    if amount > advance.amount - advance.repaid_amount or amount > advance.amount - wages - expenses - advances:
-        raise HTTPException(400, "垫款单剩余金额不足")
+    advance._balance_warning=balance_warning(min(advance.amount-advance.repaid_amount,advance.amount-wages-expenses-advances),amount,r.currency or 'THB',source='cash_advance',source_id=advance.id)
     return advance
 
 
@@ -213,7 +212,9 @@ async def pay(db, r, req, user):
             from app.services.account_balances import current_account_balances
             before_balance = (await current_account_balances(db,[account]))[account.id]
             warning = balance_warning(before_balance,amount,r.currency or 'THB',source='company_account',source_id=account.id)
-        else: advance = await lock_advance(db, r, req.cash_advance_id, amount)
+        else:
+            advance = await lock_advance(db, r, req.cash_advance_id, amount)
+            warning=getattr(advance,"_balance_warning",None)
     else:
         fund_warning = {}
         fund, item = await fund_details(db, r, user, fund_warning)
@@ -239,7 +240,7 @@ async def pay(db, r, req, user):
     if advance:
         await record_history(db, module="cash_advances", record_id=advance.id, operator=user, operation_type="reimbursement_use",
             after={"reimbursement_id": r.id, "payment_id": p.id, "amount": float(amount), "currency": p.currency}, warehouse_id=r.warehouse_id)
-    if source == 'company_account':
+    if source in ('company_account','cash_advance'):
         await record_balance_warning(db,warning,user,module='reimbursement',record_id=r.id,warehouse_id=r.warehouse_id)
     return {'warning':warning,"message": "付款成功", **output}
 

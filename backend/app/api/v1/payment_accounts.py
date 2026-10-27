@@ -1,3 +1,4 @@
+from app.services.balance_warning import balance_warning,record_balance_warning,saved_balance_warning
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -48,12 +49,12 @@ async def create_transfer(req: TransferRequest, user=Depends(check_staff_permiss
     if not wid: raise HTTPException(400, "请先选择仓库")
     value = positive_money(req.amount)
     if not req.request_key.strip() or len(req.request_key) > 64: raise HTTPException(400, "转账请求编号无效")
-    def replay(old):
+    async def replay(old):
         if (old.warehouse_id, old.from_account_id, old.to_account_id, old.amount, old.transfer_date) != (wid, req.from_account_id, req.to_account_id, value, req.transfer_date):
             raise HTTPException(409, "转账请求已使用，请核对原记录")
-        return {"id": old.id, "message": "内部转账已记录，不计收入支出"}
+        return {"warning":await saved_balance_warning(db,module="accounts",record_id=old.id),"id": old.id, "message": "内部转账已记录，不计收入支出"}
     old = (await db.execute(select(AccountTransfer).where(AccountTransfer.request_key == req.request_key))).scalar_one_or_none()
-    if old:return replay(old)
+    if old:return await replay(old)
     if req.from_account_id == req.to_account_id: raise HTTPException(400, "转出和转入账户不能相同")
     if req.transfer_date > thai_today(): raise HTTPException(400, "不能登记未来转账")
     accounts = (await db.execute(select(PaymentAccount).where(PaymentAccount.warehouse_id == wid,
@@ -64,8 +65,8 @@ async def create_transfer(req: TransferRequest, user=Depends(check_staff_permiss
     if any(a.status not in (None, "active") for a in accounts): raise HTTPException(400, "账户已停用")
     if (source.currency or "THB") != (target.currency or "THB"): raise HTTPException(400, "内部转账必须使用同币种账户")
     old = (await db.execute(select(AccountTransfer).where(AccountTransfer.request_key == req.request_key))).scalar_one_or_none()
-    if old:return replay(old)
-    if (await current_account_balances(db, [source]))[source.id] < value: raise HTTPException(400, "转出账户余额不足")
+    if old:return await replay(old)
+    warning=balance_warning((await current_account_balances(db,[source]))[source.id],value,source.currency or 'THB',source='company_account',source_id=source.id)
     from sqlalchemy.dialects.postgresql import insert as pg_insert
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
     insert=sqlite_insert if db.bind.dialect.name=='sqlite' else pg_insert
@@ -74,11 +75,12 @@ async def create_transfer(req: TransferRequest, user=Depends(check_staff_permiss
         request_key=req.request_key, remark=req.remark, operator_id=user.id).on_conflict_do_nothing(
             index_elements=['request_key']).returning(AccountTransfer.id))).scalar_one_or_none()
     if rid is None:
-        return replay((await db.execute(select(AccountTransfer).where(AccountTransfer.request_key==req.request_key))).scalar_one())
+        return await replay((await db.execute(select(AccountTransfer).where(AccountTransfer.request_key==req.request_key))).scalar_one())
     row=await db.get(AccountTransfer,rid)
     await record_history(db, module="accounts", record_id=row.id, operator=user, operation_type="transfer",
         after={"from_account_id": source.id, "to_account_id": target.id, "amount": float(value), "currency": row.currency}, warehouse_id=wid)
-    return {"id": row.id, "message": "内部转账已记录，不计收入支出"}
+    await record_balance_warning(db,warning,user,module='accounts',record_id=row.id,warehouse_id=wid)
+    return {'warning':warning,"id": row.id, "message": "内部转账已记录，不计收入支出"}
 
 
 @router.get("", dependencies=[Depends(require_non_labor)])

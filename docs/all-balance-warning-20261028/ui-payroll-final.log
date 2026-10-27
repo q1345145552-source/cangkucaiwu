@@ -1,0 +1,41 @@
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <h1>. See https://reactjs.org/link/warning-keys for more information.
+    at /private/tmp/excel-import-review-ui/node_modules/lucide-react/dist/cjs/lucide-react.js:62:8
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <button>. See https://reactjs.org/link/warning-keys for more information.
+    at /private/tmp/excel-import-review-ui/node_modules/lucide-react/dist/cjs/lucide-react.js:62:8
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <div>. See https://reactjs.org/link/warning-keys for more information.
+    at label
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <select>. See https://reactjs.org/link/warning-keys for more information.
+    at option
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <span>. See https://reactjs.org/link/warning-keys for more information.
+    at /private/tmp/excel-import-review-ui/node_modules/lucide-react/dist/cjs/lucide-react.js:62:8
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <tr>. See https://reactjs.org/link/warning-keys for more information.
+    at th
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <td>. See https://reactjs.org/link/warning-keys for more information.
+    at span
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <table>. See https://reactjs.org/link/warning-keys for more information.
+    at thead
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <label>. See https://reactjs.org/link/warning-keys for more information.
+    at input
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <fieldset>. See https://reactjs.org/link/warning-keys for more information.
+    at legend
+{"result":"PASS","scenarios":23,"scope":"Company account, cash advance, required funding, capacity, batch, load failures; other payroll handlers unchanged"}

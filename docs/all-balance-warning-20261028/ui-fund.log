@@ -1,0 +1,4 @@
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <tbody>. See https://reactjs.org/link/warning-keys for more information.
+PASS: payout account/date/defaults/required guard, recharge approval modal on review tab, record-only spend/receipt, 10000/2000/8000 figures, exact links/history, original supervisor request path, empty accounts and scrollable mobile modal

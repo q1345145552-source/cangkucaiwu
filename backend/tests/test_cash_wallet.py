@@ -153,13 +153,13 @@ def test_transfer_concurrency_and_failures_are_atomic(tmp_path,monkeypatch):
                 assert (await db.execute(select(func.count(AccountTransfer.id)))).scalar_one()==2
                 assert (await db.execute(select(func.count(ExpenseRecord.id)))).scalar_one()==0
             r=await c.post('/api/v1/income-expense/expense',headers=auth(1),data=payment(cash,'too-much',401))
-            assert r.status_code==400 and '余额不足' in r.text
+            assert r.status_code==200 and r.json()['warning']['balance_after']==-1,r.text
             async with factory() as db:(await db.get(PaymentAccount,cash)).status='inactive';await db.commit()
             replay=await c.post('/api/v1/accounts/transfers',headers=auth(1),json=p)
             assert replay.status_code==200 and replay.json()['id']==replies[0].json()['id']
             rejected=await c.post('/api/v1/accounts/transfers',headers=auth(1),json={**p,'request_key':'new-on-disabled'})
             assert rejected.status_code==400 and '停用' in rejected.text
-            actual('atomicity',{'transfer_concurrency':10,'first_transfer_rows':1,'first_balances':{cash:700,bank:300},'second_independent_balances':{cash:400,bank:600},'after_two_injected_failures':{cash:400,bank:600},'transfer_rows':2,'expense_rows':0,'insufficient_payment':400})
+            actual('atomicity',{'transfer_concurrency':10,'first_transfer_rows':1,'first_balances':{cash:700,bank:300},'second_independent_balances':{cash:400,bank:600},'after_two_injected_failures':{cash:400,bank:600},'transfer_rows':2,'expense_rows':0,'insufficient_payment':200,'warning_after':-1})
     asyncio.run(run())
 
 
@@ -179,15 +179,15 @@ def test_cash_account_currency_warehouse_status_and_roles(tmp_path,monkeypatch):
                 a=await db.get(PaymentAccount,bank);a.status='active';a.currency='CNY';await db.commit()
             r=await c.post('/api/v1/accounts/transfers',headers=auth(1),json=transfer);assert r.status_code==400 and '同币种' in r.text
             async with factory() as db:(await db.get(PaymentAccount,bank)).currency='THB';await db.commit()
-            r=await c.post('/api/v1/accounts/transfers',headers=auth(1),json=transfer);assert r.status_code==400 and '余额不足' in r.text
+            r=await c.post('/api/v1/accounts/transfers',headers=auth(1),json=transfer);assert r.status_code==200 and r.json()['warning']['balance_before']==0 and r.json()['warning']['balance_after']==-1,r.text
             for uid in (2,5):
                 for path,payload in [('/accounts/transfers',{'from_account_id':cash,'to_account_id':bank,'amount':1,'transfer_date':'2026-10-20','request_key':uuid.uuid4().hex}),('/income-expense/income',receipt(cash)),('/incoming',body(account_id=cash))]:
                     assert (await c.post('/api/v1'+path,headers=auth(uid),json=payload)).status_code==403
                 assert (await c.post('/api/v1/income-expense/expense',headers=auth(uid),data=payment(cash))).status_code==403
             async with factory() as db:(await db.get(User,4)).extra_permissions=[];await db.commit()
             assert (await c.post('/api/v1/income-expense/income',headers=auth(4),json=receipt(cash))).status_code==403
-            assert await balances(factory,cash)=={cash:0}
-            actual('guards',{'missing_cash_operation':400,'foreign_currency_inactive':400,'labor_super':403,'revoked_supervisor':403,'cash_unchanged':0})
+            assert await balances(factory,cash)=={cash:-1}
+            actual('guards',{'missing_cash_operation':400,'foreign_currency_inactive':400,'labor_super':403,'revoked_supervisor':403,'cash_unchanged_after_permission_checks':-1})
     asyncio.run(run())
 
 

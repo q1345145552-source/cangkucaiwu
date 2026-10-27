@@ -114,8 +114,8 @@ async def _generate_operating_expense(db: AsyncSession, appr: ExpenseApproval):
     from app.services.account_balances import current_account_balances
     account = await lock_account(db, appr.warehouse_id, appr.payment_account_id, appr.currency or "THB")
     value = positive_money(appr.amount)
-    if (await current_account_balances(db, [account]))[account.id] < value:
-        raise HTTPException(400, "公司账户余额不足")
+    from app.services.balance_warning import balance_warning
+    warning=balance_warning((await current_account_balances(db,[account]))[account.id],value,appr.currency or 'THB',source='company_account',source_id=account.id)
     # 找运营支出类别，没有则建一个
     cat = (await db.execute(
         select(IncomeExpenseCategory).where(
@@ -144,6 +144,7 @@ async def _generate_operating_expense(db: AsyncSession, appr: ExpenseApproval):
     await db.flush()
     await costs.link_child(db,appr,expense)
     appr.expense_record_id = expense.id
+    return warning
 
 
 async def _link_fund(db: AsyncSession, appr: ExpenseApproval):
@@ -160,8 +161,8 @@ async def _link_fund(db: AsyncSession, appr: ExpenseApproval):
     if not fund:
         raise HTTPException(400, "没有可用的同币种备用金")
     from app.services.employee_advance_funding import fund_available_amount
-    if await fund_available_amount(db, fund) < Decimal(str(appr.amount)):
-        raise HTTPException(400, "备用金余额不足")
+    from app.services.balance_warning import balance_warning
+    warning=balance_warning(await fund_available_amount(db,fund),appr.amount,appr.currency or 'THB',source='expense_fund',source_id=fund.id)
     item = ExpenseFundItem(
         fund_id=fund.id,
         expense_date=thai_now().replace(tzinfo=None),
@@ -176,6 +177,7 @@ async def _link_fund(db: AsyncSession, appr: ExpenseApproval):
     await db.flush()
     await costs.link_child(db,appr,item)
     appr.fund_item_id = item.id
+    return warning
 
 
 def _payment_result(a: ExpenseApproval, *, already_paid=False):
@@ -502,6 +504,28 @@ async def reject_approval(
     return {"id": a.id, "message": "已驳回"}
 
 
+@router.get("/{approval_id}/payment-preview")
+async def payment_preview(approval_id:int,payment_account_id:int=None,current_user:User=Depends(expense_user),db:AsyncSession=Depends(get_db)):
+    _check_manage_role(current_user)
+    wid=get_wh_id(current_user)
+    a=(await db.execute(select(ExpenseApproval).where(ExpenseApproval.id==approval_id,ExpenseApproval.warehouse_id==wid))).scalar_one_or_none()
+    if a is None: raise HTTPException(404,"费用申请不存在")
+    from app.services.balance_warning import balance_warning
+    if a.fund_source=='company':
+        from app.services.wallet import read_account
+        from app.services.account_balances import current_account_balances
+        source=await read_account(db,wid,payment_account_id,a.currency or 'THB')
+        balance=(await current_account_balances(db,[source]))[source.id]
+        kind='company_account'
+    else:
+        source=(await db.execute(select(ExpenseFund).where(ExpenseFund.warehouse_id==wid,ExpenseFund.status=='active',
+            func.coalesce(ExpenseFund.currency,'THB')==(a.currency or 'THB')).order_by(ExpenseFund.id).limit(1))).scalar_one_or_none()
+        if source is None:raise HTTPException(400,"没有可用的同币种备用金")
+        from app.services.employee_advance_funding import fund_available_amount
+        balance=await fund_available_amount(db,source);kind='expense_fund'
+    return {'balance':float(balance),'amount':a.amount,'currency':a.currency,'warning':balance_warning(balance,a.amount,a.currency or 'THB',source=kind,source_id=source.id)}
+
+
 @router.post("/{approval_id}/pay")
 async def pay_approval(
     approval_id: int,
@@ -522,7 +546,8 @@ async def pay_approval(
     if a.status == "paid":
         if req.payment_account_id is not None and req.payment_account_id != a.payment_account_id:
             raise HTTPException(409, "该申请已付款，不能更换付款账户")
-        return _payment_result(a, already_paid=True)
+        from app.services.balance_warning import saved_balance_warning
+        return {'warning':await saved_balance_warning(db,module='expense_approval',record_id=a.id),**_payment_result(a,already_paid=True)}
     if a.status != "approved":
         raise HTTPException(400, "只有已批准的申请可以付款")
     if a.expense_record_id is not None or a.fund_item_id is not None:
@@ -548,11 +573,14 @@ async def pay_approval(
     await db.flush()
 
     # 付款后自动生成运营支出 + 备用金联动
-    await _generate_operating_expense(db, a)
-    await _link_fund(db, a)
+    company_warning=await _generate_operating_expense(db, a)
+    fund_warning=await _link_fund(db, a)
+    warning=company_warning or fund_warning
     await db.flush()
     from app.services.data_history import record_history
     await record_history(db, module="expense_approval", record_id=a.id, operator=current_user,
         operation_type="pay", after={**_payment_result(a), "amount": a.amount,
             "currency": a.currency, "fund_source": a.fund_source}, warehouse_id=wh_id)
-    return _payment_result(a)
+    from app.services.balance_warning import record_balance_warning
+    await record_balance_warning(db,warning,current_user,module='expense_approval',record_id=a.id,warehouse_id=wh_id)
+    return {'warning':warning,**_payment_result(a)}

@@ -78,12 +78,10 @@ async def lock_payroll_advance(db, warehouse_id, advance_id, records):
         raise HTTPException(400, "垫款单币种与工资单不一致，工资以泰铢发放")
     from app.services.payroll_expense import expense_amount
     total = sum((Decimal(str(expense_amount(r))) for r in records), Decimal("0.00"))
-    if total > advance.amount - advance.repaid_amount:
-        raise HTTPException(400, "垫款单剩余金额不足")
     used = (await payroll_usage_totals(db, [advance]))[advance.id]
     from app.services.cash_advance_usage import reimbursement_usage_totals, employee_advance_usage_totals
     other = (await reimbursement_usage_totals(db, [advance]))[advance.id]
     advances = (await employee_advance_usage_totals(db, [advance]))[advance.id]
-    if total > advance.amount - used - other - advances:
-        raise HTTPException(400, "垫款单剩余金额不足")
+    from app.services.balance_warning import balance_warning
+    advance._balance_warning=balance_warning(min(advance.amount-advance.repaid_amount,advance.amount-used-other-advances),total,PAYROLL_CURRENCY,source='cash_advance',source_id=advance.id)
     return advance

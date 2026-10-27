@@ -9,3 +9,10 @@ export function confirmBalanceWarning(balance:unknown,amount:unknown,confirm:(me
  const message=balanceWarningText(balance,amount);
  return message===null||confirm(message);
 }
+
+export async function confirmAccountBalance(api:{get:(path:string)=>Promise<any>},accountId:string|number,amount:unknown):Promise<boolean> {
+ const result=await api.get('/accounts');
+ const account=(result.data||[]).find((a:any)=>String(a.id)===String(accountId));
+ if(!account)throw Error('账户已变化，请重新选择');
+ return confirmBalanceWarning(account.current_balance,amount);
+}

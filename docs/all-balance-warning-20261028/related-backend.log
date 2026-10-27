@@ -1,0 +1,2724 @@
+FF..............FFFFFFFFFFFFFFF.FFFFFF...............F..F.FF...F....F... [ 47%]
+....FFF........F......F.....F..FF............F.F.....FF................. [ 94%]
+FF.......                                                                [100%]
+=================================== FAILURES ===================================
+_________________ test_disburse_reverse_reissue_and_reports[1] _________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_disburse_reverse_reissue_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x105149dc0>, uid = 1
+
+    @pytest.mark.parametrize('uid',[1,4])
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
+     async def run():
+      async with hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
+       from sqlalchemy import event
+       @event.listens_for(engine.sync_engine, "connect")
+       def sqlite_functions(conn, _):conn.create_function("to_char", 2, lambda value, fmt: str(value)[:7] if value else None)
+       await engine.dispose()
+       await cash(factory);await set_perms(factory,4,['工资'])
+       before_old=(await snapshot(factory))[2]
+       # A supervisor with only payroll permission can obtain the shared account list.
+       accounts=await c.get('/api/v1/accounts',headers=auth(uid));assert accounts.status_code==200,accounts.text
+       assert any(a['id']==3 and a['account_type']=='cash' for a in accounts.json()['data'])
+       r=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert r.status_code==200,r.text
+       expense_id=r.json()['expense_record_id']
+       assert r.json()['net_pay']==1234.56 and r.json()['account_id']==3
+       async with factory() as db:
+        rec=await db.get(PayrollRecord,2);expense=await db.get(ExpenseRecord,expense_id)
+        assert rec.disbursed and rec.expense_record_id==expense.id
+        assert Decimal(str(rec.net_pay))==Decimal(str(expense.amount))==Decimal('1234.56')
+        assert expense.account_id==3 and expense.currency=='THB'
+        assert expense.remark=='仓1 10-01到10-15 1人'
+        assert expense.expense_date.date()==rec.disbursed_at.date()
+        cat=await db.get(IncomeExpenseCategory,expense.category_id)
+        assert (cat.name,cat.type,cat.category_group,cat.warehouse_id)==('员工工资','expense','operating',1)
+       paylist=(await c.get('/api/v1/payroll',headers=auth(1))).json()['data']
+       assert next(x for x in paylist if x['id']==2)['expense_record_id']==expense_id
+       exp=await c.get('/api/v1/income-expense/expense?category_group=operating',headers=auth(1));assert exp.status_code==200,exp.text
+       linked=next(x for x in exp.json()['data'] if x['id']==expense_id)
+       assert linked['payroll_record_id']==2 and linked['amount']==1234.56
+       ledger=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger.status_code==200,ledger.text
+       assert ledger.json()['total_expense']==1234.56 and any('员工工资' in x['remark'] for x in ledger.json()['data'])
+       summary=await c.get('/api/v1/income-expense/monthly-summary?category_group=operating',headers=auth(1))
+       assert summary.status_code==200 and summary.json()["total_expense"]==1234.56,summary.text
+       report=await c.get("/api/v1/reports/income-expense",headers=auth(1));assert report.status_code==200,report.text
+       # A repeated payment cannot create another expense.
+       again=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert again.status_code==400
+       assert len(await rows(factory,ExpenseRecord))==1
+       update=await c.put(f'/api/v1/income-expense/expense/{expense_id}',headers=auth(1),data={'category_id':linked['category_id'],'account_id':3,'amount':999,'expense_date':'2026-10-16'})
+       assert update.status_code==400 and '工资联动支出' in update.text
+       delete=await c.delete(f'/api/v1/income-expense/expense/{expense_id}',headers=auth(1));assert delete.status_code==400
+       revoke=await c.post('/api/v1/payroll/2/revoke-disbursement',headers=auth(uid));assert revoke.status_code==200,revoke.text
+       assert revoke.json()['reversed_expense_id']==expense_id
+       async with factory() as db:
+        rec=await db.get(PayrollRecord,2)
+        assert rec.status=='confirmed' and not rec.disbursed and rec.expense_record_id is None
+        assert await db.get(ExpenseRecord,expense_id) is None
+        history=(await db.execute(select(DataChangeHistory).where(DataChangeHistory.module=='expense',DataChangeHistory.operation_type=='delete'))).scalar_one()
+        assert history.before_data['amount']==1234.56 and history.before_data['payroll_record_id']==2
+        assert '因为撤销发放而冲销' in history.after_data['remark']
+       ledger2=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger2.json()['total_expense']==0
+       assert (await snapshot(factory))[2]==before_old
+       # Reissue through a different account creates precisely one live expense.
+       reissue=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':1});assert reissue.status_code==200,reissue.text
+       assert len(await rows(factory,ExpenseRecord))==1
+       print('PAYROLL_EXPENSE',{'paid':r.json(),'expense':linked,'revoked':revoke.json(),'ledger_after':ledger2.json()['total_expense']})
+>    asyncio.run(run())
+
+tests/test_payroll_expense.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     async with hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
+      from sqlalchemy import event
+      @event.listens_for(engine.sync_engine, "connect")
+      def sqlite_functions(conn, _):conn.create_function("to_char", 2, lambda value, fmt: str(value)[:7] if value else None)
+      await engine.dispose()
+      await cash(factory);await set_perms(factory,4,['工资'])
+      before_old=(await snapshot(factory))[2]
+      # A supervisor with only payroll permission can obtain the shared account list.
+      accounts=await c.get('/api/v1/accounts',headers=auth(uid));assert accounts.status_code==200,accounts.text
+      assert any(a['id']==3 and a['account_type']=='cash' for a in accounts.json()['data'])
+      r=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert r.status_code==200,r.text
+      expense_id=r.json()['expense_record_id']
+      assert r.json()['net_pay']==1234.56 and r.json()['account_id']==3
+      async with factory() as db:
+       rec=await db.get(PayrollRecord,2);expense=await db.get(ExpenseRecord,expense_id)
+       assert rec.disbursed and rec.expense_record_id==expense.id
+       assert Decimal(str(rec.net_pay))==Decimal(str(expense.amount))==Decimal('1234.56')
+       assert expense.account_id==3 and expense.currency=='THB'
+       assert expense.remark=='仓1 10-01到10-15 1人'
+       assert expense.expense_date.date()==rec.disbursed_at.date()
+       cat=await db.get(IncomeExpenseCategory,expense.category_id)
+       assert (cat.name,cat.type,cat.category_group,cat.warehouse_id)==('员工工资','expense','operating',1)
+      paylist=(await c.get('/api/v1/payroll',headers=auth(1))).json()['data']
+      assert next(x for x in paylist if x['id']==2)['expense_record_id']==expense_id
+      exp=await c.get('/api/v1/income-expense/expense?category_group=operating',headers=auth(1));assert exp.status_code==200,exp.text
+      linked=next(x for x in exp.json()['data'] if x['id']==expense_id)
+      assert linked['payroll_record_id']==2 and linked['amount']==1234.56
+      ledger=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger.status_code==200,ledger.text
+>     assert ledger.json()['total_expense']==1234.56 and any('员工工资' in x['remark'] for x in ledger.json()['data'])
+E     assert (1234.56 == 1234.56 and False)
+E      +  where False = any(<generator object test_disburse_reverse_reissue_and_reports.<locals>.run.<locals>.<genexpr> at 0x114bdf440>)
+
+tests/test_payroll_expense.py:60: AssertionError
+_________________ test_disburse_reverse_reissue_and_reports[4] _________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_disburse_reverse_reissue_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x116048710>, uid = 4
+
+    @pytest.mark.parametrize('uid',[1,4])
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
+     async def run():
+      async with hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
+       from sqlalchemy import event
+       @event.listens_for(engine.sync_engine, "connect")
+       def sqlite_functions(conn, _):conn.create_function("to_char", 2, lambda value, fmt: str(value)[:7] if value else None)
+       await engine.dispose()
+       await cash(factory);await set_perms(factory,4,['工资'])
+       before_old=(await snapshot(factory))[2]
+       # A supervisor with only payroll permission can obtain the shared account list.
+       accounts=await c.get('/api/v1/accounts',headers=auth(uid));assert accounts.status_code==200,accounts.text
+       assert any(a['id']==3 and a['account_type']=='cash' for a in accounts.json()['data'])
+       r=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert r.status_code==200,r.text
+       expense_id=r.json()['expense_record_id']
+       assert r.json()['net_pay']==1234.56 and r.json()['account_id']==3
+       async with factory() as db:
+        rec=await db.get(PayrollRecord,2);expense=await db.get(ExpenseRecord,expense_id)
+        assert rec.disbursed and rec.expense_record_id==expense.id
+        assert Decimal(str(rec.net_pay))==Decimal(str(expense.amount))==Decimal('1234.56')
+        assert expense.account_id==3 and expense.currency=='THB'
+        assert expense.remark=='仓1 10-01到10-15 1人'
+        assert expense.expense_date.date()==rec.disbursed_at.date()
+        cat=await db.get(IncomeExpenseCategory,expense.category_id)
+        assert (cat.name,cat.type,cat.category_group,cat.warehouse_id)==('员工工资','expense','operating',1)
+       paylist=(await c.get('/api/v1/payroll',headers=auth(1))).json()['data']
+       assert next(x for x in paylist if x['id']==2)['expense_record_id']==expense_id
+       exp=await c.get('/api/v1/income-expense/expense?category_group=operating',headers=auth(1));assert exp.status_code==200,exp.text
+       linked=next(x for x in exp.json()['data'] if x['id']==expense_id)
+       assert linked['payroll_record_id']==2 and linked['amount']==1234.56
+       ledger=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger.status_code==200,ledger.text
+       assert ledger.json()['total_expense']==1234.56 and any('员工工资' in x['remark'] for x in ledger.json()['data'])
+       summary=await c.get('/api/v1/income-expense/monthly-summary?category_group=operating',headers=auth(1))
+       assert summary.status_code==200 and summary.json()["total_expense"]==1234.56,summary.text
+       report=await c.get("/api/v1/reports/income-expense",headers=auth(1));assert report.status_code==200,report.text
+       # A repeated payment cannot create another expense.
+       again=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert again.status_code==400
+       assert len(await rows(factory,ExpenseRecord))==1
+       update=await c.put(f'/api/v1/income-expense/expense/{expense_id}',headers=auth(1),data={'category_id':linked['category_id'],'account_id':3,'amount':999,'expense_date':'2026-10-16'})
+       assert update.status_code==400 and '工资联动支出' in update.text
+       delete=await c.delete(f'/api/v1/income-expense/expense/{expense_id}',headers=auth(1));assert delete.status_code==400
+       revoke=await c.post('/api/v1/payroll/2/revoke-disbursement',headers=auth(uid));assert revoke.status_code==200,revoke.text
+       assert revoke.json()['reversed_expense_id']==expense_id
+       async with factory() as db:
+        rec=await db.get(PayrollRecord,2)
+        assert rec.status=='confirmed' and not rec.disbursed and rec.expense_record_id is None
+        assert await db.get(ExpenseRecord,expense_id) is None
+        history=(await db.execute(select(DataChangeHistory).where(DataChangeHistory.module=='expense',DataChangeHistory.operation_type=='delete'))).scalar_one()
+        assert history.before_data['amount']==1234.56 and history.before_data['payroll_record_id']==2
+        assert '因为撤销发放而冲销' in history.after_data['remark']
+       ledger2=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger2.json()['total_expense']==0
+       assert (await snapshot(factory))[2]==before_old
+       # Reissue through a different account creates precisely one live expense.
+       reissue=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':1});assert reissue.status_code==200,reissue.text
+       assert len(await rows(factory,ExpenseRecord))==1
+       print('PAYROLL_EXPENSE',{'paid':r.json(),'expense':linked,'revoked':revoke.json(),'ledger_after':ledger2.json()['total_expense']})
+>    asyncio.run(run())
+
+tests/test_payroll_expense.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     async with hr_environment(tmp_path,monkeypatch) as (engine,factory,c):
+      from sqlalchemy import event
+      @event.listens_for(engine.sync_engine, "connect")
+      def sqlite_functions(conn, _):conn.create_function("to_char", 2, lambda value, fmt: str(value)[:7] if value else None)
+      await engine.dispose()
+      await cash(factory);await set_perms(factory,4,['工资'])
+      before_old=(await snapshot(factory))[2]
+      # A supervisor with only payroll permission can obtain the shared account list.
+      accounts=await c.get('/api/v1/accounts',headers=auth(uid));assert accounts.status_code==200,accounts.text
+      assert any(a['id']==3 and a['account_type']=='cash' for a in accounts.json()['data'])
+      r=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':3});assert r.status_code==200,r.text
+      expense_id=r.json()['expense_record_id']
+      assert r.json()['net_pay']==1234.56 and r.json()['account_id']==3
+      async with factory() as db:
+       rec=await db.get(PayrollRecord,2);expense=await db.get(ExpenseRecord,expense_id)
+       assert rec.disbursed and rec.expense_record_id==expense.id
+       assert Decimal(str(rec.net_pay))==Decimal(str(expense.amount))==Decimal('1234.56')
+       assert expense.account_id==3 and expense.currency=='THB'
+       assert expense.remark=='仓1 10-01到10-15 1人'
+       assert expense.expense_date.date()==rec.disbursed_at.date()
+       cat=await db.get(IncomeExpenseCategory,expense.category_id)
+       assert (cat.name,cat.type,cat.category_group,cat.warehouse_id)==('员工工资','expense','operating',1)
+      paylist=(await c.get('/api/v1/payroll',headers=auth(1))).json()['data']
+      assert next(x for x in paylist if x['id']==2)['expense_record_id']==expense_id
+      exp=await c.get('/api/v1/income-expense/expense?category_group=operating',headers=auth(1));assert exp.status_code==200,exp.text
+      linked=next(x for x in exp.json()['data'] if x['id']==expense_id)
+      assert linked['payroll_record_id']==2 and linked['amount']==1234.56
+      ledger=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger.status_code==200,ledger.text
+>     assert ledger.json()['total_expense']==1234.56 and any('员工工资' in x['remark'] for x in ledger.json()['data'])
+E     assert (1234.56 == 1234.56 and False)
+E      +  where False = any(<generator object test_disburse_reverse_reissue_and_reports.<locals>.run.<locals>.<genexpr> at 0x114d37d30>)
+
+tests/test_payroll_expense.py:60: AssertionError
+_______ test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke _______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_cost_7000_company_account0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10538f7a0>
+
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000)
+                before = await finance_snapshot(f)
+                before_balances, before_ledger, before_costs = await balances(c), await ledger(c), await costs(c)
+                paid = await disburse(c, aid)
+                assert paid.status_code == 200, paid.text
+                data = paid.json()
+                assert data["cash_advance_id"] == aid and data["account_id"] is None and data["net_pay"] == 7000
+                expense_id = data["expense_record_id"]
+                after_costs = await costs(c)
+                assert (after_costs["count"], after_costs["amount"]) == (3, 7750)
+                expense = next(x for x in after_costs["data"] if x["id"] == expense_id)
+                assert expense["category_name"] == "员工工资" and expense["amount"] == 7000 and expense["account_id"] is None
+                assert expense["cash_advance_id"] == aid and expense["funding_source"] == "cash_advance"
+                assert await balances(c) == before_balances == {1: 10000, 3: 20000}
+                assert await ledger(c) == before_ledger
+                used = await usage(c, aid)
+                assert used["advance"]["outstanding_amount"] == 10000 and used["advance"]["repaid_amount"] == 0
+                assert used["payroll_usage"]["payroll_used_amount"] == 7000 and used["payroll_usage"]["payroll_available_amount"] == 3000
+                assert [(x["payroll_record_id"], x["amount"]) for x in used["payroll_usage"]["data"]] == [(2, 7000)]
+                loan_list = (await c.get("/api/v1/cash-advances", headers=auth(1))).json()["data"]
+                assert next(x for x in loan_list if x["id"] == aid)["payroll_used_amount"] == 7000
+                report = await c.get("/api/v1/reports/income-expense?start_date=2026-10-01&end_date=2026-10-31", headers=auth(1))
+                assert report.status_code == 200 and report.json()["total_expense_by_currency"] == {"THB": 7750}
+                # The linked cost cannot be changed/deleted from the ordinary expense page.
+                denied = await c.delete(f"/api/v1/income-expense/expense/{expense_id}", headers=auth(1))
+                assert denied.status_code == 400 and "工资联动支出" in denied.text
+                duplicate = await disburse(c, aid)
+                assert duplicate.status_code == 400
+                revoked = await c.post("/api/v1/payroll/2/revoke-disbursement", headers=auth(1))
+                assert revoked.status_code == 200, revoked.text
+                assert revoked.json()["reversed_cash_advance_id"] == aid
+                after_revoke = await usage(c, aid)
+                assert after_revoke["payroll_usage"]["data"] == []
+                assert after_revoke["payroll_usage"]["payroll_used_amount"] == 0
+                assert after_revoke["payroll_usage"]["payroll_available_amount"] == 10000
+                assert after_revoke["advance"]["outstanding_amount"] == 10000
+                assert await costs(c) == before_costs and await ledger(c) == before_ledger and await balances(c) == before_balances
+                async with f() as db:
+                    r = await db.get(PayrollRecord, 2)
+                    assert r.status == "confirmed" and not r.disbursed and r.cash_advance_id is None and r.expense_record_id is None and r.net_pay == 7000
+                    assert await db.get(ExpenseRecord, expense_id) is None
+                    operations = (await db.execute(select(DataChangeHistory.operation_type).where(
+                        DataChangeHistory.module == "cash_advances", DataChangeHistory.record_id == aid,
+                    ))).scalars().all()
+                    assert "payroll_use" in operations and "payroll_use_revoke" in operations
+                after = await finance_snapshot(f)
+                for name in before:
+                    if name != "payroll_records": assert before[name] == after[name], name
+                assert [r for r in before["payroll_records"] if r[0] != 2] == [r for r in after["payroll_records"] if r[0] != 2]
+                print("PAYROLL_ADVANCE_MONEY", json.dumps({"paid": data, "cost_before": before_costs["amount"],
+                    "cost_after": after_costs["amount"], "balances_before": before_balances, "balances_after": before_balances,
+                    "ledger_count_before": before_ledger["total"], "ledger_count_after": before_ledger["total"],
+                    "usage": used["payroll_usage"], "outstanding": used["advance"]["outstanding_amount"],
+                    "revoked": revoked.json(), "cost_after_revoke": (await costs(c))["amount"], "usage_after_revoke": after_revoke["payroll_usage"]}, ensure_ascii=False))
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:124: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000)
+            before = await finance_snapshot(f)
+            before_balances, before_ledger, before_costs = await balances(c), await ledger(c), await costs(c)
+            paid = await disburse(c, aid)
+            assert paid.status_code == 200, paid.text
+            data = paid.json()
+            assert data["cash_advance_id"] == aid and data["account_id"] is None and data["net_pay"] == 7000
+            expense_id = data["expense_record_id"]
+            after_costs = await costs(c)
+>           assert (after_costs["count"], after_costs["amount"]) == (3, 7750)
+E           assert (2, 750.0) == (3, 7750)
+E             
+E             At index 0 diff: 2 != 3
+E             Use -v to get more diff
+
+tests/test_payroll_cash_advance.py:79: AssertionError
+_ test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_company_account_deducts_o0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12145dac0>
+
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                before_ledger = await ledger(c)
+                r = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"account_id": 1})
+                assert r.status_code == 200, r.text
+                assert r.json()["funding_source"] == "company_account" and r.json()["cash_advance_id"] is None
+                assert await balances(c) == {1: 3000, 3: 20000}
+                changed_currency = await c.put("/api/v1/accounts/1", headers=auth(1), json={
+                    "account_name": "测试现金", "account_type": "cash", "account_number": "cash", "currency": "CNY",
+                })
+                assert changed_currency.status_code == 400 and "已发放工资" in changed_currency.text
+                assert (await costs(c))["amount"] == 7750
+                flow = await ledger(c)
+                assert flow["total"] == before_ledger["total"] + 1 and flow["total_expense"] == before_ledger["total_expense"] + 7000
+                again = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"account_id": 1})
+                assert again.status_code == 400 and (await balances(c))[1] == 3000
+                revoke = await c.post("/api/v1/payroll/2/revoke-disbursement", headers=auth(1))
+                assert revoke.status_code == 200 and await balances(c) == {1: 10000, 3: 20000}
+                assert (await costs(c))["amount"] == 750 and await ledger(c) == before_ledger
+                async with f() as db:
+                    assert (await db.get(PaymentAccount, 1)).opening_balance == 10000
+                print("PAYROLL_COMPANY_MONEY", {"before": 10000, "paid": 3000, "revoked": 10000, "expense_added": 7000, "flow_added": 7000})
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:151: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            before_ledger = await ledger(c)
+            r = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"account_id": 1})
+            assert r.status_code == 200, r.text
+            assert r.json()["funding_source"] == "company_account" and r.json()["cash_advance_id"] is None
+>           assert await balances(c) == {1: 3000, 3: 20000}
+E           assert {1: 2250.0, 3: 20000.0} == {1: 3000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 2250.0} != {1: 3000}
+E             Use -v to get more diff
+
+tests/test_payroll_cash_advance.py:135: AssertionError
+__________ test_invalid_funding_never_changes_any_money[insufficient] __________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11675ed20>
+kind = 'insufficient'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+>           assert r.status_code == 400, r.text
+E           AssertionError: {"warning":{"message":"当前账户余额不足（可用 1,000.00，本次 7,000.00），确认继续吗","balance_before":1000.0,"amount":7000.0,"balance_after":-6000.0,"currency":"THB","source":"cash_advance","source_id":1},"message":"已向 员工1 发放 7000.00 泰铢工资","id":2,"net_pay":7000.0,"expense_record_id":null,"account_id":null,"funding_source":"cash_advance","cash_advance_id":1,"disbursed_at":"2026-10-28T00:58:51.005667+07:00"}
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_payroll_cash_advance.py:169: AssertionError
+____________ test_invalid_funding_never_changes_any_money[pending] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12160ce60>
+kind = 'pending'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+____________ test_invalid_funding_never_changes_any_money[rejected] ____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1215d96d0>
+kind = 'rejected'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+_____________ test_invalid_funding_never_changes_any_money[repaid] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1212a01a0>
+kind = 'repaid'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+____________ test_invalid_funding_never_changes_any_money[currency] ____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x115fb71a0>
+kind = 'currency'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+____________ test_invalid_funding_never_changes_any_money[foreign] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x121644aa0>
+kind = 'foreign'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+____________ test_invalid_funding_never_changes_any_money[missing] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha6')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x123184e00>
+kind = 'missing'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+_____________ test_invalid_funding_never_changes_any_money[mixed] ______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1236f2e70>
+kind = 'mixed'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+_________ test_invalid_funding_never_changes_any_money[company_mixed] __________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_invalid_funding_never_cha8')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x123999910>
+kind = 'company_mixed'
+
+    @pytest.mark.parametrize("kind", ["insufficient", "pending", "rejected", "repaid", "currency", "foreign", "missing", "mixed", "company_mixed"])
+    def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+                async with f() as db:
+                    a = await db.get(CashAdvance, aid)
+                    if kind in ("pending", "rejected"): a.status = kind
+                    if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                    if kind == "foreign": a.warehouse_id = 2
+                    await db.commit()
+                fields = {"account_id": 1} if kind == "mixed" else {}
+                if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+                before = await finance_snapshot(f)
+                r = await disburse(c, None if kind == "missing" else aid, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+                if kind == "currency":
+                    assert "币种" in r.json()["detail"]
+                    assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+                assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+            async with f() as db:
+                a = await db.get(CashAdvance, aid)
+                if kind in ("pending", "rejected"): a.status = kind
+                if kind == "repaid": a.status, a.repaid_amount = "repaid", a.amount
+                if kind == "foreign": a.warehouse_id = 2
+                await db.commit()
+            fields = {"account_id": 1} if kind == "mixed" else {}
+            if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
+            before = await finance_snapshot(f)
+            r = await disburse(c, None if kind == "missing" else aid, **fields)
+            assert r.status_code == 400, r.text
+            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
+            if kind == "currency":
+                assert "币种" in r.json()["detail"]
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
+>           assert await finance_snapshot(f) == before and await balances(c) == {1: 10000, 3: 20000}
+E           AssertionError: assert ({'clock_in_re...ems': [], ...} == {'clock_in_re...ems': [], ...}
+E             
+E             Omitting 11 identical items, use -vv to show
+E             Use -v to get more diff and {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff)
+
+tests/test_payroll_cash_advance.py:174: AssertionError
+____ test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity _____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_reuse_limit_batch_total_i0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1236f1e20>
+
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000)
+                assert (await disburse(c, aid)).status_code == 200
+                async with f() as db:
+                    r = await db.get(PayrollRecord, 1)
+                    r.status, r.net_pay = "confirmed", 4000
+                    await db.commit()
+                r = await disburse(c, aid, rid=1)
+                assert r.status_code == 400 and r.json()["detail"] == "垫款单剩余金额不足"
+                async with f() as db:
+                    (await db.get(PayrollRecord, 1)).net_pay = 3000
+                    await db.commit()
+                body = {"record_ids": [1, 2, 2, 3], "funding_source": "cash_advance", "cash_advance_id": aid}
+                r = await c.post("/api/v1/payroll/batch-disburse", headers=auth(1), json=body)
+                assert r.status_code == 200 and r.json()["count"] == 1 and r.json()["total_net"] == 3000
+                assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 10000
+                retry = await c.post("/api/v1/payroll/batch-disburse", headers=auth(1), json=body)
+                assert retry.status_code == 200 and retry.json()["count"] == 0
+                assert (await usage(c, aid))["advance"]["outstanding_amount"] == 10000
+                assert await balances(c) == {1: 10000, 3: 20000}
+                assert (await c.post("/api/v1/payroll/1/revoke-disbursement", headers=auth(1))).status_code == 200
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 3000
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000)
+            assert (await disburse(c, aid)).status_code == 200
+            async with f() as db:
+                r = await db.get(PayrollRecord, 1)
+                r.status, r.net_pay = "confirmed", 4000
+                await db.commit()
+            r = await disburse(c, aid, rid=1)
+>           assert r.status_code == 400 and r.json()["detail"] == "垫款单剩余金额不足"
+E           assert (200 == 400)
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_payroll_cash_advance.py:189: AssertionError
+____________ test_batch_aggregate_budget_and_atomic_rollback[False] ____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_batch_aggregate_budget_an0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1204ff530>
+fail = False
+
+    @pytest.mark.parametrize("fail", [False, True])
+    def test_batch_aggregate_budget_and_atomic_rollback(tmp_path, monkeypatch, fail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000 if fail else 7500)
+                async with f() as db:
+                    r = await db.get(PayrollRecord, 1)
+                    r.status, r.net_pay = "confirmed", 1000
+                    await db.commit()
+                before = await finance_snapshot(f)
+                if fail:
+                    original = service.record_history
+                    calls = 0
+                    async def broken(db, **kwargs):
+                        nonlocal calls
+                        await original(db, **kwargs)
+                        if kwargs["module"] == "expense":
+                            calls += 1
+                            if calls == 2: raise HTTPException(500, "模拟第二笔成本失败")
+                    monkeypatch.setattr(service, "record_history", broken)
+                r = await c.post("/api/v1/payroll/batch-disburse", headers=auth(1), json={
+                    "record_ids": [1, 2], "funding_source": "cash_advance", "cash_advance_id": aid,
+                })
+                assert r.status_code == (500 if fail else 400), r.text
+                assert await finance_snapshot(f) == before
+                assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 0
+                assert await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000 if fail else 7500)
+            async with f() as db:
+                r = await db.get(PayrollRecord, 1)
+                r.status, r.net_pay = "confirmed", 1000
+                await db.commit()
+            before = await finance_snapshot(f)
+            if fail:
+                original = service.record_history
+                calls = 0
+                async def broken(db, **kwargs):
+                    nonlocal calls
+                    await original(db, **kwargs)
+                    if kwargs["module"] == "expense":
+                        calls += 1
+                        if calls == 2: raise HTTPException(500, "模拟第二笔成本失败")
+                monkeypatch.setattr(service, "record_history", broken)
+            r = await c.post("/api/v1/payroll/batch-disburse", headers=auth(1), json={
+                "record_ids": [1, 2], "funding_source": "cash_advance", "cash_advance_id": aid,
+            })
+>           assert r.status_code == (500 if fail else 400), r.text
+E           AssertionError: {"warning":{"message":"当前账户余额不足（可用 7,500.00，本次 8,000.00），确认继续吗","balance_before":7500.0,"amount":8000.0,"balance_after":-500.0,"currency":"THB","source":"cash_advance","source_id":1,"record_ids":[1,2]},"message":"已发放 2 条","count":2,"account_id":null,"funding_source":"cash_advance","cash_advance_id":1,"total_net":8000.0,"expenses":[{"payroll_record_id":1,"expense_record_id":null,"amount":1000.0},{"payroll_record_id":2,"expense_record_id":null,"amount":7000.0}]}
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_payroll_cash_advance.py:229: AssertionError
+____________ test_batch_aggregate_budget_and_atomic_rollback[True] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_batch_aggregate_budget_an1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x120578f80>
+fail = True
+
+    @pytest.mark.parametrize("fail", [False, True])
+    def test_batch_aggregate_budget_and_atomic_rollback(tmp_path, monkeypatch, fail):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000 if fail else 7500)
+                async with f() as db:
+                    r = await db.get(PayrollRecord, 1)
+                    r.status, r.net_pay = "confirmed", 1000
+                    await db.commit()
+                before = await finance_snapshot(f)
+                if fail:
+                    original = service.record_history
+                    calls = 0
+                    async def broken(db, **kwargs):
+                        nonlocal calls
+                        await original(db, **kwargs)
+                        if kwargs["module"] == "expense":
+                            calls += 1
+                            if calls == 2: raise HTTPException(500, "模拟第二笔成本失败")
+                    monkeypatch.setattr(service, "record_history", broken)
+                r = await c.post("/api/v1/payroll/batch-disburse", headers=auth(1), json={
+                    "record_ids": [1, 2], "funding_source": "cash_advance", "cash_advance_id": aid,
+                })
+                assert r.status_code == (500 if fail else 400), r.text
+                assert await finance_snapshot(f) == before
+                assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 0
+                assert await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000 if fail else 7500)
+            async with f() as db:
+                r = await db.get(PayrollRecord, 1)
+                r.status, r.net_pay = "confirmed", 1000
+                await db.commit()
+            before = await finance_snapshot(f)
+            if fail:
+                original = service.record_history
+                calls = 0
+                async def broken(db, **kwargs):
+                    nonlocal calls
+                    await original(db, **kwargs)
+                    if kwargs["module"] == "expense":
+                        calls += 1
+                        if calls == 2: raise HTTPException(500, "模拟第二笔成本失败")
+                monkeypatch.setattr(service, "record_history", broken)
+            r = await c.post("/api/v1/payroll/batch-disburse", headers=auth(1), json={
+                "record_ids": [1, 2], "funding_source": "cash_advance", "cash_advance_id": aid,
+            })
+>           assert r.status_code == (500 if fail else 400), r.text
+E           AssertionError: {"warning":null,"message":"已发放 2 条","count":2,"account_id":null,"funding_source":"cash_advance","cash_advance_id":1,"total_net":8000.0,"expenses":[{"payroll_record_id":1,"expense_record_id":null,"amount":1000.0},{"payroll_record_id":2,"expense_record_id":null,"amount":7000.0}]}
+E           assert 200 == 500
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_payroll_cash_advance.py:229: AssertionError
+_____________ test_failed_revoke_restores_cost_usage_and_loan_link _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_failed_revoke_restores_co0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12145fc80>
+
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_failed_revoke_restores_cost_usage_and_loan_link(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000)
+                assert (await disburse(c, aid)).status_code == 200
+                before = await finance_snapshot(f)
+                async def broken(db, **kwargs):
+                    await db.flush()
+                    raise HTTPException(500, "模拟撤销日志失败")
+                monkeypatch.setattr(payroll_api, "record_history", broken)
+                r = await c.post("/api/v1/payroll/2/revoke-disbursement", headers=auth(1))
+                assert r.status_code == 500 and await finance_snapshot(f) == before
+                assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 7000
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:250: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000)
+            assert (await disburse(c, aid)).status_code == 200
+            before = await finance_snapshot(f)
+            async def broken(db, **kwargs):
+                await db.flush()
+                raise HTTPException(500, "模拟撤销日志失败")
+            monkeypatch.setattr(payroll_api, "record_history", broken)
+            r = await c.post("/api/v1/payroll/2/revoke-disbursement", headers=auth(1))
+>           assert r.status_code == 500 and await finance_snapshot(f) == before
+E           assert (400 == 500)
+E            +  where 400 = <Response [400 Bad Request]>.status_code
+
+tests/test_payroll_cash_advance.py:248: AssertionError
+_____________ test_old_disbursement_role_restrictions_preserved[2] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_old_disbursement_role_res0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1214675c0>, uid = 2
+
+    @pytest.mark.parametrize("uid", [2, 3, 5])
+    def test_old_disbursement_role_restrictions_preserved(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000)
+                await set_perms(f, uid, ["工资"])
+                assert (await disburse(c, aid, uid=uid)).status_code == 403
+                assert (await c.get("/api/v1/payroll/cash-advance-sources", headers=auth(uid))).status_code == 403
+                assert await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000)
+            await set_perms(f, uid, ["工资"])
+            assert (await disburse(c, aid, uid=uid)).status_code == 403
+            assert (await c.get("/api/v1/payroll/cash-advance-sources", headers=auth(uid))).status_code == 403
+>           assert await balances(c) == {1: 10000, 3: 20000}
+E           assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff
+
+tests/test_payroll_cash_advance.py:278: AssertionError
+_____________ test_old_disbursement_role_restrictions_preserved[3] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_old_disbursement_role_res1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11675e090>, uid = 3
+
+    @pytest.mark.parametrize("uid", [2, 3, 5])
+    def test_old_disbursement_role_restrictions_preserved(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000)
+                await set_perms(f, uid, ["工资"])
+                assert (await disburse(c, aid, uid=uid)).status_code == 403
+                assert (await c.get("/api/v1/payroll/cash-advance-sources", headers=auth(uid))).status_code == 403
+                assert await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000)
+            await set_perms(f, uid, ["工资"])
+            assert (await disburse(c, aid, uid=uid)).status_code == 403
+            assert (await c.get("/api/v1/payroll/cash-advance-sources", headers=auth(uid))).status_code == 403
+>           assert await balances(c) == {1: 10000, 3: 20000}
+E           assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff
+
+tests/test_payroll_cash_advance.py:278: AssertionError
+_____________ test_old_disbursement_role_restrictions_preserved[5] _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_old_disbursement_role_res2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x123bdd6a0>, uid = 5
+
+    @pytest.mark.parametrize("uid", [2, 3, 5])
+    def test_old_disbursement_role_restrictions_preserved(tmp_path, monkeypatch, uid):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000)
+                await set_perms(f, uid, ["工资"])
+                assert (await disburse(c, aid, uid=uid)).status_code == 403
+                assert (await c.get("/api/v1/payroll/cash-advance-sources", headers=auth(uid))).status_code == 403
+                assert await balances(c) == {1: 10000, 3: 20000}
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000)
+            await set_perms(f, uid, ["工资"])
+            assert (await disburse(c, aid, uid=uid)).status_code == 403
+            assert (await c.get("/api/v1/payroll/cash-advance-sources", headers=auth(uid))).status_code == 403
+>           assert await balances(c) == {1: 10000, 3: 20000}
+E           assert {1: 9250.0, 3: 20000.0} == {1: 10000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 9250.0} != {1: 10000}
+E             Use -v to get more diff
+
+tests/test_payroll_cash_advance.py:278: AssertionError
+_____ test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost _____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_repay_after_salary_change0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x123eeacc0>
+
+    def test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (f, c):
+                aid = await approved(c, amount=10000)
+                assert (await disburse(c, aid)).status_code == 200
+                path = await voucher(c)
+                paid = await repay(c, aid, path, amount="7000")
+                assert paid.status_code == 200, paid.text
+                assert paid.json()["advance"]["outstanding_amount"] == 3000
+                assert (await costs(c))["amount"] == 7750
+                assert await balances(c) == {1: 3000, 3: 20000}
+                assert (await ledger(c))["total_expense"] == 7750  # 750原成本资金＋7000实际归还
+                assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 7000
+                assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 3000
+>       asyncio.run(run())
+
+tests/test_payroll_cash_advance.py:296: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (f, c):
+            aid = await approved(c, amount=10000)
+            assert (await disburse(c, aid)).status_code == 200
+            path = await voucher(c)
+            paid = await repay(c, aid, path, amount="7000")
+            assert paid.status_code == 200, paid.text
+            assert paid.json()["advance"]["outstanding_amount"] == 3000
+            assert (await costs(c))["amount"] == 7750
+>           assert await balances(c) == {1: 3000, 3: 20000}
+E           assert {1: 2250.0, 3: 20000.0} == {1: 3000, 3: 20000}
+E             
+E             Omitting 1 identical items, use -vv to show
+E             Differing items:
+E             {1: 2250.0} != {1: 3000}
+E             Use -v to get more diff
+
+tests/test_payroll_cash_advance.py:292: AssertionError
+________ test_no_payroll_calculation_or_other_financial_module_changes _________
+
+    def test_no_payroll_calculation_or_other_financial_module_changes():
+        from tests.financial_reversal_test_support import without_advance_void_query
+        from tests.full_day_leave_test_support import before_full_day_guards
+        root = Path(__file__).resolve().parents[2]
+        name = "backend/app/api/v1/payroll.py"
+        old = subprocess.check_output(["git", "show", "0a845c3:" + name], cwd=root, text=True)
+        new = before_full_day_guards(without_advance_void_query((root / name).read_text()))
+        def calculations(source):
+            return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
+                if isinstance(n, ast.AsyncFunctionDef) and n.name in ("_prepare_payroll", "_compute_employee_records", "_calc_payroll", "_recalc_or_void_one", "calculate_payroll")}
+>       assert calculations(old) == calculations(new)
+
+tests/test_payroll_cash_advance.py:309: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_payroll_cash_advance.py:307: in calculations
+    return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(source).body
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+source = "from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_am...ent_user, db=db)\n    if not result['data']:\n        raise HTTPException(404, '工资单不存在')\n    return result['data'][0]"
+filename = '<unknown>', mode = 'exec'
+
+    def parse(source, filename='<unknown>', mode='exec', *,
+              type_comments=False, feature_version=None):
+        """
+        Parse the source into an AST node.
+        Equivalent to compile(source, filename, mode, PyCF_ONLY_AST).
+        Pass type_comments=True to get back type comments where the syntax allows.
+        """
+        flags = PyCF_ONLY_AST
+        if type_comments:
+            flags |= PyCF_TYPE_COMMENTS
+        if feature_version is None:
+            feature_version = -1
+        elif isinstance(feature_version, tuple):
+            major, minor = feature_version  # Should be a 2-tuple.
+            if major != 3:
+                raise ValueError(f"Unsupported major version: {major}")
+            feature_version = minor
+        # Else it should be an int giving the minor version for 3.x.
+>       return compile(source, filename, mode, flags,
+                       _feature_version=feature_version)
+E         File "<unknown>", line 1119
+E           await record_balance_warning(db, warning, current_user, module='payroll', record_id=expenses[0]['payroll_record_id'], warehouse_id=wh_id)
+E           ^^^^^
+E       IndentationError: expected an indented block after 'if' statement on line 1118
+
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/ast.py:52: IndentationError
+___________ test_source_money_cost_ledger_and_void[company_account] ____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_source_money_cost_ledger_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1240736b0>
+source = 'company_account'
+
+    @pytest.mark.parametrize('source', ['company_account', 'cash_advance', 'expense_fund'])
+    def test_source_money_cost_ledger_and_void(tmp_path, monkeypatch, source):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                old = await snapshot(f)
+                before, flows_before = await state(f), await ledger(c)
+                r = await create(c, funding_source=source, cash_advance_id=1, fund_account_id=1)
+                assert r.status_code == 200, r.text
+                aid = r.json()['id']
+                after, flows_after = await state(f), await ledger(c)
+                assert after['balance'] == before['balance'] - (1000 if source == 'company_account' else 0)
+                assert after['expenses'] == before['expenses'] + (1 if source == 'company_account' else 0)
+                assert after['expense_amount'] == before['expense_amount'] + (1000 if source == 'company_account' else 0)
+                assert after['fund_available'] == before['fund_available'] - (1000 if source == 'expense_fund' else 0)
+                assert flows_after['total'] == flows_before['total'] + (1 if source == 'company_account' else 0)
+                if source == 'company_account':
+                    row = next(x for x in flows_after['data'] if '预支单 #' in (x.get('remark') or ''))
+                    assert row['amount'] == 1000 and row['account_id'] == 1 and '员工1' in row['remark']
+                    costs = (await c.get('/api/v1/income-expense/expense', headers=auth(1),
+                        params={'category_group':'operating'})).json()
+                    assert len(costs['data']) == 1 and costs['data'][0]['category_name'] == '员工预支'
+                elif source == 'cash_advance':
+                    loans = (await c.get('/api/v1/cash-advances', headers=auth(1))).json()['data']
+                    loan = next(x for x in loans if x['id'] == 1)
+                    assert (loan['employee_advance_used_amount'], loan['available_amount'], loan['outstanding_amount']) == (1000,9000,10000)
+                    history = (await c.get('/api/v1/cash-advances/1/repayments', headers=auth(1))).json()['employee_advance_usage']
+                    assert history['data'][0]['employee_advance_id'] == aid and history['employee_advance_used_amount'] == 1000
+                else:
+                    async with f() as db:
+                        a = await db.get(EmployeeAdvance, aid)
+                        item = await db.get(ExpenseFundItem, a.fund_item_id)
+                        assert item.cost_record_only and item.review_status == 'approved' and a.expense_record_id is None
+                assert await snapshot(f) == old
+                print('ADVANCE_FUNDING', json.dumps({'source':source, 'before':before, 'after':after,
+                    'flows_before':flows_before['total'], 'flows_after':flows_after['total'], 'response':r.json()}, ensure_ascii=False))
+                result = await c.request('DELETE', f'{BASE}/{aid}', headers=auth(1), json={'void_reason':'资金来源回归测试'})
+                assert result.status_code == 200, result.text
+                assert await state(f) == before and (await ledger(c))['total'] == flows_before['total']
+                assert await snapshot(f) == old
+>       asyncio.run(run())
+
+tests/test_employee_advance_funding.py:117: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            old = await snapshot(f)
+            before, flows_before = await state(f), await ledger(c)
+            r = await create(c, funding_source=source, cash_advance_id=1, fund_account_id=1)
+            assert r.status_code == 200, r.text
+            aid = r.json()['id']
+            after, flows_after = await state(f), await ledger(c)
+            assert after['balance'] == before['balance'] - (1000 if source == 'company_account' else 0)
+            assert after['expenses'] == before['expenses'] + (1 if source == 'company_account' else 0)
+            assert after['expense_amount'] == before['expense_amount'] + (1000 if source == 'company_account' else 0)
+            assert after['fund_available'] == before['fund_available'] - (1000 if source == 'expense_fund' else 0)
+            assert flows_after['total'] == flows_before['total'] + (1 if source == 'company_account' else 0)
+            if source == 'company_account':
+                row = next(x for x in flows_after['data'] if '预支单 #' in (x.get('remark') or ''))
+                assert row['amount'] == 1000 and row['account_id'] == 1 and '员工1' in row['remark']
+                costs = (await c.get('/api/v1/income-expense/expense', headers=auth(1),
+                    params={'category_group':'operating'})).json()
+>               assert len(costs['data']) == 1 and costs['data'][0]['category_name'] == '员工预支'
+E               AssertionError: assert (2 == 1)
+E                +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])
+
+tests/test_employee_advance_funding.py:98: AssertionError
+_ test_validation_no_partial_writes[values10-\u57ab\u6b3e\u5355\u5269\u4f59\u91d1\u989d\u4e0d\u8db3] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_validation_no_partial_wri10')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1231aa930>
+values = {'cash_advance_id': 5, 'funding_source': 'cash_advance'}
+message = '垫款单剩余金额不足'
+
+    @pytest.mark.parametrize('values,message', [
+        ({'funding_source':None}, '请选择资金来源'), ({'funding_source':'nope'}, '资金来源无效'),
+        ({'payment_account_id':None}, '请选择公司付款账户'), ({'payment_account_id':2}, '付款账户不存在或不属于当前仓库'),
+        ({'amount':20001}, '预支合计不能超过当月工资'), ({'payment_account_id':3,'currency':'THB'}, '付款账户币种与预支不一致'),
+        ({'funding_source':'cash_advance'}, '请选择垫款单'),
+        ({'funding_source':'cash_advance','cash_advance_id':2}, '垫款单不存在或不属于当前仓库'),
+        ({'funding_source':'cash_advance','cash_advance_id':3}, '只能使用已确认的垫款单'),
+        ({'funding_source':'cash_advance','cash_advance_id':4}, '垫款单币种与预支不一致'),
+        ({'funding_source':'cash_advance','cash_advance_id':5}, '垫款单剩余金额不足'),
+        ({'funding_source':'expense_fund'}, '请选择备用金账户'),
+        ({'funding_source':'expense_fund','fund_account_id':2}, '备用金账户不存在或不属于当前仓库'),
+        ({'funding_source':'expense_fund','fund_account_id':1,'amount':10001}, '超出备用金可用余额'),
+    ])
+    def test_validation_no_partial_writes(tmp_path, monkeypatch, values, message):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                before = await state(f)
+                r = await create(c, **values)
+                assert r.status_code == 400 and r.json()['detail'].startswith(message), r.text
+                assert await state(f) == before
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 0
+                print('FUNDING_DENIED', r.status_code, r.json()['detail'])
+>       asyncio.run(run())
+
+tests/test_employee_advance_funding.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            before = await state(f)
+            r = await create(c, **values)
+>           assert r.status_code == 400 and r.json()['detail'].startswith(message), r.text
+E           AssertionError: {"message":"预支记录已创建","id":1,"approval_status":"approved","approval_status_label":"已通过","reviewer_id":null,"reviewed_at":null,"reject_reason":null,"expense_record_id":null,"funding_source":"cash_advance","funding_source_label":"垫款单","cash_advance_id":5,"payment_account_id":null,"fund_account_id":null,"limit_check":{"checked":true,"currency":"THB","monthly_salary":10400.0,"occupied_amount":0.0,"requested_amount":1000.0,"available_amount":10400.0,"remaining_amount":9400.0},"warning":{"message":"当前账户余额不足（可用 100.00，本次 1,000.00），确认继续吗","balance_before":100.0,"amount":1000.0,"balance_after":-900.0,"currency":"THB","source":"cash_advance","source_id":5}}
+E           assert (200 == 400)
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_employee_advance_funding.py:165: AssertionError
+_ test_validation_no_partial_writes[values13-\u8d85\u51fa\u5907\u7528\u91d1\u53ef\u7528\u4f59\u989d] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_validation_no_partial_wri13')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x124337ec0>
+values = {'amount': 10001, 'fund_account_id': 1, 'funding_source': 'expense_fund'}
+message = '超出备用金可用余额'
+
+    @pytest.mark.parametrize('values,message', [
+        ({'funding_source':None}, '请选择资金来源'), ({'funding_source':'nope'}, '资金来源无效'),
+        ({'payment_account_id':None}, '请选择公司付款账户'), ({'payment_account_id':2}, '付款账户不存在或不属于当前仓库'),
+        ({'amount':20001}, '预支合计不能超过当月工资'), ({'payment_account_id':3,'currency':'THB'}, '付款账户币种与预支不一致'),
+        ({'funding_source':'cash_advance'}, '请选择垫款单'),
+        ({'funding_source':'cash_advance','cash_advance_id':2}, '垫款单不存在或不属于当前仓库'),
+        ({'funding_source':'cash_advance','cash_advance_id':3}, '只能使用已确认的垫款单'),
+        ({'funding_source':'cash_advance','cash_advance_id':4}, '垫款单币种与预支不一致'),
+        ({'funding_source':'cash_advance','cash_advance_id':5}, '垫款单剩余金额不足'),
+        ({'funding_source':'expense_fund'}, '请选择备用金账户'),
+        ({'funding_source':'expense_fund','fund_account_id':2}, '备用金账户不存在或不属于当前仓库'),
+        ({'funding_source':'expense_fund','fund_account_id':1,'amount':10001}, '超出备用金可用余额'),
+    ])
+    def test_validation_no_partial_writes(tmp_path, monkeypatch, values, message):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                before = await state(f)
+                r = await create(c, **values)
+                assert r.status_code == 400 and r.json()['detail'].startswith(message), r.text
+                assert await state(f) == before
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 0
+                print('FUNDING_DENIED', r.status_code, r.json()['detail'])
+>       asyncio.run(run())
+
+tests/test_employee_advance_funding.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            before = await state(f)
+            r = await create(c, **values)
+>           assert r.status_code == 400 and r.json()['detail'].startswith(message), r.text
+E           AssertionError: {"message":"预支记录已创建","id":1,"approval_status":"approved","approval_status_label":"已通过","reviewer_id":null,"reviewed_at":null,"reject_reason":null,"expense_record_id":null,"funding_source":"expense_fund","funding_source_label":"备用金","cash_advance_id":null,"payment_account_id":null,"fund_account_id":1,"limit_check":{"checked":true,"currency":"THB","monthly_salary":10400.0,"occupied_amount":0.0,"requested_amount":10001.0,"available_amount":10400.0,"remaining_amount":399.0},"warning":{"message":"当前账户余额不足（可用 10,000.00，本次 10,001.00），确认继续吗","balance_before":10000.0,"amount":10001.0,"balance_after":-1.0,"currency":"THB","source":"expense_fund","source_id":1}}
+E           assert (200 == 400)
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_employee_advance_funding.py:165: AssertionError
+_ test_approval_rechecks_resources_and_keeps_pending_on_failure[cash_advance] __
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_approval_rechecks_resourc1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1257e0860>
+source = 'cash_advance'
+
+    @pytest.mark.parametrize('source', ['company_account', 'cash_advance', 'expense_fund'])
+    def test_approval_rechecks_resources_and_keeps_pending_on_failure(tmp_path, monkeypatch, source):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                await supervisor_self(f)
+                r = await create(c, uid=4, funding_source=source, cash_advance_id=1, fund_account_id=1)
+                aid = r.json()['id']
+                async with f() as db:
+                    if source == 'company_account': (await db.get(PaymentAccount,1)).opening_balance = 0
+                    elif source == 'cash_advance': (await db.get(CashAdvance,1)).repaid_amount = 10000
+                    else: (await db.get(ExpenseFund,1)).remaining_balance = 0
+                    await db.commit()
+                before = await state(f)
+                r = await c.post(f'{BASE}/{aid}/approve', headers=auth(1))
+                if source == 'company_account':
+                    assert r.status_code==200 and r.json()['warning']['balance_after']==-1000,r.text
+                    assert (await state(f))['balance']==-1000
+                    return
+                assert r.status_code == 400, r.text
+                async with f() as db:
+                    a = await db.get(EmployeeAdvance, aid)
+                    assert a.approval_status == 'pending' and a.reviewer_id is None and a.reviewed_at is None
+                assert await state(f) == before
+>       asyncio.run(run())
+
+tests/test_employee_advance_funding.py:196: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            await supervisor_self(f)
+            r = await create(c, uid=4, funding_source=source, cash_advance_id=1, fund_account_id=1)
+            aid = r.json()['id']
+            async with f() as db:
+                if source == 'company_account': (await db.get(PaymentAccount,1)).opening_balance = 0
+                elif source == 'cash_advance': (await db.get(CashAdvance,1)).repaid_amount = 10000
+                else: (await db.get(ExpenseFund,1)).remaining_balance = 0
+                await db.commit()
+            before = await state(f)
+            r = await c.post(f'{BASE}/{aid}/approve', headers=auth(1))
+            if source == 'company_account':
+                assert r.status_code==200 and r.json()['warning']['balance_after']==-1000,r.text
+                assert (await state(f))['balance']==-1000
+                return
+>           assert r.status_code == 400, r.text
+E           AssertionError: {"message":"预支已通过","id":1,"amount":1000.0,"warning":{"message":"当前账户余额不足（可用 0.00，本次 1,000.00），确认继续吗","balance_before":0.0,"amount":1000.0,"balance_after":-1000.0,"currency":"THB","source":"cash_advance","source_id":1},"approval_status":"approved","approval_status_label":"已通过","reviewer_id":1,"reviewed_at":"2026-10-28T00:59:00.356317+07:00","reject_reason":null,"expense_record_id":null,"funding_source":"cash_advance","funding_source_label":"垫款单","cash_advance_id":1,"payment_account_id":null,"fund_account_id":null}
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_employee_advance_funding.py:191: AssertionError
+_ test_approval_rechecks_resources_and_keeps_pending_on_failure[expense_fund] __
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_approval_rechecks_resourc2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x115efa420>
+source = 'expense_fund'
+
+    @pytest.mark.parametrize('source', ['company_account', 'cash_advance', 'expense_fund'])
+    def test_approval_rechecks_resources_and_keeps_pending_on_failure(tmp_path, monkeypatch, source):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                await supervisor_self(f)
+                r = await create(c, uid=4, funding_source=source, cash_advance_id=1, fund_account_id=1)
+                aid = r.json()['id']
+                async with f() as db:
+                    if source == 'company_account': (await db.get(PaymentAccount,1)).opening_balance = 0
+                    elif source == 'cash_advance': (await db.get(CashAdvance,1)).repaid_amount = 10000
+                    else: (await db.get(ExpenseFund,1)).remaining_balance = 0
+                    await db.commit()
+                before = await state(f)
+                r = await c.post(f'{BASE}/{aid}/approve', headers=auth(1))
+                if source == 'company_account':
+                    assert r.status_code==200 and r.json()['warning']['balance_after']==-1000,r.text
+                    assert (await state(f))['balance']==-1000
+                    return
+                assert r.status_code == 400, r.text
+                async with f() as db:
+                    a = await db.get(EmployeeAdvance, aid)
+                    assert a.approval_status == 'pending' and a.reviewer_id is None and a.reviewed_at is None
+                assert await state(f) == before
+>       asyncio.run(run())
+
+tests/test_employee_advance_funding.py:196: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            await supervisor_self(f)
+            r = await create(c, uid=4, funding_source=source, cash_advance_id=1, fund_account_id=1)
+            aid = r.json()['id']
+            async with f() as db:
+                if source == 'company_account': (await db.get(PaymentAccount,1)).opening_balance = 0
+                elif source == 'cash_advance': (await db.get(CashAdvance,1)).repaid_amount = 10000
+                else: (await db.get(ExpenseFund,1)).remaining_balance = 0
+                await db.commit()
+            before = await state(f)
+            r = await c.post(f'{BASE}/{aid}/approve', headers=auth(1))
+            if source == 'company_account':
+                assert r.status_code==200 and r.json()['warning']['balance_after']==-1000,r.text
+                assert (await state(f))['balance']==-1000
+                return
+>           assert r.status_code == 400, r.text
+E           AssertionError: {"message":"预支已通过","id":1,"amount":1000.0,"warning":{"message":"当前账户余额不足（可用 0.00，本次 1,000.00），确认继续吗","balance_before":0.0,"amount":1000.0,"balance_after":-1000.0,"currency":"THB","source":"expense_fund","source_id":1},"approval_status":"approved","approval_status_label":"已通过","reviewer_id":1,"reviewed_at":"2026-10-28T00:59:00.564587+07:00","reject_reason":null,"expense_record_id":null,"funding_source":"expense_fund","funding_source_label":"备用金","cash_advance_id":null,"payment_account_id":null,"fund_account_id":1}
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_employee_advance_funding.py:191: AssertionError
+__________________ test_shared_cash_capacity_cannot_be_reused __________________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_shared_cash_capacity_cann0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12368f530>
+
+    def test_shared_cash_capacity_cannot_be_reused(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                r = await create(c, funding_source='cash_advance', cash_advance_id=1, amount=10000)
+                assert r.status_code == 200, r.text
+                again = await create(c, funding_source='cash_advance', cash_advance_id=1, amount=1)
+                assert again.status_code == 400 and again.json()['detail'] == '垫款单剩余金额不足'
+                from types import SimpleNamespace
+                async with f() as db:
+                    with pytest.raises(Exception, match='垫款单剩余金额不足'):
+                        await lock_payroll_advance(db,1,1,[SimpleNamespace(net_pay=1)])
+                    with pytest.raises(Exception, match='垫款单剩余金额不足'):
+                        await lock_advance(db,SimpleNamespace(warehouse_id=1,currency='THB'),1,Decimal(1))
+                rows = (await c.get('/api/v1/payroll/cash-advance-sources', headers=auth(1))).json()['data']
+                assert next(x for x in rows if x['id'] == 1)['available_amount'] == 0
+>       asyncio.run(run())
+
+tests/test_employee_advance_funding.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            r = await create(c, funding_source='cash_advance', cash_advance_id=1, amount=10000)
+            assert r.status_code == 200, r.text
+            again = await create(c, funding_source='cash_advance', cash_advance_id=1, amount=1)
+>           assert again.status_code == 400 and again.json()['detail'] == '垫款单剩余金额不足'
+E           assert (200 == 400)
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_employee_advance_funding.py:220: AssertionError
+___________________ test_salary_functions_and_cap_unchanged ____________________
+
+    def test_salary_functions_and_cap_unchanged():
+        from tests.full_day_leave_test_support import before_full_day_guards
+        from tests.cash_reference_test_support import without_reference_readers
+        name = 'backend/app/api/v1/payroll.py'
+        before = ast.parse(without_reference_readers(before_full_day_guards(subprocess.check_output(['git','show','3e19093:'+name]).decode())))
+>       after = ast.parse(without_reference_readers(before_full_day_guards(Path(name.removeprefix('backend/')).read_text())))
+
+tests/test_employee_advance_funding.py:295: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/cash_reference_test_support.py:10: in without_reference_readers
+    source = without_non_labor_guard(source)
+tests/non_labor_test_support.py:6: in without_non_labor_guard
+    tree=ast.parse(source)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+source = "from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_am...ent_user, db=db)\n    if not result['data']:\n        raise HTTPException(404, '工资单不存在')\n    return result['data'][0]"
+filename = '<unknown>', mode = 'exec'
+
+    def parse(source, filename='<unknown>', mode='exec', *,
+              type_comments=False, feature_version=None):
+        """
+        Parse the source into an AST node.
+        Equivalent to compile(source, filename, mode, PyCF_ONLY_AST).
+        Pass type_comments=True to get back type comments where the syntax allows.
+        """
+        flags = PyCF_ONLY_AST
+        if type_comments:
+            flags |= PyCF_TYPE_COMMENTS
+        if feature_version is None:
+            feature_version = -1
+        elif isinstance(feature_version, tuple):
+            major, minor = feature_version  # Should be a 2-tuple.
+            if major != 3:
+                raise ValueError(f"Unsupported major version: {major}")
+            feature_version = minor
+        # Else it should be an int giving the minor version for 3.x.
+>       return compile(source, filename, mode, flags,
+                       _feature_version=feature_version)
+E         File "<unknown>", line 1119
+E           await record_balance_warning(db, warning, current_user, module='payroll', record_id=expenses[0]['payroll_record_id'], warehouse_id=wh_id)
+E           ^^^^^
+E       IndentationError: expected an indented block after 'if' statement on line 1118
+
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/ast.py:52: IndentationError
+_ test_locked_validation_refreshes_previously_loaded_resource[expense_fund-\u8d85\u51fa\u5907\u7528\u91d1\u53ef\u7528\u4f59\u989d] _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_locked_validation_refresh2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x123fe6870>
+source = 'expense_fund', message = '超出备用金可用余额'
+
+    @pytest.mark.parametrize('source,message', [('company_account','公司账户余额不足'),
+        ('cash_advance','只能使用已确认的垫款单'), ('expense_fund','超出备用金可用余额')])
+    def test_locked_validation_refreshes_previously_loaded_resource(tmp_path, monkeypatch, source, message):
+        async def run():
+            from fastapi import HTTPException
+            async with environment(tmp_path, monkeypatch) as (_, f, _):
+                async with f() as held:
+                    # 与新建先校验、再锁定执行相同，刻意保留ORM缓存对象。
+                    _, cached = await funding.validate_funding(held,source,1,1000,
+                        payment_account_id=1,cash_advance_id=1,fund_account_id=1)
+                    assert cached.id == 1
+                    async with f() as changed:
+                        if source == 'company_account': (await changed.get(PaymentAccount,1)).opening_balance = 0
+                        elif source == 'cash_advance':
+                            loan = await changed.get(CashAdvance,1)
+                            loan.repaid_amount, loan.status = 10000, 'repaid'
+                        else: (await changed.get(ExpenseFund,1)).remaining_balance = 0
+                        await changed.commit()
+                    if source == 'company_account':
+                        _, fresh = await funding.validate_funding(held,source,1,1000,payment_account_id=1,lock=True)
+                        assert fresh.opening_balance == 0
+                        return
+                    with pytest.raises(HTTPException) as rejected:
+                        await funding.validate_funding(held,source,1,1000,payment_account_id=1,
+                            cash_advance_id=1,fund_account_id=1,lock=True)
+                    assert rejected.value.status_code == 400 and rejected.value.detail.startswith(message)
+>       asyncio.run(run())
+
+tests/test_employee_advance_funding.py:394: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        from fastapi import HTTPException
+        async with environment(tmp_path, monkeypatch) as (_, f, _):
+            async with f() as held:
+                # 与新建先校验、再锁定执行相同，刻意保留ORM缓存对象。
+                _, cached = await funding.validate_funding(held,source,1,1000,
+                    payment_account_id=1,cash_advance_id=1,fund_account_id=1)
+                assert cached.id == 1
+                async with f() as changed:
+                    if source == 'company_account': (await changed.get(PaymentAccount,1)).opening_balance = 0
+                    elif source == 'cash_advance':
+                        loan = await changed.get(CashAdvance,1)
+                        loan.repaid_amount, loan.status = 10000, 'repaid'
+                    else: (await changed.get(ExpenseFund,1)).remaining_balance = 0
+                    await changed.commit()
+                if source == 'company_account':
+                    _, fresh = await funding.validate_funding(held,source,1,1000,payment_account_id=1,lock=True)
+                    assert fresh.opening_balance == 0
+                    return
+>               with pytest.raises(HTTPException) as rejected:
+E               Failed: DID NOT RAISE <class 'fastapi.exceptions.HTTPException'>
+
+tests/test_employee_advance_funding.py:390: Failed
+_ test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_company_payment_2000_exac0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12536cc50>
+
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                rid = await approved(c)
+                photo = await upload(c, rid)
+                before, old_flows = await balances(c), await ledger(c)
+                old_other = await snapshot(f)
+                paid = await pay(c, rid, photo)
+                assert paid.status_code == 200, paid.text
+                data = paid.json()
+                assert data["status"] == "paid" and data["account_balance"] == 8000
+                assert data["payment"]["paid_by_id"] == 1 and data["payment"]["payment_voucher_path"] == photo
+                expense_id = data["expense_record_id"]
+                cost = await costs(c)
+                assert (cost["count"], cost["amount"]) == (3, 2750)
+                expense = next(x for x in cost["data"] if x["id"] == expense_id)
+                assert expense["category_name"] == "报销" and expense["amount"] == 2000 and expense["reimbursement_id"] == rid
+                assert await balances(c) == {**before, 1: 8000}
+                flows = await ledger(c)
+                assert flows["total"] == old_flows["total"] + 1 and flows["total_expense"] == old_flows["total_expense"] + 2000
+                linked = [x for x in flows["data"] if x["source"] == "reimbursement"]
+                assert len(linked) == 1 and linked[0]["remark"] == f"报销付款 #{rid}" and linked[0]["amount"] == 2000
+                duplicate = await pay(c, rid, photo)
+                assert duplicate.status_code == 400 and (await costs(c))["count"] == 3 and (await balances(c))[1] == 8000
+                assert (await c.post(f"{BASE}/{rid}/submit", headers=auth(1))).status_code == 400
+                assert (await c.delete(f"/api/v1/income-expense/expense/{expense_id}", headers=auth(1))).status_code == 400
+                report = await c.get("/api/v1/reports/income-expense?start_date=2026-10-01&end_date=2026-10-31", headers=auth(1))
+                assert report.status_code == 200 and report.json()["total_expense_by_currency"] == {"THB": 2750}
+                detail = (await c.get(f"{BASE}/{rid}", headers=auth(1))).json()
+                assert detail["expense_record_id"] == expense_id and detail["paid_by_id"] == 1 and detail["payment_account_id"] == 1
+                revoked = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "付款账户选错"})
+                assert revoked.status_code == 200, revoked.text
+                assert revoked.json()["status"] == "approved" and revoked.json()["expense_record_id"] is None and revoked.json()["account_balance"] == 10000
+                assert (await costs(c))["amount"] == 750 and await balances(c) == before
+                canceled = await ledger(c)
+                assert canceled["total"] == old_flows["total"] + 1 and canceled["total_expense"] == old_flows["total_expense"]
+                row = next(x for x in canceled["data"] if x["source"] == "reimbursement")
+                assert row["status_label"] == "已冲销" and "付款账户选错" in row["remark"]
+                hist = (await c.get(f"{BASE}/{rid}/payments", headers=auth(1))).json()
+                assert hist["total"] == 1 and hist["data"][0]["status"] == "revoked" and hist["data"][0]["revoked_by_id"] == 1
+                assert (await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "重复"})).status_code == 400
+                after_other = await snapshot(f)
+                for name in ("payroll_records", "employee_advances", "expense_funds", "expense_fund_items", "payable_bills"):
+                    assert after_other[name] == old_other[name], name
+                print("REIMB_COMPANY", json.dumps({"response": data, "cost_before": 750, "cost_after": cost["amount"],
+                    "balances_before": before, "balances_after": {**before, 1: 8000}, "flows_before": old_flows["total"],
+                    "flows_after": flows["total"], "revoke": revoked.json(), "cost_after_revoke": 750,
+                    "flows_expense_after_revoke": canceled["total_expense"]}, ensure_ascii=False))
+>       asyncio.run(run())
+
+tests/test_reimbursement_payments.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            rid = await approved(c)
+            photo = await upload(c, rid)
+            before, old_flows = await balances(c), await ledger(c)
+            old_other = await snapshot(f)
+            paid = await pay(c, rid, photo)
+            assert paid.status_code == 200, paid.text
+            data = paid.json()
+>           assert data["status"] == "paid" and data["account_balance"] == 8000
+E           AssertionError: assert ('paid' == 'paid'
+E             
+E               paid and 7250.0 == 8000)
+
+tests/test_reimbursement_payments.py:108: AssertionError
+___ test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost ___
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_cash_advance_cost_only_us0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1263cdd90>
+
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                aid = await loan(c, amount=10000)
+                rid = await approved(c)
+                path = await upload(c, rid)
+                before, flows_before = await balances(c), await ledger(c)
+                paid = await pay(c, rid, path, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
+                assert paid.status_code == 200, paid.text
+                data = paid.json()
+                assert data["cash_advance_id"] == aid and data["payment"]["payment_account_id"] is None
+                assert (await costs(c))["amount"] == 2750 and (await costs(c))["count"] == 3
+                assert await balances(c) == before and await ledger(c) == flows_before
+                used = await usage(c, aid)
+                assert used["advance"]["outstanding_amount"] == 10000
+                assert used["reimbursement_usage"]["reimbursement_used_amount"] == 2000
+                assert used["payroll_usage"]["available_amount"] == 8000
+                assert used["reimbursement_usage"]["data"][0]["reimbursement_id"] == rid
+                # 工资与报销合用同一额度；工资写路径/金额算法仍沿用原接口。
+                async with f() as db:
+                    (await db.get(PayrollRecord, 2)).net_pay = 9000
+                    await db.commit()
+                rejected = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"funding_source": "cash_advance", "cash_advance_id": aid})
+                assert rejected.status_code == 400 and rejected.json()["detail"] == "垫款单剩余金额不足"
+                revoked = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "改为公司账户付款"})
+                assert revoked.status_code == 200 and revoked.json()["cash_advance_id"] is None
+                assert (await costs(c))["amount"] == 750 and await balances(c) == before and await ledger(c) == flows_before
+                assert (await usage(c, aid))["reimbursement_usage"]["data"] == []
+                again = await pay(c, rid, path, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
+                assert again.status_code == 200 and (await costs(c))["amount"] == 2750
+                payment_photo = await loan_voucher(c)
+                returned = await repay(c, aid, payment_photo, amount="2000")
+                assert returned.status_code == 200 and (await costs(c))["amount"] == 2750
+                assert (await balances(c))[1] == 8000
+                print("REIMB_ADVANCE", json.dumps({"response": data, "cost_before": 750, "cost_after": 2750,
+                    "balances_before": before, "balances_after": before, "flows_before": flows_before["total"],
+                    "flows_after": flows_before["total"], "usage": used["reimbursement_usage"],
+                    "revoke": revoked.json(), "cost_after_revoke": 750}, ensure_ascii=False))
+>       asyncio.run(run())
+
+tests/test_reimbursement_payments.py:188: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            aid = await loan(c, amount=10000)
+            rid = await approved(c)
+            path = await upload(c, rid)
+            before, flows_before = await balances(c), await ledger(c)
+            paid = await pay(c, rid, path, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
+            assert paid.status_code == 200, paid.text
+            data = paid.json()
+            assert data["cash_advance_id"] == aid and data["payment"]["payment_account_id"] is None
+>           assert (await costs(c))["amount"] == 2750 and (await costs(c))["count"] == 3
+E           assert (5750.0 == 2750)
+
+tests/test_reimbursement_payments.py:161: AssertionError
+___________ test_validation_no_partial_money_changes[small_advance] ____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_validation_no_partial_mon7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1212605f0>
+kind = 'small_advance'
+
+    @pytest.mark.parametrize("kind", ["no_voucher", "bad_voucher", "no_account", "foreign_account", "inactive_account", "currency", "no_advance", "small_advance", "foreign_advance", "advance_currency", "pending_advance", "mixed", "not_linked_fund"])
+    def test_validation_no_partial_money_changes(tmp_path, monkeypatch, kind):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                rid = await approved(c)
+                path = await upload(c, rid)
+                fields = {}
+                if "advance" in kind or kind == "mixed":
+                    aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+                    fields.update(funding_source="cash_advance", cash_advance_id=aid, payment_account_id=None)
+                    async with f() as db:
+                        if kind == "foreign_advance": (await db.get(CashAdvance, aid)).warehouse_id = 2
+                        if kind == "pending_advance": (await db.get(CashAdvance, aid)).status = "pending"
+                        await db.commit()
+                if kind == "no_voucher": path = None
+                if kind == "bad_voucher": path = "uploads/2/2026-10-18/reimbursement-payments/no.png"
+                if kind == "no_account": fields["payment_account_id"] = None
+                if kind == "foreign_account": fields["payment_account_id"] = 2
+                if kind == "currency": fields["payment_account_id"] = 4
+                if kind == "no_advance": fields["cash_advance_id"] = None
+                if kind == "mixed": fields["payment_account_id"] = 1
+                if kind == "not_linked_fund": fields.update(funding_source="expense_fund", payment_account_id=None)
+                if kind == "inactive_account":
+                    async with f() as db:
+                        (await db.get(PaymentAccount, 1)).status = "inactive"
+                        await db.commit()
+                before = await snapshot(f)
+                r = await pay(c, rid, path, **fields)
+                assert r.status_code == 400, r.text
+                if kind == "no_voucher": assert r.json()["detail"] == "请上传付款凭证"
+                if kind == "small_advance": assert r.json()["detail"] == "垫款单剩余金额不足"
+                assert await snapshot(f) == before
+>       asyncio.run(run())
+
+tests/test_reimbursement_payments.py:253: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            rid = await approved(c)
+            path = await upload(c, rid)
+            fields = {}
+            if "advance" in kind or kind == "mixed":
+                aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+                fields.update(funding_source="cash_advance", cash_advance_id=aid, payment_account_id=None)
+                async with f() as db:
+                    if kind == "foreign_advance": (await db.get(CashAdvance, aid)).warehouse_id = 2
+                    if kind == "pending_advance": (await db.get(CashAdvance, aid)).status = "pending"
+                    await db.commit()
+            if kind == "no_voucher": path = None
+            if kind == "bad_voucher": path = "uploads/2/2026-10-18/reimbursement-payments/no.png"
+            if kind == "no_account": fields["payment_account_id"] = None
+            if kind == "foreign_account": fields["payment_account_id"] = 2
+            if kind == "currency": fields["payment_account_id"] = 4
+            if kind == "no_advance": fields["cash_advance_id"] = None
+            if kind == "mixed": fields["payment_account_id"] = 1
+            if kind == "not_linked_fund": fields.update(funding_source="expense_fund", payment_account_id=None)
+            if kind == "inactive_account":
+                async with f() as db:
+                    (await db.get(PaymentAccount, 1)).status = "inactive"
+                    await db.commit()
+            before = await snapshot(f)
+            r = await pay(c, rid, path, **fields)
+>           assert r.status_code == 400, r.text
+E           AssertionError: {"warning":{"message":"当前账户余额不足（可用 1,000.00，本次 2,000.00），确认继续吗","balance_before":1000.0,"amount":2000.0,"balance_after":-1000.0,"currency":"THB","source":"cash_advance","source_id":1},"message":"付款成功","id":1,"status":"paid","expense_record_id":null,"cash_advance_id":1,"payment":{"id":1,"reimbursement_id":1,"warehouse_id":1,"amount":2000.0,"currency":"THB","funding_source":"cash_advance","funding_source_label":"垫款单","payment_account_id":null,"account_name":null,"payment_method":"cash","payment_method_label":"现金","payment_voucher_path":"uploads/1/2026-10-28/reimbursement-payments/bb677225b2034ef58a8f53cb333aea90.png","cash_advance_id":1,"expense_record_id":null,"paid_by_id":1,"paid_by_name":"warehouse_admin","paid_at":"2026-10-28T00:59:06.862308+07:00","status":"active","status_label":"有效","revoked_by_id":null,"revoked_by_name":null,"revoked_at":null,"revoke_reason":null,"ledger_ref_no":null},"account_balance":null}
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_reimbursement_payments.py:249: AssertionError
+______ test_payment_and_revoke_failures_rollback_everything[cash_advance] ______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_payment_and_revoke_failur1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x130e7b7a0>
+source = 'cash_advance'
+
+    @pytest.mark.parametrize("source", ["company_account", "cash_advance", "expense_fund"])
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_payment_and_revoke_failures_rollback_everything(tmp_path, monkeypatch, source):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                rid = await approved(c, fund=source == "expense_fund")
+                path = await upload(c, rid)
+                fields = {"funding_source": source}
+                if source != "company_account": fields["payment_account_id"] = None
+                if source == "cash_advance": fields["cash_advance_id"] = await loan(c, amount=10000)
+                original = service.record_history
+                async def broken(db, **kwargs):
+                    await original(db, **kwargs)
+                    await db.flush()
+                    if kwargs["module"] == "reimbursement": raise HTTPException(500, "模拟记账失败")
+                before = await snapshot(f)
+                monkeypatch.setattr(service, "record_history", broken)
+                assert (await pay(c, rid, path, **fields)).status_code == 500
+                assert await snapshot(f) == before
+                monkeypatch.setattr(service, "record_history", original)
+                assert (await pay(c, rid, path, **fields)).status_code == 200
+                before = await snapshot(f)
+                monkeypatch.setattr(service, "record_history", broken)
+                r = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "回滚验收"})
+                assert r.status_code == 500 and await snapshot(f) == before
+>       asyncio.run(run())
+
+tests/test_reimbursement_payments.py:281: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            rid = await approved(c, fund=source == "expense_fund")
+            path = await upload(c, rid)
+            fields = {"funding_source": source}
+            if source != "company_account": fields["payment_account_id"] = None
+            if source == "cash_advance": fields["cash_advance_id"] = await loan(c, amount=10000)
+            original = service.record_history
+            async def broken(db, **kwargs):
+                await original(db, **kwargs)
+                await db.flush()
+                if kwargs["module"] == "reimbursement": raise HTTPException(500, "模拟记账失败")
+            before = await snapshot(f)
+            monkeypatch.setattr(service, "record_history", broken)
+            assert (await pay(c, rid, path, **fields)).status_code == 500
+            assert await snapshot(f) == before
+            monkeypatch.setattr(service, "record_history", original)
+            assert (await pay(c, rid, path, **fields)).status_code == 200
+            before = await snapshot(f)
+            monkeypatch.setattr(service, "record_history", broken)
+            r = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "回滚验收"})
+>           assert r.status_code == 500 and await snapshot(f) == before
+E           assert (400 == 500)
+E            +  where 400 = <Response [400 Bad Request]>.status_code
+
+tests/test_reimbursement_payments.py:280: AssertionError
+____________ test_cny_account_and_advance_are_independent_from_thb _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_cny_account_and_advance_a0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12427ec60>
+
+    def test_cny_account_and_advance_are_independent_from_thb(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                rid = await approved(c, currency="CNY")
+                path = await upload(c, rid)
+                sources = (await c.get(BASE + f"/payment-sources?reimbursement_id={rid}", headers=auth(1))).json()
+                assert [a["id"] for a in sources["accounts"]] == [4]
+                r = await pay(c, rid, path, payment_account_id=4)
+                assert r.status_code == 200 and r.json()["account_balance"] == 28000
+                assert (await balances(c))[1] == 10000
+                rid2 = await approved(c, currency="CNY")
+                aid = await loan(c, amount=10000, currency="CNY")
+                photo = await upload(c, rid2)
+                before = await balances(c)
+                r = await pay(c, rid2, photo, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
+                assert r.status_code == 200 and await balances(c) == before
+                assert (await usage(c, aid))["reimbursement_usage"]["reimbursement_used_amount"] == 2000
+>       asyncio.run(run())
+
+tests/test_reimbursement_payments.py:317: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            rid = await approved(c, currency="CNY")
+            path = await upload(c, rid)
+            sources = (await c.get(BASE + f"/payment-sources?reimbursement_id={rid}", headers=auth(1))).json()
+            assert [a["id"] for a in sources["accounts"]] == [4]
+            r = await pay(c, rid, path, payment_account_id=4)
+            assert r.status_code == 200 and r.json()["account_balance"] == 28000
+>           assert (await balances(c))[1] == 10000
+E           assert 9250.0 == 10000
+
+tests/test_reimbursement_payments.py:309: AssertionError
+_ test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_backfill_idempotent _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_loan_quota_already_used_b0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1314ce2a0>
+
+    def test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_backfill_idempotent(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (engine, f, c):
+                async with engine.begin() as conn:
+                    assert await service.backfill_reimbursement_categories(conn) == 0
+                aid = await loan(c, amount=3000)
+                r = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"funding_source": "cash_advance", "cash_advance_id": aid})
+                assert r.status_code == 200, r.text
+                rid = await approved(c)
+                photo = await upload(c, rid)
+                before = await snapshot(f)
+                r = await pay(c, rid, photo, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
+                assert r.status_code == 400 and r.json()["detail"] == "垫款单剩余金额不足"
+                assert await snapshot(f) == before
+>       asyncio.run(run())
+
+tests/test_reimbursement_payments.py:417: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (engine, f, c):
+            async with engine.begin() as conn:
+                assert await service.backfill_reimbursement_categories(conn) == 0
+            aid = await loan(c, amount=3000)
+            r = await c.post("/api/v1/payroll/2/disburse", headers=auth(1), json={"funding_source": "cash_advance", "cash_advance_id": aid})
+            assert r.status_code == 200, r.text
+            rid = await approved(c)
+            photo = await upload(c, rid)
+            before = await snapshot(f)
+            r = await pay(c, rid, photo, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
+>           assert r.status_code == 400 and r.json()["detail"] == "垫款单剩余金额不足"
+E           assert (200 == 400)
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_reimbursement_payments.py:415: AssertionError
+_____ test_decimal_item_sums_and_partially_approved_total_used_for_payment _____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_decimal_item_sums_and_par0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x131b393a0>
+
+    @pytest.mark.usefixtures("retained_reversal_code")
+    def test_decimal_item_sums_and_partially_approved_total_used_for_payment(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c):
+                r = await c.post(BASE, headers=auth(4), json={"submit_date": "2026-10-18", "currency": "THB",
+                    "items": [{"category": "交通费", "amount": .1}, {"category": "餐费", "amount": .2}, {"category": "其他", "amount": 5}]})
+                assert r.status_code == 200
+                rid = r.json()["id"]
+                detail = (await c.get(f"{BASE}/{rid}", headers=auth(1))).json()
+                r = await c.post(f"{BASE}/{rid}/review", headers=auth(1), json={"items": [
+                    {"item_id": item["id"], "status": "approved" if i < 2 else "rejected"} for i, item in enumerate(detail["items"])]})
+                assert r.status_code == 200 and r.json()["status"] == "partially_approved"
+                photo = await upload(c, rid)
+                r = await pay(c, rid, photo)
+                assert r.status_code == 200, r.text
+                assert r.json()["payment"]["amount"] == .3 and r.json()["account_balance"] == 9999.7
+                assert (await costs(c))["amount"] == 750.3
+                r = await c.post(f"{BASE}/{rid}/revoke-payment", headers=auth(1), json={"reason": "小数验收"})
+                assert r.status_code == 200 and r.json()["status"] == "partially_approved" and r.json()["account_balance"] == 10000
+>       asyncio.run(run())
+
+tests/test_reimbursement_payments.py:439: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (_, f, c):
+            r = await c.post(BASE, headers=auth(4), json={"submit_date": "2026-10-18", "currency": "THB",
+                "items": [{"category": "交通费", "amount": .1}, {"category": "餐费", "amount": .2}, {"category": "其他", "amount": 5}]})
+            assert r.status_code == 200
+            rid = r.json()["id"]
+            detail = (await c.get(f"{BASE}/{rid}", headers=auth(1))).json()
+            r = await c.post(f"{BASE}/{rid}/review", headers=auth(1), json={"items": [
+                {"item_id": item["id"], "status": "approved" if i < 2 else "rejected"} for i, item in enumerate(detail["items"])]})
+            assert r.status_code == 200 and r.json()["status"] == "partially_approved"
+            photo = await upload(c, rid)
+            r = await pay(c, rid, photo)
+            assert r.status_code == 200, r.text
+>           assert r.json()["payment"]["amount"] == .3 and r.json()["account_balance"] == 9999.7
+E           assert (0.3 == 0.3 and 9249.7 == 9999.7)
+
+tests/test_reimbursement_payments.py:435: AssertionError
+___ test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals ____
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_legacy_audit_preserved_an0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1329d8aa0>
+
+    def test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (engine, f, c, fid):
+                async with f() as db:
+                    fund = await db.get(ExpenseFund, fid)
+                    fund.amount = fund.remaining_balance = 5000
+                    fund.receive_date = datetime(2026, 10, 1)
+                    for amount, status in [(1000, "approved"), (500, "approved"), (300, "pending"), (200, "rejected")]:
+                        db.add(ExpenseFundItem(fund_id=fid, expense_date=datetime(2026, 10, 3), category="历史耗材",
+                            amount=amount, currency="THB", description="历史记录", review_status=status, cost_record_only=False))
+                    cat = IncomeExpenseCategory(warehouse_id=1, type="expense", name="历史备用金开销", category_group="operating", status="active")
+                    db.add(cat); await db.flush()
+                    db.add(ExpenseRecord(warehouse_id=1, category_id=cat.id, account_id=1, amount=400, currency="THB", expense_date=datetime(2026, 10, 2), remark="历史人工登记，不猜测来源"))
+                    await db.commit()
+                    before = await audit(db, [1])
+                    old_rows = [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).order_by(ExpenseFundItem.id))).all()]
+                async with engine.begin() as conn:
+                    await s.backfill_fund_disbursement_categories(conn)
+                    await s.backfill_fund_disbursement_categories(conn)
+                assert before["legacy_merged_operating_costs"] == [{"warehouse_id": 1, "currency": "THB", "count": 2, "amount": 1500}]
+                assert before["legacy_ledger_item_rows"] == [{"warehouse_id": 1, "currency": "THB", "count": 4, "amount": 2000}]
+                assert before["formal_expenses_with_fund_category_name"] == [{"warehouse_id": 1, "currency": "THB", "count": 1, "amount": 400}]
+                paid = await topup(c, fid, amount=1000)
+                assert paid.status_code == 200, paid.text
+                item = await spend(c, fid, amount=200)
+                assert item.status_code == 200, item.text
+                async with f() as db:
+                    after = await audit(db, [1])
+                    assert before == after
+                    assert [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).where(ExpenseFundItem.cost_record_only == False).order_by(ExpenseFundItem.id))).all()] == old_rows
+                state = await values(c, fid)
+                assert state["expense_amount"] == 1400 and state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
+                assert (await c.get(f"{BASE}/accounts/{fid}/items", headers=auth(1))).json()["data"]
+                print("FUND_LEGACY_AUDIT", json.dumps({"before": before, "after": after,
+                    "after_new_disbursement_and_spend": state}, ensure_ascii=False))
+>       asyncio.run(run())
+
+tests/test_fund_disbursement.py:255: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path, monkeypatch) as (engine, f, c, fid):
+            async with f() as db:
+                fund = await db.get(ExpenseFund, fid)
+                fund.amount = fund.remaining_balance = 5000
+                fund.receive_date = datetime(2026, 10, 1)
+                for amount, status in [(1000, "approved"), (500, "approved"), (300, "pending"), (200, "rejected")]:
+                    db.add(ExpenseFundItem(fund_id=fid, expense_date=datetime(2026, 10, 3), category="历史耗材",
+                        amount=amount, currency="THB", description="历史记录", review_status=status, cost_record_only=False))
+                cat = IncomeExpenseCategory(warehouse_id=1, type="expense", name="历史备用金开销", category_group="operating", status="active")
+                db.add(cat); await db.flush()
+                db.add(ExpenseRecord(warehouse_id=1, category_id=cat.id, account_id=1, amount=400, currency="THB", expense_date=datetime(2026, 10, 2), remark="历史人工登记，不猜测来源"))
+                await db.commit()
+                before = await audit(db, [1])
+                old_rows = [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).order_by(ExpenseFundItem.id))).all()]
+            async with engine.begin() as conn:
+                await s.backfill_fund_disbursement_categories(conn)
+                await s.backfill_fund_disbursement_categories(conn)
+            assert before["legacy_merged_operating_costs"] == [{"warehouse_id": 1, "currency": "THB", "count": 2, "amount": 1500}]
+            assert before["legacy_ledger_item_rows"] == [{"warehouse_id": 1, "currency": "THB", "count": 4, "amount": 2000}]
+            assert before["formal_expenses_with_fund_category_name"] == [{"warehouse_id": 1, "currency": "THB", "count": 1, "amount": 400}]
+            paid = await topup(c, fid, amount=1000)
+            assert paid.status_code == 200, paid.text
+            item = await spend(c, fid, amount=200)
+            assert item.status_code == 200, item.text
+            async with f() as db:
+                after = await audit(db, [1])
+                assert before == after
+                assert [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).where(ExpenseFundItem.cost_record_only == False).order_by(ExpenseFundItem.id))).all()] == old_rows
+            state = await values(c, fid)
+>           assert state["expense_amount"] == 1400 and state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
+E           assert (6400.0 == 1400)
+
+tests/test_fund_disbursement.py:251: AssertionError
+_______ test_new_fund_employee_advance_records_usage_without_second_cost _______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_new_fund_employee_advance0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1263f4980>
+
+    def test_new_fund_employee_advance_records_usage_without_second_cost(tmp_path, monkeypatch):
+        async def run():
+            async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
+                assert (await topup(c, fid)).status_code == 200
+                r = await c.post("/api/v1/employee-advances", headers=auth(1), json={"employee_id": 1,
+                    "amount": 1000, "advance_date": "2026-10-11", "funding_source": "expense_fund", "fund_account_id": fid})
+                assert r.status_code == 200 and r.json()["expense_record_id"] is None, r.text
+                state = await values(c, fid)
+                assert state["expense_count"] == state["flow_count"] == 1
+                assert state["expense_amount"] == state["unified_amount"] == state["flow_amount"] == 10000
+                async with f() as db:
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one() == 1
+                    assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 1
+                assert state["fund"]["available"] == 9000
+        asyncio.run(run())
+        # 新一轮明确改成备用金预支不写成本；继续保护工资公式和原报销付款动作。
+        root = Path(__file__).resolve().parents[2]
+        for path in ("backend/app/api/v1/payroll.py", "backend/app/services/reimbursement_payment.py"):
+            current = ast.parse((root / path).read_text())
+            old = ast.parse(subprocess.check_output(["git", "show", f"3e19093:{path}"], cwd=root, text=True))
+            excluded = {"payroll_cash_advance_sources", "lock_advance"}
+            def actions(tree):
+                return {n.name: ast.dump(n, include_attributes=False) for n in tree.body
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in excluded}
+>           assert actions(current) == actions(old)
+E           assert {'_apply_payr...ams=[])', ...} == {'_apply_payr...ams=[])', ...}
+E             
+E             Omitting 31 identical items, use -vv to show
+E             Differing items:
+E             {'_compute_employee_records': "AsyncFunctionDef(name='_compute_employee_records', args=arguments(posonlyargs=[], args=...ad())], keywords=[]))], orelse=[]), Return(value=Name(id='records', ctx=Load()))], decorator_list=[], type_params=[])"} != {'_compute_employee_records': "AsyncFunctionDef(name='_compute_employee_records', args=arguments(posonlyargs=[], args=...ad())], keywords=[]))], orelse=[]), Return(value=Name(id='records', ctx=Load()))], decorator_list=[], type_params=[])"}
+E             {'my_payslip': "AsyncFunctionDef...
+E             
+E             ...Full output truncated (82 lines hidden), use '-vv' to show
+
+tests/test_fund_disbursement.py:307: AssertionError
+______ test_different_fees_cannot_concurrently_overdraw_same_funds[False] ______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_different_fees_cannot_con0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1311bd8e0>
+fund = False
+
+    @pytest.mark.parametrize("fund", [False, True])
+    def test_different_fees_cannot_concurrently_overdraw_same_funds(tmp_path, monkeypatch, fund):
+        async def run():
+            async with fee_environment(tmp_path, monkeypatch, fund=fund) as (_, factory, client):
+                ids = []
+                for _ in range(2):
+                    row = await create(client, amount=700, fund_source="fund" if fund else "company", payment_account_id=None if fund else 1)
+                    approved = await client.post(f'/api/v1/expense-approvals/{row["id"]}/approve', headers=auth(1))
+                    assert approved.status_code == 200
+                    ids.append(row["id"])
+                responses = await asyncio.gather(*(pay(client, aid, payment_account_id=None if fund else 1) for aid in ids))
+                assert sorted(r.status_code for r in responses) == [200, 400]
+                after = await numbers(factory)
+                assert after["valid_payments"] == 1
+                assert after["fund_available" if fund else "company_balance"] == 300
+                actual("no_overdraw_fund" if fund else "no_overdraw_company", {"http": sorted(r.status_code for r in responses), "after": after})
+>       asyncio.run(run())
+
+tests/test_expense_approval_payment.py:177: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with fee_environment(tmp_path, monkeypatch, fund=fund) as (_, factory, client):
+            ids = []
+            for _ in range(2):
+                row = await create(client, amount=700, fund_source="fund" if fund else "company", payment_account_id=None if fund else 1)
+                approved = await client.post(f'/api/v1/expense-approvals/{row["id"]}/approve', headers=auth(1))
+                assert approved.status_code == 200
+                ids.append(row["id"])
+            responses = await asyncio.gather(*(pay(client, aid, payment_account_id=None if fund else 1) for aid in ids))
+>           assert sorted(r.status_code for r in responses) == [200, 400]
+E           assert [200, 200] == [200, 400]
+E             
+E             At index 1 diff: 200 != 400
+E             Use -v to get more diff
+
+tests/test_expense_approval_payment.py:172: AssertionError
+______ test_different_fees_cannot_concurrently_overdraw_same_funds[True] _______
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_different_fees_cannot_con1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x133153620>
+fund = True
+
+    @pytest.mark.parametrize("fund", [False, True])
+    def test_different_fees_cannot_concurrently_overdraw_same_funds(tmp_path, monkeypatch, fund):
+        async def run():
+            async with fee_environment(tmp_path, monkeypatch, fund=fund) as (_, factory, client):
+                ids = []
+                for _ in range(2):
+                    row = await create(client, amount=700, fund_source="fund" if fund else "company", payment_account_id=None if fund else 1)
+                    approved = await client.post(f'/api/v1/expense-approvals/{row["id"]}/approve', headers=auth(1))
+                    assert approved.status_code == 200
+                    ids.append(row["id"])
+                responses = await asyncio.gather(*(pay(client, aid, payment_account_id=None if fund else 1) for aid in ids))
+                assert sorted(r.status_code for r in responses) == [200, 400]
+                after = await numbers(factory)
+                assert after["valid_payments"] == 1
+                assert after["fund_available" if fund else "company_balance"] == 300
+                actual("no_overdraw_fund" if fund else "no_overdraw_company", {"http": sorted(r.status_code for r in responses), "after": after})
+>       asyncio.run(run())
+
+tests/test_expense_approval_payment.py:177: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with fee_environment(tmp_path, monkeypatch, fund=fund) as (_, factory, client):
+            ids = []
+            for _ in range(2):
+                row = await create(client, amount=700, fund_source="fund" if fund else "company", payment_account_id=None if fund else 1)
+                approved = await client.post(f'/api/v1/expense-approvals/{row["id"]}/approve', headers=auth(1))
+                assert approved.status_code == 200
+                ids.append(row["id"])
+            responses = await asyncio.gather(*(pay(client, aid, payment_account_id=None if fund else 1) for aid in ids))
+>           assert sorted(r.status_code for r in responses) == [200, 400]
+E           assert [200, 200] == [200, 400]
+E             
+E             At index 1 diff: 200 != 400
+E             Use -v to get more diff
+
+tests/test_expense_approval_payment.py:172: AssertionError
+______________ test_amount_validation_currency_and_rejected_entry ______________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-393/test_amount_validation_currenc0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x134704dd0>
+
+    def test_amount_validation_currency_and_rejected_entry(tmp_path,monkeypatch):
+        async def run():
+            async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+                await topup(c,fid);iid,url=await path_for(c,fid)
+                assert (await c.put(url,headers=auth(1),json={"amount":11000})).status_code==400
+                assert (await c.put(url,headers=auth(1),json={"amount":0})).status_code==422
+                assert (await c.put(url,headers=auth(1),json={"currency":"CNY"})).status_code==400
+                assert (await c.put(url,headers=auth(1),json={"receipt":""})).status_code==400
+                assert (await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[iid],"action":"reject"})).status_code==200
+                before=(await values(c,fid))["fund"]["available"]
+                assert (await c.request("DELETE",url,headers=auth(1),json={"reason":"已驳回记录保留作废"})).status_code==200
+                assert (await values(c,fid))["fund"]["available"]==before==10000
+>       asyncio.run(run())
+
+tests/test_fund_item_controls.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
+            await topup(c,fid);iid,url=await path_for(c,fid)
+>           assert (await c.put(url,headers=auth(1),json={"amount":11000})).status_code==400
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_fund_item_controls.py:160: AssertionError
+___________ test_original_financial_functions_and_formula_preserved ____________
+
+    def test_original_financial_functions_and_formula_preserved():
+        root=Path(__file__).resolve().parents[2]
+        for path in ("backend/app/api/v1/reimbursement.py","backend/app/api/v1/payroll.py","backend/app/api/v1/employee_advance.py","backend/app/services/flow_rules.py"):
+>           assert (root/path).read_text()==subprocess.check_output(["git","show",f"4cbf9e8:{path}"],cwd=root,text=True)
+E           assert 'from fastapi...: "类别添加成功"}\n' == 'from fastapi...: "类别添加成功"}\n'
+E             
+E             Skipping 607 identical leading characters in diff, use -v to show
+E             - permission
+E             + permission, require_non_labor
+E               from app.core.financial_reversals import reject_disabled_financial_reversal
+E               from app.services.data_history import record_history
+E               from pydantic import BaseModel, Field...
+E             
+E             ...Full output truncated (552 lines hidden), use '-vv' to show
+
+tests/test_fund_item_controls.py:174: AssertionError
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_payroll_expense.py: 35 warnings
+tests/test_payroll_cash_advance.py: 100 warnings
+tests/test_employee_advance_funding.py: 127 warnings
+tests/test_reimbursement_payments.py: 327 warnings
+tests/test_fund_disbursement.py: 176 warnings
+tests/test_expense_approval_payment.py: 141 warnings
+tests/test_fund_item_controls.py: 153 warnings
+tests/test_supplier_workflow_round1.py: 106 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_reimbursement_payments.py::test_fund_review_auto_payment_history_and_single_refund_after_reject_or_revoke
+tests/test_reimbursement_payments.py::test_fund_review_auto_payment_history_and_single_refund_after_reject_or_revoke
+  /private/tmp/all-balance-warning-20261028/backend/app/api/v1/expense_fund.py:603: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    reimb.paid_at = datetime.utcnow()
+
+tests/test_fund_disbursement.py: 18 warnings
+tests/test_fund_item_controls.py: 11 warnings
+  /private/tmp/all-balance-warning-20261028/backend/app/api/v1/expense_fund.py:174: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    receive_date=datetime.utcnow(), amount=0, purpose="",
+
+tests/test_fund_disbursement.py::test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[1]
+tests/test_fund_disbursement.py::test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[3]
+tests/test_fund_disbursement.py::test_original_roles_and_recharge_approval_one_expense_and_repeat_denied[4]
+tests/test_fund_disbursement.py::test_history_failure_rolls_back_account_fund_expense_and_approval[True]
+tests/test_fund_disbursement.py::test_all_warehouse_admin_review_uses_request_warehouse_not_primary
+  /private/tmp/all-balance-warning-20261028/backend/app/api/v1/expense_fund.py:748: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rr.reviewed_at = datetime.utcnow()
+
+tests/test_supplier_workflow_round1.py::test_multi_member_selected_warehouse_lists_create_pdf_receipt_and_actions
+  /tmp/supplier01-py312/lib/python3.12/site-packages/reportlab/lib/rl_safe_eval.py:12: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    haveNameConstant = hasattr(ast,'NameConstant')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /tmp/all-balance-warning-20261028/docs/all-balance-warning-20261028/related-backend.xml -
+=========================== short test summary info ============================
+FAILED tests/test_payroll_expense.py::test_disburse_reverse_reissue_and_reports[1]
+FAILED tests/test_payroll_expense.py::test_disburse_reverse_reissue_and_reports[4]
+FAILED tests/test_payroll_cash_advance.py::test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+FAILED tests/test_payroll_cash_advance.py::test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[insufficient]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[pending]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[rejected]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[repaid]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[currency]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[foreign]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[missing]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[mixed]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[company_mixed]
+FAILED tests/test_payroll_cash_advance.py::test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity
+FAILED tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[False]
+FAILED tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[True]
+FAILED tests/test_payroll_cash_advance.py::test_failed_revoke_restores_cost_usage_and_loan_link
+FAILED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[2]
+FAILED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[3]
+FAILED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[5]
+FAILED tests/test_payroll_cash_advance.py::test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost
+FAILED tests/test_payroll_cash_advance.py::test_no_payroll_calculation_or_other_financial_module_changes
+FAILED tests/test_employee_advance_funding.py::test_source_money_cost_ledger_and_void[company_account]
+FAILED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values10-\u57ab\u6b3e\u5355\u5269\u4f59\u91d1\u989d\u4e0d\u8db3]
+FAILED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values13-\u8d85\u51fa\u5907\u7528\u91d1\u53ef\u7528\u4f59\u989d]
+FAILED tests/test_employee_advance_funding.py::test_approval_rechecks_resources_and_keeps_pending_on_failure[cash_advance]
+FAILED tests/test_employee_advance_funding.py::test_approval_rechecks_resources_and_keeps_pending_on_failure[expense_fund]
+FAILED tests/test_employee_advance_funding.py::test_shared_cash_capacity_cannot_be_reused
+FAILED tests/test_employee_advance_funding.py::test_salary_functions_and_cap_unchanged
+FAILED tests/test_employee_advance_funding.py::test_locked_validation_refreshes_previously_loaded_resource[expense_fund-\u8d85\u51fa\u5907\u7528\u91d1\u53ef\u7528\u4f59\u989d]
+FAILED tests/test_reimbursement_payments.py::test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+FAILED tests/test_reimbursement_payments.py::test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+FAILED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[small_advance]
+FAILED tests/test_reimbursement_payments.py::test_payment_and_revoke_failures_rollback_everything[cash_advance]
+FAILED tests/test_reimbursement_payments.py::test_cny_account_and_advance_are_independent_from_thb
+FAILED tests/test_reimbursement_payments.py::test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_backfill_idempotent
+FAILED tests/test_reimbursement_payments.py::test_decimal_item_sums_and_partially_approved_total_used_for_payment
+FAILED tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+FAILED tests/test_fund_disbursement.py::test_new_fund_employee_advance_records_usage_without_second_cost
+FAILED tests/test_expense_approval_payment.py::test_different_fees_cannot_concurrently_overdraw_same_funds[False]
+FAILED tests/test_expense_approval_payment.py::test_different_fees_cannot_concurrently_overdraw_same_funds[True]
+FAILED tests/test_fund_item_controls.py::test_amount_validation_currency_and_rejected_entry
+FAILED tests/test_fund_item_controls.py::test_original_financial_functions_and_formula_preserved

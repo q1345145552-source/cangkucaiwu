@@ -194,6 +194,13 @@ export default function ExpenseFundPage() {
     if (!receiptFile && !editingItem?.receipt && !registrationDraft('cost_fund_item',expenseAccount.id)?.payload?.receipt) { toast("error", "请上传开销凭证"); return; }
     setExpenseBusy(true);
     try {
+      if(itemForm.category!=='报销'){
+        const fresh=await api.get<any>('/expense-fund/accounts');const fund=(fresh.data||[]).find((f:any)=>f.id===expenseAccount.id);
+        if(!fund)throw Error('备用金账户已变化，请重新选择');
+        const available=Number(fund.available??fund.current_balance??0)+(editingItem&&editingItem.category!=='报销'?Number(editingItem.amount):0);
+        if(!confirmBalanceWarning(available,itemForm.amount))return;
+      }
+
       let receipt = editingItem?.receipt || registrationDraft('cost_fund_item',expenseAccount.id)?.payload?.receipt;
       if (receiptFile && receiptCache.current?.file!==receiptFile) {
         const fd = new FormData(); fd.append("file", receiptFile);

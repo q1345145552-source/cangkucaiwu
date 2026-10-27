@@ -38,16 +38,18 @@ export default function ReimbursementPaymentModal({ reimbursement, onClose, onSu
     if (source === "cash_advance") {
       const advance = advances.find(a => String(a.id) === advanceId);
       if (!advance) { toast("error", "请选择报销垫款单"); return; }
-      if (Number(reimbursement.total_amount) > Number(advance.available_amount)) { toast("error", "垫款单剩余金额不足"); return; }
+
     }
     setSaving(true);
     try {
-      if(source==='company_account'||source==='expense_fund'){
+      if(source==='company_account'||source==='expense_fund'||source==='cash_advance'){
         const fresh=await api.get<any>(`/reimbursement/payment-sources?reimbursement_id=${reimbursement.id}`);
         setFund(fresh.fund||null);setAccounts(fresh.accounts);
         const account=fresh.accounts.find((a:any)=>String(a.id)===accountId);
         if(source==='company_account'&&!account)throw Error('付款账户已变化，请重新选择');
-        if(!confirmBalanceWarning(source==='company_account'?account.current_balance:fresh.fund?.current_balance,source==='company_account'?reimbursement.total_amount:fresh.fund?.debit_amount))return;
+        const advance=fresh.cash_advances.find((a:any)=>String(a.id)===advanceId);
+        if(source==='cash_advance'&&!advance)throw Error('垫款单已变化，请重新选择');
+        if(!confirmBalanceWarning(source==='company_account'?account.current_balance:source==='cash_advance'?advance.available_amount:fresh.fund?.current_balance,source==='expense_fund'?fresh.fund?.debit_amount:reimbursement.total_amount))return;
       }
       let payment_voucher_path = null;
       if (source !== "expense_fund" && file) {

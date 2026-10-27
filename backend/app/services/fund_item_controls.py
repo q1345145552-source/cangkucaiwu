@@ -1,3 +1,4 @@
+from app.services.balance_warning import balance_warning,record_balance_warning
 """手工备用金开销的管理员编辑/作废及留痕，系统联动台账不从此入口改动。"""
 from datetime import datetime, time
 from decimal import Decimal
@@ -58,6 +59,7 @@ async def update(db, fund, item, changes, user, validate_receipt):
         raise HTTPException(400, "开销币种不能修改")
     if "receipt" in changes and changes["receipt"] != item.receipt:
         changes["receipt"] = validate_receipt(changes["receipt"], fund)
+    warning=None
     new_amount = float(changes.get("amount", item.amount))
     category = changes.get("category", item.category)
     if ("amount" in changes or "category" in changes) and item.review_status not in (None, ReviewStatus.REJECTED.value) and category != "报销":
@@ -66,8 +68,7 @@ async def update(db, fund, item, changes, user, validate_receipt):
             ExpenseFundItem.review_status != ReviewStatus.REJECTED.value, ExpenseFundItem.not_voided(),
         ))).scalar() or 0)
         available = fund_available(fund.remaining_balance, spent) + (item.amount if item.category != "报销" else 0)
-        if Decimal(str(new_amount)) > Decimal(str(available)):
-            raise HTTPException(400, f"超出备用金可用余额（可用 {available:,.2f}），请先充值或核减")
+        warning=balance_warning(available,new_amount,item.currency or 'THB',source='expense_fund',source_id=fund.id)
     for key in ("expense_date", "category", "amount", "description", "receipt"):
         if key in changes:
             value = changes[key]
@@ -85,7 +86,8 @@ async def update(db, fund, item, changes, user, validate_receipt):
     after = fields(item)
     await record_history(db, module="expense_fund_item", record_id=item.id, operator=user, operation_type="edit",
         before=before, after=after, warehouse_id=fund.warehouse_id)
-    return {**after, "message": "开销记录已修改"}
+    await record_balance_warning(db,warning,user,module='expense_fund_item',record_id=item.id,warehouse_id=fund.warehouse_id)
+    return {'warning':warning,**after, "message": "开销记录已修改"}
 
 
 async def void(db, fund, item, reason, user):

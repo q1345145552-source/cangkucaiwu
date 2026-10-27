@@ -1,0 +1,16 @@
+Error: ENOENT: no such file or directory, open 'src/lib/retiredEntries.ts'
+    at Object.readFileSync (node:fs:484:20)
+    at setup (/private/tmp/all-balance-warning-20261028/frontend/tests/operating-report.test.cjs:11:43)
+    at /private/tmp/all-balance-warning-20261028/frontend/tests/operating-report.test.cjs:22:10
+    at Object.<anonymous> (/private/tmp/all-balance-warning-20261028/frontend/tests/operating-report.test.cjs:40:3)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'src/lib/retiredEntries.ts'
+}

@@ -58,11 +58,11 @@ export default function EmployeeAdvancePage() {
     setReviewing(id);
     try {
       const row=rows.find((r:any)=>r.id===id);
-      if(!reject&&row?.funding_source==='company_account'){
+      if(!reject&&row?.funding_source){
         const fresh=await api.get<any>('/employee-advances/funding-options');
-        const account=(fresh.accounts||[]).find((a:any)=>a.id===row.payment_account_id);
-        if(!account)throw Error('付款账户已变化，请重新选择');
-        if(!confirmBalanceWarning(account.current_balance,row.amount))return;
+        const source=row.funding_source==='company_account'?(fresh.accounts||[]).find((a:any)=>a.id===row.payment_account_id):row.funding_source==='cash_advance'?(fresh.cash_advances||[]).find((a:any)=>a.id===row.cash_advance_id):(fresh.funds||[]).find((a:any)=>a.id===row.fund_account_id);
+        if(!source)throw Error('资金来源已变化，请重新选择');
+        if(!confirmBalanceWarning(row.funding_source==='company_account'?source.current_balance:row.funding_source==='cash_advance'?source.available_amount:source.available,row.amount))return;
       }
       await api.post(`/employee-advances/${id}/${reject ? "reject" : "approve"}`, reject ? { reject_reason: rejectReason.trim() } : {});
       toast("success", reject ? "已驳回" : "已通过");
@@ -131,16 +131,14 @@ export default function EmployeeAdvancePage() {
     if (!selected) { toast("error", form.funding_source === "company_account" ? "请选择公司付款账户" : form.funding_source === "cash_advance" ? "请选择垫款单" : "请选择备用金账户"); return; }
     if (selected.currency !== form.currency) { toast("error", "资金来源币种与预支不一致"); return; }
     const available = form.funding_source === "company_account" ? selected.current_balance : form.funding_source === "cash_advance" ? selected.available_amount : selected.available;
-    if (form.funding_source !== "company_account" && amt > available) { toast("error", form.funding_source === "company_account" ? "公司账户余额不足" : form.funding_source === "cash_advance" ? "垫款单剩余金额不足" : "超出备用金可用余额"); return; }
+
     setSaving(true);
     try {
-      if(form.funding_source==='company_account'){
-        const fresh=await api.get<any>('/employee-advances/funding-options');
-        const account=(fresh.accounts||[]).find((a:any)=>a.id===form.payment_account_id);
-        if(!account)throw Error('付款账户已变化，请重新选择');
-        setPaymentAccounts(fresh.accounts||[]);
-        if(!confirmBalanceWarning(account.current_balance,amt))return;
-      }
+      const fresh=await api.get<any>('/employee-advances/funding-options');
+      const source=form.funding_source==='company_account'?(fresh.accounts||[]).find((a:any)=>a.id===form.payment_account_id):form.funding_source==='cash_advance'?(fresh.cash_advances||[]).find((a:any)=>a.id===form.cash_advance_id):(fresh.funds||[]).find((a:any)=>a.id===form.fund_account_id);
+      if(!source)throw Error('资金来源已变化，请重新选择');
+      setPaymentAccounts(fresh.accounts||[]);setCashAdvances(fresh.cash_advances||[]);setFundAccounts(fresh.funds||[]);
+      if(!confirmBalanceWarning(form.funding_source==='company_account'?source.current_balance:form.funding_source==='cash_advance'?source.available_amount:source.available,amt))return;
       const [kind, id] = recipient.split(":");
       const result = await api.post<{ message?: string }>("/employee-advances", { ...form, amount: amt,
         employee_id: kind === "employee" ? Number(id) : undefined,

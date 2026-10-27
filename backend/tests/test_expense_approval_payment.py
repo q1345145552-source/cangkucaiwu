@@ -159,7 +159,7 @@ def test_real_concurrent_confirmation_only_charges_once(tmp_path, monkeypatch, f
 
 
 @pytest.mark.parametrize("fund", [False, True])
-def test_different_fees_cannot_concurrently_overdraw_same_funds(tmp_path, monkeypatch, fund):
+def test_different_fees_serialize_and_warn_when_overdrawing_same_funds(tmp_path, monkeypatch, fund):
     async def run():
         async with fee_environment(tmp_path, monkeypatch, fund=fund) as (_, factory, client):
             ids = []
@@ -169,10 +169,12 @@ def test_different_fees_cannot_concurrently_overdraw_same_funds(tmp_path, monkey
                 assert approved.status_code == 200
                 ids.append(row["id"])
             responses = await asyncio.gather(*(pay(client, aid, payment_account_id=None if fund else 1) for aid in ids))
-            assert sorted(r.status_code for r in responses) == [200, 400]
+            assert sorted(r.status_code for r in responses) == [200, 200]
+            warnings=[r.json()['warning'] for r in responses if r.json()['warning']]
+            assert len(warnings)==1 and warnings[0]['balance_before']==300 and warnings[0]['balance_after']==-400
             after = await numbers(factory)
-            assert after["valid_payments"] == 1
-            assert after["fund_available" if fund else "company_balance"] == 300
+            assert after["valid_payments"] == 2
+            assert after["fund_available" if fund else "company_balance"] == (0 if fund else -400)
             actual("no_overdraw_fund" if fund else "no_overdraw_company", {"http": sorted(r.status_code for r in responses), "after": after})
     asyncio.run(run())
 

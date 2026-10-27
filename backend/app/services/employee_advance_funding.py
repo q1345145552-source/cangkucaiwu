@@ -85,8 +85,6 @@ async def validate_funding(db, source, warehouse_id, amount, *, currency=None,
         wages = (await payroll_usage_totals(db, [loan]))[loan.id]
         expenses = (await reimbursement_usage_totals(db, [loan]))[loan.id]
         advances = (await employee_advance_usage_totals(db, [loan], exclude_id=exclude_id))[loan.id]
-        if amount > Decimal(str(usage_amounts(loan, wages, expenses, advances)["available_amount"])):
-            raise HTTPException(400, "垫款单剩余金额不足")
         return selected_currency, loan
     if not fund_account_id:
         raise HTTPException(400, "请选择备用金账户")
@@ -103,8 +101,6 @@ async def validate_funding(db, source, warehouse_id, amount, *, currency=None,
     if selected_currency != (fund.currency or "THB"):
         raise HTTPException(400, "备用金币种与预支不一致")
     available = await fund_available_amount(db, fund)
-    if amount > available:
-        raise HTTPException(400, f"超出备用金可用余额（可用 {available:,.2f}）")
     return selected_currency, fund
 
 
@@ -124,6 +120,15 @@ async def apply_advance_funding(db, advance, operator):
     if advance.funding_source == 'company_account':
         before_balance = (await current_account_balances(db,[source]))[source.id]
         warning = balance_warning(before_balance,advance.amount,advance.currency,source='company_account',source_id=source.id)
+    elif advance.funding_source == 'expense_fund':
+        warning=balance_warning(await fund_available_amount(db,source),advance.amount,advance.currency,source='expense_fund',source_id=source.id)
+    elif advance.funding_source == 'cash_advance':
+        from app.services.cash_advance_payroll import payroll_usage_totals,usage_amounts
+        from app.services.cash_advance_usage import reimbursement_usage_totals,employee_advance_usage_totals
+        used=(await payroll_usage_totals(db,[source]))[source.id]
+        other=(await reimbursement_usage_totals(db,[source]))[source.id]
+        own=(await employee_advance_usage_totals(db,[source],exclude_id=advance.id))[source.id]
+        warning=balance_warning(usage_amounts(source,used,other,own)['available_amount'],advance.amount,advance.currency,source='cash_advance',source_id=source.id)
     employee = await db.get(Employee, advance.employee_id)
     if advance.funding_source == "company_account":
         await create_advance_expense(db, advance, operator, paid_at=advance.reviewed_at)

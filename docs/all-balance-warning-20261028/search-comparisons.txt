@@ -1,0 +1,13 @@
+backend/app/services/inventory.py:156:    if balance < 0 or balance >= Decimal('10000000000000000'):
+backend/app/services/inventory.py:216:        raise changed('真实期初未确认，不能把已知变动当作可用库存领用', ticket['key'], 400)
+backend/app/services/inventory.py:218:        raise changed('库存不足，不能领用超过当前可用数量', ticket['key'], 400)
+backend/app/services/incoming_import.py:26:                raise HTTPException(400,'收款账户编号必须明确填写本仓可用同币种账户编号；请在账户管理核对')
+backend/app/services/procurement_risk.py:68:  observations.append(signal('concentration',(sid,cur),'attention' if known and pct>threshold else 'normal' if known else 'unavailable','占比超过当前集中度阈值，需结合供货约束核实' if known and pct>threshold else '未超过当前集中度阈值' if known else '配置或分母无法核实',policy['concentration'],{'amount':prices.amount(denominator),'currency':cur,'scope':'当前筛选内所有有效采购单金额，每单一次'},'当前采购单金额 + 现有集中度配置',[evidence(p) for p in pos],supplier_id=sid,currency=cur,amount=prices.amount(numerator),percent=prices.amount(pct) if pct is not None else None))
+backend/app/services/procurement_month_report.py:131: if view=='non_lowest':return [r for r in rows if r['lowest_available'] and Decimal(r['lowest_difference'])>0]
+backend/app/services/payable_payment.py:24:    if n > remaining: raise HTTPException(400, '付款金额不能超过剩余应付')
+backend/app/api/v1/cash_advance.py:434:    if req.amount > loan.amount - loan.repaid_amount: raise HTTPException(400, "不能超过剩余未还")
+backend/app/api/v1/suppliers.py:1969:        raise HTTPException(403, "仅超级管理员可用")
+backend/app/api/v1/expense_fund.py:320:    if new_balance > limit:
+backend/app/api/v1/expense_fund.py:321:        raise HTTPException(400, f"超出账户上限（{limit:,.0f}），当前余额 {account.remaining_balance:,.0f}，最多可充 {limit - (account.remaining_balance or 0):,.0f}")
+backend/app/api/v1/expense_approval.py:162:        raise HTTPException(400, "没有可用的同币种备用金")
+backend/app/api/v1/expense_approval.py:523:        if source is None:raise HTTPException(400,"没有可用的同币种备用金")

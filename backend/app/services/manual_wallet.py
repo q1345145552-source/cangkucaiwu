@@ -41,17 +41,19 @@ async def prepare(db,kind,values,key,*,account=None):
     model=IncomeRecord if kind=='income' else ExpenseRecord
     fingerprint=values_fingerprint(values)
     row=await existing(db,model,values['warehouse_id'],key,fingerprint)
-    if row:return row,fingerprint
+    if row:return row,fingerprint,None
     if account is None:account=await lock_account(db,values['warehouse_id'],values['account_id'],values['currency'])
     if account.account_type=='cash' and not key:
         raise HTTPException(400,'现金收付款必须提供请求编号，请刷新页面后重试')
     # Account locks serialize money across receipts, payments and internal transfers.
     row=await existing(db,model,values['warehouse_id'],key,fingerprint)
-    if row:return row,fingerprint
+    if row:return row,fingerprint,None
+    warning=None
     if kind=='expense' and money(values['amount'])>0:
         balance=(await current_account_balances(db,[account]))[account.id]
-        if balance<money(values['amount']):raise HTTPException(400,f'付款账户余额不足（可用 {balance:,.2f}）')
-    return None,fingerprint
+        from app.services.balance_warning import balance_warning
+        warning=balance_warning(balance,money(values['amount']),values['currency'],source='company_account',source_id=account.id)
+    return None,fingerprint,warning
 
 
 async def insert_once(db,kind,values,key,fingerprint):

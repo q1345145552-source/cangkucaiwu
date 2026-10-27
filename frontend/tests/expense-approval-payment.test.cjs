@@ -17,7 +17,7 @@ function harness({role='warehouse_admin',grant=true,initialRows=[]}={}) {
   useRef(initial){const i=ri++;return refs[i]||(refs[i]={current:initial});},useEffect(fn,values){const i=ei++,key=JSON.stringify(values);if(deps[i]!==key){deps[i]=key;effects.push(fn);}}};
  const WalletAccountSelect=()=>null;
  const user={id:1,role};
- const api={async get(route){reads.push(route);if(route.includes('/threshold'))return {threshold:500};
+ const api={async get(route){reads.push(route);if(route.includes('/payment-preview'))return {balance:-1000,amount:200};if(route.includes('/threshold'))return {threshold:500};
    if(route.includes('/summary'))return {pending_count:rows.filter(r=>r.status==='pending').length,approved_count:rows.filter(r=>r.status==='approved').length,paid_by_currency:[]};
    return {data:[...rows]};},
   async post(route,body){writes.push({route,body});await wait();
@@ -39,7 +39,7 @@ function harness({role='warehouse_admin',grant=true,initialRows=[]}={}) {
   '@/lib/api':{api,getToken:()=> 'synthetic-token'},'@/hooks/useAuth':{useAuth:()=>({user})},
   '@/hooks/useMenuPermission':{useMenuPermission:key=>{assert.equal(key,'expense_approval');return grant;}},
   '@/components/ui/Toast':{useToast:()=>({toast:(...args)=>messages.push(args)})},'next/navigation':{useRouter:()=>({push(){}})}};
- vm.runInNewContext(source,{module:m,exports:m.exports,require:n=>n==='@/components/CostIdentity'?require('./cost-identity-compat.cjs'):n==='@/lib/registrationRequest'&&!imports[n]?{registrationDraft:()=>null,submitRegistration:async(_k,_r,_p,send)=>send('legacy-regression-key')}:imports[n]||require(n),console,Date,Promise,
+ vm.runInNewContext(source,{module:m,exports:m.exports,require:n=>n==='@/lib/balanceWarning'?require('./balance-warning-test-support.cjs'):n==='@/components/CostIdentity'?require('./cost-identity-compat.cjs'):n==='@/lib/registrationRequest'&&!imports[n]?{registrationDraft:()=>null,submitRegistration:async(_k,_r,_p,send)=>send('legacy-regression-key')}:imports[n]||require(n),console,Date,Promise,
   FileReader:class {readAsDataURL(){this.result='data:image/png;base64,test-image';queueMicrotask(()=>this.onload());}}});
  return {rows,writes,messages,reads,flags,WalletAccountSelect,async render(){await wait();for(let i=0;i<20;i++){index=ri=ei=0;const tree=m.exports.default();if(!effects.length)return tree;effects.splice(0).forEach(fn=>fn());await wait();}throw Error('Effects did not settle');}};
 }
@@ -67,6 +67,10 @@ function selectPayProof(tree){const inputs=walk(tree).filter(n=>n.type==='input'
  assert.equal(h.writes.length,1);assert.equal(h.writes[0].body.payment_account_id,1);assert(h.writes[0].body.voucher_base64);
  assert(text(tree).includes('付款人：测试老板'));assert(text(tree).includes('2026/10/20 12:00:00'));
  assert(!walk(tree).some(n=>n.props?.title==='付款'));
+
+ // Insufficient balance: cancellation writes nothing; accepted retry writes once.
+ h=harness({initialRows:[row()]});tree=await h.render();titled(tree,'付款').props.onClick();tree=await h.render();selectPayProof(tree);tree=await h.render();
+ const gate=require('./balance-warning-test-support.cjs');gate.setAllowed(false);await button(tree,'确认付款').props.onClick();assert.equal(h.writes.length,0);assert.equal(gate.calls[0],'当前账户余额不足（可用 -1,000.00，本次 200.00），确认继续吗');gate.setAllowed(true);await button(tree,'确认付款').props.onClick();assert.equal(h.writes.length,1);
 
  // Petty-cash payment never submits a company account, even if an older dialog selected one.
  h=harness({initialRows:[row('fund')]});tree=await h.render();titled(tree,'付款').props.onClick();tree=await h.render();

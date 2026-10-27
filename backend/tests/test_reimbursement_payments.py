@@ -245,10 +245,15 @@ def test_validation_no_partial_money_changes(tmp_path, monkeypatch, kind):
                     (await db.get(PaymentAccount, 1)).status = "inactive"
                     await db.commit()
             before = await snapshot(f)
+            before_balance=await balances(c)
             r = await pay(c, rid, path, **fields)
+            if kind=='small_advance':
+                assert r.status_code==200 and r.json()['warning']['balance_after']==-1000,r.text
+                assert r.json()['warning']['source']=='cash_advance'
+                assert await balances(c)==before_balance
+                return
             assert r.status_code == 400, r.text
             if kind == "no_voucher": assert r.json()["detail"] == "请上传付款凭证"
-            if kind == "small_advance": assert r.json()["detail"] == "垫款单剩余金额不足"
             assert await snapshot(f) == before
     asyncio.run(run())
 
@@ -411,9 +416,10 @@ def test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_ba
             rid = await approved(c)
             photo = await upload(c, rid)
             before = await snapshot(f)
+            before_balance=await balances(c)
             r = await pay(c, rid, photo, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
-            assert r.status_code == 400 and r.json()["detail"] == "垫款单剩余金额不足"
-            assert await snapshot(f) == before
+            assert r.status_code==200 and r.json()['warning']['balance_after']<0,r.text
+            assert await balances(c)==before_balance
     asyncio.run(run())
 
 

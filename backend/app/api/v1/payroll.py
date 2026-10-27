@@ -1650,16 +1650,17 @@ async def _disbursement_funding(db, wh_id, req, records):
     if req.funding_source == "cash_advance":
         if req.account_id is not None:
             raise HTTPException(400, "垫款单发放不能选择公司账户")
-        return None, await lock_payroll_advance(db, wh_id, req.cash_advance_id, records)
+        advance=await lock_payroll_advance(db, wh_id, req.cash_advance_id, records)
+        return None,advance,getattr(advance,"_balance_warning",None)
     if req.cash_advance_id is not None:
         raise HTTPException(400, "公司账户发放不能选择垫款单")
     account = await payment_account(db, wh_id, req.account_id)
     from app.services.account_balances import current_account_balances
     from decimal import Decimal
     total = sum((Decimal(str(expense_amount(r))) for r in records), Decimal("0"))
-    if (await current_account_balances(db, [account]))[account.id] < total:
-        raise HTTPException(400, "公司账户余额不足")
-    return account, None
+    from app.services.balance_warning import balance_warning
+    funding_warning=balance_warning((await current_account_balances(db,[account]))[account.id],total,PAYROLL_CURRENCY,source='company_account',source_id=account.id)
+    return account, None, funding_warning
 
 
 @router.get("/cash-advance-sources")
@@ -1701,7 +1702,7 @@ async def batch_disburse_payroll(
         raise HTTPException(400, "请先选择仓库")
     records = await _batch_fetch(db, wh_id, req.record_ids, lock=True)
     eligible = [r for r in records if not r.voided and r.status == "confirmed" and not r.disbursed]
-    account, advance = await _disbursement_funding(db, wh_id, req, eligible)
+    account, advance, funding_warning = await _disbursement_funding(db, wh_id, req, eligible)
     now = thai_now()
     expenses = []
     cnt = 0
@@ -1714,7 +1715,11 @@ async def batch_disburse_payroll(
             expenses.append({"payroll_record_id": r.id, "expense_record_id": expense.id if expense else None, "amount": expense_amount(r)})
             cnt += 1
     await db.flush()
-    return {"message": f"已发放 {cnt} 条", "count": cnt, "account_id": account.id if account else None,
+    from app.services.balance_warning import record_balance_warning
+    if cnt:
+        if funding_warning: funding_warning={**funding_warning,'record_ids':[e['payroll_record_id'] for e in expenses]}
+        await record_balance_warning(db,funding_warning,current_user,module='payroll',record_id=expenses[0]['payroll_record_id'],warehouse_id=wh_id)
+    return {"warning":funding_warning,"message": f"已发放 {cnt} 条", "count": cnt, "account_id": account.id if account else None,
             "funding_source": req.funding_source, "cash_advance_id": advance.id if advance else None,
             "total_net": round(sum(e["amount"] for e in expenses), 2), "expenses": expenses}
 
@@ -2068,7 +2073,7 @@ async def disburse_payroll(
     if r.disbursed:
         raise HTTPException(400, "该工资单已发放")
 
-    account, advance = await _disbursement_funding(db, wh_id, req, [r])
+    account, advance, funding_warning = await _disbursement_funding(db, wh_id, req, [r])
     expense_amount(r)
 
     # Save signature if provided（压缩 + 缩略图）
@@ -2095,8 +2100,11 @@ async def disburse_payroll(
     from app.models.employee import Employee
     emp = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
     emp_name = emp.name if emp else ""
+    from app.services.balance_warning import record_balance_warning
+    await record_balance_warning(db,funding_warning,current_user,module='payroll',record_id=r.id,warehouse_id=r.warehouse_id)
 
     return {
+        'warning':funding_warning,
         "message": f"已向 {emp_name} 发放 {r.net_pay:.2f} 泰铢工资",
         "id": r.id,
         "net_pay": r.net_pay,

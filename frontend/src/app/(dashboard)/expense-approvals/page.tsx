@@ -1,4 +1,5 @@
 "use client";
+import { confirmBalanceWarning } from "@/lib/balanceWarning";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken } from "@/lib/api";
@@ -176,6 +177,8 @@ export default function ExpenseApprovalsPage() {
     payBusy.current = true;
     setPaying(true);
     try {
+      const preview=await api.get<any>(`/expense-approvals/${payId}/payment-preview${rows.find(r=>r.id===payId)?.fund_source==='fund'?'':`?payment_account_id=${payAccountId}`}`);
+      if(!confirmBalanceWarning(preview.balance,preview.amount))return;
       const voucher_base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
