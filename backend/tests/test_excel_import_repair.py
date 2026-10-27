@@ -44,18 +44,29 @@ def test_download_products_all_entry_routes_duplicate_policy_and_atomicity(tmp_p
    async with f() as db:
     await db.execute(text("SELECT setval(pg_get_serial_sequence('supplier_products','id'),(SELECT max(id) FROM supplier_products))"));await db.commit()
    downloaded=await template(c,'/suppliers/import-template/products')
-   example=await send(c,path,downloaded);assert not example['valid'] and '非示例' in example['errors'][-1]['message']
+   example=await send(c,path,downloaded);assert not example['valid'] and '没有可导入数据' in example['errors'][-1]['message']
    content=fill(downloaded,[['本仓供应商','合成袋','10cm',None,5,'个','THB']])
    pre=await send(c,path,content);assert pre['valid'] and pre['imported']==0
    before=await count(f,SupplierProduct)
    result,data=await confirm(c,path,content,pre);assert result['imported']==1
    replay=await send(c,path,content,data);assert replay['id']==result['id'] and replay['replayed']
    assert await count(f,SupplierProduct)==before+1
-   duplicate=await send(c,path,content);assert not duplicate['valid'] and '已有相同' in duplicate['errors'][0]['message']
+   # Later explicit user policy: append a new quote, never overwrite the old.
+   duplicate=await send(c,path,content);assert duplicate['valid'] and duplicate['rows'][0]['append_quote']
+   appended,_=await confirm(c,path,content,duplicate);assert appended['imported']==1 and appended['updated']==0
+   assert await count(f,SupplierProduct)==before+2
    mixed=fill(downloaded,[['本仓供应商','有效新袋',None,None,2,'个','THB'],['外仓供应商','错误袋',None,None,2,'个','THB']])
-   bad=await send(c,path,mixed);assert not bad['valid'] and bad['errors'][0]['row_number']==3
-   await send(c,path,mixed,{'mode':'confirm','request_key':'bad','preview_version':bad['preview_version'],'choices':'[]'},code=422)
-   assert await count(f,SupplierProduct)==before+1
+   bad=await send(c,path,mixed)
+   if path=='/suppliers/import/products':
+    assert bad['valid'] and bad['valid_count']==1 and bad['skipped_count']==1 and bad['skipped_rows'][0]['row_number']==3
+   else:
+    assert not bad['valid'] and bad['errors'][0]['row_number']==3
+    await send(c,path,mixed,{'mode':'confirm','request_key':'bad','preview_version':bad['preview_version'],'choices':'[]'},code=422)
+   # Unknown vendor skipping must not relax whole-batch rejection of illegal values.
+   invalid=fill(downloaded,[['本仓供应商','有效新袋',None,None,2,'个','THB'],['本仓供应商','错误价格',None,None,'=1+1','个','THB']])
+   rejected=await send(c,path,invalid);assert not rejected['valid'] and rejected['errors'][0]['row_number']==3
+   await send(c,path,invalid,{'mode':'confirm','request_key':'bad-price','preview_version':rejected['preview_version'],'choices':'[]'},code=422)
+   assert await count(f,SupplierProduct)==before+2
    # Product names beginning with 示例: are real data unless the full shipped sample matches.
    named=fill(downloaded,[['本仓供应商','示例:真实产品',None,None,3,'个','THB']]);assert (await send(c,path,named))['valid']
  asyncio.run(run())
@@ -139,7 +150,7 @@ def test_file_protection(tmp_path,monkeypatch,path,kind):
    name='file.xlsx';content=b''
    if kind=='corrupt':content=b'not xlsx'
    if kind=='xls':name='file.xls';content=blob(['金额'],[[1]])
-   if kind=='formula':content=blob(['金额'],[['=1+1']])
+   if kind=='formula':content=blob(['产品名','单价'],[['公式产品','=1+1']]) if path.endswith('/products') else blob(['金额'],[['=1+1']])
    if kind=='rows':content=blob(['金额'],[[1]]*501)
    if kind=='columns':content=blob(['金额']*21,[[1]*21])
    if kind in ('lying_rows','lying_columns'):

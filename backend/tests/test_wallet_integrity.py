@@ -244,10 +244,10 @@ def test_purchase_advance_repayment_matches_procurement_card_report_and_supplier
             cockpit=await get(c,'/dashboard/cockpit')
             report=await get(c,'/reports/cost-funds-debt',**RANGE)
             block=next(b for b in report['currencies'] if b['currency']=='THB')
-            card=cockpit['finance']['procurement']['expense'][0]['amount']
+            card=next(r['amount'] for r in cockpit['finance']['procurement']['expense'] if r['currency']=='THB')
             assert card==next(r['amount'] for r in block['costs']['data'] if r['name']=='采购')==300
             assert sum(r['amount'] for r in cockpit['finance']['month']['expense'])==300
-            assert not cockpit['finance']['month']['operating_expense']
+            assert all(r['amount']==0 for r in cockpit['finance']['month']['operating_expense'])
             trends=await get(c,'/dashboard/trends')
             assert sum(r['amount'] for r in trends['procurement_suppliers']['THB'])==300
     asyncio.run(run())

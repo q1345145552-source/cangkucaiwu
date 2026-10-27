@@ -124,7 +124,7 @@ async def preview(db,wid,user,content,supplier_id=None):
   if not valid_count:errors.append({'row_number':2,'message':message})
   elif errors:message='文件含需修正的错误行，整批未导入，请修正后重新预览'
   result={'rows':rows,'errors':errors,'valid':not errors and valid_count>0,
-   'total_rows':total_rows,'valid_count':valid_count,'skipped_count':len(skipped_rows),'skipped_rows':skipped_rows,'updated':0,'imported':0,'mode':'preview','supplier_id':supplier_id,'warehouse_id':wid,
+   'total_rows':total_rows,'valid_count':valid_count,'skipped_count':len(skipped_rows),'skipped_rows':skipped_rows,'updated':0,'imported':0,'mode':'preview','supplier_id':supplier_id,'warehouse_id':wid,'operator_id':user.id,
    'message':message}
   result['preview_version']=fingerprint({'content_sha256':hashlib.sha256(content).hexdigest(),**result})
   return result
@@ -134,13 +134,13 @@ async def confirm(db,wid,user,content,supplier_id,request_key,preview_version,ch
  await catalog.lock(db,wid);key=catalog.label(request_key,'导入请求编号',100)
  if isinstance(choices,str):choices=json_value(choices)
  if not isinstance(choices,list):raise HTTPException(400,'请逐行确认映射选择')
- signature=fingerprint({'file_sha256':hashlib.sha256(content).hexdigest(),'supplier_id':supplier_id,'preview_version':preview_version,'choices':choices})
+ signature=fingerprint({'file_sha256':hashlib.sha256(content).hexdigest(),'supplier_id':supplier_id,'operator_id':user.id,'preview_version':preview_version,'choices':choices})
  old=(await db.execute(select(ProductImportOperation).where(ProductImportOperation.warehouse_id==wid,ProductImportOperation.request_key==key))).scalar_one_or_none()
  if old:
   if old.request_fingerprint!=signature:raise HTTPException(409,'该导入请求已保存但内容不同，未覆盖或重复导入')
   return {**old.result,'replayed':True}
  current=await preview(db,wid,user,content,supplier_id)
- if current['preview_version']!=preview_version:raise HTTPException(409,{'code':'product_import_preview_changed','message':'产品、目录或候选已变更，请重新预览，未导入','preview':current})
+ if current['preview_version']!=preview_version:raise HTTPException(409,{'code':'product_import_preview_changed','not_created':True,'request_key':key,'message':'原请求未保存，产品、目录、账号或文件已变更，请重新核对；沿用原请求编号','preview':current})
  if not current['valid']:raise HTTPException(422,{'code':'product_import_invalid_rows','message':'文件含错误行，整批未导入','errors':current['errors']})
  importable=[r for r in current['rows'] if not r.get('skipped') and not r['errors']]
  by_row={}

@@ -3,9 +3,29 @@ const root=path.resolve(__dirname,'..'),baseline='adb9024b3706ee7a94cbfe5e219ba4
 const opts={module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true};
 function emitted(source,name){return ts.transpileModule(source,{fileName:name,compilerOptions:opts}).outputText;}
 function canonical(js){return ts.createPrinter({removeComments:true}).printFile(ts.createSourceFile('output.js',js,ts.ScriptTarget.ES2020,true,ts.ScriptKind.JS));}
+// Import integration deliberately changes these exact import-only nodes. Keep
+// the full emitted-runtime comparison for every other supplier-page node.
+function nonImportSupplier(source){
+ const file=ts.createSourceFile('suppliers.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ const result=ts.transform(file,[context=>root=>{
+  function visit(node){
+   if(ts.isImportDeclaration(node)&&['@/components/ExcelImportDialog','@/lib/excelImport'].includes(node.moduleSpecifier.text))return undefined;
+   if(ts.isFunctionDeclaration(node)&&['downloadTemplate','handleSupplierImport'].includes(node.name?.text))return undefined;
+   if(ts.isVariableStatement(node)&&node.declarationList.declarations.some(d=>d.name.getText(file)==='[logisticsFile,setLogisticsFile]'))return undefined;
+   if(ts.isJsxExpression(node)&&node.expression&&(/productImportFile\s*&&/.test(node.expression.getText(file))||/logisticsFile\s*&&/.test(node.expression.getText(file))))return undefined;
+   if(ts.isJsxSelfClosingElement(node)&&node.tagName.getText(file)==='input'&&node.attributes.properties.some(a=>ts.isJsxAttribute(a)&&a.name.getText(file)==='onChange'&&ts.isJsxExpression(a.initializer)&&a.initializer.expression?.getText(file)==='handleSupplierImport'))return undefined;
+   if(ts.isJsxElement(node)){const tag=node.openingElement.tagName.getText(file),literal=node.children.filter(ts.isJsxText).map(n=>n.text.trim()).join('');if(tag==='button'&&['多供应商耗材导入','多供应商物流导入'].includes(literal)||tag==='p'&&literal==='仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。单供应商入口在对应供应商行。')return undefined;}
+   if(ts.isJsxText(node)&&!node.text.trim())return undefined;
+   return ts.visitEachChild(node,visit,context);
+  }
+  return ts.visitNode(root,visit);
+ }]);
+ try{return ts.createPrinter().printFile(result.transformed[0]);}finally{result.dispose();}
+}
 for(const file of['lib/api.ts','components/layout/DashboardLayout.tsx',...['employees','expense-fund','income-expense','operating','payroll','recharge','suppliers'].map(x=>`app/(dashboard)/${x}/page.tsx`)]){
- const current=fs.readFileSync(path.join(root,'src',file),'utf8'),before=execFileSync('git',['show',`${baseline}:frontend/src/${file}`],{cwd:root,encoding:'utf8'});
- assert.equal(canonical(emitted(current,file)),canonical(emitted(before,file)),file+' only gains accurate static types: emitted runtime, requests, handlers and labels must be identical');
+ let current=fs.readFileSync(path.join(root,'src',file),'utf8'),before=execFileSync('git',['show',`${baseline}:frontend/src/${file}`],{cwd:root,encoding:'utf8'});
+ if(file==='app/(dashboard)/suppliers/page.tsx'){current=nonImportSupplier(current);before=nonImportSupplier(before);}
+ assert.equal(canonical(emitted(current,file)),canonical(emitted(before,file)),file+' non-import behavior only gains accurate static types: emitted runtime, requests, handlers and labels must be identical');
 }
 for(const [page,after,before]of[
  ['payable','<span title={`供应商确认: ${row.confirmed_amount}`}><AlertTriangle size={12} className="inline text-orange-500 ml-1" /></span>','<AlertTriangle size={12} className="inline text-orange-500 ml-1" title={`供应商确认: ${row.confirmed_amount}`} />'],

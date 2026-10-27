@@ -73,3 +73,12 @@ export function acceptExcelImportRejection(kind:string,resource:string|number,de
     throw Error('尚未取得原导入请求未保存的明确结果，请保留原请求核对');
   sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
 }
+
+// A product import can release an uncertain payload only after the warehouse-locked
+// backend has checked this exact key and proved there is no committed operation.
+export function acceptProductImportRejection(resource:string|number,detail:any):void {
+  const id=slot('product_import',resource),draft=registrationDraft('product_import',resource);
+  if(running.has(id)||!draft||detail?.code!=='product_import_preview_changed'||detail.not_created!==true||detail.request_key!==draft.key)
+    throw Error('尚未取得原产品导入请求未保存的明确结果，请保留原请求核对');
+  sessionStorage.setItem(id,JSON.stringify({...draft,unknown:false}));
+}
