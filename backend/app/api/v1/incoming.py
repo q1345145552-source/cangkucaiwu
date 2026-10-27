@@ -173,13 +173,18 @@ async def import_excel(request: Request, file: UploadFile = File(...), mode: str
         if old:
             if old.request_fingerprint != signature: raise HTTPException(409,'原请求内容不同，请核对已保存记录')
             return {**old.result,'replayed':True}
-    current = await preview(db,scope[0].id,content)
+    current = await preview(db,scope[0].id,content,current_user)
     if mode == 'preview': return current
     records = [{k:v for k,v in row.items() if k != 'row_number'} for row in current['rows']]
-    if not current['valid']: raise HTTPException(422,{'message':'校验失败，整批未保存','errors':current['errors']})
-    if preview_version != current['preview_version']: raise HTTPException(409,'预览已变更，请重新预览')
+    if not current['valid']: raise HTTPException(422,{'code':'excel_import_not_saved','not_created':True,'request_key':request_key,'message':'校验失败，整批未保存','errors':current['errors'],'preview':current})
+    if preview_version != current['preview_version']: raise HTTPException(409,{'code':'excel_import_not_saved','not_created':True,'request_key':request_key,'message':'原请求未保存，预览已变更，请重新核对并确认；沿用原请求编号','preview':current})
     try: batch = IncomingBatchImport(request_key=request_key,records=records)
     except ValidationError: raise HTTPException(400,'缺少有效的原请求编号')
+    # Lock all explicitly provided accounts in stable order before any receipt INSERT.
+    # Replay above deliberately precedes eligibility checks for already committed requests.
+    from app.services.wallet import lock_account
+    for account_id, currency in sorted({(r['account_id'],r['currency']) for r in records}):
+        await lock_account(db,scope[0].id,account_id,currency)
     result = await batch_import(batch,request,current_user,db,_perm)
     result = {**result,'id':request_key,'mode':'confirmed','errors':[]}
     db.add(ProductImportOperation(warehouse_id=scope[0].id,request_key=key,request_fingerprint=signature,result=result,operator_id=current_user.id))

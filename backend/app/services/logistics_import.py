@@ -45,7 +45,7 @@ async def preview(db, wid, user, content, supplier_id):
         except HTTPException as exc: errors.append({'row_number':number,'message':str(exc.detail)})
     if not raw or not rows and not errors: errors.append({'row_number':2,'message':'没有实际数据，空模板或只有示例行'})
     result = {'mode':'preview','rows':rows,'errors':errors,'valid':not errors,'imported':0,
-              'supplier_id':supplier_id,'warehouse_id':wid,'message':'预览成功，尚未保存' if not errors else '校验失败，整批未保存'}
+              'supplier_id':supplier_id,'warehouse_id':wid,'operator_id':user.id,'message':'预览成功，尚未保存' if not errors else '校验失败，整批未保存'}
     result['preview_version'] = fingerprint({'content':hashlib.sha256(content).hexdigest(), **result})
     return result
 
@@ -61,8 +61,8 @@ async def execute(db, wid, user, content, supplier_id, mode, version, request_ke
         if old.request_fingerprint != signature: raise HTTPException(409, '原请求内容不同，未重复新增；请核对原记录')
         return {**old.result,'replayed':True}
     current = await preview(db,wid,user,content,supplier_id)
-    if not current['valid']: raise HTTPException(422, {'message':'校验失败，整批未保存','errors':current['errors']})
-    if version != current['preview_version']: raise HTTPException(409, '预览已变更，请重新预览')
+    if not current['valid']: raise HTTPException(422, {'code':'excel_import_not_saved','not_created':True,'request_key':request_key,'message':'校验失败，整批未保存','errors':current['errors'],'preview':current})
+    if version != current['preview_version']: raise HTTPException(409, {'code':'excel_import_not_saved','not_created':True,'request_key':request_key,'message':'原请求未保存，预览已变更，请重新核对并确认；沿用原请求编号','preview':current})
     for row in current['rows']:
         db.add(SupplierCrossBorderPrice(**{k:v for k,v in row.items() if k not in ('row_number','supplier_name')}))
     result = {'mode':'confirmed','imported':len(current['rows']),'errors':[],'message':f"已整批保存{len(current['rows'])}条物流报价，未覆盖旧报价"}

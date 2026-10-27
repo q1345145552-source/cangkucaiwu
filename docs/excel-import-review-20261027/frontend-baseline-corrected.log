@@ -1,0 +1,9 @@
+AssertionError [ERR_ASSERTION]: old acknowledgment must not authorize a replacement file while its preview loads
+    at /private/tmp/excel-import-review-baseline/tests/excel-import-repair.test.cjs:51:127 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
