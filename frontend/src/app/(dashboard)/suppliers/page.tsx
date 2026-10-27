@@ -660,7 +660,7 @@ export default function SuppliersPage() {
               {/* Template download */}
               <button onClick={() => downloadTemplate("products")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>耗材模板</button>
               <button onClick={() => downloadTemplate("logistics")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>物流模板</button>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleSupplierImport} className="hidden" />
+              <input ref={fileInputRef} type="file" accept={importMode==="products"?".xlsx":".xlsx,.xls"} onChange={handleSupplierImport} className="hidden" />
               <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }} className="hidden" />
               <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>

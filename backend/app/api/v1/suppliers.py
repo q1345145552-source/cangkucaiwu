@@ -31,20 +31,22 @@ from app.services import purchase_price_review as price_review
 from app.services import procurement_controls as duty
 
 router = APIRouter()
+_fixed_routes = APIRouter()
+_supplier_routes = APIRouter()
 
 
 class MatchPolicySet(BaseModel):
     strict: bool
 
 
-@router.get("/purchase-match-policy", dependencies=[Depends(require_non_labor)])
+@_fixed_routes.get("/purchase-match-policy", dependencies=[Depends(require_non_labor)])
 async def get_match_policy(warehouse_id: int = Depends(current_supplier_warehouse),
         current_user: User = Depends(check_staff_permission_any(*(MENU_PERMISSIONS_BY_KEY[k].label
             for k in ("suppliers", "payable", "payment_plans", "config_center")))), db: AsyncSession = Depends(get_db)):
     return await matching.policy(db,warehouse_id)
 
 
-@router.put("/purchase-match-policy", dependencies=[Depends(require_non_labor)])
+@_fixed_routes.put("/purchase-match-policy", dependencies=[Depends(require_non_labor)])
 async def set_match_policy(req: MatchPolicySet, warehouse_id: int = Depends(current_supplier_warehouse),
         current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)),
         db: AsyncSession = Depends(get_db)):
@@ -384,19 +386,19 @@ async def _write_price_evidence(db: AsyncSession, po: PurchaseOrder) -> None:
     await db.flush()
 
 # ═══ Category CRUD ═══════════════════════════════
-@router.get("/categories")
+@_fixed_routes.get("/categories")
 async def list_categories(current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     cats = (await db.execute(select(SupplierCategory).where(SupplierCategory.is_active == "true").order_by(SupplierCategory.sort_order))).scalars().all()
     return {"data": [{"id": c.id, "name": c.name} for c in cats]}
 
-@router.post("/categories")
+@_fixed_routes.post("/categories")
 async def create_category(name: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     raise HTTPException(403, "供应商分类为统一参考，只读；请使用本仓标签，不改写历史分类")
 
 # ═══ Import Templates ════════════════════════════
-@router.get("/import-template/products")
+@_fixed_routes.get("/import-template/products")
 async def download_products_template(current_user: User = Depends(get_current_user),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """下载耗材产品导入模板"""
@@ -407,18 +409,18 @@ async def download_products_template(current_user: User = Depends(get_current_us
     hfont = Font(bold=True, color="FFFFFF")
     for c, h in enumerate(["供应商名称", "产品名", "产品规格", "规格报价", "单价", "单位", "币种", "标准SKU编码", "结构化规格JSON", "基本单位换算数"], 1):
         cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hfill
-    for c, v in enumerate(["示例: 耗材商A", "快递袋", "一打80个", 80, 1], 1):
+    for c, v in enumerate(["## 示例行（不会导入）", "快递袋", "一打80个", 80, 1], 1):
         ws.cell(row=2, column=c, value=v)
     for col, w in [('A',20),('B',16),('C',16),('D',12),('E',12)]:
         ws.column_dimensions[col].width = w
     notes=wb.create_sheet("填写说明")
-    for value in ["旧全局5列、单供应商4列仍支持，新增列可留空；先预览再逐行确认，整批成功或整批不导入。", "同规格不同名称只建议，不自动合并；同编码不同规格拒绝。SKU编码请用文本。", "结构化规格示例：{\"material\":\"PE\",\"width\":{\"value\":38,\"unit\":\"cm\"},\"packaging\":\"single\"}", "单位请从目录清单选择；箱/包换算未知留空，不猜箱=多少个。", "每行明确保持未映射或选择本仓SKU、核对版本并填写映射依据；原报价与历史订单不会覆盖。"]:notes.append([value])
+    for value in ["第一列以##开头的行是示例，不会导入；请删除示例行或在新行填写真实供应商和产品。", "只支持.xlsx；.xls请先另存为xlsx。重复已有产品时新增一条报价，不覆盖旧报价。", "旧全局5列、单供应商4列仍支持，新增列可留空；先预览再逐行确认，整批成功或整批不导入。", "同规格不同名称只建议，不自动合并；同编码不同规格拒绝。SKU编码请用文本。", "结构化规格示例：{\"material\":\"PE\",\"width\":{\"value\":38,\"unit\":\"cm\"},\"packaging\":\"single\"}", "单位请从目录清单选择；箱/包换算未知留空，不猜箱=多少个。", "每行明确保持未映射或选择本仓SKU、核对版本并填写映射依据；原报价与历史订单不会覆盖。"]:notes.append([value])
     notes.column_dimensions['A'].width=110
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"})
 
-@router.get("/import-template/logistics")
+@_fixed_routes.get("/import-template/logistics")
 async def download_logistics_template(current_user: User = Depends(get_current_user),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """下载跨境物流价格导入模板"""
@@ -438,19 +440,20 @@ async def download_logistics_template(current_user: User = Depends(get_current_u
                             headers={"Content-Disposition": "attachment; filename=cross_border_logistics_template.xlsx"})
 
 # ═══ Import ══════════════════════════════════════
-@router.post("/import/products")
+@_fixed_routes.post("/import/products")
 async def import_products(file: UploadFile = File(...), mode: str = Form("preview"),
                           preview_version: str = Form(None), request_key: str = Form(None), choices: str = Form(None),
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
                           warehouse_id: int = Depends(current_supplier_warehouse),
                           _perm=Depends(check_staff_permission("供应商管理"))):
     from app.services import product_import
-    content=await file.read()
+    product_import.validate_filename(file.filename)
+    content=await file.read(2*1024*1024+1)
     if mode=="preview":return await product_import.preview(db,warehouse_id,current_user,content)
     if mode!="confirm":raise HTTPException(400,"请选择预览或明确确认导入")
     return await product_import.confirm(db,warehouse_id,current_user,content,None,request_key,preview_version,choices)
 
-@router.post("/import/logistics")
+@_fixed_routes.post("/import/logistics")
 async def import_logistics(file: UploadFile = File(...), current_user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -486,19 +489,20 @@ async def import_logistics(file: UploadFile = File(...), current_user: User = De
     return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条跨境物流价格"}
 
 # ═══ Per-Supplier Import ══════════════════════════
-@router.post("/{supplier_id}/import/products")
+@_supplier_routes.post("/{supplier_id}/import/products")
 async def import_products_for_supplier(supplier_id: int, file: UploadFile = File(...), mode: str = Form("preview"),
                           preview_version: str = Form(None), request_key: str = Form(None), choices: str = Form(None),
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
                           warehouse_id: int = Depends(current_supplier_warehouse),
                           _perm=Depends(check_staff_permission("供应商管理"))):
     from app.services import product_import
-    content=await file.read()
+    product_import.validate_filename(file.filename)
+    content=await file.read(2*1024*1024+1)
     if mode=="preview":return await product_import.preview(db,warehouse_id,current_user,content,supplier_id)
     if mode!="confirm":raise HTTPException(400,"请选择预览或明确确认导入")
     return await product_import.confirm(db,warehouse_id,current_user,content,supplier_id,request_key,preview_version,choices)
 
-@router.post("/{supplier_id}/import/logistics")
+@_supplier_routes.post("/{supplier_id}/import/logistics")
 async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = File(...),
                                          current_user: User = Depends(get_current_user),
                                          db: AsyncSession = Depends(get_db),
@@ -531,7 +535,7 @@ async def import_logistics_for_supplier(supplier_id: int, file: UploadFile = Fil
     return {"imported": imported, "skipped": skipped, "errors": errors, "message": f"成功导入 {imported} 条跨境物流价格"}
 
 # ═══ Product CRUD ════════════════════════════════
-@router.get("/{supplier_id}/products")
+@_supplier_routes.get("/{supplier_id}/products")
 async def list_products(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     await _require_supplier_owned(db, current_user, supplier_id)
@@ -585,7 +589,7 @@ async def list_products(supplier_id: int, current_user = Depends(get_current_use
         item.update(await catalog.mapping_view(db,p,warehouse_id))
         result.append(item)
     return {'data': result}
-@router.post("/{supplier_id}/products")
+@_supplier_routes.post("/{supplier_id}/products")
 async def add_product(supplier_id: int, req: SupplierProductCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -602,7 +606,7 @@ async def add_product(supplier_id: int, req: SupplierProductCreate, current_user
     db.add(p); await db.flush()
     return {"id": p.id, "message": "添加成功"}
 
-@router.delete("/{supplier_id}/products/{product_id}")
+@_supplier_routes.delete("/{supplier_id}/products/{product_id}")
 async def delete_product(supplier_id: int, product_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -621,7 +625,7 @@ async def delete_product(supplier_id: int, product_id: int, current_user: User =
         before=json.loads(json.dumps(before,default=str)),after=json.loads(json.dumps(catalog.product_state(p),default=str)),warehouse_id=warehouse_id)
     return {"message": "产品已停用，原报价、映射及订单历史保留"}
 # ═══ Purchase Order ═════════════════════════════
-@router.post("/{supplier_id}/purchase-order")
+@_supplier_routes.post("/{supplier_id}/purchase-order")
 async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
                                  current_user: User = Depends(get_current_user),
                                  db: AsyncSession = Depends(get_db),
@@ -773,7 +777,7 @@ class PriceThresholdSet(BaseModel):
     threshold: float
 
 
-@router.get("/price-threshold")
+@_fixed_routes.get("/price-threshold")
 async def get_price_threshold(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
@@ -784,7 +788,7 @@ async def get_price_threshold(current_user: User = Depends(get_current_user), db
     return {"threshold": threshold}
 
 
-@router.put("/price-threshold")
+@_fixed_routes.put("/price-threshold")
 async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
@@ -810,7 +814,7 @@ async def set_price_threshold(req: PriceThresholdSet, current_user: User = Depen
     return {"message": f"价格阈值已设为 {req.threshold}%", "threshold": req.threshold}
 
 
-@router.get("/price-stats")
+@_fixed_routes.get("/price-stats")
 async def price_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """每个产品(名+规格)的历史最低价/均价/最近采购价"""
@@ -840,7 +844,7 @@ async def price_stats(current_user: User = Depends(get_current_user), db: AsyncS
     return {"data": data}
 
 
-@router.get("/price-trend")
+@_fixed_routes.get("/price-trend")
 async def price_trend(product_name: str, spec: str = None,
                       current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -862,7 +866,7 @@ async def price_trend(product_name: str, spec: str = None,
     } for r in rows]}
 
 
-@router.get("/price-anomalies")
+@_fixed_routes.get("/price-anomalies")
 async def price_anomalies(page: int = 1, page_size: int = 20,
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -886,7 +890,7 @@ async def price_anomalies(page: int = 1, page_size: int = 20,
     } for r in rows], "total": total, "page": page, "page_size": page_size}
 
 
-@router.get("/non-lowest-records")
+@_fixed_routes.get("/non-lowest-records")
 async def non_lowest_records(page: int = 1, page_size: int = 50,
                              current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -914,7 +918,7 @@ async def non_lowest_records(page: int = 1, page_size: int = 50,
     } for r in rows], "total": total, "page": page, "page_size": page_size}
 
 
-@router.get("/non-lowest-summary")
+@_fixed_routes.get("/non-lowest-summary")
 async def non_lowest_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """非最低价采购汇总：本期多花的钱合计"""
@@ -944,7 +948,7 @@ class ApprovalThresholdSet(BaseModel):
     threshold: float
 
 
-@router.get("/purchase-approval-threshold")
+@_fixed_routes.get("/purchase-approval-threshold")
 async def get_approval_threshold(current_user: User = Depends(check_staff_permission_any(MENU_PERMISSIONS_BY_KEY["config_center"].label, MENU_PERMISSIONS_BY_KEY["suppliers"].label)), db: AsyncSession = Depends(get_db)):
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) and not (
@@ -957,7 +961,7 @@ async def get_approval_threshold(current_user: User = Depends(check_staff_permis
     return {"threshold": threshold}
 
 
-@router.put("/purchase-approval-threshold")
+@_fixed_routes.put("/purchase-approval-threshold")
 async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     """按当前选中仓库，仓库管理员或已授权主管设置门槛。"""
     ensure_config_editor(current_user)
@@ -981,7 +985,7 @@ async def set_approval_threshold(req: ApprovalThresholdSet, current_user: User =
     return {"message": f"采购审批门槛已设为 {req.threshold} 泰铢", "threshold": req.threshold}
 
 
-@router.get("/purchase-approvals")
+@_fixed_routes.get("/purchase-approvals")
 async def purchase_approvals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1051,7 +1055,7 @@ async def purchase_approvals(current_user: User = Depends(get_current_user), db:
     return {"pending": pending, "split_groups": split_groups, "threshold": threshold}
 
 
-@router.put("/purchase-approvals/{po_id}/approve")
+@_fixed_routes.put("/purchase-approvals/{po_id}/approve")
 async def approve_purchase(po_id: int, req: Optional[dict] = Body(None), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1098,7 +1102,7 @@ async def approve_purchase(po_id: int, req: Optional[dict] = Body(None), current
     return await duty.finish(db,ticket,{"message": "审批通过，应付账单已生成", "payable_bill_id": bill.id, "payable_bill_number": bill_number})
 
 
-@router.put("/purchase-approvals/{po_id}/reject")
+@_fixed_routes.put("/purchase-approvals/{po_id}/reject")
 async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1125,7 +1129,7 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
 
 
 # ═══ 采购收货验收 ════════════════════════════
-@router.get("/purchase-orders")
+@_fixed_routes.get("/purchase-orders")
 async def list_purchase_orders(page: int = 1, page_size: int = 50,
                                current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
@@ -1172,14 +1176,14 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
     } for po in rows], "total": total, "page": page, "page_size": page_size}
 
 
-@router.get("/purchase-orders/{po_id}", dependencies=[Depends(require_non_labor)])
+@_fixed_routes.get("/purchase-orders/{po_id}", dependencies=[Depends(require_non_labor)])
 async def get_purchase_detail(po_id: int, warehouse_id: int = Depends(current_supplier_warehouse),
         current_user: User = Depends(check_staff_permission_any(*(MENU_PERMISSIONS_BY_KEY[k].label
             for k in ("suppliers", "payable", "payment_plans")))), db: AsyncSession = Depends(get_db)):
     return await purchase_detail(db, po_id, warehouse_id, current_user)
 
 
-@router.get("/purchase-orders/{po_id}/receipts/{event_id}/photo", dependencies=[Depends(require_non_labor)])
+@_fixed_routes.get("/purchase-orders/{po_id}/receipts/{event_id}/photo", dependencies=[Depends(require_non_labor)])
 async def read_receipt_photo(po_id: int, event_id: int,
         current_user: User = Depends(check_staff_permission_any(*(MENU_PERMISSIONS_BY_KEY[k].label
             for k in ("suppliers","payable","payment_plans")))), warehouse_id: int = Depends(current_supplier_warehouse),
@@ -1205,7 +1209,7 @@ async def read_receipt_photo(po_id: int, event_id: int,
     return FileResponse(target,headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
 
 
-@router.post("/purchase-orders/{po_id}/receive", dependencies=[Depends(require_non_labor)])
+@_fixed_routes.post("/purchase-orders/{po_id}/receive", dependencies=[Depends(require_non_labor)])
 async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile = File(...),
                            request_key: str = Form(None), remark: str = Form(""),
                            expected_policy_version: str = Form(None), expected_business_version: str = Form(None), exception_id: int = Form(None),
@@ -1217,7 +1221,7 @@ async def receive_purchase(po_id: int, items: str = Form(...), file: UploadFile 
         {'expected_policy_version':expected_policy_version,'expected_business_version':expected_business_version,'exception_id':exception_id})
 
 
-@router.post("/purchase-orders/{po_id}/mark-sent")
+@_fixed_routes.post("/purchase-orders/{po_id}/mark-sent")
 async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1236,7 +1240,7 @@ async def mark_purchase_sent(po_id: int, current_user: User = Depends(get_curren
     return {"message": "已标记发送", "sent_at": po.sent_at.isoformat()}
 
 
-@router.post("/purchase-orders/{po_id}/receipt")
+@_fixed_routes.post("/purchase-orders/{po_id}/receipt")
 async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
                                   current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
@@ -1265,7 +1269,7 @@ async def upload_purchase_receipt(po_id: int, file: UploadFile = File(...),
     return {"message": "回执已上传，供应商已确认", "receipt_file": po.receipt_file, "flow_status": po.flow_status}
 
 
-@router.post("/purchase-orders/{po_id}/mark-shipped")
+@_fixed_routes.post("/purchase-orders/{po_id}/mark-shipped")
 async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1285,7 +1289,7 @@ async def mark_purchase_shipped(po_id: int, current_user: User = Depends(get_cur
     return {"message": "已标记发货", "flow_status": po.flow_status}
 
 
-@router.get("/purchase-orders/{po_id}/pdf")
+@_fixed_routes.get("/purchase-orders/{po_id}/pdf")
 async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1311,7 +1315,7 @@ async def download_purchase_order_pdf(po_id: int, current_user: User = Depends(g
     )
 
 
-@router.get("/purchase-receipt-discrepancies")
+@_fixed_routes.get("/purchase-receipt-discrepancies")
 async def receipt_discrepancies(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1439,7 +1443,7 @@ class ConcentrationThresholdSet(BaseModel):
     threshold: float
 
 
-@router.get("/concentration-threshold")
+@_fixed_routes.get("/concentration-threshold")
 async def get_concentration_threshold(current_user: User = Depends(check_staff_permission_any(_CONCENTRATION_PERMISSION, MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
@@ -1447,7 +1451,7 @@ async def get_concentration_threshold(current_user: User = Depends(check_staff_p
     return {"threshold": await _get_concentration_threshold(db, wh_id)}
 
 
-@router.put("/concentration-threshold")
+@_fixed_routes.put("/concentration-threshold")
 async def set_concentration_threshold(req: ConcentrationThresholdSet,
                                       current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["config_center"].label)), db: AsyncSession = Depends(get_db)):
     ensure_config_editor(current_user)
@@ -1469,7 +1473,7 @@ async def set_concentration_threshold(req: ConcentrationThresholdSet,
     return {"message": "集中度预警阈值已保存", "threshold": req.threshold}
 
 
-@router.get("/concentration")
+@_fixed_routes.get("/concentration")
 async def concentration_analysis(month: str = None,
                                  current_user: User = Depends(check_staff_permission(_CONCENTRATION_PERMISSION)), db: AsyncSession = Depends(get_db)):
     """供应商采购集中度：按月统计各供应商采购金额/占比/订单数。"""
@@ -1499,7 +1503,7 @@ async def concentration_analysis(month: str = None,
             "data": res["data"], "alert": alert}
 
 
-@router.get("/concentration-trend")
+@_fixed_routes.get("/concentration-trend")
 async def concentration_trend(months: int = 6,
                               current_user: User = Depends(check_staff_permission(_CONCENTRATION_PERMISSION)), db: AsyncSession = Depends(get_db)):
     """集中度趋势：最近 N 个月最高供应商占比变化。"""
@@ -1529,7 +1533,7 @@ async def concentration_trend(months: int = 6,
     return {"data": trend}
 
 # ═══ Logistics Price CRUD ════════════════════════
-@router.get("/{supplier_id}/logistics-prices")
+@_supplier_routes.get("/{supplier_id}/logistics-prices")
 async def list_logistics_prices(supplier_id: int, current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     await _require_supplier_owned(db, current_user, supplier_id)
@@ -1538,7 +1542,7 @@ async def list_logistics_prices(supplier_id: int, current_user = Depends(get_cur
                       "origin_warehouse": p.origin_warehouse, "price_per_cbm": p.price_per_cbm,
                       "estimated_days": p.estimated_days, "currency": p.currency} for p in prices]}
 
-@router.post("/{supplier_id}/logistics-prices")
+@_supplier_routes.post("/{supplier_id}/logistics-prices")
 async def add_logistics_price(supplier_id: int, req: dict, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
@@ -1549,7 +1553,7 @@ async def add_logistics_price(supplier_id: int, req: dict, current_user: User = 
     db.add(p); await db.flush()
     return {"id": p.id, "message": "添加成功"}
 
-@router.delete("/{supplier_id}/logistics-prices/{price_id}")
+@_supplier_routes.delete("/{supplier_id}/logistics-prices/{price_id}")
 async def delete_logistics_price(supplier_id: int, price_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
@@ -1562,7 +1566,7 @@ async def delete_logistics_price(supplier_id: int, price_id: int, current_user: 
     return {"message": "删除成功"}
 
 # ═══ Price Comparison ════════════════════════════
-@router.get("/compare-prices")
+@_fixed_routes.get("/compare-prices")
 async def compare_prices(product_name: str = None, spec: str = None, category_id: int = None,
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1603,7 +1607,7 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
         })
     return {"data": result, "total": len(result)}
 
-@router.get("/compare-logistics")
+@_fixed_routes.get("/compare-logistics")
 async def compare_logistics(transport_method: str = None, cargo_type: str = None, origin_warehouse: str = None,
                              category_id: int = None,
                              current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
@@ -1700,7 +1704,7 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
     return {"data": result, "total": len(result), "yiwu_markup": YIWU_MARKUP, "min_cbm": min_cbm}
 
 # ═══ AI Price Analysis ═══════════════════════════
-@router.post("/ai-compare")
+@_fixed_routes.post("/ai-compare")
 async def ai_compare(data: dict, current_user: User = Depends(get_current_user),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
@@ -1787,7 +1791,7 @@ async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_
     s = Supplier(warehouse_id=get_wh_id(current_user), **d)
     db.add(s); await db.flush(); return {"id": s.id, "message": "创建成功"}
 
-@router.put("/{supplier_id}", dependencies=[Depends(require_non_labor)])
+@_supplier_routes.put("/{supplier_id}", dependencies=[Depends(require_non_labor)])
 async def update_supplier(supplier_id: int, req: SupplierUpdate,
                           current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
@@ -1804,7 +1808,7 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
         setattr(s, k, v)
     await db.flush(); return {"message": "更新成功"}
 
-@router.delete("/{supplier_id}", dependencies=[Depends(require_non_labor)])
+@_supplier_routes.delete("/{supplier_id}", dependencies=[Depends(require_non_labor)])
 async def delete_supplier(supplier_id: int, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1824,7 +1828,7 @@ async def delete_supplier(supplier_id: int, current_user: User = Depends(get_cur
     await db.delete(s); await db.flush()
     return {"message": "删除成功"}
 
-@router.get("/procurement-summary")
+@_fixed_routes.get("/procurement-summary")
 async def procurement_summary(current_user: User = Depends(get_current_user),
                                db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1977,7 +1981,7 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         "savings_tips": savings_tips,
     }
 
-@router.get("/{supplier_id}")
+@_supplier_routes.get("/{supplier_id}")
 async def get_supplier(supplier_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
@@ -1999,7 +2003,7 @@ async def get_supplier(supplier_id: int, current_user: User = Depends(get_curren
             "ai_evaluation": s.ai_evaluation,
             "category_id": s.category_id, "category_name": cat_name}
 
-@router.get("/{supplier_id}/ai-evaluation")
+@_supplier_routes.get("/{supplier_id}/ai-evaluation")
 async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current_user),
                       db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -2031,3 +2035,9 @@ async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current
         s.ai_evaluation = evaluation
     await db.flush()
     return evaluation
+
+
+# Register literal prefixes first through FastAPI's public API; supplier ids must
+# never consume import/categories/statistics/approval routes. Handler bodies stay unchanged.
+router.include_router(_fixed_routes)
+router.include_router(_supplier_routes)

@@ -1,0 +1,75 @@
+合入主分支与推送验收补充（2026-10-27，以此段为最终合并口径）
+用户已授权“把这一轮导入修复合并到主分支并推送，先不要部署”。原轮源提交e58516f在另外三笔本地未推历史修改之上；为只交付本轮，从远程main基线adb9024单独提取e58516f，未带入2d41f76、9abce7f、5d5afef。
+唯一冲突是旧分支新增、main尚不存在的types84-behavior.test.cjs；不将这整份历史类型测试带入main，把此次仅涉及产品/物流文件筛选的检查保留到原supplier-sku-round5.test.cjs。其余所有导入生产文件与e58516f一致，供应商页只改变一个accept属性；供应商63个非导入函数、数据库结构、比价、采购逻辑不变。
+合并基线上的复验：后端95项全部通过；供应商/库存相关前端12组全部通过，导入脚本内12项行为检查；生产构建成功56页。前端7份原配置与源码SHA核对一致，没有放宽编译配置。
+类型检查特别说明：main本来存在84条历史诊断。本次将合并前main和导入合并结果放在同一隔离路径逐条比较，均为84条且原始输出完全相同，本轮新增0条。main原有next.config.js允许构建忽略类型错误，此配置原样保留。下文“61组全部通过、类型零诊断”指原开发分支（包含尚未合入的历史修复）上的验收，不能当作当前main已零诊断。该三笔历史修复不在本次推送范围。
+复验只使用新建、仅监听127.0.0.1的隔离PostgreSQL和合成Excel；不连接生产、不执行部署、不改线上数据。最终合并提交号、远程main核验见外部“合并推送验收”交付记录。
+
+以下保留原开发分支的完整功能验收记录：
+
+供应商产品导入五处修复与本地验收
+任务：supplier-import-fix-20261027；分支codex/supplier-import-fix-20261027。
+工作树/private/tmp/supplier08-worktree；父提交5d5afeffdafd6a11fad3f03cc8f041dccac3ccae。
+最终完整本地提交号、分支、干净状态见本批外部证据目录“本地提交交付记录.json”。仅本地代码/隔离验证/commit；未推送、未部署、未SSH、未访问生产或.deploy。
+没有用户提供的业务Excel，因此用实际生成并落盘的Excel文件、原样下载的系统模板走multipart HTTP与原生PostgreSQL验证；全部是本地合成数据，不冒称线上或真实业务账目。
+
+一、修复选择和范围
+1. 格式采用用户允许的xlsx-only方案。不加项目依赖：产品选择器只允许.xlsx；界面选到.xls（包括手动覆盖选择器）明确显示“请另存为 xlsx 格式”，不发请求；后端直接上传.xls同样400中文。保留物流选择器原样，不改物流导入逻辑。
+真正Excel97 .xls测试文件由临时xlwt1.3.0生成，5632字节，file识别CDFV2 Microsoft Excel；实际xlsx测试文件识别Microsoft Excel2007+。生成器只在本地外部测试目录，没有进入requirements/镜像/运行依赖。
+空字节文件返回“文件为空，请选择包含表头和数据的 xlsx 文件”；空工作表返回“文件没有表头，请使用产品导入模板”。保留原2MB、展开20MB、500行/20列和公式/金额/单位/JSON安全限制。
+2. 固定前缀分组优先注册。使用FastAPI公共include_router：固定前缀routes先于/{supplier_id}组；空GET/POST路径保留在顶层router，原地址/方法不变。import/products、import/logistics、import-template、categories、price系列、non-lowest系列、purchase-approval-threshold等都不会被供应商编号抢走。
+核对基线发现最新代码的通用产品导入原本已可达，未复现“import被当编号”的特定422；基线有效文件预览200的证据保留before-actual/actual.json。此次按要求统一全部固定前缀顺序，并用真实app路由表断言，不伪称原来这条已失败。
+3. 通用入口按本仓、在用、精确供应商名称分摊，可一次多家；缺档案/名称不唯一行跳过并保留原Excel行号、原因，不猜配，不新建档案。单家入口遇到任何非本家供应商名都整批阻断，指出行号和供应商。
+只有示例与通用入口未匹配供应商属于可跳过项；金额/公式/单位/SKU等原有严重错误仍整批拒绝。未知供应商行不因产品空白等转成误导的产品错误；该行不写库。单供应商不将混入别家的行静默跳过。
+4. 模板第一列加“## 示例行（不会导入）”；说明页写明该标记不会导入。新##与旧“示例:”/“示例：”都识别；预览列出跳过示例行的原因。原始模板一字不填上传，显示“全部是示例行，没有可导入数据”。
+5. 预览新增total_rows/valid_count/skipped_count/skipped_rows，保留原rows/errors/valid/mode/preview_version等字段。总数按表头后的非空行计数，包含示例行；原Excel行号不重排。界面显示总/有效/跳过及每行原因，“确认导入 X 条”；未勾核对禁用，直接触发处理器也不发送确认。成功消息列成功/跳过/更新三数。
+6. 已有报价采用“新增产品报价条目”，更新恒为0。新SupplierProduct编号与原条目分开，旧报价不改、不自动合并/复制SKU映射；原报价仍按既有比价/有效性规则处理，本轮不改这些规则。选择人工SKU映射仍要原有权限、版本、规格和理由；未映射必须明确确认。
+原文件/预览版本/请求编号幂等、并发重试、失败回滚保留；跳过行不能伪造choice混入，预览后供应商档案变化会409要求重新核对。
+
+二、用户要求的第1—6步实际返回摘录
+第1步 通用入口POST /suppliers/import/products，带实际xlsx文件：HTTP200
+{"mode": "preview", "valid": true, "total_rows": 1, "valid_count": 1, "skipped_count": 0}
+第2步 单供应商实际xlsx确认：HTTP200
+{"mode": "confirmed", "imported": 1, "skipped": 0, "updated": 0, "message": "导入成功 1 条，跳过 0 条，更新 0 条；已新增报价，未自动合并或覆盖旧报价"}
+原报价100保持100，新增报价90；原Product行逐字段及旧采购单items快照不变；同原请求重试replayed=true，产品共2条，无重复新增。
+第3步 实际旧版.xls直接上传：HTTP400
+{"detail": "请另存为 xlsx 格式"}
+界面同样显示此句且没有上传请求。
+第4步 同一文件含两家供应商+未知供应商+示例共4行：
+通用确认HTTP200：{"imported": 2, "skipped": 2, "updated": 0, "message": "导入成功 2 条，跳过 2 条，更新 0 条；已新增报价，未自动合并或覆盖旧报价"}
+单供应商确认HTTP422（业务拒绝，不是路由编号校验）：{"detail": {"code": "product_import_invalid_rows", "message": "文件含错误行，整批未导入", "errors": [{"row_number": 3, "message": "该行属于其他供应商「同开票方别名」，当前只允许「本仓供应商」，整批未导入"}, {"row_number": 4, "message": "该行属于其他供应商「未建档供应商」，当前只允许「本仓供应商」，整批未导入"}]}}
+混入别家的第3行指出“同开票方别名”，本次整批0写入；通用入口有效两行分别归本仓供应商编号1、3，未写外仓编号2。
+第5步 原样下载模板直接上传：HTTP200，预览valid=false
+{"total_rows": 1, "valid_count": 0, "skipped_count": 1, "message": "全部是示例行，没有可导入数据"}
+空文件HTTP400：{"detail": "文件为空，请选择包含表头和数据的 xlsx 文件"}
+无表头HTTP400：{"detail": "文件没有表头，请使用产品导入模板"}
+第6步 预览显示“一共读到 4 行，其中有效 2 行，跳过 2 行”；按钮“确认导入 2 条”。未勾禁用且直接调用处理器无写请求；确认choices只含第2/3行，不含跳过行。
+跳过原因：[{"row_number": 4, "message": "供应商名称在本仓不存在或不唯一，该行已跳过，请核对供应商档案", "blocking": false}, {"row_number": 5, "message": "跳过了示例行（不会导入）", "blocking": false}]
+成功提示：导入成功 2 条，跳过 2 条，更新 0 条；已新增报价，未自动合并或覆盖旧报价
+完整原始返回：验证第1到第6步实际返回.json和final-actual/actual.json；实际Excel在final-actual/files及仓库backend/tests/fixtures。
+
+三、回归与未改范围
+后端95项全部通过，真实PostgreSQL与原应用HTTP：7新增导入专项、21既有SKU/人工映射及其余采购/报价/价格复核/收货/查重回归。没有跳过或伪造成功；backend-counts.json把收集95项和运行95个通过点对应，完整原始日志backend-final.log。
+tests/test_supplier_dedup_round2.py | 13通过
+tests/test_supplier_price_review_round6.py | 7通过
+tests/test_supplier_product_import_fix.py | 7通过
+tests/test_supplier_quotes_round6.py | 23通过
+tests/test_supplier_receipts_round3.py | 17通过
+tests/test_supplier_sku_round5.py | 21通过
+tests/test_supplier_workflow_round1.py | 7通过
+前端现有61组全通过，排除0、跳过0、失败0。本轮在原supplier-sku-round5.test.cjs中扩展导入计数/ack/跳过行/实际Excel字节重试/实际xls/示例空表等，脚本内部11项行为断言；没有只让模拟网络返回硬编码成功替代后端真实确认。
+首次整套前端60/61：types84-behavior旧整页历史运行JS快照拒绝本轮明确允许的accept变更。只抽该input真实accept表达式验证products=.xlsx、logistics保留旧筛选，再仅归一化这个属性，其余整页历史运行JS对比完全保留；最终61/61通过。首次失败原日志保留frontend-final61，最终在frontend-final61-pass。
+全量tsc --noEmit --pretty false --incremental false构建前/后均exit0、0诊断；生产构建exit0，56/56页。原7份配置与每个src文件SHA256对应见build-source-config.json，没有放宽配置或加忽略报错，项目依赖锁不变。
+对照父提交的scope-and-endpoints.json：供应商模块63个非本轮导入/模板函数体和签名完全不变，方法/路径集合完全一致。采购、供应商档案、比价算法、SKU服务、数据库模型、启动迁移、要求依赖、工资/报销/备用金等本轮均未修改。
+
+四、复跑与清理
+使用本地Python测试虚拟环境及原依赖，先启动明确独立127.0.0.1 PostgreSQL，显式传INCOMING_TEST_DATABASE_URL/DATABASE_URL，再在backend执行backend-final-command.json所列pytest命令。SUPPLIER_IMPORT_REPORT_DIR指向独立证据目录保存物理文件和返回。库必须是本机隔离实例，各pytest创建随机schema，数据均合成，不能将连接替换成生产。
+前端按frontend/tests/run-legacy-regressions.py启动自己的全新PG/HTTP（命令见frontend-final61-pass/results.json、lifecycle.json）。该8个fixture全部退出0、schema0、端口停止；数据目录保留，没有删卷。
+本轮后端隔离PG端口61135由本任务创建，之后检测到浏览器验证进程/tmp/excel-import-browser-server.py（观测PID24235）正在使用，临时schema随它变化。为避免打断该进程，本任务停止了清理，没有执行drop这些schema或停该PG；保留其验证现场。所有本批pytest子进程已完成。连接和保留原因记录在cleanup-verification.json及preserved-shared-pg-connections.log。没有停止用户18082或生产容器。
+
+五、过程和边界
+原专项5个失败先记录before-backend.log；最初公共子router包含空路径导致FastAPI加载错误，已将空路径留顶层而固定前缀仍先注册，失败日志after-backend-attempt1.log保留，后续95项和实际路由表均通过。
+.xls测试文件生成仅使用外部临时xlwt，没有新增服务器依赖。未用用户真实业务文件，没有线上部署/生产数据/全部设备实测；不把本地回归说成全系统线上正常。
+只本地commit后停止，未推送未部署，不改库存计价，不自动继续其他轮次。旧历史任务授权不用于本批远程操作。
+原始证据目录：
+/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商产品导入修复-20261027

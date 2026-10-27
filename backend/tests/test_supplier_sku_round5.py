@@ -166,7 +166,7 @@ def test_excel_mapping_versions_concurrent_retry_and_hidden_fields(tmp_path,monk
  asyncio.run(run())
 
 @pytest.mark.parametrize('kind',['duplicate','existing','unit','json','same_code_specs','formula','foreign_supplier','unknown_header'])
-def test_excel_invalid_inputs_have_line_numbers_without_partial_writes(tmp_path,monkeypatch,kind):
+def test_excel_validation_keeps_errors_atomic_and_appends_existing_quotes(tmp_path,monkeypatch,kind):
  async def run():
   async with fixture(tmp_path,monkeypatch) as (_,f,c,receipt):
    s=await sku(c);row=['导入核对袋','新规格',None,2,'个','THB',None,None];rows=[row];headers=None;path='/suppliers/1/import/products'
@@ -179,6 +179,14 @@ def test_excel_invalid_inputs_have_line_numbers_without_partial_writes(tmp_path,
    if kind=='foreign_supplier':path='/suppliers/import/products';headers=['供应商名称','产品名','产品规格','规格报价','单价'];rows=[['外仓供应商','外仓袋','旧',None,2]]
    if kind=='unknown_header':headers=['产品名','产品规格','规格报价','单价','标准SKU编号'];rows=[['未知隐藏ID','新',None,2,999]]
    blob=workbook(rows,headers);files={'file':('invalid.xlsx',blob,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')};preview=await request(c,'POST',path,files=files)
+   if kind=='existing':
+    assert preview['valid'] and preview['valid_count']==1
+    saved=await request(c,'POST',path,files=files,data={'mode':'confirm','request_key':'append-existing','preview_version':preview['preview_version'],'choices':json.dumps([{'row_number':2,'decision':'unmapped','confirmed':True}])})
+    async with f() as db:
+     assert (await db.execute(select(func.count(SupplierProduct.id)))).scalar_one()==2
+     assert (await db.get(SupplierProduct,1)).unit_price==100
+    assert saved['imported']==1 and saved['updated']==0
+    actual('append_existing_keeps_original_quote',saved);return
    assert preview['valid'] is False and preview['errors'] and all(e['row_number']>=1 for e in preview['errors'])
    await request(c,'POST',path,code=422,files=files,data={'mode':'confirm','request_key':'invalid-'+kind,'preview_version':preview['preview_version'],'choices':json.dumps([{'row_number':r['row_number'],'decision':'unmapped','confirmed':True} for r in preview['rows']])})
    async with f() as db:assert (await db.execute(select(func.count(SupplierProduct.id)))).scalar_one()==1
