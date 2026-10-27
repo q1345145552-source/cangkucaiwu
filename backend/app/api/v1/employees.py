@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from app.database import get_db
 from app.models.employee import Employee
 from app.models.warehouse import Warehouse
@@ -12,7 +12,8 @@ from app.core.permissions import check_staff_permission, check_staff_permission_
 from app.core.security import hash_password
 from app.services.image_utils import thumb_path_of
 from app.core.timezone import thai_now
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+import re
 from datetime import datetime, date, timedelta
 from typing import Optional, List
 
@@ -22,7 +23,43 @@ _PERMISSION = MENU_PERMISSIONS_BY_KEY["employees"].label
 
 router = APIRouter()
 
-class EmployeeCreate(BaseModel):
+NATIONALITIES = ("泰国", "缅甸", "中国", "其他")
+IDENTITY_FIELDS = ("nationality", "thai_id_number", "sso_number", "bank_account_number", "bank_name", "bank_account_holder")
+
+class EmployeeIdentityFields(BaseModel):
+    nationality: Optional[str] = None
+    thai_id_number: Optional[str] = None
+    sso_number: Optional[str] = Field(None, max_length=50)
+    bank_account_number: Optional[str] = Field(None, max_length=100)
+    bank_name: Optional[str] = Field(None, max_length=100)
+    bank_account_holder: Optional[str] = Field(None, max_length=100)
+
+    @field_validator(*IDENTITY_FIELDS, mode="before")
+    @classmethod
+    def trim_identity(cls, value):
+        return value.strip() or None if isinstance(value, str) else value
+
+
+def validate_identity(values):
+    nationality = values.get("nationality")
+    identity = values.get("thai_id_number")
+    if nationality is not None and nationality not in NATIONALITIES:
+        raise HTTPException(400, "国籍只能选择泰国、缅甸、中国或其他")
+    if nationality == "泰国" and not identity:
+        raise HTTPException(400, "泰国员工必须填写十三位身份证号")
+    if identity and not re.fullmatch(r"[0-9]{13}", identity):
+        raise HTTPException(400, "身份证号必须为十三位数字")
+    if nationality in ("缅甸", "中国", "其他") and not (values.get("passport_number") or "").strip():
+        raise HTTPException(400, "外籍员工必须填写护照号")
+    # Unspecified nationality remains compatible with existing profiles and either identity set.
+
+
+def identity_result(employee):
+    return {**{field: getattr(employee, field) for field in IDENTITY_FIELDS},
+            "warnings": [] if (employee.bank_account_number or "").strip() else ["未填银行账号"]}
+
+
+class EmployeeCreate(EmployeeIdentityFields):
     name: str
     employee_no: str  # 工号 = 登录用户名，必填
     password: str     # 登录密码，必填（至少6位）
@@ -46,7 +83,7 @@ class EmployeeCreate(BaseModel):
     promotion_date: Optional[str] = None
     tags: Optional[str] = None
 
-class EmployeeUpdate(BaseModel):
+class EmployeeUpdate(EmployeeIdentityFields):
     name: Optional[str] = None
     employee_no: Optional[str] = None  # 工号 = 登录用户名
     password: Optional[str] = None     # 留空表示不修改
@@ -130,6 +167,7 @@ async def list_employees(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     status: str | None = None,
+    nationality: str | None = None,
     include_deleted: bool = False,
     active_only: bool = False,
     current_user: User = Depends(check_staff_permission_any(
@@ -161,6 +199,13 @@ async def list_employees(
             query = query.where(Employee.status == status)
             count_q = count_q.where(Employee.status == status)
     
+    if nationality:
+        if nationality not in (*NATIONALITIES, "未填"):
+            raise HTTPException(400, "国籍筛选无效")
+        condition = or_(Employee.nationality.is_(None), Employee.nationality == "") if nationality == "未填" else Employee.nationality == nationality
+        query = query.where(condition)
+        count_q = count_q.where(condition)
+
     total = (await db.execute(count_q)).scalar()
     result = await db.execute(
         query.order_by(Employee.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
@@ -191,6 +236,7 @@ async def list_employees(
         "data": [{
             "id": e.id, "warehouse_id": e.warehouse_id, "warehouse_name": wh_map.get(e.warehouse_id, ""),
             "name": e.name, "position": e.position,
+            **{field: getattr(e, field) for field in IDENTITY_FIELDS},
             "employee_no": username_map.get(e.user_id, "") if e.user_id else "",
             "user_id": e.user_id, "myanmar_id": e.myanmar_id,
             "address": e.address, "phone": e.phone, "emergency_contact": e.emergency_contact,
@@ -241,6 +287,8 @@ async def create_employee(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+
+    validate_identity(req.model_dump())
 
     # === 工号与登录账号校验 ===
     employee_no = (req.employee_no or "").strip()
@@ -332,7 +380,18 @@ async def create_employee(
     if status == "regular" and not promotion_date:
         raise HTTPException(400, "选了正式必须填转正日期")
     
+    document_dates = {}
+    for field in ("passport_expiry", "work_permit_expiry"):
+        value = getattr(req, field)
+        try:
+            document_dates[field] = date.fromisoformat(value) if value else None
+        except ValueError:
+            document_dates[field] = None
+
     e = Employee(
+        **{field: getattr(req, field) for field in IDENTITY_FIELDS},
+        passport_number=req.passport_number, work_permit_number=req.work_permit_number,
+        **document_dates,
         warehouse_id=wh_id, name=req.name, position=req.position,
         user_id=new_user.id,
         myanmar_id=req.myanmar_id, address=req.address, phone=req.phone,
@@ -345,7 +404,7 @@ async def create_employee(
     )
     db.add(e)
     await db.flush()
-    return {"id": e.id, "employee_no": employee_no, "message": "员工创建成功"}
+    return {"id": e.id, "employee_no": employee_no, "message": "员工创建成功", **identity_result(e)}
 
 @router.put("/{employee_id}")
 async def update_employee(
@@ -366,6 +425,7 @@ async def update_employee(
         raise HTTPException(403, "只能编辑自己仓库的员工")
     
     updates = req.model_dump(exclude_unset=True)
+    validate_identity({**{field: getattr(e, field) for field in (*IDENTITY_FIELDS, "passport_number")}, **updates})
 
     # === 工号 / 密码：同步登录账号（与员工档案字段分离处理）===
     employee_no = updates.pop("employee_no", None)
@@ -480,7 +540,7 @@ async def update_employee(
     for k, v in updates.items():
         setattr(e, k, v)
     await db.flush()
-    return {"message": "更新成功"}
+    return {"message": "更新成功", **identity_result(e)}
 
 @router.post("/{employee_id}/resign")
 async def resign_employee(

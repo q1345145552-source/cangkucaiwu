@@ -13,18 +13,15 @@ from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import hr_environment, snapshot
 
 
-def test_only_two_functions_moved_without_content_changes():
+def test_limit_routes_and_unrelated_employee_functions_unchanged():
     root = Path(__file__).resolve().parents[2]
     name = 'backend/app/api/v1/employees.py'
     old = ast.parse(subprocess.check_output(['git', 'show', 'ba9cc23:' + name], cwd=root, text=True))
     new = ast.parse((root / name).read_text())
-    moved = {'get_max_limit', 'set_max_limit'}
     def business(tree):
         return {n.name: ast.dump(n, include_attributes=False) for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-    assert business(old) == business(new)
-    def remaining(tree):
-        return [ast.dump(n, include_attributes=False) for n in tree.body if getattr(n, 'name', None) not in moved]
-    assert remaining(old) == remaining(new)
+    identity_changes = {'create_employee', 'update_employee', 'list_employees', 'validate_identity', 'identity_result'}
+    assert {k:v for k,v in business(old).items() if k not in identity_changes} == {k:v for k,v in business(new).items() if k not in identity_changes}
     names = [getattr(n, 'name', None) for n in new.body]
     assert names.index('get_max_limit') < names.index('update_employee')
     assert names.index('set_max_limit') < names.index('update_employee')

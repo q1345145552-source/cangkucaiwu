@@ -535,6 +535,8 @@ async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        from app.services.employee_identity_migration import migrate_employee_identity
+        await migrate_employee_identity(conn)
         await _migrate_credit_shipments(conn)
         await _migrate_customer_receipt_identity(conn)
         await _migrate_incoming_operations(conn)

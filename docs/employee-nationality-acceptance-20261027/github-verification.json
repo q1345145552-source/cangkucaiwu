@@ -1,0 +1,12 @@
+{
+  "base_commit": "34af55d1bafd4886154cbb96f65ba85515663f37",
+  "branch": "codex/employee-nationality-20261027",
+  "typescript": "passed; 0 errors on latest main",
+  "production_build": "passed",
+  "tests": {
+    "passed": 34,
+    "failed": 7,
+    "failures": "Same pre-existing insufficient-account-balance fixture failures documented in original acceptance; employee nationality, migration, lifecycle, salary payment with funded account, attendance and clock-in checks pass."
+  },
+  "scope": "Employee nationality, two document sets, banking details, additive migration, tests and acceptance evidence only. Delegated tasks remain local."
+}

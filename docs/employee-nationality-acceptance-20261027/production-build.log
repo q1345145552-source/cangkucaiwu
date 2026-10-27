@@ -1,0 +1,77 @@
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/52) ...
+   Generating static pages (13/52)
+   Generating static pages (26/52)
+   Generating static pages (39/52)
+ ✓ Generating static pages (52/52)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    2.09 kB        89.5 kB
+├ ○ /_not-found                          876 B          88.2 kB
+├ ○ /accounts                            8.05 kB        98.9 kB
+├ ○ /attendance                          179 B           115 kB
+├ ○ /audit-logs                          4.27 kB         103 kB
+├ ○ /cash-advances                       13.7 kB         101 kB
+├ ƒ /cash-advances/[id]                  3.62 kB          91 kB
+├ ○ /categories                          3.02 kB         102 kB
+├ ○ /clock-in                            6.16 kB         105 kB
+├ ○ /clock-records                       5.5 kB         92.9 kB
+├ ○ /concentration                       6.59 kB          94 kB
+├ ○ /config-center                       5.35 kB        92.7 kB
+├ ○ /credit                              12.1 kB         104 kB
+├ ○ /customers                           3.76 kB         110 kB
+├ ○ /dashboard                           13.1 kB         110 kB
+├ ○ /deduction-templates                 6.35 kB        93.7 kB
+├ ○ /employee-advances                   9.06 kB        96.4 kB
+├ ○ /employee-deductions                 6.12 kB        93.5 kB
+├ ○ /employees                           16.7 kB         104 kB
+├ ○ /expense-approvals                   11.3 kB         108 kB
+├ ○ /expense-fund                        16.7 kB         114 kB
+├ ƒ /expense-identities/[source]/[id]    3.62 kB          91 kB
+├ ○ /fund-review                         7.88 kB         105 kB
+├ ○ /group-order                         10.3 kB        97.6 kB
+├ ○ /income-expense                      9.15 kB         117 kB
+├ ○ /incoming                            9.03 kB        96.4 kB
+├ ○ /labor-efficiency                    11.5 kB        98.8 kB
+├ ○ /ledger                              7.49 kB        94.8 kB
+├ ○ /login                               3.88 kB         103 kB
+├ ○ /market                              5.67 kB         104 kB
+├ ○ /modification-logs                   8.17 kB        95.5 kB
+├ ○ /my-attendance                       314 B           115 kB
+├ ○ /my-leave                            314 B           115 kB
+├ ○ /my-overtime                         314 B           108 kB
+├ ○ /my-payslip                          4.95 kB         104 kB
+├ ○ /operating                           14.7 kB         112 kB
+├ ○ /other-income-expense                8.85 kB        96.2 kB
+├ ○ /overtime                            180 B           107 kB
+├ ○ /payable                             18.5 kB         134 kB
+├ ○ /payment-plans                       9.75 kB        97.1 kB
+├ ○ /payroll                             17 kB           104 kB
+├ ○ /recharge                            7.92 kB         107 kB
+├ ○ /reconciliation                      8.41 kB        95.8 kB
+├ ○ /reimbursement                       14.6 kB         102 kB
+├ ○ /reports                             12.2 kB        99.6 kB
+├ ○ /reports/cost-funds-debt             5.92 kB         103 kB
+├ ○ /salary-templates                    6.15 kB        93.5 kB
+├ ○ /settings                            10.6 kB         109 kB
+├ ○ /supplier-skus                       5.72 kB          99 kB
+├ ○ /suppliers                           29.1 kB         147 kB
+├ ○ /suppliers/monthly-price-report      5.63 kB         102 kB
+├ ƒ /suppliers/purchase-orders/[id]      2.12 kB         102 kB
+└ ○ /warehouses                          4.65 kB         103 kB
++ First Load JS shared by all            87.4 kB
+  ├ chunks/2117-7dae771f9822f92c.js      31.7 kB
+  ├ chunks/fd9d1056-8ca853a4b6e015ad.js  53.6 kB
+  └ other shared chunks (total)          1.99 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

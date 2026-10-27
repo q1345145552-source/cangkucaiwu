@@ -20,6 +20,14 @@ class Employee(Base):
     base_salary = Column(Float, nullable=True, default=12000)
     remark = Column(String(500), nullable=True)
 
+    # Nullable nationality-specific identity and salary payment details; no backfill.
+    nationality = Column(String(20), nullable=True)
+    thai_id_number = Column(String(13), nullable=True)
+    sso_number = Column(String(50), nullable=True)
+    bank_account_number = Column(String(100), nullable=True)
+    bank_name = Column(String(100), nullable=True)
+    bank_account_holder = Column(String(100), nullable=True)
+
     # Photo
     photo_path = Column(String(500), nullable=True, comment="员工本人照片路径")
     passport_photo_path = Column(String(500), nullable=True, comment="护照照片路径")

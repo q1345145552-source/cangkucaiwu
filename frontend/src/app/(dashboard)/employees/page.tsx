@@ -9,11 +9,15 @@ import { useRouter } from "next/navigation";
 import { UserPlus, Edit2, UserX, Users, Settings, ChevronDown, ChevronUp, Ban, Camera, Clock, Calendar, DollarSign, Tag, X as XIcon, TrendingUp, Trash2, Link2 } from "lucide-react";
 import SafeImage from "@/components/SafeImage";
 
+const NATIONALITIES = ["泰国", "缅甸", "中国", "其他"];
+
 export default function EmployeesPage() {
   const canWrite = useMenuPermission("employees");
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [nationalityFilter, setNationalityFilter] = useState("");
+  const listRequest = useRef(0);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [maxLimit, setMaxLimit] = useState(50);
@@ -66,6 +70,7 @@ export default function EmployeesPage() {
 
 
   const defaultForm: any = {
+    nationality: "", thai_id_number: "", sso_number: "", bank_account_number: "", bank_name: "", bank_account_holder: "",
     name: "", employee_no: "", password: "", position: "仓库劳工", myanmar_id: "", address: "",
     phone: "", emergency_contact: "", hire_date: "",
     status: "trial", daily_wage: 400, base_salary: 12000, salary_template_id: 0,
@@ -76,15 +81,18 @@ export default function EmployeesPage() {
   };
   const [form, setForm] = useState({ ...defaultForm });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadLimit(); loadTemplates(); loadDeductionTemplates(); }, []);
+  useEffect(() => { if (!getToken()) router.push("/login"); loadLimit(); loadTemplates(); loadDeductionTemplates(); }, []);
+
+  useEffect(() => { setSelectedIds([]); setData([]); load(); }, [nationalityFilter]);
 
   async function load() {
+    const request = ++listRequest.current;
     setLoading(true);
     try {
-      const r = await api.get<any>("/employees?page_size=200");
-      setData(r.data || []);
+      const r = await api.get<any>(`/employees?page_size=200${nationalityFilter ? `&nationality=${encodeURIComponent(nationalityFilter)}` : ""}`);
+      if (request === listRequest.current) setData(r.data || []);
     } catch {}
-    setLoading(false);
+    if (request === listRequest.current) setLoading(false);
   }
 
   async function loadLimit() {
@@ -140,6 +148,9 @@ export default function EmployeesPage() {
   }
 
   async function handleCreate() {
+    if (form.nationality === "泰国" && !(form.thai_id_number || "").trim()) { toast("error", "泰国员工必须填写十三位身份证号"); return; }
+    if ((!form.nationality || form.nationality === "泰国") && (form.thai_id_number || "").trim() && !/^[0-9]{13}$/.test(form.thai_id_number.trim())) { toast("error", "身份证号必须为十三位数字"); return; }
+    if (form.nationality && form.nationality !== "泰国" && !(form.passport_number || "").trim()) { toast("error", "外籍员工必须填写护照号"); return; }
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
     if (!(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
     if (!form.salary_template_id) { toast("error", "请选择薪资模板"); return; }
@@ -154,34 +165,42 @@ export default function EmployeesPage() {
     }
     try {
       const payload: any = { ...form };
+      // Hidden fields are omitted, so switching nationality never clears old documents.
+      if (form.nationality === "泰国") {
+        for (const key of ["passport_number", "passport_expiry", "work_permit_number", "work_permit_expiry"]) delete payload[key];
+      } else if (form.nationality) {
+        delete payload.thai_id_number;
+        delete payload.sso_number;
+      }
+      if (form.nationality) delete payload.myanmar_id;
       // Build comma-separated tags if it's an array
       if (Array.isArray(payload.tags)) {
         payload.tags = payload.tags.join(",");
       }
       if (editingId) {
-        await api.put(`/employees/${editingId}`, payload);
-        toast("success", "员工信息已更新");
+        const r = await api.put<{warnings?: string[]}>(`/employees/${editingId}`, payload);
+        toast("success", ["员工信息已更新", ...(r.warnings || [])].join("；"));
         // 编辑也上传选中的照片（判断方式同新建）
         if (photoFile) await uploadPhoto();
-        if (passportPhotoFile) await uploadPassportPhoto();
-        if (workPermitPhotoFile) await uploadWorkPermitPhoto();
+        if (form.nationality !== "泰国" && passportPhotoFile) await uploadPassportPhoto();
+        if (form.nationality !== "泰国" && workPermitPhotoFile) await uploadWorkPermitPhoto();
         // Close detail modal if we were editing from there
         if (detailEmp && detailEmp.id === editingId) {
           await reloadDetail(editingId);
         }
       } else {
-        const r = await api.post("/employees", payload);
+        const r = await api.post<{id: number; warnings?: string[]}>("/employees", payload);
         // Upload photo if selected
         if (photoFile && r && (r as any).id !== undefined) {
           await uploadPhoto((r as any).id);
         }
-        if (passportPhotoFile && r && (r as any).id !== undefined) {
+        if (form.nationality !== "泰国" && passportPhotoFile && r && (r as any).id !== undefined) {
           await uploadPassportPhoto((r as any).id);
         }
-        if (workPermitPhotoFile && r && (r as any).id !== undefined) {
+        if (form.nationality !== "泰国" && workPermitPhotoFile && r && (r as any).id !== undefined) {
           await uploadWorkPermitPhoto((r as any).id);
         }
-        toast("success", "员工创建成功");
+        toast("success", ["员工创建成功", ...(r.warnings || [])].join("；"));
       }
       if (!detailEmp) {
         setShowForm(false);
@@ -280,6 +299,8 @@ export default function EmployeesPage() {
     setPassportPhotoFile(null);
     setWorkPermitPhotoFile(null);
     setForm({
+      nationality: e.nationality || "", thai_id_number: e.thai_id_number || "", sso_number: e.sso_number || "",
+      bank_account_number: e.bank_account_number || "", bank_name: e.bank_name || "", bank_account_holder: e.bank_account_holder || "",
       name: e.name || "", employee_no: e.employee_no || "", password: "",
       position: e.position || "仓库劳工",
       myanmar_id: e.myanmar_id || "", address: e.address || "",
@@ -516,6 +537,14 @@ export default function EmployeesPage() {
         </div>
       )}
 
+      <label className="flex items-center gap-2 mb-3 text-sm">按国籍筛选
+        <select aria-label="按国籍筛选" className="form-input min-h-11 w-40" value={nationalityFilter} onChange={e => setNationalityFilter(e.target.value)}>
+          <option value="">全部国籍</option>
+          {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
+          <option value="未填">未填</option>
+        </select>
+      </label>
+
       {/* Active Employees Table */}
       <div className="bg-white rounded-xl border overflow-hidden">
         <div className="overflow-x-auto touch-pan-x">
@@ -530,6 +559,7 @@ export default function EmployeesPage() {
               )}
               <th className="text-left px-4 py-3 font-medium text-gray-600">姓名</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">工号</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">国籍</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">岗位</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">薪资模板</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">扣款模板</th>
@@ -574,6 +604,7 @@ export default function EmployeesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600 font-mono text-sm">{e.employee_no || "-"}</td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{e.nationality || "未填"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.position || "-"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.salary_template_name || "-"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.deduction_template_name || "-"}</td>
@@ -616,7 +647,7 @@ export default function EmployeesPage() {
               );
             })}
             {activeEmployees.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-12 text-gray-400">暂无在职员工</td></tr>
+              <tr><td colSpan={canWrite ? 12 : 11} className="text-center py-12 text-gray-400">{loading ? "加载中..." : "暂无在职员工"}</td></tr>
             )}
           </tbody>
         </table>
@@ -633,6 +664,7 @@ export default function EmployeesPage() {
               <thead>
                 <tr className="border-b bg-gray-50">
                   <th className="text-left px-4 py-2 font-medium text-gray-400">姓名</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-400">国籍</th>
                   <th className="text-left px-4 py-2 font-medium text-gray-400">岗位</th>
                   <th className="text-left px-4 py-2 font-medium text-gray-400">联系电话</th>
                   <th className="text-left px-4 py-2 font-medium text-gray-400">入职日期</th>
@@ -642,6 +674,7 @@ export default function EmployeesPage() {
                 {data.filter((e: any) => e.status === "resigned").map((e: any) => (
                   <tr key={e.id} className="border-b border-gray-50">
                     <td className="px-4 py-2 line-through">{e.name}</td>
+                    <td className="px-4 py-2">{e.nationality || "未填"}</td>
                     <td className="px-4 py-2 text-gray-400">{e.position || "-"}</td>
                     <td className="px-4 py-2 text-gray-400">{e.phone || "-"}</td>
                     <td className="px-4 py-2 text-gray-400">{e.hire_date || "-"}</td>
@@ -657,13 +690,19 @@ export default function EmployeesPage() {
       {/* Create/Edit Form Modal */}
       {canWrite && showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { setShowForm(false); setPhotoFile(null); }}>
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label={editingId ? "编辑员工" : "新建员工"} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-primary text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <UserPlus size={20} />
               <span className="font-semibold">{editingId ? "编辑员工" : "新建员工"}</span>
               <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="ml-auto text-2xl">&times;</button>
             </div>
             <div className="p-5 space-y-4">
+              <label className="block text-sm">国籍
+                <select aria-label="国籍" className="form-input w-full min-h-11 mt-1" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value})}>
+                  <option value="">未填</option>
+                  {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
               {/* Photo upload */}
               <div>
                 <label className="form-label text-sm mb-1 block">员工照片</label>
@@ -722,10 +761,10 @@ export default function EmployeesPage() {
                   <label className="form-label text-xs mb-1 block">联系电话</label>
                   <input className="form-input py-2 w-full" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                 </div>
-                <div>
+{!form.nationality && (                <div>
                   <label className="form-label text-xs mb-1 block">缅甸身份证号</label>
                   <input className="form-input py-2 w-full" value={form.myanmar_id} onChange={e => setForm({...form, myanmar_id: e.target.value})} />
-                </div>
+                </div>)}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -749,13 +788,42 @@ export default function EmployeesPage() {
                 <input className="form-input py-2 w-full" value={form.emergency_contact} onChange={e => setForm({...form, emergency_contact: e.target.value})} />
               </div>
 
+              {(!form.nationality || form.nationality === "泰国") && <div className="border-t pt-3 space-y-3">
+                <h4 className="text-sm font-medium text-gray-700">泰国证件</h4>
+                <label className="block text-sm">身份证号 {form.nationality === "泰国" && <span className="text-red-400">*</span>}
+                  <input aria-label="身份证号" aria-required={form.nationality === "泰国"} inputMode="numeric" maxLength={13} className="form-input w-full min-h-11 mt-1" value={form.thai_id_number} onChange={e => setForm({...form, thai_id_number: e.target.value})}/>
+                  <span className="block text-xs text-gray-400 mt-1">泰国员工填写 十三位</span>
+                </label>
+                <label className="block text-sm">社保号
+                  <input aria-label="社保号" maxLength={50} className="form-input w-full min-h-11 mt-1" value={form.sso_number} onChange={e => setForm({...form, sso_number: e.target.value})}/>
+                  <span className="block text-xs text-gray-400 mt-1">泰国员工填写</span>
+                </label>
+              </div>}
+
+              <div className="border-t pt-3 space-y-3">
+                <h4 className="text-sm font-medium text-gray-700">银行资料</h4>
+                <label className="block text-sm">银行账号 <span className="text-red-400">*</span>
+                  <input aria-label="银行账号" inputMode="numeric" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_number} onChange={e => setForm({...form, bank_account_number: e.target.value})}/>
+                  <span className="block text-xs text-gray-400 mt-1">发工资用 必填</span>
+                  {!form.bank_account_number.trim() && <span className="block text-xs text-amber-700 mt-1">未填银行账号</span>}
+                </label>
+                <label className="block text-sm">银行名称
+                  <input aria-label="银行名称" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_name} onChange={e => setForm({...form, bank_name: e.target.value})}/>
+                </label>
+                <label className="block text-sm">开户人姓名
+                  <input aria-label="开户人姓名" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_holder} onChange={e => setForm({...form, bank_account_holder: e.target.value})}/>
+                  <span className="block text-xs text-gray-400 mt-1">与员工本名不同时填写</span>
+                </label>
+              </div>
+
               {/* Passport & Work Permit */}
-              <div className="border-t pt-3">
+              {form.nationality !== "泰国" && <div className="border-t pt-3">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">护照 & 工作证</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="form-label text-xs mb-1 block">护照号码</label>
-                    <input className="form-input py-2 w-full" value={form.passport_number || ""} onChange={e => setForm({...form, passport_number: e.target.value})} />
+                    <label className="form-label text-xs mb-1 block">护照号码 {form.nationality && <span className="text-red-400">*</span>}</label>
+                    <input aria-label="护照号码" aria-required={!!form.nationality} className="form-input py-2 w-full" value={form.passport_number || ""} onChange={e => setForm({...form, passport_number: e.target.value})} />
+                    <p className="text-xs text-gray-400 mt-1">外籍员工填写</p>
                   </div>
                   <div>
                     <label className="form-label text-xs mb-1 block">工作证号码</label>
@@ -782,6 +850,7 @@ export default function EmployeesPage() {
                         {passportPhotoFile ? "更换护照照片" : "上传护照照片"}
                       </label>)}
                       {passportPhotoFile && <img src={URL.createObjectURL(passportPhotoFile)} className="w-14 h-10 object-cover rounded border" alt="护照照片" />}
+                      {!passportPhotoFile && editingId && data.find(e => e.id === editingId)?.passport_photo_path && <SafeImage src={photoUrl(data.find(e => e.id === editingId)?.passport_photo_path)} className="w-14 h-10 object-cover rounded border" alt="护照照片" />}
                     </div>
                   </div>
                   <div>
@@ -793,10 +862,11 @@ export default function EmployeesPage() {
                         {workPermitPhotoFile ? "更换工作证照片" : "上传工作证照片"}
                       </label>)}
                       {workPermitPhotoFile && <img src={URL.createObjectURL(workPermitPhotoFile)} className="w-14 h-10 object-cover rounded border" alt="工作证照片" />}
+                      {!workPermitPhotoFile && editingId && data.find(e => e.id === editingId)?.work_permit_photo_path && <SafeImage src={photoUrl(data.find(e => e.id === editingId)?.work_permit_photo_path)} className="w-14 h-10 object-cover rounded border" alt="工作证照片" />}
                     </div>
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Salary & Promotion */}
               <div className="border-t pt-3">
@@ -943,16 +1013,27 @@ export default function EmployeesPage() {
                 </div>
               )}
 
+              <div className="border-t pt-3 space-y-2 text-sm break-words">
+                <p>国籍：{detailEmp.nationality || "未填"}</p>
+                {(!detailEmp.nationality || detailEmp.nationality === "泰国") && <>
+                  <p>身份证号：{detailEmp.thai_id_number || "未填"}</p>
+                  <p>社保号：{detailEmp.sso_number || "未填"}</p>
+                </>}
+                <p>银行账号：{detailEmp.bank_account_number || "未填"}</p>
+                <p>银行名称：{detailEmp.bank_name || "未填"}</p>
+                <p>开户人姓名：{detailEmp.bank_account_holder || detailEmp.name}</p>
+              </div>
+
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-gray-400">联系电话</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.phone || "-"}</p>
                 </div>
-                <div>
+{!detailEmp.nationality && (                <div>
                   <label className="text-xs text-gray-400">缅甸身份证号</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.myanmar_id || "-"}</p>
-                </div>
+                </div>)}
                 <div>
                   <label className="text-xs text-gray-400">入职日期</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.hire_date || "-"}</p>
@@ -981,7 +1062,7 @@ export default function EmployeesPage() {
               </div>
 
               {/* Passport & Work Permit */}
-              <div className="border-t pt-4">
+              {detailEmp.nationality !== "泰国" && <div className="border-t pt-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">护照 & 工作证</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1047,7 +1128,7 @@ export default function EmployeesPage() {
                     </label>)}
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Tags */}
               <div className="border-t pt-4">
