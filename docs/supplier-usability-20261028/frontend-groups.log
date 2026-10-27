@@ -1,0 +1,1167 @@
+
+===== account-attendance.test.cjs; exit 0 =====
+{
+  "status": "PASS",
+  "report": [
+    {
+      "role": "supervisor",
+      "onSave": "PASS",
+      "linkedNameNumber": "PASS",
+      "offSave": "PASS",
+      "reopenSameProfile": "PASS"
+    },
+    {
+      "role": "staff",
+      "onSave": "PASS",
+      "linkedNameNumber": "PASS",
+      "offSave": "PASS",
+      "reopenSameProfile": "PASS"
+    },
+    {
+      "name": "r14-existing",
+      "existingProfileHint": "PASS"
+    },
+    {
+      "name": "r14-return",
+      "existingProfileHint": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "enabled": false,
+      "partialFailure": false,
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "enabled": false,
+      "partialFailure": false,
+      "status": "PASS"
+    },
+    {
+      "role": "supervisor",
+      "enabled": true,
+      "partialFailure": false,
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "enabled": true,
+      "partialFailure": false,
+      "status": "PASS"
+    },
+    {
+      "role": "staff",
+      "enabled": true,
+      "partialFailure": true,
+      "status": "PASS"
+    },
+    {
+      "oldTokenSwitchAndHistoricalRecords": "PASS",
+      "retainedEmployee": 41,
+      "netPay": 800
+    }
+  ],
+  "conflictRawRed": "PASS",
+  "lookupRetry": "PASS"
+}
+paginationAndLatestHistory: PASS
+
+===== account-nature.test.cjs; exit 0 =====
+PASS: actual account nature form/metadata, optional old accounts, mobile column, separate currencies, partial-wallet warning, original opening balance retained, stale warehouse/auth protection and error/retry
+
+===== account-permissions.test.cjs; exit 0 =====
+{
+  "selectable": 37,
+  "finance": 8,
+  "business": 29,
+  "roleDefaults": "PASS",
+  "createEditRoundtrip": "PASS",
+  "loadFailureAndRetry": "PASS",
+  "passwordWarehouseActivationDelete": "PASS"
+}
+
+===== advance-manager-recipients.test.cjs; exit 0 =====
+Advance recipient dropdown and quota messages: 15 checks passed
+
+===== audit-log-location.test.cjs; exit 0 =====
+{"result":"PASS","checks":8,"legacy":"empty","unknown":"未知","thai":"泰国 曼谷 旺通朗","china":"中国 北京","mobile":"column is not hidden; shared table scrolls horizontally"}
+
+===== batch-makeup.test.cjs; exit 0 =====
+PASS: defaults, person/session selection, select all/none, date/reason checks, success/error/cancel, empty employees, admin-only gate, original write handlers unchanged
+
+===== boss-todos.test.cjs; exit 0 =====
+Boss todos: 22 checks passed
+
+===== button-permissions.test.cjs; exit 0 =====
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+Warning: A title element received an array with more than 1 element as children. In browsers title Elements can only have Text Nodes as children. If the children being rendered output more than a single text node in aggregate the browser will display markup and comments as text in the title and hydration will likely fail and fall back to client rendering
+    at title
+    at rect
+    at g
+    at svg
+    at div
+    at div
+{
+  "status": "PASS",
+  "renderScenarios": 91,
+  "report": [
+    {
+      "username": "supervisor_all",
+      "page": "employees",
+      "buttons": 16,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "salary-templates",
+      "buttons": 3,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "deduction-templates",
+      "buttons": 3,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "labor-efficiency",
+      "buttons": 32,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "employee-deductions",
+      "buttons": 1,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "employee-advances",
+      "buttons": 1,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "concentration",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "employees",
+      "buttons": 16,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "salary-templates",
+      "buttons": 3,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "deduction-templates",
+      "buttons": 3,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "labor-efficiency",
+      "buttons": 32,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "employee-deductions",
+      "buttons": 1,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "employee-advances",
+      "buttons": 1,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "concentration",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_none",
+      "page": "employees",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_none",
+      "page": "salary-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_none",
+      "page": "deduction-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_none",
+      "page": "labor-efficiency",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_none",
+      "page": "employee-deductions",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_none",
+      "page": "employee-advances",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "supervisor_none",
+      "page": "concentration",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_none",
+      "page": "employees",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_none",
+      "page": "salary-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_none",
+      "page": "deduction-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_none",
+      "page": "labor-efficiency",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_none",
+      "page": "employee-deductions",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_none",
+      "page": "employee-advances",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "staff_none",
+      "page": "concentration",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "warehouse_admin",
+      "page": "employees",
+      "buttons": 16,
+      "status": "PASS"
+    },
+    {
+      "username": "warehouse_admin",
+      "page": "salary-templates",
+      "buttons": 3,
+      "status": "PASS"
+    },
+    {
+      "username": "warehouse_admin",
+      "page": "deduction-templates",
+      "buttons": 3,
+      "status": "PASS"
+    },
+    {
+      "username": "warehouse_admin",
+      "page": "labor-efficiency",
+      "buttons": 32,
+      "status": "PASS"
+    },
+    {
+      "username": "warehouse_admin",
+      "page": "employee-deductions",
+      "buttons": 1,
+      "status": "PASS"
+    },
+    {
+      "username": "warehouse_admin",
+      "page": "employee-advances",
+      "buttons": 1,
+      "status": "PASS"
+    },
+    {
+      "username": "warehouse_admin",
+      "page": "concentration",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "super_admin",
+      "page": "employees",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "super_admin",
+      "page": "salary-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "super_admin",
+      "page": "deduction-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "super_admin",
+      "page": "labor-efficiency",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "super_admin",
+      "page": "employee-deductions",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "super_admin",
+      "page": "employee-advances",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "super_admin",
+      "page": "concentration",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "labor1",
+      "page": "employees",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "labor1",
+      "page": "salary-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "labor1",
+      "page": "deduction-templates",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "labor1",
+      "page": "labor-efficiency",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "labor1",
+      "page": "employee-deductions",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "labor1",
+      "page": "employee-advances",
+      "buttons": 0,
+      "status": "PASS"
+    },
+    {
+      "username": "labor1",
+      "page": "concentration",
+      "buttons": 0,
+      "status": "PASS"
+    }
+  ]
+}
+{
+  "handlerWrites": "PASS",
+  "report": [
+    {
+      "username": "supervisor_all",
+      "page": "salary-templates",
+      "create": "PASS",
+      "edit": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "deduction-templates",
+      "create": "PASS",
+      "edit": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "employee-deductions",
+      "create": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "employee-advances",
+      "create": "PASS",
+      "nonOwnerVoidDenied": 403,
+      "ownerVoidWithReason": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "employees",
+      "create": "PASS",
+      "edit": "PASS",
+      "resign": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "supervisor_all",
+      "page": "labor-efficiency",
+      "standard": "PASS",
+      "order": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "salary-templates",
+      "create": "PASS",
+      "edit": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "deduction-templates",
+      "create": "PASS",
+      "edit": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "employee-deductions",
+      "create": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "employee-advances",
+      "create": "PASS",
+      "nonOwnerVoidDenied": 403,
+      "ownerVoidWithReason": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "employees",
+      "create": "PASS",
+      "edit": "PASS",
+      "resign": "PASS",
+      "delete": "PASS"
+    },
+    {
+      "username": "staff_all",
+      "page": "labor-efficiency",
+      "standard": "PASS",
+      "order": "PASS"
+    }
+  ]
+}
+
+===== cash-advance-documents.test.cjs; exit 0 =====
+PASS: 12 linked-document UI scenarios, multi-select totals, difference note, manual entry, admin/supervisor status, edit replay, linked details, currency, pagination, errors and used-record lock
+
+===== cash-advance-references.test.cjs; exit 0 =====
+{"result":"PASS","badge":"valid references link, empty/invalid show nothing, row click stopped","page":"existing GET reader only, all three usages, permission denied and stale response blocked","integrations":4,"mobile":"badge nowrap/touch padding; detail single-column layout"}
+
+===== cash-advance-repayments.test.cjs; exit 0 =====
+PASS: full/partial repayment, required account/photo, overpayment, same currency, upload failure, request key, history and historical revoked amounts, no revoke controls for any role, mobile scroll
+
+===== cash-advances.test.cjs; exit 0 =====
+PASS: role/grant visibility, supervisor voucher registration, admin confirmation/rejection, debt refresh, payer modes, filters, upload failure, mobile scroll structure
+
+===== config-center-access.test.cjs; exit 0 =====
+Config center: readonly inputs, saved values, 4 write calls and unchanged handlers passed
+
+===== cost-funds-debt.test.cjs; exit 0 =====
+PASS: exact formula, non-cost red difference, read-only requests, detail counts, date range, currency/account/category/payer links, invalid dates and error retry
+
+===== credit-shipments.test.cjs; exit 0 =====
+PASS: actual shipment component, distinct record/order counts, currencies/legacy labels, validation, duplicate clicks, retry key, edit, reason-required void, source link, delayed month, permission controls
+
+===== customer-receivables.test.cjs; exit 0 =====
+PASS: real receivables component currencies, quarantine warnings, original source detail, paged receipt-ID selection, validation, double clicks, failed/retried link, stale month/customer protection and read-only role
+
+===== dashboard-month.test.cjs; exit 0 =====
+PASS: actual dashboard defaults to Thai month across UTC boundary, one response feeds all monthly cards/charts, selector and warehouse changes clear stale values, delayed old month ignored, currencies remain separate, instant sections labeled, failures/retry/empty future and signed chart/breakdown behavior validated
+
+===== employee-advance-funding.test.cjs; exit 0 =====
+{"result":"PASS","scenarios":12,"scope":"source required, cash default, source/currency payloads, insufficient funds, no extra permissions, failure preservation, loading and duplicate submit guards"}
+
+===== employee-advance-void.test.cjs; exit 0 =====
+Advance void UI: role gates, reason, state, retained history and DELETE payload passed
+
+===== employee-self.test.cjs; exit 0 =====
+{"result":"PASS","identityDesktopMobileCases":24,"employeeEntries":["/clock-in","/my-attendance","/my-overtime","/my-payslip","/my-leave"],"managementMenuUnchanged":true}
+
+===== excel-import-repair.test.cjs; exit 0 =====
+{
+  "passed": 12,
+  "checks": [
+    "401/403/500, wrong content type and non-Excel bytes never download; valid workbook revokes its URL",
+    "file validation rejects xls, empty and oversized files",
+    "object/row errors and non-JSON failures remain understandable",
+    "actual modal preview/ack, double click guard, lost response and original-request retry save exactly once",
+    "row failure details render and prevent whole-batch confirmation",
+    "HTTP 200 with zero saved rows never reports success and retains original-request retry",
+    "warehouse and account switches invalidate existing preview and confirmation",
+    "same File can be previewed again after modal close; parent inputs reset on selection",
+    "replacement file resets preview and explicit confirmation before any new response",
+    "late failure from a replaced endpoint cannot contaminate its new preview; original request remains recoverable",
+    "in-flight account/warehouse switch suppresses old response; return to original scope retries exact original key and file",
+    "only exact locked not-saved proof unlocks a changed preview; new acknowledgment keeps the original request key"
+  ]
+}
+
+===== expense-approval-payment.test.cjs; exit 0 =====
+PASS: actual fee page low-amount unpaid message, account/voucher validation, company/fund payloads, double-click protection, failure retry, lost-response retry, payer/Thai time, summary refresh and role/permission controls
+
+===== full-day-leave.test.cjs; exit 0 =====
+PASS: zh/my/th full-day notice, four grey disabled buttons, no camera or post while blocked, half/pending enabled, approval after page load rejected and refreshed, approval/proxy warnings displayed
+
+===== fund-disbursement.test.cjs; exit 0 =====
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <tbody>. See https://reactjs.org/link/warning-keys for more information.
+PASS: payout account/date/defaults/required guard, recharge approval modal on review tab, record-only spend/receipt, 10000/2000/8000 figures, exact links/history, original supervisor request path, empty accounts and scrollable mobile modal
+
+===== fund-item-controls.test.cjs; exit 0 =====
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <tbody>. See https://reactjs.org/link/warning-keys for more information.
+PASS: admin edit with retained receipt, unchanged currency, reason-required soft void, balance refresh, gray inactive record and hidden controls for supervisor/staff/labor/super-admin/approved items
+
+===== fund-receipts.test.cjs; exit 0 =====
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <tbody>. See https://reactjs.org/link/warning-keys for more information.
+PASS: required receipt guard, upload-before-create, warehouse header, list/detail full image, original image link, camera/photo controls, upload/create failure and duplicate submit guard
+
+===== incoming-operations.test.cjs; exit 0 =====
+PASS: actual incoming page, screenshot-failure states, reload recovery, original request identifiers, double click, separate same-amount income, validation recovery, existing-row attachment and warehouse header
+
+===== internal-transfer-summary.test.cjs; exit 0 =====
+PASS: real summary renders THB10000/CNY200 separately, no double count or mixed sum, account scope, non-income/expense note, narrow-screen wrapping, loading and zero cases
+
+===== inventory-integration-round12.test.cjs; exit 0 =====
+{
+  "passed": 5,
+  "checks": [
+    "risk target beyond first page opens exact account, not first-page or SKU-name matching",
+    "late exact-target read cannot leak after warehouse/target changes",
+    "foreign target rejection is explicit and old journal is cleared",
+    "invalid exact ID never requests an arbitrary account",
+    "direct links do not bypass existing role and menu permission gates"
+  ]
+}
+
+===== inventory-menu-round10.test.cjs; exit 0 =====
+PASS R10 navigation: exact R9 layout plus one inventory entry; actual backend registry gate; owner, granted staff/supervisor, ungranted, labor, super and unavailable registry
+
+===== inventory-round10.test.cjs; exit 0 =====
+PASS R10 actual stock board/registry/transport: explicit opening+Thai time, immutable lost-response replay after reload, no duplicate issue, exact source/target SKU version, stale scope form/response isolation, forged proof refused, owner buttons/office read+issue, labor/super denied, errors not false zero
+
+===== inventory-round11.test.cjs; exit 0 =====
+{
+  "passed": 12,
+  "checks": [
+    "real transport admits only exact new count/review/control endpoints",
+    "actual office count component locks lost-response payload and retries same request once; no owner controls",
+    "owner approval sends server count evidence version and mandatory reason",
+    "owner explicitly sets warehouse/SKU safety and ratio; no silent default",
+    "late form context cannot cross warehouse/account boundaries",
+    "actual read-only report renders signed flow evidence and unknown cost without fabricated 0",
+    "month query/export use same applied filters, not unsubmitted draft month",
+    "late old-warehouse export never opens its file after scope changes",
+    "old monthly read is discarded after warehouse changes",
+    "all non-owner roles issue no sensitive analysis requests",
+    "read failures are visible errors, not fake zero stock/cost",
+    "real parent reload-recovery identifies the original count number and preserves approval reason/payload"
+  ]
+}
+
+===== labor-language.test.cjs; exit 0 =====
+PASS: actual launch script and localization hook reject Chinese for labor before hydration, preserve Thai/Myanmar toggles, translate own-page labels and preserve manager Chinese
+
+===== makeup-batch-history.test.cjs; exit 0 =====
+PASS: batch history, status/count/actor, date filtering, empty/error, confirm/cancel/revoke, immediate refresh, pagination, original create handler unchanged
+
+===== makeup-display.test.cjs; exit 0 =====
+DISPLAY_LOCALE zh 补 补卡时间 补卡批次
+DISPLAY_LOCALE my ဖြည့် ပြန်ဖြည့်သည့်အချိန် ပြန်ဖြည့်သည့်အသုတ်
+DISPLAY_LOCALE th ย้อน เวลาที่ลงย้อนหลัง ชุดการลงเวลาย้อนหลัง
+PASS: exact makeup flags, immutable metadata merge, 3 locales, mixed/legacy/normal days, per-session/calendar details, batch display when returned, self reads, zero writes, identical normal DOM
+
+===== manual-wallet.test.cjs; exit 0 =====
+PASS: real manual-wallet transport persists IDs before sending, recovers committed lost response after reload, permits independent equal amounts, coalesces double clicks, retains uncertain transfers, rejects changed pending content, scopes drafts by user/warehouse, and fails closed on storage errors
+
+===== menu-backend-regression.test.cjs; exit 0 =====
+{
+  "accountLifecycle": "PASS",
+  "unauthorizedReads": 38,
+  "grantedReads": 74,
+  "originalRoleRestrictions": [
+    {
+      "role": "supervisor",
+      "key": "sku_catalog_manage",
+      "label": "标准SKU管理",
+      "status": 403,
+      "detail": "无此操作权限，需要: 标准SKU目录"
+    },
+    {
+      "role": "staff",
+      "key": "sku_catalog_manage",
+      "label": "标准SKU管理",
+      "status": 403,
+      "detail": "无此操作权限，需要: 标准SKU目录"
+    }
+  ],
+  "otherRoleAndBoundaryChecks": 140
+}
+
+===== menu-permissions.test.cjs; exit 0 =====
+{
+  "selectablePermissions": 37,
+  "freshLogins": 78,
+  "desktopMobileScenarios": 168,
+  "result": "PASS"
+}
+
+===== modification-log-permissions.test.cjs; exit 0 =====
+Modification logs: 10 role/grant cases, export guard and unchanged existing handlers passed
+
+===== money-month-range.test.cjs; exit 0 =====
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <div>. See https://reactjs.org/link/warning-keys for more information.
+    at span
+Warning: Each child in a list should have a unique "key" prop. See https://reactjs.org/link/warning-keys for more information.
+    at div
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <select>. See https://reactjs.org/link/warning-keys for more information.
+    at option
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <label>. See https://reactjs.org/link/warning-keys for more information.
+    at select
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <fieldset>. See https://reactjs.org/link/warning-keys for more information.
+    at legend
+PASS: actual income/expense page sends identical full-month dates to list and summary, resets pagination, renders September 200 / October 300, and ignores late stale responses without changing its layout
+
+===== money-record-scope.test.cjs; exit 0 =====
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <div>. See https://reactjs.org/link/warning-keys for more information.
+    at span
+Warning: Each child in a list should have a unique "key" prop. See https://reactjs.org/link/warning-keys for more information.
+    at div
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <select>. See https://reactjs.org/link/warning-keys for more information.
+    at option
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <label>. See https://reactjs.org/link/warning-keys for more information.
+    at select
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <fieldset>. See https://reactjs.org/link/warning-keys for more information.
+    at legend
+PASS: actual page renders company-wallet scope, receipt 1000 + manual 200, source/ID/read-only details and source link; income/expense exports share dates and warehouse/auth headers; denied exports do not download
+
+===== operating-report.test.cjs; exit 0 =====
+PASS: retained component behavior; retired card, bookmarked URL, month selector and child all inaccessible; income-expense and warehouse summary retained
+
+===== other-income-currency.test.cjs; exit 0 =====
+PASS: actual other-income page shows THB100 and CNY200 separately without rates; filters/page/date/empty totals agree; late response ignored; export shares filters/auth/warehouse; form currency clears incompatible account and only submits matching account
+
+===== payroll-disbursement.test.cjs; exit 0 =====
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <h1>. See https://reactjs.org/link/warning-keys for more information.
+    at /Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028/node_modules/lucide-react/dist/cjs/lucide-react.js:62:8
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <button>. See https://reactjs.org/link/warning-keys for more information.
+    at /Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028/node_modules/lucide-react/dist/cjs/lucide-react.js:62:8
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <div>. See https://reactjs.org/link/warning-keys for more information.
+    at label
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <select>. See https://reactjs.org/link/warning-keys for more information.
+    at option
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <span>. See https://reactjs.org/link/warning-keys for more information.
+    at /Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028/node_modules/lucide-react/dist/cjs/lucide-react.js:62:8
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <tr>. See https://reactjs.org/link/warning-keys for more information.
+    at th
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <td>. See https://reactjs.org/link/warning-keys for more information.
+    at span
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <table>. See https://reactjs.org/link/warning-keys for more information.
+    at thead
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <label>. See https://reactjs.org/link/warning-keys for more information.
+    at input
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <fieldset>. See https://reactjs.org/link/warning-keys for more information.
+    at legend
+{"result":"PASS","scenarios":23,"scope":"Company account, cash advance, required funding, capacity, batch, load failures; other payroll handlers unchanged"}
+
+===== payroll-supervisor.test.cjs; exit 0 =====
+{"result":"PASS","listAndDetailChecks":6,"historicalRound16HandlersUnchanged":true}
+
+===== procurement-controls-round9.test.cjs; exit 0 =====
+PASS R9: real registry and transport exact unknown retries, forged proof refusal, stale-version proof, scope and download isolation; owner config, Thai-expiry grant UI; unknown review retains original evidence/key/reason; history, duty fields and nonowner UI
+
+===== procurement-month-round7.test.cjs; exit 0 =====
+{
+  "passed": 8,
+  "checks": [
+    "real report renders separate currencies, two frozen baselines, unavailable rather than zero, and explicit coverage",
+    "actual row details retain all ties, reason, historical samples and direct stable PO-line link beyond 200",
+    "draft filters do not silently change results; applied month/person/supplier/currency and full export share exact selected-warehouse parameters",
+    "pagination requests the next server page without changing full export scope",
+    "missing grant, labor and ordinary super admin do not issue business report reads",
+    "delayed warehouse A response cannot render after switching to B",
+    "scope switch during CSV download prevents exposing the previous warehouse file",
+    "original exact PO page guards delayed cross-warehouse data and scrolls to the stable line anchor after async loading"
+  ]
+}
+
+===== procurement-risk-round8.test.cjs; exit 0 =====
+{
+  "passed": 8,
+  "checks": [
+    "real board renders currency-separated amounts, unknown coverage, reasons/all ties and exact receipt-event evidence",
+    "applied filters and full export match; unsubmitted draft does not change scope",
+    "page selection preserves summary/export filter scope",
+    "all non-owner roles and logout cannot issue board requests",
+    "late read from warehouse A is discarded after switching to B",
+    "download finishing after a scope switch does not expose the old warehouse file",
+    "read errors remain errors and are not presented as zero risk",
+    "logout removes all prior visible business data"
+  ]
+}
+
+===== reimbursement-payments.test.cjs; exit 0 =====
+PASS: company/advance/fund selection, cash default, required voucher/account/advance, empty/error/insufficient, upload failure, history/retained revoked amounts, all revoke controls hidden, legacy read-only
+
+===== report-preview-scope.test.cjs; exit 0 =====
+导出失败: Error: 筛选已变化，请重新导出
+    at exportExcel (evalmachine.<anonymous>:179:23)
+    at async /private/tmp/supplier-usability-20261028/frontend/tests/report-preview-scope.test.cjs:40:175
+PASS: actual report page A100/20 -> B200/40 -> A100/20, all300/60, separate CNY, stale preview/detail ignored, old amounts cleared on failure/revoke, retry, Thai-calendar dates and matching/stale export headers
+
+===== retired-entries.test.cjs; exit 0 =====
+PASS: real customer columns/actions hide receivables and shipment totals; credit list/detail never mount retired entries; customer CRUD and original credit repayment remain
+
+===== supplier-cost-entrypoints-round4.test.cjs; exit 0 =====
+PASS: original shared expense form supplies/restores invoice and structured retry; separate review page retains per-item batch confirmations and single-item confirmation without changing original IDs/actions
+
+===== supplier-cost-identity-round4.test.cjs; exit 0 =====
+PASS: actual supplier/invoice fields and verified validation; hard/restricted UI has no bypass or private link; explicit current refs/version/reason; scoped delayed reads and guard errors; actual wallet transport preserves invoice, original file and request after lost response, structured challenges and confirmed retry
+
+===== supplier-dedup-round2.test.cjs; exit 0 =====
+PASS: registration unknown-result request key survives reload/403, payload changes and storage failure block sends, concurrent identical submission coalesces, known409 permits correction, user/warehouse drafts isolate; actual duplicate dialog requires reason and exact candidate IDs, links to original bill, hard invoice duplicate has no override
+
+===== supplier-integration-menu-round12.test.cjs; exit 0 =====
+PASS R12 actual registry/current unchanged navigation: 5 roles, empty/full grants, each supplier/SKU/inventory/payable/plan alone, retired entries absent, personal 4 pages, daily finance grouping.
+
+===== supplier-quotes-round6.test.cjs; exit 0 =====
+{
+  "passed": 7,
+  "checks": [
+    "actual quantity widget refreshes tiers/baselines without automatically replacing supplier selection",
+    "unapplied requirement edits invalidate preview; applying sends exact quality and lead constraints",
+    "no catalog read grant does not reveal quotation controls",
+    "delayed quote loading cannot disclose the previous warehouse after a scope switch",
+    "only exact server not-created proof unfreezes a stale preview; reviewed retry keeps original request key",
+    "actual quote editor sends explicit dates/fees/Decimal strings and versions; lost response/reload preserves original request and fields",
+    "read-only quote dialog hides writes and shows immutable version history"
+  ]
+}
+
+===== supplier-receipts-round3.test.cjs; exit 0 =====
+PASS: actual receipt page rejects decimals without truncation, line IDs stay distinct, unknown response retry reuses request, 80+20=100 in two events, scope headers correct; actual matching/history render unknown and stale review, private photo request cannot display after warehouse switch; in-page review dialog rejects empty reason and sends exact current reason
+
+===== supplier-sku-round5.test.cjs; exit 0 =====
+{
+  "passed": 14,
+  "checks": [
+    "multiple candidates require explicit choice; reason, unknown conversion, exact versions; lost response reuses same key/payload once",
+    "read-only mapping hides mutation and displays actual audit history",
+    "delayed product data cannot populate a different warehouse",
+    "actual Excel modal previews before writes; explicit per-row mapping and ack; original file/key/choices survive lost response",
+    "Excel row conflicts show exact row and disable batch confirmation",
+    "supplier importer without catalog-management grant can only select unmapped, readable candidates never grant writes",
+    "read/valid/skipped counts, exact row reasons, acknowledgement required, skipped choices excluded and completion counts",
+    "actual legacy XLS file and empty file get explicit Chinese messages before upload",
+    "unchanged original template is visibly example-only and cannot be confirmed",
+    "file/supplier changes immediately invalidate ack; warehouse change invalidates mounted product preview",
+    "product no-save proof requires exact key/code/flag and safe recovery preserves original request key",
+    "all supplier import pickers use xlsx-only validation",
+    "directory independent read grant does not reveal write controls; no grant denies page",
+    "actual catalog form submits structured attributes and basic unit via independent management grant"
+  ]
+}
+
+===== supplier-usability.test.cjs; exit 0 =====
+{
+  "passed": 11,
+  "checks": [
+    "empty directory keeps table header and SKU onboarding without creating business data",
+    "ordinary material + dimension/unit fields submit exact existing nested JSON contract",
+    "edit reload preserves nested types and optimistic version; backend format unchanged",
+    "filter empty is distinct from no catalog",
+    "R with six unmapped products is real data, all six mapping entry points pass exact IDs",
+    "template and file-format failures are shown, not swallowed",
+    "late supplier-product response cannot replace newly selected supplier",
+    "load failure remains error; retry restores data",
+    "real access hook separates no permission, registry failure and independent read-only grant",
+    "inventory distinguishes no SKU, unknown opening, load failure and 403; valuation stays pending",
+    "spec form round-trips legacy objects, arrays, numbers and booleans without flattening"
+  ]
+}
+
+===== supplier-workflow-round1.test.cjs; exit 0 =====
+PASS: real transport unknown-result key recovery, scope and storage failures; actual payable component A-failure/B-file/cancel/A-retry preserves A file and bill with one payment; switched warehouse/user blocks upload; native create/PDF/receipt headers use selected B without JSON Content-Type; null summary/drill/detail explicit; currency/effective drill and exact links
+
+===== types84-auth.test.cjs; exit 0 =====
+PASS typed AuthProvider: 5 roles login/logout, employee redirect and flags, warehouses, cached identity, missing/corrupt cache, live permission revocation/attendance disabling, malformed event, listener cleanup, context misuse, rejected login and failed cookie cleanup.
+
+===== types84-behavior.test.cjs; exit 0 =====
+PASS static-only edits emit unchanged behavior; actual overtime limit load continues to monthly warnings.
+
+===== warehouse-summary.test.cjs; exit 0 =====
+PASS: actual warehouse summary component renders separate currencies, clears old scope while switching, ignores delayed previous-warehouse data, sends date bounds, never renders errors as zero, handles permission revocation, retry and legitimate empty scopes

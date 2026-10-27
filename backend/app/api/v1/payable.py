@@ -194,7 +194,7 @@ async def create_bill(
         bill_number=bill_number,
         bill_date=bill_date_obj,
         due_date=due_date_obj,
-        amount=amount, confirmed_amount=confirmed_amount,
+        amount=amount, confirmed_amount=confirmed_amount, diff_note=diff_note,
         currency=currency, detail=detail, remark=remark,
         payment_commitment_days=payment_commitment_days,
         is_fund_linked=is_fund_linked,

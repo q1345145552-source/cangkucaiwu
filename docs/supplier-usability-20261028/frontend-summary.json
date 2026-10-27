@@ -1,0 +1,13 @@
+{
+  "data_directory": "/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/legacy12-isolated-2uxilq3d/data",
+  "postgres_port": 60420,
+  "http_port": 60421,
+  "base_url": "http://127.0.0.1:60421/api/v1",
+  "total": 63,
+  "passed": 63,
+  "excluded_legacy_standalone": [],
+  "fixture_runs": 8,
+  "cleanup_ok": true,
+  "production_access": false,
+  "remote_operations": false
+}

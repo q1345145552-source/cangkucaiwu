@@ -1525,8 +1525,8 @@ async def delete_logistics_price(supplier_id: int, price_id: int, current_user: 
 
 # ═══ Price Comparison ════════════════════════════
 @_fixed_routes.get("/compare-prices")
-async def compare_prices(product_name: str = None, spec: str = None, category_id: int = None,
-                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+async def compare_prices(product_name: str = None, spec: str = None, category_id: int = None, currency: str = None,
+                          current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """耗材比价：按产品名称/规格对比同类别供应商报价"""
     _forbid_super_admin(current_user)
@@ -1544,7 +1544,10 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
     else:
         # Default: consumables (category 1)
         pass
-    q = q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+    q = q.where(Supplier.warehouse_id == warehouse_id)
+    if currency:
+        from app.services.supplier_comparison import legacy_product_currency
+        q = q.where(legacy_product_currency() == currency)
     prods = (await db.execute(q.order_by(SupplierProduct.unit_price.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prods})
     smap = {}
@@ -1563,12 +1566,14 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
             "category_name": cat_name, "product_name": p.product_name, "spec": p.spec,
             "spec_price": p.spec_price, "unit_price": p.unit_price, "currency": p.currency or "THB", "unit": p.unit, "remark": p.remark,
         })
+    from app.services.supplier_comparison import group_ranks
+    group_ranks(result, ("product_name", "spec", "unit", "currency"), "unit_price")
     return {"data": result, "total": len(result)}
 
 @_fixed_routes.get("/compare-logistics")
 async def compare_logistics(transport_method: str = None, cargo_type: str = None, origin_warehouse: str = None,
-                             category_id: int = None,
-                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+                             category_id: int = None, currency: str = None,
+                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """跨境物流比价：运输方式×货物类型×发货仓库，含义乌加价和最低消费"""
     _forbid_super_admin(current_user)
@@ -1594,7 +1599,9 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
             q = q.where(SupplierCrossBorderPrice.origin_warehouse == origin_warehouse)
     if category_id:
         q = q.where(Supplier.category_id == category_id)
-    q = q.where(Supplier.warehouse_id.in_(get_wh_ids(current_user)))
+    q = q.where(Supplier.warehouse_id == warehouse_id)
+    if currency:
+        q = q.where(SupplierCrossBorderPrice.currency == currency)
     prices = (await db.execute(q.order_by(SupplierCrossBorderPrice.price_per_cbm.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prices})
     smap = {}
@@ -1602,23 +1609,23 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
         sups = (await db.execute(select(Supplier).where(Supplier.id.in_(sids)))).scalars().all()
         smap = {s.id: s for s in sups}
 
-    # 构建按 supplier 分组的价格映射
-    # key: (supplier_id, transport_method, cargo_type)
-    price_map = {}  # {(sid, tm, ct): {warehouse: price}}
+    # Lane availability determines the existing Yiwu fallback precedence.
+    # Keep every original quote in the chosen lane; historical duplicates must
+    # not silently become a newly selected "effective" cheapest/latest quote.
+    price_map = {}
     for p in prices:
-        key = (p.supplier_id, p.transport_method, p.cargo_type)
-        if key not in price_map:
-            price_map[key] = {}
-        price_map[key][p.origin_warehouse] = {"price_per_cbm": p.price_per_cbm, "price_id": p.id, "estimated_days": p.estimated_days}
+        key = (p.supplier_id, p.transport_method, p.cargo_type, p.currency)
+        price_map.setdefault(key, set()).add(p.origin_warehouse)
 
-    # Build results
     min_cbm = MIN_CBM.get(transport_method or "陆运", 0.3)
-    seen = set()
     result = []
     for p in prices:
-        key = (p.supplier_id, p.transport_method, p.cargo_type)
-        if key in seen: continue
-        seen.add(key)
+        key = (p.supplier_id, p.transport_method, p.cargo_type, p.currency)
+        if is_yiwu:
+            origins = price_map[key]
+            preferred = next(origin for origin in ("义乌仓", "深圳仓", "广州仓") if origin in origins)
+            if p.origin_warehouse != preferred:
+                continue
         s = smap.get(p.supplier_id)
         if not s: continue
 
@@ -1627,38 +1634,36 @@ async def compare_logistics(transport_method: str = None, cargo_type: str = None
         price_note = ""
         actual_warehouse = p.origin_warehouse
 
+        selected = p
         if is_yiwu:
-            pw_map = price_map.get(key, {})
-            if "义乌仓" in pw_map:
-                final_price = pw_map["义乌仓"]["price_per_cbm"]
-                actual_warehouse = "义乌仓"
-            elif "深圳仓" in pw_map:
-                final_price = pw_map["深圳仓"]["price_per_cbm"] + YIWU_MARKUP
-                actual_warehouse = "义乌仓(深圳仓+120)"
-                price_note = f"无义乌仓报价，用深圳仓价格+{YIWU_MARKUP}元/方"
-            elif "广州仓" in pw_map:
-                final_price = pw_map["广州仓"]["price_per_cbm"] + YIWU_MARKUP
-                actual_warehouse = "义乌仓(广州仓+120)"
-                price_note = f"无义乌仓报价，用广州仓价格+{YIWU_MARKUP}元/方"
-
-        min_amount = round(final_price * min_cbm, 2)
+            final_price = selected.price_per_cbm
+            actual_warehouse = "义乌仓"
+            if selected.origin_warehouse != "义乌仓":
+                if p.currency == "CNY":
+                    final_price += YIWU_MARKUP
+                    price_note = f"无义乌仓报价，用{selected.origin_warehouse}价格+{YIWU_MARKUP}元/方"
+                else:
+                    final_price = None
+                    price_note = "无义乌仓同币种报价；人民币加价不可直接加到其他币种，待确认"
+        row_min_cbm = MIN_CBM.get(p.transport_method, min_cbm)
+        min_amount = round(final_price * row_min_cbm, 2) if final_price is not None else None
         cat_name = ""
         if s.category_id:
             cat = (await db.execute(select(SupplierCategory).where(SupplierCategory.id == s.category_id))).scalar_one_or_none()
             if cat: cat_name = cat.name
         result.append({
-            "price_id": p.id, "supplier_id": p.supplier_id, "supplier_name": s.name,
+            "price_id": selected.id, "supplier_id": p.supplier_id, "supplier_name": s.name,
             "category_name": cat_name,
             "transport_method": p.transport_method, "cargo_type": p.cargo_type,
             "origin_warehouse": actual_warehouse,
             "price_per_cbm": final_price, "price_note": price_note,
-            "min_cbm": min_cbm, "min_amount": min_amount,
-            "estimated_days": p.estimated_days, "currency": p.currency,
+            "min_cbm": row_min_cbm, "min_amount": min_amount, "comparable": final_price is not None,
+            "estimated_days": selected.estimated_days, "currency": selected.currency,
             "heavy_cargo_warning": "单方超500kg按重货计费" if transport_method == "陆运" else "",
         })
 
-    # Sort by final price
-    result.sort(key=lambda x: x["price_per_cbm"])
+    from app.services.supplier_comparison import group_ranks
+    group_ranks(result, ("transport_method", "cargo_type", "origin_warehouse", "currency"), "price_per_cbm")
     return {"data": result, "total": len(result), "yiwu_markup": YIWU_MARKUP, "min_cbm": min_cbm}
 
 # ═══ AI Price Analysis ═══════════════════════════
@@ -1668,23 +1673,21 @@ async def ai_compare(data: dict, current_user: User = Depends(get_current_user),
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
+    compare_data = data.get("compare_data", [])
+    mode = data.get("mode", "product")
+    if not compare_data:
+        return {"result": "无比价数据，请先执行比价查询"}
+    from app.services.supplier_comparison import ai_comparison_text
+    rows_text = ai_comparison_text(compare_data, mode)
     from app.config import get_settings
     settings = get_settings()
     if not settings.DEEPSEEK_API_KEY:
         return {"result": "DeepSeek API Key 未配置，无法执行AI比价分析"}
-    compare_data = data.get("compare_data", [])
-    mode = data.get("mode", "product")  # product or logistics
-    if not compare_data:
-        return {"result": "无比价数据，请先执行比价查询"}
-    if mode == "logistics":
-        rows_text = "\n".join([f"- {r['supplier_name']}: {r['route_name']} {r['cargo_type']} 起步价{r['starting_price']} 每公斤{r['price_per_kg']} 时效{r.get('estimated_days','?')}" for r in compare_data])
-    else:
-        rows_text = "\n".join([f"- {r['supplier_name']}: {r['product_name']} {r['spec'] or ''} 单价{r['unit_price']}{r.get('unit','个')}" for r in compare_data])
     prompt = f"""请对以下供应商报价进行比价分析：
 {rows_text}
 
 请从以下维度分析：
-1. 价格排名：从低到高列出各供应商
+1. 仅在相同币种、规格、计量单位和运输线路内按价格比较，不可跨组排名或推断汇率
 2. 性价比评估：综合考虑价格和已知信息
 3. 推荐结论：建议选择哪家供应商及理由"""
     try:
@@ -1730,7 +1733,7 @@ async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
                       "settlement_cycle": s.settlement_cycle,
                       "default_currency": s.default_currency or "THB",
                       "history_notes": s.history_notes,
-                      "ai_evaluation": s.ai_evaluation,
+                      "ai_evaluation": s.ai_evaluation, "ai_evaluated_at": s.ai_evaluated_at,
                       "category_id": s.category_id,
                       "category_name": cat_map.get(s.category_id, ""),
                       "is_active": s.is_active} for s in suppliers],
@@ -1788,7 +1791,7 @@ async def delete_supplier(supplier_id: int, current_user: User = Depends(get_cur
 
 @_fixed_routes.get("/procurement-summary")
 async def procurement_summary(current_user: User = Depends(get_current_user),
-                               db: AsyncSession = Depends(get_db),
+                               db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -1804,7 +1807,7 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     last_month_end = this_month_start - timedelta(days=1)
 
     def wh_filter(q):
-        return q.where(PayableBill.warehouse_id.in_(get_wh_ids(current_user)),
+        return q.where(PayableBill.warehouse_id == warehouse_id,
                        PayableBill.status != "voided")
 
     def bill_filter(q):
@@ -1877,7 +1880,7 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         sup_month.setdefault(r.supplier_id, {})[r.currency or "THB"] = float(r.total or 0)
 
     supplier_ranking = []
-    for sid in sorted(sup_total, key=lambda x: -sum(sup_total[x].values())):
+    for sid in sorted(sup_total):
         info = smap.get(sid, {"name": "", "category": ""})
         supplier_ranking.append({
             "supplier_id": sid, "supplier_name": info["name"], "category_name": info["category"],
@@ -1887,27 +1890,29 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         })
 
     # --- 产品比价汇总按币种 ---
-    prod_q = wh_filter(select(SupplierProduct.product_name, SupplierProduct.spec, SupplierProduct.currency,
+    from app.services.supplier_comparison import legacy_product_currency
+    quote_currency = legacy_product_currency()
+    prod_q = (select(SupplierProduct.product_name, SupplierProduct.spec, quote_currency.label("currency"), SupplierProduct.unit,
         func.count(SupplierProduct.supplier_id.distinct()).label("supplier_count"),
         func.min(SupplierProduct.unit_price).label("min_price"),
         func.max(SupplierProduct.unit_price).label("max_price"))
         .join(Supplier, SupplierProduct.supplier_id == Supplier.id)
-        .group_by(SupplierProduct.product_name, SupplierProduct.spec, SupplierProduct.currency)
-        .order_by(SupplierProduct.product_name))
+        .group_by(SupplierProduct.product_name, SupplierProduct.spec, quote_currency, SupplierProduct.unit)
+        .where(Supplier.warehouse_id == warehouse_id).order_by(SupplierProduct.product_name))
     prod_rows = (await db.execute(prod_q)).all()
     product_compare = []
     for p in prod_rows:
         if not p.product_name:
             continue
         cur = p.currency or "THB"
-        min_sup_q = wh_filter(select(SupplierProduct.supplier_id, Supplier.name)
+        min_sup_q = (select(SupplierProduct.supplier_id, Supplier.name)
             .join(Supplier, SupplierProduct.supplier_id == Supplier.id)
             .where(SupplierProduct.product_name == p.product_name, SupplierProduct.spec == p.spec,
-                   func.coalesce(SupplierProduct.currency, "THB") == cur,
-                   SupplierProduct.unit_price == p.min_price))
+                   quote_currency == cur, SupplierProduct.unit.is_(None) if p.unit is None else SupplierProduct.unit == p.unit,
+                   SupplierProduct.unit_price == p.min_price, Supplier.warehouse_id == warehouse_id))
         min_sup = (await db.execute(min_sup_q)).first()
         product_compare.append({
-            "product_name": p.product_name, "spec": p.spec, "currency": cur,
+            "product_name": p.product_name, "spec": p.spec, "currency": cur, "unit": p.unit,
             "supplier_count": p.supplier_count,
             "min_price": float(p.min_price) if p.min_price else 0,
             "max_price": float(p.max_price) if p.max_price else 0,
@@ -1917,15 +1922,15 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     # --- 省钱提示按币种 ---
     savings_tips = []
     for prod in product_compare:
-        if prod["supplier_count"] >= 2 and prod["max_price"] > prod["min_price"]:
+        if prod["unit"] and prod["supplier_count"] >= 2 and prod["max_price"] > prod["min_price"]:
             diff = round(prod["max_price"] - prod["min_price"], 2)
             sym = "¥" if prod["currency"] == "CNY" else "฿"
             savings_tips.append({
-                "product_name": prod["product_name"], "spec": prod["spec"], "currency": prod["currency"],
+                "product_name": prod["product_name"], "spec": prod["spec"], "currency": prod["currency"], "unit": prod["unit"],
                 "cheapest_price": prod["min_price"], "cheapest_supplier": prod["min_supplier"],
                 "highest_price": prod["max_price"],
                 "savings_per_unit": diff,
-                "tip": f"{prod['product_name']}{prod['spec'] or ''}：最便宜 {prod['min_supplier']} {sym}{prod['min_price']}，最贵 {sym}{prod['max_price']}，用便宜的可省 {sym}{diff}/件",
+                "tip": f"{prod['product_name']}{prod['spec'] or ''}：最便宜 {prod['min_supplier']} {sym}{prod['min_price']}，最贵 {sym}{prod['max_price']}，用便宜的可省 {sym}{diff}/{prod['unit']}",
             })
 
     return {
@@ -1958,7 +1963,7 @@ async def get_supplier(supplier_id: int, current_user: User = Depends(get_curren
             "settlement_cycle": s.settlement_cycle,
             "default_currency": s.default_currency or "THB",
             "history_notes": s.history_notes,
-            "ai_evaluation": s.ai_evaluation,
+            "ai_evaluation": s.ai_evaluation, "ai_evaluated_at": s.ai_evaluated_at,
             "category_id": s.category_id, "category_name": cat_name}
 
 @_supplier_routes.get("/{supplier_id}/ai-evaluation")
@@ -1970,29 +1975,49 @@ async def ai_evaluate(supplier_id: int, current_user: User = Depends(get_current
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
+    if s.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能查看自己仓库的供应商")
     from app.config import get_settings
+    from app.services.data_history import record_history
     settings = get_settings()
-    if settings.DEEPSEEK_API_KEY:
-        try:
-            import httpx
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(
-                api_key=settings.DEEPSEEK_API_KEY,
-                base_url=settings.DEEPSEEK_BASE_URL,
-                http_client=httpx.AsyncClient(timeout=60.0),
-            )
-            resp = await client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user",
-                "content":f"评估供应商：{s.name}，联系方式：{s.contact_info or '无'}，地址：{s.address or '无'}。请从信誉、价格竞争力、交付及时性三个维度简要评估。"}])
-            evaluation = {"result": resp.choices[0].message.content}
-            s.ai_evaluation = evaluation
-        except Exception as e:
-            evaluation = {"error": str(e)}
-    else:
-        evaluation = {"result": "DeepSeek API Key 未配置，无法执行AI评估"}
-    if not s.ai_evaluation:
-        s.ai_evaluation = evaluation
+    if not settings.DEEPSEEK_API_KEY:
+        return {"status": "unavailable", "result": "DeepSeek API Key 未配置，未生成评估"}
+    basis = {"supplier_id": s.id, "name": s.name, "contact_info": s.contact_info,
+             "address": s.address, "payment_terms": s.payment_terms,
+             "cooperation_content": s.cooperation_content, "settlement_cycle": s.settlement_cycle}
+    # No inferred scores or hidden changes to purchase/payment/supplier status.
+    prompt = ("仅依据以下供应商档案列出已知事实、缺失证据和建议人工核实的事项。"
+              "缺失准时率、缺货、退货等实际数据，不得推断信誉评分、交付表现或编造事实。"
+              "结果仅供参考，不自动改变任何业务状态。档案：" + json.dumps(basis, ensure_ascii=False))
+    client = None
+    try:
+        import httpx
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=settings.DEEPSEEK_API_KEY, base_url=settings.DEEPSEEK_BASE_URL,
+                             http_client=httpx.AsyncClient(timeout=60.0))
+        resp = await client.chat.completions.create(model="deepseek-chat", messages=[{"role": "user", "content": prompt}])
+        content = resp.choices[0].message.content
+        if not content or not content.strip():
+            return {"status": "failed", "error": "AI未返回有效结果，原评估已保留"}
+    except Exception:
+        return {"status": "failed", "error": "AI评估失败，原评估已保留，请稍后重试"}
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass  # Provider cleanup must not replace a successful result or a safe failure.
+    at = thai_now()
+    evaluation = {"result": content, "status": "generated", "basis": basis, "model": "deepseek-chat",
+                  "evaluated_at": at.isoformat(), "evaluated_by": current_user.id}
+    before = {"evaluation": s.ai_evaluation, "evaluated_at": s.ai_evaluated_at.isoformat() if s.ai_evaluated_at else None}
+    s.ai_evaluation = evaluation
+    s.ai_evaluated_at = at
+    await record_history(db, module="suppliers", record_id=s.id, operator=current_user,
+                         operation_type="ai_evaluation", before=before, after=evaluation, warehouse_id=s.warehouse_id)
     await db.flush()
     return evaluation
+
 
 
 # Register literal prefixes first through FastAPI's public API; supplier ids must

@@ -15,7 +15,7 @@ function hooks() {
 }
 function load(file, h, overrides) {
   const m = { exports: {} }, api = overrides['@/lib/api'];
-  const defaults = { react: h.react, '@/lib/api': api, '@/lib/currency': { fmtMoney: String, fmtMoneyByCurrency: () => '' },
+  const defaults = { react: h.react, '@/lib/balanceWarning':require('./balance-warning-test-support.cjs'), '@/lib/api': api, '@/lib/currency': { fmtMoney: String, fmtMoneyByCurrency: () => '' },
     '@/components/common/DataTable': { __esModule: true, default: 'DataTable' }, '@/components/InternalTransferSummary': { __esModule: true, default: 'TransferSummary' },
     '@/hooks/useAuth': { useAuth: () => ({ user: { id: 1, role: 'warehouse_admin' } }) }, '@/hooks/useI18n': { useI18n: () => ({ t: x => x }) },
     '@/components/ui/Toast': { useToast: () => ({ toast() {} }) }, 'next/navigation': { useRouter: () => ({ push() {} }) },

@@ -1,0 +1,350 @@
+{
+  "counterpart_manual_workflow": {
+    "create": {
+      "id": 2,
+      "message": "账单创建成功",
+      "has_diff": true,
+      "diff_note": "供应商确认金额 90.0 与仓库记录 100.0 不一致"
+    },
+    "confirmed_after": 100,
+    "difference_resolution_logged": true,
+    "statement_rows": [
+      [
+        "供应商",
+        "账单号",
+        "账单日期",
+        "到期日",
+        "金额",
+        "币种",
+        "已付",
+        "待付"
+      ],
+      [
+        "本仓供应商",
+        "SYNTH-DIFF",
+        "2026-10-01",
+        "2026-12-01",
+        "100.0",
+        "THB",
+        "0.0",
+        "100.0"
+      ],
+      [
+        "本仓供应商",
+        "OLD-BILL-1",
+        "2020-01-01",
+        "2026-12-20",
+        "1000.0",
+        "THB",
+        "0.0",
+        "1000.0"
+      ]
+    ],
+    "foreign_edit": 403
+  },
+  "inventory_no_data": {
+    "before": {
+      "data": [],
+      "total": 0,
+      "page": 1,
+      "pending_receipt_count": 0,
+      "policy": {
+        "warehouse_id": 1,
+        "valuation_method": "unconfigured",
+        "revision": 0,
+        "version": "94bbb98a23738918ad187e997ed22a642eb78b82f816f12daa54228775b50f08",
+        "amount": null,
+        "note": "本轮仅数量台账；FIFO/均价及真实成本尚未选择或实现，金额待配置，不借用今天报价，不进资金支出"
+      },
+      "note": "各仓、各SKU、各基本单位独立；未确认期初不视为零，金额待配置；不与资金支出重复记费用"
+    },
+    "catalog_after_synthetic_sku": {
+      "data": [
+        {
+          "id": 1,
+          "code": "BAG-38",
+          "name": "标准袋",
+          "base_unit": "piece",
+          "unit_label": "个",
+          "active": true,
+          "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+          "opening_target": {
+            "id": null,
+            "version": "ecb3f196f2a4d997cf5feac5729309714d48efa19efca31d647db53c424839a0",
+            "opening_confirmed": false
+          }
+        }
+      ]
+    },
+    "read_created_stock_records": 0,
+    "foreign_catalog": [],
+    "labor": 403
+  },
+  "mixed_ai_and_summary": {
+    "mixed_ai": {
+      "detail": "不同币种不可混合比价，请先选择单一币种"
+    },
+    "summary": {
+      "overview": {
+        "month_total_by_currency": {},
+        "last_month_total_by_currency": {},
+        "cat_spending": {}
+      },
+      "supplier_ranking": [
+        {
+          "supplier_id": 1,
+          "supplier_name": "本仓供应商",
+          "category_name": "",
+          "month_amount_by_currency": {},
+          "total_amount_by_currency": {
+            "THB": 1000.0
+          },
+          "last_bill_date": "2020-01-01"
+        }
+      ],
+      "product_compare": [
+        {
+          "product_name": "耗材",
+          "spec": null,
+          "currency": "THB",
+          "supplier_count": 1,
+          "min_price": 100.0,
+          "max_price": 100.0,
+          "min_supplier": "本仓供应商"
+        }
+      ],
+      "savings_tips": []
+    }
+  },
+  "product_comparison": {
+    "data": [
+      {
+        "product_id": 2,
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "category_name": "",
+        "product_name": "同名袋",
+        "spec": "38cm",
+        "spec_price": null,
+        "unit_price": 800.0,
+        "currency": "CNY",
+        "unit": "个",
+        "remark": null,
+        "rank_in_group": 1,
+        "comparison_group": {
+          "product_name": "同名袋",
+          "spec": "38cm",
+          "unit": "个",
+          "currency": "CNY"
+        }
+      },
+      {
+        "product_id": 3,
+        "supplier_id": 3,
+        "supplier_name": "同开票方别名",
+        "category_name": "",
+        "product_name": "同名袋",
+        "spec": "38cm",
+        "spec_price": null,
+        "unit_price": 50.0,
+        "currency": "THB",
+        "unit": "个",
+        "remark": null,
+        "rank_in_group": 1,
+        "comparison_group": {
+          "product_name": "同名袋",
+          "spec": "38cm",
+          "unit": "个",
+          "currency": "THB"
+        }
+      }
+    ],
+    "total": 2
+  },
+  "logistics": {
+    "data": [
+      {
+        "price_id": 2,
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "category_name": "",
+        "transport_method": "陆运",
+        "cargo_type": "普货",
+        "origin_warehouse": "深圳仓",
+        "price_per_cbm": 600.0,
+        "price_note": "",
+        "min_cbm": 0.3,
+        "min_amount": 180.0,
+        "comparable": true,
+        "estimated_days": null,
+        "currency": "CNY",
+        "heavy_cargo_warning": "",
+        "rank_in_group": 1,
+        "comparison_group": {
+          "transport_method": "陆运",
+          "cargo_type": "普货",
+          "origin_warehouse": "深圳仓",
+          "currency": "CNY"
+        }
+      },
+      {
+        "price_id": 1,
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "category_name": "",
+        "transport_method": "陆运",
+        "cargo_type": "普货",
+        "origin_warehouse": "深圳仓",
+        "price_per_cbm": 800.0,
+        "price_note": "",
+        "min_cbm": 0.3,
+        "min_amount": 240.0,
+        "comparable": true,
+        "estimated_days": null,
+        "currency": "CNY",
+        "heavy_cargo_warning": "",
+        "rank_in_group": 2,
+        "comparison_group": {
+          "transport_method": "陆运",
+          "cargo_type": "普货",
+          "origin_warehouse": "深圳仓",
+          "currency": "CNY"
+        }
+      },
+      {
+        "price_id": 3,
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "category_name": "",
+        "transport_method": "陆运",
+        "cargo_type": "普货",
+        "origin_warehouse": "深圳仓",
+        "price_per_cbm": 50.0,
+        "price_note": "",
+        "min_cbm": 0.3,
+        "min_amount": 15.0,
+        "comparable": true,
+        "estimated_days": null,
+        "currency": "THB",
+        "heavy_cargo_warning": "",
+        "rank_in_group": 1,
+        "comparison_group": {
+          "transport_method": "陆运",
+          "cargo_type": "普货",
+          "origin_warehouse": "深圳仓",
+          "currency": "THB"
+        }
+      }
+    ],
+    "total": 3,
+    "yiwu_markup": 120,
+    "min_cbm": 0.3
+  },
+  "yiwu": {
+    "data": [
+      {
+        "price_id": 2,
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "category_name": "",
+        "transport_method": "陆运",
+        "cargo_type": "普货",
+        "origin_warehouse": "义乌仓",
+        "price_per_cbm": 720.0,
+        "price_note": "无义乌仓报价，用深圳仓价格+120元/方",
+        "min_cbm": 0.3,
+        "min_amount": 216.0,
+        "comparable": true,
+        "estimated_days": null,
+        "currency": "CNY",
+        "heavy_cargo_warning": "",
+        "rank_in_group": 1,
+        "comparison_group": {
+          "transport_method": "陆运",
+          "cargo_type": "普货",
+          "origin_warehouse": "义乌仓",
+          "currency": "CNY"
+        }
+      },
+      {
+        "price_id": 1,
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "category_name": "",
+        "transport_method": "陆运",
+        "cargo_type": "普货",
+        "origin_warehouse": "义乌仓",
+        "price_per_cbm": 920.0,
+        "price_note": "无义乌仓报价，用深圳仓价格+120元/方",
+        "min_cbm": 0.3,
+        "min_amount": 276.0,
+        "comparable": true,
+        "estimated_days": null,
+        "currency": "CNY",
+        "heavy_cargo_warning": "",
+        "rank_in_group": 2,
+        "comparison_group": {
+          "transport_method": "陆运",
+          "cargo_type": "普货",
+          "origin_warehouse": "义乌仓",
+          "currency": "CNY"
+        }
+      },
+      {
+        "price_id": 3,
+        "supplier_id": 1,
+        "supplier_name": "本仓供应商",
+        "category_name": "",
+        "transport_method": "陆运",
+        "cargo_type": "普货",
+        "origin_warehouse": "义乌仓",
+        "price_per_cbm": null,
+        "price_note": "无义乌仓同币种报价；人民币加价不可直接加到其他币种，待确认",
+        "min_cbm": 0.3,
+        "min_amount": null,
+        "comparable": false,
+        "estimated_days": null,
+        "currency": "THB",
+        "heavy_cargo_warning": "",
+        "rank_in_group": null,
+        "comparison_group": {
+          "transport_method": "陆运",
+          "cargo_type": "普货",
+          "origin_warehouse": "义乌仓",
+          "currency": "THB"
+        }
+      }
+    ],
+    "total": 3,
+    "yiwu_markup": 120,
+    "min_cbm": 0.3
+  },
+  "ai_unavailable": {
+    "status": "unavailable",
+    "result": "DeepSeek API Key 未配置，未生成评估"
+  },
+  "ai_success_and_failed_retry": {
+    "success": {
+      "result": "仅依据档案，缺少准时率和退货证据，需人工核实。",
+      "status": "generated",
+      "basis": {
+        "supplier_id": 1,
+        "name": "本仓供应商",
+        "contact_info": null,
+        "address": null,
+        "payment_terms": null,
+        "cooperation_content": null,
+        "settlement_cycle": null
+      },
+      "model": "deepseek-chat",
+      "evaluated_at": "2026-10-28T00:53:19.181984+07:00",
+      "evaluated_by": 2
+    },
+    "failed_retry": {
+      "status": "failed",
+      "error": "AI评估失败，原评估已保留，请稍后重试"
+    },
+    "prior_success_retained": true,
+    "supplier_state_unchanged": true
+  }
+}

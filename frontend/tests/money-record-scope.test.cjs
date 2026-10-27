@@ -19,7 +19,7 @@ function harness(warehouse='1'){
   if(route.includes('categories'))return{data:[{id:1,name:'费用'}]};if(route==='/accounts')return{data:[{id:Number(flags.warehouse)*10+2,account_name:'本仓现金',account_type:'cash'}]};
   return{data:(route.includes('/expense?')?[{id:3,amount:300,currency:'THB'}]:rows).map(r=>({...r,amount:r.amount*Number(flags.warehouse),warehouse_id:Number(flags.warehouse)})),total:route.includes('/expense?')?1:2};}};
  const modules=require('./legacy-regression-support.cjs').moneyModules(react,api,()=>flags.warehouse,async(url,options)=>{writes.push({url,headers:options.headers,body:Object.fromEntries(options.body)});return{ok:true,status:200,json:async()=>({id:77,message:'创建成功'})};});
- const imports={react,'@/lib/api':{api,getToken:()=> 'synthetic-test-token',getActiveWarehouseId:()=> flags.warehouse},
+ const imports={react,'@/lib/balanceWarning':require('./balance-warning-test-support.cjs'),'@/lib/api':{api,getToken:()=> 'synthetic-test-token',getActiveWarehouseId:()=> flags.warehouse},
  '@/lib/manualWallet':modules.wallet,'@/components/CostIdentity':modules.cost,
  '@/hooks/useAuth':{useAuth:()=>({user:{role:'warehouse_admin'}})},'@/hooks/useI18n':{useI18n:()=>({t:k=>k})},
  '@/components/ui/Toast':{useToast:()=>({toast:(...args)=>messages.push(args)})},'@/components/common/DataTable':{__esModule:true,default:DataTable},

@@ -1,0 +1,210 @@
+{
+  "task": "supplier-acceptance-20261028",
+  "base": "854e389c30aa9e62169d746a13f499c7815591ec",
+  "branch": "codex/supplier-acceptance-20261028",
+  "worktree": "/private/tmp/supplier-acceptance-20261028",
+  "review_scope": "Fresh local acceptance cases and regression, not third-party sign-off",
+  "python": "/tmp/supplier01-py312/bin/python",
+  "node": "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+  "dependencies": "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules",
+  "build": "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028",
+  "database": "Fresh disposable PostgreSQL 127.0.0.1:62344",
+  "no_production_access": true,
+  "git_remote_operations": false,
+  "push": false,
+  "deployment": false,
+  "own_services_stopped": true,
+  "remaining_test_schemas": 0,
+  "source_snapshot": [
+    {
+      "path": "backend/app/api/v1/suppliers.py",
+      "sha256": "ca1986b05804a428bc73b048af3949b497431841e05bc92e4d84c800423f9efd"
+    },
+    {
+      "path": "backend/app/services/supplier_comparison.py",
+      "sha256": "bb4805555267b0036b4ffbe6e433233a08d3fc679e559a030a747c09e4e503a2"
+    },
+    {
+      "path": "backend/tests/test_supplier_acceptance_854e389.py",
+      "sha256": "98021308255a5d1ece86571ee3eeae65704a0adf3e2194a817720757e7245b8b"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+      "sha256": "b083ec034b1d7f44feba2791084ae210ca03a14feb6f4b3bbd1d4cb811b2b154"
+    },
+    {
+      "path": "frontend/src/lib/specifications.ts",
+      "sha256": "7ea7b66e441364714be36a6c83922ff91e26239071d74f1917c0f7aa853e86da"
+    },
+    {
+      "path": "frontend/tests/legacy-regression-suite.json",
+      "sha256": "451c431bb82de2e6fb311a35545b9d823876b154822fde205f7d7e18410fcfe2"
+    },
+    {
+      "path": "frontend/tests/run-legacy-regressions.py",
+      "sha256": "d721708761f0b7f7f282109f231d3c7bbac5bc9ef2aea39b7169f33d38352253"
+    },
+    {
+      "path": "frontend/tests/supplier-acceptance-854e389.browser.cjs",
+      "sha256": "6511f307e3fe7275b63509e3634068d5f4eb0bf5e7cd1693467c045b1baed951"
+    },
+    {
+      "path": "frontend/tests/supplier-acceptance-854e389.fixture.py",
+      "sha256": "6e527cb064717ad184cd757bc4ea81a09911c83f60e7dc0bda255104436aed4c"
+    },
+    {
+      "path": "frontend/tests/supplier-acceptance-854e389.test.cjs",
+      "sha256": "ee187f6e70b6b0b2477ab8eb5e0315bbd70c359676eb1402b6321872117cee59"
+    },
+    {
+      "path": "frontend/tests/types84-behavior.test.cjs",
+      "sha256": "1b0627b9530e862e24c6155c700eb1fae9c6d1397104f0172d04d4e43eb47ba7"
+    }
+  ],
+  "runs": [
+    {
+      "command": [
+        "/tmp/supplier01-py312/bin/python",
+        "-m",
+        "pytest",
+        "-ra",
+        "tests/test_inventory_migration_round10.py",
+        "tests/test_inventory_migration_round11.py",
+        "tests/test_inventory_round10.py",
+        "tests/test_inventory_round11.py",
+        "tests/test_management_inventory.py",
+        "tests/test_procurement_controls_round9.py",
+        "tests/test_procurement_migration_round9.py",
+        "tests/test_procurement_month_round7.py",
+        "tests/test_procurement_payments_postgres.py",
+        "tests/test_procurement_risk_reviews_round9.py",
+        "tests/test_procurement_risk_round8.py",
+        "tests/test_supplier_acceptance_854e389.py",
+        "tests/test_supplier_cost_identity_round4.py",
+        "tests/test_supplier_dedup_round2.py",
+        "tests/test_supplier_integration_round12.py",
+        "tests/test_supplier_migrations_round12.py",
+        "tests/test_supplier_price_review_round6.py",
+        "tests/test_supplier_product_import_fix.py",
+        "tests/test_supplier_quotes_round6.py",
+        "tests/test_supplier_receipts_round3.py",
+        "tests/test_supplier_sku_round5.py",
+        "tests/test_supplier_usability_audit.py",
+        "tests/test_supplier_workflow_round1.py"
+      ],
+      "cwd": "/private/tmp/supplier-acceptance-20261028/backend",
+      "env": {
+        "DATABASE_URL": "postgresql+asyncpg://supplier_acceptance@127.0.0.1:62344/postgres",
+        "INCOMING_TEST_DATABASE_URL": "postgresql+asyncpg://supplier_acceptance@127.0.0.1:62344/postgres",
+        "PGLITE_NODE": "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "NODE_PATH": "/tmp/import-integration-pglite/node_modules"
+      },
+      "exit_code": 0,
+      "passed": 201,
+      "failed": 0,
+      "skipped": 0,
+      "log": "backend-full.log"
+    },
+    {
+      "command": [
+        "/tmp/supplier01-py312/bin/python",
+        "frontend/tests/run-legacy-regressions.py",
+        "--postgres-bin",
+        "/tmp/supplier01-pgserver/pgserver/pginstall/bin",
+        "--node",
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "--node-modules",
+        "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules",
+        "--output",
+        "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商验收-854e389-20261028/frontend-full"
+      ],
+      "exit_code": 0,
+      "groups": 64,
+      "excluded": [],
+      "log": "frontend-full.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/typescript/bin/tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028",
+      "exit_code": 0,
+      "diagnostics": 0,
+      "log": "typecheck.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/next/dist/bin/next",
+        "build"
+      ],
+      "cwd": "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028",
+      "exit_code": 0,
+      "original_configs": true,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "frontend/tests/supplier-acceptance-854e389.browser.cjs",
+        "/tmp/supplier-acceptance-state.json"
+      ],
+      "fixture": "frontend/tests/supplier-acceptance-854e389.fixture.py",
+      "exit_code": 0,
+      "groups": 9,
+      "page_errors": 0,
+      "log": "browser.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "frontend/tests/supplier-usability.browser.cjs",
+        "/tmp/supplier-acceptance-regression-state.json"
+      ],
+      "fixture": "frontend/tests/supplier-usability.fixture.py",
+      "exit_code": 0,
+      "fresh_separate_schema": true,
+      "groups": 10,
+      "page_errors": 0,
+      "log": "browser-regression/browser.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "frontend/tests/supplier-acceptance-854e389.test.cjs"
+      ],
+      "cwd": "/private/tmp/supplier-acceptance-20261028",
+      "env": {
+        "NODE_PATH": "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules"
+      },
+      "exit_code": 0,
+      "log": "supplier-acceptance-854e389-latest.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "frontend/tests/supplier-usability.test.cjs"
+      ],
+      "cwd": "/private/tmp/supplier-acceptance-20261028",
+      "env": {
+        "NODE_PATH": "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules"
+      },
+      "exit_code": 0,
+      "log": "supplier-usability-latest.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "frontend/tests/types84-behavior.test.cjs"
+      ],
+      "cwd": "/private/tmp/supplier-acceptance-20261028",
+      "env": {
+        "NODE_PATH": "/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules"
+      },
+      "exit_code": 0,
+      "log": "types84-behavior-latest.log"
+    }
+  ]
+}

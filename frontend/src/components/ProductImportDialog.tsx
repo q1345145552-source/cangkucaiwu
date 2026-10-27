@@ -3,6 +3,8 @@ import { useEffect,useState,useRef } from "react";
 import { warehouseRequestHeaders } from "@/lib/api";
 import { checkExcel,excelResponse,importScope } from "@/lib/excelImport";
 import { registrationDraft,submitRegistration,acceptProductImportRejection } from "@/lib/registrationRequest";
+import StructuredSpecifications, { SpecificationSummary } from "@/components/StructuredSpecifications";
+import { specDraft,readSpecDraft } from "@/lib/specifications";
 
 export default function ProductImportDialog({file,supplierId,supplierName,canMap=false,onClose,onImported}:{file:File;supplierId?:number;supplierName?:string;canMap?:boolean;onClose:()=>void;onImported:(v:any)=>void}){
  const [preview,setPreview]=useState<any>(null),[choices,setChoices]=useState<Record<number,any>>({}),[ack,setAck]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[pending,setPending]=useState<any>(null);
@@ -17,7 +19,7 @@ export default function ProductImportDialog({file,supplierId,supplierName,canMap
  const validCount=preview?.valid_count??validRows.length;
  const skippedCount=preview?.skipped_count??0;
  const totalRows=preview?.total_rows??(preview?.rows||[]).length;
- function adopt(value:any){setPreviewFor({file,resource});setPreview(value);setAck(false);setChoices(Object.fromEntries(value.rows.filter((r:any)=>!r.skipped&&!r.errors?.length).map((r:any)=>[r.row_number,{row_number:r.row_number,decision:'unmapped',confirmed:true,reason:'',attrsText:r.catalog_attributes?JSON.stringify(r.catalog_attributes):'',base_unit_factor:r.factor||''}])));}
+ function adopt(value:any){setPreviewFor({file,resource});setPreview(value);setAck(false);setChoices(Object.fromEntries(value.rows.filter((r:any)=>!r.skipped&&!r.errors?.length).map((r:any)=>[r.row_number,{row_number:r.row_number,decision:'unmapped',confirmed:true,reason:'',specifications:specDraft(r.catalog_attributes),base_unit_factor:r.factor||''}])));}
  useEffect(()=>{let current=true;generation.current++;setError('');setPreviewFor(null);setPreview(null);setPending(null);setAck(false);
   const name=file.name.toLowerCase();
   if(!name.endsWith('.xlsx')){setError(name.endsWith('.xls')?'请另存为 xlsx 格式':'仅支持 xlsx 格式，请使用产品导入模板');return()=>{current=false;};}
@@ -34,7 +36,7 @@ export default function ProductImportDialog({file,supplierId,supplierName,canMap
   if(!matchesPreview)throw Error('文件或入口已变化，请重新预览并确认');
   if(!pending&&!ack)throw Error('请先逐行核对并勾选确认');
   if(!pending&&(!preview?.valid||!validCount))throw Error('没有可确认的有效产品行，请修正文件后重新预览');
-  const selected=Object.values(choices).map((c:any)=>{const {attrsText,...rest}=c;return {...rest,confirmed_attributes:c.decision==='map'&&attrsText.trim()?JSON.parse(attrsText):null};});
+  const selected=Object.values(choices).map((c:any)=>{const {specifications,...rest}=c;return {...rest,confirmed_attributes:c.decision==='map'?readSpecDraft(specifications||[]):null};});
   const payload=pending?.payload||{file_meta:{name:file.name,size:file.size,lastModified:file.lastModified},preview_version:preview.preview_version,choices:selected,preview};
   const result=await submitRegistration<any>('product_import',resource,payload,key=>send('confirm',payload,key));if(originalScope===importScope()&&startedGeneration===generation.current){onImported(result);onClose();}
  }catch(e:any){setError(e.message||'导入未完成');if(originalScope===importScope()&&startedGeneration===generation.current){if(e.detail?.code==='product_import_preview_changed'){try{acceptProductImportRejection(resource,e.detail);adopt(e.detail.preview);}catch(proofError:any){setError(proofError.message);}}const draft=registrationDraft('product_import',resource);setPending(draft?.unknown?draft:null);}}finally{locked.current=false;setBusy(false);}}
@@ -47,10 +49,10 @@ export default function ProductImportDialog({file,supplierId,supplierName,canMap
    {(preview?.skipped_rows||[]).map((r:any)=><p key={r.row_number} className={r.blocking?'text-red-600':'text-amber-700'}>第{r.row_number}行：{r.message}{r.blocking?'；请修正后重新预览，当前整批未导入':''}</p>)}
    {preview?.errors?.map((e:any,i:number)=><p role="alert" key={i} className="text-red-600">第{e.row_number}行：{e.message}</p>)}
    {(preview?.rows||[]).map((row:any)=><div className="border rounded p-3 space-y-2" key={row.row_number}><strong>第{row.row_number}行 · {row.product_name||'解析失败'}</strong><p>{row.supplier_name} · {row.spec||'规格未知'} · {row.unit||'单位未知'} · {row.unit_price} {row.currency}</p>
-    {(row.candidates||[]).map((c:any)=><div key={c.id} className="text-xs border rounded p-2 min-w-0 break-words"><p>{c.code} · {c.name}；命中{c.matched_fields.join('、')||'无'}</p><p>{c.differences.join('；')}</p><pre className="whitespace-pre-wrap break-all">{JSON.stringify(c.attributes)}</pre></div>)}
+    {(row.candidates||[]).map((c:any)=><div key={c.id} className="text-xs border rounded p-2 min-w-0 break-words"><p>{c.code} · {c.name}；命中{c.matched_fields.join('、')||'无'}</p><p>{c.differences.join('；')}</p><SpecificationSummary value={c.attributes}/></div>)}
     {(row.warnings||[]).map((message:string)=><p key={message} className="text-amber-700">{message}</p>)}
     {!pending&&!row.skipped&&!row.errors.length&&<><label className="block">第{row.row_number}行选择<select aria-label={`第${row.row_number}行映射选择`} className="form-input" value={choices[row.row_number]?.sku_id||''} onChange={e=>{const c=row.candidates.find((v:any)=>String(v.id)===e.target.value);change(row.row_number,{decision:c?'map':'unmapped',sku_id:c?.id||null,expected_sku_version:c?.version||null});}}><option value="">明确保持未映射</option>{row.candidates.map((c:any)=><option key={c.id} value={c.id} disabled={!canMap||!c.can_map}>{c.code} · {c.name}{!c.can_map?'（规格不一致，不能映射）':''}</option>)}</select></label>
-     {choices[row.row_number]?.decision==='map'&&<><label className="block">本行核实规格JSON<textarea aria-label={`第${row.row_number}行核实规格JSON`} className="form-input" value={choices[row.row_number]?.attrsText||''} onChange={e=>change(row.row_number,{attrsText:e.target.value})}/></label><label className="block">本行映射依据<input aria-label={`第${row.row_number}行映射依据`} className="form-input" value={choices[row.row_number]?.reason||''} onChange={e=>change(row.row_number,{reason:e.target.value})}/></label><label className="block">基本单位换算数（未知留空）<input aria-label={`第${row.row_number}行换算数`} className="form-input" value={choices[row.row_number]?.base_unit_factor||''} onChange={e=>change(row.row_number,{base_unit_factor:e.target.value})}/></label></>}
+     {choices[row.row_number]?.decision==='map'&&<><StructuredSpecifications label={`第${row.row_number}行核实规格`} value={choices[row.row_number]?.specifications||[]} onChange={specifications=>change(row.row_number,{specifications})}/><label className="block">本行映射依据<input aria-label={`第${row.row_number}行映射依据`} className="form-input" value={choices[row.row_number]?.reason||''} onChange={e=>change(row.row_number,{reason:e.target.value})}/></label><label className="block">基本单位换算数（未知留空）<input aria-label={`第${row.row_number}行换算数`} className="form-input" value={choices[row.row_number]?.base_unit_factor||''} onChange={e=>change(row.row_number,{base_unit_factor:e.target.value})}/></label></>}
     </>}
    </div>)}
    {!pending&&preview?.valid&&<label className="flex gap-2"><input type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/>已逐行核对，按上述选择整批导入</label>}

@@ -1,0 +1,36 @@
+........................................................................ [ 36%]
+........................................................................ [ 73%]
+.....................................................                    [100%]
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_inventory_migration_round10.py: 30 warnings
+tests/test_inventory_migration_round11.py: 13 warnings
+tests/test_inventory_round10.py: 479 warnings
+tests/test_inventory_round11.py: 358 warnings
+tests/test_procurement_controls_round9.py: 335 warnings
+tests/test_procurement_migration_round9.py: 30 warnings
+tests/test_procurement_month_round7.py: 591 warnings
+tests/test_procurement_risk_reviews_round9.py: 130 warnings
+tests/test_procurement_risk_round8.py: 391 warnings
+tests/test_supplier_cost_identity_round4.py: 239 warnings
+tests/test_supplier_dedup_round2.py: 86 warnings
+tests/test_supplier_integration_round12.py: 249 warnings
+tests/test_supplier_price_review_round6.py: 193 warnings
+tests/test_supplier_product_import_fix.py: 49 warnings
+tests/test_supplier_quotes_round6.py: 537 warnings
+tests/test_supplier_receipts_round3.py: 215 warnings
+tests/test_supplier_sku_round5.py: 254 warnings
+tests/test_supplier_usability_audit.py: 39 warnings
+tests/test_supplier_workflow_round1.py: 106 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_supplier_workflow_round1.py::test_multi_member_selected_warehouse_lists_create_pdf_receipt_and_actions
+  /tmp/supplier01-py312/lib/python3.12/site-packages/reportlab/lib/rl_safe_eval.py:12: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    haveNameConstant = hasattr(ast,'NameConstant')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+197 passed, 4337 warnings in 121.25s (0:02:01)

@@ -5,9 +5,10 @@ from app.core.route_access import SELF_ROUTES, ACCOUNT_UTILITIES
 
 def test_original94_registered_management_all_guarded():
     result=audit()
-    # Round06 adds 5 scoped quote/version/recommendation routes after Round05.
-    assert result['total_method_paths']==417
-    assert result['management_method_paths']==394
+    # Approved balance-warning main adds fund-balance and payment-preview reads.
+    # Keep exact counts and every original per-route guard assertion.
+    assert result['total_method_paths']==420
+    assert result['management_method_paths']==397
     assert len(result['original94_comparison'])==94
     assert all(r['non_labor_guard'] and r['current_access'] in MANAGEMENT for r in result['original94_comparison'])
     assert result['unprotected_or_unclassified']==[]
@@ -39,7 +40,9 @@ def test_inventory_includes_all_retired_endpoints_and_target_groups():
     found={(r['method'],r['path']) for r in rows if 'require_operating_entries_enabled' in r['dependencies']}
     assert found==retired
     assert all(r['access']=='shared_platform' for r in rows if r['module'] in ('market','group_order'))
-    new_details={('GET','/api/v1/payable/{bill_id}/detail'),('GET','/api/v1/suppliers/purchase-orders/{po_id}'),
+    new_details={('GET','/api/v1/reimbursement/fund-balance'),
+        ('GET','/api/v1/expense-approvals/{approval_id}/payment-preview'),
+        ('GET','/api/v1/payable/{bill_id}/detail'),('GET','/api/v1/suppliers/purchase-orders/{po_id}'),
         ('GET','/api/v1/suppliers/purchase-match-policy'),('PUT','/api/v1/suppliers/purchase-match-policy'),
         ('GET','/api/v1/suppliers/purchase-orders/{po_id}/receipts/{event_id}/photo'),
         ('GET','/api/v1/expense-identities/suppliers'),('GET','/api/v1/expense-identities/{source}/{source_id}')}
