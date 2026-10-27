@@ -338,6 +338,20 @@ async def _delete_staff_or_labor(db: AsyncSession, user_id: int, username: str):
     """删除财务/劳工账号：解除关联并彻底删除，保留其所在仓库业务数据。"""
     from sqlalchemy import text
     uid = user_id
+    # Successful logins now create audit rows. Preserve their immutable facts and
+    # actor snapshot while releasing the nullable FK before deleting the account.
+    from app.models.audit_log import AuditLog
+    from app.models.data_change_history import DataChangeHistory
+    actor = await db.get(User, uid)
+    audit_rows = (await db.execute(select(AuditLog).where(AuditLog.user_id == uid).with_for_update())).scalars()
+    for row in audit_rows:
+        row.detail = {**(row.detail if isinstance(row.detail, dict) else {"original_detail": row.detail}), "deleted_user": {
+            "id": uid, "username": username, "display_name": actor.display_name,
+        }}
+        row.user_id = None
+    # Modification history already keeps operator_name for deleted accounts.
+    await db.execute(update(DataChangeHistory).where(DataChangeHistory.operator_id == uid).values(operator_id=None))
+    await db.flush()
     # 解除员工档案与登录账号的关联
     await db.execute(text("UPDATE employees SET user_id = NULL WHERE user_id = :uid"), {"uid": uid})
     # 清除创建人引用

@@ -1,4 +1,4 @@
-// Start account-attendance.fixture.py. Uses the actual Settings page, switch, and local API.
+// Run through run-legacy-regressions.py; actual Settings switches and isolated native HTTP API.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
 const {harness,http,login,text,walk}=require('./account-permissions.test.cjs');
@@ -46,6 +46,19 @@ async function main(){
  }
  // Read failure is visible and retry restores the real information.
  h.setFailure((method,route)=>route.startsWith('/employees?'));tree=await open(h,tree,'supervisor');let toggle=component(h,tree,'edit-attendance-enabled');assert(toggle.props.error);assert(!markup(h,toggle).includes('保存后会自动建档案'));h.setFailure(null);toggle.props.onRetry();tree=await h.render();assert(component(h,tree,'edit-attendance-enabled').props.employee);
+ // The same pre-existing bearer token observes the switch immediately; closing
+ // it retains the seeded archive, attendance and calculated 800 payroll record.
+ const self=await login('supervisor_all'),before=(await http('GET','/payroll/my-payslip?period=2026-10',self.access_token)).data;
+ const clockBefore=(await http('GET','/clock-in/records?view=self&start_date=2026-10-01&end_date=2026-10-31',self.access_token)).data;
+ assert.equal((await http('PUT','/users/'+self.user_id,token,{attendance_enabled:false})).status,200);
+ assert.equal((await http('GET','/clock-in/today',self.access_token)).status,403);
+ assert.equal((await http('GET','/payroll/my-payslip',self.access_token)).status,403);
+ const kept=(await http('GET','/employees?include_deleted=true&page_size=200',token));assert.equal(kept.status,200);assert.equal(kept.data.data.find(e=>e.id===self.attendance_employee_id).user_id,null);
+ assert.equal((await http('PUT','/users/'+self.user_id,token,{attendance_enabled:true})).status,200);
+ const after=(await http('GET','/payroll/my-payslip?period=2026-10',self.access_token)).data;assert.deepEqual(after,before);assert.equal(after.data[0].net_pay,800);
+ const clockAfter=(await http('GET','/clock-in/records?view=self&start_date=2026-10-01&end_date=2026-10-31',self.access_token)).data;assert.deepEqual(clockAfter.records,clockBefore.records);
+ report.push({oldTokenSwitchAndHistoricalRecords:'PASS',retainedEmployee:self.attendance_employee_id,netPay:800});
+ fs.writeFileSync(process.env.LEGACY_TEST_REPORT,JSON.stringify(report,null,2));
  console.log(JSON.stringify({status:'PASS',report,conflictRawRed:'PASS',lookupRetry:'PASS'},null,2));
  await testPaginationAndHistoryOrder();
 }

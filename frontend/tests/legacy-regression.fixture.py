@@ -15,11 +15,14 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'backend'))
 import uvicorn
-from sqlalchemy import text
+from fastapi.routing import APIRoute
+from sqlalchemy import text, select, func
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 import app.database as database
 from app.main import app
-from app.models import Warehouse, User, UserWarehouse, Employee, ClockInRecord
+from app.models import Warehouse, User, UserWarehouse, Employee, ClockInRecord, SalaryTemplate, DeductionTemplate, PaymentAccount
+from app.models.data_change_history import DataChangeHistory
+from app.models.audit_log import AuditLog
 from app.models.payroll import PayrollRecord
 from app.core.security import hash_password
 from app.core.menu_registry import MENU_PERMISSIONS
@@ -55,6 +58,19 @@ async def main():
                  (10, 'other_labor', 'warehouse_labor', 1, False),
                  (11, 'supervisor_attendance', 'supervisor', 1, False),
                  (12, 'staff_attendance', 'staff', 1, False)]
+        specs.extend([(20, 'supervisor', 'supervisor', 1, True), (21, 'staff', 'staff', 1, True),
+                      (22, 'r14-existing', 'supervisor', 1, False), (23, 'r14-return', 'supervisor', 1, False),
+                      (24, 'r14-conflict', 'supervisor', 1, False), (25, 'delete_candidate', 'staff', 1, True), (26, 'foreign_staff', 'staff', 2, True)])
+        # One real identity per selectable grant for historical menu/button matrices.
+        uid = 100
+        singles = []
+        existing_names = {name for _, name, _, _, _ in specs}
+        for role in ('supervisor', 'staff'):
+            for permission in MENU_PERMISSIONS:
+                if permission.selectable and f'{role}_{permission.menu_key}' not in existing_names:
+                    specs.append((uid, f'{role}_{permission.menu_key}', role, 1, False))
+                    singles.append((uid, permission.label))
+                    uid += 1
         password = hash_password('test-password')
         async with factory() as db:
             db.add_all([Warehouse(id=n, name=f'隔离测试仓{n}', code=f'LEGACY{n}') for n in (1, 2)])
@@ -65,11 +81,20 @@ async def main():
                             attendance_enabled=uid == 4))
             await db.flush()
             db.add_all([UserWarehouse(user_id=uid, warehouse_id=wid) for uid, _, _, wid, _ in specs])
+            for uid, label in singles:
+                (await db.get(User, uid)).extra_permissions = [label]
+            for wid in (1, 2):
+                db.add(SalaryTemplate(id=wid, warehouse_id=wid, name=f'合成日薪{wid}', type='daily', amount=400))
+                db.add(DeductionTemplate(id=wid, warehouse_id=wid, name=f'合成扣款{wid}'))
+                db.add(PaymentAccount(id=wid, warehouse_id=wid, account_name=f'合成现金{wid}',
+                                      account_number='synthetic', account_type='cash', currency='THB',
+                                      opening_balance=10000, opening_balance_date=date(2026, 10, 1)))
+            await db.flush()
             # Deliberately unrelated employee/user numbers: identity assertions must use the binding.
             for eid, uid, wid in [(41, 4, 1), (51, 5, 1), (52, 6, 2), (61, 10, 1)]:
-                db.add(Employee(id=eid, user_id=uid, warehouse_id=wid, name=f'合成员工{eid}',
+                db.add(Employee(id=eid, user_id=uid, warehouse_id=wid, name='员工1' if eid == 51 else f'合成员工{eid}',
                                 status='regular', position='仓库主管' if uid == 4 else '仓库劳工',
-                                hire_date=datetime(2026, 10, 1)))
+                                hire_date=datetime(2026, 10, 1), salary_template_id=wid, deduction_template_id=wid))
             await db.flush()
             supervisor = await db.get(User, 4)
             supervisor.attendance_employee_id = 41
@@ -81,8 +106,25 @@ async def main():
                                     attendance_days=2, detail='{}'))
                 db.add(ClockInRecord(user_id=uid, warehouse_id=wid, clock_date=date(2026, 10, 10),
                                     session=1, clocked_in_at=datetime(2026, 10, 10, 9), status='normal'))
+            db.add(Employee(id=71, user_id=22, warehouse_id=1, name='已有主管档案', status='regular', position='仓库主管', salary_template_id=1, deduction_template_id=1))
+            db.add(Employee(id=72, user_id=None, warehouse_id=1, name='保留的主管档案', status='regular', position='仓库主管', salary_template_id=1, deduction_template_id=1))
+            (await db.get(User, 24)).attendance_employee_id = 51  # Deliberate invalid binding, must be rejected.
+            db.add(DataChangeHistory(module='user', record_id=23, operator_id=1, operation_type='edit',
+                                     before_data={'attendance_employee_id':72}, after_data={'attendance_employee_id':None}, warehouse_id=1))
+            db.add(AuditLog(user_id=25, warehouse_id=1, action_type='login', module='auth', ip_address='198.51.100.25', detail={'original_fact':'preserve-this'}))
+            db.add(DataChangeHistory(module='user', record_id=25, operator_id=25, operator_name='delete_candidate', operation_type='edit', before_data={'marker':'before'}, after_data={'marker':'after'}, warehouse_id=1))
+            await db.flush()
+            # Explicit fixture ids must advance native PostgreSQL sequences before real CRUD.
+            for table in database.Base.metadata.sorted_tables:
+                if 'id' in table.c and table.c.id.primary_key:
+                    serial = (await db.execute(text('SELECT pg_get_serial_sequence(:table, :column)'), {'table':table.name,'column':'id'})).scalar()
+                    maximum = (await db.execute(select(func.max(table.c.id)))).scalar()
+                    if serial and maximum is not None:
+                        await db.execute(text('SELECT setval(:sequence, :maximum)'), {'sequence':serial,'maximum':maximum})
             await db.commit()
-        metadata = {'schema': schema, 'base_url': f'http://127.0.0.1:{port}/api/v1',
+        metadata = {'routes': [{'path':r.path.removeprefix('/api/v1'), 'methods':sorted(r.methods), 'access_kind':(r.openapi_extra or {}).get('x-access-kind', 'explicit_module_policy')} for r in app.routes if isinstance(r,APIRoute) and r.path.startswith('/api/v1/')], 'schema': schema, 'base_url': f'http://127.0.0.1:{port}/api/v1',
+                    'account_ids': {name:uid for uid,name,_,_,_ in specs},
+                    'record_counts': {'users':len(specs),'employees':6,'payroll_records':4},
                     'supervisor_employee_id': 41, 'labor_employee_id': 51,
                     'own_payroll': {'supervisor_all': 101, 'labor1': 102, 'other_labor': 103, 'labor2': 104},
                     'warehouse_payroll': {'1': [101, 102, 103], '2': [104]}}
@@ -97,6 +139,24 @@ async def main():
                                            lifespan='off', log_level='warning'))
         asyncio.get_running_loop().add_signal_handler(signal.SIGINT, lambda: setattr(server, 'should_exit', True))
         await server.serve()
+        # Verify persisted facts after the HTTP tests, without exposing a test-only API.
+        async with factory() as db:
+            candidate = await db.get(User, 25)
+            state = {'delete_candidate_removed': candidate is None}
+            if candidate is None:
+                logs = (await db.execute(select(AuditLog).where(
+                    AuditLog.detail['deleted_user']['id'].as_integer() == 25))).scalars().all()
+                assert len(logs) >= 2
+                assert all(row.user_id is None and row.detail['deleted_user']['username'] == 'delete_candidate' for row in logs)
+                original = [row for row in logs if row.detail.get('original_fact') == 'preserve-this']
+                assert len(original) == 1 and original[0].ip_address == '198.51.100.25'
+                history = (await db.execute(select(DataChangeHistory).where(
+                    DataChangeHistory.record_id == 25, DataChangeHistory.operator_name == 'delete_candidate'))).scalar_one()
+                assert history.operator_id is None
+                assert history.before_data == {'marker':'before'} and history.after_data == {'marker':'after'}
+                state.update(retained_audit_rows=len(logs), original_detail_and_ip_unchanged=True,
+                             modification_snapshot_unchanged=True)
+            Path(os.environ['LEGACY12_FIXTURE_FILE']).with_suffix('.state.json').write_text(json.dumps(state))
     finally:
         database.async_session_factory = original
         await engine.dispose()

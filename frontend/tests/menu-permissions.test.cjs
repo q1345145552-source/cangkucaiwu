@@ -11,10 +11,12 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const sourcePath = path.resolve(__dirname, '../src/components/layout/DashboardLayout.tsx');
 const source = fs.readFileSync(sourcePath, 'utf8');
-const baseline = execFileSync('git', ['show', '03dd578:frontend/src/components/layout/DashboardLayout.tsx'], {encoding:'utf8'});
+const baseline = execFileSync('git', ['show', 'adb9024:frontend/src/components/layout/DashboardLayout.tsx'], {encoding:'utf8'});
 const navDeclaration = s => s.slice(s.indexOf('const navItems:'), s.indexOf('\n];', s.indexOf('const navItems:')) + 3);
-const normalizeHistoryRoles = s => s.split('\n').filter(line=>!line.includes('key: "cash_advances"')).join('\n').replace('href: "/modification-logs", roles: ["warehouse_admin", "super_admin", "supervisor", "staff"]', 'href: "/modification-logs", roles: ["warehouse_admin"]');
-assert.equal(navDeclaration(normalizeHistoryRoles(source)), navDeclaration(baseline), 'Menu paths, icons, order, labels and role rules must remain unchanged');
+// Round 7's snapshot predates approved payable regrouping, cash advances, SKU and
+// inventory. Preserve their accepted round-12 order/icons/paths, then test grants below.
+assert.equal(navDeclaration(source),navDeclaration(baseline),'Approved supplier/inventory navigation must not change');
+for(const closed of ['/reports/operations','/customer-receivables','/customer-shipments'])assert(!navDeclaration(source).includes('href: "'+closed+'"'));
 assert(!source.includes('STAFF_EXTRA_MAP'));
 assert(source.includes('"/users/permissions"'));
 let states = [], cursor = 0;
@@ -24,7 +26,7 @@ const code = ts.transpileModule(source + '\nexport { filterNavItems, navItems };
 }).outputText;
 vm.runInNewContext(code, {module:moduleObject,exports:moduleObject.exports,require(name) {
  if(name==='react')return {...React,useState:()=>[states[cursor++],()=>{}],useEffect:()=>{}};
- if(name==='next/navigation')return {useRouter:()=>({push(){}}),usePathname:()=>'/dashboard'};
+ if(name==='next/navigation')return {useRouter:()=>({push(){}}),usePathname:()=>'/clock-in'};
  if(name==='next/link')return {__esModule:true,default:({children,...props})=>React.createElement('a',props,children)};
  if(name==='@/hooks/useI18n')return {useI18n:()=>({t:k=>k,locale:'zh',setLocale(){}})};
  if(name==='@/components/ui/BackToTop')return {__esModule:true,default:()=>null};
@@ -54,7 +56,7 @@ function checkRendered(user,registry,mobile) {
  assert(html.includes('change_password'),'Personal change-password entry stays available');
  return hrefs(filtered);
 }
-const base=process.env.TEST_API_URL||'http://127.0.0.1:18080/api/v1';
+const base=require('./legacy-regression-support.cjs').testBase();
 assert.equal(new URL(base).hostname,'127.0.0.1','Only local isolated test backends are allowed');
 async function request(route,token,body) {
  const r=await fetch(base+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});
@@ -95,7 +97,7 @@ async function main(){
   }
  }
  for(const role of ['staff','supervisor'])assert.equal(filterNavItems(navItems,{role,extra_permissions:selectable.map(x=>x.label)},[]).length,0,'Unknown registry must not reveal menus');
- fs.writeFileSync('/tmp/r7-menu-results.json',JSON.stringify(report,null,2));
+ fs.writeFileSync(process.env.LEGACY_TEST_REPORT,JSON.stringify(report,null,2));
  console.log(JSON.stringify({selectablePermissions:selectable.length,freshLogins:report.length,desktopMobileScenarios:scenarios,result:'PASS'},null,2));
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

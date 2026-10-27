@@ -1,7 +1,7 @@
-// Start menu-permissions.fixture.py first. Uses the actual Settings component handlers + real local API.
+// Run via run-legacy-regressions.py: actual Settings handlers + disposable native PostgreSQL HTTP fixture.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
-const base=process.env.TEST_API_URL||'http://127.0.0.1:18080/api/v1';
+const base=require('./legacy-regression-support.cjs').testBase();
 assert.equal(new URL(base).hostname,'127.0.0.1');
 const same=(a,b)=>assert.deepEqual(JSON.parse(JSON.stringify(a)),JSON.parse(JSON.stringify(b)));
 async function http(method,route,token,body){const r=await fetch(base+route,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();return {status:r.status,data};}
@@ -69,10 +69,11 @@ async function main(){
  for(const u of created){
   const result=await http('PUT','/users/'+u.user_id,token,{password:'changed-test-password',warehouse_ids:[newWh.data.id],warehouse_id:newWh.data.id,is_active:false});assert.equal(result.status,200);
   assert.equal((await http('POST','/auth/login',null,{username:u.username,password:'changed-test-password'})).status,403);
+  assert.equal((await http('GET','/auth/me',u.access_token)).status,401,'Disabled account old token must fail immediately');
   assert.equal((await http('PUT','/users/'+u.user_id,token,{is_active:true})).status,200);const moved=await login(u.username,'changed-test-password');assert.equal(moved.warehouse_id,newWh.data.id);
   if(u.role==='staff')assert.equal((await http('DELETE','/users/'+u.user_id,token)).status,200);
  }
- fs.writeFileSync('/tmp/r8-created-accounts.json',JSON.stringify(created.map(u=>({username:u.username,user_id:u.user_id})),null,2));
+ fs.writeFileSync(process.env.LEGACY_TEST_REPORT,JSON.stringify(created.map(u=>({username:u.username,user_id:u.user_id})),null,2));
  console.log(JSON.stringify({selectable:registry.filter(p=>p.selectable).length,finance:8,business:registry.filter(p=>p.selectable).length-8,roleDefaults:'PASS',createEditRoundtrip:'PASS',loadFailureAndRetry:'PASS',passwordWarehouseActivationDelete:'PASS'},null,2));
 }
 module.exports={harness,http,login,text,walk};

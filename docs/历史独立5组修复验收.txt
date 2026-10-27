@@ -1,0 +1,141 @@
+历史独立5组修复与本地验收（legacy5-fix-20261027）
+分支：codex/legacy5-fix-20261027；工作树：/private/tmp/supplier08-worktree。
+父提交：9abce7fd78c85c0da3378ee630f9e4f96b716aa1（已独立验收的前批56组修复）。
+最终完整本地HEAD/父提交/状态见本批外部证据目录的本地提交交付记录.json，避免提交自身哈希循环引用。
+本批只本地修改、独立localhost合成数据验证及commit；没有push/fetch/ls-remote/部署/SSH/生产访问/.deploy读取/真实账目操作。
+库存计价继续等用户明确，不更改模型、金额算法、权限政策、菜单排版；只按现有后端规则修测试和两处真实故障。
+
+一、五组逐项前后
+1. account-attendance.test.cjs
+原失败exit 1；最终exit 0。
+原因：旧fixture缺失别名、已有/历史档案、绑定冲突场景
+修复和保留覆盖：新合成身份补齐原fixture，保留新建两步失败提示、开关只对主管财务、复用/关闭不删/冲突红字/分页最新历史；加真实旧令牌立即拒绝、重新启用同档案及800老工资/原打卡不变。
+2. account-permissions.test.cjs
+原失败exit 1；最终exit 0。
+原因：原生PG显式id未推进序列（fixture）及登录后硬删日志外键500（产品缺陷）
+修复和保留覆盖：前者只在fixture用setval修正；后者最小解除日志nullable引用且保留身份快照。37项取后端、财务8项/业务29项、默认全不勾、保存回显、离线防误保存、密码/改仓/停用/删除等原断言保留，新增旧令牌停用立即401。
+3. button-permissions.test.cjs
+原失败exit 1；最终exit 0。
+原因：旧d89c213源码快照与后来类型/预支资金来源/作废规则冲突，页面夹具缺window；另真缺陷是超管写按钮全放行
+修复和保留覆盖：替换过时逐字处理器相等为实际页面及原处理器行为。UI用老板读取的数据刻意保持可见，避免把列表403误算按钮隐藏；真实后端权限清单改名、离线/缺清单、单项/错项、旧令牌撤权后直接写403。保留新增/编辑/删除/离职/工资模板/扣款/人效写动作；预支按现行资金来源+仅老板作废，不恢复硬删。
+4. menu-backend-regression.test.cjs
+原失败exit 1；最终exit 0。
+原因：PG序列fixture及新登录审计造成删除500，读路径表缺SKU/库存/管理双权限规则
+修复和保留覆盖：移入新schema，补齐当前37个权限的真实路径，与实际APIRoute方法清单对应；主管财务38次无权+74单项核验，其他角色/写拒绝/跨仓140项；SKU管理单独403、读+管理双授权200。原账号生命周期保留，增加原令牌拒绝和审计/DCH前后保留。
+5. menu-permissions.test.cjs
+原失败exit 1；最终exit 0。
+原因：03dd578导航快照早于已批准的应付移组、垫款、SKU、库存；劳工在管理首页被正常拦截
+修复和保留覆盖：导航不改，用已认可供应商十二轮adb9024的地址/图标/顺序作基准；真实后端清单37项、78次主管财务权限登录、168桌面/手机菜单组合；劳工按允许路径渲染四入口，保留无清单fail closed、管理员/超管/劳工角色边界及退役入口不恢复。
+
+二、真实故障与最小业务代码改动
+1. 删除已登录财务/劳工账号500。
+新登录审计使audit_logs.user_id引用账号，原删除路径直接DELETE users，原生PostgreSQL报audit_logs_user_id_fkey；不是把500改成预期通过。失败原样见attempt1的账号/后端日志，首次序列fixture修正后仍可复现。
+users.py仅在原账号删除路径释放nullable日志引用，保留原detail、IP、时间、动作，并在detail保存已删除账号id/username/display_name；已有修改历史释放operator_id引用，保留operator_name和原before_data/after_data。settings_api.py读取日志名字时可用已删账号快照；对非字典历史detail也安全。
+没有删除审计或修改历史，没有修改员工工资或财务记录，没有迁移/改表/改模型，也没扩大谁能删账号的权限。账号其余删除业务流程照原样。
+实际HTTP：登录后新账号删除200，旧令牌401；另用有原始审计及修改历史的delete_candidate，删除前后日志接口内容完全一致，名字仍在。fixture退出前以SQL验证两条日志都保留，原198.51.100.25和original_fact不变，DCH前后marker及姓名不变。具体状态见fixture-06-menu-backend-regression/fixture.state.json。
+2. 普通超管业务写按钮误显示。
+旧useMenuPermission对super_admin直接true，而现行后端管理守卫拒绝普通超管进入员工、工资、模板等业务。这与已确定的普通超管业务边界冲突。
+先对实际生产函数验证super_admin/employees应false，结果true，失败原日志见super-buttons-before。现仅让super_admin读取后端清单roles判定按钮，不把英文角色/权限表另写一份；清单缺失时fail closed。
+仓库管理员原直接放行，主管/财务按中文授权、劳工拒绝保持不变；超管settings/audit_logs/modification_logs/market/group_order等清单明确允许的平台项仍通过。后台权限没有放宽，菜单本身没改。
+
+三、原覆盖保留及当前契约
+旧03dd578导航逐字预期早于后来已批准的应付/付款计划移组、垫款、SKU和库存。改用已认可供应商十二轮adb9024导航作不变基准，仍要求地址/图标/顺序一致，再按真实清单逐项勾选验证；不是随意接受当前输出。
+旧d89c213处理器逐字预期还会被类型注解及后来的预支来源、作废规则阻断。改为执行实际React页面和原处理器，覆盖模板新增编辑删除、员工新增编辑离职/软删除、人效标准和单数保存、扣款新增删除。
+预支按后来明确要求选资金来源、账号、当前员工编号；主管财务能登记，不能作废，直接接口403；老板填原因作废后记录仍在。没有为了旧测试恢复硬删或放开角色。
+按钮可见性刻意用老板读取的数据渲染无权身份，因此按钮消失不是因为后端列表空或403；再独立调真实写接口验证拒绝。纯函数改名测试证明中文授权仍从后端清单取，离线/空清单不显写按钮。旧令牌撤权后立刻403。
+考勤开关：主管和财务显示，其他角色不显示；默认关闭；启用新建、已有档案复用、历史档案重新绑定、冲突原文红字、新建账号第二步失败提示、查档失败重试、分页和同时间历史记录排序都执行。开启主管旧令牌看本人800工资及原打卡，关闭旧令牌立即拒绝，重新开启同档案/同记录/同金额。
+账号权限：后端37项（财务8+业务29），默认空勾、保存回显、无清单阻止保存、改密码、跨授权仓重分配、停用/启用/删除及旧令牌失效均通过。
+
+四、真实权限和仓库边界
+菜单78次主管/财务fresh login、168组桌面/手机状态，管理员/超管/劳工角色菜单及个人改密码入口、清单失效fail closed都通过。经营报表/客户应收/发货入口没有恢复。
+后端37项权限路径与本次真实APIRoute方法清单对应：主管财务38次无权读取、74次单项读取。两条SKU管理单项403为已确定的读+管理双授权规则，并额外验证补读权后200且can_manage=true；不是跳过。
+其他角色及边界140项：仓库管理员、普通超管、劳工的111次读取；无权主管/财务/超管/劳工的24次写拒绝；员工、模板、用户、工资5处外仓ID请求拒绝。外仓员工列表前后完全一致。
+劳工考勤/请假/加班读取保持本人路径，管理工资/客户/账户等拒绝；本人工资单隔离及另外员工端边界由前批现有测试继续执行。普通超管只保留平台允许项，其余业务接口403。
+
+五、环境、复跑与数据安全
+沿用前批run-legacy-regressions.py/legacy-regression.fixture.py并扩展；不再排除5组，默认按当前61脚本逐项执行。没有新增.test.cjs组，没有skip、吞错或把缺环境算通过。
+全新临时原生PG数据目录，只绑定127.0.0.1；每个8个实际HTTP组都启动自己的新schema和合成身份。只有自己Popen的服务会停止，schema用自己的随机名清理。保留PG数据目录，不删任何数据卷；旧18080/用户18082及其他服务不动。
+显式种子编号通过原生setval推进序列，补齐薪资/扣款模板、合成现金和档案绑定场景，既不改业务代码来适配SQLite，也不跑生产seed/迁移。
+所有HTTP端点必须和本次fixture元数据一致，禁止无环境默认连旧服务；共享account-permissions辅助函数签名和require.main保护保留，导入不会运行主测试。
+复跑（Python需项目后端测试依赖；node_modules来自未改的同一package-lock）：
+/tmp/supplier01-py312/bin/python frontend/tests/run-legacy-regressions.py --postgres-bin /tmp/supplier01-pgserver/pgserver/pginstall/bin --node-modules /var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/types84-build-24d21e3_/node_modules --node /Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node --output <独立本地证据目录>
+只复跑五组可追加 --tests account-attendance.test.cjs account-permissions.test.cjs button-permissions.test.cjs menu-backend-regression.test.cjs menu-permissions.test.cjs。
+逐脚本完整命令/退出码在results.json；原始输出每组同名.log；原生接口/菜单清单与完整路由访问种类在各fixture.json；启动/清理命令在lifecycle.json及fixture-runs.json。
+最终PG端口55840、HTTP端口55841，均已停止；8个fixture退出0，剩余schema数0，postmaster.pid不存在，两个端口不再监听。见cleanup-verification.json。
+
+六、全量类型、构建、源码对应
+最终src/public及7份原配置复制到独立构建目录；所有src及配置SHA256在build-source-config.json；依赖锁文件逐字一致。没漏Tailwind，没放宽tsconfig/next设置、没加any/忽略诊断凑通过。
+构建前和构建后独立执行node node_modules/typescript/bin/tsc --noEmit --pretty false --incremental false，两次exit0/输出空/0诊断。
+node node_modules/next/dist/bin/next build exit0，56/56页生成。原构建内跳类型设置未改，类型通过以两次独立tsc为准。完整命令/原始日志见build-results.json、tsc-before.log、production-build.log、tsc-after.log。
+实际产品差异只在users.py、settings_api.py和useMenuPermission.ts；backend/app/models、backend/app/services、工资/库存API、后端权限清单/路由守卫、菜单布局及原配置均不变。库存计价/财务公式/数据库模型未动。
+
+七、失败过程与限制
+before5完整保留5组退出1：缺场景账号、原生PG序列、旧字面快照等。attempt1/2/3保留后续适配失败，包括不存在的员工详情GET（改用真实列表取档案）、老员工编号1（改取fixture绑定编号）、旧预支不填来源及删除假设（按现行流程），没有改业务来迎合这些旧假设。
+两处真实故障的失败证据和最小修复见第二节。前批误恢复旧远程交付事件原记录继续保留在旧测试12组修复报告；本批未做任何远程核验/推送/部署操作。
+只完成本地自动化及原生合成HTTP验证，没有生产数据、线上性能/浏览器手机真机/全部后端测试重跑，不说全系统正常。无需用户新增权限政策；库存计价继续待用户决定。本地commit后停止，交协调会话独立验收，不推送不部署。
+
+八、最终61组逐项结果（同一最终源码和隔离环境）
+account-attendance.test.cjs | exit 0
+account-nature.test.cjs | exit 0
+account-permissions.test.cjs | exit 0
+advance-manager-recipients.test.cjs | exit 0
+audit-log-location.test.cjs | exit 0
+batch-makeup.test.cjs | exit 0
+boss-todos.test.cjs | exit 0
+button-permissions.test.cjs | exit 0
+cash-advance-documents.test.cjs | exit 0
+cash-advance-references.test.cjs | exit 0
+cash-advance-repayments.test.cjs | exit 0
+cash-advances.test.cjs | exit 0
+config-center-access.test.cjs | exit 0
+cost-funds-debt.test.cjs | exit 0
+credit-shipments.test.cjs | exit 0
+customer-receivables.test.cjs | exit 0
+dashboard-month.test.cjs | exit 0
+employee-advance-funding.test.cjs | exit 0
+employee-advance-void.test.cjs | exit 0
+employee-self.test.cjs | exit 0
+expense-approval-payment.test.cjs | exit 0
+full-day-leave.test.cjs | exit 0
+fund-disbursement.test.cjs | exit 0
+fund-item-controls.test.cjs | exit 0
+fund-receipts.test.cjs | exit 0
+incoming-operations.test.cjs | exit 0
+internal-transfer-summary.test.cjs | exit 0
+inventory-integration-round12.test.cjs | exit 0
+inventory-menu-round10.test.cjs | exit 0
+inventory-round10.test.cjs | exit 0
+inventory-round11.test.cjs | exit 0
+labor-language.test.cjs | exit 0
+makeup-batch-history.test.cjs | exit 0
+makeup-display.test.cjs | exit 0
+manual-wallet.test.cjs | exit 0
+menu-backend-regression.test.cjs | exit 0
+menu-permissions.test.cjs | exit 0
+modification-log-permissions.test.cjs | exit 0
+money-month-range.test.cjs | exit 0
+money-record-scope.test.cjs | exit 0
+operating-report.test.cjs | exit 0
+other-income-currency.test.cjs | exit 0
+payroll-disbursement.test.cjs | exit 0
+payroll-supervisor.test.cjs | exit 0
+procurement-controls-round9.test.cjs | exit 0
+procurement-month-round7.test.cjs | exit 0
+procurement-risk-round8.test.cjs | exit 0
+reimbursement-payments.test.cjs | exit 0
+report-preview-scope.test.cjs | exit 0
+retired-entries.test.cjs | exit 0
+supplier-cost-entrypoints-round4.test.cjs | exit 0
+supplier-cost-identity-round4.test.cjs | exit 0
+supplier-dedup-round2.test.cjs | exit 0
+supplier-integration-menu-round12.test.cjs | exit 0
+supplier-quotes-round6.test.cjs | exit 0
+supplier-receipts-round3.test.cjs | exit 0
+supplier-sku-round5.test.cjs | exit 0
+supplier-workflow-round1.test.cjs | exit 0
+types84-auth.test.cjs | exit 0
+types84-behavior.test.cjs | exit 0
+warehouse-summary.test.cjs | exit 0
+最终61/61通过，失败0、超时0、跳过0、排除0；runner退出0。
+原始证据目录：
+/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/历史独立5组修复-20261027

@@ -57,6 +57,13 @@ async def set_boss_contact(req: BossContactSet, current_user: User = Depends(che
     await db.flush()
     return {"message": "老板联系方式已保存", "name": name, "phone": phone}
 
+def _audit_user_name(log, user_names):
+    if log.user_id in user_names:
+        return user_names[log.user_id]
+    snapshot = log.detail.get("deleted_user") if isinstance(log.detail, dict) else None
+    return snapshot.get("display_name", "") if isinstance(snapshot, dict) else ""
+
+
 @router.get("/logs")
 async def operation_logs(
     page: int = 1, page_size: int = 20,
@@ -85,7 +92,7 @@ async def operation_logs(
         users = (await db.execute(select(User).where(User.id.in_(uids)))).scalars().all()
         uid_map = {u.id: u.display_name for u in users}
     return {"data": [{
-        "id": l.id, "user_name": uid_map.get(l.user_id, ""),
+        "id": l.id, "user_name": _audit_user_name(l, uid_map),
         "action_type": l.action_type, "module": l.module, "target_id": l.target_id,
         "ip_address": l.ip_address,
         "ip_country": l.ip_country, "ip_region": l.ip_region, "ip_city": l.ip_city,

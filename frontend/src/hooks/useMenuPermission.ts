@@ -7,6 +7,7 @@ interface MenuPermission {
   menu_key: string;
   label: string;
   selectable: boolean;
+  roles?: string[];
 }
 
 interface PermissionUser {
@@ -17,7 +18,10 @@ interface PermissionUser {
 
 export function hasMenuPermission(user: PermissionUser | null, menuKey: string, permissions: MenuPermission[]): boolean {
   if (!user) return false;
-  if (user.role === "warehouse_admin" || user.role === "super_admin") return true;
+  if (user.role === "warehouse_admin") return true;
+  // Platform administration does not grant warehouse business actions. Use the
+  // same backend catalogue that retains its explicit market/settings exceptions.
+  if (user.role === "super_admin") return permissions.some(item => item.menu_key === menuKey && item.roles?.includes("super_admin"));
   if (user.role !== "supervisor" && user.role !== "staff") return false;
   const permission = permissions.find(item => item.menu_key === menuKey && item.selectable);
   return !!permission && (user.extra_permissions || []).includes(permission.label);
@@ -30,7 +34,7 @@ export function useMenuPermission(menuKey: string): boolean {
   useEffect(() => {
     let active = true;
     setPermissions([]);
-    if (user?.role === "supervisor" || user?.role === "staff") {
+    if (user?.role === "supervisor" || user?.role === "staff" || user?.role === "super_admin") {
       api.get<MenuPermission[]>("/users/permissions")
         .then(items => { if (active) setPermissions(items); })
         .catch(() => { if (active) setPermissions([]); });
