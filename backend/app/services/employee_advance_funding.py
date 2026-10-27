@@ -14,6 +14,7 @@ from app.models.expense_fund import ExpenseFund, ExpenseFundItem, ReviewStatus
 from app.models.user import User
 from app.services.account_balances import current_account_balances
 from app.services.data_history import record_history
+from app.services.balance_warning import balance_warning, record_balance_warning
 from app.services.employee_advance_expense import create_advance_expense
 
 SOURCES = {"company_account": "公司账户", "cash_advance": "垫款单", "expense_fund": "备用金"}
@@ -63,9 +64,6 @@ async def validate_funding(db, source, warehouse_id, amount, *, currency=None,
         selected_currency = currency or account.currency or "THB"
         if selected_currency != (account.currency or "THB"):
             raise HTTPException(400, "付款账户币种与预支不一致")
-        balance = (await current_account_balances(db, [account]))[account.id]
-        if balance < amount:
-            raise HTTPException(400, f"公司账户余额不足（可用 {balance:,.2f}）")
         return selected_currency, account
     if source == "cash_advance":
         if not cash_advance_id:
@@ -122,6 +120,10 @@ async def apply_advance_funding(db, advance, operator):
         _, source = await validate_funding(db, advance.funding_source, advance.warehouse_id, advance.amount,
             currency=advance.currency, payment_account_id=advance.payment_account_id,
             cash_advance_id=advance.cash_advance_id, fund_account_id=advance.fund_account_id, lock=True, exclude_id=advance.id)
+    warning = None
+    if advance.funding_source == 'company_account':
+        before_balance = (await current_account_balances(db,[source]))[source.id]
+        warning = balance_warning(before_balance,advance.amount,advance.currency,source='company_account',source_id=source.id)
     employee = await db.get(Employee, advance.employee_id)
     if advance.funding_source == "company_account":
         await create_advance_expense(db, advance, operator, paid_at=advance.reviewed_at)
@@ -138,6 +140,9 @@ async def apply_advance_funding(db, advance, operator):
             "amount": advance.amount, "currency": advance.currency, "payment_account_id": advance.payment_account_id,
             "cash_advance_id": advance.cash_advance_id, "fund_item_id": advance.fund_item_id,
             "expense_record_id": advance.expense_record_id}, warehouse_id=advance.warehouse_id)
+
+    await record_balance_warning(db,warning,operator,module='employee_advances',record_id=advance.id,warehouse_id=advance.warehouse_id)
+    return warning
 
 
 async def funding_options(db, warehouse_id):

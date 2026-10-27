@@ -1,0 +1,34 @@
+{
+  "baseline": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "9",
+    "skipped": "0",
+    "tests": "85",
+    "time": "26.640",
+    "timestamp": "2026-10-28T00:17:39.545785+07:00",
+    "hostname": "XiongdeMac-mini.local"
+  },
+  "final": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "9",
+    "skipped": "0",
+    "tests": "93",
+    "time": "23.971",
+    "timestamp": "2026-10-28T00:31:36.193035+07:00",
+    "hostname": "XiongdeMac-mini.local"
+  },
+  "existing_failures": [
+    "tests.test_employee_advance_funding::test_salary_functions_and_cap_unchanged",
+    "tests.test_employee_advance_funding::test_source_money_cost_ledger_and_void[company_account]",
+    "tests.test_fund_disbursement::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals",
+    "tests.test_fund_disbursement::test_new_fund_employee_advance_records_usage_without_second_cost",
+    "tests.test_reimbursement_payments::test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost",
+    "tests.test_reimbursement_payments::test_cny_account_and_advance_are_independent_from_thb",
+    "tests.test_reimbursement_payments::test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow",
+    "tests.test_reimbursement_payments::test_decimal_item_sums_and_partially_approved_total_used_for_payment",
+    "tests.test_reimbursement_payments::test_payment_and_revoke_failures_rollback_everything[cash_advance]"
+  ],
+  "new_failures": []
+}

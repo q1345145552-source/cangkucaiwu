@@ -53,6 +53,14 @@ async def _payment_reimb(db, reimb_id, user, *, lock=False):
     if r.warehouse_id not in get_wh_ids(user): raise HTTPException(403, "无权操作其他仓库的报销单")
     return r
 
+@router.get("/fund-balance", dependencies=[Depends(require_non_labor)])
+async def own_fund_balance(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    _perm=Depends(check_staff_permission("报销管理"))):
+    if current_user.role == Role.SUPER_ADMIN: raise HTTPException(403,"超级管理员请使用各仓库管理员账号操作")
+    fund=(await db.execute(select(ExpenseFund).where(ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
+        ExpenseFund.employee_id==current_user.id,ExpenseFund.status==FundStatus.ACTIVE.value))).scalar_one_or_none()
+    return {"fund": {"id":fund.id,"current_balance":fund.remaining_balance or 0,"currency":fund.currency or "THB"} if fund else None}
+
 @router.get("/payment-sources")
 async def payment_sources(reimbursement_id: int, current_user: User = Depends(get_current_user),
                           db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
@@ -72,7 +80,7 @@ async def payment_sources(reimbursement_id: int, current_user: User = Depends(ge
         CashAdvance.currency == (r.currency or "THB").upper(), CashAdvance.amount > CashAdvance.repaid_amount,
     ).order_by(CashAdvance.id.desc()))).scalars().all()
     wages, expenses = await payroll_usage_totals(db, advances), await reimbursement_usage_totals(db, advances)
-    return {"currency": r.currency or "THB", "is_fund_linked": r.is_fund_linked or "0",
+    return {"fund":await payments.fund_payment_preview(db,r),"currency": r.currency or "THB", "is_fund_linked": r.is_fund_linked or "0",
         "accounts": [{"id": a.id, "account_name": a.account_name, "account_type": a.account_type,
             "currency": a.currency or "THB", "current_balance": float(balances[a.id])} for a in accounts
             if (a.currency or "THB").upper() == (r.currency or "THB").upper()],
@@ -155,17 +163,18 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
     total = sum(i.amount for i in req.items)
 
     fund_item_id = None
+    warning = None
     if req.is_fund_linked == "1":
         # 查找员工备用金账户
         fund = (await db.execute(select(ExpenseFund).where(
             ExpenseFund.warehouse_id.in_(get_wh_ids(current_user)),
             ExpenseFund.employee_id == current_user.id,
             ExpenseFund.status == FundStatus.ACTIVE.value,
-        ))).scalar_one_or_none()
+        ).with_for_update())).scalar_one_or_none()
         if not fund:
             raise HTTPException(400, "该员工没有备用金账户，无法关联扣款")
-        if (fund.remaining_balance or 0) < total:
-            raise HTTPException(400, f"备用金余额不足（当前余额: {fund.remaining_balance:,.0f}，报销金额: {total:,.0f}）")
+        from app.services.balance_warning import balance_warning
+        warning = balance_warning(fund.remaining_balance or 0,total,req.currency,source='expense_fund',source_id=fund.id)
 
         # 扣减备用金
         fund.remaining_balance = (fund.remaining_balance or 0) - total
@@ -207,7 +216,9 @@ async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(ge
                               "submit_date": req.submit_date,
                               "items": [{"category": i.category, "amount": i.amount, "description": i.description} for i in req.items],
                           }, warehouse_id=wh_id)
-    return {"id": r.id, "message": msg}
+    from app.services.balance_warning import record_balance_warning
+    await record_balance_warning(db,warning,current_user,module='reimbursement',record_id=r.id,warehouse_id=wh_id)
+    return {'warning':warning,"id": r.id, "message": msg}
 
 @router.get("/export")
 async def export_reimbursements(

@@ -147,7 +147,7 @@ def test_pending_no_money_then_approval_once_and_rejection(tmp_path, monkeypatch
 @pytest.mark.parametrize('values,message', [
     ({'funding_source':None}, '请选择资金来源'), ({'funding_source':'nope'}, '资金来源无效'),
     ({'payment_account_id':None}, '请选择公司付款账户'), ({'payment_account_id':2}, '付款账户不存在或不属于当前仓库'),
-    ({'amount':20001}, '公司账户余额不足'), ({'payment_account_id':3,'currency':'THB'}, '付款账户币种与预支不一致'),
+    ({'amount':20001}, '预支合计不能超过当月工资'), ({'payment_account_id':3,'currency':'THB'}, '付款账户币种与预支不一致'),
     ({'funding_source':'cash_advance'}, '请选择垫款单'),
     ({'funding_source':'cash_advance','cash_advance_id':2}, '垫款单不存在或不属于当前仓库'),
     ({'funding_source':'cash_advance','cash_advance_id':3}, '只能使用已确认的垫款单'),
@@ -184,6 +184,10 @@ def test_approval_rechecks_resources_and_keeps_pending_on_failure(tmp_path, monk
                 await db.commit()
             before = await state(f)
             r = await c.post(f'{BASE}/{aid}/approve', headers=auth(1))
+            if source == 'company_account':
+                assert r.status_code==200 and r.json()['warning']['balance_after']==-1000,r.text
+                assert (await state(f))['balance']==-1000
+                return
             assert r.status_code == 400, r.text
             async with f() as db:
                 a = await db.get(EmployeeAdvance, aid)
@@ -379,6 +383,10 @@ def test_locked_validation_refreshes_previously_loaded_resource(tmp_path, monkey
                         loan.repaid_amount, loan.status = 10000, 'repaid'
                     else: (await changed.get(ExpenseFund,1)).remaining_balance = 0
                     await changed.commit()
+                if source == 'company_account':
+                    _, fresh = await funding.validate_funding(held,source,1,1000,payment_account_id=1,lock=True)
+                    assert fresh.opening_balance == 0
+                    return
                 with pytest.raises(HTTPException) as rejected:
                     await funding.validate_funding(held,source,1,1000,payment_account_id=1,
                         cash_advance_id=1,fund_account_id=1,lock=True)

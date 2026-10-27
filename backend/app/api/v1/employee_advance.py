@@ -100,10 +100,15 @@ async def create_advance(
     period = adv_dt.strftime("%Y-%m")
     half = "first_half" if adv_dt.day <= 15 else "second_half"
 
-    currency, _ = await validate_funding(db, req.funding_source, wh_id, req.amount,
+    currency, funding_account = await validate_funding(db, req.funding_source, wh_id, req.amount,
         currency=req.currency, payment_account_id=req.payment_account_id,
         cash_advance_id=req.cash_advance_id, fund_account_id=req.fund_account_id)
 
+    pending_warning = None
+    if req.funding_source == 'company_account':
+        from app.services.account_balances import current_account_balances
+        from app.services.balance_warning import balance_warning
+        pending_warning = balance_warning((await current_account_balances(db,[funding_account]))[funding_account.id],req.amount,currency,source='company_account',source_id=funding_account.id)
     limit_check = await check_advance_limit(db, emp, req.amount, currency, adv_dt)
 
     approval_status = AdvanceApprovalStatus.APPROVED.value
@@ -136,12 +141,12 @@ async def create_advance(
     db.add(adv)
     await db.flush()
 
-    await apply_advance_funding(db, adv, current_user)
+    warning = await apply_advance_funding(db, adv, current_user) or pending_warning
 
     message = "预支记录已创建"
     if limit_check.get("warning"):
         message += "；" + limit_check["warning"]
-    return {"message": message, "id": adv.id, **_approval_fields(adv), "limit_check": limit_check}
+    return {"message": message, "id": adv.id, **_approval_fields(adv), "limit_check": limit_check,"warning":warning}
 
 
 @router.get("/funding-options")
@@ -409,14 +414,15 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
     advance.reviewer_id = current_user.id
     advance.reviewed_at = thai_now()
     advance.reject_reason = reason if action == "reject" else None
+    warning = None
     if action == "approve":
-        await apply_advance_funding(db, advance, current_user)
+        warning = await apply_advance_funding(db, advance, current_user)
     await record_history(db, module="employee_advances", record_id=advance.id,
         operator=current_user, operation_type=action, before=before,
         after={"amount": advance.amount, **_approval_fields(advance)}, warehouse_id=wh_id)
     await db.flush()
     return {"message": "预支已通过" if action == "approve" else "预支已驳回",
-            "id": advance.id, "amount": advance.amount, **_approval_fields(advance)}
+            "id": advance.id, "amount": advance.amount,"warning":warning, **_approval_fields(advance)}
 
 
 @router.post("/{advance_id}/approve")

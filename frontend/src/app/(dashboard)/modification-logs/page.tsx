@@ -15,6 +15,8 @@ const MODULE_LABELS: Record<string, string> = {
   payroll: "工资",
   payable: "应付账单",
   expense_fund_item: "备用金开销",
+  expense_fund: "备用金拨付",
+  employee_advances: "员工预支",
 };
 const OP_LABELS: Record<string, string> = { create: "新建", edit: "编辑", delete: "删除", resign: "离职", void: "作废", undisburse: "撤销发放" };
 const OP_COLORS: Record<string, string> = {
@@ -26,6 +28,7 @@ const OP_COLORS: Record<string, string> = {
   undisburse: "bg-indigo-100 text-indigo-700",
 };
 const FIELD_LABELS: Record<string, string> = {
+  balance:"当时余额",balance_before:"执行前余额",balance_after:"执行后余额",executed_at:"执行时间",source:"资金来源",source_id:"账户编号",message:"余额提示",
   amount: "金额", currency: "币种", declare_date: "申报日期", expense_date: "支出日期",
   category_id: "类别", account_id: "账户", remark: "备注", voucher: "凭证",
   payment_method: "付款方式", customer_id: "客户", total_amount: "总额", submit_date: "提交日期",
@@ -70,6 +73,7 @@ function renderVal(v: any): string {
 function renderFieldVal(k: string, v: any): string {
   if (k === "is_voided" || k === "cost_record_only") return v ? "是" : "否";
   if (k === "review_status") return ({ pending: "待审核", approved: "已通过", rejected: "已驳回", voided: "已作废" } as Record<string, string>)[v] || renderVal(v);
+  if (k === "source") return ({company_account:"公司账户",expense_fund:"备用金"} as Record<string,string>)[v]||renderVal(v);
   if (k === "role") return ROLE_LABELS[v] || String(v);
   if (k === "status") return STATUS_LABELS[v] || String(v);
   if (k === "reason") return RESIGN_REASON_LABELS[v] || String(v);
@@ -249,7 +253,7 @@ export default function ModificationLogsPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${OP_COLORS[h.operation_type] || ""}`}>{OP_LABELS[h.operation_type] || h.operation_type}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {h.operation_type === "resign" ? "离职" : h.operation_type === "void" ? (h.before_data?.void_reason || "作废") : h.operation_type === "undisburse" ? "撤销发放" : h.operation_type === "edit" ? (diffSummary(h.before_data, h.after_data) || "更新") : h.operation_type === "delete" ? "删除记录" : "新建记录"}
+                      {h.after_data?.remark === "余额不足仍然执行" ? "余额不足仍然执行" : h.operation_type === "resign" ? "离职" : h.operation_type === "void" ? (h.before_data?.void_reason || "作废") : h.operation_type === "undisburse" ? "撤销发放" : h.operation_type === "edit" ? (diffSummary(h.before_data, h.after_data) || "更新") : h.operation_type === "delete" ? "删除记录" : "新建记录"}
                     </td>
                   </tr>
                 ))}

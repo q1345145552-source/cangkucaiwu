@@ -1,0 +1,9 @@
+{
+  "http_status": 400,
+  "response": {
+    "detail": "公司账户余额不足"
+  },
+  "balance_before": -1000.0,
+  "balance_after": -1000.0,
+  "source_unchanged": true
+}

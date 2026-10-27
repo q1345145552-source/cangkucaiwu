@@ -1,4 +1,5 @@
 "use client";
+import { balanceWarningText,confirmBalanceWarning } from "@/lib/balanceWarning";
 import { useEffect, useState } from "react";
 import { api, getActiveWarehouseId, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -16,12 +17,13 @@ export default function ReimbursementPaymentModal({ reimbursement, onClose, onSu
   const [accountId, setAccountId] = useState(""), [advanceId, setAdvanceId] = useState("");
   const [method, setMethod] = useState("cash"), [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState("");
+  const [fund,setFund]=useState<{current_balance:number;debit_amount:number}|null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     let active = true;
-    api.get<{ accounts: Account[]; cash_advances: Advance[] }>(`/reimbursement/payment-sources?reimbursement_id=${reimbursement.id}`).then(result => {
+    api.get<{ accounts: Account[]; cash_advances: Advance[];fund?:{current_balance:number;debit_amount:number}|null }>(`/reimbursement/payment-sources?reimbursement_id=${reimbursement.id}`).then(result => {
       if (!active) return;
-      setAccounts(result.accounts); setAdvances(result.cash_advances);
+      setAccounts(result.accounts); setAdvances(result.cash_advances);setFund(result.fund||null);
       const preferred = result.accounts.find(a => a.account_type === "cash" || a.account_name.includes("现金")) || result.accounts[0];
       if (preferred) setAccountId(String(preferred.id));
     }).catch((err: any) => { if (active) setError(err.message || "加载付款来源失败"); })
@@ -40,6 +42,13 @@ export default function ReimbursementPaymentModal({ reimbursement, onClose, onSu
     }
     setSaving(true);
     try {
+      if(source==='company_account'||source==='expense_fund'){
+        const fresh=await api.get<any>(`/reimbursement/payment-sources?reimbursement_id=${reimbursement.id}`);
+        setFund(fresh.fund||null);setAccounts(fresh.accounts);
+        const account=fresh.accounts.find((a:any)=>String(a.id)===accountId);
+        if(source==='company_account'&&!account)throw Error('付款账户已变化，请重新选择');
+        if(!confirmBalanceWarning(source==='company_account'?account.current_balance:fresh.fund?.current_balance,source==='company_account'?reimbursement.total_amount:fresh.fund?.debit_amount))return;
+      }
       let payment_voucher_path = null;
       if (source !== "expense_fund" && file) {
         const body = new FormData(); body.append("file", file); body.append("reimbursement_id", String(reimbursement.id));
@@ -76,6 +85,7 @@ export default function ReimbursementPaymentModal({ reimbursement, onClose, onSu
             <label className="block text-sm">付款凭证（必填）<input aria-label="付款凭证" type="file" accept="image/png,image/jpeg,image/webp" className="block w-full mt-2 text-sm" onChange={e => setFile(e.target.files?.[0] || null)} />{file && <span className="text-xs text-gray-500 break-all">{file.name}</span>}</label>
           </>}
         </fieldset>
+        <p role="alert" className="text-sm text-red-600">{source==='company_account'?balanceWarningText(accounts.find(a=>String(a.id)===accountId)?.current_balance,reimbursement.total_amount):source==='expense_fund'?balanceWarningText(fund?.current_balance,fund?.debit_amount):null}</p>
         {loading && <p className="text-sm text-gray-500">正在加载付款来源…</p>}{error && <p className="text-sm text-red-600" role="alert">{error}</p>}
       </div>
       <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0"><button type="button" disabled={saving} onClick={onClose} className="btn-secondary">取消</button><button type="submit" disabled={saving || loading || !!error || unavailable} className="btn-primary">{saving ? "付款中…" : "确认付款"}</button></div>

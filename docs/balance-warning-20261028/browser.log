@@ -1,0 +1,9 @@
+{
+  "passed": 4,
+  "checks": [
+    "mobile red insufficient warning with enabled confirmation",
+    "native confirmation cancellation sends zero writes; accept sends one payment",
+    "actual warning/negative balance and visible modification log",
+    "negative company advance through actual mobile UI"
+  ]
+}

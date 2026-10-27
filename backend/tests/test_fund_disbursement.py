@@ -181,6 +181,12 @@ def test_account_guards_leave_all_three_ledgers_unchanged(tmp_path, monkeypatch,
                     else: account.opening_balance = 500
                     await db.commit()
             r = await topup(c, fid, payment_account_id=1 if isinstance(case, str) else case)
+            if case == 'poor':
+                assert r.status_code == 200 and r.json()['warning']['balance_before']==500 and r.json()['account_balance']==-9500,r.text
+                async with f() as db:
+                    assert (await db.get(ExpenseFund,fid)).remaining_balance==10000
+                    assert (await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one()==1
+                return
             assert r.status_code == 400 and r.json()["detail"] == detail, r.text
             async with f() as db:
                 fund = await db.get(ExpenseFund, fid)

@@ -1,0 +1,33 @@
+{
+  "message": "预支记录已创建",
+  "id": 1,
+  "approval_status": "approved",
+  "approval_status_label": "已通过",
+  "reviewer_id": null,
+  "reviewed_at": null,
+  "reject_reason": null,
+  "expense_record_id": 2,
+  "funding_source": "company_account",
+  "funding_source_label": "公司账户",
+  "cash_advance_id": null,
+  "payment_account_id": 1,
+  "fund_account_id": null,
+  "limit_check": {
+    "checked": true,
+    "currency": "THB",
+    "monthly_salary": 10400,
+    "occupied_amount": 0,
+    "requested_amount": 500,
+    "available_amount": 10400,
+    "remaining_amount": 9900
+  },
+  "warning": {
+    "message": "当前账户余额不足（可用 -6,000.00，本次 500.00），确认继续吗",
+    "balance_before": -6000,
+    "amount": 500,
+    "balance_after": -6500,
+    "currency": "THB",
+    "source": "company_account",
+    "source_id": 1
+  }
+}
