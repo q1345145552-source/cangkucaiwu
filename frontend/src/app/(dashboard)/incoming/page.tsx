@@ -1,4 +1,5 @@
 "use client";
+import { useBusinessAction } from "@/hooks/useMenuPermission";
 import ExcelImportDialog from "@/components/ExcelImportDialog";
 import { downloadExcel, checkExcel, importScope } from "@/lib/excelImport";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
@@ -27,6 +28,7 @@ async function incomingRequest<T>(path: string, options: RequestInit = {}): Prom
 }
 
 export default function IncomingPage() {
+  const canWrite = useBusinessAction("incoming", "bookkeeping");
   const { toast } = useToast(); const router = useRouter();
   const [accountGuide,setAccountGuide] = useState<{scope:string;rows:any[]}|null>(null);
   const [excelFile,setExcelFile] = useState<File|null>(null);
@@ -172,7 +174,7 @@ export default function IncomingPage() {
     { key: "entrant_name", label: "录入人" },
     { key: "has_screenshot", label: "截图", render: (value: boolean, row: any) => <div className="flex gap-2 whitespace-nowrap">
       {value && <button className="text-blue-600 text-xs" onClick={() => viewScreenshot(row.id)}>查看截图</button>}
-      <button className="text-blue-600 text-xs" disabled={saving} onClick={() => { setScreenshotTarget(row.id); screenshotFile.current?.click(); }}>{value ? "更换截图" : "补传截图"}</button>
+      <button className="text-blue-600 text-xs" disabled={!(canWrite) || (saving)} onClick={() => { setScreenshotTarget(row.id); screenshotFile.current?.click(); }}>{value ? "更换截图" : "补传截图"}</button>
     </div> },
   ];
 
@@ -189,7 +191,7 @@ export default function IncomingPage() {
         <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-600">
           <Plus size={18} className="text-green-600" /> 录入到账流水
         </div>
-        <fieldset className="min-w-0" disabled={!storageReady || saving || !!operation}><div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+        <fieldset className="min-w-0" disabled={!canWrite || !storageReady || saving || !!operation}><div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
           <div>
             <label className="form-label">到账日期</label>
             <input type="date" className="form-input" value={form.received_date} onChange={e => setForm({ ...form, received_date: e.target.value })} />
@@ -235,10 +237,10 @@ export default function IncomingPage() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-4 pt-3 border-t min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0 flex-1">
             <label className="form-label mb-0 whitespace-nowrap">截图 <span className="text-gray-400 font-normal text-xs">非必填</span></label>
-            <input ref={initialScreenshotFile} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            <input ref={initialScreenshotFile} disabled={!canWrite} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               className="w-full min-w-0 max-w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-green-50 file:text-green-700" />
           </div>
-          <button onClick={handleCreate} disabled={saving || !storageReady} className="btn-primary h-10 flex items-center gap-1.5 w-full sm:w-auto sm:min-w-[100px] justify-center whitespace-nowrap">
+          <button onClick={handleCreate} disabled={!(canWrite) || (saving || !storageReady)} className="btn-primary h-10 flex items-center gap-1.5 w-full sm:w-auto sm:min-w-[100px] justify-center whitespace-nowrap">
             {saving ? "处理中..." : <><Upload size={16} />{operation?.savedId ? operation.screenshotPending ? "补传截图" : "完成本次" : operation ? "重试本次录入" : "录入"}</>}
           </button>
         </div>
@@ -248,15 +250,15 @@ export default function IncomingPage() {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <button onClick={async()=>{try{await downloadExcel('/incoming/template','incoming_template.xlsx');}catch(e:any){toast('error',e.message);}}} className="btn-secondary flex items-center gap-1 h-9"><Download size={14}/>下载模板</button>
         <button className="btn-secondary" onClick={async()=>{const scope=importScope();try{const result=await api.get<any>('/accounts');if(scope===importScope())setAccountGuide({scope,rows:result.data||[]});}catch(e:any){toast('error',e.message);}}}>查看收款账户编号</button>
-        <label className="btn-secondary cursor-pointer">批量导入Excel<input type="file" accept=".xlsx" aria-label="到账Excel文件" className="hidden" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)try{checkExcel(file);setExcelFile(file);}catch(err:any){toast('error',err.message);}}}/></label>
+        <label className="btn-secondary cursor-pointer">批量导入Excel<input disabled={!canWrite} type="file" accept=".xlsx" aria-label="到账Excel文件" className="hidden" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)try{checkExcel(file);setExcelFile(file);}catch(err:any){toast('error',err.message);}}}/></label>
       </div>
 
       {accountGuide&&accountGuide.scope===importScope()&&<div className="card p-3 mb-4 text-sm space-y-1"><p>请将明确选择的编号填入Excel“收款账户编号”列。此处只读展示，不自动选择账户。</p>{accountGuide.rows.map(a=><p key={a.id}>编号 {a.id} · {a.account_name} · {a.currency||'THB'} · {a.status==='inactive'?'已停用，不可导入':'账户可用条件以导入校验为准'}</p>)}{!accountGuide.rows.length&&<p>未找到可查看的账户，请核对当前仓库和权限。</p>}<button className="btn-secondary" onClick={()=>setAccountGuide(null)}>收起账户编号</button></div>}
-      {excelFile&&<ExcelImportDialog file={excelFile} endpoint="/incoming/import-excel" title="到账流水Excel预览与确认" onClose={()=>setExcelFile(null)} onImported={r=>{toast('success',r.message);load();}}/>}
+      {canWrite&&excelFile&&<ExcelImportDialog file={excelFile} endpoint="/incoming/import-excel" title="到账流水Excel预览与确认" onClose={()=>setExcelFile(null)} onImported={r=>{toast('success',r.message);load();}}/>}
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : (
         <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
       )}
-      <input ref={screenshotFile} aria-label="补传到账截图" type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) uploadForRow(file); event.target.value = ""; }} />
+      <input ref={screenshotFile} aria-label="补传到账截图" disabled={!canWrite} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) uploadForRow(file); event.target.value = ""; }} />
       {preview && <div className="modal-overlay" onClick={() => setPreview("")}><div className="bg-white p-4 rounded-xl max-w-[95vw] max-h-[90dvh] overflow-auto" onClick={e => e.stopPropagation()}>
         <button className="btn-secondary mb-2" onClick={() => setPreview("")}>关闭截图</button><img src={preview} alt="到账截图" className="max-w-full max-h-[75dvh] object-contain" />
       </div></div>}

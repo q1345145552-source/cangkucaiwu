@@ -161,6 +161,11 @@ def test_identity_mapping(tmp_path,monkeypatch,identity):
                     employee.phone='labor1' if identity=='phone' else None
                 await db.commit()
             await leave(f)
+            if identity in ('phone', 'name'):
+                denied = await c.get('/api/v1/clock-in/today', headers=auth(uid))
+                assert denied.status_code == 403  # R04: names/phones are not login identity.
+                bound = await c.put('/api/v1/employees/1', headers=auth(1), json={'user_id':uid})
+                assert bound.status_code == 200, bound.text
             assert (await c.get('/api/v1/clock-in/today',headers=auth(uid))).json()['full_day_leave'] is True
             assert (await c.post('/api/v1/clock-in',headers=auth(uid),data={'session':1})).status_code==400
     asyncio.run(run())

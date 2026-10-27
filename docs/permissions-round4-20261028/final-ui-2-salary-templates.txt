@@ -1,0 +1,5 @@
+SYNTHETIC WH1
+S
+薪资模板
+模板名称	类型	金额	加班半小时费	使用人数	操作
+AUDIT SALARY 1	按天	400	0	3	

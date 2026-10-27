@@ -1,5 +1,5 @@
 "use client";
-import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -12,7 +12,7 @@ function fmtMultiplier(v: any): string {
 }
 
 export default function DeductionTemplatesPage() {
-  const canWrite = useMenuPermission("deduction_templates");
+  const canWrite = useBusinessAction("deduction_templates", "rules");
   const { toast } = useToast(); const router = useRouter();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

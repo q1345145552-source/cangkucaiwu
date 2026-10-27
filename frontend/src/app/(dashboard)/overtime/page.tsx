@@ -30,7 +30,7 @@ export default function OvertimePage() {
   const [viewPhoto, setViewPhoto] = useState<string | null>(null);
 
   const isAdmin = !employeeView && user?.role === "warehouse_admin";
-  const isLabor = user?.role === "warehouse_labor" || (employeeView && user?.role === "supervisor" && user?.attendance_enabled);
+  const isLabor = user?.role === "warehouse_labor" || (employeeView && (user?.role === "supervisor" || user?.role === "staff") && user?.attendance_enabled);
   const canVerify = !employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor");
 
   const defaultForm = {

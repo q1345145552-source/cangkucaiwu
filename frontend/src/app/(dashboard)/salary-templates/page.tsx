@@ -1,5 +1,5 @@
 "use client";
-import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -9,7 +9,7 @@ import { DollarSign, Plus, Edit2, Trash2 } from "lucide-react";
 const TYPE_LABELS: Record<string, string> = { hourly: "按小时", daily: "按天", monthly: "按月" };
 
 export default function SalaryTemplatesPage() {
-  const canWrite = useMenuPermission("salary_templates");
+  const canWrite = useBusinessAction("salary_templates", "rules");
   const { toast } = useToast(); const router = useRouter();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

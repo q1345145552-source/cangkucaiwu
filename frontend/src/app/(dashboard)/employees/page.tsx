@@ -153,7 +153,7 @@ export default function EmployeesPage() {
     if (form.nationality && form.nationality !== "泰国" && !(form.passport_number || "").trim()) { toast("error", "外籍员工必须填写护照号"); return; }
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
     if (user?.role === "warehouse_admin" && !(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
-    if (!form.salary_template_id) { toast("error", "请选择薪资模板"); return; }
+    if (user?.role === "warehouse_admin" && !form.salary_template_id) { toast("error", "请选择薪资模板"); return; }
     if (form.status === "regular" && !form.promotion_date) { toast("error", "请选择转正日期"); return; }
     if (!editingId) {
       if (!form.password) { toast("error", "密码必填"); return; }
@@ -165,7 +165,8 @@ export default function EmployeesPage() {
     }
     try {
       const payload: any = { ...form };
-      if (user?.role !== "warehouse_admin") { delete payload.employee_no; delete payload.password; delete payload.user_id; }
+      if (user?.role !== "warehouse_admin") { delete payload.employee_no; delete payload.password; delete payload.user_id;
+        for (const field of ["daily_wage", "base_salary", "salary_template_id", "deduction_template_id", "bank_account_number", "bank_name", "bank_account_holder"]) delete payload[field]; }
       // Hidden fields are omitted, so switching nationality never clears old documents.
       if (form.nationality === "泰国") {
         for (const key of ["passport_number", "passport_expiry", "work_permit_number", "work_permit_expiry"]) delete payload[key];
@@ -505,14 +506,14 @@ export default function EmployeesPage() {
           <div className="flex gap-2 items-center">
             <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
               <span>{currentCount}/{maxLimit}人</span>
-              <button onClick={() => { setShowLimitSetting(!showLimitSetting); loadLimit(); }}
+              <button disabled={!(user?.role === "warehouse_admin")} onClick={() => { setShowLimitSetting(!showLimitSetting); loadLimit(); }}
                 className="p-1 hover:bg-gray-200 rounded"><Settings size={14}/></button>
             </div>
             {showLimitSetting && (
               <div className="flex items-center gap-2 bg-white border rounded-lg px-2 py-1">
                 <input type="number" className="w-16 text-sm border rounded px-1 py-0.5" value={limitInput}
                   onChange={e => setLimitInput(e.target.value)} />
-                <button onClick={saveMaxLimit} className="text-xs bg-blue-500 text-white px-2 py-1 rounded">保存</button>
+                <button disabled={!(user?.role === "warehouse_admin")} onClick={saveMaxLimit} className="text-xs bg-blue-500 text-white px-2 py-1 rounded">保存</button>
               </div>
             )}
             {user?.role === "warehouse_admin" && <button onClick={bindExistingAccounts} disabled={binding}
@@ -804,15 +805,15 @@ export default function EmployeesPage() {
               <div className="border-t pt-3 space-y-3">
                 <h4 className="text-sm font-medium text-gray-700">银行资料</h4>
                 <label className="block text-sm">银行账号 <span className="text-red-400">*</span>
-                  <input aria-label="银行账号" inputMode="numeric" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_number} onChange={e => setForm({...form, bank_account_number: e.target.value})}/>
+                  <input disabled={user?.role !== "warehouse_admin"} aria-label="银行账号" inputMode="numeric" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_number} onChange={e => setForm({...form, bank_account_number: e.target.value})}/>
                   <span className="block text-xs text-gray-400 mt-1">发工资用 必填</span>
                   {!form.bank_account_number.trim() && <span className="block text-xs text-amber-700 mt-1">未填银行账号</span>}
                 </label>
                 <label className="block text-sm">银行名称
-                  <input aria-label="银行名称" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_name} onChange={e => setForm({...form, bank_name: e.target.value})}/>
+                  <input disabled={user?.role !== "warehouse_admin"} aria-label="银行名称" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_name} onChange={e => setForm({...form, bank_name: e.target.value})}/>
                 </label>
                 <label className="block text-sm">开户人姓名
-                  <input aria-label="开户人姓名" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_holder} onChange={e => setForm({...form, bank_account_holder: e.target.value})}/>
+                  <input disabled={user?.role !== "warehouse_admin"} aria-label="开户人姓名" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_holder} onChange={e => setForm({...form, bank_account_holder: e.target.value})}/>
                   <span className="block text-xs text-gray-400 mt-1">与员工本名不同时填写</span>
                 </label>
               </div>
@@ -874,7 +875,7 @@ export default function EmployeesPage() {
                 <h4 className="text-sm font-medium text-gray-700 mb-3">薪资 & 转正</h4>
                 <div>
                   <label className="form-label text-xs mb-1 block">薪资模板 <span className="text-red-400">*</span></label>
-                  <select className="form-input py-2 w-full" value={form.salary_template_id || ""} onChange={e => setForm({ ...form, salary_template_id: +e.target.value })}>
+                  <select disabled={user?.role !== "warehouse_admin"} className="form-input py-2 w-full" value={form.salary_template_id || ""} onChange={e => setForm({ ...form, salary_template_id: +e.target.value })}>
                     <option value="">请选择薪资模板</option>
                     {salaryTemplates.map((t: any) => (
                       <option key={t.id} value={t.id}>{t.name} · {t.type_label || t.type} · {t.amount}</option>
@@ -883,7 +884,7 @@ export default function EmployeesPage() {
                 </div>
                 <div className="mt-3">
                   <label className="form-label text-xs mb-1 block">扣款模板 <span className="text-gray-400">(可选，留空不扣考勤款)</span></label>
-                  <select className="form-input py-2 w-full" value={form.deduction_template_id || ""} onChange={e => setForm({ ...form, deduction_template_id: +e.target.value })}>
+                  <select disabled={user?.role !== "warehouse_admin"} className="form-input py-2 w-full" value={form.deduction_template_id || ""} onChange={e => setForm({ ...form, deduction_template_id: +e.target.value })}>
                     <option value="">不扣考勤款</option>
                     {deductionTemplates.map((t: any) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
@@ -1163,7 +1164,7 @@ export default function EmployeesPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-red-600">{f.amount?.toLocaleString()}</span>
                           {canWrite && (<button onClick={() => openFixedEdit(f)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={14}/></button>)}
-                          {canWrite && (<button onClick={() => deleteFixedDeduction(f.id)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={14}/></button>)}
+                          {canWrite && (<button disabled={!(user?.role === "warehouse_admin")} onClick={() => deleteFixedDeduction(f.id)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={14}/></button>)}
                         </div>
                       </div>
                     ))}
@@ -1174,11 +1175,11 @@ export default function EmployeesPage() {
                     onChange={e => setFixedForm({ ...fixedForm, name: e.target.value })} />
                   <input className="form-input py-1.5 text-sm w-28" type="number" step="0.01" placeholder="金额" value={fixedForm.amount}
                     onChange={e => setFixedForm({ ...fixedForm, amount: e.target.value })} />
-                  <button onClick={saveFixedDeduction} className="bg-blue-500 text-white px-3 py-1 rounded text-sm whitespace-nowrap">
+                  <button disabled={user?.role !== "warehouse_admin"} onClick={saveFixedDeduction} className="bg-blue-500 text-white px-3 py-1 rounded text-sm whitespace-nowrap">
                     {editingFixedId ? "保存" : "添加"}
                   </button>
                   {editingFixedId && (
-                    <button onClick={() => { setEditingFixedId(null); setFixedForm({ name: "", amount: "" }); }}
+                    <button disabled={!(user?.role === "warehouse_admin")} onClick={() => { setEditingFixedId(null); setFixedForm({ name: "", amount: "" }); }}
                       className="text-gray-500 text-sm px-2">取消</button>
                   )}
                 </div>)}
@@ -1395,7 +1396,7 @@ export default function EmployeesPage() {
       )}
 
       {/* 批量设置模板弹窗 */}
-      {canWrite && showBatchModal && (
+      {user?.role === "warehouse_admin" && showBatchModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowBatchModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
@@ -1420,7 +1421,7 @@ export default function EmployeesPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowBatchModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleBatchSet} className="btn-primary text-sm px-6 py-2">确定</button>
+              <button disabled={!(user?.role === "warehouse_admin")} onClick={handleBatchSet} className="btn-primary text-sm px-6 py-2">确定</button>
             </div>
           </div>
         </div>

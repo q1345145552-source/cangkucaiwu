@@ -75,15 +75,17 @@ def test_permission_and_warehouse_checks_preserved(tmp_path, monkeypatch):
                 await set_perms(factory, uid, [])
                 for method in ('get', 'put'):
                     r = await c.request(method, '/api/v1/employees/max-limit?max_employees=61', headers=auth(uid))
-                    assert r.status_code == 403 and r.json()['detail'].startswith('无此操作权限')
+                    assert r.status_code == 403 and ('无此操作权限' if method == 'get' else '规则及薪资扣款设置只能由仓库管理员修改') in r.json()['detail']
                 await set_perms(factory, uid, ['员工档案'])
                 r = await c.put('/api/v1/employees/max-limit?max_employees=61', headers=auth(uid))
-                assert r.status_code == 200, r.text
+                assert r.status_code == 403, r.text
             for method in ('get', 'put'):
                 r = await c.request(method, '/api/v1/employees/max-limit?max_employees=61', headers=auth(5))
                 assert r.status_code == 403
             r = await c.put('/api/v1/employees/max-limit?max_employees=62', headers={**auth(1), 'X-Warehouse-ID': '2'})
-            assert r.status_code == 200
+            assert r.status_code == 403
+            legitimate = await c.put('/api/v1/employees/max-limit?max_employees=62', headers=auth(1))
+            assert legitimate.status_code == 200, legitimate.text
             async with factory() as db:
                 assert (await db.get(Warehouse, 1)).max_employees == 62
                 assert (await db.get(Warehouse, 2)).max_employees != 62

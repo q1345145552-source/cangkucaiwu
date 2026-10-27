@@ -1,3 +1,4 @@
+from app.core.round4_access import independent_employee
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,6 +77,9 @@ async def clock_in(
     if session not in SESSIONS:
         raise HTTPException(400, t("invalid_session", lang))
 
+    if set(await request.form()) - {'session', 'photo_base64'}:
+        raise HTTPException(400, '打卡包含不允许的字段')
+    await db.execute(select(User).where(User.id == current_user.id).with_for_update())
     today = thai_today()
     now = thai_now()
 
@@ -316,6 +320,7 @@ async def list_records(
     }
 
 class MakeupCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     employee_id: int
     date: str  # YYYY-MM-DD
     sessions: List[int]  # 1-4
@@ -388,6 +393,7 @@ async def makeup_clock_in(
     if emp.status == "resigned":
         raise HTTPException(400, "该员工已离职，不能补卡")
 
+    await independent_employee(db, current_user, emp.id)
     emp_to_user, _ = await resolve_employee_user_map(db, [emp])
     uid = emp_to_user.get(emp.id)
     if not uid:
@@ -455,6 +461,7 @@ async def makeup_clock_in(
 
 
 class BatchMakeupCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     date: date
     employee_ids: List[StrictInt] = Field(min_length=1)
     sessions: List[StrictInt] = Field(min_length=1)
@@ -497,6 +504,8 @@ async def batch_makeup_clock_in(
         raise HTTPException(404, "员工不存在或不属于当前仓库")
     if any(e.status == "resigned" for e in employees):
         raise HTTPException(400, "所选员工中有已离职员工，不能补卡")
+    for employee in employees:
+        await independent_employee(db, current_user, employee.id)
     emp_to_user, _ = await resolve_employee_user_map(db, employees)
     if any(e.id not in emp_to_user for e in employees):
         raise HTTPException(400, "所选员工中有未关联打卡账号的员工，无法补卡")
@@ -603,6 +612,13 @@ async def revoke_makeup_batch(
         raise HTTPException(404, "补卡批次不存在")
     if batch.status == "revoked":
         raise HTTPException(400, "该批次已撤销")
+    from app.models.employee import Employee
+    records = (await db.execute(select(ClockInRecord).where(ClockInRecord.makeup_batch_id == batch.id))).scalars().all()
+    employees = (await db.execute(select(Employee).where(Employee.user_id.in_([r.user_id for r in records])))).scalars().all()
+    for employee in employees:
+        await independent_employee(db, current_user, employee.id)
+    if any(r.user_id == current_user.id for r in records):
+        raise HTTPException(403, '本人补卡记录不能自行撤销')
     result = await db.execute(delete(ClockInRecord).where(
         ClockInRecord.makeup_batch_id == batch.id, ClockInRecord.warehouse_id == wh_id,
     ))
@@ -918,3 +934,62 @@ async def get_photos(
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"打卡照片查询失败: {str(e)}")
+
+# Personal makeup requests store no attendance record until an independent onsite approval.
+# Existing history storage is used; historical records are never promoted to new requests.
+class PersonalMakeupCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    date: date
+    sessions: List[StrictInt] = Field(min_length=1, max_length=4)
+    reason: str = Field(min_length=1, max_length=500)
+
+
+@router.post('/makeup-requests')
+async def request_personal_makeup(req: PersonalMakeupCreate,
+    current_user: User = Depends(employee_access(self_only=True)), db: AsyncSession = Depends(get_db)):
+    from app.models.data_change_history import DataChangeHistory
+    if req.date > thai_today() or (thai_today() - req.date).days > 60:
+        raise HTTPException(400, '只能申请六十天内的补卡')
+    if len(set(req.sessions)) != len(req.sessions) or any(s not in SESSIONS for s in req.sessions) or not req.reason.strip():
+        raise HTTPException(400, '请填写有效时段和原因')
+    emp = current_user._attendance_employee
+    await db.execute(select(User).where(User.id == current_user.id).with_for_update())
+    previous = (await db.execute(select(DataChangeHistory).where(DataChangeHistory.module == 'makeup_request',
+        DataChangeHistory.record_id == emp.id, DataChangeHistory.warehouse_id == emp.warehouse_id))).scalars().all()
+    if any(r.after_data.get('date') == req.date.isoformat() and r.after_data.get('status') == 'pending' for r in previous):
+        raise HTTPException(409, '该日期已有待处理补卡申请')
+    row = DataChangeHistory(module='makeup_request', record_id=emp.id, operator_id=current_user.id,
+        operator_name=current_user.display_name, operation_type='request', warehouse_id=emp.warehouse_id,
+        after_data={**req.model_dump(mode='json'), 'status': 'pending'})
+    db.add(row); await db.flush()
+    return {'id': row.id, 'status': 'pending', 'message': '补卡申请已提交，等待独立主管或管理员处理'}
+
+
+@router.get('/makeup-requests')
+async def list_makeup_requests(current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION)), db: AsyncSession = Depends(get_db)):
+    from app.models.data_change_history import DataChangeHistory
+    query = select(DataChangeHistory).where(DataChangeHistory.module == 'makeup_request',
+        DataChangeHistory.warehouse_id == get_wh_id(current_user))
+    if employee_view(current_user):
+        query = query.where(DataChangeHistory.record_id == current_user._attendance_employee.id)
+    elif current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, '现场补卡申请由主管或管理员处理')
+    rows = (await db.execute(query.order_by(DataChangeHistory.id.desc()))).scalars().all()
+    return {'data': [{'id': r.id, 'employee_id': r.record_id, **r.after_data} for r in rows]}
+
+
+@router.post('/makeup-requests/{request_id}/approve')
+async def approve_makeup_request(request_id: int, current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)), db: AsyncSession = Depends(get_db)):
+    from app.models.data_change_history import DataChangeHistory
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, '现场补卡申请由主管或管理员处理')
+    row = (await db.execute(select(DataChangeHistory).where(DataChangeHistory.id == request_id,
+        DataChangeHistory.module == 'makeup_request', DataChangeHistory.warehouse_id == get_wh_id(current_user)).with_for_update())).scalar_one_or_none()
+    if row is None: raise HTTPException(404, '补卡申请不存在')
+    await independent_employee(db, current_user, row.record_id, related_user_id=row.operator_id)
+    if row.after_data.get('status') != 'pending': raise HTTPException(409, '只能审批待处理申请')
+    facts = row.after_data
+    result = await makeup_clock_in(MakeupCreate(employee_id=row.record_id,date=facts['date'],sessions=facts['sessions'],reason=facts['reason']),current_user,db)
+    row.after_data = {**facts, 'status': 'approved', 'reviewed_by': current_user.id, 'reviewed_at': thai_now().isoformat()}
+    await db.flush()
+    return result

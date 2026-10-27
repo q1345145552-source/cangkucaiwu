@@ -1,3 +1,4 @@
+from app.core.personal_finance import personal_finance_access
 from app.services import financial_authorization as duties
 from app.core.round2_access import mutation_scope, own_scope
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
@@ -49,6 +50,7 @@ def _void_fields(advance):
 
 
 class AdvanceCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     employee_id: Optional[int] = None
     user_id: Optional[int] = None
     amount: float
@@ -65,7 +67,7 @@ class AdvanceCreate(BaseModel):
 @router.post("")
 async def create_advance(
     req: AdvanceCreate,
-    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
+    current_user: User = Depends(personal_finance_access(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -102,9 +104,14 @@ async def create_advance(
     period = adv_dt.strftime("%Y-%m")
     half = "first_half" if adv_dt.day <= 15 else "second_half"
 
-    currency, _ = await validate_funding(db, req.funding_source, wh_id, req.amount,
-        currency=req.currency, payment_account_id=req.payment_account_id,
-        cash_advance_id=req.cash_advance_id, fund_account_id=req.fund_account_id)
+    try:
+        currency, _ = await validate_funding(db, req.funding_source, wh_id, req.amount,
+            currency=req.currency, payment_account_id=req.payment_account_id,
+            cash_advance_id=req.cash_advance_id, fund_account_id=req.fund_account_id)
+    except HTTPException as exc:
+        if getattr(current_user, '_personal_finance', False):
+            raise HTTPException(exc.status_code, '所选资金来源不可用于该申请，请由财务核对') from exc
+        raise
 
     limit_check = await check_advance_limit(db, emp, req.amount, currency, adv_dt)
 
@@ -143,7 +150,7 @@ async def create_advance(
 
 @router.get("/funding-options")
 async def list_funding_options(
-    current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
+    current_user: User = Depends(personal_finance_access(MENU_PERMISSIONS_BY_KEY["employee_advances"].label)),
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -151,6 +158,19 @@ async def list_funding_options(
     wh_id = get_wh_id(current_user)
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
+    if getattr(current_user, '_personal_finance', False):
+        from app.models.customer import PaymentAccount
+        from app.models.cash_advance import CashAdvance
+        from app.models.expense_fund import ExpenseFund
+        accounts = (await db.execute(select(PaymentAccount).where(PaymentAccount.warehouse_id == wh_id,
+            (PaymentAccount.status == 'active') | PaymentAccount.status.is_(None)))).scalars().all()
+        funds = (await db.execute(select(ExpenseFund).where(ExpenseFund.warehouse_id == wh_id,
+            ExpenseFund.employee_id.in_(current_user._personal_user_ids), ExpenseFund.status == 'active'))).scalars().all()
+        loans = (await db.execute(select(CashAdvance).where(CashAdvance.warehouse_id == wh_id,
+            CashAdvance.payer_id.in_(current_user._personal_user_ids), CashAdvance.status == 'confirmed'))).scalars().all()
+        return {'accounts': [{'id':a.id,'name':a.account_name,'currency':a.currency or 'THB'} for a in accounts],
+            'funds':[{'id':a.id,'name':f'本人备用金 #{a.id}','currency':a.currency or 'THB'} for a in funds],
+            'cash_advances':[{'id':a.id,'name':f'本人垫款单 #{a.id}','currency':a.currency or 'THB'} for a in loans]}
     return await funding_options(db, wh_id)
 
 

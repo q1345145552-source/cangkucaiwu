@@ -1,0 +1,50 @@
+海外仓财务管理系统
+仪表盘
+财务(仓库运营)
+财务(日常开支)
+供应商管理
+修改日志
+拼单
+员工管理
+配置中心
+系统设置
+员工自助
+我的申请与欠款
+SYNTHETIC WH1
+中文
+S
+SYNTHETIC staff 3
+员工档案
+4/50人
+按国籍筛选
+全部国籍
+泰国
+缅甸
+中国
+其他
+未填
+	姓名	工号	国籍	岗位	薪资模板	扣款模板	状态	联系电话	入职日期	标签	操作
+	
+N
+NO MENU SELF
+	audit-6	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+	
+
+	
+S
+SYNTHETIC EMP 1
+	audit-5	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+	
+
+	
+S
+SYNTHETIC EMP 2
+	audit-2	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+	
+
+	
+S
+SYNTHETIC EMP 3
+	audit-3	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+	
+已离职员工 (1人)

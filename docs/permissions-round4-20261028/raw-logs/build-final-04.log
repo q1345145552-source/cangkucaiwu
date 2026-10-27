@@ -1,0 +1,83 @@
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/57) ...
+   Generating static pages (14/57) 
+   Generating static pages (28/57) 
+   Generating static pages (42/57) 
+ ✓ Generating static pages (57/57)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    2.12 kB        89.5 kB
+├ ○ /_not-found                          874 B          88.2 kB
+├ ○ /accounts                            8.04 kB        99.3 kB
+├ ○ /attendance                          180 B           116 kB
+├ ○ /audit-logs                          4.58 kB         103 kB
+├ ○ /cash-advances                       10.8 kB         102 kB
+├ ƒ /cash-advances/[id]                  3.64 kB          91 kB
+├ ○ /categories                          3.04 kB         102 kB
+├ ○ /clock-in                            6.48 kB         105 kB
+├ ○ /clock-records                       5.51 kB        92.9 kB
+├ ○ /concentration                       6.91 kB        94.3 kB
+├ ○ /config-center                       5.34 kB        92.7 kB
+├ ○ /credit                              12.5 kB         104 kB
+├ ○ /customers                           3.75 kB         111 kB
+├ ○ /dashboard                           11.3 kB         108 kB
+├ ○ /deduction-templates                 3.58 kB        94.5 kB
+├ ○ /employee-advances                   9.84 kB        97.2 kB
+├ ○ /employee-deductions                 6.49 kB        93.9 kB
+├ ○ /employees                           14.1 kB         105 kB
+├ ○ /expense-approvals                   9.07 kB         109 kB
+├ ○ /expense-fund                        17.7 kB         115 kB
+├ ƒ /expense-identities/[source]/[id]    3.63 kB          91 kB
+├ ○ /fund-review                         7.87 kB         105 kB
+├ ○ /group-order                         10.5 kB        97.9 kB
+├ ○ /income-expense                      9.44 kB         118 kB
+├ ○ /incoming                            11.2 kB         102 kB
+├ ○ /inventory                           15 kB           112 kB
+├ ○ /labor-efficiency                    11.9 kB        99.3 kB
+├ ○ /ledger                              7.5 kB         94.9 kB
+├ ○ /login                               4.2 kB          103 kB
+├ ○ /market                              5.99 kB         105 kB
+├ ○ /modification-logs                   8.55 kB        95.9 kB
+├ ○ /my-attendance                       313 B           116 kB
+├ ○ /my-leave                            312 B           116 kB
+├ ○ /my-overtime                         312 B           108 kB
+├ ○ /my-payslip                          4.97 kB         104 kB
+├ ○ /my-requests                         4.65 kB          92 kB
+├ ○ /operating                           15.9 kB         113 kB
+├ ○ /other-income-expense                9.97 kB        97.3 kB
+├ ○ /overtime                            180 B           108 kB
+├ ○ /payable                             19.3 kB         135 kB
+├ ○ /payment-plans                       10.4 kB        97.7 kB
+├ ○ /payroll                             14 kB           106 kB
+├ ○ /recharge                            7.95 kB         107 kB
+├ ○ /reconciliation                      9.53 kB        96.9 kB
+├ ○ /reimbursement                       11.7 kB         103 kB
+├ ○ /reports                             12.2 kB        99.5 kB
+├ ○ /reports/cost-funds-debt             5.93 kB         103 kB
+├ ○ /salary-templates                    3.39 kB        94.3 kB
+├ ○ /settings                            10.9 kB         110 kB
+├ ○ /supplier-skus                       7.51 kB         115 kB
+├ ○ /suppliers                           31.3 kB         157 kB
+├ ○ /suppliers/controls                  7.5 kB          104 kB
+├ ○ /suppliers/monthly-price-report      6.03 kB         103 kB
+├ ƒ /suppliers/purchase-orders/[id]      2.14 kB         103 kB
+├ ○ /suppliers/risk                      9.35 kB         106 kB
+├ ○ /suppliers/risk/reviews              5.73 kB         103 kB
+└ ○ /warehouses                          4.96 kB         104 kB
++ First Load JS shared by all            87.4 kB
+  ├ chunks/048398d6-182243b588c2785c.js  53.6 kB
+  ├ chunks/6299-b302fa2b21f4f127.js      31.7 kB
+  └ other shared chunks (total)          1.99 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

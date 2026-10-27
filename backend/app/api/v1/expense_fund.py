@@ -1,3 +1,4 @@
+from app.core.personal_finance import personal_finance_access
 from app.core.round2_access import require_account_manager, mutation_scope, own_scope, mutation_ids
 from app.services import fund_authorization as duties
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
@@ -87,6 +88,7 @@ class TopUpReq(BaseModel):
     payment_account_id: Optional[int] = None
 
 class FundItemCreate(CostFields):
+    model_config = {"extra": "forbid"}
     expense_date: str; category: str; amount: float; description: str
     currency: str = "THB"
     receipt: Optional[str] = None
@@ -127,6 +129,7 @@ class SettingsUpdate(BaseModel):
     key: str; value: str
 
 class RechargeRequestCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     amount: float
     reason: str = ""
 
@@ -148,7 +151,7 @@ async def create_account(
     req: CreateAccountReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     require_account_manager(current_user)
     """手动为指定员工创建备用金账户"""
@@ -188,7 +191,7 @@ async def create_account(
 async def list_employees(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     """列出本仓库所有非超管员工"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -211,7 +214,7 @@ async def list_employees(
 async def list_accounts(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     """列出本仓库所有员工的备用金账户（含余额）"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -225,6 +228,8 @@ async def list_accounts(
             User.role != Role.SUPER_ADMIN,
         )
     )).scalars().all()
+    if getattr(current_user, '_personal_finance', False):
+        accounts = [a for a in accounts if a.employee_id in current_user._personal_user_ids]
     uids = {a.employee_id for a in accounts}
     umap = {}
     if uids:
@@ -266,7 +271,7 @@ async def list_accounts(
 # ==== Top Up (充值) ====
 @router.get("/payment-accounts")
 async def disbursement_accounts(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理"))):
+    _perm=Depends(personal_finance_access("备用金管理"))):
     from app.models.customer import PaymentAccount
     from app.services.account_balances import current_account_balances
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -282,7 +287,7 @@ async def disbursement_accounts(current_user: User = Depends(get_current_user), 
 
 @router.get("/accounts/{account_id}/disbursements")
 async def list_disbursements(account_id: int, current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("备用金管理"))):
+    db: AsyncSession = Depends(get_db), _perm=Depends(personal_finance_access("备用金管理"))):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
     fund = (await db.execute(select(ExpenseFund).where(ExpenseFund.id == account_id,
@@ -305,7 +310,7 @@ async def topup_account(
     account_id: int, req: TopUpReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     raise HTTPException(403, "直接拨付已停用，请先提交补充申请，经核验、管理员批准后由独立付款人执行")
 
@@ -316,7 +321,7 @@ async def list_items(
     account_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     """列出一个账户下所有开销"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -362,7 +367,7 @@ async def add_item(
     account_id: int, req: FundItemCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     """添加开销记录"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -421,7 +426,7 @@ async def add_item(
 async def upload_new_item_receipt(
     account_id: int, file: UploadFile = File(...),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     """先上传凭证，再带凭证路径新建开销；不创建空白开销或扣减余额。"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -444,7 +449,7 @@ async def upload_receipt(
     current_user: User = Depends(_item_editor),
     db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     account, item = await item_controls.lock_manual_item(db, account_id, item_id, mutation_ids(current_user), action="edit")
     result = await _save_receipt(file, account)
@@ -466,7 +471,7 @@ async def list_pending_reviews(
     currency: str = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -535,7 +540,7 @@ async def batch_review(
     req: BatchReviewReq,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     if req.action not in ('verify', 'approve', 'reject'):
         raise HTTPException(400, '审核动作无效')
@@ -692,7 +697,7 @@ async def submit_recharge_request(
     req: RechargeRequestCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     """财务提交充值申请"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -730,7 +735,7 @@ async def list_recharge_requests(
     applicant_id: int = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     """列出充值申请列表 - 管理员看本仓库所有，财务看自己的"""
     if current_user.role == Role.SUPER_ADMIN:
@@ -744,7 +749,7 @@ async def list_recharge_requests(
         Warehouse, FundRechargeRequest.warehouse_id == Warehouse.id
     ).where(FundRechargeRequest.warehouse_id.in_(get_wh_ids(current_user)))
 
-    if current_user.role == Role.SUPERVISOR:
+    if current_user.role == Role.SUPERVISOR or getattr(current_user, '_personal_finance', False):
         query = query.where(FundRechargeRequest.applicant_id == current_user.id)
 
     if status:
@@ -753,7 +758,7 @@ async def list_recharge_requests(
         query = query.where(FundRechargeRequest.applicant_id == applicant_id)
 
     count_q = select(func.count(FundRechargeRequest.id)).where(FundRechargeRequest.warehouse_id.in_(get_wh_ids(current_user)))
-    if current_user.role == Role.SUPERVISOR:
+    if current_user.role == Role.SUPERVISOR or getattr(current_user, '_personal_finance', False):
         count_q = count_q.where(FundRechargeRequest.applicant_id == current_user.id)
     if status:
         count_q = count_q.where(FundRechargeRequest.status == status)
@@ -793,7 +798,7 @@ async def review_recharge_request(
     req: RechargeRequestReview,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     if req.action not in ('verify', 'approve', 'reject'):
         raise HTTPException(400, '请选择核验、批准或驳回')
@@ -839,7 +844,7 @@ async def review_recharge_request(
 
 @router.post('/recharge/execute', dependencies=[Depends(mutation_scope)])
 async def execute_recharge(req: RechargeRequestReview, current_user: User = Depends(get_current_user),
-        db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission('备用金管理'))):
+        db: AsyncSession = Depends(get_db), _perm=Depends(personal_finance_access('备用金管理'))):
     rr = (await db.execute(select(FundRechargeRequest).where(
         FundRechargeRequest.id == req.request_id).with_for_update())).scalar_one_or_none()
     if rr is None:
@@ -877,7 +882,7 @@ async def execute_recharge(req: RechargeRequestReview, current_user: User = Depe
 async def fund_settings(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -891,7 +896,7 @@ async def update_settings(
     req: SettingsUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     require_account_manager(current_user)
     if req.key not in {'fund_limit', 'fund_alert_threshold'}:
@@ -928,7 +933,7 @@ async def update_settings(
 async def balance_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     return await list_accounts(current_user=current_user, db=db)
 
@@ -936,7 +941,7 @@ async def balance_summary(
 async def alert_list(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("备用金管理")),
+    _perm=Depends(personal_finance_access("备用金管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

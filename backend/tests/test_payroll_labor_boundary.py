@@ -71,7 +71,9 @@ def test_real_logins_self_only_four_employee_pages_and_management_roles(tmp_path
             before = await snapshot(factory)
             denied = await c.get('/api/v1/payroll', headers=tokens[5])
             assert denied.status_code == 403 and denied.json() == {'detail':'无权访问'}
-            own = await c.get('/api/v1/payroll/my-payslip?employee_id=4&user_id=7', headers=tokens[5])
+            spoof = await c.get('/api/v1/payroll/my-payslip?employee_id=4&user_id=7', headers=tokens[5])
+            assert spoof.status_code == 403, spoof.text  # R04: reject spoofed identity, do not silently ignore.
+            own = await c.get('/api/v1/payroll/my-payslip', headers=tokens[5])
             assert own.status_code == 200, own.text
             assert {x['id'] for x in own.json()['data']} == {1, 2, 3}
             other = await c.get('/api/v1/payroll/my-payslip', headers=tokens[6])

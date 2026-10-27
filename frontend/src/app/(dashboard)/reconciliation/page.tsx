@@ -1,4 +1,5 @@
 "use client";
+import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
@@ -8,6 +9,7 @@ import DataTable from "@/components/common/DataTable";
 import { Download, Link2, CheckCircle, Search, ArrowRight, Image as ImageIcon } from "lucide-react";
 
 export default function ReconciliationPage() {
+  const canWrite = useBusinessAction("reconciliation", "bookkeeping");
   const { toast } = useToast(); const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [loadingResults, setLoadingResults] = useState(false);
@@ -175,7 +177,7 @@ export default function ReconciliationPage() {
     { key: "amount_diff", label: "差额", align: "right" as const, render: (v: number) => v ? <span className="text-orange-600 font-medium">{v}</span> : <span className="text-green-600">0</span> },
     { key: "handling_note", label: "备注", render: (v: string) => v || "-" },
     { key: "id", label: "操作", render: (_: any, row: any) => (
-      <button onClick={() => handleUnmatch(row)} className="btn-secondary btn-xs">解除匹配</button>
+      <button disabled={!(canWrite)} onClick={() => handleUnmatch(row)} className="btn-secondary btn-xs">解除匹配</button>
     )},
   ];
 
@@ -227,7 +229,7 @@ export default function ReconciliationPage() {
         </div>
         {selectedDeclId && selectedFlowId && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-            <button onClick={triggerMatch} className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 rounded-full shadow-2xl flex items-center gap-2 font-semibold">
+            <button disabled={!canWrite} onClick={triggerMatch} className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 rounded-full shadow-2xl flex items-center gap-2 font-semibold">
               <Link2 size={20} /> 匹配 <ArrowRight size={16} />
             </button>
           </div>
@@ -235,7 +237,7 @@ export default function ReconciliationPage() {
       </div>
 
       {/* 匹配确认弹窗 */}
-      {showMatchConfirm && (
+      {canWrite && showMatchConfirm && (
         <div className="modal-overlay" onClick={() => setShowMatchConfirm(false)}>
           <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
@@ -255,7 +257,7 @@ export default function ReconciliationPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowMatchConfirm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button>
+              <button disabled={!(canWrite)} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button>
             </div>
           </div>
         </div>

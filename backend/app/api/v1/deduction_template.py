@@ -17,6 +17,7 @@ router = APIRouter()
 
 
 class DeductionTemplateCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     name: str
     late_half_multiplier: float = 0.5
     late_one_multiplier: float = 1.0
@@ -27,6 +28,7 @@ class DeductionTemplateCreate(BaseModel):
 
 
 class DeductionTemplateUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
     name: Optional[str] = None
     late_half_multiplier: Optional[float] = None
     late_one_multiplier: Optional[float] = None

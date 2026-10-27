@@ -131,7 +131,7 @@ async def may_read(db, user, target):
         return False
     if user.role == Role.WAREHOUSE_ADMIN:
         return True
-    if user.role == Role.WAREHOUSE_LABOR or attendance_supervisor(user):
+    if user.role in (Role.WAREHOUSE_LABOR, Role.SUPERVISOR, Role.STAFF):
         employee = await own_employee(db,user)
         own = [] if employee is None or employee.warehouse_id != wid else [
             select(ClockInRecord.photo_path).where(ClockInRecord.warehouse_id==wid,ClockInRecord.user_id==user.id),
@@ -139,6 +139,14 @@ async def may_read(db, user, target):
             select(OvertimeAssignment.dispute_photo).join(OvertimeTask).where(OvertimeTask.warehouse_id==wid,
                 OvertimeAssignment.employee_id==employee.id,OvertimeAssignment.user_id==user.id),
         ]
+        if employee is not None and employee.warehouse_id == wid:
+            from app.services.fund_authorization import identities
+            owner_ids = await identities(db, user)
+            own.extend([
+                select(ReimbursementItem.receipt).join(Reimbursement).where(Reimbursement.warehouse_id == wid, Reimbursement.employee_id.in_(owner_ids)),
+                select(Reimbursement.payment_voucher_path).where(Reimbursement.warehouse_id == wid, Reimbursement.employee_id.in_(owner_ids)),
+                select(ExpenseFundItem.receipt).join(ExpenseFund).where(ExpenseFund.warehouse_id == wid, ExpenseFund.employee_id.in_(owner_ids)),
+            ])
         for query in own:
             query=query.where(reference_filter(list(query.selected_columns),target))
             if any(matches(value,target) for value in (await db.execute(query)).scalars()):
@@ -179,7 +187,8 @@ async def read_upload(file_path: str, request: Request, db: AsyncSession=Depends
     parts = Path(file_path).parts
     root = upload_root()
     path = root.joinpath(*parts).resolve()
-    if (not parts or not parts[0].isdigit() or not path.is_relative_to(root)
+    fund_file = len(parts) == 4 and parts[0] == 'fund_receipts' and parts[1].isdigit() and parts[2].isdigit()
+    if (not parts or (not parts[0].isdigit() and not fund_file) or not path.is_relative_to(root)
         or path.suffix.lower() not in (".png",".jpg",".jpeg",".webp",".pdf") or not path.is_file()):
         raise HTTPException(404,"附件不存在")
     header = request.headers.get("Authorization", "")
@@ -187,6 +196,22 @@ async def read_upload(file_path: str, request: Request, db: AsyncSession=Depends
     if not token:
         raise HTTPException(401,"请先登录")
     user = await get_current_user(request,HTTPAuthorizationCredentials(scheme="Bearer",credentials=token),db)
+    if request.headers.get('X-Warehouse-ID') is not None:
+        from app.services.warehouse_summary import warehouse_scope
+        scope = [w.id for w in await warehouse_scope(db, user, request.headers['X-Warehouse-ID'])]
+        user._warehouse_ids = scope
+        user._all_warehouse_ids = scope
+    if fund_file:
+        fund = await db.get(ExpenseFund, int(parts[2]))
+        if not fund or fund.warehouse_id != int(parts[1]) or fund.warehouse_id not in get_wh_ids(user):
+            raise HTTPException(403, '无权访问')
+        from app.services.fund_authorization import identities
+        own = await own_employee(db, user)
+        allowed = own is not None and fund.employee_id in await identities(db, user)
+        management = user.role == Role.WAREHOUSE_ADMIN or (user.role in (Role.SUPERVISOR, Role.STAFF) and MENU_PERMISSIONS_BY_KEY['expense_fund'].label in (user.extra_permissions or []))
+        if not (allowed or management):
+            raise HTTPException(403, '无权访问')
+        return FileResponse(path,headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
     if not await may_read(db,user,"uploads/"+"/".join(parts)):
         raise HTTPException(403,"无权访问")
     return FileResponse(path,headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})

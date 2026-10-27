@@ -1,3 +1,4 @@
+from app.core.employee_access import own_employee
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,12 +65,14 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     )
     warehouses = _build_warehouses_list(uw_result.all())
 
+    employee = await own_employee(db, user)
     request.state.audit_login_user_id = user.id
     request.state.audit_login_warehouse_id = user.warehouse_id
     return {
         "access_token": token,
         "token_type": "bearer",
         "user_id": user.id,
+        "self_employee_id": employee.id if employee else None,
         "username": user.username,
         "display_name": user.display_name,
         "role": str(user.role),
@@ -93,9 +96,11 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
 
     # Get warehouse name from the first warehouse in list
     wh_name = warehouses[0]["name"] if warehouses else None
+    employee = await own_employee(db, current_user)
 
     return {
         "id": current_user.id,
+        "self_employee_id": employee.id if employee else None,
         "username": current_user.username,
         "display_name": current_user.display_name,
         "role": str(current_user.role),

@@ -197,6 +197,7 @@ class ExchangeRateResponse(BaseModel):
 
 # ---- Income Records ----
 class IncomeRecordCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     request_key: Optional[str] = Field(default=None,min_length=1,max_length=64,pattern=r'^[A-Za-z0-9_-]+$')
     category_id: int; account_id: int; customer_id: Optional[int] = None
     amount: float = Field(gt=0); currency: str = "THB"; income_date: str
@@ -213,6 +214,7 @@ class IncomeRecordResponse(BaseModel):
 
 # ---- Expense Records ----
 class ExpenseRecordCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     category_id: int; account_id: int; supplier_id: Optional[int] = None
     amount: float = Field(gt=0); currency: str = "THB"; expense_date: str
     voucher: Optional[str] = None; remark: Optional[str] = None
@@ -228,6 +230,7 @@ class ExpenseRecordResponse(BaseModel):
 
 # ---- Category ----
 class CategoryCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     type: str  # income/expense
     name: str; sort_order: int = 0
 

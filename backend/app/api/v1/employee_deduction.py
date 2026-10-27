@@ -22,6 +22,7 @@ def _check_role(current_user: User):
 # ═══ 临时扣款记录 ════════════════════════════
 
 class DeductionCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     employee_id: int
     amount: float
     deduction_date: str  # YYYY-MM-DD
@@ -151,12 +152,14 @@ async def delete_deduction(
 # ═══ 固定扣款（员工档案）═══════════════════════════
 
 class FixedDeductionCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     employee_id: int
     name: str
     amount: float
 
 
 class FixedDeductionUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
     name: Optional[str] = None
     amount: Optional[float] = None
 

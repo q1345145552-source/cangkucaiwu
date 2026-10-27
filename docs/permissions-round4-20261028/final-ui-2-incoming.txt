@@ -1,0 +1,33 @@
+SYNTHETIC WH1
+S
+到账流水
+录入到账流水
+到账日期
+金额
+币种
+泰铢 (THB)
+人民币 (CNY)
+收款账户 *
+请选择账户
+SYNTHETIC ACCOUNT 1（THB）
+付款方
+选择客户
+SYNTHETIC · SYNTHETIC
+付款方式
+现金
+银行转账
+支付宝
+微信
+PromptPay
+备注
+截图 非必填
+录入
+下载模板
+查看收款账户编号
+批量导入Excel
+到账日期	金额	币种	付款方	付款方式	匹配状态	录入人	截图
+2026-10-22	30	THB	-	-	未匹配	SYNTHETIC staff 3	
+补传截图
+
+2026-10-22	30	THB	-	-	已匹配	SYNTHETIC staff 3	
+补传截图

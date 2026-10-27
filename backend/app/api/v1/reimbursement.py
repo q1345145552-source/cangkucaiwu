@@ -1,3 +1,4 @@
+from app.core.personal_finance import personal_finance_access
 from app.services import financial_authorization as finance
 from app.services.fund_authorization import identities
 from app.services.fund_authorization import reimbursement_payment_capability
@@ -23,10 +24,12 @@ from app.services.cash_advance_reference import cash_advance_numbers, cash_advan
 router = APIRouter(dependencies=[Depends(mutation_scope)])
 
 class ReimbItemCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     category: str; amount: float; description: Optional[str] = None
     receipt: Optional[str] = None
 
 class ReimbCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     items: List[ReimbItemCreate]; submit_date: str; currency: str = "THB"
     is_fund_linked: Optional[str] = "0"
 
@@ -59,7 +62,7 @@ async def _payment_reimb(db, reimb_id, user, *, lock=False):
 
 @router.get("/payment-sources")
 async def payment_sources(reimbursement_id: int, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
+                          db: AsyncSession = Depends(get_db), _perm=Depends(personal_finance_access("报销管理"))):
     from app.models.customer import PaymentAccount
     from app.models.cash_advance import CashAdvance
     from app.services.account_balances import current_account_balances
@@ -86,7 +89,7 @@ async def payment_sources(reimbursement_id: int, current_user: User = Depends(ge
 @router.post("/payment-voucher")
 async def payment_voucher(reimbursement_id: int = Form(...), file: UploadFile = File(...),
                           current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-                          _perm=Depends(check_staff_permission("报销管理"))):
+                          _perm=Depends(personal_finance_access("报销管理"))):
     import os, uuid
     from app.services.image_utils import is_image, save_image
     r = await _payment_reimb(db, reimbursement_id, current_user)
@@ -104,7 +107,7 @@ async def list_reimbursements(
     start_date: str = None, end_date: str = None,
     employee_id: int = None,
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("报销管理")),
+    _perm=Depends(personal_finance_access("报销管理")),
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -112,6 +115,9 @@ async def list_reimbursements(
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(Reimbursement.warehouse_id.in_(get_wh_ids(current_user)))
         count_q = count_q.where(Reimbursement.warehouse_id.in_(get_wh_ids(current_user)))
+    if getattr(current_user, '_personal_finance', False):
+        query = query.where(Reimbursement.employee_id.in_(current_user._personal_user_ids))
+        count_q = count_q.where(Reimbursement.employee_id.in_(current_user._personal_user_ids))
     if month:
         query = query.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(Reimbursement.submit_date, 'YYYY-MM') == month)
@@ -154,7 +160,7 @@ async def list_reimbursements(
 @router.post("", dependencies=[Depends(require_non_labor)])
 async def create_reimbursement(req: ReimbCreate, current_user: User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db),
-                                _perm=Depends(check_staff_permission("报销管理"))):
+                                _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
@@ -221,7 +227,7 @@ async def export_reimbursements(
     start_date: str = Query(None), end_date: str = Query(None),
     employee_id: int = Query(None),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-    _perm=Depends(check_staff_permission("报销管理")),
+    _perm=Depends(personal_finance_access("报销管理")),
 ):
     """导出报销单为 Excel"""
     from fastapi.responses import StreamingResponse
@@ -283,7 +289,7 @@ DEFAULT_REIMB_CATEGORIES = ["交通费", "餐饮费", "办公用品", "通讯费
 @router.get("/categories", dependencies=[Depends(require_non_labor)])
 async def list_reimb_categories(current_user: User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db),
-                                _perm=Depends(check_staff_permission("报销管理"))):
+                                _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     wh_id = get_wh_id(current_user)
@@ -308,7 +314,7 @@ async def list_reimb_categories(current_user: User = Depends(get_current_user),
 @router.get("/{reimb_id}")
 async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db),
-                           _perm=Depends(check_staff_permission("报销管理"))):
+                           _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id))
@@ -339,7 +345,7 @@ async def get_reimb_detail(reimb_id: int, current_user: User = Depends(get_curre
 @router.put("/{reimb_id}", dependencies=[Depends(require_non_labor)])
 async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depends(get_current_user),
                      db: AsyncSession = Depends(get_db),
-                     _perm=Depends(check_staff_permission("报销管理"))):
+                     _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id).with_for_update())
@@ -378,7 +384,7 @@ async def edit_reimb(reimb_id: int, req: ReimbCreate, current_user: User = Depen
 @router.delete("/{reimb_id}")
 async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db),
-                       _perm=Depends(check_staff_permission("报销管理"))):
+                       _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -433,7 +439,7 @@ async def delete_reimb(reimb_id: int, current_user: User = Depends(get_current_u
 @router.post("/{reimb_id}/submit", dependencies=[Depends(require_non_labor)])
 async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db),
-                       _perm=Depends(check_staff_permission("报销管理"))):
+                       _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     result = await db.execute(select(Reimbursement).where(Reimbursement.id == reimb_id).with_for_update())
@@ -453,7 +459,7 @@ async def submit_reimb(reimb_id: int, current_user: User = Depends(get_current_u
     await db.flush(); return {"message": "已提交审批"}
 
 @router.post("/{reimb_id}/verify")
-async def verify_reimb(reimb_id: int, current_user: User = Depends(check_staff_permission("报销管理")), db: AsyncSession = Depends(get_db)):
+async def verify_reimb(reimb_id: int, current_user: User = Depends(personal_finance_access("报销管理")), db: AsyncSession = Depends(get_db)):
     finance.accountant(current_user)
     r = await _payment_reimb(db, reimb_id, current_user, lock=True)
     own_scope(current_user, r.warehouse_id)
@@ -465,7 +471,7 @@ async def verify_reimb(reimb_id: int, current_user: User = Depends(check_staff_p
     return {'message': '凭证已核验，等待管理员批准，尚未付款'}
 
 @router.post("/{reimb_id}/return-to-draft")
-async def return_reimb(reimb_id: int, current_user: User = Depends(check_staff_permission("报销管理")), db: AsyncSession = Depends(get_db)):
+async def return_reimb(reimb_id: int, current_user: User = Depends(personal_finance_access("报销管理")), db: AsyncSession = Depends(get_db)):
     finance.approver(current_user)
     r = await _payment_reimb(db, reimb_id, current_user, lock=True)
     own_scope(current_user, r.warehouse_id)
@@ -483,7 +489,7 @@ async def return_reimb(reimb_id: int, current_user: User = Depends(check_staff_p
 @router.post("/{reimb_id}/review", dependencies=[Depends(mutation_scope)])
 async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_db),
-                       _perm=Depends(check_staff_permission("报销管理"))):
+                       _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -577,7 +583,7 @@ async def review_reimb(reimb_id: int, req: ReimbReview, current_user: User = Dep
 @router.post("/{reimb_id}/pay", dependencies=[Depends(mutation_scope)])
 async def pay_reimb(reimb_id: int, req: ReimbPay | None = None, current_user: User = Depends(get_current_user),
                     db: AsyncSession = Depends(get_db),
-                    _perm=Depends(check_staff_permission("报销管理"))):
+                    _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
@@ -588,7 +594,7 @@ async def pay_reimb(reimb_id: int, req: ReimbPay | None = None, current_user: Us
 
 @router.get("/{reimb_id}/payments")
 async def payment_history(reimb_id: int, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
+                          db: AsyncSession = Depends(get_db), _perm=Depends(personal_finance_access("报销管理"))):
     r = await _payment_reimb(db, reimb_id, current_user)
     rows = (await db.execute(select(ReimbursementPayment).where(
         ReimbursementPayment.reimbursement_id == r.id, ReimbursementPayment.warehouse_id == r.warehouse_id,
@@ -599,7 +605,7 @@ async def payment_history(reimb_id: int, current_user: User = Depends(get_curren
 
 @router.post("/{reimb_id}/revoke-payment", dependencies=[Depends(reject_disabled_financial_reversal)])
 async def revoke_payment(reimb_id: int, req: RevokePayment | None = None, current_user: User = Depends(get_current_user),
-                         db: AsyncSession = Depends(get_db), _perm=Depends(check_staff_permission("报销管理"))):
+                         db: AsyncSession = Depends(get_db), _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role != Role.WAREHOUSE_ADMIN: raise HTTPException(403, "只有仓库管理员可以撤销报销付款")
     reason = ((req.reason if req else None) or "").strip()
     if not reason: raise HTTPException(400, "请填写撤销原因")
@@ -611,7 +617,7 @@ async def revoke_payment(reimb_id: int, req: RevokePayment | None = None, curren
 @router.post("/categories")
 async def create_reimb_category(req: CategoryReq, current_user: User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db),
-                                _perm=Depends(check_staff_permission("报销管理"))):
+                                _perm=Depends(personal_finance_access("报销管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):

@@ -1,0 +1,427 @@
+docs/permissions-round4-20261028/final-ui-1-deduction-templates.txt:18: trailing whitespace.
++AUDIT DEDUCT 1	
+docs/permissions-round4-20261028/final-ui-1-deduction-templates.txt:20: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-deduction-templates.txt:22: trailing whitespace.
++	0.5倍	3	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:27: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:30: trailing whitespace.
++	audit-1	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:31: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:33: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:36: trailing whitespace.
++	synthetic-finance-no-menu	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:37: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:39: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:42: trailing whitespace.
++	audit-6	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:43: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:45: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:48: trailing whitespace.
++	audit-5	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:49: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:51: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:54: trailing whitespace.
++	audit-2	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:55: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:57: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:60: trailing whitespace.
++	audit-3	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-1-employees.txt:61: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-1-incoming.txt:41: trailing whitespace.
++2026-10-22	30	THB	-	-	未匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/final-ui-1-incoming.txt:44: trailing whitespace.
++2026-10-22	30	THB	-	-	已匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/final-ui-1-operating.txt:55: trailing whitespace.
++2026-10-22	其他	SYNTHETIC ACCOUNT 1	฿12	THB	SYNTHETIC	无	
+docs/permissions-round4-20261028/final-ui-1-other-income-expense.txt:38: trailing whitespace.
++2026-10-22	SYNTHETIC INCOME	-	฿20	THB	-	
+docs/permissions-round4-20261028/final-ui-1-salary-templates.txt:18: trailing whitespace.
++AUDIT SALARY 1	按天	400	0	3	
+docs/permissions-round4-20261028/final-ui-2-deduction-templates.txt:5: trailing whitespace.
++AUDIT DEDUCT 1	
+docs/permissions-round4-20261028/final-ui-2-deduction-templates.txt:7: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-deduction-templates.txt:9: trailing whitespace.
++	0.5倍	3	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:13: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:16: trailing whitespace.
++	audit-1	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:17: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:19: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:22: trailing whitespace.
++	synthetic-finance-no-menu	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:23: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:25: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:28: trailing whitespace.
++	audit-6	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:29: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:31: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:34: trailing whitespace.
++	audit-5	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:35: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:37: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:40: trailing whitespace.
++	audit-2	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:41: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:43: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:46: trailing whitespace.
++	audit-3	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-2-employees.txt:47: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-2-incoming.txt:29: trailing whitespace.
++2026-10-22	30	THB	-	-	未匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/final-ui-2-incoming.txt:32: trailing whitespace.
++2026-10-22	30	THB	-	-	已匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/final-ui-2-operating.txt:43: trailing whitespace.
++2026-10-22	其他	SYNTHETIC ACCOUNT 1	฿12	THB	SYNTHETIC	无	
+docs/permissions-round4-20261028/final-ui-2-other-income-expense.txt:26: trailing whitespace.
++2026-10-22	SYNTHETIC INCOME	-	฿20	THB	-	
+docs/permissions-round4-20261028/final-ui-2-salary-templates.txt:5: trailing whitespace.
++AUDIT SALARY 1	按天	400	0	3	
+docs/permissions-round4-20261028/final-ui-3-deduction-templates.txt:19: trailing whitespace.
++AUDIT DEDUCT 1	
+docs/permissions-round4-20261028/final-ui-3-deduction-templates.txt:21: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-deduction-templates.txt:23: trailing whitespace.
++	0.5倍	3	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:27: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:30: trailing whitespace.
++	audit-1	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:31: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:33: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:36: trailing whitespace.
++	synthetic-finance-no-menu	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:37: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:39: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:42: trailing whitespace.
++	audit-6	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:43: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:45: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:48: trailing whitespace.
++	audit-5	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:49: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:51: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:54: trailing whitespace.
++	audit-2	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:55: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:57: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:60: trailing whitespace.
++	audit-3	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/final-ui-3-employees.txt:61: trailing whitespace.
++	
+docs/permissions-round4-20261028/final-ui-3-incoming.txt:43: trailing whitespace.
++2026-10-22	30	THB	-	-	未匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/final-ui-3-incoming.txt:46: trailing whitespace.
++2026-10-22	30	THB	-	-	已匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/final-ui-3-operating.txt:57: trailing whitespace.
++2026-10-22	其他	SYNTHETIC ACCOUNT 1	฿12	THB	SYNTHETIC	无	
+docs/permissions-round4-20261028/final-ui-3-other-income-expense.txt:40: trailing whitespace.
++2026-10-22	SYNTHETIC INCOME	-	฿20	THB	-	
+docs/permissions-round4-20261028/final-ui-3-salary-templates.txt:19: trailing whitespace.
++AUDIT SALARY 1	按天	400	0	3	
+docs/permissions-round4-20261028/raw-logs/build-01.log:9: trailing whitespace.
++   Generating static pages (14/57) 
+docs/permissions-round4-20261028/raw-logs/build-01.log:10: trailing whitespace.
++   Generating static pages (28/57) 
+docs/permissions-round4-20261028/raw-logs/build-01.log:11: trailing whitespace.
++   Generating static pages (42/57) 
+docs/permissions-round4-20261028/raw-logs/build-01.log:83: new blank line at EOF.
+docs/permissions-round4-20261028/raw-logs/build-final-04.log:9: trailing whitespace.
++   Generating static pages (14/57) 
+docs/permissions-round4-20261028/raw-logs/build-final-04.log:10: trailing whitespace.
++   Generating static pages (28/57) 
+docs/permissions-round4-20261028/raw-logs/build-final-04.log:11: trailing whitespace.
++   Generating static pages (42/57) 
+docs/permissions-round4-20261028/raw-logs/build-final-04.log:83: new blank line at EOF.
+docs/permissions-round4-20261028/raw-logs/initdb.log:23: new blank line at EOF.
+docs/permissions-round4-20261028/raw-logs/postgres.log:22: trailing whitespace.
++2026-10-28 04:18:55.910 +07 [77819] STATEMENT:  
+docs/permissions-round4-20261028/raw-logs/postgres.log:25: trailing whitespace.
++	                    
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:11: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:14: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:20: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:25: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:31: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:36: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:43: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.log:46: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:5: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:8: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:12: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:17: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:21: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:26: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:31: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-01.xml:34: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:19: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:36: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:53: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:62: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:65: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:71: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:76: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:126: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:131: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:146: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:163: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:180: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:189: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.log:192: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:13: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:28: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:43: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:50: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:53: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:57: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:62: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:104: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:109: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:122: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:137: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:152: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:159: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-baseline.xml:162: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:359: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:374: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:477: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:480: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:484: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:489: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:564: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:569: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:582: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:597: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:612: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:630: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:633: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:969: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:1247: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:1261: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related-initial.xml:1275: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:11: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:14: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:20: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:25: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:31: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:36: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:43: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.log:46: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:5: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:8: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:12: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:17: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:21: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:26: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:31: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/regression-related.xml:34: trailing whitespace.
++E     
+docs/permissions-round4-20261028/raw-logs/round3-01.log:24: trailing whitespace.
++A-supervisor-self-payslip 200 PASS {'data': [{'id': 3, 'period': '2026-10', 'half': 'first_half', 'settle_start_date': '2026-10-01', 'settle_end_date': '2026-10-15', 'status': 'confirmed', 'disbursed': True, 'disbursed_at': None, 'employee_name': 'SYNTHETIC EMP 2', 'employee_status': 
+docs/permissions-round4-20261028/raw-logs/round3-final.log:24: trailing whitespace.
++A-supervisor-self-payslip 200 PASS {'data': [{'id': 3, 'period': '2026-10', 'half': 'first_half', 'settle_start_date': '2026-10-01', 'settle_end_date': '2026-10-15', 'status': 'confirmed', 'disbursed': True, 'disbursed_at': None, 'employee_name': 'SYNTHETIC EMP 2', 'employee_status': 
+docs/permissions-round4-20261028/ui-1-deduction-templates.txt:18: trailing whitespace.
++AUDIT DEDUCT 1	
+docs/permissions-round4-20261028/ui-1-deduction-templates.txt:20: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-deduction-templates.txt:22: trailing whitespace.
++	0.5倍	3	
+docs/permissions-round4-20261028/ui-1-employees.txt:27: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-employees.txt:30: trailing whitespace.
++	audit-6	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-1-employees.txt:31: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-employees.txt:33: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-employees.txt:36: trailing whitespace.
++	audit-5	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-1-employees.txt:37: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-employees.txt:39: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-employees.txt:42: trailing whitespace.
++	audit-2	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-1-employees.txt:43: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-employees.txt:45: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-employees.txt:48: trailing whitespace.
++	audit-3	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-1-employees.txt:49: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-1-incoming.txt:41: trailing whitespace.
++2026-10-22	30	THB	-	-	未匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/ui-1-incoming.txt:44: trailing whitespace.
++2026-10-22	30	THB	-	-	已匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/ui-1-operating.txt:55: trailing whitespace.
++2026-10-22	其他	SYNTHETIC ACCOUNT 1	฿12	THB	SYNTHETIC	无	
+docs/permissions-round4-20261028/ui-1-other-income-expense.txt:38: trailing whitespace.
++2026-10-22	SYNTHETIC INCOME	-	฿20	THB	-	
+docs/permissions-round4-20261028/ui-1-salary-templates.txt:18: trailing whitespace.
++AUDIT SALARY 1	按天	400	0	3	
+docs/permissions-round4-20261028/ui-2-deduction-templates.txt:5: trailing whitespace.
++AUDIT DEDUCT 1	
+docs/permissions-round4-20261028/ui-2-deduction-templates.txt:7: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-2-deduction-templates.txt:9: trailing whitespace.
++	0.5倍	3	
+docs/permissions-round4-20261028/ui-2-incoming.txt:29: trailing whitespace.
++2026-10-22	30	THB	-	-	未匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/ui-2-incoming.txt:32: trailing whitespace.
++2026-10-22	30	THB	-	-	已匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/ui-2-other-income-expense.txt:26: trailing whitespace.
++2026-10-22	SYNTHETIC INCOME	-	฿20	THB	-	
+docs/permissions-round4-20261028/ui-2-salary-templates.txt:5: trailing whitespace.
++AUDIT SALARY 1	按天	400	0	3	
+docs/permissions-round4-20261028/ui-3-deduction-templates.txt:19: trailing whitespace.
++AUDIT DEDUCT 1	
+docs/permissions-round4-20261028/ui-3-deduction-templates.txt:21: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-deduction-templates.txt:23: trailing whitespace.
++	0.5倍	3	
+docs/permissions-round4-20261028/ui-3-employees.txt:27: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-employees.txt:30: trailing whitespace.
++	audit-6	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-3-employees.txt:31: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-employees.txt:33: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-employees.txt:36: trailing whitespace.
++	audit-5	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-3-employees.txt:37: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-employees.txt:39: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-employees.txt:42: trailing whitespace.
++	audit-2	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-3-employees.txt:43: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-employees.txt:45: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-employees.txt:48: trailing whitespace.
++	audit-3	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+docs/permissions-round4-20261028/ui-3-employees.txt:49: trailing whitespace.
++	
+docs/permissions-round4-20261028/ui-3-incoming.txt:43: trailing whitespace.
++2026-10-22	30	THB	-	-	未匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/ui-3-incoming.txt:46: trailing whitespace.
++2026-10-22	30	THB	-	-	已匹配	SYNTHETIC staff 3	
+docs/permissions-round4-20261028/ui-3-operating.txt:57: trailing whitespace.
++2026-10-22	其他	SYNTHETIC ACCOUNT 1	฿12	THB	SYNTHETIC	无	
+docs/permissions-round4-20261028/ui-3-other-income-expense.txt:40: trailing whitespace.
++2026-10-22	SYNTHETIC INCOME	-	฿20	THB	-	
+docs/permissions-round4-20261028/ui-3-salary-templates.txt:19: trailing whitespace.
++AUDIT SALARY 1	按天	400	0	3	

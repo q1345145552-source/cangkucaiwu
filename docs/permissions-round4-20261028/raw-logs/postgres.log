@@ -1,0 +1,43 @@
+2026-10-28 04:03:28.355 +07 [75682] LOG:  starting PostgreSQL 16.2 on aarch64-apple-darwin23.5.0, compiled by Apple clang version 15.0.0 (clang-1500.0.40.1), 64-bit
+2026-10-28 04:03:28.355 +07 [75682] LOG:  listening on IPv4 address "127.0.0.1", port 65389
+2026-10-28 04:03:28.355 +07 [75682] LOG:  listening on Unix socket "/private/tmp/permissions-round4-env/socket/.s.PGSQL.65389"
+2026-10-28 04:03:28.357 +07 [75685] LOG:  database system was shut down at 2026-10-28 04:03:28 +07
+2026-10-28 04:03:28.357 +07 [75682] LOG:  database system is ready to accept connections
+2026-10-28 04:04:58.282 +07 [75798] ERROR:  insert or update on table "users" violates foreign key constraint "users_attendance_employee_id_fkey"
+2026-10-28 04:04:58.282 +07 [75798] DETAIL:  Key (attendance_employee_id)=(6) is not present in table "employees".
+2026-10-28 04:04:58.282 +07 [75798] STATEMENT:  UPDATE users SET attendance_enabled=$1::BOOLEAN, attendance_employee_id=$2::INTEGER, updated_at=now() WHERE users.id = $3::INTEGER
+2026-10-28 04:05:28.347 +07 [75831] ERROR:  value too long for type character varying(20)
+2026-10-28 04:05:28.347 +07 [75831] STATEMENT:  INSERT INTO data_change_history (module, record_id, operator_id, operator_name, operation_type, before_data, after_data, warehouse_id) VALUES ($1::VARCHAR, $2::INTEGER, $3::INTEGER, $4::VARCHAR, $5::VARCHAR, $6::JSON, $7::JSON, $8::INTEGER) RETURNING data_change_history.id, data_change_history.created_at
+2026-10-28 04:05:28.463 +07 [75831] ERROR:  value too long for type character varying(20)
+2026-10-28 04:05:28.463 +07 [75831] STATEMENT:  INSERT INTO data_change_history (module, record_id, operator_id, operator_name, operation_type, before_data, after_data, warehouse_id) VALUES ($1::VARCHAR, $2::INTEGER, $3::INTEGER, $4::VARCHAR, $5::VARCHAR, $6::JSON, $7::JSON, $8::INTEGER) RETURNING data_change_history.id, data_change_history.created_at
+2026-10-28 04:08:28.268 +07 [75683] LOG:  checkpoint starting: time
+2026-10-28 04:12:58.463 +07 [75683] LOG:  checkpoint complete: wrote 5835 buffers (35.6%); 0 WAL file(s) added, 0 removed, 4 recycled; write=269.744 s, sync=0.282 s, total=270.196 s; sync files=17032, longest=0.001 s, average=0.001 s; distance=76503 kB, estimate=76503 kB; lsn=0/9FCCEB0, redo lsn=0/5F4E5C8
+2026-10-28 04:13:28.811 +07 [75683] LOG:  checkpoint starting: time
+2026-10-28 04:17:58.628 +07 [75683] LOG:  checkpoint complete: wrote 3136 buffers (19.1%); 0 WAL file(s) added, 0 removed, 5 recycled; write=269.232 s, sync=0.212 s, total=269.817 s; sync files=7466, longest=0.002 s, average=0.001 s; distance=80161 kB, estimate=80161 kB; lsn=0/D57C2A8, redo lsn=0/AD96CA8
+2026-10-28 04:18:28.631 +07 [75683] LOG:  checkpoint starting: time
+2026-10-28 04:18:54.937 +07 [77816] ERROR:  relation "intentionally_missing_table" does not exist at character 15
+2026-10-28 04:18:54.937 +07 [77816] STATEMENT:  SELECT * FROM intentionally_missing_table
+2026-10-28 04:18:55.910 +07 [77819] ERROR:  null value in column "warehouse_id" of relation "system_settings" violates not-null constraint
+2026-10-28 04:18:55.910 +07 [77819] DETAIL:  Failing row contains (1, null, supervisor_perms_backfilled_v1, true, null, 2026-10-28 04:18:55.422125+07).
+2026-10-28 04:18:55.910 +07 [77819] STATEMENT:  
+	                        INSERT INTO system_settings (warehouse_id, key, value)
+	                        SELECT MIN(id), 'supervisor_perms_backfilled_v1', 'true' FROM warehouses
+	                    
+2026-10-28 04:18:58.462 +07 [75683] LOG:  checkpoint complete: wrote 2327 buffers (14.2%); 0 WAL file(s) added, 0 removed, 4 recycled; write=29.544 s, sync=0.089 s, total=29.831 s; sync files=6404, longest=0.001 s, average=0.001 s; distance=51906 kB, estimate=77336 kB; lsn=0/11088200, redo lsn=0/E047648
+2026-10-28 04:18:58.464 +07 [75683] LOG:  checkpoint starting: immediate force wait
+2026-10-28 04:18:58.699 +07 [75683] LOG:  checkpoint complete: wrote 3081 buffers (18.8%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.079 s, sync=0.013 s, total=0.236 s; sync files=608, longest=0.001 s, average=0.001 s; distance=49411 kB, estimate=74543 kB; lsn=0/110883C0, redo lsn=0/11088388
+2026-10-28 04:19:07.243 +07 [77843] ERROR:  duplicate key value violates unique constraint "leave_requests_pkey"
+2026-10-28 04:19:07.243 +07 [77843] DETAIL:  Key (id)=(12) already exists.
+2026-10-28 04:19:07.243 +07 [77843] STATEMENT:  INSERT INTO leave_requests (id, warehouse_id, employee_id, leave_date, leave_type, photo_path, status, reason, duration_type, hours, notified_at, reviewed_by, reviewed_at) VALUES ($1::INTEGER, $2::INTEGER, $3::INTEGER, $4::DATE, $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::VARCHAR, $9::VARCHAR, $10::FLOAT, $11::TIMESTAMP WITH TIME ZONE, $12::INTEGER, $13::TIMESTAMP WITH TIME ZONE) RETURNING leave_requests.created_at
+2026-10-28 04:21:47.262 +07 [75682] LOG:  received fast shutdown request
+2026-10-28 04:21:47.262 +07 [75682] LOG:  aborting any active transactions
+2026-10-28 04:21:47.263 +07 [77991] FATAL:  terminating connection due to administrator command
+2026-10-28 04:21:47.263 +07 [77989] FATAL:  terminating connection due to administrator command
+2026-10-28 04:21:47.263 +07 [78045] FATAL:  terminating connection due to administrator command
+2026-10-28 04:21:47.263 +07 [77990] FATAL:  terminating connection due to administrator command
+2026-10-28 04:21:47.263 +07 [75682] LOG:  background worker "logical replication launcher" (PID 75688) exited with exit code 1
+2026-10-28 04:21:47.263 +07 [77988] FATAL:  terminating connection due to administrator command
+2026-10-28 04:21:47.266 +07 [75683] LOG:  shutting down
+2026-10-28 04:21:47.266 +07 [75683] LOG:  checkpoint starting: shutdown immediate
+2026-10-28 04:21:47.592 +07 [75683] LOG:  checkpoint complete: wrote 4143 buffers (25.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.197 s, sync=0.059 s, total=0.326 s; sync files=3498, longest=0.001 s, average=0.001 s; distance=35573 kB, estimate=70646 kB; lsn=0/13345860, redo lsn=0/13345860
+2026-10-28 04:21:47.597 +07 [75682] LOG:  database system is shut down

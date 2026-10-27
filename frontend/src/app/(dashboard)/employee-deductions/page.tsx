@@ -1,5 +1,5 @@
 "use client";
-import { useMenuPermission } from "@/hooks/useMenuPermission";
+import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -12,7 +12,7 @@ function todayStr(): string {
 }
 
 export default function EmployeeDeductionsPage() {
-  const canWrite = useMenuPermission("employee_deductions");
+  const canWrite = useBusinessAction("employee_deductions", "rules");
   const { toast } = useToast(); const router = useRouter();
   const [rows, setRows] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);

@@ -1,3 +1,4 @@
+from app.core.round4_access import independent_employee
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.full_day_leave import full_day_net_hours, full_day_clock_warning
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
@@ -94,7 +95,7 @@ async def create_leave(
     duration_type: str = Form("full"),
     hours: str = Form(None),
     file: UploadFile = File(None),
-    current_user: User = Depends(employee_access(_LEAVE_PERMISSION)),
+    current_user: User = Depends(employee_access(_LEAVE_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
     lang = get_request_lang(request)
@@ -120,20 +121,11 @@ async def create_leave(
     if not wh_id:
         raise HTTPException(400, t("please_select_warehouse", lang))
 
-    # Find employee record for this user（排除已删除）
-    if employee_view(current_user):
-        emp = current_user._attendance_employee
-    else:
-        emp = (await db.execute(
-            select(Employee).where(Employee.warehouse_id == wh_id, Employee.phone == current_user.username, Employee.is_deleted == False)
-        )).scalar_one_or_none()
-    if not emp:
-        # Try matching by name
-        emp = (await db.execute(
-            select(Employee).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
-        )).scalar_one_or_none()
-    if not emp:
-        raise HTTPException(400, t("employee_not_found_contact_admin", lang))
+    unexpected = set(await request.form()) - {'leave_date', 'leave_type', 'reason', 'duration_type', 'hours', 'file'}
+    if unexpected:
+        raise HTTPException(400, '请假申请包含不允许的字段')
+    emp = current_user._attendance_employee
+    await db.execute(select(Employee).where(Employee.id == emp.id).with_for_update())
 
     try:
         leave_dt = datetime.strptime(leave_date, "%Y-%m-%d").date()
@@ -179,6 +171,7 @@ async def create_leave(
     return {"message": t("leave_submitted", lang), "id": lr.id}
 
 class LeaveBatchCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     employee_id: int
     start_date: str  # YYYY-MM-DD
     end_date: str    # YYYY-MM-DD
@@ -226,6 +219,8 @@ async def admin_record_leave(
         raise HTTPException(404, "员工不存在")
     if emp.status == "resigned":
         raise HTTPException(400, "该员工已离职，不能代录请假")
+
+    await independent_employee(db, current_user, emp.id)
 
     # 实际报备时间：默认今天；支持 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM
     notified_at = thai_now()
@@ -329,10 +324,13 @@ async def list_leaves(
 async def approve_leave(leave_id: int, current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以审批")
-    lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id))).scalar_one_or_none()
+    lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id).with_for_update())).scalar_one_or_none()
     if not lr: raise HTTPException(404, "请假申请不存在")
     wh_ids = get_wh_ids(current_user)
     if lr.warehouse_id not in wh_ids: raise HTTPException(403, "无权审批其他仓库的申请")
+    await independent_employee(db, current_user, lr.employee_id)
+    if lr.status != 'pending':
+        raise HTTPException(409, '只能审批待处理的请假申请')
     lr.status = "approved"
     lr.reviewed_by = current_user.id
     lr.reviewed_at = thai_now()
@@ -348,10 +346,13 @@ async def approve_leave(leave_id: int, current_user: User = Depends(check_staff_
 async def reject_leave(leave_id: int, reason: str = Form(None), current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以审批")
-    lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id))).scalar_one_or_none()
+    lr = (await db.execute(select(LeaveRequest).where(LeaveRequest.id == leave_id).with_for_update())).scalar_one_or_none()
     if not lr: raise HTTPException(404, "请假申请不存在")
     wh_ids = get_wh_ids(current_user)
     if lr.warehouse_id not in wh_ids: raise HTTPException(403, "无权审批其他仓库的申请")
+    await independent_employee(db, current_user, lr.employee_id)
+    if lr.status not in ('pending', 'approved'):
+        raise HTTPException(409, '只能驳回待处理或已批准的请假申请')
     lr.status = "rejected"
     lr.reason = reason or lr.reason
     lr.reviewed_by = current_user.id

@@ -1,4 +1,5 @@
 "use client";
+import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
@@ -11,6 +12,7 @@ const CATEGORY_GROUP = "other";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function OtherIncomePage() {
+  const canWrite = useBusinessAction("other_income_expense", "bookkeeping");
   const { toast } = useToast(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -160,7 +162,7 @@ export default function OtherIncomePage() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="page-title">其他收入</h1>
         <div className="flex items-center gap-2">
-          <button onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
+          <button aria-disabled={!canWrite} disabled={!canWrite} onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
             <Plus size={16} />新建收入
           </button>
         </div>
@@ -260,8 +262,8 @@ export default function OtherIncomePage() {
                       <td className="px-4 py-3 text-gray-500 max-w-[120px] truncate">{row.remark || "-"}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title="编辑"><Pencil size={15} /></button>
-                          <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="删除"><Trash2 size={15} /></button>
+                          <button disabled={!(canWrite)} onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title="编辑"><Pencil size={15} /></button>
+                          <button disabled={!(canWrite)} onClick={() => handleDelete(row.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="删除"><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>
@@ -283,7 +285,7 @@ export default function OtherIncomePage() {
       </div>
 
       {/* 新建/编辑弹窗 */}
-      {showForm && (
+      {canWrite && showForm && (
         <div className="modal-overlay" onClick={() => resetForm()}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-green-600 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
@@ -303,7 +305,7 @@ export default function OtherIncomePage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => resetForm()} className="btn-secondary">取消</button>
-              <button onClick={editing ? handleEdit : handleCreate} className="btn-primary">{editing ? "保存修改" : "保存"}</button>
+              <button aria-disabled={!canWrite} disabled={!canWrite} onClick={editing ? handleEdit : handleCreate} className="btn-primary">{editing ? "保存修改" : "保存"}</button>
             </div>
           </div>
         </div>

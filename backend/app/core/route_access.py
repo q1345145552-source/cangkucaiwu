@@ -5,12 +5,14 @@ Existing module permissions, business role restrictions and warehouse checks sti
 """
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.routing import APIRoute
+from app.core.round4_access import action_policy, action_guard
 
 from app.core.permissions import Role, get_current_user, require_non_labor, check_staff_permission_any
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY, MENU_PERMISSIONS
 
 
 SELF_ROUTES = {
+    ("clock_in", "request_personal_makeup"), ("clock_in", "list_makeup_requests"),
     ("clock_in", "clock_in"), ("clock_in", "get_today"),
     ("clock_in", "list_records"), ("clock_in", "get_photos"),
     ("attendance", "create_leave"), ("attendance", "list_leaves"),
@@ -67,6 +69,9 @@ class ManagementRouter(APIRouter):
             module = route.endpoint.__module__.rsplit(".", 1)[-1]
             key = (module, route.endpoint.__name__)
             dependencies = []
+            policy = action_policy(module, key[1], route.methods)
+            if policy:
+                dependencies.append(Depends(action_guard(policy)))
             if key in ACCOUNT_UTILITIES:
                 kind = "account_utility"
             elif key in SELF_ROUTES:

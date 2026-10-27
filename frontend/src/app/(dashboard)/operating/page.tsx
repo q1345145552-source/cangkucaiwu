@@ -1,4 +1,5 @@
 "use client";
+import { useBusinessAction } from "@/hooks/useMenuPermission";
 import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
@@ -22,6 +23,7 @@ function monthStartStr(): string {
 }
 
 export default function OperatingPage() {
+  const canWrite = useBusinessAction("operating", "bookkeeping");
   const cost=useCostIdentity();
   const { toast } = useToast(); const router = useRouter();
   const [chartCurrency, setChartCurrency] = useState("THB");
@@ -366,7 +368,7 @@ export default function OperatingPage() {
             <span className="text-gray-400 text-xs">至</span>
             <input type="date" value={dateRange.end_date} onChange={e => { setDateRange({ ...dateRange, end_date: e.target.value }); setExpPage(1); }} className="form-input text-sm w-[140px]" />
           </div>
-          {queryReady && !reportView && <button onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
+          {queryReady && !reportView && <button disabled={!canWrite} onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
             <Plus size={16} />录入支出
           </button>}
         </div>
@@ -436,8 +438,8 @@ export default function OperatingPage() {
                 } },
               ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.source === "payable" ? `采购付款记录 #${row.source_id}` : row.source === "cash_advance_repayment" ? `归还垫款 #${row.cash_advance_id}` : row.payroll_record_id ? `工资单 #${row.payroll_record_id}` : row.reimbursement_id ? `报销单 #${row.reimbursement_id}` : row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? `预支单 #${row.employee_advance_id}` : row.source === "expense_fund" ? "历史备用金拨付" : "业务联动明细"}</span> : (
                   <div className="flex items-center gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
-                    <button onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
+                    <button disabled={!(canWrite)} onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
+                    <button disabled={!(canWrite)} onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
                     <button onClick={(e) => { e.stopPropagation(); openHistory(row); }} className="text-gray-500 hover:underline text-xs font-medium">历史</button>
                   </div>
                 ) }] : []),
@@ -484,7 +486,7 @@ export default function OperatingPage() {
 
       {/* 录入弹窗 */}
       {cost.dialog}
-      {showForm && (
+      {canWrite && showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div role="dialog" aria-label="录入运营支出" className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
@@ -518,14 +520,14 @@ export default function OperatingPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={closeForm} className="btn-secondary">取消</button>
-              <button onClick={()=>handleCreate()} className="btn-primary">保存</button>
+              <button disabled={!(canWrite)} onClick={()=>handleCreate()} className="btn-primary">保存</button>
             </div>
           </div>
         </div>
       )}
 
       {/* 编辑弹窗 */}
-      {editingExpense && (
+      {canWrite && editingExpense && (
         <div className="modal-overlay" onClick={closeEdit}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
@@ -579,7 +581,7 @@ export default function OperatingPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={closeEdit} className="btn-secondary">取消</button>
-              <button onClick={()=>handleEditSave()} className="btn-primary">保存</button>
+              <button disabled={!(canWrite)} onClick={()=>handleEditSave()} className="btn-primary">保存</button>
             </div>
           </div>
         </div>
@@ -622,14 +624,14 @@ export default function OperatingPage() {
       )}
 
       {/* 删除记录确认 */}
-      {deletingExpense && (
+      {canWrite && deletingExpense && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingExpense(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除支出</h3>
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这笔支出吗？删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeletingExpense(null)} className="btn-secondary">取消</button>
-              <button onClick={handleDeleteExpense} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
+              <button disabled={!(canWrite)} onClick={() => setDeletingExpense(null)} className="btn-secondary">取消</button>
+              <button aria-disabled={!canWrite} disabled={!canWrite} onClick={handleDeleteExpense} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
             </div>
           </div>
         </div>

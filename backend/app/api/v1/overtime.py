@@ -1,3 +1,4 @@
+from app.core.round4_access import independent_employee
 from app.core.round2_access import mutation_scope
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
@@ -28,6 +29,7 @@ router = APIRouter()
 # ═══ Schemas ════════════════════════════
 
 class OvertimeCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     employee_ids: List[int]
     date: str  # YYYY-MM-DD
     start_time: str  # HH:MM
@@ -44,15 +46,18 @@ class OvertimeCreate(BaseModel):
 
 
 class OvertimeLimitSet(BaseModel):
+    model_config = {"extra": "forbid"}
     max_hours: float
 
 
 class OvertimeVerifyItem(BaseModel):
+    model_config = {"extra": "forbid"}
     assignment_id: int
     actual_hours: Optional[float] = None
 
 
 class OvertimeVerify(BaseModel):
+    model_config = {"extra": "forbid"}
     assignments: List[OvertimeVerifyItem]
 
 
@@ -219,7 +224,7 @@ async def verify_overtime(
         select(OvertimeTask).where(
             OvertimeTask.id == task_id,
             OvertimeTask.warehouse_id.in_(wh_ids),
-        )
+        ).with_for_update()
     )).scalar_one_or_none()
     if not task:
         raise HTTPException(404, t("overtime_task_not_found", lang))
@@ -265,14 +270,10 @@ async def verify_overtime(
         else:
             to_verify.append((item, a))
 
-    # 按本次实际要写入的逐人分配记录判断本人，不使用姓名或整单发起人。
-    if current_user.role == Role.SUPERVISOR:
-        for _, a in to_verify:
-            emp = emp_map.get(a.employee_id)
-            if (a.user_id == current_user.id
-                    or (emp is not None and emp.user_id == current_user.id)
-                    or a.employee_id == current_user.attendance_employee_id):
-                raise HTTPException(403, "本人不能核实自己的加班")
+    for _, assignment in to_verify:
+        await independent_employee(db, current_user, assignment.employee_id, related_user_id=assignment.user_id, message="本人不能核实自己的加班")
+    if len({item.assignment_id for item in req.assignments}) != len(req.assignments):
+        raise HTTPException(400, '核实明细不能重复')
 
     # 月度上限校验（整批，保存前）：本月已核实用实际、未核实用计划、本次用新填的实际
     limit_hours = await _get_monthly_limit(db, task.warehouse_id)
@@ -853,7 +854,7 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
         user = (await db.execute(
             select(User).where(
                 User.id == emp.user_id,
-                or_(User.role == "warehouse_labor", and_(User.role == "supervisor", User.attendance_enabled == True, User.attendance_employee_id == emp.id, User.warehouse_id == emp.warehouse_id)),
+                or_(User.role == "warehouse_labor", and_(User.role.in_(("supervisor", "staff")), User.attendance_enabled == True, User.attendance_employee_id == emp.id, User.warehouse_id == emp.warehouse_id)),
                 User.is_active == True,
             )
         )).scalar_one_or_none()

@@ -1,0 +1,29 @@
+{
+  "command": [
+    "/tmp/supplier01-py312/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=short",
+    "tests/test_admin_record_leave.py",
+    "tests/test_batch_makeup.py",
+    "tests/test_batch_makeup_migration_postgres.py",
+    "tests/test_early_departure_leave.py",
+    "tests/test_employee_limit_routes.py",
+    "tests/test_employee_nationality.py",
+    "tests/test_full_day_leave.py",
+    "tests/test_half_day_leave.py",
+    "tests/test_hourly_leave_net.py",
+    "tests/test_incoming_operations.py",
+    "tests/test_makeup_batch_migration_postgres.py",
+    "tests/test_makeup_batches.py",
+    "tests/test_other_income_currency.py",
+    "tests/test_round12_attendance_identity.py",
+    "tests/test_round13_attendance_binding.py",
+    "tests/test_round15_employee_self.py",
+    "tests/test_round19_overtime_self_review.py",
+    "--junitxml=/private/tmp/permissions-round4-env/logs/regression-related-01.xml"
+  ],
+  "cwd": "/private/tmp/permissions-round4-20261028/backend",
+  "database": "postgresql+asyncpg://round4@127.0.0.1:65389/regression"
+}

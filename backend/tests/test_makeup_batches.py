@@ -130,7 +130,7 @@ def test_other_roles_cannot_list_or_revoke(tmp_path, monkeypatch, uid):
             before = await records_snapshot(f)
             for method, path in (("GET", BASE + "/makeup-batches"), ("POST", f"{BASE}/makeup-batches/{created['batch_id']}/revoke")):
                 r = await c.request(method, path, headers=auth(uid))
-                assert r.status_code == 403 and r.json() == {"detail": "只能由仓库管理员查看或撤销补卡批次"}
+                assert r.status_code == 403 and r.json() == {"detail": "超级管理员请使用各仓库管理员账号操作" if uid == 2 else "无权访问" if uid in (5,6) else "只能由仓库管理员查看或撤销补卡批次"}
             assert await records_snapshot(f) == before
     asyncio.run(run())
 
@@ -158,7 +158,9 @@ def test_history_warehouse_filter_pagination_and_unknown_batch(tmp_path, monkeyp
                 assert (await c.get(BASE + "/makeup-batches?" + query, headers=auth(1))).status_code == code
             for bid in (other, 999):
                 r = await c.post(f"{BASE}/makeup-batches/{bid}/revoke", headers={**auth(1), "X-Warehouse-ID": "2"}, json={})
-                assert r.status_code == 404
+                assert r.status_code == 403
+                unknown = await c.post(f"{BASE}/makeup-batches/{bid}/revoke", headers=auth(1), json={})
+                assert unknown.status_code == 404
             # 授权多仓管理员选择仓2时，也只列出/撤销该当前仓，不能碰仓1。
             async with f() as db: db.add(UserWarehouse(user_id=1, warehouse_id=2)); await db.commit()
             r = await c.get(BASE + "/makeup-batches", headers={**auth(1), "X-Warehouse-ID": "2"})

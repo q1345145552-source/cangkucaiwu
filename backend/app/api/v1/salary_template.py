@@ -20,6 +20,7 @@ TYPE_LABELS = {"hourly": "按小时", "daily": "按天", "monthly": "按月"}
 
 
 class SalaryTemplateCreate(BaseModel):
+    model_config = {"extra": "forbid"}
     name: str
     type: str  # hourly / daily / monthly
     amount: float
@@ -28,6 +29,7 @@ class SalaryTemplateCreate(BaseModel):
 
 
 class SalaryTemplateUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
     name: Optional[str] = None
     type: Optional[str] = None
     amount: Optional[float] = None

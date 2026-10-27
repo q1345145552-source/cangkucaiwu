@@ -2203,12 +2203,6 @@ async def revoke_disbursement(
 # ═══ Employee Self-View Payslip ═══════════════
 
 async def payroll_self_identity(request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if user.role == Role.STAFF:
-        emp=(await db.execute(select(Employee).where(Employee.user_id==user.id,Employee.warehouse_id==user.warehouse_id,Employee.is_deleted==False))).scalar_one_or_none()
-        if emp is None:raise HTTPException(403,'请先关联本人正式员工档案')
-        user._employee_view=True;user._attendance_employee=emp
-        user._active_wh_id=emp.warehouse_id;user._warehouse_ids=[emp.warehouse_id]
-        return user
     return await employee_access(_PERMISSION,self_only=True)(request,user,db)
 
 @router.get("/pending-resignations")

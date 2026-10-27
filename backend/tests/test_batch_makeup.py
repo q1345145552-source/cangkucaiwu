@@ -50,7 +50,7 @@ def test_only_warehouse_admin(tmp_path, monkeypatch, uid):
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
             await set_perms(f, uid, ["考勤"])
             r = await c.post("/api/v1/clock-in/batch-makeup", headers=auth(uid), json=BODY)
-            assert r.status_code == 403 and r.json() == {"detail": "只能由仓库管理员批量补卡"}
+            assert r.status_code == 403 and r.json() == {"detail": "超级管理员请使用各仓库管理员账号操作" if uid == 2 else "无权访问" if uid in (5,6) else "只能由仓库管理员批量补卡"}
             async with f() as db:
                 assert not (await db.execute(select(ClockInRecord))).first()
             print("BATCH_ROLE", uid, r.status_code, r.json())
@@ -143,6 +143,8 @@ def test_invalid_batch_is_atomic(tmp_path, monkeypatch, patch, status):
             async with f() as db:
                 before = [tuple(x) for x in (await db.execute(select(ClockInRecord.__table__))).all()]
             r = await c.post("/api/v1/clock-in/batch-makeup", headers={**auth(1), "X-Warehouse-ID": "2"}, json={**BODY, **patch})
+            assert r.status_code == 403, r.text  # R04 rejects a forged selected warehouse first.
+            r = await c.post("/api/v1/clock-in/batch-makeup", headers=auth(1), json={**BODY, **patch})
             assert r.status_code == status, r.text
             async with f() as db:
                 assert [tuple(x) for x in (await db.execute(select(ClockInRecord.__table__))).all()] == before

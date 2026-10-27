@@ -80,7 +80,7 @@ def test_acceptance_and_validation(tmp_path, monkeypatch):
             await call('unspecified_with_id','POST',json=new_employee('unknown-id',thai_id_number='1234567890123'))
             from tests.test_round2_permissions import set_perms
             await set_perms(factory,4,['员工档案'])
-            await call('supervisor_create_foreign','POST',uid=4,json=new_employee('supervisor',nationality='中国',passport_number='CN-TEST-001',bank_account_number='00123456'))
+            await call('supervisor_create_foreign','POST',uid=4,expected=403,json=new_employee('supervisor',nationality='中国',passport_number='CN-TEST-001',bank_account_number='00123456'))
             await call('worker_cannot_read_management','GET',uid=5,expected=403)
             await call('foreign_warehouse_cannot_edit','PUT','/2',json={'bank_account_number':'tampered'},expected=403)
             assert await snapshot(factory)==prior_payroll
@@ -136,7 +136,9 @@ def test_bank_metadata_does_not_change_salary_or_block_payment(tmp_path,monkeypa
                 account.opening_balance=10000
                 account.currency='THB'
                 await db.commit()
-            paid=await client.post('/api/v1/payroll/2/disburse',headers=auth(1),json={'account_id':1})
+            from tests.round3_flow_support import prepare_payroll
+            await prepare_payroll(factory, client, 2)
+            paid=await client.post('/api/v1/payroll/2/disburse',headers=auth(3),json={'account_id':1})
             assert paid.status_code==200,paid.text
             assert paid.json()['net_pay']==1234.56
             async with factory() as db:

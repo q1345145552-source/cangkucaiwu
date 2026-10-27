@@ -42,7 +42,7 @@ def test_enabled_supervisor_real_self_flow_and_manager_separation(tmp_path,monke
    r=await c.post('/api/v1/overtime/20/confirm',headers=auth(4));assert r.status_code==200,r.text
    r=await c.post('/api/v1/overtime/21/dispute',headers=auth(4),data={'reason':'实际工时不符'},files={'file':('proof.png',png(),'image/png')});assert r.status_code==200,r.text
    for path in ['/attendance/calendar','/overtime','/clock-in/records','/payroll']:
-    r=await c.get('/api/v1'+path,headers=auth(4));assert r.status_code==403 and '无此操作权限' in r.text,(path,r.text)
+    r=await c.get('/api/v1'+path,headers=auth(4));assert r.status_code==403 and ('无权查看工资数据' if path=='/payroll' else '无此操作权限') in r.text,(path,r.text)
    assert await snapshot(factory)==before
    await set_perms(factory,4,[p.label for p in MENU_PERMISSIONS if p.selectable])
    for path in ['/attendance/calendar','/clock-in/records','/overtime']:
@@ -66,7 +66,7 @@ def test_roles_not_expanded(tmp_path,monkeypatch,uid):
     u=await db.get(User,uid);u.attendance_enabled=uid!=4;u.extra_permissions=[p.label for p in MENU_PERMISSIONS if p.selectable];await db.commit()
    for method,path,data in [('POST','/clock-in',{'session':'1'}),('GET','/clock-in/today',None),('GET','/payroll/my-payslip',None),('GET','/overtime/pending',None),('POST','/overtime/1/confirm',None),('POST','/overtime/2/dispute',{'reason':'test'})]:
     r=await c.request(method,'/api/v1'+path,headers=auth(uid),data=data,**({'files':{'file':('proof.png',png(),'image/png')}} if path.endswith('/dispute') else {}))
-    assert r.status_code==(200 if uid==5 else 403),(uid,path,r.text)
+    assert r.status_code==(200 if uid==5 or (uid==3 and path=='/payroll/my-payslip') else 403),(uid,path,r.text)
  asyncio.run(run())
 
 @pytest.mark.parametrize('corruption',['unbound','other_user','other_warehouse','deleted'])
@@ -93,8 +93,10 @@ def test_self_cannot_reach_other_employee_or_warehouse(tmp_path,monkeypatch):
      r=await c.post(f'/api/v1/overtime/{tid}/{action}',headers=auth(4));assert r.status_code in (400,404),r.text
    for eid in [1,2,4]:
     r=await c.get(f'/api/v1/clock-in/photos?view=self&employee_id={eid}&date=2026-10-10',headers=auth(4));assert r.status_code==403,r.text
-   r=await c.get('/api/v1/overtime?view=self&employee_id=1',headers=auth(4));assert {t['id'] for t in r.json()['data']}=={20,21}
-   r=await c.get('/api/v1/clock-in/records?view=self&user_id=5',headers=auth(4));assert [e['id'] for e in r.json()['employees']]==[5]
+   r=await c.get('/api/v1/overtime?view=self&employee_id=1',headers=auth(4));assert r.status_code==403
+   r=await c.get('/api/v1/overtime?view=self',headers=auth(4));assert {t['id'] for t in r.json()['data']}=={20,21}
+   r=await c.get('/api/v1/clock-in/records?view=self&user_id=5',headers=auth(4));assert r.status_code==403
+   r=await c.get('/api/v1/clock-in/records?view=self',headers=auth(4));assert [e['id'] for e in r.json()['employees']]==[5]
  asyncio.run(run())
 
 def test_auth_exposes_live_identity(tmp_path,monkeypatch):
@@ -120,7 +122,9 @@ def test_selected_management_warehouse_and_namesake_cannot_change_self_identity(
     (await db.get(Employee,1)).name='supervisor'
     db.add(ClockInRecord(user_id=4,warehouse_id=2,clock_date=date(2026,10,9),session=1,clocked_in_at=datetime(2026,10,9,9),status='normal'))
     await db.commit()
-   h={**auth(4),'X-Warehouse-ID':'2'}
+   foreign={**auth(4),'X-Warehouse-ID':'2'}
+   denied=await c.post('/api/v1/clock-in',headers=foreign,data={'session':'1'});assert denied.status_code==403
+   h={**auth(4),'X-Warehouse-ID':'1'}
    r=await c.post('/api/v1/clock-in',headers=h,data={'session':'1'});assert r.status_code==200,r.text
    async with factory() as db:
     row=(await db.execute(select(ClockInRecord).where(ClockInRecord.user_id==4,ClockInRecord.clock_date==date(2026,10,16)))).scalar_one();assert row.warehouse_id==1

@@ -176,7 +176,7 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
 
   return (
     <div>
-      {!(employeeView && user?.role === "supervisor") && <div className="flex justify-end mb-2">
+      {!employeeView && <div className="flex justify-end mb-2">
         <button onClick={exportExcel}
           className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">
           <Download size={14}/>{t("export_excel")}

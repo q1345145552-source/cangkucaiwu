@@ -28,6 +28,7 @@ NATIONALITIES = ("泰国", "缅甸", "中国", "其他")
 IDENTITY_FIELDS = ("nationality", "thai_id_number", "sso_number", "bank_account_number", "bank_name", "bank_account_holder")
 
 class EmployeeIdentityFields(BaseModel):
+    model_config = {"extra": "forbid"}
     nationality: Optional[str] = None
     thai_id_number: Optional[str] = None
     sso_number: Optional[str] = Field(None, max_length=50)
@@ -109,6 +110,7 @@ class EmployeeUpdate(EmployeeIdentityFields):
     tags: Optional[str] = None
 
 class ResignRequest(BaseModel):
+    model_config = {"extra": "forbid"}
     reason: str  # voluntary / absconded / fired / contract_end / other
     resignation_date: str  # YYYY-MM-DD
     blacklisted: bool = False
@@ -429,6 +431,10 @@ async def update_employee(
     
     own_scope(current_user, e.warehouse_id)
     updates = req.model_dump(exclude_unset=True)
+    protected = {'daily_wage', 'base_salary', 'salary_template_id', 'deduction_template_id',
+                 'bank_account_number', 'bank_name', 'bank_account_holder', 'user_id', 'employee_no', 'password'}
+    if set(updates) & protected and current_user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, '薪资、扣款、银行及登录关联字段只能由仓库管理员修改')
     if set(updates) & {"user_id", "employee_no", "password"}:
         require_account_manager(current_user)
     if "user_id" in updates and updates["user_id"] is not None:
@@ -569,6 +575,8 @@ async def resign_employee(
     current_user: User = Depends(check_staff_permission(_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
+    if req.model_fields_set - {'reason','resignation_date','blacklisted','blacklist_reason','note'}:
+        raise HTTPException(400, '离职操作只接受离职事实字段，请通过员工编辑修改档案')
     if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "只有仓库管理员可以操作")
     
@@ -782,6 +790,7 @@ async def _find_linked_user(db: AsyncSession, emp: Employee):
 
 
 class BatchTemplateSet(BaseModel):
+    model_config = {"extra": "forbid"}
     employee_ids: List[int]
     salary_template_id: int
     deduction_template_id: int

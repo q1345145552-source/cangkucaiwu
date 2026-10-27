@@ -1,0 +1,48 @@
+SYNTHETIC WH1
+S
+员工档案
+6/50人
+按国籍筛选
+全部国籍
+泰国
+缅甸
+中国
+其他
+未填
+	姓名	工号	国籍	岗位	薪资模板	扣款模板	状态	联系电话	入职日期	标签	操作
+	
+S
+SYNTHETIC ADMIN EMP
+	audit-1	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+	
+
+	
+N
+NO MENU FINANCE
+	synthetic-finance-no-menu	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+	
+
+	
+N
+NO MENU SELF
+	audit-6	未填	仓库劳工	-	-	试用期	-	2026-10-01	
+	
+
+	
+S
+SYNTHETIC EMP 1
+	audit-5	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+	
+
+	
+S
+SYNTHETIC EMP 2
+	audit-2	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+	
+
+	
+S
+SYNTHETIC EMP 3
+	audit-3	未填	仓库劳工	AUDIT SALARY 1	AUDIT DEDUCT 1	试用期	-	2026-10-01	
+	
+已离职员工 (1人)

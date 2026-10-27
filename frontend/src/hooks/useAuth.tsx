@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       is_active: true,
       attendance_enabled: !!res.attendance_enabled,
       attendance_employee_id: res.attendance_employee_id,
+      self_employee_id: res.self_employee_id,
     };
     setUser(u);
     localStorage.setItem("user", JSON.stringify(u));

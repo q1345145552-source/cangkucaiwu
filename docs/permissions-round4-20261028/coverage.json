@@ -1,0 +1,1141 @@
+{
+  "registered_action_count": 237,
+  "directly_requested": 48,
+  "not_directly_requested": [
+    {
+      "action_id": "R04-001",
+      "method": "POST",
+      "path": "/api/v1/accounts/transfers",
+      "handler": "create_transfer"
+    },
+    {
+      "action_id": "R04-002",
+      "method": "GET",
+      "path": "/api/v1/accounts",
+      "handler": "list_accounts"
+    },
+    {
+      "action_id": "R04-003",
+      "method": "POST",
+      "path": "/api/v1/accounts",
+      "handler": "create_account"
+    },
+    {
+      "action_id": "R04-004",
+      "method": "PUT",
+      "path": "/api/v1/accounts/{account_id}",
+      "handler": "update_account"
+    },
+    {
+      "action_id": "R04-005",
+      "method": "PUT",
+      "path": "/api/v1/accounts/{account_id}/toggle-status",
+      "handler": "toggle_account_status"
+    },
+    {
+      "action_id": "R04-006",
+      "method": "DELETE",
+      "path": "/api/v1/accounts/{account_id}",
+      "handler": "delete_account"
+    },
+    {
+      "action_id": "R04-007",
+      "method": "GET",
+      "path": "/api/v1/suppliers",
+      "handler": "list_suppliers"
+    },
+    {
+      "action_id": "R04-008",
+      "method": "POST",
+      "path": "/api/v1/suppliers",
+      "handler": "create_supplier"
+    },
+    {
+      "action_id": "R04-009",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-match-policy",
+      "handler": "get_match_policy"
+    },
+    {
+      "action_id": "R04-010",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/purchase-match-policy",
+      "handler": "set_match_policy"
+    },
+    {
+      "action_id": "R04-011",
+      "method": "GET",
+      "path": "/api/v1/suppliers/categories",
+      "handler": "list_categories"
+    },
+    {
+      "action_id": "R04-012",
+      "method": "POST",
+      "path": "/api/v1/suppliers/categories",
+      "handler": "create_category"
+    },
+    {
+      "action_id": "R04-013",
+      "method": "GET",
+      "path": "/api/v1/suppliers/import-template/products",
+      "handler": "download_products_template"
+    },
+    {
+      "action_id": "R04-014",
+      "method": "GET",
+      "path": "/api/v1/suppliers/import-template/logistics",
+      "handler": "download_logistics_template"
+    },
+    {
+      "action_id": "R04-015",
+      "method": "POST",
+      "path": "/api/v1/suppliers/import/products",
+      "handler": "import_products"
+    },
+    {
+      "action_id": "R04-016",
+      "method": "POST",
+      "path": "/api/v1/suppliers/import/logistics",
+      "handler": "import_logistics"
+    },
+    {
+      "action_id": "R04-017",
+      "method": "GET",
+      "path": "/api/v1/suppliers/price-threshold",
+      "handler": "get_price_threshold"
+    },
+    {
+      "action_id": "R04-018",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/price-threshold",
+      "handler": "set_price_threshold"
+    },
+    {
+      "action_id": "R04-019",
+      "method": "GET",
+      "path": "/api/v1/suppliers/price-stats",
+      "handler": "price_stats"
+    },
+    {
+      "action_id": "R04-020",
+      "method": "GET",
+      "path": "/api/v1/suppliers/price-trend",
+      "handler": "price_trend"
+    },
+    {
+      "action_id": "R04-021",
+      "method": "GET",
+      "path": "/api/v1/suppliers/price-anomalies",
+      "handler": "price_anomalies"
+    },
+    {
+      "action_id": "R04-022",
+      "method": "GET",
+      "path": "/api/v1/suppliers/non-lowest-records",
+      "handler": "non_lowest_records"
+    },
+    {
+      "action_id": "R04-023",
+      "method": "GET",
+      "path": "/api/v1/suppliers/non-lowest-summary",
+      "handler": "non_lowest_summary"
+    },
+    {
+      "action_id": "R04-024",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-approval-threshold",
+      "handler": "get_approval_threshold"
+    },
+    {
+      "action_id": "R04-025",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/purchase-approval-threshold",
+      "handler": "set_approval_threshold"
+    },
+    {
+      "action_id": "R04-026",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-approvals",
+      "handler": "purchase_approvals"
+    },
+    {
+      "action_id": "R04-027",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/purchase-approvals/{po_id}/approve",
+      "handler": "approve_purchase"
+    },
+    {
+      "action_id": "R04-028",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/purchase-approvals/{po_id}/reject",
+      "handler": "reject_purchase"
+    },
+    {
+      "action_id": "R04-029",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-orders",
+      "handler": "list_purchase_orders"
+    },
+    {
+      "action_id": "R04-030",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}",
+      "handler": "get_purchase_detail"
+    },
+    {
+      "action_id": "R04-031",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/receipts/{event_id}/photo",
+      "handler": "read_receipt_photo"
+    },
+    {
+      "action_id": "R04-032",
+      "method": "POST",
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/receive",
+      "handler": "receive_purchase"
+    },
+    {
+      "action_id": "R04-033",
+      "method": "POST",
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/mark-sent",
+      "handler": "mark_purchase_sent"
+    },
+    {
+      "action_id": "R04-034",
+      "method": "POST",
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/receipt",
+      "handler": "upload_purchase_receipt"
+    },
+    {
+      "action_id": "R04-035",
+      "method": "POST",
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/mark-shipped",
+      "handler": "mark_purchase_shipped"
+    },
+    {
+      "action_id": "R04-036",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/pdf",
+      "handler": "download_purchase_order_pdf"
+    },
+    {
+      "action_id": "R04-037",
+      "method": "GET",
+      "path": "/api/v1/suppliers/purchase-receipt-discrepancies",
+      "handler": "receipt_discrepancies"
+    },
+    {
+      "action_id": "R04-038",
+      "method": "GET",
+      "path": "/api/v1/suppliers/concentration-threshold",
+      "handler": "get_concentration_threshold"
+    },
+    {
+      "action_id": "R04-039",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/concentration-threshold",
+      "handler": "set_concentration_threshold"
+    },
+    {
+      "action_id": "R04-040",
+      "method": "GET",
+      "path": "/api/v1/suppliers/concentration",
+      "handler": "concentration_analysis"
+    },
+    {
+      "action_id": "R04-041",
+      "method": "GET",
+      "path": "/api/v1/suppliers/concentration-trend",
+      "handler": "concentration_trend"
+    },
+    {
+      "action_id": "R04-042",
+      "method": "GET",
+      "path": "/api/v1/suppliers/compare-prices",
+      "handler": "compare_prices"
+    },
+    {
+      "action_id": "R04-043",
+      "method": "GET",
+      "path": "/api/v1/suppliers/compare-logistics",
+      "handler": "compare_logistics"
+    },
+    {
+      "action_id": "R04-044",
+      "method": "POST",
+      "path": "/api/v1/suppliers/ai-compare",
+      "handler": "ai_compare"
+    },
+    {
+      "action_id": "R04-045",
+      "method": "GET",
+      "path": "/api/v1/suppliers/procurement-summary",
+      "handler": "procurement_summary"
+    },
+    {
+      "action_id": "R04-046",
+      "method": "POST",
+      "path": "/api/v1/suppliers/{supplier_id}/import/products",
+      "handler": "import_products_for_supplier"
+    },
+    {
+      "action_id": "R04-047",
+      "method": "POST",
+      "path": "/api/v1/suppliers/{supplier_id}/import/logistics",
+      "handler": "import_logistics_for_supplier"
+    },
+    {
+      "action_id": "R04-048",
+      "method": "GET",
+      "path": "/api/v1/suppliers/{supplier_id}/products",
+      "handler": "list_products"
+    },
+    {
+      "action_id": "R04-049",
+      "method": "POST",
+      "path": "/api/v1/suppliers/{supplier_id}/products",
+      "handler": "add_product"
+    },
+    {
+      "action_id": "R04-050",
+      "method": "DELETE",
+      "path": "/api/v1/suppliers/{supplier_id}/products/{product_id}",
+      "handler": "delete_product"
+    },
+    {
+      "action_id": "R04-051",
+      "method": "POST",
+      "path": "/api/v1/suppliers/{supplier_id}/purchase-order",
+      "handler": "create_purchase_order"
+    },
+    {
+      "action_id": "R04-052",
+      "method": "GET",
+      "path": "/api/v1/suppliers/{supplier_id}/logistics-prices",
+      "handler": "list_logistics_prices"
+    },
+    {
+      "action_id": "R04-053",
+      "method": "POST",
+      "path": "/api/v1/suppliers/{supplier_id}/logistics-prices",
+      "handler": "add_logistics_price"
+    },
+    {
+      "action_id": "R04-054",
+      "method": "DELETE",
+      "path": "/api/v1/suppliers/{supplier_id}/logistics-prices/{price_id}",
+      "handler": "delete_logistics_price"
+    },
+    {
+      "action_id": "R04-055",
+      "method": "PUT",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "handler": "update_supplier"
+    },
+    {
+      "action_id": "R04-056",
+      "method": "DELETE",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "handler": "delete_supplier"
+    },
+    {
+      "action_id": "R04-057",
+      "method": "GET",
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "handler": "get_supplier"
+    },
+    {
+      "action_id": "R04-058",
+      "method": "GET",
+      "path": "/api/v1/suppliers/{supplier_id}/ai-evaluation",
+      "handler": "ai_evaluate"
+    },
+    {
+      "action_id": "R04-059",
+      "method": "GET",
+      "path": "/api/v1/incoming",
+      "handler": "list_incoming"
+    },
+    {
+      "action_id": "R04-061",
+      "method": "GET",
+      "path": "/api/v1/incoming/by-request/{request_key}",
+      "handler": "lookup_incoming"
+    },
+    {
+      "action_id": "R04-062",
+      "method": "POST",
+      "path": "/api/v1/incoming/{incoming_id}/screenshot",
+      "handler": "upload_incoming_screenshot"
+    },
+    {
+      "action_id": "R04-063",
+      "method": "GET",
+      "path": "/api/v1/incoming/{incoming_id}/screenshot",
+      "handler": "read_incoming_screenshot"
+    },
+    {
+      "action_id": "R04-065",
+      "method": "POST",
+      "path": "/api/v1/incoming/import-excel",
+      "handler": "import_excel"
+    },
+    {
+      "action_id": "R04-066",
+      "method": "GET",
+      "path": "/api/v1/incoming/template",
+      "handler": "download_template"
+    },
+    {
+      "action_id": "R04-067",
+      "method": "GET",
+      "path": "/api/v1/reconciliation/unmatched",
+      "handler": "get_unmatched"
+    },
+    {
+      "action_id": "R04-070",
+      "method": "GET",
+      "path": "/api/v1/reconciliation/results",
+      "handler": "list_results"
+    },
+    {
+      "action_id": "R04-071",
+      "method": "GET",
+      "path": "/api/v1/reconciliation/export",
+      "handler": "export_reconciliation"
+    },
+    {
+      "action_id": "R04-072",
+      "method": "GET",
+      "path": "/api/v1/income-expense/categories",
+      "handler": "list_categories"
+    },
+    {
+      "action_id": "R04-074",
+      "method": "GET",
+      "path": "/api/v1/income-expense/income",
+      "handler": "list_income"
+    },
+    {
+      "action_id": "R04-078",
+      "method": "GET",
+      "path": "/api/v1/income-expense/expense",
+      "handler": "list_expense"
+    },
+    {
+      "action_id": "R04-079",
+      "method": "GET",
+      "path": "/api/v1/income-expense/expense/export",
+      "handler": "export_expense"
+    },
+    {
+      "action_id": "R04-083",
+      "method": "GET",
+      "path": "/api/v1/income-expense/ledger",
+      "handler": "ledger"
+    },
+    {
+      "action_id": "R04-084",
+      "method": "GET",
+      "path": "/api/v1/income-expense/ledger/export",
+      "handler": "ledger_export"
+    },
+    {
+      "action_id": "R04-085",
+      "method": "GET",
+      "path": "/api/v1/income-expense/income/export",
+      "handler": "export_income"
+    },
+    {
+      "action_id": "R04-086",
+      "method": "GET",
+      "path": "/api/v1/income-expense/monthly-summary",
+      "handler": "monthly_summary"
+    },
+    {
+      "action_id": "R04-087",
+      "method": "GET",
+      "path": "/api/v1/income-expense/operating-dashboard",
+      "handler": "operating_dashboard"
+    },
+    {
+      "action_id": "R04-088",
+      "method": "POST",
+      "path": "/api/v1/expense-fund/accounts",
+      "handler": "create_account"
+    },
+    {
+      "action_id": "R04-089",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/employees",
+      "handler": "list_employees"
+    },
+    {
+      "action_id": "R04-091",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/payment-accounts",
+      "handler": "disbursement_accounts"
+    },
+    {
+      "action_id": "R04-092",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/disbursements",
+      "handler": "list_disbursements"
+    },
+    {
+      "action_id": "R04-093",
+      "method": "POST",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/topup",
+      "handler": "topup_account"
+    },
+    {
+      "action_id": "R04-095",
+      "method": "PUT",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/items/{item_id}",
+      "handler": "edit_item"
+    },
+    {
+      "action_id": "R04-096",
+      "method": "DELETE",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/items/{item_id}",
+      "handler": "void_item"
+    },
+    {
+      "action_id": "R04-099",
+      "method": "POST",
+      "path": "/api/v1/expense-fund/accounts/{account_id}/items/{item_id}/upload-receipt",
+      "handler": "upload_receipt"
+    },
+    {
+      "action_id": "R04-100",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/review/pending",
+      "handler": "list_pending_reviews"
+    },
+    {
+      "action_id": "R04-101",
+      "method": "POST",
+      "path": "/api/v1/expense-fund/review/batch",
+      "handler": "batch_review"
+    },
+    {
+      "action_id": "R04-103",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/recharge/requests",
+      "handler": "list_recharge_requests"
+    },
+    {
+      "action_id": "R04-104",
+      "method": "POST",
+      "path": "/api/v1/expense-fund/recharge/review",
+      "handler": "review_recharge_request"
+    },
+    {
+      "action_id": "R04-105",
+      "method": "POST",
+      "path": "/api/v1/expense-fund/recharge/execute",
+      "handler": "execute_recharge"
+    },
+    {
+      "action_id": "R04-106",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/settings",
+      "handler": "fund_settings"
+    },
+    {
+      "action_id": "R04-108",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/balance",
+      "handler": "balance_summary"
+    },
+    {
+      "action_id": "R04-109",
+      "method": "GET",
+      "path": "/api/v1/expense-fund/alert",
+      "handler": "alert_list"
+    },
+    {
+      "action_id": "R04-110",
+      "method": "GET",
+      "path": "/api/v1/reimbursement/payment-sources",
+      "handler": "payment_sources"
+    },
+    {
+      "action_id": "R04-111",
+      "method": "POST",
+      "path": "/api/v1/reimbursement/payment-voucher",
+      "handler": "payment_voucher"
+    },
+    {
+      "action_id": "R04-114",
+      "method": "GET",
+      "path": "/api/v1/reimbursement/export",
+      "handler": "export_reimbursements"
+    },
+    {
+      "action_id": "R04-115",
+      "method": "GET",
+      "path": "/api/v1/reimbursement/categories",
+      "handler": "list_reimb_categories"
+    },
+    {
+      "action_id": "R04-117",
+      "method": "PUT",
+      "path": "/api/v1/reimbursement/{reimb_id}",
+      "handler": "edit_reimb"
+    },
+    {
+      "action_id": "R04-118",
+      "method": "DELETE",
+      "path": "/api/v1/reimbursement/{reimb_id}",
+      "handler": "delete_reimb"
+    },
+    {
+      "action_id": "R04-119",
+      "method": "POST",
+      "path": "/api/v1/reimbursement/{reimb_id}/submit",
+      "handler": "submit_reimb"
+    },
+    {
+      "action_id": "R04-121",
+      "method": "POST",
+      "path": "/api/v1/reimbursement/{reimb_id}/return-to-draft",
+      "handler": "return_reimb"
+    },
+    {
+      "action_id": "R04-122",
+      "method": "POST",
+      "path": "/api/v1/reimbursement/{reimb_id}/review",
+      "handler": "review_reimb"
+    },
+    {
+      "action_id": "R04-123",
+      "method": "POST",
+      "path": "/api/v1/reimbursement/{reimb_id}/pay",
+      "handler": "pay_reimb"
+    },
+    {
+      "action_id": "R04-124",
+      "method": "GET",
+      "path": "/api/v1/reimbursement/{reimb_id}/payments",
+      "handler": "payment_history"
+    },
+    {
+      "action_id": "R04-125",
+      "method": "POST",
+      "path": "/api/v1/reimbursement/{reimb_id}/revoke-payment",
+      "handler": "revoke_payment"
+    },
+    {
+      "action_id": "R04-126",
+      "method": "POST",
+      "path": "/api/v1/reimbursement/categories",
+      "handler": "create_reimb_category"
+    },
+    {
+      "action_id": "R04-127",
+      "method": "GET",
+      "path": "/api/v1/config/attendance-times",
+      "handler": "get_attendance_times"
+    },
+    {
+      "action_id": "R04-128",
+      "method": "GET",
+      "path": "/api/v1/config/work-schedule",
+      "handler": "get_work_schedule_settings"
+    },
+    {
+      "action_id": "R04-129",
+      "method": "PUT",
+      "path": "/api/v1/config/work-schedule",
+      "handler": "set_work_schedule_settings"
+    },
+    {
+      "action_id": "R04-130",
+      "method": "GET",
+      "path": "/api/v1/rates",
+      "handler": "list_rates"
+    },
+    {
+      "action_id": "R04-131",
+      "method": "POST",
+      "path": "/api/v1/rates",
+      "handler": "create_rate"
+    },
+    {
+      "action_id": "R04-132",
+      "method": "GET",
+      "path": "/api/v1/rates/query",
+      "handler": "query_rate"
+    },
+    {
+      "action_id": "R04-133",
+      "method": "GET",
+      "path": "/api/v1/employees/max-limit",
+      "handler": "get_max_limit"
+    },
+    {
+      "action_id": "R04-135",
+      "method": "GET",
+      "path": "/api/v1/employees",
+      "handler": "list_employees"
+    },
+    {
+      "action_id": "R04-136",
+      "method": "POST",
+      "path": "/api/v1/employees",
+      "handler": "create_employee"
+    },
+    {
+      "action_id": "R04-139",
+      "method": "DELETE",
+      "path": "/api/v1/employees/{employee_id}",
+      "handler": "delete_employee"
+    },
+    {
+      "action_id": "R04-140",
+      "method": "POST",
+      "path": "/api/v1/employees/bind-existing-accounts",
+      "handler": "bind_existing_accounts"
+    },
+    {
+      "action_id": "R04-142",
+      "method": "POST",
+      "path": "/api/v1/employees/{employee_id}/photo",
+      "handler": "upload_employee_photo"
+    },
+    {
+      "action_id": "R04-143",
+      "method": "POST",
+      "path": "/api/v1/employees/{employee_id}/passport-photo",
+      "handler": "upload_passport_photo"
+    },
+    {
+      "action_id": "R04-144",
+      "method": "POST",
+      "path": "/api/v1/employees/{employee_id}/work-permit-photo",
+      "handler": "upload_work_permit_photo"
+    },
+    {
+      "action_id": "R04-145",
+      "method": "GET",
+      "path": "/api/v1/employees/{employee_id}/summary",
+      "handler": "employee_summary"
+    },
+    {
+      "action_id": "R04-148",
+      "method": "GET",
+      "path": "/api/v1/clock-in/records",
+      "handler": "list_records"
+    },
+    {
+      "action_id": "R04-150",
+      "method": "POST",
+      "path": "/api/v1/clock-in/batch-makeup",
+      "handler": "batch_makeup_clock_in"
+    },
+    {
+      "action_id": "R04-151",
+      "method": "GET",
+      "path": "/api/v1/clock-in/makeup-batches",
+      "handler": "list_makeup_batches"
+    },
+    {
+      "action_id": "R04-152",
+      "method": "POST",
+      "path": "/api/v1/clock-in/makeup-batches/{batch_id}/revoke",
+      "handler": "revoke_makeup_batch"
+    },
+    {
+      "action_id": "R04-153",
+      "method": "GET",
+      "path": "/api/v1/clock-in/makeup-count",
+      "handler": "makeup_count"
+    },
+    {
+      "action_id": "R04-154",
+      "method": "GET",
+      "path": "/api/v1/clock-in/records/export",
+      "handler": "export_records"
+    },
+    {
+      "action_id": "R04-155",
+      "method": "GET",
+      "path": "/api/v1/clock-in/photos",
+      "handler": "get_photos"
+    },
+    {
+      "action_id": "R04-157",
+      "method": "GET",
+      "path": "/api/v1/clock-in/makeup-requests",
+      "handler": "list_makeup_requests"
+    },
+    {
+      "action_id": "R04-164",
+      "method": "POST",
+      "path": "/api/v1/attendance/rest-days",
+      "handler": "set_rest_days"
+    },
+    {
+      "action_id": "R04-165",
+      "method": "GET",
+      "path": "/api/v1/attendance/rest-days",
+      "handler": "list_rest_days"
+    },
+    {
+      "action_id": "R04-166",
+      "method": "DELETE",
+      "path": "/api/v1/attendance/rest-days/{rest_day_id}",
+      "handler": "delete_rest_day"
+    },
+    {
+      "action_id": "R04-167",
+      "method": "POST",
+      "path": "/api/v1/attendance/absences",
+      "handler": "mark_absence"
+    },
+    {
+      "action_id": "R04-168",
+      "method": "DELETE",
+      "path": "/api/v1/attendance/absences/{absence_id}",
+      "handler": "remove_absence"
+    },
+    {
+      "action_id": "R04-169",
+      "method": "GET",
+      "path": "/api/v1/attendance/calendar",
+      "handler": "get_calendar"
+    },
+    {
+      "action_id": "R04-170",
+      "method": "POST",
+      "path": "/api/v1/overtime",
+      "handler": "create_overtime"
+    },
+    {
+      "action_id": "R04-173",
+      "method": "POST",
+      "path": "/api/v1/overtime/{task_id}/dispute",
+      "handler": "dispute_overtime"
+    },
+    {
+      "action_id": "R04-174",
+      "method": "GET",
+      "path": "/api/v1/overtime",
+      "handler": "list_overtimes"
+    },
+    {
+      "action_id": "R04-175",
+      "method": "GET",
+      "path": "/api/v1/overtime/pending",
+      "handler": "pending_overtimes"
+    },
+    {
+      "action_id": "R04-176",
+      "method": "GET",
+      "path": "/api/v1/overtime/monthly-hours",
+      "handler": "monthly_hours"
+    },
+    {
+      "action_id": "R04-177",
+      "method": "GET",
+      "path": "/api/v1/overtime/limit",
+      "handler": "get_overtime_limit"
+    },
+    {
+      "action_id": "R04-178",
+      "method": "PUT",
+      "path": "/api/v1/overtime/limit",
+      "handler": "set_overtime_limit"
+    },
+    {
+      "action_id": "R04-179",
+      "method": "DELETE",
+      "path": "/api/v1/overtime/{overtime_id}",
+      "handler": "delete_overtime"
+    },
+    {
+      "action_id": "R04-180",
+      "method": "POST",
+      "path": "/api/v1/payroll/calculate",
+      "handler": "calculate_payroll"
+    },
+    {
+      "action_id": "R04-181",
+      "method": "POST",
+      "path": "/api/v1/payroll/preview",
+      "handler": "preview_payroll"
+    },
+    {
+      "action_id": "R04-182",
+      "method": "POST",
+      "path": "/api/v1/payroll/single-settle",
+      "handler": "single_settle"
+    },
+    {
+      "action_id": "R04-183",
+      "method": "GET",
+      "path": "/api/v1/payroll",
+      "handler": "list_payroll"
+    },
+    {
+      "action_id": "R04-184",
+      "method": "GET",
+      "path": "/api/v1/payroll/summary",
+      "handler": "payroll_summary"
+    },
+    {
+      "action_id": "R04-185",
+      "method": "GET",
+      "path": "/api/v1/payroll/export",
+      "handler": "export_payroll"
+    },
+    {
+      "action_id": "R04-186",
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/confirm",
+      "handler": "confirm_payroll"
+    },
+    {
+      "action_id": "R04-187",
+      "method": "POST",
+      "path": "/api/v1/payroll/confirm-all",
+      "handler": "confirm_all_payroll"
+    },
+    {
+      "action_id": "R04-188",
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-confirm",
+      "handler": "batch_confirm_payroll"
+    },
+    {
+      "action_id": "R04-189",
+      "method": "GET",
+      "path": "/api/v1/payroll/cash-advance-sources",
+      "handler": "payroll_cash_advance_sources"
+    },
+    {
+      "action_id": "R04-190",
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-disburse",
+      "handler": "batch_disburse_payroll"
+    },
+    {
+      "action_id": "R04-191",
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-delete",
+      "handler": "batch_delete_payroll"
+    },
+    {
+      "action_id": "R04-192",
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/recalc",
+      "handler": "recalc_payroll"
+    },
+    {
+      "action_id": "R04-193",
+      "method": "POST",
+      "path": "/api/v1/payroll/batch-recalc",
+      "handler": "batch_recalc_payroll"
+    },
+    {
+      "action_id": "R04-194",
+      "method": "DELETE",
+      "path": "/api/v1/payroll/{record_id}",
+      "handler": "delete_payroll"
+    },
+    {
+      "action_id": "R04-195",
+      "method": "DELETE",
+      "path": "/api/v1/payroll/period/{period}",
+      "handler": "delete_period_payroll"
+    },
+    {
+      "action_id": "R04-196",
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/disburse",
+      "handler": "disburse_payroll"
+    },
+    {
+      "action_id": "R04-197",
+      "method": "POST",
+      "path": "/api/v1/payroll/{record_id}/revoke-disbursement",
+      "handler": "revoke_disbursement"
+    },
+    {
+      "action_id": "R04-198",
+      "method": "GET",
+      "path": "/api/v1/payroll/pending-resignations",
+      "handler": "pending_resignations"
+    },
+    {
+      "action_id": "R04-200",
+      "method": "GET",
+      "path": "/api/v1/payroll/settlement-progress",
+      "handler": "settlement_progress"
+    },
+    {
+      "action_id": "R04-204",
+      "method": "GET",
+      "path": "/api/v1/employee-advances/recipients",
+      "handler": "list_advance_recipients"
+    },
+    {
+      "action_id": "R04-205",
+      "method": "GET",
+      "path": "/api/v1/employee-advances",
+      "handler": "list_advances"
+    },
+    {
+      "action_id": "R04-206",
+      "method": "GET",
+      "path": "/api/v1/employee-advances/summary",
+      "handler": "advance_summary"
+    },
+    {
+      "action_id": "R04-208",
+      "method": "DELETE",
+      "path": "/api/v1/employee-advances/{advance_id}",
+      "handler": "delete_advance"
+    },
+    {
+      "action_id": "R04-209",
+      "method": "POST",
+      "path": "/api/v1/employee-advances/{advance_id}/approve",
+      "handler": "approve_advance"
+    },
+    {
+      "action_id": "R04-210",
+      "method": "POST",
+      "path": "/api/v1/employee-advances/{advance_id}/reject",
+      "handler": "reject_advance"
+    },
+    {
+      "action_id": "R04-212",
+      "method": "POST",
+      "path": "/api/v1/employee-advances/{advance_id}/verify",
+      "handler": "verify_advance"
+    },
+    {
+      "action_id": "R04-213",
+      "method": "POST",
+      "path": "/api/v1/employee-advances/{advance_id}/execute",
+      "handler": "execute_advance"
+    },
+    {
+      "action_id": "R04-214",
+      "method": "GET",
+      "path": "/api/v1/salary-templates",
+      "handler": "list_salary_templates"
+    },
+    {
+      "action_id": "R04-218",
+      "method": "GET",
+      "path": "/api/v1/deduction-templates",
+      "handler": "list_deduction_templates"
+    },
+    {
+      "action_id": "R04-220",
+      "method": "PUT",
+      "path": "/api/v1/deduction-templates/{template_id}",
+      "handler": "update_deduction_template"
+    },
+    {
+      "action_id": "R04-221",
+      "method": "DELETE",
+      "path": "/api/v1/deduction-templates/{template_id}",
+      "handler": "delete_deduction_template"
+    },
+    {
+      "action_id": "R04-223",
+      "method": "GET",
+      "path": "/api/v1/employee-deductions",
+      "handler": "list_deductions"
+    },
+    {
+      "action_id": "R04-224",
+      "method": "DELETE",
+      "path": "/api/v1/employee-deductions/{deduction_id}",
+      "handler": "delete_deduction"
+    },
+    {
+      "action_id": "R04-225",
+      "method": "GET",
+      "path": "/api/v1/employee-deductions/fixed",
+      "handler": "list_fixed_deductions"
+    },
+    {
+      "action_id": "R04-226",
+      "method": "POST",
+      "path": "/api/v1/employee-deductions/fixed",
+      "handler": "create_fixed_deduction"
+    },
+    {
+      "action_id": "R04-227",
+      "method": "PUT",
+      "path": "/api/v1/employee-deductions/fixed/{deduction_id}",
+      "handler": "update_fixed_deduction"
+    },
+    {
+      "action_id": "R04-228",
+      "method": "DELETE",
+      "path": "/api/v1/employee-deductions/fixed/{deduction_id}",
+      "handler": "delete_fixed_deduction"
+    },
+    {
+      "action_id": "R04-229",
+      "method": "POST",
+      "path": "/api/v1/expense-approvals",
+      "handler": "create_approval"
+    },
+    {
+      "action_id": "R04-230",
+      "method": "GET",
+      "path": "/api/v1/expense-approvals",
+      "handler": "list_approvals"
+    },
+    {
+      "action_id": "R04-231",
+      "method": "GET",
+      "path": "/api/v1/expense-approvals/summary",
+      "handler": "approval_summary"
+    },
+    {
+      "action_id": "R04-232",
+      "method": "GET",
+      "path": "/api/v1/expense-approvals/threshold",
+      "handler": "get_threshold"
+    },
+    {
+      "action_id": "R04-233",
+      "method": "PUT",
+      "path": "/api/v1/expense-approvals/threshold",
+      "handler": "set_threshold"
+    },
+    {
+      "action_id": "R04-234",
+      "method": "PUT",
+      "path": "/api/v1/expense-approvals/{approval_id}",
+      "handler": "update_approval"
+    },
+    {
+      "action_id": "R04-235",
+      "method": "POST",
+      "path": "/api/v1/expense-approvals/{approval_id}/approve",
+      "handler": "approve_approval"
+    },
+    {
+      "action_id": "R04-236",
+      "method": "POST",
+      "path": "/api/v1/expense-approvals/{approval_id}/reject",
+      "handler": "reject_approval"
+    },
+    {
+      "action_id": "R04-237",
+      "method": "POST",
+      "path": "/api/v1/expense-approvals/{approval_id}/pay",
+      "handler": "pay_approval"
+    }
+  ],
+  "note": "本轮直接请求映射不含二/三轮复跑，未逐按钮/全部状态全覆盖"
+}

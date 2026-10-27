@@ -60,7 +60,7 @@ def test_three_required_flows_and_audit(tmp_path,monkeypatch):
  asyncio.run(run())
 
 
-@pytest.mark.parametrize('uid,expected',[(1,200),(2,200),(3,403),(5,403)])
+@pytest.mark.parametrize('uid,expected',[(1,200),(2,403),(3,403),(5,403)])
 def test_admin_superadmin_and_other_roles(tmp_path,monkeypatch,uid,expected):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):

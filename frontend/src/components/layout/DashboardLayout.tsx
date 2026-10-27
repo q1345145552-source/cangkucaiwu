@@ -242,14 +242,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   const filteredNav = filterNavItems(navItems, user, menuPermissions);
-  if (user?.role === "supervisor" && user.attendance_enabled) {
-    filteredNav.push({ key: "employee_self", label: "employee_self", icon: <Users size={20} />, roles: ["supervisor"], children: [
-      { key: "self_clock", label: "clock_in", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["supervisor"] },
-      { key: "self_attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/my-attendance", roles: ["supervisor"] },
-      { key: "self_overtime", label: "overtime", icon: <Clock size={18} />, href: "/my-overtime", roles: ["supervisor"] },
-      { key: "self_payslip", label: "my_payslip", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["supervisor"] },
-      { key: "self_leave", label: "leave", icon: <CalendarDays size={18} />, href: "/my-leave", roles: ["supervisor"] },
+  if ((user?.role === "supervisor" || user?.role === "staff") && user.attendance_enabled) {
+    filteredNav.push({ key: "employee_self", label: "employee_self", icon: <Users size={20} />, roles: ["supervisor", "staff"], children: [
+      { key: "self_clock", label: "clock_in", icon: <ClipboardCheck size={18} />, href: "/clock-in", roles: ["supervisor", "staff"] },
+      { key: "self_attendance", label: "attendance", icon: <CalendarDays size={18} />, href: "/my-attendance", roles: ["supervisor", "staff"] },
+      { key: "self_overtime", label: "overtime", icon: <Clock size={18} />, href: "/my-overtime", roles: ["supervisor", "staff"] },
+      { key: "self_payslip", label: "my_payslip", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["supervisor", "staff"] },
+      { key: "self_leave", label: "leave", icon: <CalendarDays size={18} />, href: "/my-leave", roles: ["supervisor", "staff"] },
     ] });
+  }
+  if ((user?.role === "supervisor" || user?.role === "staff") && user.self_employee_id) {
+    filteredNav.push({ key: "my_requests", label: "我的申请与欠款", icon: <Users size={20} />, href: "/my-requests", roles: ["supervisor", "staff"] });
+    if (!user.attendance_enabled) filteredNav.push({ key: "my_salary", label: "my_payslip", icon: <DollarSign size={18} />, href: "/my-payslip", roles: ["supervisor", "staff"] });
   }
   const settingsItem = navItems.find(item => item.key === "settings_group")?.children?.find(item => item.key === "settings");
   const showUsersManagement = user?.role !== "warehouse_labor" && settingsItem && hasAccess(settingsItem, user, menuPermissions);
@@ -447,7 +451,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
-          <div key={["/dashboard", "/reports"].includes(pathname) ? pathname : pathname + '-' + selectedWhId} className="animate-fade-in">
+          <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}`} className="animate-fade-in">
             {user && laborPageAllowed ? children : null}
           </div>
           <BackToTop />

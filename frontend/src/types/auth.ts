@@ -18,6 +18,7 @@ export interface AuthUser {
   is_active: boolean;
   attendance_enabled: boolean;
   attendance_employee_id: number | null;
+  self_employee_id?: number | null;
 }
 
 export interface LoginResponse extends Omit<AuthUser, "id" | "is_active"> {

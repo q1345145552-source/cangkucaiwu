@@ -1,4 +1,5 @@
 "use client";
+import MakeupRequests from "@/components/MakeupRequests";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -278,6 +279,7 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
+      {(employeeView || role === "warehouse_labor" || canApprove) && <MakeupRequests personal={employeeView || role === "warehouse_labor"} />}
       {(employeeView || role === "warehouse_labor") && <EmployeeLanguage />}
       {/* Header: Month Navigation + Tab Bar + Action Buttons */}
       <div className="flex justify-between items-center flex-wrap gap-3">
@@ -422,8 +424,8 @@ export default function AttendancePage() {
                   {l.photo_path && <a href={`/${l.photo_path}`} target="_blank" className="text-blue-500 ml-2 text-xs">{t("att_view_proof")}</a>}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => approveLeave(l.id)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs">{t("att_approve")}</button>
-                  <button onClick={() => rejectLeave(l.id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">{t("att_reject")}</button>
+                  <button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => approveLeave(l.id)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs">{t("att_approve")}</button>
+                  <button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => rejectLeave(l.id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">{t("att_reject")}</button>
                 </div>
               </div>
             ))}

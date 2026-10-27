@@ -1,0 +1,14 @@
+{
+  "isolation": "all SQL URLs use loopback65389 synthetic round4/round3/round2/regression; uvicorn lifespan off; no project .env read",
+  "cwd": "/private/tmp/permissions-round4-env",
+  "targets": "ROUND4_DATABASE_URL=postgresql+asyncpg://round4@127.0.0.1:65389/round4 /tmp/supplier01-py312/bin/python /private/tmp/permissions-round4-20261028/backend/tests/permission_round4/acceptance.py",
+  "prior_targets": "/tmp/supplier01-py312/bin/python /private/tmp/permissions-round4-20261028/backend/tests/permission_round4/prior_targets.py {round3,round2,partial} (separate executions)",
+  "regression": "/tmp/supplier01-py312/bin/python .../regression.py {prior,related}; baseline related baseline",
+  "frontend_cwd": "/private/tmp/permissions-round4-20261028/frontend",
+  "node": "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+  "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+  "build": "NEXT_TELEMETRY_DISABLED=1 node node_modules/next/dist/bin/next build",
+  "browser": "node backend/tests/permission_round4/browser_acceptance.cjs; browser_positive.cjs",
+  "dependency_recovery": "No npm available; read package-lock sha512 integrity content from local ~/.npm/_cacache/content-v2/sha512; extract package members to independent r04-env frontend node_modules. Only cached current platform107packages; no network.",
+  "services": "API65390, Next65391, proxy65392; all loopback. Stopped own API77820/Next77826/proxy76395 and own PG65389."
+}

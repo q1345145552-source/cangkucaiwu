@@ -82,7 +82,7 @@ async def manual_match(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    if current_user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无权限")
     scope = [w.id for w in await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))]
     flow = (await db.execute(select(IncomingFlow).where(IncomingFlow.id == flow_id).with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
