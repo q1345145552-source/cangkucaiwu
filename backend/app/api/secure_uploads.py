@@ -119,67 +119,10 @@ async def may_read_market_image(db, user, target):
 
 
 async def may_read(db, user, target):
-    if await may_read_market_image(db, user, target):
-        return True
-    # Platform uploads stay private until published, even to the source warehouse admin.
-    if Path(target).parent.name == 'market':
-        return False
-    if user.role == Role.SUPER_ADMIN:
-        return False
-    wid = int(target.split("/")[1])
-    if wid not in get_wh_ids(user):
-        return False
-    if user.role == Role.WAREHOUSE_ADMIN:
-        return True
-    if user.role in (Role.WAREHOUSE_LABOR, Role.SUPERVISOR, Role.STAFF):
-        employee = await own_employee(db,user)
-        own = [] if employee is None or employee.warehouse_id != wid else [
-            select(ClockInRecord.photo_path).where(ClockInRecord.warehouse_id==wid,ClockInRecord.user_id==user.id),
-            select(LeaveRequest.photo_path).where(LeaveRequest.warehouse_id==wid,LeaveRequest.employee_id==employee.id),
-            select(OvertimeAssignment.dispute_photo).join(OvertimeTask).where(OvertimeTask.warehouse_id==wid,
-                OvertimeAssignment.employee_id==employee.id,OvertimeAssignment.user_id==user.id),
-        ]
-        if employee is not None and employee.warehouse_id == wid:
-            from app.services.fund_authorization import identities
-            owner_ids = await identities(db, user)
-            own.extend([
-                select(ReimbursementItem.receipt).join(Reimbursement).where(Reimbursement.warehouse_id == wid, Reimbursement.employee_id.in_(owner_ids)),
-                select(Reimbursement.payment_voucher_path).where(Reimbursement.warehouse_id == wid, Reimbursement.employee_id.in_(owner_ids)),
-                select(ExpenseFundItem.receipt).join(ExpenseFund).where(ExpenseFund.warehouse_id == wid, ExpenseFund.employee_id.in_(owner_ids)),
-            ])
-        for query in own:
-            query=query.where(reference_filter(list(query.selected_columns),target))
-            if any(matches(value,target) for value in (await db.execute(query)).scalars()):
-                return True
-        if user.role == Role.WAREHOUSE_LABOR:
-            return False
-    if user.role not in (Role.SUPERVISOR,Role.STAFF):
-        return False
-    if not user.extra_permissions:
-        return False
-    # Match references before considering unsubmitted upload previews, so revocation applies immediately.
-    referenced = False
-    for model,fields,key,parent in PRIVATE_FILES:
-        columns=[getattr(model,f) for f in fields]
-        query = select(*columns).where(reference_filter(columns,target))
-        if parent:
-            query = query.join(parent).where(parent.warehouse_id==wid)
-        else:
-            query = query.where(model.warehouse_id==wid)
-        for row in (await db.execute(query)).all():
-            if any(matches(value,target) for value in row):
-                referenced = True
-                if MENU_PERMISSIONS_BY_KEY[key].label in (user.extra_permissions or []):
-                    return True
-    market_images = (await db.execute(select(MarketItem.image).where(reference_filter([MarketItem.image], target)))).scalars()
-    referenced = referenced or any(matches(value, target) for value in market_images)
-    if not referenced and user.extra_permissions:
-        local = upload_root().joinpath(*Path(target).parts[1:])
-        try:
-            return json.loads(local.with_suffix(local.suffix+".owner.json").read_text()).get("user_id")==user.id
-        except (OSError,ValueError):
-            return False
-    return False
+    if await may_read_market_image(db, user, target):return True
+    if Path(target).parent.name == 'market':return False
+    from app.services.attachment_access import private_reference_access
+    return await private_reference_access(db,user,target,PRIVATE_FILES)
 
 
 @router.get("/uploads/{file_path:path}", openapi_extra={"x-access-kind":"protected_attachment"})
@@ -196,21 +139,16 @@ async def read_upload(file_path: str, request: Request, db: AsyncSession=Depends
     if not token:
         raise HTTPException(401,"请先登录")
     user = await get_current_user(request,HTTPAuthorizationCredentials(scheme="Bearer",credentials=token),db)
-    if request.headers.get('X-Warehouse-ID') is not None:
-        from app.services.warehouse_summary import warehouse_scope
-        scope = [w.id for w in await warehouse_scope(db, user, request.headers['X-Warehouse-ID'])]
-        user._warehouse_ids = scope
-        user._all_warehouse_ids = scope
+    if not fund_file and await may_read_market_image(db,user,"uploads/"+"/".join(parts)):
+        return FileResponse(path,headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
+    from app.services.warehouse_summary import warehouse_scope
+    scope = [w.id for w in await warehouse_scope(db,user,request.headers.get('X-Warehouse-ID'))]
+    if not scope:raise HTTPException(403,'无权访问')
+    user._warehouse_ids=scope;user._all_warehouse_ids=scope
     if fund_file:
-        fund = await db.get(ExpenseFund, int(parts[2]))
-        if not fund or fund.warehouse_id != int(parts[1]) or fund.warehouse_id not in get_wh_ids(user):
-            raise HTTPException(403, '无权访问')
-        from app.services.fund_authorization import identities
-        own = await own_employee(db, user)
-        allowed = own is not None and fund.employee_id in await identities(db, user)
-        management = user.role == Role.WAREHOUSE_ADMIN or (user.role in (Role.SUPERVISOR, Role.STAFF) and MENU_PERMISSIONS_BY_KEY['expense_fund'].label in (user.extra_permissions or []))
-        if not (allowed or management):
-            raise HTTPException(403, '无权访问')
+        from app.services.attachment_access import fund_receipt_allowed
+        if not await fund_receipt_allowed(db,user,int(parts[2]),int(parts[1])):
+            raise HTTPException(403,'无权访问')
         return FileResponse(path,headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"})
     if not await may_read(db,user,"uploads/"+"/".join(parts)):
         raise HTTPException(403,"无权访问")

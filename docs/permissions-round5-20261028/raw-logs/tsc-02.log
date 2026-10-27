@@ -1,0 +1,2 @@
+frontend/src/app/(dashboard)/customers/page.tsx(151,258): error TS2322: Type 'Dispatch<SetStateAction<number>> | undefined' is not assignable to type '(p: number) => void'.
+  Type 'undefined' is not assignable to type '(p: number) => void'.

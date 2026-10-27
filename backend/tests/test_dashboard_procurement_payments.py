@@ -82,7 +82,10 @@ def test_unpaid_excluded_cross_month_paid_included_shared_report_and_other_dashb
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             before = await snapshot(f)
-            now, report = await read_views(c, uid)
+            if uid == 4:
+                denied = await c.get('/api/v1/dashboard/cockpit',headers=auth(uid))
+                assert denied.status_code == 403 and await snapshot(f) == before
+            now, report = await read_views(c, 3 if uid == 4 else uid)
             # 采购只按实际付款：本月未付 1000 单不计，上月开单本月付款 3000 计入。
             assert nonzero(now["finance"]["procurement"]["expense"]) == {"THB": 3000}
             assert nonzero(now["finance"]["month"]["procurement_expense"]) == {"THB": 3000}
@@ -97,9 +100,9 @@ def test_unpaid_excluded_cross_month_paid_included_shared_report_and_other_dashb
             assert nonzero(now["finance"]["balances"]["payment_accounts"]) == {"THB": -1000.0}
             assert nonzero(now["finance"]["receivable_payable"]["payable"]) == {"THB": 1000.0}
             assert nonzero(now["finance"]["receivable_payable"]["receivable"]) == {}
-            trends = (await c.get("/api/v1/dashboard/trends", headers=auth(uid))).json()
+            trends = (await c.get("/api/v1/dashboard/trends", headers=auth(3 if uid == 4 else uid))).json()
             assert sum(r["amount"] for r in trends["procurement_suppliers"]["THB"]) == 3000
-            costs = (await c.get("/api/v1/reports/cost-funds-debt/costs", headers=auth(uid),
+            costs = (await c.get("/api/v1/reports/cost-funds-debt/costs", headers=auth(3 if uid == 4 else uid),
                 params={**RANGE, "cost_category": "采购"})).json()
             assert costs["total"] == 1 and costs["totals_by_currency"]["THB"] == 3000
             row = costs["data"][0]

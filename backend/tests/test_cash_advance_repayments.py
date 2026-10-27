@@ -180,7 +180,7 @@ def test_admin_only_repayment_upload_accounts_and_revoke(tmp_path, monkeypatch, 
                     message="超级管理员请使用各仓库管理员账号操作" if uid==2 else "无权访问" if uid==5 else "只有获授权财务或管理员可以处理核算"
                     assert r.json()=={"detail":message}
             listing = await c.get(f"{URL}/{aid}/repayments", headers=auth(uid))
-            assert listing.status_code == (200 if uid in (3, 4) else 403)
+            assert listing.status_code == (200 if uid == 3 else 403)
             assert (await balance(c))["current_balance"] == (8000 if uid==3 else 9000)
     asyncio.run(run())
 

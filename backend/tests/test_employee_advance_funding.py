@@ -140,7 +140,7 @@ def test_pending_no_money_then_approval_once_and_rejection(tmp_path, monkeypatch
             r = await create(c, uid=4, funding_source=source, cash_advance_id=1, fund_account_id=1)
             assert r.status_code == 200 and r.json()['approval_status'] == 'pending', r.text
             assert await state(f) == before
-            opts = (await c.get(BASE+'/funding-options', headers=auth(4))).json()
+            opts = (await c.get(BASE+'/funding-options', headers=auth(3))).json()
             assert next(x for x in opts['cash_advances'] if x['id'] == 1)['available_amount'] == 10000
             await approve_advance(f,c,r.json()["id"])
             assert await state(f)==before
@@ -150,7 +150,7 @@ def test_pending_no_money_then_approval_once_and_rejection(tmp_path, monkeypatch
             assert saved['balance'] == 20000 - (1000 if source == 'company_account' else 0)
             assert saved['fund_available'] == 10000 - (1000 if source == 'expense_fund' else 0)
             if source == 'cash_advance':
-                opts = (await c.get(BASE+'/funding-options', headers=auth(4))).json()
+                opts = (await c.get(BASE+'/funding-options', headers=auth(3))).json()
                 assert next(x for x in opts['cash_advances'] if x['id'] == 1)['available_amount'] == 9000
             repeat = await c.post(f"{BASE}/{r.json()['id']}/approve", headers=auth(1))
             assert repeat.status_code == 400 and await state(f) == saved
@@ -295,13 +295,15 @@ def test_old_null_funding_no_backfill_and_original_salary_deduction(tmp_path, mo
 def test_options_wh_isolation_and_advance_permission_only(tmp_path, monkeypatch):
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, _, c):
-            for uid in (1,3,4):
+            for uid in (1,3):
                 r = await c.get(BASE+'/funding-options', headers=auth(uid))
                 assert r.status_code == 200, r.text
                 data = r.json()
                 assert {a['id'] for a in data['accounts']} == {1,3}
                 assert {a['id'] for a in data['funds']} == {1}
                 assert {a['id'] for a in data['cash_advances']} == {1,4,5}
+            # No formal employee binding means no supervisor personal-source access.
+            assert (await c.get(BASE+'/funding-options', headers=auth(4))).status_code == 403
             assert (await c.get(BASE+'/funding-options', headers=auth(5))).status_code == 403
     asyncio.run(run())
 

@@ -69,7 +69,8 @@ def test_two_currencies_filter_full_page_totals_and_export(tmp_path,monkeypatch)
                 data,_,_=await check_scope(client,'income',{cur:amt},1,category_group='other',currency=cur)
                 assert data['data'][0]['currency']==cur and data['data'][0]['amount']==amt
                 filtered[cur]={'rows':1,'amount':amt}
-            for uid in (3,4):await check_scope(client,'income',{'THB':100,'CNY':200},2,uid=uid,category_group='other')
+            for uid in (1,3):await check_scope(client,'income',{'THB':100,'CNY':200},2,uid=uid,category_group='other')
+            assert (await client.get('/api/v1/income-expense/income?category_group=other',headers=auth(4))).status_code==403
             actual('two_currencies',{'all':all_rows['totals_by_currency'],'rows':2,'mixed_scalar':summary['total_income'],
                 'filtered':filtered,'page_size_1_currencies':pages,'export_rows':len(sheet)-1,'source':'money_records'})
     asyncio.run(run())

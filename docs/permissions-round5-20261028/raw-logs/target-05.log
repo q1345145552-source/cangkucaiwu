@@ -1,0 +1,143 @@
+/private/tmp/permissions-round5-20261028/backend/tests/permission_round5/fixtures.py:86: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round5-20261028/backend/tests/permission_round5/fixtures.py:93: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+A-employees-1 200 PASS
+A-employees-2 200 PASS
+A-employees-3 200 PASS
+A-employees-4 200 PASS
+A-no-access-6 403 PASS
+A-no-access-11 403 PASS
+A-no-access-5 403 PASS
+A-no-access-7 401 PASS
+A-summary-1 200 PASS
+A-cross-head-1 403 PASS
+A-cross-id-1 404 PASS
+A-summary-2 200 PASS
+A-cross-head-2 403 PASS
+A-cross-id-2 404 PASS
+A-summary-3 200 PASS
+A-cross-head-3 403 PASS
+A-cross-id-3 404 PASS
+B-supervisor-deny-/payroll 403 PASS
+B-supervisor-deny-/payroll/summary 403 PASS
+B-supervisor-deny-/payroll/1 403 PASS
+B-supervisor-deny-/payroll/export 403 PASS
+B-supervisor-deny-/salary-templates 403 PASS
+B-supervisor-deny-/deduction-templates 403 PASS
+B-supervisor-deny-/reports/previews 403 PASS
+B-supervisor-deny-/reports/income-expense 403 PASS
+B-supervisor-deny-/reports/credit 403 PASS
+B-supervisor-deny-/dashboard/cockpit 403 PASS
+B-supervisor-deny-/dashboard/trends 403 PASS
+B-supervisor-deny-/income-expense/expense 403 PASS
+B-supervisor-deny-/incoming 403 PASS
+B-supervisor-deny-/reconciliation/results 403 PASS
+B-supervisor-deny-/payable 403 PASS
+B-supervisor-deny-/cash-advances 403 PASS
+A-self-2-/payroll/my-payslip 200 PASS
+A-self-spoof-2-/payroll/my-payslip 403 PASS
+A-self-2-/employee-advances/my-debt 200 PASS
+A-self-spoof-2-/employee-advances/my-debt 403 PASS
+A-self-3-/payroll/my-payslip 200 PASS
+A-self-spoof-3-/payroll/my-payslip 403 PASS
+A-self-3-/employee-advances/my-debt 200 PASS
+A-self-spoof-3-/employee-advances/my-debt 403 PASS
+A-self-4-/payroll/my-payslip 200 PASS
+A-self-spoof-4-/payroll/my-payslip 403 PASS
+A-self-4-/employee-advances/my-debt 200 PASS
+A-self-spoof-4-/employee-advances/my-debt 403 PASS
+A-self-6-/payroll/my-payslip 200 PASS
+A-self-spoof-6-/payroll/my-payslip 403 PASS
+A-self-6-/employee-advances/my-debt 200 PASS
+A-self-spoof-6-/employee-advances/my-debt 403 PASS
+A-self-11-/payroll/my-payslip 200 PASS
+A-self-spoof-11-/payroll/my-payslip 403 PASS
+A-self-11-/employee-advances/my-debt 200 PASS
+A-self-spoof-11-/employee-advances/my-debt 403 PASS
+A-self-5-/payroll/my-payslip 200 PASS
+A-self-spoof-5-/payroll/my-payslip 403 PASS
+A-self-5-/employee-advances/my-debt 200 PASS
+A-self-spoof-5-/employee-advances/my-debt 403 PASS
+A-invalid-scope-2 403 PASS
+A-invalid-scope-all 403 PASS
+A-invalid-scope-999 403 PASS
+A-invalid-scope-bad 403 PASS
+A-invalid-scope- 403 PASS
+A-multi-selected 200 PASS
+A-multi-all 200 PASS
+A-multi-unauthorized 403 PASS
+C-purchase-pdf-1 200 ['ModuleNotFoundError("No module named \'fitz\'")']
+C-purchase-pdf-cross-1 403 PASS
+C-purchase-pdf-2 200 ['ModuleNotFoundError("No module named \'fitz\'")']
+C-purchase-pdf-cross-2 403 PASS
+C-purchase-pdf-3 200 ['ModuleNotFoundError("No module named \'fitz\'")']
+C-purchase-pdf-cross-3 403 PASS
+C-pdf-no-access-6 403 PASS
+C-pdf-no-access-11 403 PASS
+C-pdf-no-access-7 401 PASS
+A-onsite-edit 200 PASS
+B-finance-report-1 200 PASS
+B-finance-payroll-1 200 PASS
+B-finance-cross-query-1 403 PASS
+B-finance-report-3 200 PASS
+B-finance-payroll-3 200 PASS
+B-finance-cross-query-3 403 PASS
+B-no-menu-report 403 PASS
+B-onsite-home 200 PASS
+B-onsite-efficiency 200 PASS
+C-customer-list-denied 403 PASS
+C-customer-search 200 PASS
+C-customer-wildcard 403 PASS
+C-customer-second-page 403 PASS
+C-customer-unbounded 403 PASS
+C-customer-detail 200 PASS
+C-export-1-/payroll/export 200 PASS
+C-export-1-/history/export 200 PASS
+C-export-1-/reports/recharge-summary?format=excel 200 PASS
+C-export-3-/payroll/export 200 PASS
+C-export-3-/history/export 200 PASS
+C-export-3-/reports/recharge-summary?format=excel 200 PASS
+B-own-advances 200 PASS
+B-other-advance 404 PASS
+B-other-advance-filter 403 PASS
+B-own-expense 200 PASS
+B-own-recharge 200 PASS
+B-other-recharge 403 PASS
+B-history 200 PASS
+D-employee-document-1 200 PASS
+D-employee-document-2 403 PASS
+D-employee-document-3 403 PASS
+D-employee-document-5 200 PASS
+D-employee-document-6 403 PASS
+D-employee-document-7 401 PASS
+D-employee-document-8 403 PASS
+D-real-upload 200 PASS
+D-temporary-3 200 PASS
+D-temporary-2 403 PASS
+D-temporary-4 403 PASS
+D-temporary-8 403 PASS
+D-associated-3 200 PASS
+D-associated-4 200 PASS
+D-associated-2 403 PASS
+D-associated-1 200 PASS
+D-revoked-old-url 403 PASS
+D-invalid-self-old-url 200 PASS
+A-invalid-self 403 PASS
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round5-20261028/backend/tests/permission_round5/acceptance.py", line 142, in <module>
+    if __name__=='__main__':asyncio.run(main())
+                            ^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/private/tmp/permissions-round5-20261028/backend/tests/permission_round5/acceptance.py", line 141, in main
+    if FAIL:raise AssertionError(FAIL)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ['C-purchase-pdf-1: ModuleNotFoundError("No module named \'fitz\'")', 'C-purchase-pdf-2: ModuleNotFoundError("No module named \'fitz\'")', 'C-purchase-pdf-3: ModuleNotFoundError("No module named \'fitz\'")']

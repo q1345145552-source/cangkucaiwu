@@ -101,7 +101,7 @@ def test_roles_membership_revoke_forged_scope_and_month(tmp_path,monkeypatch):
    for uid in (1,3,4):
     for wh in (1,2):
      for path in ['previews',*KEYS]:
-      r=await get(c,path,wh,uid);assert r.status_code==200,(uid,wh,path,r.text);results.append({'user':uid,'warehouse':wh,'path':path,'status':r.status_code})
+      r=await get(c,path,wh,uid);assert r.status_code==(403 if uid==4 else 200),(uid,wh,path,r.text);results.append({'user':uid,'warehouse':wh,'path':path,'status':r.status_code})
     for wh in ('5','4','999','garbage'):
      for path in ['previews',*KEYS]:
       r=await get(c,path,wh,uid);assert r.status_code==403,(uid,wh,path,r.text);results.append({'user':uid,'warehouse':wh,'path':path,'status':r.status_code,'body':r.json()})

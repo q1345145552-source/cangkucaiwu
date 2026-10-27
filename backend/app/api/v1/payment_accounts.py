@@ -112,6 +112,10 @@ async def list_accounts(request: Request, current_user: User = Depends(check_sta
     query = select(PaymentAccount).where(PaymentAccount.warehouse_id.in_(scope))
     result = await db.execute(query.order_by(PaymentAccount.id))
     accs = result.scalars().all()
+    if current_user.role == Role.SUPERVISOR:
+        return {"data": [{"id":a.id,"warehouse_id":a.warehouse_id,"account_name":a.account_name,
+                          "currency":a.currency or "THB","status":a.status or "active"} for a in accs],
+                "warehouse_ids":scope,"scope":"account_selection_only"}
     balances = await current_account_balances(db, accs)
     return {"data": [{"id": a.id, "warehouse_id": a.warehouse_id, "account_name": a.account_name,
                       "account_type": a.account_type, "account_number": a.account_number,

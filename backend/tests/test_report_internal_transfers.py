@@ -109,7 +109,7 @@ def test_roles_unauthorized_scope_retired(tmp_path,monkeypatch):
      r=await c.get('/api/v1'+p,headers=auth(uid));assert r.status_code==403,(uid,p,r.text)
     r=await c.get('/api/v1'+p,headers={**auth(1),'X-Warehouse-ID':'999'});assert r.status_code==403,(p,r.text);denied.append(dict(path=p,status=r.status_code,body=r.json()))
     for uid in (1,3,4):
-     r=await c.get('/api/v1'+p,headers=auth(uid));assert r.status_code==200,(uid,p,r.text)
+     r=await c.get('/api/v1'+p,headers=auth(uid));assert r.status_code==(403 if uid==4 else 200),(uid,p,r.text)
    for p in ['/reports/operations','/customers/1/receivables','/credit/shipments']:assert (await c.get('/api/v1'+p,headers=auth(1))).status_code==403
    actual('guards',denied)
  asyncio.run(run())

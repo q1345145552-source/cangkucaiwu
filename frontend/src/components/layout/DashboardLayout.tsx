@@ -117,6 +117,7 @@ function hasAccess(item: NavItem, user: any, permissions: MenuPermission[]): boo
   }
   // 劳工自助入口仍只属于劳工，不混入管理端。
   if (item.roles.every(role => role === "warehouse_labor")) return false;
+  if (user.role === "supervisor" && ["payroll", "salary_templates", "deduction_templates", "employee_deductions", "reports", "ledger", "incoming", "reconciliation", "payable", "payment_plans", "operating", "other_income_expense", "cash_advances", "credit"].includes(item.key)) return false;
   const permission = permissions.find(p => p.menu_key === item.key);
   if (!permission) return false;
   if (!permission.selectable) return item.roles.includes(user.role);
@@ -173,6 +174,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const changed = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      setUser(event.detail);
+      setWhList(event.detail?.warehouses || []);
+    };
+    window.addEventListener("auth-user-refreshed", changed);
+    return () => window.removeEventListener("auth-user-refreshed", changed);
   }, []);
 
   // Load user + warehouses
@@ -451,7 +462,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
-          <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}`} className="animate-fade-in">
+          <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}-${isAllWarehouses}-${JSON.stringify(user?.extra_permissions || [])}`} className="animate-fade-in">
             {user && laborPageAllowed ? children : null}
           </div>
           <BackToTop />

@@ -1,0 +1,13 @@
+{
+  "restored": 107,
+  "foreign_platform_optional_unavailable": [
+    "node_modules/@next/swc-darwin-x64",
+    "node_modules/@next/swc-linux-arm64-gnu",
+    "node_modules/@next/swc-linux-arm64-musl",
+    "node_modules/@next/swc-linux-x64-gnu",
+    "node_modules/@next/swc-linux-x64-musl",
+    "node_modules/@next/swc-win32-arm64-msvc",
+    "node_modules/@next/swc-win32-ia32-msvc",
+    "node_modules/@next/swc-win32-x64-msvc"
+  ]
+}

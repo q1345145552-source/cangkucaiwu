@@ -32,8 +32,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const refreshed: unknown = event.detail;
       if (refreshed === null || isAuthUser(refreshed)) setUser(refreshed);
     };
+    const refreshFromServer = () => {
+      const token = getToken();
+      setUser(null);
+      window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: null }));
+      if (!token) return;
+      api.get<AuthUser>("/auth/me").then(async fresh => {
+        await api.post("/auth/attachment-session", {});
+        if (active && token === getToken() && isAuthUser(fresh)) {
+          setUser(fresh); localStorage.setItem("user", JSON.stringify(fresh));
+          window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: fresh }));
+        }
+      }).catch(() => { if (active && token === getToken()) setUser(null); });
+    };
+    const onStorage = (event: StorageEvent) => { if (event.key === "token" || event.key === null) refreshFromServer(); };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", refreshFromServer);
     window.addEventListener("auth-user-refreshed", refresh);
-    return () => { active = false; window.removeEventListener("auth-user-refreshed", refresh); };
+    return () => { active = false; window.removeEventListener("auth-user-refreshed", refresh); window.removeEventListener("storage", onStorage); window.removeEventListener("focus", refreshFromServer); };
   }, []);
 
   async function doLogin(username: string, password: string) {

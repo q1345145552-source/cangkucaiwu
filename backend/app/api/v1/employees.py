@@ -1,3 +1,4 @@
+from app.core.round5_access import read_projection
 from app.core.round2_access import require_account_manager, mutation_scope, own_scope, login_target_scope
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -166,6 +167,7 @@ async def set_max_limit(
     return {"message": f"人数上限已设为 {max_employees}", "max_employees": max_employees}
 
 @router.get("")
+@read_projection("employee")
 async def list_employees(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
@@ -966,6 +968,7 @@ async def upload_work_permit_photo(
 # ═══ Monthly Summary ════════════════════════════
 
 @router.get("/{employee_id}/summary")
+@read_projection("employee")
 async def employee_summary(
     employee_id: int,
     month: str = None,
@@ -1009,6 +1012,7 @@ async def employee_summary(
         records = (await db.execute(
             select(ClockInRecord).where(
                 ClockInRecord.user_id == uid,
+                ClockInRecord.warehouse_id == emp.warehouse_id,
                 ClockInRecord.clock_date >= ym_start,
                 ClockInRecord.clock_date < ym_end,
             )
@@ -1033,6 +1037,7 @@ async def employee_summary(
             .join(OvertimeAssignment, OvertimeAssignment.overtime_id == OvertimeTask.id)
             .where(
                 OvertimeAssignment.user_id == uid,
+                OvertimeTask.warehouse_id == emp.warehouse_id,
                 OvertimeAssignment.confirmed == True,
                 OvertimeTask.date >= ym_start,
                 OvertimeTask.date < ym_end,
@@ -1044,6 +1049,7 @@ async def employee_summary(
     payroll_records = (await db.execute(
         select(PayrollRecord).where(
             PayrollRecord.employee_id == employee_id,
+            PayrollRecord.warehouse_id == emp.warehouse_id,
             PayrollRecord.period == month,
             PayrollRecord.voided == False,
         ).order_by(PayrollRecord.settle_end_date.asc(), PayrollRecord.id.asc())

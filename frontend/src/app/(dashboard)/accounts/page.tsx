@@ -159,9 +159,9 @@ export default function AccountsPage() {
       </div>
 
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : loadError ? <div role="alert" className="card p-4 text-red-600">{loadError}<button className="btn-secondary ml-2" onClick={load}>重试</button></div> : <>
-        <AccountNatureSummary balances={walletBalances} />
-        {data.length > 0 && !Object.keys(walletBalances).length && <p className="text-amber-800 mb-3">账户性质汇总暂不可用，请刷新或检查服务版本。</p>}
-        <DataTable columns={columns} data={data} total={data.length} page={1} pageSize={100} onPageChange={() => {}} />
+        {user?.role !== "supervisor" && <AccountNatureSummary balances={walletBalances} />}
+        {user?.role !== "supervisor" && data.length > 0 && !Object.keys(walletBalances).length && <p className="text-amber-800 mb-3">账户性质汇总暂不可用，请刷新或检查服务版本。</p>}
+        <DataTable columns={user?.role === "supervisor" ? columns.filter(c => ["account_name", "currency", "status"].includes(c.key)) : columns} data={data} total={data.length} page={1} pageSize={100} onPageChange={() => {}} />
       </>}
 
       {/* 新建/编辑弹窗 */}

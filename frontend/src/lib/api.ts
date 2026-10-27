@@ -23,6 +23,7 @@ export function setToken(t: string) {
 }
 
 export function getToken(): string | null {
+  if (typeof window !== "undefined") token = localStorage.getItem("token");
   return token;
 }
 
@@ -76,8 +77,9 @@ async function request<T>(
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  const requestToken = getToken();
+  if (requestToken) {
+    headers["Authorization"] = `Bearer ${requestToken}`;
   }
   // 告知后端当前语言，后端据此返回对应语言的提示消息
   if (typeof window !== "undefined") {
@@ -93,6 +95,7 @@ async function request<T>(
     headers["X-Warehouse-ID"] = whId;
   }
   const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  if (requestToken !== getToken()) throw new ApiError(409, "账号已切换，请重新加载");
   if (res.status === 401) {
     clearToken();
     if (typeof window !== "undefined") {
@@ -110,7 +113,9 @@ async function request<T>(
     }
     throw new ApiError(res.status,Array.isArray(err.detail) ? msg : err.detail || msg);
   }
-  return res.json();
+  const result = await res.json();
+  if (requestToken !== getToken()) throw new ApiError(409, "账号已切换，请重新加载");
+  return result;
 }
 
 export const api = {

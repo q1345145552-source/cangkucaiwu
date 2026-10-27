@@ -23,6 +23,7 @@ export function hasMenuPermission(user: PermissionUser | null, menuKey: string, 
   // same backend catalogue that retains its explicit market/settings exceptions.
   if (user.role === "super_admin") return permissions.some(item => item.menu_key === menuKey && item.roles?.includes("super_admin"));
   if (user.role !== "supervisor" && user.role !== "staff") return false;
+  if (user.role === "supervisor" && ["payroll", "salary_templates", "deduction_templates", "employee_deductions", "reports", "ledger", "incoming", "reconciliation", "payable", "payment_plans", "operating", "other_income_expense", "cash_advances", "credit"].includes(menuKey)) return false;
   const permission = permissions.find(item => item.menu_key === menuKey && item.selectable);
   return !!permission && (user.extra_permissions || []).includes(permission.label);
 }

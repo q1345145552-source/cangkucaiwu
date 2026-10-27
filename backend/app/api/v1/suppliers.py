@@ -1,3 +1,4 @@
+from app.core.round5_access import read_projection
 from app.core.round2_access import mutation_scope
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Body
 from fastapi.responses import StreamingResponse
@@ -1706,6 +1707,7 @@ async def ai_compare(data: dict, current_user: User = Depends(get_current_user),
 
 # ═══ Supplier CRUD ══════════════════════════════
 @router.get("")
+@read_projection("supplier")
 async def list_suppliers(page: int = 1, page_size: int = 20, search: str = None,
                          category_id: int = None,
                          current_user: User = Depends(get_current_user),
@@ -1944,6 +1946,7 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     }
 
 @_supplier_routes.get("/{supplier_id}")
+@read_projection("supplier")
 async def get_supplier(supplier_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("供应商管理"))):
     _forbid_super_admin(current_user)

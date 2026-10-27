@@ -124,7 +124,7 @@ def test_report_permission_all_authorized_warehouses_legacy_and_year_boundaries(
    async with f() as db:
     for uid in (3,4):(await db.get(User,uid)).extra_permissions=['报表中心']
     db.add(UserWarehouse(user_id=1,warehouse_id=2));(await db.get(Customer,1)).debt_amount=777;await db.commit()
-   for uid in (3,4):assert (await get(c,uid,month='2026-09')).status_code==200
+   for uid in (3,4):assert (await get(c,uid,month='2026-09')).status_code==(403 if uid==4 else 200)
    assert (await get(c,3,headers={**auth(3),'X-Warehouse-ID':'all'},month='2026-09')).status_code==403
    await ship(c,100,ship_date='2026-12-31');await receive(c,100,received_date='2027-01-01')
    r=await c.post('/api/v1/credit/2/shipment',headers=auth(7),json=payload(amount='200',ship_date='2026-12-31'));assert r.status_code==200

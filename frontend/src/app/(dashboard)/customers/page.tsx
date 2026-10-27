@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
 import { api, getToken } from "@/lib/api";
@@ -12,6 +13,8 @@ import { Edit, Trash2 } from "lucide-react";
 
 export default function CustomersPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
+  const onsite = user?.role === "supervisor";
   const { toast } = useToast();
   const router = useRouter();
   const [reconciling, setReconciling] = useState<any>(null);
@@ -32,12 +35,13 @@ export default function CustomersPage() {
   useEffect(() => { if (!getToken()) router.push("/login"); }, []);
 
   async function load() {
+    if (onsite && search.trim().length < 2) { setData([]); setTotal(0); return; }
     setLoading(true);
     try {
       let url = `/customers?page=${page}&page_size=20&search=${search}`;
       if (creditFilter) url += `&credit_status=${creditFilter}`;
       const res = await api.get<any>(url);
-      setData(res.data); setTotal(res.total);
+      setData(res.data); setTotal(onsite ? res.data.length : res.total);
     } catch {}
     setLoading(false);
   }
@@ -125,7 +129,7 @@ export default function CustomersPage() {
     <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="page-title">客户档案</h1>
-        <button onClick={openCreate} className="btn-primary">新建客户</button>
+        {!onsite && <button onClick={openCreate} className="btn-primary">新建客户</button>}
       </div>
 
       {/* 筛选栏 */}
@@ -134,17 +138,17 @@ export default function CustomersPage() {
           <div className="w-64">
             <input type="text" placeholder="搜索客户名称或编号..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="form-input" />
           </div>
-          <div className="w-36">
+          {!onsite && <div className="w-36">
             <select className="form-input" value={creditFilter} onChange={e => { setCreditFilter(e.target.value); setPage(1); }}>
               <option value="">全部客户</option>
               <option value="true">账期客户</option>
               <option value="false">非账期客户</option>
             </select>
-          </div>
+          </div>}
         </div>
       </div>
 
-      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />}
+      {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={onsite ? columns.filter(c => ["customer_code", "company_name", "cargo_type"].includes(c.key)) : columns} data={data} total={total} page={page} pageSize={20} onPageChange={onsite ? () => setPage(1) : setPage} />}
 
       {operatingEntriesEnabled && reconciling && <div className="modal-overlay" role="dialog" aria-label="客户对账"><div className="bg-white rounded-xl w-full max-w-4xl p-4 max-h-[90dvh] overflow-y-auto"><div className="flex justify-between items-center mb-4"><h2 className="font-semibold">{reconciling.company_name} · 客户对账</h2><button className="btn-secondary" onClick={() => setReconciling(null)}>关闭对账</button></div><CustomerReceivable customerId={reconciling.id} onChanged={load} /></div></div>}
       {/* 新建/编辑弹窗 */}

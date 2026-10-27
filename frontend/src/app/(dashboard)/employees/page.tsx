@@ -14,6 +14,9 @@ const NATIONALITIES = ["泰国", "缅甸", "中国", "其他"];
 export default function EmployeesPage() {
   const canWrite = useMenuPermission("employees");
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
+  const payrollMenu = useMenuPermission("payroll");
+  const canReadPay = user?.role === "warehouse_admin" || (user?.role === "staff" && payrollMenu);
+  const canReadDocuments = user?.role === "warehouse_admin";
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [nationalityFilter, setNationalityFilter] = useState("");
@@ -81,7 +84,7 @@ export default function EmployeesPage() {
   };
   const [form, setForm] = useState({ ...defaultForm });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); loadLimit(); loadTemplates(); loadDeductionTemplates(); }, []);
+  useEffect(() => { if (!getToken()) router.push("/login"); loadLimit(); if (canReadPay) { loadTemplates(); loadDeductionTemplates(); } }, [canReadPay]);
 
   useEffect(() => { setSelectedIds([]); setData([]); load(); }, [nationalityFilter]);
 
@@ -148,9 +151,9 @@ export default function EmployeesPage() {
   }
 
   async function handleCreate() {
-    if (form.nationality === "泰国" && !(form.thai_id_number || "").trim()) { toast("error", "泰国员工必须填写十三位身份证号"); return; }
-    if ((!form.nationality || form.nationality === "泰国") && (form.thai_id_number || "").trim() && !/^[0-9]{13}$/.test(form.thai_id_number.trim())) { toast("error", "身份证号必须为十三位数字"); return; }
-    if (form.nationality && form.nationality !== "泰国" && !(form.passport_number || "").trim()) { toast("error", "外籍员工必须填写护照号"); return; }
+    if (canReadDocuments && form.nationality === "泰国" && !(form.thai_id_number || "").trim()) { toast("error", "泰国员工必须填写十三位身份证号"); return; }
+    if (canReadDocuments && (!form.nationality || form.nationality === "泰国") && (form.thai_id_number || "").trim() && !/^[0-9]{13}$/.test(form.thai_id_number.trim())) { toast("error", "身份证号必须为十三位数字"); return; }
+    if (canReadDocuments && form.nationality && form.nationality !== "泰国" && !(form.passport_number || "").trim()) { toast("error", "外籍员工必须填写护照号"); return; }
     if (!form.name.trim()) { toast("error", "请输入姓名"); return; }
     if (user?.role === "warehouse_admin" && !(form.employee_no || "").trim()) { toast("error", "工号必填"); return; }
     if (user?.role === "warehouse_admin" && !form.salary_template_id) { toast("error", "请选择薪资模板"); return; }
@@ -167,6 +170,7 @@ export default function EmployeesPage() {
       const payload: any = { ...form };
       if (user?.role !== "warehouse_admin") { delete payload.employee_no; delete payload.password; delete payload.user_id;
         for (const field of ["daily_wage", "base_salary", "salary_template_id", "deduction_template_id", "bank_account_number", "bank_name", "bank_account_holder"]) delete payload[field]; }
+      if (!canReadDocuments) for (const field of ["nationality", "thai_id_number", "sso_number", "myanmar_id", "passport_number", "work_permit_number"]) delete payload[field];
       // Hidden fields are omitted, so switching nationality never clears old documents.
       if (form.nationality === "泰国") {
         for (const key of ["passport_number", "passport_expiry", "work_permit_number", "work_permit_expiry"]) delete payload[key];
@@ -563,8 +567,8 @@ export default function EmployeesPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">工号</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">国籍</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">岗位</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">薪资模板</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">扣款模板</th>
+              {canReadPay && <th className="text-left px-4 py-3 font-medium text-gray-600">薪资模板</th>}
+              {canReadPay && <th className="text-left px-4 py-3 font-medium text-gray-600">扣款模板</th>}
               <th className="text-left px-4 py-3 font-medium text-gray-600">状态</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">联系电话</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">入职日期</th>
@@ -608,8 +612,8 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3 text-gray-600 font-mono text-sm">{e.employee_no || "-"}</td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{e.nationality || "未填"}</td>
                   <td className="px-4 py-3 text-gray-600">{e.position || "-"}</td>
-                  <td className="px-4 py-3 text-gray-600">{e.salary_template_name || "-"}</td>
-                  <td className="px-4 py-3 text-gray-600">{e.deduction_template_name || "-"}</td>
+                  {canReadPay && <td className="px-4 py-3 text-gray-600">{e.salary_template_name || "-"}</td>}
+                  {canReadPay && <td className="px-4 py-3 text-gray-600">{e.deduction_template_name || "-"}</td>}
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       e.status === "trial" ? "bg-amber-50 text-amber-700" :
@@ -700,7 +704,7 @@ export default function EmployeesPage() {
             </div>
             <div className="p-5 space-y-4">
               <label className="block text-sm">国籍
-                <select aria-label="国籍" className="form-input w-full min-h-11 mt-1" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value})}>
+                <select disabled={!canReadDocuments} aria-label="国籍" className="form-input w-full min-h-11 mt-1" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value})}>
                   <option value="">未填</option>
                   {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
@@ -763,7 +767,7 @@ export default function EmployeesPage() {
                   <label className="form-label text-xs mb-1 block">联系电话</label>
                   <input className="form-input py-2 w-full" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                 </div>
-{!form.nationality && (                <div>
+{canReadDocuments && !form.nationality && (                <div>
                   <label className="form-label text-xs mb-1 block">缅甸身份证号</label>
                   <input className="form-input py-2 w-full" value={form.myanmar_id} onChange={e => setForm({...form, myanmar_id: e.target.value})} />
                 </div>)}
@@ -790,7 +794,7 @@ export default function EmployeesPage() {
                 <input className="form-input py-2 w-full" value={form.emergency_contact} onChange={e => setForm({...form, emergency_contact: e.target.value})} />
               </div>
 
-              {(!form.nationality || form.nationality === "泰国") && <div className="border-t pt-3 space-y-3">
+              {canReadDocuments && (!form.nationality || form.nationality === "泰国") && <div className="border-t pt-3 space-y-3">
                 <h4 className="text-sm font-medium text-gray-700">泰国证件</h4>
                 <label className="block text-sm">身份证号 {form.nationality === "泰国" && <span className="text-red-400">*</span>}
                   <input aria-label="身份证号" aria-required={form.nationality === "泰国"} inputMode="numeric" maxLength={13} className="form-input w-full min-h-11 mt-1" value={form.thai_id_number} onChange={e => setForm({...form, thai_id_number: e.target.value})}/>
@@ -802,7 +806,7 @@ export default function EmployeesPage() {
                 </label>
               </div>}
 
-              <div className="border-t pt-3 space-y-3">
+              {canReadPay && <div className="border-t pt-3 space-y-3">
                 <h4 className="text-sm font-medium text-gray-700">银行资料</h4>
                 <label className="block text-sm">银行账号 <span className="text-red-400">*</span>
                   <input disabled={user?.role !== "warehouse_admin"} aria-label="银行账号" inputMode="numeric" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_number} onChange={e => setForm({...form, bank_account_number: e.target.value})}/>
@@ -816,10 +820,10 @@ export default function EmployeesPage() {
                   <input disabled={user?.role !== "warehouse_admin"} aria-label="开户人姓名" maxLength={100} className="form-input w-full min-h-11 mt-1" value={form.bank_account_holder} onChange={e => setForm({...form, bank_account_holder: e.target.value})}/>
                   <span className="block text-xs text-gray-400 mt-1">与员工本名不同时填写</span>
                 </label>
-              </div>
+              </div>}
 
               {/* Passport & Work Permit */}
-              {form.nationality !== "泰国" && <div className="border-t pt-3">
+              {canReadDocuments && form.nationality !== "泰国" && <div className="border-t pt-3">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">护照 & 工作证</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -872,8 +876,8 @@ export default function EmployeesPage() {
 
               {/* Salary & Promotion */}
               <div className="border-t pt-3">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">薪资 & 转正</h4>
-                <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">{canReadPay ? "薪资 & 转正" : "转正"}</h4>
+                {canReadPay && <><div>
                   <label className="form-label text-xs mb-1 block">薪资模板 <span className="text-red-400">*</span></label>
                   <select disabled={user?.role !== "warehouse_admin"} className="form-input py-2 w-full" value={form.salary_template_id || ""} onChange={e => setForm({ ...form, salary_template_id: +e.target.value })}>
                     <option value="">请选择薪资模板</option>
@@ -891,6 +895,7 @@ export default function EmployeesPage() {
                     ))}
                   </select>
                 </div>
+                </>}
                 <div className="mt-3">
                   <label className="form-label text-xs mb-1 block">转正日期 {form.status === "regular" && <span className="text-red-400">*</span>}</label>
                   <input type="date" className="form-input py-2 w-full" value={form.promotion_date || ""} onChange={e => setForm({...form, promotion_date: e.target.value})} />
@@ -1017,13 +1022,13 @@ export default function EmployeesPage() {
 
               <div className="border-t pt-3 space-y-2 text-sm break-words">
                 <p>国籍：{detailEmp.nationality || "未填"}</p>
-                {(!detailEmp.nationality || detailEmp.nationality === "泰国") && <>
+                {canReadDocuments && (!detailEmp.nationality || detailEmp.nationality === "泰国") && <>
                   <p>身份证号：{detailEmp.thai_id_number || "未填"}</p>
                   <p>社保号：{detailEmp.sso_number || "未填"}</p>
                 </>}
-                <p>银行账号：{detailEmp.bank_account_number || "未填"}</p>
+                {canReadPay && <><p>银行账号：{detailEmp.bank_account_number || "未填"}</p>
                 <p>银行名称：{detailEmp.bank_name || "未填"}</p>
-                <p>开户人姓名：{detailEmp.bank_account_holder || detailEmp.name}</p>
+                <p>开户人姓名：{detailEmp.bank_account_holder || detailEmp.name}</p></>}
               </div>
 
               {/* Basic Info */}
@@ -1032,7 +1037,7 @@ export default function EmployeesPage() {
                   <label className="text-xs text-gray-400">联系电话</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.phone || "-"}</p>
                 </div>
-{!detailEmp.nationality && (                <div>
+{canReadDocuments && !detailEmp.nationality && (                <div>
                   <label className="text-xs text-gray-400">缅甸身份证号</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.myanmar_id || "-"}</p>
                 </div>)}
@@ -1040,7 +1045,7 @@ export default function EmployeesPage() {
                   <label className="text-xs text-gray-400">入职日期</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.hire_date || "-"}</p>
                 </div>
-                <div>
+                {canReadPay && <div>
                   <label className="text-xs text-gray-400">薪资模板</label>
                   <p className="text-sm text-gray-700 mt-0.5">
                     {detailEmp.salary_template_name || "-"}
@@ -1048,11 +1053,11 @@ export default function EmployeesPage() {
                       <span className="text-gray-400"> · {detailEmp.salary_template_type === "hourly" ? "按小时" : detailEmp.salary_template_type === "daily" ? "按天" : detailEmp.salary_template_type === "monthly" ? "按月" : detailEmp.salary_template_type} · {detailEmp.salary_template_amount} · 加班半小时费 {detailEmp.salary_template_overtime_fee ?? 0}</span>
                     )}
                   </p>
-                </div>
-                <div>
+                </div>}
+                {canReadPay && <div>
                   <label className="text-xs text-gray-400">扣款模板</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.deduction_template_name || "不扣考勤款"}</p>
-                </div>
+                </div>}
                 <div className="col-span-2">
                   <label className="text-xs text-gray-400">地址</label>
                   <p className="text-sm text-gray-700 mt-0.5">{detailEmp.address || "-"}</p>
@@ -1064,7 +1069,7 @@ export default function EmployeesPage() {
               </div>
 
               {/* Passport & Work Permit */}
-              {detailEmp.nationality !== "泰国" && <div className="border-t pt-4">
+              {canReadDocuments && detailEmp.nationality !== "泰国" && <div className="border-t pt-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">护照 & 工作证</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

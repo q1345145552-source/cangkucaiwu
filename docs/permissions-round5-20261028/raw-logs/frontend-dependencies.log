@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round5-20261028/backend/tests/permission_round5/restore_frontend.py", line 15, in <module>
+    if not parts or parts[0]!='package' or '..' in parts:raise ValueError(m.name)
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: node v22.20

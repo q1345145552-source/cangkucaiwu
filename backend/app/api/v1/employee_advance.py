@@ -1,3 +1,4 @@
+from app.core.round5_access import own_read_employee
 from app.core.personal_finance import personal_finance_access
 from app.services import financial_authorization as duties
 from app.core.round2_access import mutation_scope, own_scope
@@ -203,6 +204,11 @@ async def list_advances(
         return {"data": [], "total": 0}
 
     q = select(EmployeeAdvance).where(EmployeeAdvance.warehouse_id.in_(wh_ids))
+    if current_user.role == Role.SUPERVISOR:
+        own = await own_read_employee(db, current_user)
+        if employee_id is not None and employee_id != own.id:
+            raise HTTPException(403, '只能查看本人预支')
+        q = q.where(EmployeeAdvance.employee_id == own.id)
     if advance_id is not None:
         q = q.where(EmployeeAdvance.id == advance_id)
     if approval_status is not None:
@@ -269,9 +275,11 @@ async def advance_summary(
     if not wh_ids:
         return {"total_by_currency": [], "debtor_count": 0}
 
-    rows = (await db.execute(
-        select(EmployeeAdvance).where(EmployeeAdvance.warehouse_id.in_(wh_ids), EmployeeAdvance.not_voided())
-    )).scalars().all()
+    query = select(EmployeeAdvance).where(EmployeeAdvance.warehouse_id.in_(wh_ids), EmployeeAdvance.not_voided())
+    if current_user.role == Role.SUPERVISOR:
+        own = await own_read_employee(db, current_user)
+        query = query.where(EmployeeAdvance.employee_id == own.id)
+    rows = (await db.execute(query)).scalars().all()
 
     by_currency = {}
     debtors = set()

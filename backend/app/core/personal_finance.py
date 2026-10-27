@@ -11,17 +11,20 @@ ACTIONS = {
     'reimbursement': {'list_reimbursements', 'create_reimbursement', 'list_reimb_categories',
                       'get_reimb_detail', 'edit_reimb', 'delete_reimb', 'submit_reimb'},
     'expense_fund': {'list_accounts', 'list_items', 'add_item', 'upload_receipt',
-                     'submit_recharge_request', 'list_recharge_requests', 'upload_new_item_receipt'},
+                     'submit_recharge_request', 'list_recharge_requests', 'upload_new_item_receipt', 'list_disbursements'},
     'employee_advance': {'create_advance', 'list_funding_options'},
 }
 
 def personal_finance_access(permissions):
     management = check_staff_permission(permissions)
     async def dependency(request: Request, user=Depends(get_current_user), db=Depends(get_db)):
-        if request.query_params.get('view') != 'self':
-            return await management(user)
         endpoint = request.scope['route'].endpoint
         module = endpoint.__module__.rsplit('.', 1)[-1]
+        from app.core.round5_access import PERSONAL_FINANCE_READ
+        from app.core.permissions import Role
+        supervisor_personal = user.role == Role.SUPERVISOR and request.method == 'GET' and (module, endpoint.__name__) in PERSONAL_FINANCE_READ
+        if request.query_params.get('view') != 'self' and not supervisor_personal:
+            return await management(user)
         if endpoint.__name__ not in ACTIONS.get(module, set()):
             raise HTTPException(403, '本人入口不提供管理、审批或付款操作')
         user = await employee_access(self_only=True)(request, user, db)

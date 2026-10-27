@@ -1,3 +1,4 @@
+from app.core.round5_access import financial_reader, has_menu
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -27,6 +28,13 @@ def _wh_filter(query, model, current_user):
 async def dashboard_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if not financial_reader(current_user,'reports'):
+        from app.models.employee import Employee
+        from app.models.attendance import LeaveRequest
+        scope = get_wh_ids(current_user)
+        can_people = has_menu(current_user,'employees') or has_menu(current_user,'attendance')
+        count = (await db.execute(select(func.count(Employee.id)).where(Employee.warehouse_id.in_(scope),Employee.is_deleted == False,Employee.status != 'resigned'))).scalar() if can_people else None
+        return {"scope":"onsite","employee_count":count}
     # Total recharge this month
     rq = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0)).where(
         func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == func.to_char(func.now(), 'YYYY-MM')
@@ -140,7 +148,7 @@ async def pending_tasks(current_user: User = Depends(get_current_user), db: Asyn
     for t in tasks: del t["created_at"]
     tasks = tasks[:20]
 
-    return {"data": tasks}
+    return {"data": [task for task in tasks if has_menu(current_user,task["type"])]}
 
 @router.get("/warehouse-summary", dependencies=[Depends(require_non_labor)])
 async def warehouse_summary(request: Request, warehouse_id: int | None = None,
@@ -514,6 +522,7 @@ async def boss_todos(request: Request, response: Response, current_user: User = 
         EmployeeAdvance.approval_status == AdvanceApprovalStatus.PENDING.value,
         EmployeeAdvance.not_voided(),
     ).order_by(EmployeeAdvance.advance_date, EmployeeAdvance.id))).all()
+    if not financial_reader(current_user,'employee_advances'): advance_rows = []
     advances = [{"id": a.id, "warehouse_id": a.warehouse_id, "employee_id": a.employee_id,
                  "employee_name": name, "amount": a.amount, "currency": a.currency or "THB",
                  "date": a.advance_date.isoformat()} for a, name in advance_rows]
@@ -523,6 +532,7 @@ async def boss_todos(request: Request, response: Response, current_user: User = 
         OvertimeTask.warehouse_id.in_(wh_ids), Employee.warehouse_id == OvertimeTask.warehouse_id,
         pending_overtime_task(), pending_overtime_assignment(),
     ).order_by(OvertimeTask.date, OvertimeAssignment.id))).all()
+    if not (current_user.role == Role.WAREHOUSE_ADMIN or (current_user.role == Role.SUPERVISOR and has_menu(current_user,'overtime'))): overtime_rows = []
     overtime_items = [{"id": a.id, "task_id": task.id, "warehouse_id": task.warehouse_id,
                        "employee_id": a.employee_id, "employee_name": name, "date": task.date.isoformat(),
                        "planned_hours": task.hours, "has_dispute": bool(a.has_dispute)} for a, task, name in overtime_rows]

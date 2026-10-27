@@ -1,0 +1,12 @@
+....                                                                     [100%]
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_cash_advance_repayments.py: 66 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round5-env/logs/prior-cash-target.xml -

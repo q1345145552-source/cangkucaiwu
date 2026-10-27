@@ -1,3 +1,4 @@
+from app.core.round5_access import read_projection
 from app.services.attendance_population import employee_account_roles, includes_efficiency
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -559,6 +560,7 @@ async def _aggregate_month(db: AsyncSession, wh_id: int, month_str: str) -> dict
 # ═══ Endpoints ════════════════════════════
 
 @router.get("/summary")
+@read_projection("efficiency")
 async def get_summary(
     view: str = Query("week"),
     week_start: str = None,
@@ -624,6 +626,7 @@ def _week_label(monday: date, sunday: date) -> str:
 
 
 @router.get("/trend")
+@read_projection("efficiency")
 async def get_trend(
     weeks: int = Query(12, ge=1, le=52),
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["labor_efficiency"].label)),
@@ -654,6 +657,7 @@ async def get_trend(
 
 
 @router.get("/compare")
+@read_projection("efficiency")
 async def get_compare(
     view: str = Query("week"),
     week_start: str = None,

@@ -1,3 +1,4 @@
+from app.core.round5_access import own_read_ids
 from app.core.round2_access import mutation_scope
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -262,6 +263,8 @@ async def list_approvals(
         return {"data": [], "total": 0}
 
     q = select(ExpenseApproval).where(ExpenseApproval.warehouse_id.in_(wh_ids))
+    if current_user.role == Role.SUPERVISOR:
+        q = q.where(ExpenseApproval.applicant_id.in_(await own_read_ids(db,current_user)))
     if status and status != "all":
         q = q.where(ExpenseApproval.status == status)
 
@@ -316,17 +319,19 @@ async def approval_summary(
     if not wh_id:
         return {"pending_count": 0, "approved_count": 0, "paid_by_currency": []}
 
+    own_filter = ExpenseApproval.applicant_id.in_(await own_read_ids(db,current_user)) if current_user.role == Role.SUPERVISOR else True
+
     pending_count = int((await db.execute(
-        select(func.count(ExpenseApproval.id)).where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "pending")
+        select(func.count(ExpenseApproval.id)).where(own_filter, ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "pending")
     )).scalar() or 0)
     approved_count = int((await db.execute(
-        select(func.count(ExpenseApproval.id)).where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "approved")
+        select(func.count(ExpenseApproval.id)).where(own_filter, ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "approved")
     )).scalar() or 0)
 
     month_start = datetime.combine(thai_today().replace(day=1), datetime.min.time())
     paid_rows = (await db.execute(
         select(ExpenseApproval.currency, func.sum(ExpenseApproval.amount))
-        .where(ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "paid", ExpenseApproval.paid_at >= month_start)
+        .where(own_filter, ExpenseApproval.warehouse_id == wh_id, ExpenseApproval.status == "paid", ExpenseApproval.paid_at >= month_start)
         .group_by(ExpenseApproval.currency)
     )).all()
 

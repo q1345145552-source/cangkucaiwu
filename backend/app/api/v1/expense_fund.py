@@ -369,6 +369,8 @@ async def add_item(
     db: AsyncSession = Depends(get_db),
     _perm=Depends(personal_finance_access("备用金管理")),
 ):
+    from app.services.personal_receipts import require_personal_receipts
+    await require_personal_receipts(db,current_user,[req.receipt],personal_only=current_user.role != Role.WAREHOUSE_ADMIN)
     """添加开销记录"""
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")

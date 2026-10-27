@@ -1,0 +1,21 @@
+1 /dashboard PASS
+1 /employees PASS
+1 /customers PASS
+1 /my-payslip: AssertionError [ERR_ASSERTION]: [{"path":"/api/v1/payroll/my-payslip","status":403},{"path":"/api/v1/employee-advances/my-debt","status":403}]
+1 /my-requests: AssertionError [ERR_ASSERTION]: [{"path":"/api/v1/reimbursement","status":403},{"path":"/api/v1/employee-advances/my-debt","status":403},{"path":"/api/v1/expense-fund/accounts","status":403}]
+2 /dashboard PASS
+2 /employees PASS
+2 /customers PASS
+2 /my-payslip PASS
+2 /my-requests PASS
+3 /dashboard PASS
+3 /employees PASS
+3 /customers PASS
+3 /my-payslip PASS
+3 /my-requests PASS
+6 /dashboard PASS
+6 /my-payslip PASS
+6 /my-requests PASS
+11 /dashboard PASS
+11 /my-payslip PASS
+11 /my-requests PASS

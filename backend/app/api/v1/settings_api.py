@@ -1,3 +1,4 @@
+from app.core.round5_access import history_modules
 """系统设置：操作日志 + 数据备份"""
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
@@ -80,6 +81,9 @@ async def operation_logs(
         wh_ids = get_wh_ids(current_user)
         query = query.where(AuditLog.warehouse_id.in_(wh_ids))
         count_q = count_q.where(AuditLog.warehouse_id.in_(wh_ids))
+    modules = history_modules(current_user)
+    if modules is not None:
+        query = query.where(AuditLog.module.in_(modules)); count_q = count_q.where(AuditLog.module.in_(modules))
     if user_id: query = query.where(AuditLog.user_id == user_id); count_q = count_q.where(AuditLog.user_id == user_id)
     if action_type: query = query.where(AuditLog.action_type == action_type); count_q = count_q.where(AuditLog.action_type == action_type)
     if date: query = query.where(func.date(AuditLog.created_at) == date); count_q = count_q.where(func.date(AuditLog.created_at) == date)
@@ -103,7 +107,7 @@ async def operation_logs(
 async def backup_all_data(current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["settings"].label)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role != Role.SUPER_ADMIN:
-        return {"error": "仅超级管理员可操作"}
+        raise HTTPException(403, "仅超级管理员可操作")
     wb = Workbook()
     tables = [
         ("users", "id,username,display_name,role,warehouse_id,is_active,created_at"),
@@ -132,7 +136,10 @@ async def backup_all_data(current_user: User = Depends(check_staff_permission(ME
             cell = ws.cell(row=1, column=c, value=col.strip())
             cell.font = hfont; cell.fill = hf
         try:
-            result = await db.execute(sa_text(f"SELECT {cols} FROM {tname} LIMIT 5000"))
+            from sqlalchemy import bindparam
+            scope_column = "id" if tname == "warehouses" else "warehouse_id"
+            query = sa_text(f"SELECT {cols} FROM {tname} WHERE {scope_column} IN :scope LIMIT 5000").bindparams(bindparam("scope", expanding=True))
+            result = await db.execute(query, {"scope": get_wh_ids(current_user)})
             rows = result.all()
             for r, row in enumerate(rows, 2):
                 for c, val in enumerate(row, 1):

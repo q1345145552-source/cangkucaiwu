@@ -1,3 +1,4 @@
+from app.core.round5_access import own_read_ids
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -41,6 +42,10 @@ async def list_recharges(
     if current_user.role != Role.SUPER_ADMIN:
         query = query.where(RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)))
         count_q = count_q.where(RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)))
+    if current_user.role == Role.SUPERVISOR:
+        own_filter = RechargeDeclaration.declarer_id.in_(await own_read_ids(db,current_user))
+        query = query.where(own_filter)
+        count_q = count_q.where(own_filter)
     if month:
         query = query.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month)
         count_q = count_q.where(func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == month)
@@ -119,6 +124,8 @@ async def get_recharge(recharge_id: int, current_user: User = Depends(check_staf
     if not r: raise HTTPException(404, "不存在")
     if current_user.role != Role.SUPER_ADMIN and r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权查看其他仓库的充值申报")
+    if current_user.role == Role.SUPERVISOR and r.declarer_id not in await own_read_ids(db,current_user):
+        raise HTTPException(403, '只能查看本人充值申报')
     return {"id": r.id, "amount": r.amount, "currency": r.currency, "declare_date": str(r.declare_date), "match_status": r.match_status, "remark": r.remark}
 
 @router.put("/{recharge_id}")

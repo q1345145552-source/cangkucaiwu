@@ -1,0 +1,131 @@
+[
+  {
+    "file": "target-07/export-1-_history_export.xlsx",
+    "sha256": "07828a6b86ac30c6816b64a086415b7884593661bdafd1b9727df1a2bacf8e02",
+    "sheets": [
+      {
+        "title": "修改日志",
+        "rows": 4,
+        "columns": 10,
+        "state": "visible"
+      }
+    ],
+    "all_sheet_and_zip_metadata_checked": true
+  },
+  {
+    "file": "target-07/export-1-_payroll_export.xlsx",
+    "sha256": "a9050e19225202fba511c0de94725b69d32ebe0bce3fdb4d94e53462ce846897",
+    "sheets": [
+      {
+        "title": "工资单",
+        "rows": 4,
+        "columns": 18,
+        "state": "visible"
+      }
+    ],
+    "all_sheet_and_zip_metadata_checked": true
+  },
+  {
+    "file": "target-07/export-1-_reports_recharge-summary.xlsx",
+    "sha256": "fe1c31c298737815ad7ca04cc02f4576fc902ed1672f37658ad4a83d180bb7ba",
+    "sheets": [
+      {
+        "title": "充值汇总",
+        "rows": 3,
+        "columns": 4,
+        "state": "visible"
+      }
+    ],
+    "all_sheet_and_zip_metadata_checked": true
+  },
+  {
+    "file": "target-07/export-3-_history_export.xlsx",
+    "sha256": "07828a6b86ac30c6816b64a086415b7884593661bdafd1b9727df1a2bacf8e02",
+    "sheets": [
+      {
+        "title": "修改日志",
+        "rows": 4,
+        "columns": 10,
+        "state": "visible"
+      }
+    ],
+    "all_sheet_and_zip_metadata_checked": true
+  },
+  {
+    "file": "target-07/export-3-_payroll_export.xlsx",
+    "sha256": "a9050e19225202fba511c0de94725b69d32ebe0bce3fdb4d94e53462ce846897",
+    "sheets": [
+      {
+        "title": "工资单",
+        "rows": 4,
+        "columns": 18,
+        "state": "visible"
+      }
+    ],
+    "all_sheet_and_zip_metadata_checked": true
+  },
+  {
+    "file": "target-07/export-3-_reports_recharge-summary.xlsx",
+    "sha256": "fe1c31c298737815ad7ca04cc02f4576fc902ed1672f37658ad4a83d180bb7ba",
+    "sheets": [
+      {
+        "title": "充值汇总",
+        "rows": 3,
+        "columns": 4,
+        "state": "visible"
+      }
+    ],
+    "all_sheet_and_zip_metadata_checked": true
+  },
+  {
+    "file": "target-07/purchase-1.pdf",
+    "sha256": "7dcebf6a4f0156f40ac57adb8990adffc5ebb19e69abfb0f699e526b4aa4d5bc",
+    "pages": 1,
+    "actual_text": "采 购 单\n采购单号：\nPO-SENTINEL-1\n供应商：\nSYNTHETIC SUPPLIER 1\n仓库：\nSYNTHETIC WH1\n下单日期：\n2026-10-28 05:06\n币种：\nTHB (฿)\n联系人：\n-\n产品名称\n规格\n数量\n单价\n小计\nONSITE-PRODUCT-1\n-\n2\n฿61.725\n฿0\n合计\n฿123.45\n",
+    "metadata": {
+      "/Author": "(anonymous)",
+      "/CreationDate": "D:20261028050658-07'00'",
+      "/Creator": "(unspecified)",
+      "/Keywords": "",
+      "/ModDate": "D:20261028050658-07'00'",
+      "/Producer": "ReportLab PDF Library - www.reportlab.com",
+      "/Subject": "(unspecified)",
+      "/Title": "(anonymous)",
+      "/Trapped": "/False"
+    }
+  },
+  {
+    "file": "target-07/purchase-2.pdf",
+    "sha256": "b539c5133c85c94ca32390691776795acc1d18c43a087c9b20ae699787a7702b",
+    "pages": 1,
+    "actual_text": "采 购 单\n采购单号：\nPO-SENTINEL-1\n供应商：\nSYNTHETIC SUPPLIER 1\n仓库：\nSYNTHETIC WH1\n下单日期：\n2026-10-28 05:06\n币种：\nTHB (฿)\n联系人：\n-\n产品名称\n规格\n数量\n单价\n小计\nONSITE-PRODUCT-1\n-\n2\n฿61.725\n฿0\n合计\n฿123.45\n",
+    "metadata": {
+      "/Author": "(anonymous)",
+      "/CreationDate": "D:20261028050658-07'00'",
+      "/Creator": "(unspecified)",
+      "/Keywords": "",
+      "/ModDate": "D:20261028050658-07'00'",
+      "/Producer": "ReportLab PDF Library - www.reportlab.com",
+      "/Subject": "(unspecified)",
+      "/Title": "(anonymous)",
+      "/Trapped": "/False"
+    }
+  },
+  {
+    "file": "target-07/purchase-3.pdf",
+    "sha256": "2c716c88127e24558e84c42601e8f51ec2aec17511599e04a2cccb7e7ed235c3",
+    "pages": 1,
+    "actual_text": "采 购 单\n采购单号：\nPO-SENTINEL-1\n供应商：\nSYNTHETIC SUPPLIER 1\n仓库：\nSYNTHETIC WH1\n下单日期：\n2026-10-28 05:06\n币种：\nTHB (฿)\n联系人：\n-\n产品名称\n规格\n数量\n单价\n小计\nONSITE-PRODUCT-1\n-\n2\n฿61.725\n฿0\n合计\n฿123.45\n",
+    "metadata": {
+      "/Author": "(anonymous)",
+      "/CreationDate": "D:20261028050658-07'00'",
+      "/Creator": "(unspecified)",
+      "/Keywords": "",
+      "/ModDate": "D:20261028050658-07'00'",
+      "/Producer": "ReportLab PDF Library - www.reportlab.com",
+      "/Subject": "(unspecified)",
+      "/Title": "(anonymous)",
+      "/Trapped": "/False"
+    }
+  }
+]

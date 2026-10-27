@@ -32,3 +32,12 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.middleware("http")
+async def private_response_cache(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith(("/api/v1/", "/uploads/")):
+        response.headers["Cache-Control"] = response.headers.get("Cache-Control", "") if "no-store" in response.headers.get("Cache-Control", "") else "private, no-store"
+        response.headers["Vary"] = "Authorization, Cookie, X-Warehouse-ID"
+    return response

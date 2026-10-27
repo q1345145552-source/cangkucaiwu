@@ -181,7 +181,7 @@ def test_screenshot_failure_recovery_and_private_warehouse_access(tmp_path,monke
             assert (await client.get('/api/v1/incoming',headers=auth(7))).json()['total']==0
             assert (await client.get(f'/api/v1/incoming/{rid}/screenshot')).status_code in (401,403)
             for uid in (3,4):
-                assert (await client.get(f'/api/v1/incoming/{rid}/screenshot',headers=auth(uid))).status_code==200
+                assert (await client.get(f'/api/v1/incoming/{rid}/screenshot',headers=auth(uid))).status_code==(403 if uid==4 else 200)
             async with factory() as db:
                 for uid in (3,4): (await db.get(User,uid)).extra_permissions=[]
                 await db.commit()

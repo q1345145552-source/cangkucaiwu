@@ -81,6 +81,9 @@ async def list_customers(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    if current_user.role == Role.SUPERVISOR:
+        if not search or len(search.strip()) < 2 or any(c in search for c in ("%", "_")):raise HTTPException(403,"请输入具体客户名称或编号查询，不提供客户名册批量读取")
+        if page_size > 20 or page_size < 1 or page != 1:raise HTTPException(403,"现场客户查询最多20条，请缩小搜索范围")
     scope = [w.id for w in await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))]
     query = select(Customer).where(Customer.warehouse_id.in_(scope))
     count_q = select(func.count(Customer.id)).where(Customer.warehouse_id.in_(scope))
@@ -97,6 +100,10 @@ async def list_customers(
     total = (await db.execute(count_q)).scalar()
     result = await db.execute(query.order_by(Customer.created_at.desc()).offset((page-1)*page_size).limit(page_size))
     customers = result.scalars().all()
+    if current_user.role == Role.SUPERVISOR:
+        return {"data":[{"id":c.id,"warehouse_id":c.warehouse_id,"customer_code":c.customer_code,
+                         "company_name":c.company_name,"cargo_type":c.cargo_type,"logistics_channel":c.logistics_channel} for c in customers],
+                "total":len(customers),"page":page,"page_size":page_size,"scope":"onsite_lookup"}
     can_read_finance = current_user.role == Role.WAREHOUSE_ADMIN or any(p in (current_user.extra_permissions or []) for p in (_PERMISSION,MENU_PERMISSIONS_BY_KEY['credit'].label))
     balances = await positions(db,scope,[c.id for c in customers]) if can_read_finance else {}
     reviews = await legacy_review(db,scope,[c.id for c in customers]) if can_read_finance else {}
@@ -138,6 +145,9 @@ async def get_customer(customer_id: int, current_user: User = Depends(check_staf
     if not c: raise HTTPException(404, "客户不存在")
     if current_user.role != Role.SUPER_ADMIN and c.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权查看其他仓库的客户")
+    if current_user.role == Role.SUPERVISOR:
+        return {"id":c.id,"warehouse_id":c.warehouse_id,"customer_code":c.customer_code,"company_name":c.company_name,
+                "cargo_type":c.cargo_type,"logistics_channel":c.logistics_channel}
     return {"id": c.id, "warehouse_id": c.warehouse_id, "customer_code": c.customer_code,
             "company_name": c.company_name, "contact_person": c.contact_person,
             "contact_info": c.contact_info, "credit_status": c.credit_status,

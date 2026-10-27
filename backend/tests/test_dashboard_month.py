@@ -100,8 +100,12 @@ def test_authorized_all_office_scope_denials_and_same_token_revocation(tmp_path,
                 assert [w['id'] for w in p['warehouses']]==[1,2,3]
                 assert amounts(p['finance']['month']['income'])['THB']==inc and amounts(p['finance']['month']['expense'])['THB']==exp
                 results[month]=p['finance']['month']
+            assert (await cockpit(c,'2026-09',3,2)).status_code==403
+            async with factory() as db:
+                (await db.get(User,3)).extra_permissions=['报表中心'];await db.commit()
             for uid in (3,4):
-                r=await cockpit(c,'2026-09',uid,2);assert r.status_code==200 and amounts(r.json()['finance']['month']['income'])['THB']==500
+                r=await cockpit(c,'2026-09',uid,2);assert r.status_code==(403 if uid==4 else 200)
+                if uid==3:assert amounts(r.json()['finance']['month']['income'])['THB']==500
                 assert (await cockpit(c,'2026-09',uid,'all')).status_code==403
                 token=headers(uid,2)
                 async with factory() as db:

@@ -46,7 +46,7 @@ def test_two_wages_difference_manual_status_detail_and_other_books_unchanged(tmp
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
             await prepare(f)
             before = await finance_snapshot(f)
-            choices = (await c.get(URL+"/document-options?document_type=payroll", headers=auth(4))).json()
+            choices = (await c.get(URL+"/document-options?document_type=payroll", headers=auth(3))).json()
             assert {r["document_id"] for r in choices["data"]} == {2,4}
             assert sum(r["amount"] for r in choices["data"]) == 7000
             r = await create(c, 4, amount="7000", linked_documents=REFS)
@@ -194,7 +194,7 @@ def test_snapshot_survives_payment_change_and_log_failure_rolls_back_edit(tmp_pa
             async with f() as db:
                 wage=await db.get(PayrollRecord,2); wage.disbursed=True; wage.net_pay=2500; await db.commit()
             link=next(d for d in made["linked_documents"] if d["document_id"]==2)
-            detail=(await c.get(f'{URL}/{aid}/documents/{link["id"]}',headers=auth(4))).json()
+            detail=(await c.get(f'{URL}/{aid}/documents/{link["id"]}',headers=auth(3))).json()
             assert detail["snapshot"]["amount"]==3000 and detail["current"]["amount"]==2500
             assert detail["current"]["detail"]["disbursed"] is True
     asyncio.run(run())

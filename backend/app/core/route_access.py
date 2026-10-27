@@ -6,6 +6,7 @@ Existing module permissions, business role restrictions and warehouse checks sti
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.routing import APIRoute
 from app.core.round4_access import action_policy, action_guard
+from app.core.round5_access import is_read_action, read_scope
 
 from app.core.permissions import Role, get_current_user, require_non_labor, check_staff_permission_any
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY, MENU_PERMISSIONS
@@ -99,6 +100,8 @@ class ManagementRouter(APIRouter):
                         raise RuntimeError(f"管理接口未配置权限：{module}.{route.endpoint.__name__}")
                     if keys:
                         dependencies.append(Depends(check_staff_permission_any(*(MENU_PERMISSIONS_BY_KEY[k].label for k in keys))))
+            if is_read_action(module, key[1], route.methods):
+                dependencies.append(Depends(read_scope))
             # include_router clones APIRoute and retains models, forms, files, responses and dependencies.
             single = APIRouter()
             single.routes.append(route)

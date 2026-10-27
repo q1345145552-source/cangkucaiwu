@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round5-20261028/backend/tests/permission_round5/acceptance.py", line 2, in <module>
+    from fixtures import *
+  File "/private/tmp/permissions-round5-20261028/backend/tests/permission_round5/fixtures.py", line 8, in <module>
+    assert Path.cwd()==Path('/private/tmp/permissions-round5-env')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

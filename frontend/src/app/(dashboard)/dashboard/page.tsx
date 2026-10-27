@@ -3,6 +3,7 @@ import InternalTransferSummary, { type TransferSummary } from "@/components/Inte
 import BossTodos from "@/components/BossTodos";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useAuth } from "@/hooks/useAuth";
 import { getToken, api } from "@/lib/api";
 import { TrendingUp, TrendingDown, Wallet, ShoppingCart, Users, Gauge, ListTodo, FileText, Receipt, Bed, Clock, ClipboardCheck, AlertTriangle, Tag, Package, LineChart as LineChartIcon } from "lucide-react";
@@ -107,6 +108,8 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user } = useAuth() as { user: { display_name?: string; warehouse_name?: string; role: string } | null };
+  const reportsMenu = useMenuPermission("reports");
+  const canReadFinance = user?.role === "warehouse_admin" || (user?.role === "staff" && reportsMenu);
   const router = useRouter();
   const [data, setData] = useState<CockpitData | null>(null);
   const [trends, setTrends] = useState<TrendsData | null>(null);
@@ -132,6 +135,7 @@ function DashboardContent() {
   }, []);
   useEffect(() => {
     if (!getToken()) { router.push("/login"); return; }
+    if (!canReadFinance) { setData(null); setTrends(null); setLoading(false); return; }
     const id = ++requestId.current; let active = true;
     setData(null); setTrends(null); setError(""); setLoading(true);
     api.get<CockpitData>(`/dashboard/cockpit?${new URLSearchParams({ month })}`)
@@ -143,7 +147,8 @@ function DashboardContent() {
       .catch(err => { if (active && id === requestId.current) setError(err.message || "加载失败"); })
       .finally(() => { if (active && id === requestId.current) setLoading(false); });
     return () => { active = false; };
-  }, [router, month, revision]);
+  }, [router, month, revision, canReadFinance]);
+  if (!canReadFinance) return <section className="card p-6"><h1 className="text-xl font-bold">工作首页</h1><p className="mt-2 text-gray-600">从菜单查看现场业务和本人申请。</p></section>;
   const toolbar = <div className="flex flex-wrap justify-between items-center gap-3">
     <div><h1 className="text-2xl font-bold text-gray-800">老板驾驶舱</h1>
       <p className="text-sm text-gray-500 mt-1">{user?.display_name} · {data?.warehouses.map(w => w.name).join("、") || "当前授权仓库"}</p></div>

@@ -1,0 +1,26 @@
+node:internal/modules/cjs/loader:1520
+  throw err;
+  ^
+
+Error: Cannot find module 'styled-jsx/package.json'
+Require stack:
+- /private/tmp/permissions-round5-env/frontend/node_modules/next/dist/server/require-hook.js
+- /private/tmp/permissions-round5-env/frontend/node_modules/next/dist/bin/next
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)
+    at resolve (node:internal/modules/helpers:171:31)
+    at Object.<anonymous> (/private/tmp/permissions-round5-env/frontend/node_modules/next/dist/server/require-hook.js:38:32)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/private/tmp/permissions-round5-env/frontend/node_modules/next/dist/server/require-hook.js',
+    '/private/tmp/permissions-round5-env/frontend/node_modules/next/dist/bin/next'
+  ]
+}
+
+Node.js v24.19.0

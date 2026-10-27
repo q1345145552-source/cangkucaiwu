@@ -1,3 +1,4 @@
+from app.core.round5_access import history_modules, history_values
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -21,7 +22,9 @@ async def history_reader(current_user=Depends(check_staff_permission(MENU_PERMIS
 
 
 def _history_query(current_user, module=None, record_id=None, operation_type=None, operator_id=None, start_date=None, end_date=None):
-    query = select(DataChangeHistory).where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
+    query = select(DataChangeHistory).where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)), DataChangeHistory.module != 'makeup_request')
+    modules = history_modules(current_user)
+    if modules is not None: query = query.where(DataChangeHistory.module.in_(modules))
     if module:
         query = query.where(DataChangeHistory.module == module)
     if record_id:
@@ -48,6 +51,9 @@ async def list_operators(
     """返回有历史记录的操作人列表（供筛选下拉使用）。"""
     query = select(DataChangeHistory.operator_id, DataChangeHistory.operator_name)
     query = query.where(DataChangeHistory.warehouse_id.in_(get_wh_ids(current_user)))
+    query = query.where(DataChangeHistory.module != "makeup_request")
+    modules = history_modules(current_user)
+    if modules is not None: query = query.where(DataChangeHistory.module.in_(modules))
     query = query.distinct()
     rows = (await db.execute(query)).all()
     return {"data": [{"operator_id": r[0], "operator_name": r[1] or "-"} for r in rows if r[0] is not None]}
@@ -80,7 +86,7 @@ async def list_history(
             "id": h.id, "module": h.module, "record_id": h.record_id,
             "operator_id": h.operator_id, "operator_name": h.operator_name,
             "operation_type": h.operation_type,
-            "before_data": h.before_data, "after_data": h.after_data,
+            "before_data": history_values(current_user,h.before_data), "after_data": history_values(current_user,h.after_data),
             "warehouse_id": h.warehouse_id,
             "created_at": h.created_at.isoformat() if h.created_at else None,
         } for h in rows],
@@ -104,8 +110,8 @@ async def export_history(
     for row in rows:
         sheet.append([row.id, row.module, row.record_id, row.operator_id, row.operator_name,
                       row.operation_type, row.created_at.isoformat() if row.created_at else "",
-                      row.warehouse_id, json.dumps(row.before_data, ensure_ascii=False),
-                      json.dumps(row.after_data, ensure_ascii=False)])
+                      row.warehouse_id, json.dumps(history_values(current_user,row.before_data), ensure_ascii=False),
+                      json.dumps(history_values(current_user,row.after_data), ensure_ascii=False)])
         for cell in sheet[sheet.max_row]:
             if isinstance(cell.value, str):
                 cell.data_type = "s"

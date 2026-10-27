@@ -422,11 +422,11 @@ export default function LaborEfficiencyPage() {
             标准 ≥ {fmt(data?.standard, 0)} · {below ? "低于标准" : "达标"}
           </div>
         </div>
-        <div className="bg-white rounded-xl border p-4">
+        {data?.cost_per_order !== undefined && <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 text-gray-500 text-sm"><DollarSign size={16} /> 每单人工成本</div>
           <div className="text-2xl font-bold text-gray-800 mt-2">每单 {fmt(data?.cost_per_order, 2)} 铢</div>
           <div className="text-xs text-gray-400 mt-1">人工成本 ÷ 订单数</div>
-        </div>
+        </div>}
         <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 text-gray-500 text-sm"><Clock size={16} /> 加班工时</div>
           <div className="text-2xl font-bold text-gray-800 mt-2">{fmt(data?.overtime_hours)}h</div>

@@ -1,0 +1,60 @@
+# 第五轮：查看、敏感字段、导出与附件范围
+
+Marker：permissions7-r05-20261028；接续纠偏marker：permissions7-r05-resume02-20261028。此前误回复第二轮交付已撤回，不能代表第五轮完成。本报告仅说明第五轮本地实现和验证，等待独立验收，不进入第六轮。
+
+## 工作区与基线
+
+- 实际工作树：`/private/tmp/permissions-round5-20261028`
+- 分支：`codex/permissions-round5-20261028`
+- 基线（第四轮最终提交）：`a28717065b9752e70094b06ad26660463b7d7a4f`
+- 从第四轮干净基线独立开展，未混入桌面任务和后续任务；已有第五轮现场改动保留并验证，没有reset。适用目录未发现AGENTS.md。
+- 本轮完整提交号由最终回复及本工作树`git log -1 --format=%H`给出。validation-manifest是提交前采集，里面的head_at_collection不冒称第五轮完成提交。
+
+## A–E 实施和证据
+
+|项|原问题→修改位置|目标行为与实际证据|
+|---|---|---|
+|A 工资、员工和本人|`core/round5_access.py`、`core/route_access.py`、`employees.py`、`employee_advance.py`、`expense_approval.py`、`recharge.py`、`personal_finance.py`|主管不能读取他人工资/薪资模板/银行；员工列表和摘要在服务端去字段，现场保存不提交隐藏字段。本人预支/费用/充值先限定归属再统计；主管报销/备用金GET不依赖客户端主动self。A/B类真实请求及员工/本人手机页面；财务工资与银行必要字段成功；同token撤销工资菜单后字段消失/工资接口403|
+|B 报表、汇总和日志|统一读守卫、`dashboard.py`、`efficiency.py`、`history.py`、`settings_api.py`、`suppliers.py`|主管财务汇总拒绝，首页保留现场入口，人效去成本/充值交叉数据；授权财务需报表菜单。日志SQL先限定仓库/模块再分页导出并脱敏，补卡申请排除而不删除。备份保留原超管角色限制并加实际授权仓库。供应商AI缓存非管理员不返回；报价/采购金额不一刀切隐藏。B类请求、29项读取回归及具体未测清单|
+|C 导出与批量|工资/报表等统一读守卫；`customers.py`；日志导出共用过滤|主管直接工资/报表导出403；客户仅具体名称/编号搜索，拒绝通配符、大分页与第二页，仅最小字段。授权财务/管理员真实生成6个XLSX，逐sheet、ZIP元信息和实际数据行检查；3个采购PDF真实解析，主管现场采购下载成功，外仓拒绝。见export-verification.json，不用空文件证明成功|
+|D 附件|`services/attachment_access.py`、`api/secure_uploads.py`、`personal_receipts.py`、`expense_fund.py`|以当前仓库和每个真实业务引用判职责；临时文件只真实上传者，个人关联剥离管理能力；保留第四轮+json解析后写前校验。131目标含真实上传、证件和报销；另60次真实上传/工资签名/现场照片/付款凭证/失效绑定/撤权/路径变体；第四轮275+320再跑通过|
+|E 前端和兼容|员工、客户、账户、人效、首页；DashboardLayout/useAuth/useMenuPermission/api；`main.py`|服务器先不返回敏感数据；前端隐藏对应字段/导出入口，主管账户页不以0伪装隐藏余额。账号/仓库/权限变化重建页面、刷新身份及附件Cookie、丢弃旧token响应，API及附件no-store。28个真实浏览器场景通过，含手机、现场保存后银行/工资/证件不变、旧管理员缓存、同tab切换及旧证件链接403。财务另实际预览并核算，新增6条待确认工资、无付款或余额变化|
+
+完整动作级字段/角色/菜单/参数/范围/状态/导出/证据见 [action-matrix.json](action-matrix.json) 和 [检索表](ACTION-MATRIX.md)。第一轮F01–F19/T01–T13追踪见 [ROUND1-STATUS.md](ROUND1-STATUS.md)。完整全局三档权限仍待第六轮，不借本轮实现它。
+
+## 实际验证
+
+全部使用真实应用路由、JWT、鉴权依赖和独立localhost PostgreSQL，合成角色/绑定/仓库/数据，不使用永远放行鉴权替身。角色含管理员、多仓管理员、全菜单主管/财务A/B、无菜单主管/财务、劳工、禁用、外仓、失效/冲突绑定。拒绝区分audit_logs与业务表；补卡history记录按业务数据保留。
+
+|检查|实际结果与证据|
+|---|---|
+|第五轮主体目标|131请求，0失败；target-07/target-status.json、target-requests.json|
+|第五轮补充真实附件|60请求，0失败；attachments-final-03/status.json、requests.json|
+|第四轮原目标+fix01|275记录和320新增请求，均0失败；prior/round4-final，原第一次失败证据未覆盖|
+|第三轮关键目标|277 HTTP请求，0失败；prior/round3-final|
+|第二轮与部分批准|178+87=265 HTTP请求，0失败；prior/round2-01、prior/partial-01|
+|真实浏览器|28场景0错误；browser-03/results.json及截图。finance-02另预览200、核算200；browser-finance-diff.json只工资/审计变化，六条新工资pending、未发放|
+|导出实际内容|9个文件解析通过：6 XLSX、3 PDF；export-verification.json；禁止值与外仓哨兵不存在、合法数据行存在|
+|资金相关回归|283项：275通过、8失败、0跳过；regression-prior-02.xml，保留原8成本/显示问题|
+|人员/考勤相关回归|239项：234通过、5失败、0跳过；regression-related-01.xml，保留旧源码/菜单断言|
+|新增纳入读取回归|29项：28通过、1失败、0跳过；regression-reads-02.xml。第四轮实际源码同组基线28/1；旧管理员执行资金200预期实际403，后续金额断言未运行|
+|完整类型检查|tsc-final退出0；未更改类型配置、未新增any凑通过|
+|完整构建|build-clean-final退出0；独立目录248个源码/配置逐文件与工作树一致；原构建内部忽略类型步骤不替代上述独立tsc|
+|Python编译/业务diff格式|python-compile-final、code-diff-final退出码记录于raw-logs|
+
+失败尝试、角色预期调整、原8+5失败实际断言和3条依赖未验证说明见 [TEST-CHANGES.md](TEST-CHANGES.md)、[failure-comparison.json](failure-comparison.json)。不是只比失败名称，不宣称全套回归绿色；未改金额或成本口径消除历史失败。
+
+## 覆盖、限制和待确认
+
+实际注册430路由，盘查215条GET/查询POST/导出/下载/附件/AI入口。其中46条有可逐请求定位的目标证据，另有pytest读取回归；这两个计数不能相加当全覆盖。剩余未直接请求的入口逐条列于 [coverage.json](coverage.json)，并非枚举即通过。
+
+- 没有发现客户专用导出、独立异步导出任务、通用全局搜索、供应商资质/合同专用附件入口；未虚构这些功能。已有采购PDF和收货图片单独保留。
+- 不调用外部AI服务；实际AI响应/提示上下文未实测。缓存AI字段已服务端收口。
+- 超管备份有新增仓库限制，但没有实际导出完整备份的正向验收；平台备份需要何种明确仓库授权仍应独立确认，不自动给管理员或超管全仓数据权。
+- 全部历史附件关联、每种异常多对象引用、所有导出筛选与各浏览器/多标签并发场景未全测；未扫描或清洗任何生产历史资料。财务对他人证件的额外法定申报用途、主管客户联系人维护的精确用途待明确，不默认开通。
+- 本轮没有新增字段/结构迁移、真实权限补数据或自动绑定。历史全权限合成账号按角色上限收口。兼容、历史多引用及回退风险见 [COMPATIBILITY.md](COMPATIBILITY.md)。
+- 第一轮原始证据不变。早期第五轮target-01逐请求JSON曾被target-02覆盖，日志仍保留；第一次财务UI缺模板预览被正确拦住，超时前未生成最终JSON，原日志/截图/前状态保留。不得将这些缺口说成完整证据。
+
+## 边界与停止点
+
+只本地代码、独立合成数据验证和本地Git提交；未push/fetch、未部署、未SSH、未读取.deploy或生产凭据、未连接生产（包括只读）、未修改真实数据。未改模型、库存计价、成本计算政策或期初库存；没有创建自动任务或向其他会话派发工作，没有恢复供应商/到账/导入旧任务。本轮本地服务停止记录见shutdown证据。完成后停在第五轮，交用户/协调方独立验收，不进入第六轮。
