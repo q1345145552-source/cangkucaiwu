@@ -1,4 +1,4 @@
-"""真实 PostgreSQL 验证付款日的泰国月份边界、作废和币种过滤。"""
+"""真实 PostgreSQL 验证付款日的泰国月份边界、已付作废保留和币种隔离。"""
 import asyncio
 from datetime import date
 import os
@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import dialect as pg_dialect
 from sqlalchemy.schema import CreateTable
 
 from app.models.payable import PayableBill
+from app.models.wallet import PayablePayment
 from app.models.supplier import PurchaseOrder
 from app.services.procurement_payments import procurement_payment_rows
 from tests.test_round12_migration_postgres import PostgreSQLConnection
@@ -26,7 +27,7 @@ def test_actual_postgres_thai_payment_month_bounds_currency_and_void_filter():
         dialect = pg_dialect()
         db = SimpleNamespace(bind=SimpleNamespace(dialect=dialect))
         try:
-            for model in (PayableBill, PurchaseOrder):
+            for model in (PayableBill, PurchaseOrder, PayablePayment):
                 await conn.execute(str(CreateTable(model.__table__, include_foreign_key_constraints=[]).compile(dialect=dialect)))
             for i, when, paid, cur, status, wid in (
                 (1, "2026-09-30 16:59:59+00", 99, "THB", "paid", 1),
@@ -45,7 +46,14 @@ def test_actual_postgres_thai_payment_month_bounds_currency_and_void_filter():
             ).group_by(rows.c.currency).order_by(rows.c.currency)
             result = await conn.execute(str(query.compile(dialect=dialect, compile_kwargs={"literal_binds": True})))
             assert [{**r, "amount": float(r["amount"])} for r in result] == [
-                {"currency": "CNY", "amount": 10.05, "count": 1}, {"currency": "THB", "amount": 300, "count": 2}]
+                {"currency": "CNY", "amount": 10.05, "count": 1}, {"currency": "THB", "amount": 700, "count": 3}]
+            # Existing wallet rule: voiding cancels unpaid liability, not money
+            # already paid. The paid 400 from bill5 must remain in October.
+            details = select(rows.c.bill_id, rows.c.currency).where(
+                rows.c.payment_date >= date(2026, 10, 1), rows.c.payment_date <= date(2026, 10, 31),
+            ).order_by(rows.c.bill_id)
+            actual = await conn.execute(str(details.compile(dialect=dialect, compile_kwargs={"literal_binds": True})))
+            assert [(r['bill_id'], r['currency']) for r in actual] == [(2,'THB'),(3,'THB'),(5,'THB'),(7,'CNY')]
         finally:
             proc.stdin.close()
             await proc.wait()
