@@ -56,7 +56,7 @@ def main():
     tests = sorted(p.name for p in (ROOT / 'frontend/tests').glob('*.test.cjs'))
     manifest = json.loads((ROOT / 'frontend/tests/legacy-regression-suite.json').read_text())
     assert len(manifest['original_61']) == 61
-    expected = manifest['original_61'] + manifest['added_import_groups']
+    expected = manifest['original_61'] + manifest['added_import_groups'] + manifest['added_supplier_usability_groups']
     assert len(expected) == len(set(expected))
     assert set(tests) == set(expected), f'Suite differs from reviewed manifest: missing={set(expected)-set(tests)}, extra={set(tests)-set(expected)}'
     if args.tests:

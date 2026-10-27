@@ -1,0 +1,98 @@
+[
+  {
+    "path": "backend/app/services/inventory.py",
+    "sha256_before": "b7ce4cdaaffa1e1c66724dbef16416277c49a6156ea938924c6d343c64955992",
+    "sha256_after": "b7ce4cdaaffa1e1c66724dbef16416277c49a6156ea938924c6d343c64955992",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/services/inventory_controls.py",
+    "sha256_before": "0d1ab2ca6b837e53a90807b4871ded7d0726afd20e08a5250ba03edeaf609aa1",
+    "sha256_after": "0d1ab2ca6b837e53a90807b4871ded7d0726afd20e08a5250ba03edeaf609aa1",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/services/inventory_analysis.py",
+    "sha256_before": "acb658242a5caf64c5eb5cc6fd2cb49a8743b99c8e989c9f0df46fc81bc93479",
+    "sha256_after": "acb658242a5caf64c5eb5cc6fd2cb49a8743b99c8e989c9f0df46fc81bc93479",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/services/supplier_quotes.py",
+    "sha256_before": "bdb7a06c8c7a8f90d9824b38e1e8ee77d5138c8de87c86d165975e3bd11ba4e5",
+    "sha256_after": "bdb7a06c8c7a8f90d9824b38e1e8ee77d5138c8de87c86d165975e3bd11ba4e5",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/services/sku_catalog.py",
+    "sha256_before": "2f7ec08a5aa2033db8e83ad2383e185daa673ffa4b911052caceaf00d709c54b",
+    "sha256_after": "2f7ec08a5aa2033db8e83ad2383e185daa673ffa4b911052caceaf00d709c54b",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/models/inventory.py",
+    "sha256_before": "6c9690c5bf7ce15e9eacec776eacf187ee27c6b86b3e4b3407d7aeb303c48a78",
+    "sha256_after": "6c9690c5bf7ce15e9eacec776eacf187ee27c6b86b3e4b3407d7aeb303c48a78",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/models/sku_catalog.py",
+    "sha256_before": "f2effe362c04913b6409e9594d202d0e173a048f3a3f9cc5dbd813f27261be26",
+    "sha256_after": "f2effe362c04913b6409e9594d202d0e173a048f3a3f9cc5dbd813f27261be26",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/api/v1/inventory.py",
+    "sha256_before": "968d76e9df191b86b4c1953bdf264664effa1ebc42069107918e46c122e1a71f",
+    "sha256_after": "968d76e9df191b86b4c1953bdf264664effa1ebc42069107918e46c122e1a71f",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/api/v1/sku_catalog.py",
+    "sha256_before": "03f71336f6e65ae8a59f27ee74bed9be1d4a851e828a9ce9380a15234d58bb16",
+    "sha256_after": "03f71336f6e65ae8a59f27ee74bed9be1d4a851e828a9ce9380a15234d58bb16",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/core/permissions.py",
+    "sha256_before": "29f60eff99c2d47585214a64477917a700a88f0c6f327677d33861b4a120ed9b",
+    "sha256_after": "29f60eff99c2d47585214a64477917a700a88f0c6f327677d33861b4a120ed9b",
+    "unchanged": true
+  },
+  {
+    "path": "backend/app/core/route_access.py",
+    "sha256_before": "05c8884512ed9b31f2563628beb3b7d0e2d52370609fb29b9eb473b59c5ecd2a",
+    "sha256_after": "05c8884512ed9b31f2563628beb3b7d0e2d52370609fb29b9eb473b59c5ecd2a",
+    "unchanged": true
+  },
+  {
+    "path": "backend/scripts/seed.py",
+    "sha256_before": "fc15bb5690172210a045bb5d19f53de0a0defc1ccfdd39e25edb0d0a9366cb2e",
+    "sha256_after": "fc15bb5690172210a045bb5d19f53de0a0defc1ccfdd39e25edb0d0a9366cb2e",
+    "unchanged": true
+  },
+  {
+    "path": "frontend/next.config.js",
+    "sha256_before": "1282ab18f3692c24c52e7c37767bc0952527390189f0d94bc727294dc77c1dce",
+    "sha256_after": "1282ab18f3692c24c52e7c37767bc0952527390189f0d94bc727294dc77c1dce",
+    "unchanged": true
+  },
+  {
+    "path": "frontend/tsconfig.json",
+    "sha256_before": "e756e7a5c72c69a2f08d40682ab5294bf555ffa4085f634261da2a49615bab06",
+    "sha256_after": "e756e7a5c72c69a2f08d40682ab5294bf555ffa4085f634261da2a49615bab06",
+    "unchanged": true
+  },
+  {
+    "path": "frontend/tailwind.config.js",
+    "sha256_before": "16c94dbc983294bf4c9140c39908030aa6052e67589dc75b52a80e84b95f262e",
+    "sha256_after": "16c94dbc983294bf4c9140c39908030aa6052e67589dc75b52a80e84b95f262e",
+    "unchanged": true
+  },
+  {
+    "path": "frontend/src/app/globals.css",
+    "sha256_before": "5fed90ec37ccb8cff9711c3a9daeb97136167d6ac94283f4ec7aa6cdc6f6018d",
+    "sha256_after": "5fed90ec37ccb8cff9711c3a9daeb97136167d6ac94283f4ec7aa6cdc6f6018d",
+    "unchanged": true
+  }
+]

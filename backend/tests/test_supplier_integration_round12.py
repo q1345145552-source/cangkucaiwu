@@ -30,7 +30,10 @@ def actual(key,value):
 async def fixture(tmp,mp):
  async with round11_fixture(tmp,mp)as values:
   import app.services.account_balances as balances
+  # Use the same explicit synthetic cutoff for the ledger and payment clock.
   mp.setattr(balances,'thai_today',lambda:date(2026,10,27))
+  from app.services import payable_payment as payments
+  mp.setattr(payments,'thai_now',lambda:datetime(2026,10,27,12,tzinfo=THAI_TZ))
   async with values[1]()as db:
    for uid in(3,4):
     u=await db.get(User,uid);u.extra_permissions=list(set(u.extra_permissions)|{'应付账款','付款计划','运营收支','备用金管理','耗材库存'})

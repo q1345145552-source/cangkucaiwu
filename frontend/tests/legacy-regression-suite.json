@@ -64,5 +64,8 @@
   ],
   "added_import_groups": [
     "excel-import-repair.test.cjs"
+  ],
+  "added_supplier_usability_groups": [
+    "supplier-usability.test.cjs"
   ]
 }

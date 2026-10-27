@@ -1,0 +1,267 @@
+{
+  "scope": "Local synthetic supplier usability audit, not independent acceptance",
+  "base": "c4b669f83ddcf631f989faec93da342f37e57784",
+  "branch": "codex/supplier-usability-20261028",
+  "worktree": "/private/tmp/supplier-usability-20261028",
+  "python": "/tmp/supplier01-py312/bin/python",
+  "node": "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+  "dependencies": "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028/node_modules",
+  "build_directory": "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028",
+  "database": "Disposable PostgreSQL 127.0.0.1:58263",
+  "services_stopped_after_validation": true,
+  "remote_operations": false,
+  "production_access": false,
+  "push": false,
+  "deployment": false,
+  "source_snapshot": [
+    {
+      "path": "backend/app/api/v1/payable.py",
+      "sha256": "a769d38ee6201e758f9e153d55a26f7805d3bc8852b75b1dd77797d954b45451"
+    },
+    {
+      "path": "backend/app/api/v1/suppliers.py",
+      "sha256": "fbef6dcabc47741776a79988a250e47038c27948015c4bfb6162ef8b6d69596b"
+    },
+    {
+      "path": "backend/app/services/supplier_comparison.py",
+      "sha256": "242aedfc4292c3bc295b8313d4012cf590148bafa53be3656287920a2ad60ea1"
+    },
+    {
+      "path": "backend/tests/test_management_inventory.py",
+      "sha256": "7020a2b396c79919adeea337346cd6cf332db8d088c8fc0e5ff8730f3ae92fe1"
+    },
+    {
+      "path": "backend/tests/test_supplier_integration_round12.py",
+      "sha256": "ab088e3dd8dc055148a6b3751d3418b0572795a961dee25ce681fcea52abaebf"
+    },
+    {
+      "path": "backend/tests/test_supplier_usability_audit.py",
+      "sha256": "b43726de7b70fdeb48525a0f50ec53aaabbcfaa4541e48ccc29b7d8cc13127c2"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/supplier-skus/page.tsx",
+      "sha256": "68edd9d1dfcc1c767fecf518b40033007741bb76768404cd43a458a0acb76c43"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+      "sha256": "2f5c938e6cd446d99365bd33a7148ca84e873c3a19ea7bc4508e2482ef8b8205"
+    },
+    {
+      "path": "frontend/src/components/InventoryBoard.tsx",
+      "sha256": "1186824b3cb317b6d9b93904ac5923a21e85ce4930e60e3fcafbb591515de323"
+    },
+    {
+      "path": "frontend/src/components/ProductImportDialog.tsx",
+      "sha256": "271f3c0f1434f5c63c73f33c6507ac144c9ce08b1d300a20f79ac6e7c3b6d9e4"
+    },
+    {
+      "path": "frontend/src/components/SkuProductMapping.tsx",
+      "sha256": "de28253c7d2d37ce41d160b16b051699fb0935dc98125ec4b1f4e9ed10bb01da"
+    },
+    {
+      "path": "frontend/src/components/StructuredSpecifications.tsx",
+      "sha256": "6841fa73a62f1e6dfa9c8e0b1d85b7c9e4fa6acf5387b0f5649d1abf25afaf03"
+    },
+    {
+      "path": "frontend/src/hooks/useSupplierAccess.ts",
+      "sha256": "6890d3d139b444b4158195456163a989e69efb2b7294184fa20f0215a16bc499"
+    },
+    {
+      "path": "frontend/src/lib/specifications.ts",
+      "sha256": "ef5fa66cad584a6bf6fdc2f58fabff8ee4b3565e90e1a7ebf5026176a7faaf42"
+    },
+    {
+      "path": "frontend/tests/inventory-integration-round12.test.cjs",
+      "sha256": "b95916ba82ef48d7d9d171babf2b99ef7b11cd1cb2bc7800de6d8dfb97e4ba3e"
+    },
+    {
+      "path": "frontend/tests/inventory-round10.test.cjs",
+      "sha256": "c1af95e1046aef5ec7739d99a912d46f5ccc34f3cb79e37fb81c8926885975c6"
+    },
+    {
+      "path": "frontend/tests/inventory-round11.test.cjs",
+      "sha256": "aba17d44ccbeb93222c8270aa739ad99d9f5fba569b1139a630ea7e37345172f"
+    },
+    {
+      "path": "frontend/tests/legacy-regression-suite.json",
+      "sha256": "27a7e8518f2467ef2174bf06bfda7d058df08902ea25bfc0d05bd212c411e665"
+    },
+    {
+      "path": "frontend/tests/run-legacy-regressions.py",
+      "sha256": "e3cacb4ade89e0bc038c2e3bb46f378623198fd61821867a2395d963a0237c82"
+    },
+    {
+      "path": "frontend/tests/supplier-receipts-round3.test.cjs",
+      "sha256": "994d9915d912a1a938b8f46e2b5bd6412114cc90ae6cd3c636f8479909fa8589"
+    },
+    {
+      "path": "frontend/tests/supplier-sku-round5.test.cjs",
+      "sha256": "adc5fde56ee477b4b57d8e77000d69c26630530ee4941ffde5bcf9f9463ae256"
+    },
+    {
+      "path": "frontend/tests/supplier-usability.browser.cjs",
+      "sha256": "080569fa06c127810f217cfab10250374010088a43d27107661ac426e5b98db6"
+    },
+    {
+      "path": "frontend/tests/supplier-usability.fixture.py",
+      "sha256": "8d470bcbc404f29238f8a600b94b3bece20f6aef308e67fa6e918937824327fe"
+    },
+    {
+      "path": "frontend/tests/supplier-usability.proxy.cjs",
+      "sha256": "8b3486ccb4eca5fea7d9917ddfa4c15bf7a0955b48b6da5ba7e5e330c86fbe13"
+    },
+    {
+      "path": "frontend/tests/supplier-usability.test.cjs",
+      "sha256": "d2e0d9d6e5dd1c0818541493f1c4c5f63e5373c90b64701cd07444ec48171882"
+    },
+    {
+      "path": "frontend/tests/supplier-workflow-round1.test.cjs",
+      "sha256": "0b23bf473c89ba0e76f38be4e0e35310d2cb5de380d36fefbcd9bbb72818a000"
+    },
+    {
+      "path": "frontend/tests/types84-behavior.test.cjs",
+      "sha256": "254c7328e84bf6e74166af96897a68c776321fa7fb697395f32dc78204bde5db"
+    }
+  ],
+  "runs": [
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028/node_modules/typescript/bin/tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028",
+      "exit_code": 0,
+      "diagnostics": 0,
+      "log": "typecheck-final.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028/node_modules/next/dist/bin/next",
+        "build"
+      ],
+      "cwd": "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028",
+      "exit_code": 0,
+      "clean_build": true,
+      "original_tailwind_config_included": true,
+      "log": "build-final.log"
+    },
+    {
+      "command": [
+        "/tmp/supplier01-py312/bin/python",
+        "-m",
+        "pytest",
+        "-ra",
+        "tests/test_inventory_migration_round10.py",
+        "tests/test_inventory_migration_round11.py",
+        "tests/test_inventory_round10.py",
+        "tests/test_inventory_round11.py",
+        "tests/test_management_inventory.py",
+        "tests/test_procurement_controls_round9.py",
+        "tests/test_procurement_migration_round9.py",
+        "tests/test_procurement_month_round7.py",
+        "tests/test_procurement_payments_postgres.py",
+        "tests/test_procurement_risk_reviews_round9.py",
+        "tests/test_procurement_risk_round8.py",
+        "tests/test_supplier_cost_identity_round4.py",
+        "tests/test_supplier_dedup_round2.py",
+        "tests/test_supplier_integration_round12.py",
+        "tests/test_supplier_migrations_round12.py",
+        "tests/test_supplier_price_review_round6.py",
+        "tests/test_supplier_product_import_fix.py",
+        "tests/test_supplier_quotes_round6.py",
+        "tests/test_supplier_receipts_round3.py",
+        "tests/test_supplier_sku_round5.py",
+        "tests/test_supplier_usability_audit.py",
+        "tests/test_supplier_workflow_round1.py"
+      ],
+      "cwd": "/private/tmp/supplier-usability-20261028/backend",
+      "env": {
+        "DATABASE_URL": "postgresql+asyncpg://supplier_usability@127.0.0.1:58263/postgres",
+        "INCOMING_TEST_DATABASE_URL": "postgresql+asyncpg://supplier_usability@127.0.0.1:58263/postgres",
+        "PGLITE_NODE": "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "NODE_PATH": "/tmp/import-integration-pglite/node_modules"
+      },
+      "exit_code": 0,
+      "passed": 197,
+      "skipped": 0,
+      "failed": 0,
+      "log": "backend-final.log"
+    },
+    {
+      "command": [
+        "/tmp/supplier01-py312/bin/python",
+        "frontend/tests/run-legacy-regressions.py",
+        "--postgres-bin",
+        "/tmp/supplier01-pgserver/pgserver/pginstall/bin",
+        "--node",
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "--node-modules",
+        "/Users/xiongliu/.codex/validation-runtimes/supplier-usability-20261028/node_modules",
+        "--output",
+        "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/供应商核查补修-20261028/frontend-final-stable"
+      ],
+      "cwd": "/private/tmp/supplier-usability-20261028",
+      "exit_code": 0,
+      "groups_passed": 63,
+      "excluded": [],
+      "log": "frontend-full.log"
+    },
+    {
+      "command": [
+        "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "frontend/tests/supplier-usability.browser.cjs",
+        "/tmp/supplier-usability-state.json"
+      ],
+      "cwd": "/private/tmp/supplier-usability-20261028",
+      "fixture": "frontend/tests/supplier-usability.fixture.py",
+      "proxy": "frontend/tests/supplier-usability.proxy.cjs",
+      "api_port": 59359,
+      "frontend_port": 59360,
+      "proxy_port": 60252,
+      "exit_code": 0,
+      "groups_passed": 10,
+      "page_errors": 0,
+      "desktop": [
+        1440,
+        1000
+      ],
+      "mobile": [
+        390,
+        844
+      ],
+      "log": "browser-run.log"
+    }
+  ],
+  "supplemental_raw_json_traces": [
+    {
+      "path": "sku-existing.json.gz",
+      "uncompressed_sha256": "9ada61a35cc3d7b27532faf18483cea1d4f0f37b6aba3439847844e3cecf0b66",
+      "original_bytes": 56146,
+      "gzip_bytes": 8654,
+      "lossless": true
+    },
+    {
+      "path": "quotes-existing.json.gz",
+      "uncompressed_sha256": "6a037d9c16ebc239d5b35fb782f83ee6ee59f9554668a2ed2d70796b2ab11dfa",
+      "original_bytes": 462493,
+      "gzip_bytes": 25591,
+      "lossless": true
+    },
+    {
+      "path": "inventory-existing.json.gz",
+      "uncompressed_sha256": "9b6804a0c3f0e60c9c15220be454a68873560f289cadc701727443e859cf351c",
+      "original_bytes": 431847,
+      "gzip_bytes": 39681,
+      "lossless": true
+    },
+    {
+      "path": "integration-existing.json.gz",
+      "uncompressed_sha256": "768c3c014ee12ad271153637d60d5d9eb62573784830c11bb2f22653858844e6",
+      "original_bytes": 245399,
+      "gzip_bytes": 20823,
+      "lossless": true
+    }
+  ]
+}

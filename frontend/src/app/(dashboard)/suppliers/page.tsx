@@ -18,6 +18,8 @@ import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
 import ExcelImportDialog from "@/components/ExcelImportDialog";
 import { downloadExcel, checkExcel } from "@/lib/excelImport";
 import ProductImportDialog from "@/components/ProductImportDialog";
+import StructuredSpecifications from "@/components/StructuredSpecifications";
+import { readSpecDraft,type SpecNode } from "@/lib/specifications";
 import SkuProductMapping from "@/components/SkuProductMapping";
 import SupplierQuoteEditor from "@/components/SupplierQuoteEditor";
 import PurchaseQuotePreview from "@/components/PurchaseQuotePreview";
@@ -45,7 +47,7 @@ export default function SuppliersPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const canViewReport=useMenuPermission('suppliers')&&['warehouse_admin','supervisor','staff'].includes((user as {role?:string}|null)?.role||'');
   const canReadCatalog=useMenuPermission("sku_catalog"), canManageCatalog=useMenuPermission("sku_catalog_manage")&&canReadCatalog;
-  const [mappingProductId,setMappingProductId]=useState(0),[productImportFile,setProductImportFile]=useState<File|null>(null),[productAttrsText,setProductAttrsText]=useState("");
+  const [mappingProductId,setMappingProductId]=useState(0),[productImportFile,setProductImportFile]=useState<File|null>(null),[productSpecifications,setProductSpecifications]=useState<SpecNode[]>([]);
   const [orderAvailableQuotes,setOrderAvailableQuotes]=useState<any[]>([]);
   const [quoteProductId,setQuoteProductId]=useState(0),[orderQuotes,setOrderQuotes]=useState<Record<number,number|null>>({}),[orderRequirements,setOrderRequirements]=useState<any>({quality_tags:[],max_lead_days:null}),[orderPricing,setOrderPricing]=useState<any>(null),[orderDraft,setOrderDraft]=useState<any>(null),[pricingRejection,setPricingRejection]=useState<any>(null);
   const quoteScope=JSON.stringify(warehouseRequestHeaders());
@@ -113,6 +115,10 @@ export default function SuppliersPage() {
   const [logisticsForm, setLogisticsForm] = useState({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "" as string | number, estimated_days: "", currency: "CNY" });
   // Compare
   const [compareData, setCompareData] = useState<any[]>([]);
+  const [compareCurrency, setCompareCurrency] = useState("");
+  const [compareError, setCompareError] = useState("");
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareSearched, setCompareSearched] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [compareMode, setCompareMode] = useState<"product"|"logistics">("product");
   const [compareProduct, setCompareProduct] = useState("");
@@ -197,14 +203,14 @@ export default function SuppliersPage() {
 
   // ─── Products ───
   async function openProducts(sid: number) {
-    setProductSupplierId(sid);setProductAttrsText("");
+    setProductSupplierId(sid);setProductSpecifications([]);
     const s = data.find((x: any) => x.id === sid);
     setProductForm(prev => ({ ...prev, currency: s?.default_currency || "THB" }));
     try { const r = await api.get<any>(`/suppliers/${sid}/products`); setProducts(r.data); } catch { setProducts([]); }
     setShowProducts(true);
   }
   async function addProduct() {
-    try { await api.post(`/suppliers/${productSupplierId}/products`, { ...productForm,...(productAttrsText.trim()?{catalog_attributes:JSON.parse(productAttrsText)}:{}), spec_price: productForm.spec_price || 0, unit_price: productForm.unit_price || 0 }); toast("success", "产品添加成功");setProductAttrsText("");
+    try { await api.post(`/suppliers/${productSupplierId}/products`, { ...productForm,...(productSpecifications.length?{catalog_attributes:readSpecDraft(productSpecifications)}:{}), spec_price: productForm.spec_price || 0, unit_price: productForm.unit_price || 0 }); toast("success", "产品添加成功");setProductSpecifications([]);
       const r = await api.get<any>(`/suppliers/${productSupplierId}/products`); setProducts(r.data);
       setProductForm(prev => ({ product_name: "", spec: "", spec_price: "", unit_price: "", unit: "个", remark: "", currency: prev.currency }));
     } catch (err: any) { toast("error", err.message || "添加失败"); }
@@ -570,20 +576,24 @@ export default function SuppliersPage() {
   // ─── Compare ───
   async function doCompare(mode: string) {
     setCompareMode(mode as any);
+    setCompareError(""); setCompareLoading(true); setCompareSearched(true); setAiCompareResult("");
     try {
       if (mode === "logistics") {
         let url = `/suppliers/compare-logistics?transport_method=${encodeURIComponent(compareTransport)}&cargo_type=${encodeURIComponent(compareCargo)}&origin_warehouse=${encodeURIComponent(compareWarehouse)}`;
         if (compareCat) url += `&category_id=${compareCat}`;
+        if (compareCurrency) url += `&currency=${compareCurrency}`;
         const r = await api.get<any>(url);
         setCompareData(r.data.map((x: any) => ({ ...x, _type: "logistics" })));
       } else {
         let url = `/suppliers/compare-prices?product_name=${encodeURIComponent(compareProduct)}`;
         if (compareSpec) url += `&spec=${encodeURIComponent(compareSpec)}`;
         if (compareCat) url += `&category_id=${compareCat}`;
+        if (compareCurrency) url += `&currency=${compareCurrency}`;
         const r = await api.get<any>(url);
         setCompareData(r.data.map((x: any) => ({ ...x, _type: "product" })));
       }
-    } catch { setCompareData([]); }
+    } catch (e: any) { setCompareData([]); setCompareError(e.message || "比价加载失败，请重试"); }
+    finally { setCompareLoading(false); }
   }
 
   async function doAiCompare() {
@@ -740,7 +750,7 @@ export default function SuppliersPage() {
                 </div>
               </div>
 
-              <label className="block text-sm mb-3">结构化规格JSON（可选，用于SKU候选核对）<textarea aria-label="新产品结构化规格JSON" className="form-input" value={productAttrsText} onChange={e=>setProductAttrsText(e.target.value)} placeholder={'例如 {"material":"PE","width":{"value":38,"unit":"cm"},"packaging":"single"}'}/></label>
+              <StructuredSpecifications label="新产品规格（可选）" value={productSpecifications} onChange={setProductSpecifications}/>
               {/* Product Table */}
               <div className="pt-3">
                 <div className="flex items-center gap-2 mb-3">
@@ -953,6 +963,9 @@ export default function SuppliersPage() {
         <div className="modal-overlay" onClick={()=>setShowCompare(false)}>
           <div className="bg-white rounded-xl p-6 w-[800px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4 flex items-center gap-2"><Scale size={20}/>供应商比价</h2>
+            <p className="text-sm text-gray-600 mb-3">按同币种、同规格和同单位分别比较，不跨币种排名或换算。标准SKU及阶梯价格请在对应供应商的报价入口核对。</p>
+            <label className="block text-sm mb-3">报价币种<select aria-label="比价币种" className="form-input" value={compareCurrency} onChange={e=>{setCompareCurrency(e.target.value);setCompareData([]);setCompareSearched(false);setAiCompareResult("");}}><option value="">全部币种（分别显示）</option><option value="THB">泰铢 THB</option><option value="CNY">人民币 CNY</option></select></label>
+            {compareError&&<p role="alert" className="text-red-600">{compareError}</p>}
             {/* Mode tabs */}
             <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">
               <button onClick={() => { setCompareMode("product"); setCompareData([]); setAiCompareResult(""); }}
@@ -986,27 +999,27 @@ export default function SuppliersPage() {
               </div>
             )}
 
-            {compareData.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">请填写查询条件</div> : (
+            {compareData.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">{compareLoading?"正在加载报价…":compareError?"本次查询失败，请重试":compareSearched?"当前筛选无报价":"请填写查询条件"}</div> : (
               <>
                 {compareMode === "product" ? (
                   <div className="overflow-x-auto touch-pan-x">
-                  <table className="w-full text-sm mb-4 min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>类别</th><th>产品</th><th>规格</th><th>规格报价</th><th>单价</th></tr></thead>
-                    <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
-                      <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.category_name||"-"}</td><td>{r.product_name}</td><td>{r.spec||"-"}</td>
+                  <table className="w-full text-sm mb-4 min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">组内序号</th><th>供应商</th><th>类别</th><th>产品</th><th>规格</th><th>规格报价</th><th>币种</th><th>单价</th></tr></thead>
+                    <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${r.rank_in_group===1?"bg-green-50":""}`}>
+                      <td className="p-2 font-bold">{r.rank_in_group??"待确认"}</td><td>{r.supplier_name}</td><td>{r.category_name||"-"}</td><td>{r.product_name}</td><td>{r.spec||"-"}</td>
                       <td className="text-sm">{r.spec_price != null ? r.spec_price + (r.unit||"") : "-"}</td>
-                      <td className="font-semibold text-green-700">{r.unit_price}{r.unit}</td></tr>)}</tbody></table>
+                      <td>{r.currency}</td><td className="font-semibold text-green-700">{fmtMoney(r.unit_price,r.currency)} / {r.unit||"未知单位"}</td></tr>)}</tbody></table>
                   </div>
                 ) : (
                   <div className="overflow-x-auto touch-pan-x">
-                  <table className="w-full text-sm mb-4 min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">排名</th><th>供应商</th><th>运输</th><th>货物</th><th>发货仓</th><th>单价(元/方)</th><th>最低消费</th><th>时效</th><th>备注</th></tr></thead>
-                    <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${i===0?"bg-green-50":""}`}>
-                      <td className="p-2 font-bold">{i+1}</td><td>{r.supplier_name}</td><td>{r.transport_method}</td><td>{r.cargo_type}</td>
-                      <td>{r.origin_warehouse}</td><td className="font-semibold text-green-700">{r.price_per_cbm}</td>
-                      <td className="text-xs">{r.min_cbm}方起 / {fmtMoney(r.min_amount, r.currency)}</td><td>{r.estimated_days||"-"}</td>
+                  <table className="w-full text-sm mb-4 min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">组内序号</th><th>供应商</th><th>运输</th><th>货物</th><th>发货仓</th><th>币种</th><th>单价 / 方</th><th>最低消费</th><th>时效</th><th>备注</th></tr></thead>
+                    <tbody>{compareData.map((r:any,i:number)=><tr key={i} className={`border-t ${r.rank_in_group===1?"bg-green-50":""}`}>
+                      <td className="p-2 font-bold">{r.rank_in_group??"待确认"}</td><td>{r.supplier_name}</td><td>{r.transport_method}</td><td>{r.cargo_type}</td>
+                      <td>{r.origin_warehouse}</td><td>{r.currency}</td><td className="font-semibold text-green-700">{r.price_per_cbm==null?"待确认":fmtMoney(r.price_per_cbm,r.currency)}</td>
+                      <td className="text-xs">{r.min_cbm}方起 / {r.min_amount==null?"待确认":fmtMoney(r.min_amount, r.currency)}</td><td>{r.estimated_days||"-"}</td>
                       <td className="text-xs text-orange-600">{r.price_note}{r.heavy_cargo_warning&&<><br/>{r.heavy_cargo_warning}</>}</td></tr>)}</tbody></table>
                   </div>
                 )}
-                <button onClick={doAiCompare} className="bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1 mb-4"><Sparkles size={16}/>AI比价分析</button>
+                <p className="text-sm text-gray-600 mb-2">AI仅供参考；请先选择单一币种并核实计价依据，不自动改变采购或付款。</p><button disabled={new Set(compareData.map(r=>r.currency)).size!==1||compareData.some(r=>r.comparable===false)} onClick={doAiCompare} className="bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1 mb-4"><Sparkles size={16}/>AI比价分析</button>
                 {aiCompareResult && <div className="bg-purple-50 rounded-lg p-4 text-sm whitespace-pre-wrap">{aiCompareResult}</div>}
               </>
             )}
@@ -1149,12 +1162,12 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 左侧：供应商排名 */}
               <div>
-                <h3 className="font-semibold mb-3 text-base flex items-center gap-2"><BarChart3 size={18} className="text-blue-500"/>供应商支出排名</h3>
+                <h3 className="font-semibold mb-3 text-base flex items-center gap-2"><BarChart3 size={18} className="text-blue-500"/>供应商采购金额（分币种）</h3>
                 <div className="space-y-2 max-h-[400px] overflow-auto">
                   {(procurement?.supplier_ranking || []).length === 0 ? <div className="text-gray-400 text-sm py-4">暂无支出数据</div> :
                     (procurement?.supplier_ranking || []).map((r: any, i: number) => (
                       <div key={r.supplier_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${i===0 ? "bg-yellow-500" : i===1 ? "bg-gray-400" : i===2 ? "bg-amber-700" : "bg-gray-300 text-gray-600"}`}>{i+1}</div>
+                        <span className="text-xs text-gray-500">#{r.supplier_id}</span>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">{r.supplier_name}</div>
                           <div className="text-xs text-gray-400">{r.category_name} · 最近采购 {r.last_bill_date || "-"}</div>

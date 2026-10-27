@@ -1,0 +1,139 @@
+F.FF                                                                     [100%]
+=================================== FAILURES ===================================
+______________ test_original94_registered_management_all_guarded _______________
+
+    def test_original94_registered_management_all_guarded():
+        result=audit()
+        # Round06 adds 5 scoped quote/version/recommendation routes after Round05.
+>       assert result['total_method_paths']==417
+E       assert 418 == 417
+
+tests/test_management_inventory.py:9: AssertionError
+_ test_complete_quote_approval_80_plus20_split_payments_stock_risk_count_and_cross_channel _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-387/test_complete_quote_approval_80')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a182150>
+
+    def test_complete_quote_approval_80_plus20_split_payments_stock_risk_count_and_cross_channel(tmp_path,monkeypatch):
+     async def run():
+      async with fixture(tmp_path,monkeypatch)as(_,f,c,receipt):
+       start=await balance(f);assert start==10000
+       s,p,q,qbody,low,lowbody,opened,po=await prepare(c,f);approved,blocked=await approve_other(c,po);bid=approved['payable_bill_id']
+       identity=invoice(no='R12-FULL-1000');await request(c,'PUT',f'/payable/{bid}',json={'invoice_identity':identity})
+       await request(c,'PUT','/suppliers/purchase-match-policy',json={'strict':True})
+       r80,ctx,g=await receive_once(c,po,80,'r12-first80');repeat=await receive(c,ctx,po,80,'r12-first80',g['data']['id']);assert repeat['replayed']
+       assert r80['inventory']['recorded_lines']==1
+       stock=(await request(c,'GET','/inventory'))['data'][0];assert stock['available_quantity']=='180'
+       await confirm(c,bid);before=(await request(c,'GET',f'/payable/{bid}/detail'));assert before['matching']['payment_cap']==800
+       first=await pay(c,bid,300,'r12-first300');again=await pay(c,bid,300,'r12-first300');assert first['payment_id']==again['payment_id']and await balance(f)==9700
+       over=await pay(c,bid,501,'r12-over-cap',code=400);assert'已记录实收金额'in over['detail']
+       await register_cost(c,'expense',receipt,identity=identity,amount=1000,code=409)
+       # The consumed receipt authorization cannot be reused for a different delivery.
+       current=await context(c,po['order']['id'],'receive');await receive(c,current,po,20,'r12-used-grant20',g['data']['id'],code=403)
+       r20,_,_=await receive_once(c,po,20,'r12-next20');assert r20['inventory']['recorded_lines']==1
+       await pay(c,bid,700,'r12-stale-review',code=400);await confirm(c,bid)
+       second=await pay(c,bid,700,'r12-second700');final=await request(c,'GET',f'/payable/{bid}/detail')
+       assert(final['amount'],final['paid_amount'],final['remaining_amount'])==(1000,1000,0)
+       assert[p['amount']for p in final['payments']]==[700,300]or[p['amount']for p in final['payments']]==[300,700]
+       assert await balance(f)==9000
+       await pay(c,bid,700,'r12-second700');assert await balance(f)==9000
+       # Changing today's cheapest quote must not restate the original purchase evidence.
+       await request(c,'PUT',f'/supplier-quotes/{low["id"]}',json={**lowbody,'request_key':'r12-later-cheap','expected_quote_version':low['version'],'tiers':[{'min_quantity':'1','max_quantity':None,'unit_price':'1'}]})
+       prices=await request(c,'GET','/supplier-price-report',params={'month':'2026-10'});pr=next(x for x in prices['data']if x['order_id']==po['order']['id']);assert pr['lowest_difference']=='100.00'and pr['historical_difference']is None
+       a=(await request(c,'GET','/inventory'))['data'][0];out,_=await issue(c,a,'30');assert out['account']['available_quantity']=='170'
+       pending,_=await count_submit(c,out['account'],'165');assert pending['account']['available_quantity']=='170'
+       checked,_=await count_review(c,pending['data']);assert checked['account']['available_quantity']=='165'
+       await inventory_controls(c,a,minimum='180',ratio='2');ana=await report(c);assert ana['data'][0]['closing_quantity']=='165'and ana['data'][0]['cost']['per_order_by_currency']is None
+       risk=await request(c,'GET','/supplier-risk',params={'month':'2026-10','rule':'inventory_usage'});assert risk['data'][0]['detail']['inventory']==ana['data'][0]and risk['data'][0]['evidence'][0]['url']==f'/inventory?account_id={a["id"]}'
+       async with f()as db:
+        payments=(await db.execute(select(PayablePayment).where(PayablePayment.bill_id==bid))).scalars().all();assert len(payments)==2 and sum(x.amount for x in payments)==1000
+        assert(await db.execute(select(func.count()).select_from(ExpenseRecord))).scalar_one()==0
+        old=await db.get(PurchaseOrder,1);assert old.total_amount==1000 and old.items==[{'product_name':'耗材','quantity':10}]
+        journals=(await db.execute(select(InventoryMovement).order_by(InventoryMovement.id))).scalars().all();assert[x.quantity for x in journals]==list(map(Decimal,['100','80','20','-30','-5']))
+       actual('complete_chain',{'purchase':po,'self_denied':blocked,'other_approved':approved,'receipt80':r80,'receipt80_replayed':repeat,'paid300':first,'after300_balance':9700,'cap_blocked':over,'receipt20':r20,'paid700':second,'payable_final':final,'balance_before':start,'balance_after':9000,'quote_frozen':pr,'inventory':ana,'risk':risk,'journals':[{'id':x.id,'quantity':str(x.quantity),'kind':x.kind}for x in journals],'expense_rows':0,'legacy_po_unchanged':True})
+>    asyncio.run(run())
+
+tests/test_supplier_integration_round12.py:100: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     async with fixture(tmp_path,monkeypatch)as(_,f,c,receipt):
+      start=await balance(f);assert start==10000
+      s,p,q,qbody,low,lowbody,opened,po=await prepare(c,f);approved,blocked=await approve_other(c,po);bid=approved['payable_bill_id']
+      identity=invoice(no='R12-FULL-1000');await request(c,'PUT',f'/payable/{bid}',json={'invoice_identity':identity})
+      await request(c,'PUT','/suppliers/purchase-match-policy',json={'strict':True})
+      r80,ctx,g=await receive_once(c,po,80,'r12-first80');repeat=await receive(c,ctx,po,80,'r12-first80',g['data']['id']);assert repeat['replayed']
+      assert r80['inventory']['recorded_lines']==1
+      stock=(await request(c,'GET','/inventory'))['data'][0];assert stock['available_quantity']=='180'
+      await confirm(c,bid);before=(await request(c,'GET',f'/payable/{bid}/detail'));assert before['matching']['payment_cap']==800
+>     first=await pay(c,bid,300,'r12-first300');again=await pay(c,bid,300,'r12-first300');assert first['payment_id']==again['payment_id']and await balance(f)==9700
+E     AssertionError: assert (1 == 1 and Decimal('10000.00') == 9700)
+
+tests/test_supplier_integration_round12.py:74: AssertionError
+_ test_failed_stock_receipt_preserves_previous_payment_and_unconsumed_exception _
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-387/test_failed_stock_receipt_pres0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10af9a720>
+
+    def test_failed_stock_receipt_preserves_previous_payment_and_unconsumed_exception(tmp_path,monkeypatch):
+     async def run():
+      from app.services import inventory
+      async with fixture(tmp_path,monkeypatch)as(_,f,c,_):
+       *_,po=await prepare(c,f);approved,_=await approve_other(c,po);bid=approved['payable_bill_id']
+       # Default payment policy remains compatible until explicitly enabled.
+       await pay(c,bid,300,'r12-paid-before-receipt');assert await balance(f)==9700
+       ctx=await context(c,po['order']['id'],'receive');g,_=await grant(c,ctx);real=inventory.record_receipt
+       async def fail(*args,**kw):raise HTTPException(500,'合成库存保存失败，整事务回滚')
+       monkeypatch.setattr(inventory,'record_receipt',fail);await receive(c,ctx,po,80,'r12-stock-fail',g['data']['id'],code=500)
+       monkeypatch.setattr(inventory,'record_receipt',real)
+       async with f()as db:
+        assert(await db.get(ProcurementActionException,g['data']['id'])).status=='active'
+        assert(await db.get(PayableBill,bid)).paid_amount==300
+        assert(await db.execute(select(func.count()).select_from(InventoryMovement))).scalar_one()==1
+       assert await balance(f)==9700
+       accepted=await receive(c,ctx,po,80,'r12-stock-fail',g['data']['id']);assert accepted['inventory']['recorded_lines']==1
+       assert(await request(c,'GET',f'/payable/{bid}/detail'))['paid_amount']==300
+       actual('receipt_rollback_with_prior_payment',{'initial_payment':300,'balance_before_after_failure':9700,'exception_not_consumed_on_failure':True,'retry':accepted})
+>    asyncio.run(run())
+
+tests/test_supplier_integration_round12.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     from app.services import inventory
+     async with fixture(tmp_path,monkeypatch)as(_,f,c,_):
+      *_,po=await prepare(c,f);approved,_=await approve_other(c,po);bid=approved['payable_bill_id']
+      # Default payment policy remains compatible until explicitly enabled.
+>     await pay(c,bid,300,'r12-paid-before-receipt');assert await balance(f)==9700
+E     AssertionError: assert Decimal('10000.00') == 9700
+
+tests/test_supplier_integration_round12.py:108: AssertionError
+=============================== warnings summary ===============================
+../../../../../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_supplier_integration_round12.py: 91 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_management_inventory.py::test_original94_registered_management_all_guarded
+FAILED tests/test_supplier_integration_round12.py::test_complete_quote_approval_80_plus20_split_payments_stock_risk_count_and_cross_channel
+FAILED tests/test_supplier_integration_round12.py::test_failed_stock_receipt_preserves_previous_payment_and_unconsumed_exception
+3 failed, 1 passed, 103 warnings in 2.81s

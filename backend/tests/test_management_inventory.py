@@ -5,9 +5,10 @@ from app.core.route_access import SELF_ROUTES, ACCOUNT_UTILITIES
 
 def test_original94_registered_management_all_guarded():
     result=audit()
-    # Round06 adds 5 scoped quote/version/recommendation routes after Round05.
-    assert result['total_method_paths']==417
-    assert result['management_method_paths']==394
+    # Current published import/employee baseline registers 418 method-paths.
+    # Keep exact counts and every original per-route guard assertion.
+    assert result['total_method_paths']==418
+    assert result['management_method_paths']==395
     assert len(result['original94_comparison'])==94
     assert all(r['non_labor_guard'] and r['current_access'] in MANAGEMENT for r in result['original94_comparison'])
     assert result['unprotected_or_unclassified']==[]

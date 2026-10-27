@@ -1,0 +1,695 @@
+[
+  {
+    "test": "account-attendance.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/account-attendance.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 2.3373992909910157,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/account-attendance.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-01-account-attendance/fixture.json"
+  },
+  {
+    "test": "account-nature.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/account-nature.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.28171024995390326,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/account-nature.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-01-account-attendance/fixture.json"
+  },
+  {
+    "test": "account-permissions.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/account-permissions.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 2.9274133750004694,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/account-permissions.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-02-account-permissions/fixture.json"
+  },
+  {
+    "test": "advance-manager-recipients.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/advance-manager-recipients.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.29597900004591793,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/advance-manager-recipients.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-02-account-permissions/fixture.json"
+  },
+  {
+    "test": "audit-log-location.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/audit-log-location.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.18221487500704825,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/audit-log-location.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-02-account-permissions/fixture.json"
+  },
+  {
+    "test": "batch-makeup.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/batch-makeup.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2346365840639919,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/batch-makeup.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-02-account-permissions/fixture.json"
+  },
+  {
+    "test": "boss-todos.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/boss-todos.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2886208340059966,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/boss-todos.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-02-account-permissions/fixture.json"
+  },
+  {
+    "test": "button-permissions.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/button-permissions.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 16.144636415992863,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/button-permissions.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-03-button-permissions/fixture.json"
+  },
+  {
+    "test": "cash-advance-documents.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/cash-advance-documents.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.38577487505972385,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/cash-advance-documents.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-03-button-permissions/fixture.json"
+  },
+  {
+    "test": "cash-advance-references.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/cash-advance-references.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.22760987502988428,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/cash-advance-references.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-03-button-permissions/fixture.json"
+  },
+  {
+    "test": "cash-advance-repayments.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/cash-advance-repayments.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.28999754099640995,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/cash-advance-repayments.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-03-button-permissions/fixture.json"
+  },
+  {
+    "test": "cash-advances.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/cash-advances.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.4940524169942364,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/cash-advances.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-03-button-permissions/fixture.json"
+  },
+  {
+    "test": "config-center-access.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/config-center-access.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 1.7112592499470338,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/config-center-access.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-04-config-center-access/fixture.json"
+  },
+  {
+    "test": "cost-funds-debt.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/cost-funds-debt.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.22308270900975913,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/cost-funds-debt.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-04-config-center-access/fixture.json"
+  },
+  {
+    "test": "credit-shipments.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/credit-shipments.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.24068833305500448,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/credit-shipments.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-04-config-center-access/fixture.json"
+  },
+  {
+    "test": "customer-receivables.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/customer-receivables.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.23243504099082202,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/customer-receivables.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-04-config-center-access/fixture.json"
+  },
+  {
+    "test": "dashboard-month.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/dashboard-month.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.23275966593064368,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/dashboard-month.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-04-config-center-access/fixture.json"
+  },
+  {
+    "test": "employee-advance-funding.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/employee-advance-funding.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.33924608398228884,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/employee-advance-funding.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-04-config-center-access/fixture.json"
+  },
+  {
+    "test": "employee-advance-void.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/employee-advance-void.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2873204170027748,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/employee-advance-void.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-04-config-center-access/fixture.json"
+  },
+  {
+    "test": "employee-self.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/employee-self.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 3.0428413749905303,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/employee-self.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "excel-import-repair.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/excel-import-repair.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.28255937492940575,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/excel-import-repair.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "expense-approval-payment.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/expense-approval-payment.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.39072333299554884,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/expense-approval-payment.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "full-day-leave.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/full-day-leave.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.23354504199232906,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/full-day-leave.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "fund-disbursement.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/fund-disbursement.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.32817858294583857,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fund-disbursement.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "fund-item-controls.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/fund-item-controls.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.39176966599188745,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fund-item-controls.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "fund-receipts.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/fund-receipts.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.3973948749480769,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fund-receipts.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "incoming-operations.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/incoming-operations.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.3336942919995636,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/incoming-operations.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "internal-transfer-summary.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/internal-transfer-summary.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.17677616700530052,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/internal-transfer-summary.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "inventory-integration-round12.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/inventory-integration-round12.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2290159589610994,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/inventory-integration-round12.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "inventory-menu-round10.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/inventory-menu-round10.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2368937499122694,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/inventory-menu-round10.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "inventory-round10.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/inventory-round10.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.33804833400063217,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/inventory-round10.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "inventory-round11.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/inventory-round11.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.3282731670187786,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/inventory-round11.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "labor-language.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/labor-language.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.18162495794240385,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/labor-language.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "makeup-batch-history.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/makeup-batch-history.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2278545000590384,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/makeup-batch-history.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "makeup-display.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/makeup-display.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.3934543340001255,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/makeup-display.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "manual-wallet.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/manual-wallet.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2016960830660537,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/manual-wallet.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-05-employee-self/fixture.json"
+  },
+  {
+    "test": "menu-backend-regression.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/menu-backend-regression.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 19.8041442920221,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/menu-backend-regression.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-06-menu-backend-regression/fixture.json"
+  },
+  {
+    "test": "menu-permissions.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/menu-permissions.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 16.38653441693168,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/menu-permissions.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-07-menu-permissions/fixture.json"
+  },
+  {
+    "test": "modification-log-permissions.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/modification-log-permissions.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.28313899994827807,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/modification-log-permissions.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-07-menu-permissions/fixture.json"
+  },
+  {
+    "test": "money-month-range.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/money-month-range.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.33677549997810274,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/money-month-range.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-07-menu-permissions/fixture.json"
+  },
+  {
+    "test": "money-record-scope.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/money-record-scope.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.22735149995423853,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/money-record-scope.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-07-menu-permissions/fixture.json"
+  },
+  {
+    "test": "operating-report.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/operating-report.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.28277079097460955,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/operating-report.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-07-menu-permissions/fixture.json"
+  },
+  {
+    "test": "other-income-currency.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/other-income-currency.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.23143787507433444,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/other-income-currency.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-07-menu-permissions/fixture.json"
+  },
+  {
+    "test": "payroll-disbursement.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/payroll-disbursement.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.7589962090132758,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/payroll-disbursement.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-07-menu-permissions/fixture.json"
+  },
+  {
+    "test": "payroll-supervisor.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/payroll-supervisor.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 1.370831249980256,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/payroll-supervisor.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "procurement-controls-round9.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/procurement-controls-round9.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.23250679206103086,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/procurement-controls-round9.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "procurement-month-round7.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/procurement-month-round7.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2866180830169469,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/procurement-month-round7.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "procurement-risk-round8.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/procurement-risk-round8.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.3875612079864368,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/procurement-risk-round8.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "reimbursement-payments.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/reimbursement-payments.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2902710840571672,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/reimbursement-payments.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "report-preview-scope.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/report-preview-scope.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.22732079098932445,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/report-preview-scope.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "retired-entries.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/retired-entries.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.2343872080091387,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/retired-entries.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-cost-entrypoints-round4.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-cost-entrypoints-round4.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.17769987497013062,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-cost-entrypoints-round4.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-cost-identity-round4.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-cost-identity-round4.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.23082625004462898,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-cost-identity-round4.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-dedup-round2.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-dedup-round2.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.16921862505842,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-dedup-round2.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-integration-menu-round12.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-integration-menu-round12.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.281727125053294,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-integration-menu-round12.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-quotes-round6.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-quotes-round6.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.23504808300640434,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-quotes-round6.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-receipts-round3.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-receipts-round3.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.344511125003919,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-receipts-round3.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-sku-round5.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-sku-round5.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.4436744588892907,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-sku-round5.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-usability.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-usability.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.39072374999523163,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-usability.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "supplier-workflow-round1.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/supplier-workflow-round1.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.43874745804350823,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/supplier-workflow-round1.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "types84-auth.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/types84-auth.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.17746504198294133,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/types84-auth.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "types84-behavior.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/types84-behavior.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.9189450420672074,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/types84-behavior.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  },
+  {
+    "test": "warehouse-summary.test.cjs",
+    "command": [
+      "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "/private/tmp/supplier-usability-20261028/frontend/tests/warehouse-summary.test.cjs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.1817394170211628,
+    "log": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/warehouse-summary.test.cjs.log",
+    "fixture": "/Users/xiongliu/.codex/visualizations/2026/10/15/01a1404d-1c0f-77f2-afcf-dc6e9ec46dfe/\u4f9b\u5e94\u5546\u6838\u67e5\u8865\u4fee-20261028/frontend-final-stable/fixture-08-payroll-supervisor/fixture.json"
+  }
+]

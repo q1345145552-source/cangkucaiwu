@@ -1,6 +1,12 @@
+
+function newImports(n,imports,extra){
+ if(n==='@/lib/specifications')return compile('lib/specifications.ts',imports,extra);
+ if(n==='@/components/StructuredSpecifications')return compile('components/StructuredSpecifications.tsx',imports,extra);
+ if(n==='@/hooks/useSupplierAccess')return {useSupplierAccess:()=>({scope:'synthetic-existing-permission',loading:false,error:'',retry(){},can:imports['@/hooks/useMenuPermission'].useMenuPermission})};
+}
 // Execute real UI, registry and scoped transport using synthetic data; never network.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),React=require('react');
-function compile(file,imports={},extra={}){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src',file),'utf8'),{fileName:file,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>imports[n]||require(n),console,Date,Intl,URLSearchParams,process:{env:{}},...extra});return m.exports;}
+function compile(file,imports={},extra={}){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src',file),'utf8'),{fileName:file,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:m,exports:m.exports,require:n=>imports[n]||newImports(n,imports,extra)||require(n),console,Date,Intl,URLSearchParams,process:{env:{}},...extra});return m.exports;}
 const walk=x=>!x||typeof x!=='object'?[]:Array.isArray(x)?x.flatMap(walk):[x,...walk(x.props?.children)],text=x=>x==null||typeof x==='boolean'?'':typeof x!=='object'?String(x):Array.isArray(x)?x.map(text).join(''):text(x.props?.children),tick=()=>new Promise(r=>setTimeout(r,0));
 const button=(t,label)=>{const n=walk(t).find(x=>x.type==='button'&&text(x)===label);assert(n,'missing '+label);return n;},field=(t,label)=>{const n=walk(t).find(x=>x.props?.['aria-label']===label);assert(n,'missing '+label);return n;};
 function storage(){const d=new Map();return{get length(){return d.size;},key:i=>[...d.keys()][i]??null,getItem:k=>d.get(k)||null,setItem:(k,v)=>d.set(k,v),removeItem:k=>d.delete(k),clear:()=>d.clear()};}
