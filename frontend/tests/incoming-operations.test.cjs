@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'../src');
 function compile(file,imports,globals={}) {
  const m={exports:{}};
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,
-  {module:m,exports:m.exports,require:n=>imports[n]||(n==='@/components/ExcelImportDialog'?{__esModule:true,default:()=>null}:n==='@/lib/excelImport'?compile('lib/excelImport.ts',imports,{process:{env:{}}}):require(n)),Date,JSON,Number,Promise,URLSearchParams,FormData,Blob,console,...globals});
+  {module:m,exports:m.exports,require:n=>imports[n]||(n==='@/components/ExcelImportDialog'?{__esModule:true,default:()=>null}:n==='@/lib/excelImport'?compile('lib/excelImport.ts',imports,{process:{env:{}},...globals}):require(n)),Date,JSON,Number,Promise,URLSearchParams,FormData,Blob,console,...globals});
  return m.exports;
 }
 const submission=compile('lib/incomingSubmission.ts',{});
@@ -59,7 +59,7 @@ function harness(s,storage=new Map([['user',JSON.stringify({id:1,warehouse_id:1}
  let nextKey=0;
  const mod=compile('app/(dashboard)/incoming/page.tsx',{
   react,'@/components/WalletAccountSelect':{__esModule:true,default:WalletAccountSelect},'@/components/common/DataTable':{__esModule:true,default:DataTable},
-  '@/lib/incomingSubmission':submission,'@/lib/api':{api,getToken:()=> 'synthetic-token',getActiveWarehouseId:()=> '1'},
+  '@/lib/incomingSubmission':submission,'@/lib/api':{api,getToken:()=> 'synthetic-token',getActiveWarehouseId:()=> '1',warehouseRequestHeaders:()=>({'X-Warehouse-ID':'1',Authorization:'Bearer synthetic-token'})},
   '@/components/ui/Toast':{useToast:()=>({toast:(...args)=>messages.push(args)})},'next/navigation':{useRouter:()=>({push(){}})},
  },{process:{env:{}},fetch:s.fetch.bind(s),crypto:{randomUUID:()=>`request-${Date.now()}-${++nextKey}`},
   localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},URL:{createObjectURL:()=> 'blob:synthetic-image',revokeObjectURL(){}},
@@ -67,7 +67,7 @@ function harness(s,storage=new Map([['user',JSON.stringify({id:1,warehouse_id:1}
  return {storage,messages,WalletAccountSelect,DataTable,async render(){await new Promise(r=>setTimeout(r,0));for(let i=0;i<20;i++){index=ri=ei=0;const tree=mod.default();if(!effects.length)return tree;effects.splice(0).forEach(fn=>fn());await new Promise(r=>setTimeout(r,0));}throw Error('Effects did not settle');}};
 }
 async function fill(h) {
- let tree=await h.render();change(field(tree,'金额'),'1000');tree=await h.render();change(field(tree,'付款方'),'1');tree=await h.render();
+ let tree=await h.render();change(field(tree,'金额'),'1000');tree=await h.render();change(field(tree,'客户（选填）'),'1');tree=await h.render();
  find(tree,n=>n.type===h.WalletAccountSelect).props.onChange(1);return h.render();
 }
 function selectScreenshot(tree) {
@@ -76,6 +76,8 @@ function selectScreenshot(tree) {
 }
 
 (async()=>{
+ // Empty customer is a valid bank receipt and does not infer ownership from payer text.
+ let empty=server(),eh=harness(empty),et=await eh.render();change(field(et,'金额'),'3000');et=await eh.render();change(field(et,'付款方'),'XT10022');et=await eh.render();find(et,n=>n.type===eh.WalletAccountSelect).props.onChange(1);et=await eh.render();assert(text(et).includes('客户不用选 匹配申报后自动带入'));await button(et,'录入').props.onClick();assert.equal(empty.writes[0].customer_id,null);assert.equal(empty.writes[0].payer_name,'XT10022');assert.equal(empty.rows.length,1);
  // Screenshot failure happens after money is saved. Reload can only resume that record.
  let s=server(),h=harness(s),tree=await fill(h);s.flags.uploadFail=true;selectScreenshot(tree);tree=await h.render();
  await button(tree,'录入').props.onClick();tree=await h.render();

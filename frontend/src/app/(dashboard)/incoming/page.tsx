@@ -33,6 +33,7 @@ export default function IncomingPage() {
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [savedSuggestions,setSavedSuggestions]=useState<{scope:string;rows:any[]}|null>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   const [accountId, setAccountId] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -130,7 +131,6 @@ export default function IncomingPage() {
   async function handleCreate() {
     if (busy.current || !storageReady) return;
     if (!operationRef.current) {
-      if (!form.customer_id) { toast("error", "请选择付款客户，不能仅凭名字关联到账"); return; }
       if (!form.amount || Number(form.amount) <= 0) { toast("error", "请填写大于零的金额"); return; }
       if (!accountId) { toast("error", "请选择收款账户"); return; }
     }
@@ -138,12 +138,14 @@ export default function IncomingPage() {
     setSaving(true);
     try {
       const current = operationRef.current || { requestKey: crypto.randomUUID(), savedId: null,
-        payload: { ...form, amount: Number(form.amount), account_id: accountId }, screenshotPending: !!selectedFile };
+        payload: { ...form, customer_id:form.customer_id||null, amount: Number(form.amount), account_id: accountId }, screenshotPending: !!selectedFile };
       const result = await submitIncoming(current, selectedFile, {
         create: payload => incomingRequest<SavedIncoming>("/incoming", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
         lookup, upload: uploadScreenshot, remember,
       });
       if (result.status === "saved") {
+        const scope=importScope();
+        try {const saved=await lookup(current.requestKey) as (SavedIncoming & {suggestions?:any[]})|null;if(scope===importScope())setSavedSuggestions({scope,rows:saved?.suggestions||[]});}catch{setSavedSuggestions(null);}
         toast("success", current.savedId && selectedFile ? "截图已补传，到账金额未改变" : selectedFile ? "到账已入账，截图已保存" : "到账已入账，录入成功"); startNext();
       } else if (result.status === "rejected") {
         localStorage.removeItem(storageKey.current); operationRef.current = null; setOperation(null);
@@ -184,6 +186,11 @@ export default function IncomingPage() {
         {operation.savedId && <button className="btn-secondary mt-2" disabled={saving} onClick={startNext}>录入另一笔</button>}
       </div>}
 
+      {savedSuggestions&&savedSuggestions.scope===importScope()&&<div role="status" className="card p-4 mb-4 text-sm">
+        <p>到账已保存，匹配建议仅供参考，请到未对账列表确认。</p>
+        {savedSuggestions.rows.length?savedSuggestions.rows.map((s:any)=><p key={s.declaration_id}>{s.customer_code} · {s.customer_name} · {s.amount.toLocaleString()} {s.currency} · 命中 {s.matched_count}/3 条：{s.matched_conditions.join('、')}</p>):<p>暂无匹配建议 请主管认领</p>}
+        <a href="/reconciliation" className="text-blue-600 underline inline-block py-3">前往未对账列表</a>
+      </div>}
       {/* 顶部行内录入区 */}
       <div className="card mb-5 p-5">
         <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-600">
@@ -207,15 +214,17 @@ export default function IncomingPage() {
           </div>
           <WalletAccountSelect value={accountId} onChange={setAccountId} currency={form.currency} label="收款账户" />
           <div>
-            <label className="form-label">付款方</label>
+            <label className="form-label">客户（选填）</label>
             <select className="form-input" aria-label="到账付款客户" value={form.customer_id || ""} onChange={e => {
               const customer = customers.find(c => c.id === +e.target.value);
-              setForm({ ...form, customer_id: customer?.id || 0, payer_name: customer?.company_name || "" });
+              setForm({ ...form, customer_id: customer?.id || 0 });
             }}>
-              <option value="">选择客户</option>
+              <option value="">暂不选择客户</option>
               {customers.map((c: any) => <option key={c.id} value={c.id}>{c.customer_code || `#${c.id}`} · {c.company_name}</option>)}
             </select>
+            <p className="text-xs text-gray-500 mt-1">客户不用选 匹配申报后自动带入</p>
           </div>
+          <div><label className="form-label">付款方</label><input aria-label="到账付款方" className="form-input" value={form.payer_name} onChange={e=>setForm({...form,payer_name:e.target.value})} /></div>
           <div>
             <label className="form-label">付款方式</label>
             <select className="form-input" value={form.payment_method} onChange={e => setForm({ ...form, payment_method: e.target.value })}>

@@ -1,0 +1,1 @@
+PASS mobile 390x844: create blank customer, suggestions dropdown, select zero writes, one-click explicit match, undo, scope isolation; no page errors

@@ -1,0 +1,32 @@
+const {chromium}=require('/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs=require('fs'),assert=require('assert/strict');
+const base='http://127.0.0.1:19212',out=__dirname,auth=JSON.parse(fs.readFileSync('/tmp/incoming-suggestions-browser-auth.json')).admin;
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+ const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+ const user=await(await fetch(base+'/api/v1/auth/me',{headers:auth})).json();
+ await ctx.addInitScript(({user,token})=>{localStorage.setItem('user',JSON.stringify(user));localStorage.setItem('token',token);localStorage.setItem('activeWarehouseId','1');},{user,token:auth.Authorization.replace('Bearer ','')});
+ const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ let creates=0,matches=0;page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/incoming'))creates++;if(r.method()==='POST'&&r.url().includes('/manual-match'))matches++;});
+ await page.goto(base+'/incoming');await page.getByText('客户不用选 匹配申报后自动带入').waitFor();
+ const dates=page.locator('input[type=date]');await dates.fill('2026-10-20');await page.locator('input[type=number]').fill('3000');await page.getByLabel('到账付款方',{exact:true}).fill('XT10022');
+ const account=page.getByLabel('收款账户',{exact:true});await account.selectOption('1');
+ assert.equal(await page.getByLabel('到账付款客户').inputValue(),'');
+ const saved=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/incoming'));
+ await page.getByRole('button',{name:'录入',exact:true}).click();const receipt=await(await saved).json();assert.equal(receipt.customer_id,null);assert.equal(receipt.suggestions[0].matched_count,3);assert.equal(creates,1);
+ await page.getByText('到账已保存，匹配建议仅供参考，请到未对账列表确认。').waitFor();await page.screenshot({path:out+'/mobile-incoming-suggestions.png',fullPage:true});
+ await page.getByRole('link',{name:'前往未对账列表'}).click();const selects=page.getByLabel(`到账${receipt.id}匹配建议`,{exact:true});await selects.waitFor();await selects.scrollIntoViewIfNeeded();await selects.selectOption('1');assert.equal(matches,0);
+ const row=selects.locator('..');await page.screenshot({path:out+'/mobile-dropdown.png',fullPage:true});
+ const matching=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('/manual-match'));
+ await row.getByRole('button',{name:'确认匹配',exact:true}).click();const result=await(await matching).json();assert.equal(result.customer_code,'XT10022');assert.equal(matches,1);
+ const statement=await(await fetch(base+'/api/v1/customers?page_size=200',{headers:auth})).json();assert.equal(statement.data.find(c=>c.id===1).receivables.THB.received,3000);
+ await page.getByRole('button',{name:'解除匹配',exact:true}).first().waitFor();await page.screenshot({path:out+'/mobile-matched.png',fullPage:true});
+ page.once('dialog',d=>d.accept());const undo=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().includes('/unmatch'));
+ await page.getByRole('button',{name:'解除匹配',exact:true}).first().click();const unmatch=await(await undo).json();assert.equal(unmatch.customer_binding_reverted,true);
+ await selects.waitFor();const afterUndo=await(await fetch(base+'/api/v1/customers?page_size=200',{headers:auth})).json();assert.equal(afterUndo.data.find(c=>c.id===1).receivables.THB.received,0);assert.equal(errors.length,0,errors.join('\n'));
+ // Scope changes must reject old suggestions before a money-related request.
+ await selects.selectOption('1');await page.evaluate(()=>localStorage.setItem('activeWarehouseId','2'));await row.getByRole('button',{name:'确认匹配',exact:true}).click();assert.equal(matches,1);await page.getByText('账号或仓库已变化，请重新查询',{exact:true}).waitFor();
+ await page.evaluate(()=>{localStorage.setItem('activeWarehouseId','1');const u=JSON.parse(localStorage.getItem('user'));u.id=3;localStorage.setItem('user',JSON.stringify(u));});await row.getByRole('button',{name:'确认匹配',exact:true}).click();assert.equal(matches,1);
+ fs.writeFileSync(out+'/mobile-actual.json',JSON.stringify({viewport:{width:390,height:844},receipt,result,unmatch,statement,creates,matches,errors,checks:['blank customer save','payer independent','visible ranked suggestions','dropdown selection zero writes','explicit confirm one match','undo restores unassigned identity','warehouse/user switch blocks stale selection']},null,2));
+ await browser.close();console.log('PASS mobile 390x844: create blank customer, suggestions dropdown, select zero writes, one-click explicit match, undo, scope isolation; no page errors');
+})().catch(e=>{console.error(e);process.exit(1);});
