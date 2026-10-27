@@ -1187,10 +1187,10 @@ export default function SuppliersPage() {
                 <div className="space-y-2 max-h-[200px] overflow-auto mb-4">
                   {(procurement?.product_compare || []).length === 0 ? <div className="text-gray-400 text-sm py-4">暂无产品数据</div> :
                     (procurement?.product_compare || []).map((p: any) => (
-                      <div key={p.product_name + p.spec + p.currency} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
+                      <div key={JSON.stringify([p.product_name,p.spec,p.currency,p.unit])} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
                         <div className="flex-1">
                           <span className="font-medium">{p.product_name}</span>
-                          <span className="text-gray-400 ml-1">{p.spec || ""}</span>
+                          <span className="text-gray-400 ml-1">{p.spec || ""}</span><span data-field="quote-unit" className="text-xs text-gray-500 ml-2">每{p.unit || "单位未知"}</span>
                           <span className="text-xs text-gray-400 ml-2">{p.supplier_count}家供应商</span>
                         </div>
                         <div className="text-right text-xs">
@@ -1213,7 +1213,7 @@ export default function SuppliersPage() {
                             <div>
                               <span className="font-medium">{t.product_name}{t.spec ? ` (${t.spec})` : ""}</span>
                               <span className="text-gray-600 ml-1">当前最便宜 <span className="text-green-600 font-semibold">{t.cheapest_supplier} {fmtMoney(t.cheapest_price, t.currency)}</span></span>
-                              <div className="text-xs text-gray-500 mt-1">比最贵供应商省 {fmtMoney(t.savings_per_unit, t.currency)}/件</div>
+                              <div className="text-xs text-gray-500 mt-1">比最贵供应商省 {fmtMoney(t.savings_per_unit, t.currency)}/{t.unit || "单位未知"}</div>
                             </div>
                           </div>
                         </div>

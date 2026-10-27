@@ -10,10 +10,10 @@ export type SpecNode = {
 };
 
 let sequence = 0;
-export const specLabels: Record<string, string> = {
+export const specLabels: Readonly<Record<string, string>> = Object.freeze(Object.assign(Object.create(null) as Record<string, string>, {
   material: '材质', width: '宽度', length: '长度', height: '高度', thickness: '厚度',
   weight: '重量', packaging: '包装说明', color: '颜色', value: '数值', unit: '单位',
-};
+}));
 
 export function newSpecNode(key = '', kind: SpecNode['kind'] = 'text'): SpecNode {
   return { id: `spec-${++sequence}`, key, kind, text: '', checked: false, children: [] };

@@ -1,4 +1,4 @@
-"""Run the original 61 frontend groups plus reviewed import groups with fresh loopback PostgreSQL/HTTP fixtures.
+"""Run the original 61 frontend groups plus reviewed additions with fresh loopback PostgreSQL/HTTP fixtures.
 
 Requires the project's Python test dependencies, native PostgreSQL binaries and
 the installed frontend node_modules. Never reads deployment files or remote data.
@@ -34,7 +34,7 @@ def main():
     parser.add_argument('--node-modules', required=True, type=Path)
     parser.add_argument('--node', default=shutil.which('node'))
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--tests', nargs='+', help='Specific .test.cjs basenames; default original 61 plus import groups')
+    parser.add_argument('--tests', nargs='+', help='Specific .test.cjs basenames; default all groups in the reviewed manifest')
     args = parser.parse_args()
     assert args.node and (args.node_modules / 'typescript').is_dir()
     assert (args.postgres_bin / 'initdb').is_file()
@@ -56,7 +56,7 @@ def main():
     tests = sorted(p.name for p in (ROOT / 'frontend/tests').glob('*.test.cjs'))
     manifest = json.loads((ROOT / 'frontend/tests/legacy-regression-suite.json').read_text())
     assert len(manifest['original_61']) == 61
-    expected = manifest['original_61'] + manifest['added_import_groups'] + manifest['added_supplier_usability_groups']
+    expected = manifest['original_61'] + manifest['added_import_groups'] + manifest['added_supplier_usability_groups'] + manifest['added_acceptance_groups']
     assert len(expected) == len(set(expected))
     assert set(tests) == set(expected), f'Suite differs from reviewed manifest: missing={set(expected)-set(tests)}, extra={set(tests)-set(expected)}'
     if args.tests:

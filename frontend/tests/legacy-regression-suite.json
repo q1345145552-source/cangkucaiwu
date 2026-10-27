@@ -67,5 +67,8 @@
   ],
   "added_supplier_usability_groups": [
     "supplier-usability.test.cjs"
+  ],
+  "added_acceptance_groups": [
+    "supplier-acceptance-854e389.test.cjs"
   ]
 }

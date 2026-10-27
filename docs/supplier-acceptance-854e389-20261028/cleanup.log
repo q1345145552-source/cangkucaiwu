@@ -1,0 +1,8 @@
+COMMAND ['/tmp/supplier01-pgserver/pgserver/pginstall/bin/psql', '-h', '127.0.0.1', '-p', '62344', '-U', 'supplier_acceptance', '-d', 'postgres', '-Atc', "SELECT 'remaining_test_schemas=' || count(*) FROM information_schema.schemata WHERE schema_name LIKE 'incoming_test_%'; SHOW listen_addresses;"]
+remaining_test_schemas=0
+127.0.0.1
+EXIT 0
+COMMAND ['/tmp/supplier01-pgserver/pgserver/pginstall/bin/pg_ctl', '-D', '/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/supplier-acceptance-pg-npau8dw0/data', '-m', 'fast', '-w', 'stop']
+waiting for server to shut down....... done
+server stopped
+EXIT 0

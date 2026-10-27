@@ -6,6 +6,11 @@ function canonical(js){return ts.createPrinter({removeComments:true}).printFile(
 // Reviewed import + supplier usability changes are isolated below; preserve
 // full emitted-runtime equality for all unrelated supplier/payment/order nodes.
 function nonImportSupplier(source){
+ // Acceptance fixes only add the exact unit display/key corresponding to the
+ // backend's separated quote groups; browser acceptance verifies both units.
+ source=source.replace('{fmtMoney(t.savings_per_unit, t.currency)}/{t.unit || "单位未知"}','{fmtMoney(t.savings_per_unit, t.currency)}/件');
+ source=source.replace('key={JSON.stringify([p.product_name,p.spec,p.currency,p.unit])}','key={p.product_name + p.spec + p.currency}').replace('<span data-field="quote-unit" className="text-xs text-gray-500 ml-2">每{p.unit || "单位未知"}</span>','');
+
  source=source.replace('[productSpecifications,setProductSpecifications]=useState<SpecNode[]>([])','[productAttrsText,setProductAttrsText]=useState("")');
  const file=ts.createSourceFile('suppliers.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  const result=ts.transform(file,[context=>root=>{
