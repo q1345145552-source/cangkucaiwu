@@ -69,6 +69,7 @@
     "supplier-usability.test.cjs"
   ],
   "added_acceptance_groups": [
-    "supplier-acceptance-854e389.test.cjs"
+    "supplier-acceptance-854e389.test.cjs",
+    "page-back.test.cjs"
   ]
 }

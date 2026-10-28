@@ -39,7 +39,7 @@ export default function CostFundsDebtPage() {
   function href(path: string, cur: string, filters: Record<string, string> = {}) { return `${path}?${new URLSearchParams({ ...range, currency: cur, report_view: "1", ...filters })}`; }
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <h1 className="page-title flex items-center gap-2"><FileText size={24} />成本资金欠款</h1><Link href="/reports" className="text-sm text-blue-600">返回报表中心</Link>
+      <h1 className="page-title flex items-center gap-2"><FileText size={24} />成本资金欠款</h1>
     </div>
     <div className="bg-white rounded-xl border p-4 flex items-end flex-wrap gap-3">
       <label className="text-sm">开始日期<input aria-label="开始日期" type="date" className="form-input mt-1 w-36" value={range.start_date} onChange={e => setRange({ ...range, start_date: e.target.value })} /></label>

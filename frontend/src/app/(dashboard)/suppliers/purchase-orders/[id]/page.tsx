@@ -20,6 +20,6 @@ export default function PurchaseOrderPage({params}:{params:{id:string}}) {
       <PurchaseQuantities order={order}/><p>采购总额：{fmtMoney(order.total_amount,order.currency)}</p><LinkedPayable order={order}/><ReceiptHistory order={order}/><ThreeWayMatch value={order.matching}/>
       <p className="text-xs text-gray-500">此页仅查看，不自动收货、确认或付款</p>
     </>}
-    <Link className="text-blue-600" href="/payable">返回应付账款</Link>
+
   </div>;
 }

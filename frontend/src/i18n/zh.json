@@ -368,5 +368,7 @@
   "ot_status_dispute_suffix": "{n}人有异议",
   "employee_self": "员工自助",
   "leave": "请假",
-  "cash_advances": "垫款单"
+  "cash_advances": "垫款单",
+  "page_back_to": "返回{page}",
+  "page_back_employee_home": "员工首页"
 }
