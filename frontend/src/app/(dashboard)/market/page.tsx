@@ -36,7 +36,7 @@ export default function MarketPage() {
       if (tab === "review" && isSuperAdmin) {
         const r = await api.get<any>("/market/review-list"); setReviews(r.data);
       } else {
-        const r = await api.get<any>(`/market?page_size=100&search=${search}`); setItems(r.data);
+        const r = await api.get<any>(`/market?page_size=100&search=${encodeURIComponent(search)}`); setItems(r.data);
       }
     } catch (err) { console.error("加载失败:", err); }
     setLoading(false);

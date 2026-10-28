@@ -36,7 +36,8 @@ def test_defaults_versions_owner_and_generic_setting_bypass(tmp_path,monkeypatch
   async with fixture(tmp_path,monkeypatch) as (_,f,c,_):
    initial=await request(c,'GET','/supplier-controls/policy');assert not initial['no_self_approve'] and not initial['no_self_receive'] and initial['revision']==0
    async with f() as db:
-    db.add(Warehouse(id=0,name='synthetic legacy global',code='GLOBAL0'));await db.flush()
+    if not await db.get(Warehouse,0):
+     db.add(Warehouse(id=0,name='synthetic legacy global',code='GLOBAL0'));await db.flush()
     db.add(SystemSetting(warehouse_id=0,key=duty.KEY,value='malicious-global'));await db.commit()
    assert (await request(c,'GET','/supplier-controls/policy'))==initial
    saved,body=await policy(c,True,True);again=await request(c,'PUT','/supplier-controls/policy',json=body);assert again['replayed'] and again['policy']==saved['policy']

@@ -196,7 +196,7 @@ async def _get_price_threshold(db: AsyncSession, wh_id: int) -> float:
 
 
 async def _get_approval_threshold(db: AsyncSession, wh_id: int | None) -> float:
-    """采购审批金额门槛（按仓库，回退全局旧设置作为初始值）。0 表示无需审批。"""
+    """采购审批金额门槛（按仓库，回退全局旧设置作为初始值）。0 表示全部采购单需要审批。"""
     setting = None
     if wh_id is not None:
         setting = (await db.execute(
@@ -688,7 +688,7 @@ async def create_purchase_order(supplier_id: int, req: PurchaseOrderRequest,
     total = round(total, 2)
     now = thai_now()
     approval_threshold = await _get_approval_threshold(db, wh_id)
-    is_pending = approval_threshold > 0 and total > approval_threshold
+    is_pending = approval_threshold == 0 or total > approval_threshold
     order_number = f"PO{now.strftime('%Y%m%d%H%M%S%f')}{supplier_id}"
     po = PurchaseOrder(
         warehouse_id=wh_id, supplier_id=supplier_id,
@@ -1092,7 +1092,7 @@ async def reject_purchase(po_id: int, req: PurchaseRejectRequest, current_user: 
 
 # ═══ 采购收货验收 ════════════════════════════
 @_fixed_routes.get("/purchase-orders")
-async def list_purchase_orders(page: int = 1, page_size: int = 50,
+async def list_purchase_orders(page: int = 1, page_size: int = 50, status: Optional[str] = None,
                                current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
     warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
@@ -1104,6 +1104,9 @@ async def list_purchase_orders(page: int = 1, page_size: int = 50,
     count_q = select(func.count(PurchaseOrder.id))
     query = query.where(PurchaseOrder.warehouse_id == warehouse_id)
     count_q = count_q.where(PurchaseOrder.warehouse_id == warehouse_id)
+    if status:
+        query = query.where(PurchaseOrder.status == status)
+        count_q = count_q.where(PurchaseOrder.status == status)
     total = (await db.execute(count_q)).scalar()
     rows = (await db.execute(
         query.order_by(PurchaseOrder.created_at.desc()).offset((page - 1) * page_size).limit(page_size)

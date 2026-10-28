@@ -1,7 +1,7 @@
 from app.core.round5_access import own_read_ids
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from datetime import datetime
 from app.database import get_db
 from app.models.recharge import ReconciliationResult, RechargeDeclaration, CurrencyEnum, MatchStatus
@@ -55,6 +55,14 @@ async def list_recharges(
     if status:
         query = query.where(RechargeDeclaration.match_status == status)
         count_q = count_q.where(RechargeDeclaration.match_status == status)
+    if search and search.strip():
+        term = search.strip()
+        matching_customers = select(Customer.id).where(Customer.company_name.icontains(term, autoescape=True))
+        condition = or_(RechargeDeclaration.customer_id.in_(matching_customers),
+                        RechargeDeclaration.transaction_no.icontains(term, autoescape=True),
+                        RechargeDeclaration.remark.icontains(term, autoescape=True))
+        query = query.where(condition)
+        count_q = count_q.where(condition)
     total = (await db.execute(count_q)).scalar()
     result = await db.execute(query.order_by(RechargeDeclaration.created_at.desc()).offset((page-1)*page_size).limit(page_size))
     records = result.scalars().all()

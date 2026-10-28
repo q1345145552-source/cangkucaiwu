@@ -20,9 +20,16 @@ def actual(key,value):
         Path(os.environ['SUPPLIER01_REPORT']).write_text(json.dumps(ACTUAL,ensure_ascii=False,indent=2,default=str))
 
 @asynccontextmanager
-async def setup(tmp_path, mp):
+async def setup(tmp_path, mp, *, approval_threshold=1000000):
     async with environment(tmp_path,mp) as (engine,f,c):
         async with f() as db:
+            # These monetary/receipt regressions exercise the below-threshold path.
+            # Zero now requires approval; use an explicit synthetic positive policy.
+            if approval_threshold is not None:
+                from app.models import SystemSetting, Warehouse
+                db.add(Warehouse(id=0,name="合成全局默认仓",code="SYN-GLOBAL"))
+                await db.flush()
+                db.add(SystemSetting(warehouse_id=0,key='purchase_approval_threshold',value=str(approval_threshold)))
             for uid,perms in [(3,['应付账款']), (4,[]), (1,[])]:
                 (await db.get(User,uid)).extra_permissions=perms
             for uid,perms in [(8,['付款计划']),(9,['供应商管理'])]:

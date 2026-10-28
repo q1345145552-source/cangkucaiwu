@@ -154,6 +154,8 @@ export default function SuppliersPage() {
   const [discrepancies, setDiscrepancies] = useState<any[]>([]);
   // 采购单列表
   const [showPoList, setShowPoList] = useState(false);
+  const [poStatus, setPoStatus] = useState("");
+  const poListRequest = useRef(0);
   const [poList, setPoList] = useState<any[]>([]);
   const [poDetail, setPoDetail] = useState<any>(null);
   const poRequest=useRef(0);
@@ -461,14 +463,16 @@ export default function SuppliersPage() {
     return API_URL.replace("/api/v1", "") + p;
   }
   // ─── 采购单列表 ───
-  async function openPoList() {
+  async function openPoList(status = "") {
+    const requestId = ++poListRequest.current;
+    setPoStatus(status);
     setShowPoList(true);
     setPoList([]);
     setPoDetail(null);
     try {
-      const r = await api.get<any>("/suppliers/purchase-orders?page=1&page_size=100");
-      setPoList(r.data || []);
-    } catch { setPoList([]); }
+      const r = await api.get<any>(`/suppliers/purchase-orders?page=1&page_size=100${status ? `&status=${encodeURIComponent(status)}` : ""}`);
+      if (requestId === poListRequest.current) setPoList(r.data || []);
+    } catch { if (requestId === poListRequest.current) setPoList([]); }
   }
   async function downloadPoPdf(po: any) {
     try {
@@ -680,7 +684,7 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Package size={16}/>收货验收</button>
               <button onClick={openDiscrepancies}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><AlertCircle size={16}/>收货差异</button>
-              <button onClick={openPoList}
+              <button onClick={() => openPoList()}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><FileText size={16}/>采购单列表</button>
               <ActionGate anyOf={["suppliers.create_supplier"]}><button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button></ActionGate>
             </>
@@ -1691,6 +1695,11 @@ export default function SuppliersPage() {
               <button onClick={() => setShowPoList(false)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
             </div>
             <div className="p-5">
+              <label className="flex items-center gap-2 mb-3 text-sm">采购状态
+                <select aria-label="采购状态" className="form-input w-auto" value={poStatus} onChange={e => openPoList(e.target.value)}>
+                  <option value="">全部</option><option value="pending">待审批</option><option value="confirmed">已确认</option><option value="rejected">已驳回</option>
+                </select>
+              </label>
               {poList.length === 0 ? (
                 <div className="text-gray-400 text-sm py-8 text-center">暂无采购单</div>
               ) : (

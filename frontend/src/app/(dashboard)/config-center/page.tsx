@@ -155,7 +155,7 @@ export default function ConfigCenterPage() {
             <input type="number" step="1" min="0" className="form-input text-sm disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" value={thresholds.purchase}
               disabled={!editable}
               onChange={e => setThresholds({ ...thresholds, purchase: e.target.value })} />
-            <p className="text-xs text-gray-400 mt-1">0 表示不需要审批</p>
+            <p className="text-xs text-gray-400 mt-1">填 0 表示所有采购单都需要审批</p>
           </div>
           <div>
             <label className="form-label text-xs">集中度预警阈值（%）</label>
