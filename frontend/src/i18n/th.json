@@ -368,5 +368,7 @@
   "ot_status_dispute_suffix": "{n} คนมีข้อโต้แย้ง",
   "employee_self": "บริการตนเองสำหรับพนักงาน",
   "leave": "ลางาน",
-  "cash_advances": "รายการสำรองจ่าย"
+  "cash_advances": "รายการสำรองจ่าย",
+  "page_back_to": "กลับไป{page}",
+  "page_back_employee_home": "หน้าหลักพนักงาน"
 }

@@ -1,13 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 const money = (value: number) => Number(value || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const when = (value: string | null) => value ? new Date(value).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok", hour12: false }) : "—";
 
 export default function CashAdvanceDetailPage({ params }: { params: { id: string } }) {
-  const router = useRouter();
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState("");
   const id = /^[1-9]\d*$/.test(params.id) && Number.isSafeInteger(Number(params.id)) ? Number(params.id) : null;
@@ -26,7 +24,7 @@ export default function CashAdvanceDetailPage({ params }: { params: { id: string
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h1 className="page-title">垫款单 {id ? `#${id}` : "详情"}</h1>
-      <button type="button" className="btn-secondary" onClick={() => router.back()}>返回</button>
+
     </div>
     {loading ? <p className="text-sm text-gray-500">加载中...</p> : error ? <p role="alert" className="text-sm text-red-600">{error}</p> : advance && <>
       <dl className="bg-white rounded-xl border p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">

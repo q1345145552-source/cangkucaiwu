@@ -1,7 +1,6 @@
 "use client";
 import ActionGate from "@/components/permissions/ActionGate";
 import {useEffect,useRef,useState} from 'react';
-import Link from 'next/link';
 import {api} from '@/lib/api';
 import {useAuth} from '@/hooks/useAuth';
 import {registrationDraft} from '@/lib/registrationRequest';
@@ -58,7 +57,7 @@ export default function ProcurementControls(){
  function openRevoke(row:any){try{const draft=registrationDraft('duty_revoke',row.id);setRevoke(row);setRevokeWhy(draft?.payload.revoke_reason||'');}catch(e:any){setError(e.message);}}
  async function revokeGrant(){if(!revokeWhy.trim()){setError('请填写撤销原因');return;}setBusy('revoke');try{await controlMutation('duty_revoke',revoke.id,{revoke_reason:revokeWhy},`/supplier-controls/exceptions/${revoke.id}/revoke`,'POST',scope);if(controlScope()===scope){setRevoke(null);setMessage('授权已撤销');await loadExceptions();}}catch(e:any){if(controlScope()===scope)setError(e.message);}finally{setBusy('');}}
  if(!allowed)return <section className="card p-4"><h1 className="page-title">采购职责与例外</h1><p>仅仓库管理员可以管理。</p></section>;
- return <section className="space-y-4"><div className="flex flex-wrap items-center gap-3"><h1 className="page-title">采购职责与例外</h1><Link href="/suppliers/risk" className="text-blue-600 underline">返回风险看板</Link></div>
+ return <section className="space-y-4"><div className="flex flex-wrap items-center gap-3"><h1 className="page-title">采购职责与例外</h1></div>
  {error&&<p role="alert" className="text-red-600">{error}</p>}{message&&<p role="status" className="text-blue-800">{message}</p>}
  {current&&loaded===scope?<><div className="card p-4 space-y-3 text-sm"><h2 className="font-semibold">本仓职责开关</h2><p>{current.scope}</p><p>当前版本：第{current.revision}版</p>
  <label className="flex gap-2"><input aria-label="采购人不可自批" type="checkbox" checked={approve} disabled={policyLocked||!!busy} onChange={e=>setApprove(e.target.checked)}/>采购人不可自批（人工通过和驳回）</label>
