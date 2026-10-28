@@ -224,6 +224,7 @@ export default function SuppliersPage() {
 
   // ─── Place Order ───
   function openOrder(sid: number) {
+    if (data.find(s => s.id === sid)?.is_active === "false") { toast("error", "供应商已停用，不能新增采购"); return; }
     setOrderSupplierId(sid);
     setOrderItems({});
     setOrderTotal(0);priceReviewToken.current=null;
@@ -615,6 +616,15 @@ export default function SuppliersPage() {
     } catch {}
   }
 
+  async function setSupplierActive(sid: number, active: boolean) {
+    try {
+      const result = await api.put<{message: string}>(`/suppliers/${sid}`, {is_active: active ? "true" : "false"});
+      toast("success", result.message); await load();
+    } catch (error: unknown) {
+      toast("error", error instanceof Error ? error.message : "供应商状态更新失败，请稍后重试");
+    }
+  }
+
   async function deleteSupplier(sid: number) {
     if (!confirm("确定要删除该供应商吗？")) return;
     try { await api.delete(`/suppliers/${sid}`); toast("success", "已删除"); load(); }
@@ -679,6 +689,7 @@ export default function SuppliersPage() {
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "name", label: "名称" },
+        { key: "is_active", label: "状态", render: (value: string) => <span className={value === "false" ? "text-gray-400" : "text-green-600"}>{value === "false" ? "已停用" : "启用中"}</span> },
         { key: "category_name", label: "类别", render: (v:any) => v ? <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${v==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>{v}</span> : "-" },
         { key: "contact_person", label: "联系人" },
         { key: "contact_info", label: "联系方式" },
@@ -698,7 +709,8 @@ export default function SuppliersPage() {
               </>
             )}
             <button onClick={()=>viewDetail(row.id)} className="text-blue-500 flex items-center gap-1 text-xs"><Eye size={12}/>详情</button>
-            {isAdmin && (
+            <ActionGate anyOf={["suppliers.update_supplier#operate"]}><button onClick={()=>setSupplierActive(row.id, row.is_active === "false")} className="text-gray-600 px-2 py-2 text-xs">{row.is_active === "false" ? "启用" : "停用"}</button></ActionGate>
+            {user?.role === "warehouse_admin" && (
               <ActionGate anyOf={["suppliers.delete_supplier#operate"]}><button onClick={()=>deleteSupplier(row.id)} className="text-red-500 flex items-center gap-1 text-xs"><Trash2 size={12}/>删除</button></ActionGate>
             )}
           </div>
@@ -815,7 +827,7 @@ export default function SuppliersPage() {
                 <Tag size={12} /><span>同名规格、同币种及原单位参考；未映射不作为标准SKU可比</span>
               </div>
               <div className="flex gap-3">
-                <button onClick={()=>openOrder(productSupplierId)} className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"><ShoppingCart size={16}/>下单</button>
+                <button disabled={data.find(s => s.id === productSupplierId)?.is_active === "false"} onClick={()=>openOrder(productSupplierId)} className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"><ShoppingCart size={16}/>下单</button>
                 <button onClick={()=>setShowProducts(false)} className="btn-secondary text-sm px-6 py-2">关闭</button>
               </div>
             </div>

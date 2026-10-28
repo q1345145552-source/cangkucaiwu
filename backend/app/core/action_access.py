@@ -160,6 +160,8 @@ async def enforce_action(request, user):
             message = '只能由仓库管理员查看或撤销补卡批次'
         elif row['id'] in ('employees.set_max_limit','employees.batch_set_templates'):
             message = '规则及薪资扣款设置只能由仓库管理员修改'
+        elif row['id'] == 'suppliers.delete_supplier':
+            message = '供应商删除只能由仓库管理员操作'
         elif row['id'] == 'payroll.list_payroll':
             message = '无权查看工资数据'
         raise HTTPException(403, message)

@@ -130,7 +130,8 @@ def test_tags_classification_readonly_and_references_survive_deactivation(tmp_pa
    await request(c,'PUT','/sku-catalog/suppliers/1/tags',code=409,json={'tag_ids':[],'expected_version':initial['version']})
    stopped=await request(c,'PUT',f'/sku-catalog/tags/{tag["id"]}',json={'name':tag['name'],'active':False,'expected_version':tag['version']})
    assert (await request(c,'GET','/sku-catalog/suppliers/1/tags'))['tag_ids']==[tag['id']]
-   await request(c,'DELETE','/suppliers/1',code=409)
+   blocked=await request(c,'DELETE','/suppliers/1',code=400)
+   assert '已有业务记录' in blocked['detail'] and '请改用停用' in blocked['detail']
    async with f() as db:
     (await db.get(SupplierCategory,1)).is_active='false';await db.commit()
    deactivated=await request(c,'PUT',f'/sku-catalog/{s["id"]}',json={**{k:s[k] for k in ('code','name','attributes','base_unit','category_id')},'active':False,'expected_version':s['version']})

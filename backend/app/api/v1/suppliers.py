@@ -1760,10 +1760,14 @@ async def create_supplier(req: SupplierCreate, current_user: User = Depends(get_
 @_supplier_routes.put("/{supplier_id}", dependencies=[Depends(require_non_labor)])
 async def update_supplier(supplier_id: int, req: SupplierUpdate,
                           current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db),
+                          db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+    changes = req.model_dump(exclude_unset=True)
+    if 'is_active' in changes:
+        from app.services.supplier_lifecycle import mutate
+        return await mutate(db, current_user, supplier_id, warehouse_id, changes=changes)
     result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
     s = result.scalar_one_or_none()
     if not s: raise HTTPException(404, "供应商不存在")
@@ -1776,23 +1780,13 @@ async def update_supplier(supplier_id: int, req: SupplierUpdate,
 
 @_supplier_routes.delete("/{supplier_id}", dependencies=[Depends(require_non_labor)])
 async def delete_supplier(supplier_id: int, current_user: User = Depends(get_current_user),
-                          db: AsyncSession = Depends(get_db),
+                          db: AsyncSession = Depends(get_db), warehouse_id: int = Depends(current_supplier_warehouse),
     _perm=Depends(check_staff_permission("供应商管理"))):
-    if current_user.role == Role.SUPER_ADMIN:
-        raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
-    s = result.scalar_one_or_none()
-    if not s: raise HTTPException(404, "供应商不存在")
-    if current_user.role != Role.SUPER_ADMIN and s.warehouse_id not in get_wh_ids(current_user):
-        raise HTTPException(403, "只能删除自己仓库的供应商")
-    await catalog.lock(db,s.warehouse_id)
-    from app.models import ProductSkuMappingEvent,SupplierTagLink,SupplierQuote
-    quoted=(await db.execute(select(SupplierQuote.id).join(SupplierProduct,SupplierQuote.product_id==SupplierProduct.id).where(SupplierProduct.supplier_id==s.id).limit(1))).first()
-    mapped=(await db.execute(select(ProductSkuMappingEvent.id).join(SupplierProduct,ProductSkuMappingEvent.product_id==SupplierProduct.id).where(SupplierProduct.supplier_id==s.id).limit(1))).first()
-    tagged=(await db.execute(select(SupplierTagLink.id).where(SupplierTagLink.supplier_id==s.id).limit(1))).first()
-    if mapped or tagged or quoted:raise HTTPException(409,"供应商存在SKU映射、报价或仓内标签引用，不能硬删除；请保留历史并停用")
-    await db.delete(s); await db.flush()
-    return {"message": "删除成功"}
+    if current_user.role in (Role.SUPERVISOR, Role.STAFF):
+        raise HTTPException(403, "供应商删除只能由仓库管理员操作")
+    _forbid_super_admin(current_user)
+    from app.services.supplier_lifecycle import mutate
+    return await mutate(db, current_user, supplier_id, warehouse_id)
 
 @_fixed_routes.get("/procurement-summary")
 async def procurement_summary(current_user: User = Depends(get_current_user),

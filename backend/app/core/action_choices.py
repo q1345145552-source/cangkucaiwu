@@ -173,6 +173,8 @@ async def select_choices(db,user,wh_ids,row,field,parent_id=None,search='',page=
         except (TypeError,ValueError):raise HTTPException(400,'对象编号格式不正确')
     model=ENTITIES[b.entity]
     q=await scoped(db,user,wh_ids,b.entity)
+    if b.entity == "Supplier" and row["id"] == "suppliers.create_purchase_order":
+        q=q.where(model.is_active == "true")
     if b.parent:
         if parent_id is None:return {'data':[],'page':page,'has_more':False,'requires_parent':b.parent}
         parent_binding=binding(row,b.parent)
