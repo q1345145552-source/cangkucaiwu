@@ -116,3 +116,9 @@ HTTP 200：
 持久目录 `/Users/xiongliu/Desktop/仓库豁免日验收-20261028`；临时环境 `/private/tmp/attendance-exemptions-20261028`。`actual.json` 为接口原始返回/工时/重算前后金额，`browser-results.json` 为手机点击结果，PNG 为页面证据；`logs/final.log/xml/exit` 为最终测试（退出码 1，仅上述基线失败），`logs/baseline.log/exit` 为基线对照（1 失败、1 通过），`logs/tsc.log/exit`、`build.log/exit`、`browser.log/exit` 均为 0。
 
 复现命令和隔离地址见外部 `REPRODUCE.md`。仓库只保存本摘要、代码和测试，不提交原始日志、截图、身份令牌或数据库文件。
+
+## 推送前与远程 main 合并验证
+
+推送时发现远程 main 已到 `4304a80bffe22751dae9d5a1ed897aca11b5d6b9`，新增供应商模板/导航与弹窗保护等 3 个提交。通过普通 merge 保留双方历史，无冲突、无强制覆盖。唯一测试兼容调整是弹窗精确总数 142 → 143，并要求清单包含新增豁免日弹窗；原关闭规则断言不变。
+
+合并后实际验证：豁免日、注册权限边界、收货反馈、供应商模板相关 **28 通过、0 失败、0 跳过**；完整 TypeScript、前端构建、143 个弹窗关闭规则检查退出码均 0。原有完整相关回归及已核实的成本基线失败结论不变。新增日志保存于原证据目录的 `publish/`，未部署、未在真实库执行迁移。
