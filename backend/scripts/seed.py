@@ -554,6 +554,8 @@ async def seed():
         await _migrate_fund_item_void_columns(conn)
         await _migrate_makeup_quota_column(conn)
         await _migrate_makeup_batches(conn)
+        from app.services.attendance_exemption_migration import migrate_attendance_exemptions
+        await migrate_attendance_exemptions(conn)
         await _migrate_payroll_expense_link(conn)
         await _migrate_cash_advances(conn)
         await _migrate_cash_advance_currency(conn)

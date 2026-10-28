@@ -1,3 +1,4 @@
+from app.services.attendance_exemptions import valid_clock
 from app.core.round5_access import read_projection
 from app.services.attendance_population import employee_account_roles, includes_efficiency
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -335,7 +336,7 @@ async def _compute_week(db: AsyncSession, wh_id: int, monday: date, sunday: date
 
     # 该仓该周所有打卡记录
     records = (await db.execute(
-        select(ClockInRecord).where(
+        select(ClockInRecord).where(valid_clock(),
             ClockInRecord.warehouse_id == wh_id,
             ClockInRecord.clock_date >= monday,
             ClockInRecord.clock_date <= sunday,

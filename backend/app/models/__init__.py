@@ -1,3 +1,4 @@
+from app.models.attendance_exemption import AttendanceExemption
 
 from app.models.user import User
 from app.models.warehouse import Warehouse
@@ -37,6 +38,7 @@ from app.models.procurement_control import ProcurementActionException, Procureme
 from app.models.inventory import InventoryAccount, InventoryMovement, InventoryReceiptLink, InventoryOperation, InventoryPolicy, InventoryStocktake, InventoryControl
 
 __all__ = [
+    "AttendanceExemption",
     "InventoryAccount", "InventoryMovement", "InventoryReceiptLink", "InventoryOperation", "InventoryPolicy",
     "InventoryStocktake", "InventoryControl",
     "ProcurementActionException", "ProcurementDutyExecution", "ProcurementRiskReview",

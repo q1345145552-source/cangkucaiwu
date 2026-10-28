@@ -1,3 +1,4 @@
+from app.services.attendance_exemptions import valid_clock
 from app.core.round5_access import read_projection
 from app.core.round2_access import require_account_manager, mutation_scope, own_scope, login_target_scope
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
@@ -1020,7 +1021,7 @@ async def employee_summary(
         else:
             ym_end = ym_start.replace(month=ym_start.month+1, day=1)
         records = (await db.execute(
-            select(ClockInRecord).where(
+            select(ClockInRecord).where(valid_clock(),
                 ClockInRecord.user_id == uid,
                 ClockInRecord.warehouse_id == emp.warehouse_id,
                 ClockInRecord.clock_date >= ym_start,

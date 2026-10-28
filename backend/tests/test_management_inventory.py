@@ -9,7 +9,9 @@ def test_original94_registered_management_all_guarded():
     # Keep exact counts and every original per-route guard assertion.
     from tests.permission_round7.registration import assert_registered_catalogue
     assert_registered_catalogue()
-    assert result['total_method_paths']==436
+    assert result['total_method_paths']==439
+    exemptions=[r for r in result['routes'] if r['path'].startswith('/api/v1/attendance/exemptions')]
+    assert len(exemptions)==3 and all('exemption_admin' in r['dependencies'] for r in exemptions)
     assert result['management_method_paths']==sum(r['access'] in MANAGEMENT for r in result['routes'])
     assert len(result['original94_comparison'])==94
     assert all(r['non_labor_guard'] and r['current_access'] in MANAGEMENT for r in result['original94_comparison'])

@@ -1,3 +1,4 @@
+from app.services.attendance_exemptions import valid_clock
 from app.core.round4_access import independent_employee
 from app.services.half_day_leave import is_half_day_leave, half_day_leave_hours
 from app.services.full_day_leave import full_day_net_hours, full_day_clock_warning
@@ -13,7 +14,7 @@ from app.models.clock_in_records import ClockInRecord
 from app.models.user import User
 from app.models.warehouse import Warehouse
 
-from app.core.permissions import check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
+from app.core.permissions import get_current_user, check_staff_permission, check_staff_permission_any, get_wh_id, get_wh_ids, Role
 from app.core.messages import t, get_request_lang
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
@@ -578,7 +579,7 @@ async def get_calendar(
     user_ids = list(emp_to_user.values())
     if user_ids:
         clock_records = (await db.execute(
-            select(ClockInRecord).where(
+            select(ClockInRecord).where(valid_clock(),
                 ClockInRecord.warehouse_id.in_(wh_ids),
                 ClockInRecord.user_id.in_(user_ids),
                 ClockInRecord.clock_date >= range_start,
@@ -653,6 +654,8 @@ async def get_calendar(
     # 当天应有工时（用于判断按小时请假是否够整天）
     work_sched = await get_work_schedule(db, wh_id)
     standard_hours = _standard_daily_hours(work_sched)
+    from app.services.attendance_exemptions import active_days, exemption_hours
+    exempt_dates = await active_days(db, wh_id, range_start, range_end)
 
     # 已删除员工已在上面查询中排除，这里不再回填
 
@@ -676,6 +679,17 @@ async def get_calendar(
     for e in emps:
         for d in range((range_end - range_start).days + 1):
             dt = range_start + timedelta(days=d)
+
+            if dt in exempt_dates:
+                hours, leave_hours = exemption_hours(leave_map.get((e.id, dt)), dt, work_sched)
+                events[f"{dt.isoformat()}_{e.id}"] = {
+                    "date": dt.isoformat(), "employee_id": e.id, "employee_name": e.name,
+                    "status": "exempt", "status_label": "已豁免", "is_exempt": True,
+                    "session_count": len({r.session for r in clock_map.get((e.id, dt), [])}),
+                    "has_late": False, "leave_hours": leave_hours, "clock_hours": 0.0,
+                    "work_hours": hours, "detail": f"豁免按8小时计，请假扣{leave_hours:g}小时；打卡保留但不参与计算",
+                }
+                continue
 
             # Check rest / absence first（全天性质）
             session_count = 0
@@ -784,3 +798,103 @@ async def get_calendar(
             "absence_count": len(absences),
         }
     }
+
+
+# Warehouse-wide exemptions are an administrator decision, not individual makeup.
+async def exemption_admin(user: User = Depends(get_current_user)):
+    if user.role != Role.WAREHOUSE_ADMIN:
+        raise HTTPException(403, '仓库豁免日只能由仓库管理员操作')
+    if not get_wh_id(user) or get_wh_id(user) not in get_wh_ids(user):
+        raise HTTPException(403, '无权操作该仓库')
+    return user
+
+
+class ExemptionCreate(BaseModel):
+    model_config = {'extra': 'forbid'}
+    date: date
+    reason: str
+
+
+class ExemptionRevoke(BaseModel):
+    model_config = {'extra': 'forbid'}
+    reason: str
+
+
+def exemption_reason(value):
+    value = value.strip()
+    if not value or len(value) > 500:
+        raise HTTPException(400, '请填写原因，最多500字')
+    return value
+
+
+@router.get('/exemptions')
+async def list_exemptions(start_date: Optional[date] = None, end_date: Optional[date] = None,
+                          current_user: User = Depends(exemption_admin), db: AsyncSession = Depends(get_db)):
+    from app.models.attendance_exemption import AttendanceExemption
+    from app.services.attendance_exemptions import data
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, '开始日期不能晚于结束日期')
+    query = select(AttendanceExemption).where(AttendanceExemption.warehouse_id == get_wh_id(current_user))
+    if start_date: query = query.where(AttendanceExemption.date >= start_date)
+    if end_date: query = query.where(AttendanceExemption.date <= end_date)
+    rows = (await db.execute(query.order_by(AttendanceExemption.date.desc(), AttendanceExemption.id.desc()))).scalars()
+    return {'data': [data(row) for row in rows]}
+
+
+@router.post('/exemptions')
+async def create_exemption(req: ExemptionCreate, current_user: User = Depends(exemption_admin), db: AsyncSession = Depends(get_db)):
+    from app.models.attendance_exemption import AttendanceExemption
+    from app.services import attendance_exemptions as exemptions
+    from app.services.data_history import record_history
+    reason = exemption_reason(req.reason)
+    wid = get_wh_id(current_user)
+    await exemptions.lock_day(db, wid, req.date)
+    if await exemptions.active_days(db, wid, req.date, req.date):
+        raise HTTPException(400, '该仓库当天已有有效豁免')
+    row = AttendanceExemption(warehouse_id=wid, date=req.date, reason=reason, created_by=current_user.id,
+                              created_by_name=current_user.display_name or current_user.username, created_at=thai_now(), status='active')
+    db.add(row)
+    await db.flush()
+    records = (await db.execute(select(ClockInRecord).where(valid_clock(),
+        ClockInRecord.warehouse_id == wid, ClockInRecord.clock_date == req.date,
+        ClockInRecord.is_makeup == True, exemptions.valid_clock()).with_for_update())).scalars().all()
+    previous = [{'id': r.id, 'status': r.status, 'makeup_counts_toward_limit': r.makeup_counts_toward_limit,
+                 'makeup_batch_id': r.makeup_batch_id} for r in records]
+    batch_ids = sorted({r.makeup_batch_id for r in records if r.makeup_batch_id is not None})
+    for record in records:
+        record.status = 'voided'
+        record.makeup_counts_toward_limit = False
+        record.makeup_batch_id = None
+    await record_history(db, module='attendance_exemptions', record_id=row.id, operator=current_user,
+                         operation_type='create', before={'makeup_records': previous},
+                         after={**exemptions.data(row), 'voided_makeup_ids': [r.id for r in records]}, warehouse_id=wid)
+    await db.flush()
+    return {'message': '豁免日已设置', 'data': exemptions.data(row), 'voided_makeup_count': len(records),
+            'detached_batch_ids': batch_ids, 'warning': await exemptions.payroll_warning(db, wid, req.date)}
+
+
+@router.post('/exemptions/{exemption_id}/revoke')
+async def revoke_exemption(exemption_id: int, req: ExemptionRevoke,
+                           current_user: User = Depends(exemption_admin), db: AsyncSession = Depends(get_db)):
+    from app.models.attendance_exemption import AttendanceExemption
+    from app.services import attendance_exemptions as exemptions
+    from app.services.data_history import record_history
+    wid = get_wh_id(current_user)
+    reason = exemption_reason(req.reason)
+    row = (await db.execute(select(AttendanceExemption).where(
+        AttendanceExemption.id == exemption_id, AttendanceExemption.warehouse_id == wid))).scalar_one_or_none()
+    if not row: raise HTTPException(404, '豁免记录不存在')
+    await exemptions.lock_day(db, wid, row.date)
+    await db.refresh(row)
+    if row.status != 'active': raise HTTPException(400, '该豁免已撤销')
+    before = exemptions.data(row)
+    row.status = 'revoked'
+    row.revoked_by = current_user.id
+    row.revoked_by_name = current_user.display_name or current_user.username
+    row.revoked_at = thai_now()
+    row.revoke_reason = reason
+    await record_history(db, module='attendance_exemptions', record_id=row.id, operator=current_user,
+                         operation_type='edit', before=before, after=exemptions.data(row), warehouse_id=wid)
+    await db.flush()
+    return {'message': '豁免已撤销，已作废补卡不会恢复', 'data': exemptions.data(row),
+            'warning': await exemptions.payroll_warning(db, wid, row.date)}

@@ -1,3 +1,4 @@
+from app.services.attendance_exemptions import valid_clock
 from app.services import financial_authorization as duties
 from app.core.round2_access import mutation_scope
 from app.services.payroll_expense import payment_account, create_payroll_expense, reverse_payroll_expense, expense_amount
@@ -439,7 +440,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
     clock_records = []
     if all_user_ids:
         clock_records = (await db.execute(
-            select(ClockInRecord).where(
+            select(ClockInRecord).where(valid_clock(),
                 ClockInRecord.clock_date >= period_start,
                 ClockInRecord.clock_date <= period_end,
                 ClockInRecord.user_id.in_(all_user_ids),
@@ -562,15 +563,19 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             "reason": d.reason,
         })
 
+    from app.services.attendance_exemptions import active_days, exemption_hours
+    exempt_dates = await active_days(db, wh_id, period_start, period_end)
+
     # ── 7. 待补打卡检查 + 宽限期统计 ──
     # 员工补卡次数（按天去重）：判断待补天是否因次数用完而不再拦
     emp_makeup_dates = {}
     if all_user_ids:
         makeup_records = (await db.execute(
-            select(ClockInRecord).where(
+            select(ClockInRecord).where(valid_clock(),
                 ClockInRecord.user_id.in_(all_user_ids),
                 ClockInRecord.warehouse_id == wh_id,
                 ClockInRecord.is_makeup == True,
+                ClockInRecord.makeup_counts_toward_limit == True,
             )
         )).scalars().all()
         for mr in makeup_records:
@@ -588,7 +593,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         while current <= period_end:
             if current >= today:
                 break
-            if current in rest_set or current in absence_set:
+            if current in exempt_dates or current in rest_set or current in absence_set:
                 current += timedelta(days=1)
                 continue
             lt_info = leave_map.get(current)
@@ -632,6 +637,7 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
         "early_half_time": early_half_time, "early_one_time": early_one_time, "afternoon_end_time": afternoon_end_time,
         "standard_hours": standard_hours,
         "work_sched": work_sched,
+        "exempt_dates": exempt_dates,
         "period_end": period_end,
     })
     return base
@@ -659,6 +665,8 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
     early_one_time = prep["early_one_time"]
     afternoon_end_time = prep["afternoon_end_time"]
     standard_hours = prep["standard_hours"]
+    exempt_dates = prep["exempt_dates"]
+    from app.services.attendance_exemptions import exemption_hours
 
     # ── 按员工薪资模板计算 ──
     records = []
@@ -706,6 +714,19 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
 
         current = emp_start_date
         while current <= period_end:
+            if current in exempt_dates:
+                hours, leave_hours = exemption_hours(leave_map.get(current), current, prep["work_sched"])
+                att, lv = hours / 8.0, leave_hours / 8.0
+                work_hours_total += hours
+                attendance_days_total += att
+                leave_days_count += lv
+                if tt == "monthly":
+                    monthly_leave_deduction += lv * template_amount / calendar.monthrange(current.year, current.month)[1]
+                daily_list.append({"day": current.day, "date": current.isoformat(), "status": "exempt",
+                                   "attendance": round(att, 4), "hours": hours, "leave_hours": leave_hours,
+                                   "times": [], "note": "已豁免，打卡保留但不参与计算"})
+                current += timedelta(days=1)
+                continue
             if current in rest_set:
                 rest_days_count += 1
                 daily_list.append({"day": current.day, "date": current.isoformat(), "status": "rest", "attendance": 0.0, "hours": 0.0, "times": []})

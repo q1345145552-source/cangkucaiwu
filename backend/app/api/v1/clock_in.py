@@ -1,3 +1,4 @@
+from app.services.attendance_exemptions import valid_clock
 from app.core.round4_access import independent_employee
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request, Response
@@ -91,7 +92,7 @@ async def clock_in(
 
     # Check duplicate
     existing = (await db.execute(
-        select(ClockInRecord).where(
+        select(ClockInRecord).where(valid_clock(),
             ClockInRecord.user_id == current_user.id,
             ClockInRecord.warehouse_id == get_wh_id(current_user),
             ClockInRecord.clock_date == today,
@@ -165,7 +166,7 @@ async def get_today(
         raise HTTPException(403, t("no_permission", lang))
     today = thai_today()
     records = (await db.execute(
-        select(ClockInRecord).where(
+        select(ClockInRecord).where(valid_clock(),
             ClockInRecord.user_id == current_user.id,
             ClockInRecord.warehouse_id == get_wh_id(current_user),
             ClockInRecord.clock_date == today,
@@ -265,7 +266,7 @@ async def list_records(
     emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
 
     # Get clock-in records
-    query = select(ClockInRecord)
+    query = select(ClockInRecord).where(valid_clock())
     if employee_view(current_user):
         query = query.where(ClockInRecord.user_id == current_user.id)
     elif active_wh:
@@ -335,7 +336,7 @@ async def _count_makeup_days(db: AsyncSession, uid: int, wh_id: int, target: dat
     else:
         month_end = date(target.year, target.month + 1, 1)
     return (await db.execute(
-        select(func.count(func.distinct(ClockInRecord.clock_date))).where(
+        select(func.count(func.distinct(ClockInRecord.clock_date))).where(valid_clock(),
             ClockInRecord.user_id == uid,
             ClockInRecord.warehouse_id == wh_id,
             ClockInRecord.is_makeup == True,
@@ -399,6 +400,8 @@ async def makeup_clock_in(
     if not uid:
         raise HTTPException(400, "该员工没有关联打卡账号，无法补卡")
 
+    from app.services.attendance_exemptions import ensure_makeup_allowed
+    await ensure_makeup_allowed(db, wh_id, target)
     used_days = await _count_makeup_days(db, uid, wh_id, target)
     if used_days >= 2:
         raise HTTPException(400, "该员工本月补卡次数已用完，不能再补")
@@ -409,7 +412,7 @@ async def makeup_clock_in(
     skipped: list[dict] = []
     for s in sessions:
         dup = (await db.execute(
-            select(ClockInRecord).where(ClockInRecord.user_id == uid, ClockInRecord.clock_date == target, ClockInRecord.session == s)
+            select(ClockInRecord).where(valid_clock(), ClockInRecord.user_id == uid, ClockInRecord.clock_date == target, ClockInRecord.session == s)
         )).scalar_one_or_none()
         t_std = session_times[s]
         if dup:
@@ -494,6 +497,8 @@ async def batch_makeup_clock_in(
         raise HTTPException(400, "请填写补卡原因")
     if any(s not in SESSIONS for s in req.sessions):
         raise HTTPException(400, "打卡时点只能为1到4")
+    from app.services.attendance_exemptions import ensure_makeup_allowed
+    await ensure_makeup_allowed(db, wh_id, req.date)
     employee_ids = sorted(set(req.employee_ids))
     sessions = sorted(set(req.sessions))
     employees = (await db.execute(select(Employee).where(
@@ -515,7 +520,7 @@ async def batch_makeup_clock_in(
                               .order_by(User.id).with_for_update())).scalars().all()
     if len(users) != len(user_ids) or any(u.warehouse_id != wh_id for u in users):
         raise HTTPException(400, "员工关联的打卡账号不属于当前仓库")
-    existing = set((await db.execute(select(ClockInRecord.user_id, ClockInRecord.session).where(
+    existing = set((await db.execute(select(ClockInRecord.user_id, ClockInRecord.session).where(valid_clock(),
         ClockInRecord.user_id.in_(user_ids), ClockInRecord.warehouse_id == wh_id,
         ClockInRecord.clock_date == req.date, ClockInRecord.session.in_(sessions),
     ))).all())
@@ -613,7 +618,7 @@ async def revoke_makeup_batch(
     if batch.status == "revoked":
         raise HTTPException(400, "该批次已撤销")
     from app.models.employee import Employee
-    records = (await db.execute(select(ClockInRecord).where(ClockInRecord.makeup_batch_id == batch.id))).scalars().all()
+    records = (await db.execute(select(ClockInRecord).where(valid_clock(), ClockInRecord.makeup_batch_id == batch.id))).scalars().all()
     employees = (await db.execute(select(Employee).where(Employee.user_id.in_([r.user_id for r in records])))).scalars().all()
     for employee in employees:
         await independent_employee(db, current_user, employee.id)
@@ -732,7 +737,7 @@ async def export_records(
     clock_map = {}
     if uid_set:
         clock_records = (await db.execute(
-            select(ClockInRecord).where(
+            select(ClockInRecord).where(valid_clock(),
                 ClockInRecord.warehouse_id.in_(wh_ids),
                 ClockInRecord.user_id.in_(uid_set),
                 ClockInRecord.clock_date >= range_start,
@@ -888,7 +893,7 @@ async def get_photos(
         records = []
         if uid:
             records = (await db.execute(
-                select(ClockInRecord).where(
+                select(ClockInRecord).where(valid_clock(),
                     ClockInRecord.user_id == uid,
                     ClockInRecord.warehouse_id == emp.warehouse_id,
                     ClockInRecord.clock_date == target_date,
@@ -953,6 +958,8 @@ async def request_personal_makeup(req: PersonalMakeupCreate,
     if len(set(req.sessions)) != len(req.sessions) or any(s not in SESSIONS for s in req.sessions) or not req.reason.strip():
         raise HTTPException(400, '请填写有效时段和原因')
     emp = current_user._attendance_employee
+    from app.services.attendance_exemptions import ensure_makeup_allowed
+    await ensure_makeup_allowed(db, emp.warehouse_id, req.date)
     await db.execute(select(User).where(User.id == current_user.id).with_for_update())
     previous = (await db.execute(select(DataChangeHistory).where(DataChangeHistory.module == 'makeup_request',
         DataChangeHistory.record_id == emp.id, DataChangeHistory.warehouse_id == emp.warehouse_id))).scalars().all()

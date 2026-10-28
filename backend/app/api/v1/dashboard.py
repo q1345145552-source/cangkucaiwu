@@ -1,3 +1,4 @@
+from app.services.attendance_exemptions import valid_clock
 from app.core.action_access import has_module
 from app.core.round5_access import financial_reader, has_menu
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, Query
@@ -292,7 +293,7 @@ async def dashboard_cockpit(request: Request, month: str | None = None,
         )
     )).scalar() or 0
     present = (await db.execute(
-        select(func.count(func.distinct(ClockInRecord.user_id))).where(
+        select(func.count(func.distinct(ClockInRecord.user_id))).where(valid_clock(),
             ClockInRecord.warehouse_id.in_(wh_ids),
             ClockInRecord.clock_date == today,
         )

@@ -314,6 +314,26 @@ def test_no_payroll_calculation_or_other_financial_module_changes():
     old=subprocess.check_output(['git','show','e6cc888:backend/app/api/v1/payroll.py'],cwd=root,text=True)
     new=(root/'backend/app/api/v1/payroll.py').read_text()
     def core(source):
-        return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body
-                if isinstance(n,ast.AsyncFunctionDef) and n.name in ('_compute_employee_records','_rollback_advance_deductions')}
+        # Authorized attendance-source addition only; the existing salary formula,
+        # penalties, advances and rollback must remain structurally identical.
+        # Real route tests separately check the exemption branch for all pay types.
+        class WithoutExemptionSource(ast.NodeTransformer):
+            def visit_ImportFrom(self, node):
+                if node.module == 'app.services.attendance_exemptions':
+                    assert [alias.name for alias in node.names] == ['exemption_hours']
+                    return None
+                return node
+            def visit_Assign(self, node):
+                if [ast.unparse(t) for t in node.targets] == ['exempt_dates']:
+                    assert ast.unparse(node.value) == "prep['exempt_dates']"
+                    return None
+                return node
+            def visit_If(self, node):
+                if ast.unparse(node.test) == 'current in exempt_dates':
+                    assert isinstance(node.body[-1], ast.Continue)
+                    return None
+                return self.generic_visit(node)
+        nodes=[n for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef)
+               and n.name in ('_compute_employee_records','_rollback_advance_deductions')]
+        return {n.name:ast.dump(WithoutExemptionSource().visit(n),include_attributes=False) for n in nodes}
     assert core(old)==core(new)

@@ -13,11 +13,13 @@ import { useRouter } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3 } from "lucide-react";
 import ClockRecordsGrid from "@/components/ClockRecordsGrid";
 import SafeImage from "@/components/SafeImage";
+import AttendanceExemptions from "@/components/AttendanceExemptions";
 import BatchMakeupModal from "@/components/BatchMakeupModal";
 import { MakeupBadge, MakeupRecordDetails } from "@/components/MakeupDisplay";
 import { makeupRecordsByDay, attachMakeupDetails, MakeupDisplayRecord } from "@/lib/makeup-display";
 
 const STATUS_COLORS: Record<string, string> = {
+  "exempt": "bg-gray-200 text-gray-700 border-gray-300",
   "present": "bg-green-100 text-green-700 border-green-300",
   "late": "bg-orange-100 text-orange-700 border-orange-300",
   "partial": "bg-yellow-100 text-yellow-700 border-yellow-300",
@@ -270,6 +272,7 @@ export default function AttendancePage() {
 
   const statusLabels: Record<string, string> = {
     present: t("att_status_present"), late: t("att_status_late"), partial: t("att_status_partial"),
+    exempt: "已豁免",
     half: t("att_status_half"), half_absence: t("att_status_half_absence"),
     leave: t("att_status_leave"), rest: t("att_status_rest"), absent: t("att_status_absent"), missing: t("att_status_missing"),
   };
@@ -313,6 +316,7 @@ export default function AttendancePage() {
             </div>
           )}
         </div>
+        {!employeeView && role === "warehouse_admin" && <AttendanceExemptions key={`${user?.id}:${getActiveWarehouseId()}`} onChanged={loadCalendar} />}
         {!employeeView && role === "warehouse_admin" && <ActionGate anyOf={["clock_in.batch_makeup_clock_in"]}><button type="button" className="btn-secondary" onClick={() => setShowBatchMakeup(true)} disabled={loading}>批量补卡</button></ActionGate>}
         {canViewRecords && (
           <div className="flex bg-gray-100 rounded-lg p-0.5">
@@ -372,6 +376,9 @@ export default function AttendancePage() {
                     if (status === "hours_leave") {
                       cellText = `${t("att_status_leave")}${fmtHours(evt?.leave_hours ?? 0)}${t("hour_unit")}`;
                       subText = `${t("hours")}${fmtHours(evt?.work_hours ?? 0)}h`;
+                    } else if (status === "exempt") {
+                      cellText = "免";
+                      subText = `${fmtHours(evt?.work_hours ?? 0)}h`;
                     } else if (showCount) {
                       cellText = `${sessionCount}/4`;
                     } else if (status === "future") {

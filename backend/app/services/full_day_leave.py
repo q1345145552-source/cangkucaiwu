@@ -1,3 +1,4 @@
+from app.services.attendance_exemptions import valid_clock
 """Approved full-day leave guards shared by clock-in, calendar and payroll."""
 from sqlalchemy import select, or_
 
@@ -38,7 +39,7 @@ async def full_day_clock_warning(db, employee, start_date, end_date):
     user_id = emp_to_user.get(employee.id)
     if user_id is None:
         return {}
-    dates = (await db.execute(select(ClockInRecord.clock_date).where(
+    dates = (await db.execute(select(ClockInRecord.clock_date).where(valid_clock(),
         ClockInRecord.warehouse_id == employee.warehouse_id,
         ClockInRecord.user_id == user_id,
         ClockInRecord.clock_date >= start_date,
