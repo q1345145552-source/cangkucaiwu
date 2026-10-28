@@ -432,7 +432,7 @@ export default function SettingsPage() {
 
           {/* Edit user modal */}
           {editUser && (
-            <div className="modal-overlay" onClick={() => setEditUser(null)}>
+            <div className="modal-overlay" >
               <div className="bg-white rounded-xl w-full max-w-sm p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <h2 className="text-lg font-semibold mb-1">编辑用户</h2>
                 <p className="text-sm text-gray-500 mb-4">{editUser.display_name} ({editUser.username})</p>
@@ -485,7 +485,7 @@ export default function SettingsPage() {
                   </div>
                 )}
                 <div className="flex justify-end gap-3 sticky bottom-0 bg-white py-2">
-                  <button onClick={() => setEditUser(null)} className="btn-secondary">取消</button>
+                  <button onClick={() => setEditUser(null)} className="btn-secondary" data-modal-close="true">取消</button>
                   <button onClick={saveEdit} disabled={attendanceSaving || (editUser.role === "supervisor" || editUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
                 </div>
               </div>

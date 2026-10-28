@@ -697,12 +697,12 @@ export default function EmployeesPage() {
 
       {/* Create/Edit Form Modal */}
       {canWrite && showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { setShowForm(false); setPhotoFile(null); }}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div role="dialog" aria-modal="true" aria-label={editingId ? "编辑员工" : "新建员工"} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-primary text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <UserPlus size={20} />
               <span className="font-semibold">{editingId ? "编辑员工" : "新建员工"}</span>
-              <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="ml-auto text-2xl">&times;</button>
+              <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="ml-auto text-2xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <label className="block text-sm">国籍
@@ -919,7 +919,7 @@ export default function EmployeesPage() {
               </div>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="btn-secondary px-4 py-2 text-sm">取消</button>
+              <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employees.update_employee#operate","employees.create_employee#operate"]}><button onClick={handleCreate} className="bg-primary text-white px-6 py-2 rounded-lg text-sm">
                 {editingId ? "保存修改" : "创建员工"}
               </button></ActionGate>
@@ -930,11 +930,11 @@ export default function EmployeesPage() {
 
       {/* Employee Detail Modal */}
       {detailEmp && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setDetailEmp(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             {/* Photo Header */}
             <div className="relative h-40 bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-2xl">
-              <button onClick={() => setDetailEmp(null)} className="absolute top-3 right-3 text-2xl text-white/80 hover:text-white">&times;</button>
+              <button onClick={() => setDetailEmp(null)} className="absolute top-3 right-3 text-2xl text-white/80 hover:text-white" data-modal-close="true">&times;</button>
               <div className="absolute -bottom-8 left-5 flex items-end gap-4">
                 <div className="relative group">
                   {detailEmp.photo_path ? (
@@ -1187,7 +1187,7 @@ export default function EmployeesPage() {
                   </button></ActionGate>
                   {editingFixedId && (
                     <button disabled={!(user?.role === "warehouse_admin")} onClick={() => { setEditingFixedId(null); setFixedForm({ name: "", amount: "" }); }}
-                      className="text-gray-500 text-sm px-2">取消</button>
+                      className="text-gray-500 text-sm px-2" data-modal-close="true">取消</button>
                   )}
                 </div>)}
               </div>
@@ -1221,7 +1221,7 @@ export default function EmployeesPage() {
                   </button>
                 </>
               )}
-              <button onClick={() => setDetailEmp(null)} className="text-sm text-gray-400 px-4 py-2">关闭</button>
+              <button onClick={() => setDetailEmp(null)} className="text-sm text-gray-400 px-4 py-2" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1229,12 +1229,12 @@ export default function EmployeesPage() {
 
       {/* Upload photo (triggered after file selection in detail modal) */}
       {canWrite && photoFile && detailEmp && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4" data-modal-overlay="true">
           <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的照片？</p>
             <div className="flex gap-2 justify-center">
-              <button onClick={() => setPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
+              <button onClick={() => setPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employees.upload_employee_photo"]}><button onClick={() => uploadPhoto(detailEmp.id)} disabled={uploadingPhoto}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
                 {uploadingPhoto ? "上传中..." : "确认上传"}
@@ -1246,12 +1246,12 @@ export default function EmployeesPage() {
 
       {/* Upload passport photo */}
       {canWrite && passportPhotoFile && detailEmp && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4" data-modal-overlay="true">
           <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的护照照片？</p>
             <div className="flex gap-2 justify-center">
-              <button onClick={() => setPassportPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
+              <button onClick={() => setPassportPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employees.upload_passport_photo"]}><button onClick={() => uploadPassportPhoto(detailEmp.id)} disabled={uploadingPassportPhoto}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
                 {uploadingPassportPhoto ? "上传中..." : "确认上传"}
@@ -1263,12 +1263,12 @@ export default function EmployeesPage() {
 
       {/* Upload work permit photo */}
       {canWrite && workPermitPhotoFile && detailEmp && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4" data-modal-overlay="true">
           <div className="bg-white rounded-xl p-6 text-center max-w-xs max-h-[85vh] overflow-y-auto">
             <Camera size={32} className="mx-auto mb-3 text-blue-500" />
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的工作证照片？</p>
             <div className="flex gap-2 justify-center">
-              <button onClick={() => setWorkPermitPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
+              <button onClick={() => setWorkPermitPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employees.upload_work_permit_photo"]}><button onClick={() => uploadWorkPermitPhoto(detailEmp.id)} disabled={uploadingWorkPermitPhoto}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
                 {uploadingWorkPermitPhoto ? "上传中..." : "确认上传"}
@@ -1280,9 +1280,9 @@ export default function EmployeesPage() {
 
       {/* Photo Zoom Overlay */}
       {zoomedPhoto && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4" onClick={() => setZoomedPhoto(null)}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <button onClick={() => setZoomedPhoto(null)}
-            className="absolute top-4 right-4 text-white/70 hover:text-white text-4xl z-10 w-12 h-12 flex items-center justify-center">&times;</button>
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-4xl z-10 w-12 h-12 flex items-center justify-center" data-modal-close="true">&times;</button>
           <img src={zoomedPhoto} alt="员工照片" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain"
             onClick={e => e.stopPropagation()} />
         </div>
@@ -1290,7 +1290,7 @@ export default function EmployeesPage() {
 
       {/* Resign Modal */}
       {canWrite && resigningId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setResigningId(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <UserX size={20} />
@@ -1338,7 +1338,7 @@ export default function EmployeesPage() {
               )}
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setResigningId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setResigningId(null)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employees.resign_employee#operate"]}><button onClick={resignEmployee} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-red-600">
                 确认离职
               </button></ActionGate>
@@ -1349,13 +1349,13 @@ export default function EmployeesPage() {
 
       {/* 删除员工确认框 */}
       {canWrite && deleteTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setDeleteTarget(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Trash2 size={18} className="text-red-500"/> 删除员工档案</h3>
             <p className="text-sm text-gray-600 mb-1">确定要删除员工「{deleteTarget.name}」吗？</p>
             <p className="text-xs text-gray-400 mb-4">删除后该员工从列表隐藏，关联的打卡记录、工资单、加班记录都会保留。{user?.role === "warehouse_admin" ? "绑定登录账号将按账号权限停用。" : "本次只修改员工档案，不停用登录账号；账号状态由仓库管理员处理。"}</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="btn-secondary text-sm px-4 py-2">取消</button>
+              <button onClick={() => setDeleteTarget(null)} className="btn-secondary text-sm px-4 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employees.delete_employee#operate"]}><button onClick={handleDeleteEmployee} disabled={deleting}
                 className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50">
                 {deleting ? "删除中..." : "确认删除"}
@@ -1367,11 +1367,11 @@ export default function EmployeesPage() {
 
       {/* 绑定已有账号结果弹窗 */}
       {bindResult && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setBindResult(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Link2 size={18} /><span className="font-semibold">绑定已有账号</span>
-              <button onClick={() => setBindResult(null)} className="ml-auto text-2xl text-blue-200 hover:text-white">&times;</button>
+              <button onClick={() => setBindResult(null)} className="ml-auto text-2xl text-blue-200 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-3">
               <div className="flex gap-3 text-center">
@@ -1396,7 +1396,7 @@ export default function EmployeesPage() {
               )}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end">
-              <button onClick={() => setBindResult(null)} className="bg-blue-500 text-white px-5 py-2 rounded-lg text-sm">关闭</button>
+              <button onClick={() => setBindResult(null)} className="bg-blue-500 text-white px-5 py-2 rounded-lg text-sm" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1404,7 +1404,7 @@ export default function EmployeesPage() {
 
       {/* 批量设置模板弹窗 */}
       {user?.role === "warehouse_admin" && showBatchModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowBatchModal(false)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <UserPlus size={20} /><span className="font-semibold">批量设置模板</span>
@@ -1427,7 +1427,7 @@ export default function EmployeesPage() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowBatchModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setShowBatchModal(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employees.batch_set_templates#operate"]}><button disabled={!(user?.role === "warehouse_admin")} onClick={handleBatchSet} className="btn-primary text-sm px-6 py-2">确定</button></ActionGate>
             </div>
           </div>

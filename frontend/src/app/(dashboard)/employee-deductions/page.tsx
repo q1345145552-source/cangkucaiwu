@@ -137,7 +137,7 @@ export default function EmployeeDeductionsPage() {
       )}
 
       {canWrite && showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <MinusCircle size={20} /><span className="font-semibold">记一笔扣款</span>
@@ -164,7 +164,7 @@ export default function EmployeeDeductionsPage() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["employee_deduction.create_deduction#operate"]}><button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">提交</button></ActionGate>
             </div>
           </div>

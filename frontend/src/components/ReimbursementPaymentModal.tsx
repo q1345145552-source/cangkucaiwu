@@ -71,7 +71,7 @@ export default function ReimbursementPaymentModal({ reimbursement, onClose, onSu
     finally { setSaving(false); }
   }
   const unavailable = source === "company_account" ? !accounts.length : source === "cash_advance" ? !advances.length : false;
-  return <div role="dialog" aria-modal="true" aria-labelledby="reimbursement-pay-title" className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3">
+  return <div role="dialog" aria-modal="true" aria-labelledby="reimbursement-pay-title" className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3" data-modal-overlay="true">
     <form onSubmit={e => { e.preventDefault(); void submit(); }} className="bg-white rounded-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
       <h2 id="reimbursement-pay-title" className="font-semibold px-5 py-4 border-b shrink-0">报销付款 #{reimbursement.id}</h2>
       <div className="p-5 overflow-y-auto min-h-0 space-y-4">
@@ -90,7 +90,7 @@ export default function ReimbursementPaymentModal({ reimbursement, onClose, onSu
         <p role="alert" className="text-sm text-red-600">{source==='company_account'?balanceWarningText(accounts.find(a=>String(a.id)===accountId)?.current_balance,reimbursement.total_amount):source==='expense_fund'?balanceWarningText(fund?.current_balance,fund?.debit_amount):null}</p>
         {loading && <p className="text-sm text-gray-500">正在加载付款来源…</p>}{error && <p className="text-sm text-red-600" role="alert">{error}</p>}
       </div>
-      <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0"><button type="button" disabled={saving} onClick={onClose} className="btn-secondary">取消</button><button type="submit" disabled={saving || loading || !!error || unavailable} className="btn-primary">{saving ? "付款中…" : "确认付款"}</button></div>
+      <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0"><button type="button" disabled={saving} onClick={onClose} className="btn-secondary" data-modal-close="true">取消</button><button type="submit" disabled={saving || loading || !!error || unavailable} className="btn-primary">{saving ? "付款中…" : "确认付款"}</button></div>
     </form>
   </div>;
 }

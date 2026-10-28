@@ -288,11 +288,11 @@ export default function RechargePage() {
 
       {/* 编辑弹窗 */}
       {editingRow && (
-        <div className="modal-overlay z-50" onClick={() => setEditingRow(null)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
               <h2 className="text-lg font-semibold">编辑充值申报</h2>
-              <button onClick={() => setEditingRow(null)} className="ml-auto text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setEditingRow(null)} className="ml-auto text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               <div><label className="form-label">客户</label><SearchableSelect value={editForm.customer_id} options={customerOptions} onChange={(v) => setEditForm({ ...editForm, customer_id: Number(v) })} placeholder="选择客户（可搜索）" /></div>
@@ -310,7 +310,7 @@ export default function RechargePage() {
               </div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setEditingRow(null)} className="btn-secondary">取消</button>
+              <button onClick={() => setEditingRow(null)} className="btn-secondary" data-modal-close="true">取消</button>
               <ActionGate anyOf={["recharge.edit_recharge#operate"]}><button onClick={handleEditSave} className="btn-primary">保存</button></ActionGate>
             </div>
           </div>
@@ -319,12 +319,12 @@ export default function RechargePage() {
 
       {/* 删除确认 */}
       {deletingRow && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingRow(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除申报</h3>
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这条申报吗？删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeletingRow(null)} className="btn-secondary">取消</button>
+              <button onClick={() => setDeletingRow(null)} className="btn-secondary" data-modal-close="true">取消</button>
               <ActionGate anyOf={["recharge.delete_recharge#operate"]}><button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
@@ -333,11 +333,11 @@ export default function RechargePage() {
 
       {/* 历史弹窗 */}
       {historyRow && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setHistoryRow(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-800 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3 sticky top-0">
               <h2 className="text-lg font-semibold">变更历史</h2>
-              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-3">
               {historyLoading ? (

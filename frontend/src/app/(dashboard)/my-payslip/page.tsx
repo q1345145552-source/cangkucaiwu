@@ -112,7 +112,7 @@ export default function MyPayslipPage() {
 
       {/* Payslip Detail Modal */}
       {selected && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0">
               <FileText size={20} />
@@ -208,7 +208,7 @@ export default function MyPayslipPage() {
               </div>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setSelected(null)} className="text-sm text-gray-400">{t("close")}</button>
+              <button onClick={() => setSelected(null)} className="text-sm text-gray-400" data-modal-close="true">{t("close")}</button>
             </div>
           </div>
         </div>

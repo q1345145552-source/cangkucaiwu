@@ -1,4 +1,5 @@
 "use client";
+import { supplierCategoryChoiceVisible } from "@/lib/supplierFeatures";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 export interface Selector { field: string; entity: string; parent?: string | null; discriminator?: string | null }
@@ -31,7 +32,7 @@ export default function ActionObjectSelect({ module, action, selector, parentId,
       if (parentId) query.set("parent_id",String(parentId));
       if (documentType) query.set("document_type",String(documentType));
       api.get<{data:Choice[];has_more:boolean}>(`/access/choices/${module}?${query}`).then(r => {
-        if (active && getToken() === token && getActiveWarehouseId() === warehouse) { setRows(r.data); setMore(r.has_more); }
+        if (active && getToken() === token && getActiveWarehouseId() === warehouse) { setRows(r.data.filter(item=>supplierCategoryChoiceVisible(selector.entity,item.id))); setMore(r.has_more); }
       }).catch((e: unknown) => { if (active) setError(e instanceof Error ? e.message : "读取候选项失败"); })
         .finally(() => { if (active) setLoading(false); });
     }, 180);
@@ -45,7 +46,7 @@ export default function ActionObjectSelect({ module, action, selector, parentId,
     if (parentId) query.set("parent_id",String(parentId));
       if (documentType) query.set("document_type",String(documentType));
     api.get<{context?:Record<string,unknown>;versions?:Record<string,unknown>;data:Choice[]}>(`/access/choices/${module}?${query}`).then(r=>{
-      if (active && token===getToken() && warehouse===getActiveWarehouseId()) { setFacts(r.context || {}); setPicked(r.data[0]); versionsCallback.current(r.versions || {}); setVerifiedSelection(selectionKey); }
+      if (active && token===getToken() && warehouse===getActiveWarehouseId()) { if(!supplierCategoryChoiceVisible(selector.entity,value)){setPicked(undefined);setError("物流类型入口已关闭，历史分类保持原样");return;} setFacts(r.context || {}); setPicked(r.data[0]); versionsCallback.current(r.versions || {}); setVerifiedSelection(selectionKey); }
     }).catch((e:unknown)=>{ if(active) setError(e instanceof Error?e.message:"无法核对选中记录"); });
     return ()=>{active=false;};
   },[module,action,selector.field,selector.parent,parentId,documentType,value,selectionKey]);

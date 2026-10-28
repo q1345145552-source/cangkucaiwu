@@ -573,7 +573,7 @@ function ReimbursementPageContent() {
 
       {/* ===== 详情弹窗 ===== */}
       {detail && (
-        <div className="modal-overlay z-50" onClick={() => setDetail(null)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl p-6 w-full max-w-[560px] max-h-[85dvh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-lg flex items-center gap-2">
@@ -585,7 +585,7 @@ function ReimbursementPageContent() {
                   {STATUS_LABELS[detail.status] || detail.status}
                 </span>
               </h2>
-              <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+              <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600" data-modal-close="true"><X size={18} /></button>
             </div>
             <div className="text-sm text-gray-500 mb-3">
               <div>报销人: {detail.employee_name} | 日期: {detail.submit_date?.slice(0, 10)}</div>
@@ -620,11 +620,11 @@ function ReimbursementPageContent() {
 
       {/* 编辑弹窗 */}
       {editingRow && (
-        <div className="modal-overlay z-50" onClick={() => setEditingRow(null)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-amber-500 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
               <Receipt size={20} /><h2 className="text-lg font-semibold">编辑报销</h2>
-              <button onClick={() => setEditingRow(null)} className="ml-auto text-amber-200 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setEditingRow(null)} className="ml-auto text-amber-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -645,7 +645,7 @@ function ReimbursementPageContent() {
               </div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setEditingRow(null)} className="btn-secondary">取消</button>
+              <button onClick={() => setEditingRow(null)} className="btn-secondary" data-modal-close="true">取消</button>
               <ActionGate anyOf={["reimbursement.edit_reimb#operate"]}><button onClick={handleEditSave} className="btn-primary">保存</button></ActionGate>
             </div>
           </div>
@@ -654,12 +654,12 @@ function ReimbursementPageContent() {
 
       {/* 删除确认 */}
       {deletingRow && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingRow(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除报销</h3>
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这条报销吗？{deletingRow.is_fund_linked === "1" ? "该报销已关联备用金，删除后将恢复备用金余额。" : ""}删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeletingRow(null)} className="btn-secondary">取消</button>
+              <button onClick={() => setDeletingRow(null)} className="btn-secondary" data-modal-close="true">取消</button>
               <ActionGate anyOf={["reimbursement.delete_reimb#operate"]}><button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
@@ -668,11 +668,11 @@ function ReimbursementPageContent() {
 
       {/* 历史弹窗 */}
       {historyRow && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setHistoryRow(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-800 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3 sticky top-0">
               <h2 className="text-lg font-semibold">变更历史</h2>
-              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-3">
               {historyLoading ? <div className="text-center py-8 text-gray-400">加载中...</div>

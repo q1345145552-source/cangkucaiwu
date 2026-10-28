@@ -51,12 +51,12 @@ export default function ReimbursementPaymentHistory({ reimbursementId, onChange 
       {p.status === "revoked" && <p className="text-gray-500 break-words">{p.revoked_by_name} 于 {p.revoked_at ? when(p.revoked_at) : "—"} 撤销：{p.revoke_reason}</p>}
       {FINANCIAL_REVERSALS_ENABLED && p.can_revoke && <button className="block text-red-600" onClick={() => { setTarget(p); setReason(""); }}>撤销付款</button>}
     </article>)}
-    {FINANCIAL_REVERSALS_ENABLED && target && <div role="alertdialog" aria-modal="true" aria-labelledby="reimbursement-revoke-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3" onClick={e => e.stopPropagation()}>
+    {FINANCIAL_REVERSALS_ENABLED && target && <div role="alertdialog" aria-modal="true" aria-labelledby="reimbursement-revoke-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3"  data-modal-overlay="true">
       <form onSubmit={e => { e.preventDefault(); void revoke(); }} className="bg-white rounded-xl p-5 w-full max-w-sm max-h-[90dvh] overflow-y-auto space-y-4">
         <h3 id="reimbursement-revoke-title" className="font-semibold">确认撤销这笔报销付款吗？</h3>
         <p className="text-sm">成本撤回，公司账户付款恢复余额并保留已冲销流水；垫款或备用金按原来源恢复。</p>
         <label className="block text-sm">撤销原因<textarea aria-label="撤销付款原因" className="form-input mt-1" rows={3} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} disabled={saving} /></label>
-        <div className="flex justify-end gap-3"><button type="button" className="btn-secondary" disabled={saving} onClick={() => setTarget(null)}>取消</button><button type="submit" className="btn-primary" disabled={saving}>{saving ? "撤销中…" : "确认撤销"}</button></div>
+        <div className="flex justify-end gap-3"><button type="button" className="btn-secondary" disabled={saving} onClick={() => setTarget(null)} data-modal-close="true">取消</button><button type="submit" className="btn-primary" disabled={saving}>{saving ? "撤销中…" : "确认撤销"}</button></div>
       </form>
     </div>}
   </section>;

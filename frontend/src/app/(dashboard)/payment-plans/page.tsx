@@ -217,7 +217,7 @@ function PaymentPlansPageContent() {
 
       {/* 新建计划弹窗 */}
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Calendar size={22} />
@@ -271,7 +271,7 @@ function PaymentPlansPageContent() {
               </div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payable.create_plan#operate"]}><button onClick={handleCreate} className="btn-primary min-w-[80px]">创建计划</button></ActionGate>
             </div>
           </div>
@@ -280,7 +280,7 @@ function PaymentPlansPageContent() {
 
       {/* 计划详情弹窗 */}
       {showDetail && (
-        <div className="modal-overlay" onClick={() => setShowDetail(null)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-2xl max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-indigo-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <FileText size={22} />
@@ -332,7 +332,8 @@ function PaymentPlansPageContent() {
 
       {/* 附件大图预览 */}
       {previewImage && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onClick={() => { setPreviewImage(null); setPreviewError(false); }}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
+          <button type="button" aria-label="关闭图片预览" onClick={() => setPreviewImage(null)} className="absolute top-4 right-4 z-10 rounded-full bg-black/60 text-white w-10 h-10 text-2xl" data-modal-close="true">&times;</button>
           <div onClick={e => e.stopPropagation()}>
             {previewError ? (
               <div className="text-white text-lg px-6 py-4">图片打不开</div>
@@ -349,7 +350,7 @@ function PaymentPlansPageContent() {
         <p className="text-sm mb-3">{executePlan.plan_name}：将实际支付关联账单的剩余应付金额。</p>
         <WalletAccountSelect value={accountId} onChange={setAccountId} currency={executePlan.currency} />
         <p className="text-xs text-gray-500">同一计划使用一个账户；不同币种请分开建立计划。</p>
-        <div className="flex gap-2 justify-end mt-4"><button className="btn-secondary" disabled={executing} onClick={() => setExecutePlan(null)}>取消</button>
+        <div className="flex gap-2 justify-end mt-4"><button className="btn-secondary" disabled={executing} onClick={() => setExecutePlan(null)} data-modal-close="true">取消</button>
         <ActionGate anyOf={["payable.execute_plan#operate"]}><button className="btn-primary" disabled={executing || !accountId} onClick={() => handleExecute(executePlan)}>确认付款</button></ActionGate></div>
       </div></div>}
     </>

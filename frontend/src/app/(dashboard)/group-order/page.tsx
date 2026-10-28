@@ -419,11 +419,11 @@ export default function GroupOrderPage() {
 
       {/* ========== CREATE MODAL ========== */}
       {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Plus size={20} /><h2 className="text-lg font-semibold">发起拼单</h2>
-              <div className="flex-1" /><button onClick={() => setShowCreate(false)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+              <div className="flex-1" /><button onClick={() => setShowCreate(false)} className="text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -437,7 +437,7 @@ export default function GroupOrderPage() {
               </div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowCreate(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowCreate(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["group_order.create_group_order#operate"]}><button onClick={handleCreate} className="btn-primary min-w-[80px]">发起拼单</button></ActionGate>
             </div>
           </div>
@@ -446,11 +446,11 @@ export default function GroupOrderPage() {
 
       {/* ========== JOIN MODAL ========== */}
       {showJoin && joinTarget && (
-        <div className="modal-overlay" onClick={() => setShowJoin(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-green-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <ShoppingCart size={20} /><h2 className="text-lg font-semibold">参与拼单</h2>
-              <div className="flex-1" /><button onClick={() => setShowJoin(false)} className="text-green-200 hover:text-white text-xl leading-none">&times;</button>
+              <div className="flex-1" /><button onClick={() => setShowJoin(false)} className="text-green-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               {/* Target info */}
@@ -500,7 +500,7 @@ export default function GroupOrderPage() {
               </label>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowJoin(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowJoin(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["group_order.join_group_order#operate"]}><button onClick={handleJoin} className="btn-primary min-w-[80px] bg-green-600 hover:bg-green-700">确认参与</button></ActionGate>
             </div>
           </div>
@@ -509,11 +509,11 @@ export default function GroupOrderPage() {
 
       {/* ========== DETAIL MODAL ========== */}
       {showDetail && (
-        <div className="modal-overlay" onClick={() => { setShowDetail(false); setDetail(null); }}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-xl max-h-[80vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-800 text-white px-6 py-4 rounded-t-xl flex items-center gap-3 sticky top-0 z-10">
               <Package size={20} /><h2 className="text-lg font-semibold">拼单详情</h2>
-              <div className="flex-1" /><button onClick={() => { setShowDetail(false); setDetail(null); }} className="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+              <div className="flex-1" /><button onClick={() => { setShowDetail(false); setDetail(null); }} className="text-gray-400 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             {detailLoading ? (
               <div className="flex items-center justify-center py-16 text-gray-400">
@@ -580,11 +580,11 @@ export default function GroupOrderPage() {
 
       {/* ========== COMPLETE MODAL ========== */}
       {showComplete && completeTarget && (
-        <div className="modal-overlay" onClick={() => setShowComplete(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <CheckCircle size={20} /><h2 className="text-lg font-semibold">完成采购</h2>
-              <div className="flex-1" /><button onClick={() => setShowComplete(false)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+              <div className="flex-1" /><button onClick={() => setShowComplete(false)} className="text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               <div className="bg-blue-50 rounded-xl p-3 text-sm text-blue-800">
@@ -597,7 +597,7 @@ export default function GroupOrderPage() {
               </div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowComplete(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowComplete(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["group_order.complete_order#operate"]}><button onClick={handleComplete} className="btn-primary min-w-[80px]">确认完成</button></ActionGate>
             </div>
           </div>
@@ -606,11 +606,11 @@ export default function GroupOrderPage() {
 
       {/* ========== CANCEL MODAL ========== */}
       {showCancel && cancelTarget && (
-        <div className="modal-overlay" onClick={() => setShowCancel(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-red-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Ban size={20} /><h2 className="text-lg font-semibold">取消拼单</h2>
-              <div className="flex-1" /><button onClick={() => setShowCancel(false)} className="text-red-200 hover:text-white text-xl leading-none">&times;</button>
+              <div className="flex-1" /><button onClick={() => setShowCancel(false)} className="text-red-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               <div className="bg-red-50 rounded-xl p-3 text-sm text-red-700">

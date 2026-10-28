@@ -267,11 +267,11 @@ export default function ReconciliationPage() {
 
       {/* 匹配确认弹窗 */}
       {canWrite && showMatchConfirm && (
-        <div className="modal-overlay" onClick={() => setShowMatchConfirm(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Link2 size={22} /><h2 className="text-lg font-semibold">确认匹配</h2>
-              <div className="flex-1" /><button onClick={() => setShowMatchConfirm(false)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+              <div className="flex-1" /><button onClick={() => setShowMatchConfirm(false)} className="text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
               <div><div className="text-xs text-gray-400 mb-1">申报记录</div><div className="bg-blue-50 rounded-lg p-3 text-sm">{declarationFor(selectedDeclId)?.customer_name} · {fmtMoney(declarationFor(selectedDeclId)?.amount, declarationFor(selectedDeclId)?.currency)}</div></div>
@@ -285,7 +285,7 @@ export default function ReconciliationPage() {
               <div className="form-group"><label className="form-label">备注说明</label><input className="form-input" value={note} onChange={e => setNote(e.target.value)} placeholder="匹配备注（可选）" /></div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowMatchConfirm(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowMatchConfirm(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["reconciliation.manual_match#operate"]}><button disabled={matching || !(canWrite)} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button></ActionGate>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function ReconciliationPage() {
 
       {/* 截图预览弹窗 */}
       {previewScreenshot && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={() => setPreviewScreenshot("")}>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center"  data-modal-overlay="true">
           <div className="relative max-w-[90vw] max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <button onClick={() => setPreviewScreenshot("")} className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 rounded-full w-8 h-8 flex items-center justify-center z-10 text-lg leading-none">&times;</button>
             <div className="absolute top-2 left-4 text-white text-sm bg-black/50 px-3 py-1 rounded-full">付款截图</div>

@@ -839,7 +839,7 @@ function PayrollPageContent() {
 
       {/* 单人结算 Modal */}
       {showSingleModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowSingleModal(false)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <User size={20} /><span className="font-semibold">单人结算</span>
@@ -859,7 +859,7 @@ function PayrollPageContent() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowSingleModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setShowSingleModal(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payroll.single_settle#operate"]}><button onClick={handleSingleSettle} disabled={calculating} className="btn-primary text-sm px-6 py-2">
                 {calculating ? "结算中..." : "结算"}
               </button></ActionGate>
@@ -870,11 +870,11 @@ function PayrollPageContent() {
 
       {/* 算工资预览 Modal */}
       {showPreview && previewData && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowPreview(false)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <Calculator size={20} /><span className="font-semibold">算工资预览</span>
-              <button onClick={() => setShowPreview(false)} className="ml-auto text-2xl text-white/80 hover:text-white">&times;</button>
+              <button onClick={() => setShowPreview(false)} className="ml-auto text-2xl text-white/80 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -924,10 +924,10 @@ function PayrollPageContent() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               {(previewData.problems || []).length > 0 ? (
-                <button onClick={() => setShowPreview(false)} className="btn-primary text-sm px-6 py-2">知道了</button>
+                <button onClick={() => setShowPreview(false)} className="btn-primary text-sm px-6 py-2" data-modal-close="true">知道了</button>
               ) : (
                 <>
-                  <button onClick={() => setShowPreview(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+                  <button onClick={() => setShowPreview(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
                   <ActionGate anyOf={["payroll.calculate_payroll#operate"]}><button onClick={confirmCalculate} disabled={calculating} className="btn-primary text-sm px-6 py-2">确认计算</button></ActionGate>
                 </>
               )}
@@ -938,7 +938,7 @@ function PayrollPageContent() {
 
       {/* 作废重算 Modal */}
       {recalcModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRecalcModal(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-amber-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <AlertTriangle size={20} /><span className="font-semibold">{recalcModal.action === "single" ? "作废重算" : "批量作废重算"}</span>
@@ -970,7 +970,7 @@ function PayrollPageContent() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setRecalcModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setRecalcModal(null)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payroll.recalc_payroll#operate","payroll.batch_recalc_payroll#operate"]}><button onClick={confirmRecalc} disabled={calculating} className="btn-primary text-sm px-6 py-2">确定</button></ActionGate>
             </div>
           </div>
@@ -979,7 +979,7 @@ function PayrollPageContent() {
 
       {/* 发放工资 Modal（单张、批量共用资金来源选择） */}
       {disburseModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4" onClick={() => { if (disbursing === null) setDisburseModal(null); }}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4"  data-modal-overlay="true">
           <div role="dialog" aria-modal="true" aria-labelledby="disburse-title" className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85dvh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
               <Banknote size={20} /><span id="disburse-title" className="font-semibold">{disburseModal.batch_records ? "批量发放工资" : "发放工资"}</span>
@@ -1044,7 +1044,7 @@ function PayrollPageContent() {
               </div>}
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
-              <button onClick={() => setDisburseModal(null)} disabled={disbursing !== null} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setDisburseModal(null)} disabled={disbursing !== null} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payroll.batch_disburse_payroll#operate","payroll.disburse_payroll#operate"]}><button onClick={confirmDisburse} disabled={disbursing !== null || (disburseFundingSource === "cash_advance" ? disburseAdvancesLoading || !!disburseAdvancesError || disburseAdvances.length === 0 : disburseAccountsLoading || !!disburseAccountsError || disburseAccounts.length === 0)}
                 className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{disbursing !== null ? "发放中..." : "确认发放"}</button></ActionGate>
             </div>
@@ -1054,7 +1054,7 @@ function PayrollPageContent() {
 
       {/* 撤销发放 Modal */}
       {FINANCIAL_REVERSALS_ENABLED && revokeModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRevokeModal(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Undo2 size={20} /><span className="font-semibold">撤销发放</span>
@@ -1075,7 +1075,7 @@ function PayrollPageContent() {
               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">撤销之后这张单会回到已确认未发放的状态 可以重新算或者作废</p>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setRevokeModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setRevokeModal(null)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payroll.revoke_disbursement#operate"]}><button onClick={confirmRevoke} disabled={disbursing === revokeModal.id}
                 className="bg-orange-500 text-white text-sm px-6 py-2 rounded-lg">{disbursing === revokeModal.id ? "撤销中..." : "确定撤销"}</button></ActionGate>
             </div>
@@ -1085,7 +1085,7 @@ function PayrollPageContent() {
 
       {/* Payslip Detail Modal */}
       {showPayslip && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowPayslip(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <FileText size={20} />
@@ -1309,7 +1309,7 @@ function PayrollPageContent() {
               )}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setShowPayslip(null)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setShowPayslip(null)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1317,7 +1317,8 @@ function PayrollPageContent() {
 
       {/* 签字照片放大 */}
       {zoomedSignature && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onClick={() => setZoomedSignature(null)}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
+          <button type="button" aria-label="关闭图片预览" onClick={() => setZoomedSignature(null)} className="absolute top-4 right-4 z-10 rounded-full bg-black/60 text-white w-10 h-10 text-2xl" data-modal-close="true">&times;</button>
           <div onClick={e => e.stopPropagation()}>
             <SafeImage
               src={zoomedSignature}
@@ -1331,12 +1332,12 @@ function PayrollPageContent() {
 
       {/* 逐天出勤明细 Modal */}
       {dailyDetailOpen && showPayslip && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDailyDetailOpen(false)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <FileText size={18} />
               <span className="font-semibold">上班工时明细</span>
-              <button onClick={() => setDailyDetailOpen(false)} className="ml-auto text-2xl text-white/80 hover:text-white">&times;</button>
+              <button onClick={() => setDailyDetailOpen(false)} className="ml-auto text-2xl text-white/80 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-4 space-y-1.5">
               {psDailyHours.length === 0 ? (
@@ -1349,7 +1350,7 @@ function PayrollPageContent() {
               ))}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setDailyDetailOpen(false)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setDailyDetailOpen(false)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1357,12 +1358,12 @@ function PayrollPageContent() {
 
       {/* 迟到明细 Modal */}
       {lateDetailOpen && showPayslip && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setLateDetailOpen(false)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <AlertTriangle size={18} />
               <span className="font-semibold">迟到明细</span>
-              <button onClick={() => setLateDetailOpen(false)} className="ml-auto text-2xl text-white/80 hover:text-white">&times;</button>
+              <button onClick={() => setLateDetailOpen(false)} className="ml-auto text-2xl text-white/80 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-4 space-y-1.5">
               {psLateDetails.length === 0 ? (
@@ -1375,7 +1376,7 @@ function PayrollPageContent() {
               ))}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setLateDetailOpen(false)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setLateDetailOpen(false)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>

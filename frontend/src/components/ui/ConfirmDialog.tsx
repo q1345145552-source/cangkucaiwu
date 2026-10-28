@@ -17,7 +17,7 @@ export default function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[9998] flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/40 z-[9998] flex items-center justify-center" data-modal-overlay="true">
       <div className="bg-white rounded-xl p-6 w-96 shadow-xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
@@ -29,7 +29,7 @@ export default function ConfirmDialog({
           </div>
         </div>
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">取消</button>
+          <button onClick={onCancel} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50" data-modal-close="true">取消</button>
           <button onClick={onConfirm} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">确认删除</button>
         </div>
       </div>

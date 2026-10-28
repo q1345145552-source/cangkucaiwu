@@ -688,12 +688,12 @@ export default function LaborEfficiencyPage() {
 
       {/* 订单数录入弹窗 */}
       {canWrite && orderModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setOrderModal(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <TrendingUp size={20} />
               <h3 className="font-semibold text-lg">录入订单数</h3>
-              <button onClick={() => setOrderModal(null)} className="ml-auto text-2xl text-blue-200">&times;</button>
+              <button onClick={() => setOrderModal(null)} className="ml-auto text-2xl text-blue-200" data-modal-close="true">&times;</button>
             </div>
             <div className="p-4 space-y-3">
               <div className="text-sm text-gray-600">
@@ -711,7 +711,7 @@ export default function LaborEfficiencyPage() {
                 />
               </div>
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setOrderModal(null)} className="flex-1 py-2 border rounded-lg text-sm active:bg-gray-100">取消</button>
+                <button onClick={() => setOrderModal(null)} className="flex-1 py-2 border rounded-lg text-sm active:bg-gray-100" data-modal-close="true">取消</button>
                 <ActionGate anyOf={["efficiency.set_order_count#operate"]}><button onClick={saveDailyOrder} disabled={orderModalSaving}
                   className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold active:bg-blue-700 disabled:opacity-50">
                   {orderModalSaving ? "保存中..." : "保存"}
@@ -724,12 +724,12 @@ export default function LaborEfficiencyPage() {
 
       {/* 补录工时弹窗 */}
       {canWrite && suppModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSuppModal(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-amber-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Clock size={20} />
               <h3 className="font-semibold text-lg">补录工时</h3>
-              <button onClick={() => setSuppModal(null)} className="ml-auto text-2xl text-amber-100">&times;</button>
+              <button onClick={() => setSuppModal(null)} className="ml-auto text-2xl text-amber-100" data-modal-close="true">&times;</button>
             </div>
             <div className="p-4 space-y-3">
               <div className="text-sm text-gray-600">
@@ -755,7 +755,7 @@ export default function LaborEfficiencyPage() {
                     清除
                   </button></ActionGate>
                 )}
-                <button onClick={() => setSuppModal(null)} className="flex-1 py-2 border rounded-lg text-sm active:bg-gray-100">取消</button>
+                <button onClick={() => setSuppModal(null)} className="flex-1 py-2 border rounded-lg text-sm active:bg-gray-100" data-modal-close="true">取消</button>
                 <ActionGate anyOf={["efficiency.set_manual_hour#operate"]}><button onClick={saveSupplement} disabled={suppSaving}
                   className="flex-1 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold active:bg-amber-600 disabled:opacity-50">
                   {suppSaving ? "保存中..." : "保存"}

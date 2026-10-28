@@ -53,7 +53,7 @@ export default function CashAdvanceRepaymentModal({ advance, onClose, onSuccess 
   }
   const selected = accounts.find(account => String(account.id) === accountId);
   const currencyLabel = advance.currency === "CNY" ? "人民币" : "泰铢";
-  return <div role="dialog" aria-modal="true" aria-labelledby="repayment-title" className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3">
+  return <div role="dialog" aria-modal="true" aria-labelledby="repayment-title" className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3" data-modal-overlay="true">
     <form onSubmit={event => { event.preventDefault(); void submit(); }} className="bg-white rounded-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
       <h2 id="repayment-title" className="font-semibold px-5 py-4 border-b shrink-0">归还垫款 #{advance.id}</h2>
       <div className="p-5 space-y-4 overflow-y-auto min-h-0">
@@ -69,7 +69,7 @@ export default function CashAdvanceRepaymentModal({ advance, onClose, onSuccess 
           <label className="block text-sm">归还说明<textarea className="form-input mt-1" rows={3} maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} /></label>
         </fieldset>
       </div>
-      <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0"><button type="button" disabled={saving} onClick={onClose} className="btn-secondary">取消</button><button type="submit" disabled={saving || loading || loadError || !accounts.length} className="btn-primary">{saving ? "归还中..." : "确认归还"}</button></div>
+      <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0"><button type="button" disabled={saving} onClick={onClose} className="btn-secondary" data-modal-close="true">取消</button><button type="submit" disabled={saving || loading || loadError || !accounts.length} className="btn-primary">{saving ? "归还中..." : "确认归还"}</button></div>
     </form>
   </div>;
 }

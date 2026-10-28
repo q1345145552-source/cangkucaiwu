@@ -248,7 +248,7 @@ export default function CreditPage() {
 
       {/* 详情弹窗 */}
       {detail && (
-        <div className="modal-overlay z-50" onClick={() => setDetail(null)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl p-6 w-full max-w-[640px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-lg flex items-center gap-2">
@@ -260,7 +260,7 @@ export default function CreditPage() {
                   </span>
                 )}
               </h2>
-              <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+              <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600" data-modal-close="true"><X size={18} /></button>
             </div>
 
             {operatingEntriesEnabled && <CustomerReceivable customerId={detail.customer_id} onChanged={() => { load(); loadDashboard(); viewDetail(detail.id); }} />}
@@ -341,11 +341,11 @@ export default function CreditPage() {
 
       {/* 新建弹窗 */}
       {showForm && (
-        <div className="modal-overlay z-50" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2">
               <Clock size={18} /><h2 className="font-semibold">新建账期客户</h2>
-              <button onClick={() => setShowForm(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button>
+              <button onClick={() => setShowForm(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div><label className="form-label">客户</label><select className="form-input" value={form.customer_id} onChange={e => setForm({ ...form, customer_id: +e.target.value })}><option value={0}>选择</option>{customers.map((c: any) => <option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
@@ -353,7 +353,7 @@ export default function CreditPage() {
               <div><label className="form-label">还款日（每月）</label><input type="number" min={1} max={31} className="form-input" value={form.repayment_day} onChange={e => setForm({ ...form, repayment_day: +e.target.value })} /></div>
             </div>
             <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm" data-modal-close="true">取消</button>
               <ActionGate anyOf={["credit.create_credit#operate"]}><button onClick={handleCreate} className="btn-primary text-sm">保存</button></ActionGate>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function CreditPage() {
           }}><option value="">请选择已到账的一笔</option>{receipts.filter(r => r.currency === (paymentFor.currency || "THB")).map(r => <option key={r.id} value={r.id}>#{r.id} {r.received_date?.slice(0,10)} {r.payer_name} {r.amount} {r.currency}</option>)}</select></div>}
         <div className="form-group"><label className="form-label">实际收款日期</label><input className="form-input" type="date" value={payment.repayment_date} onChange={e => setPayment({ ...payment, repayment_date: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">金额</label><input className="form-input" type="number" step="0.01" value={payment.amount} onChange={e => setPayment({ ...payment, amount: e.target.value })} /></div>
-        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={paymentSaving} onClick={() => setPaymentFor(null)}>取消</button><ActionGate anyOf={["credit.record_repayment#operate"]}><button className="btn-primary" disabled={paymentSaving} onClick={savePayment}>确认登记</button></ActionGate></div>
+        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={paymentSaving} onClick={() => setPaymentFor(null)} data-modal-close="true">取消</button><ActionGate anyOf={["credit.record_repayment#operate"]}><button className="btn-primary" disabled={paymentSaving} onClick={savePayment}>确认登记</button></ActionGate></div>
       </div></div>}
     </>
   );

@@ -151,16 +151,16 @@ export default function CustomersPage() {
 
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={onsite ? columns.filter(c => ["customer_code", "company_name", "cargo_type"].includes(c.key)) : columns} data={data} total={total} page={page} pageSize={20} onPageChange={onsite ? () => setPage(1) : setPage} />}
 
-      {operatingEntriesEnabled && reconciling && <div className="modal-overlay" role="dialog" aria-label="客户对账"><div className="bg-white rounded-xl w-full max-w-4xl p-4 max-h-[90dvh] overflow-y-auto"><div className="flex justify-between items-center mb-4"><h2 className="font-semibold">{reconciling.company_name} · 客户对账</h2><button className="btn-secondary" onClick={() => setReconciling(null)}>关闭对账</button></div><CustomerReceivable customerId={reconciling.id} onChanged={load} /></div></div>}
+      {operatingEntriesEnabled && reconciling && <div className="modal-overlay" role="dialog" aria-label="客户对账"><div className="bg-white rounded-xl w-full max-w-4xl p-4 max-h-[90dvh] overflow-y-auto"><div className="flex justify-between items-center mb-4"><h2 className="font-semibold">{reconciling.company_name} · 客户对账</h2><button className="btn-secondary" onClick={() => setReconciling(null)} data-modal-close="true">关闭对账</button></div><CustomerReceivable customerId={reconciling.id} onChanged={load} /></div></div>}
       {/* 新建/编辑弹窗 */}
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Edit size={22} />
               <h2 className="text-lg font-semibold">{editingId ? "编辑客户" : "新建客户"}</h2>
               <div className="flex-1" />
-              <button onClick={() => setShowForm(false)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setShowForm(false)} className="text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
 
             <div className="p-6 space-y-5">
@@ -269,7 +269,7 @@ export default function CustomersPage() {
             </div>
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["customers.update_customer#operate","customers.create_customer#operate"]}><button onClick={handleSave} className="btn-primary min-w-[80px]">{editingId ? "保存修改" : "新建客户"}</button></ActionGate>
             </div>
           </div>

@@ -1,4 +1,5 @@
 "use client";
+import { supplierActionEntryVisible } from "@/lib/supplierFeatures";
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import { api, getToken, getActiveWarehouseId, warehouseRequestHeaders } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,7 +47,7 @@ export default function MinimalActionWorkspace({ modules }: { modules: string[] 
   const { user } = useAuth();
   const [actions, setActions] = useState<Action[]>([]), [selected, setSelected] = useState(""), [values, setValues] = useState<Values>({}), [parameters, setParameters] = useState<Values>({}), [message, setMessage] = useState(""), [busy, setBusy] = useState(false);
   const moduleKey = modules.join(",");
-  useEffect(() => { let active = true; api.get<{ routes: Action[] }>(`/access/catalog?role=${user?.role || "staff"}`).then(data => { if (active) setActions(data.routes.filter(r => r.mode === "business" && r.form && (r.grant_modules || [r.module_key]).some(m => modules.includes(m)) && r.tier !== "view" && hasAction(user,r.id))); }).catch((e: unknown) => { if (active) setMessage(e instanceof Error ? e.message : "读取办理事项失败"); }); return () => { active = false; }; }, [user, moduleKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { let active = true; api.get<{ routes: Action[] }>(`/access/catalog?role=${user?.role || "staff"}`).then(data => { if (active) setActions(data.routes.filter(r => supplierActionEntryVisible(r.id) && r.mode === "business" && r.form && (r.grant_modules || [r.module_key]).some(m => modules.includes(m)) && r.tier !== "view" && hasAction(user,r.id))); }).catch((e: unknown) => { if (active) setMessage(e instanceof Error ? e.message : "读取办理事项失败"); }); return () => { active = false; }; }, [user, moduleKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const action = actions.find(a => a.id === selected), form = action?.form;
   useEffect(()=>{ if (form?.body.properties?.request_key) setValues(old=>({...old,request_key:crypto.randomUUID()})); },[form]);
   useEffect(() => { setSelected(""); setValues({}); setParameters({}); setMessage(""); }, [user]);

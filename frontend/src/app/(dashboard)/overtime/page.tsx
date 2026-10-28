@@ -427,7 +427,7 @@ export default function OvertimePage() {
 
       {/* Dispute overtime modal */}
       {disputeTask && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setDisputeTask(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="bg-orange-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
               <AlertTriangle size={20} />
@@ -458,7 +458,7 @@ export default function OvertimePage() {
               <p className="text-xs text-gray-400">{t("ot_dispute_hint")}</p>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
-              <button onClick={() => setDisputeTask(null)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
+              <button onClick={() => setDisputeTask(null)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">{t("cancel")}</button>
               <button onClick={handleDispute} className="bg-orange-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-orange-600">{t("ot_submit_dispute")}</button>
             </div>
           </div>
@@ -467,7 +467,7 @@ export default function OvertimePage() {
 
       {/* Verify overtime modal */}
       {verifyTask && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setVerifyTask(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
               <Clock size={20} />
@@ -524,7 +524,7 @@ export default function OvertimePage() {
               <p className="text-xs text-gray-400">{t("ot_round_up_note")}</p>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
-              <button onClick={() => setVerifyTask(null)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
+              <button onClick={() => setVerifyTask(null)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">{t("cancel")}</button>
               <ActionGate anyOf={["overtime.verify_overtime#approve"]}><button onClick={handleVerify} className="btn-primary text-sm px-6 py-2">{t("save_verify")}</button></ActionGate>
             </div>
           </div>
@@ -533,14 +533,15 @@ export default function OvertimePage() {
 
       {/* Zoomed dispute photo */}
       {viewPhoto && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4" onClick={() => setViewPhoto(null)}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
+          <button type="button" aria-label="关闭图片预览" onClick={() => setViewPhoto(null)} className="absolute top-4 right-4 z-10 rounded-full bg-black/60 text-white w-10 h-10 text-2xl" data-modal-close="true">&times;</button>
           <img src={`/${viewPhoto}`} alt="" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
 
       {/* Create overtime modal */}
       {showForm && isAdmin && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 shrink-0">
               <Clock size={20} />
@@ -605,7 +606,7 @@ export default function OvertimePage() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
-              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">{t("cancel")}</button>
               <ActionGate anyOf={["overtime.create_overtime#operate"]}><button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">{t("create_overtime")}</button></ActionGate>
             </div>
           </div>

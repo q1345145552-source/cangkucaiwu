@@ -223,12 +223,12 @@ export default function ClockRecordsPage() {
 
       {/* Detail popup */}
       {detailPopup && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDetailPopup(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <Camera size={20} />
               <span className="font-semibold">{detailPopup.empName} · {detailPopup.date} 打卡详情</span>
-              <button onClick={() => setDetailPopup(null)} className="ml-auto text-2xl text-blue-200 hover:text-white">&times;</button>
+              <button onClick={() => setDetailPopup(null)} className="ml-auto text-2xl text-blue-200 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-4 space-y-4">
               {[1, 2, 3, 4].map(s => {
@@ -264,7 +264,7 @@ export default function ClockRecordsPage() {
               })}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -272,8 +272,8 @@ export default function ClockRecordsPage() {
 
       {/* Photo zoom */}
       {zoomedPhoto && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4" onClick={() => setZoomedPhoto(null)}>
-          <button onClick={() => setZoomedPhoto(null)} className="absolute top-4 right-4 text-white/70 hover:text-white text-4xl">&times;</button>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
+          <button onClick={() => setZoomedPhoto(null)} className="absolute top-4 right-4 text-white/70 hover:text-white text-4xl" data-modal-close="true">&times;</button>
           <img src={zoomedPhoto} className="max-w-full max-h-[90vh] rounded-lg object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}

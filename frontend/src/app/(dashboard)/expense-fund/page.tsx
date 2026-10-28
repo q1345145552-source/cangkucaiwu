@@ -601,11 +601,11 @@ export default function ExpenseFundPage() {
 
           {/* New account modal */}
           {isAdmin && showCreate && (
-            <div className="modal-overlay z-50" onClick={() => setShowCreate(false)}>
+            <div className="modal-overlay z-50" >
               <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
                 <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2">
                   <PiggyBank size={18} /><h2 className="font-semibold">新建备用金账户</h2>
-                  <button onClick={() => setShowCreate(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button>
+                  <button onClick={() => setShowCreate(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none" data-modal-close="true">&times;</button>
                 </div>
                 <div className="p-5 space-y-4">
                   <div>
@@ -621,7 +621,7 @@ export default function ExpenseFundPage() {
                   <div><label className="form-label">备用金上限（默认 5,000）</label><input type="number" className="form-input" value={newLimit} onChange={e => setNewLimit(e.target.value)} placeholder="5000" /></div>
                 </div>
                 <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3">
-                  <button onClick={() => setShowCreate(false)} className="btn-secondary text-sm whitespace-nowrap shrink-0">取消</button>
+                  <button onClick={() => setShowCreate(false)} className="btn-secondary text-sm whitespace-nowrap shrink-0" data-modal-close="true">取消</button>
                   <ActionGate anyOf={["expense_fund.create_account#operate"]}><button onClick={doCreate} className="btn-primary text-sm">创建</button></ActionGate>
                 </div>
               </div>
@@ -631,9 +631,9 @@ export default function ExpenseFundPage() {
           {/* Expense modal */}
           {cost.dialog}
           {showExpense && (
-            <div role="dialog" aria-modal="true" aria-label={editingItem ? "编辑备用金开销" : "添加备用金开销"} className="modal-overlay z-50" onClick={() => { if (!expenseBusy) { setShowExpense(false); setReceiptFile(null); } }}>
+            <div role="dialog" aria-modal="true" aria-label={editingItem ? "编辑备用金开销" : "添加备用金开销"} className="modal-overlay z-50" >
               <div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 shrink-0"><FileText size={18} /><h2 className="font-semibold">{editingItem ? "编辑开销" : "添加开销"} - {expenseAccount?.employee_name}</h2><button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button></div>
+                <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 shrink-0"><FileText size={18} /><h2 className="font-semibold">{editingItem ? "编辑开销" : "添加开销"} - {expenseAccount?.employee_name}</h2><button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="ml-auto text-blue-200 hover:text-white text-lg leading-none" data-modal-close="true">&times;</button></div>
                 <div className="p-5 space-y-3 overflow-y-auto min-h-0">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-blue-50 rounded-lg p-2.5 text-center"><div className="text-[10px] text-blue-500">累计拨付</div><div className="text-sm font-bold text-blue-700">{fmtMoney(expenseAccount?.total_topped_up, expenseAccount?.currency)}</div></div>
@@ -659,7 +659,7 @@ export default function ExpenseFundPage() {
                   </div>
                 </div>
                 <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3 shrink-0">
-                  <button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm whitespace-nowrap shrink-0">取消</button>
+                  <button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm whitespace-nowrap shrink-0" data-modal-close="true">取消</button>
                   <ActionGate anyOf={["expense_fund.edit_item#operate","expense_fund.add_item#operate"]}><button disabled={expenseBusy} onClick={()=>doAddExpense()} className="btn-primary text-sm">{expenseBusy ? "保存中..." : "保存"}</button></ActionGate>
                 </div>
               </div>
@@ -670,9 +670,9 @@ export default function ExpenseFundPage() {
 
       {/* Top-up modal */}
       {showTopUp && (
-        <div className="modal-overlay z-50" onClick={() => setShowTopUp(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-green-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2"><ArrowUp size={18} /><h2 className="font-semibold">充值备用金</h2><button onClick={() => setShowTopUp(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none">&times;</button></div>
+            <div className="bg-green-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2"><ArrowUp size={18} /><h2 className="font-semibold">充值备用金</h2><button onClick={() => setShowTopUp(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none" data-modal-close="true">&times;</button></div>
             <div className="p-5 space-y-4">
               <div className="bg-green-50 rounded-lg p-3">
                 <div className="text-xs text-green-600 mb-1">{topUpAccount?.employee_name}</div>
@@ -687,7 +687,7 @@ export default function ExpenseFundPage() {
               </>}
             </div>
             <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3">
-              <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm whitespace-nowrap shrink-0">取消</button>
+              <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm whitespace-nowrap shrink-0" data-modal-close="true">取消</button>
               {rechargeReviewId !== null&&<p role="alert" className="order-first w-full text-sm text-red-600">{balanceWarningText(paymentAccounts.find((a:any)=>String(a.id)===paymentAccountId)?.current_balance,topUpAmount)}</p>}
               <ActionGate anyOf={["expense_fund.execute_recharge#operate","expense_fund.submit_recharge_request#operate"]}><button onClick={doTopUp} disabled={topUpBusy || (rechargeReviewId !== null && !paymentAccounts.length)} className="btn-primary text-sm bg-green-600 hover:bg-green-700">{topUpBusy ? "提交中…" : rechargeReviewId !== null ? "执行拨付" : "提交补充申请"}</button></ActionGate>
             </div>
@@ -874,16 +874,16 @@ export default function ExpenseFundPage() {
 
         </>
       )}
-      {previewUrl && <div role="dialog" aria-modal="true" aria-label="开销凭证大图" className="modal-overlay z-[120]" onClick={() => setPreviewUrl(null)}>
+      {previewUrl && <div role="dialog" aria-modal="true" aria-label="开销凭证大图" className="modal-overlay z-[120]" >
         <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between px-5 py-3 border-b"><h3 className="font-semibold text-gray-700 flex items-center gap-2"><Image size={18} />凭证查看</h3><div className="flex items-center gap-3"><a href={previewUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600">查看原图</a><button aria-label="关闭凭证大图" onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button></div></div>
+          <div className="flex items-center justify-between px-5 py-3 border-b"><h3 className="font-semibold text-gray-700 flex items-center gap-2"><Image size={18} />凭证查看</h3><div className="flex items-center gap-3"><a href={previewUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600">查看原图</a><button aria-label="关闭凭证大图" onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600" data-modal-close="true"><X size={20} /></button></div></div>
           <div className="p-4 flex items-center justify-center bg-gray-100"><img src={previewUrl} alt="开销凭证" className="max-w-full max-h-[70vh] object-contain rounded" /></div>
         </div>
       </div>}
-      {voidTarget && <div role="dialog" aria-modal="true" aria-label="作废备用金开销" className="modal-overlay z-[120]" onClick={() => { if (!voidBusy) setVoidTarget(null); }}><div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 space-y-4" onClick={e => e.stopPropagation()}>
+      {voidTarget && <div role="dialog" aria-modal="true" aria-label="作废备用金开销" className="modal-overlay z-[120]" ><div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="font-semibold">确认作废这条开销？</h3><p className="text-sm">开销 #{voidTarget.item.id} · {fmtMoney(voidTarget.item.amount, voidTarget.item.currency)}</p><p className="text-sm text-gray-500">作废后记录保留，不再计入备用金台账。已审核通过的开销不能作废。</p>
         <label className="block text-sm">作废原因（必填）<textarea aria-label="开销作废原因" className="form-input mt-1" rows={3} maxLength={500} disabled={voidBusy} value={voidReason} onChange={e => setVoidReason(e.target.value)} /></label>
-        <div className="flex justify-end gap-3"><button type="button" disabled={voidBusy} className="btn-secondary" onClick={() => setVoidTarget(null)}>取消</button><ActionGate anyOf={["expense_fund.void_item#operate"]}><button type="button" disabled={voidBusy} className="btn-primary" onClick={doVoidExpense}>{voidBusy ? "作废中..." : "确认作废"}</button></ActionGate></div>
+        <div className="flex justify-end gap-3"><button type="button" disabled={voidBusy} className="btn-secondary" onClick={() => setVoidTarget(null)} data-modal-close="true">取消</button><ActionGate anyOf={["expense_fund.void_item#operate"]}><button type="button" disabled={voidBusy} className="btn-primary" onClick={doVoidExpense}>{voidBusy ? "作废中..." : "确认作废"}</button></ActionGate></div>
       </div></div>}
     </>
   );

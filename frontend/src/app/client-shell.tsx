@@ -1,4 +1,5 @@
 "use client";
+import ModalCloseGuard from "@/components/ui/ModalCloseGuard";
 import { useEffect } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -50,6 +51,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   return (
     <AuthProvider>
       <ToastProvider>
+        <ModalCloseGuard />
         {isLogin ? (
           children
         ) : (

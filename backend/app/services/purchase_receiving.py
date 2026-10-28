@@ -15,8 +15,10 @@ from app.services.data_history import record_history
 
 async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_key,remark='',controls=None):
     key=number(request_key,'收货请求编号',100)
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400,'图片上传失败，请重试：到货照片不能超过10MB')
     from app.services.image_utils import is_image
-    if not content or not is_image(content): raise HTTPException(400,'请上传有效到货照片')
+    if not content or not is_image(content): raise HTTPException(400,'图片上传失败，请重试：请上传有效到货照片')
     if len(remark)>1000: raise HTTPException(400,'收货备注不能超过1000字')
     try: submitted=json.loads(raw_items)
     except (TypeError,ValueError): raise HTTPException(400,'收货明细格式错误')
@@ -81,7 +83,10 @@ async def receive(db,po_id,warehouse_id,user,raw_items,content,filename,request_
     import os
     from pathlib import Path
     rel=f'{warehouse_id}/{event.received_at.date().isoformat()}/arrival_photos'
-    saved=save_image(content,str(Path(os.environ.get('UPLOAD_DIR','/app/uploads'))/rel),f'/uploads/{rel}',f'{uuid.uuid4().hex}.{ext}')
+    try:
+        saved=save_image(content,str(Path(os.environ.get('UPLOAD_DIR','/app/uploads'))/rel),f'/uploads/{rel}',f'{uuid.uuid4().hex}.{ext}')
+    except OSError as exc:
+        raise HTTPException(500,'图片上传失败，请重试：照片存储失败，未完成本次收货') from exc
     event.photo_path=saved['path']
     await db.flush()
     from app.services.inventory import record_receipt

@@ -269,7 +269,7 @@ export default function IncomingPage() {
         <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
       )}
       <input ref={screenshotFile} aria-label="补传到账截图" disabled={!canWrite} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) uploadForRow(file); event.target.value = ""; }} />
-      {preview && <div className="modal-overlay" onClick={() => setPreview("")}><div className="bg-white p-4 rounded-xl max-w-[95vw] max-h-[90dvh] overflow-auto" onClick={e => e.stopPropagation()}>
+      {preview && <div className="modal-overlay" ><div className="bg-white p-4 rounded-xl max-w-[95vw] max-h-[90dvh] overflow-auto" onClick={e => e.stopPropagation()}>
         <button className="btn-secondary mb-2" onClick={() => setPreview("")}>关闭截图</button><img src={preview} alt="到账截图" className="max-w-full max-h-[75dvh] object-contain" />
       </div></div>}
     </>

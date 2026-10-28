@@ -64,10 +64,13 @@ body {
 
   /* ─── 统一弹窗 ─── */
   .modal-overlay {
-    @apply fixed inset-0 bg-black/40 z-50 flex items-center justify-center;
+    @apply fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4;
   }
   .modal-overlay > div {
-    @apply max-h-[85vh] overflow-y-auto;
+    @apply min-w-0 shrink bg-white text-gray-900 rounded-xl max-h-[85vh] overflow-y-auto;
+  }
+  .modal-content {
+    @apply bg-white text-gray-900 rounded-xl w-full max-w-xl shadow-2xl max-h-[85vh] overflow-y-auto;
   }
   .modal-sm {
     @apply bg-white rounded-xl w-full max-w-sm max-h-[85vh] overflow-auto;
