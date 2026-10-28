@@ -21,6 +21,13 @@ def fill(content,values):
     for row in values:ws.append(row)
     out=io.BytesIO();wb.save(out);return out.getvalue()
 
+def legacy_logistics(rows):
+    return blob(['供应商名称','运输方式','货物类型','发货仓库','单价(元/方)','时效','币种'],rows)
+
+def fill_products(content,rows):
+    # New downloaded batch columns; keep every original assertion and synthetic value.
+    return fill(content,[[r[0],r[1],r[2],r[5],r[4],r[6],None,None,None,None,None] for r in rows])
+
 async def send(c,path,content,data=None,code=200,name='synthetic.xlsx',uid=1,warehouse='1'):
     return await request(c,'POST',path,uid=uid,warehouse=warehouse,code=code,files={'file':(name,content,MIME)},data=data or {})
 
@@ -43,9 +50,9 @@ def test_download_products_all_entry_routes_duplicate_policy_and_atomicity(tmp_p
   async with setup(tmp_path,monkeypatch) as (_,f,c):
    async with f() as db:
     await db.execute(text("SELECT setval(pg_get_serial_sequence('supplier_products','id'),(SELECT max(id) FROM supplier_products))"));await db.commit()
-   downloaded=await template(c,'/suppliers/import-template/products')
+   downloaded=await template(c,'/suppliers/import-template/products?batch=true')
    example=await send(c,path,downloaded);assert not example['valid'] and '没有可导入数据' in example['errors'][-1]['message']
-   content=fill(downloaded,[['本仓供应商','合成袋','10cm',None,5,'个','THB']])
+   content=fill_products(downloaded,[['本仓供应商','合成袋','10cm',None,5,'个','THB']])
    pre=await send(c,path,content);assert pre['valid'] and pre['imported']==0
    before=await count(f,SupplierProduct)
    result,data=await confirm(c,path,content,pre);assert result['imported']==1
@@ -55,7 +62,7 @@ def test_download_products_all_entry_routes_duplicate_policy_and_atomicity(tmp_p
    duplicate=await send(c,path,content);assert duplicate['valid'] and duplicate['rows'][0]['append_quote']
    appended,_=await confirm(c,path,content,duplicate);assert appended['imported']==1 and appended['updated']==0
    assert await count(f,SupplierProduct)==before+2
-   mixed=fill(downloaded,[['本仓供应商','有效新袋',None,None,2,'个','THB'],['外仓供应商','错误袋',None,None,2,'个','THB']])
+   mixed=fill_products(downloaded,[['本仓供应商','有效新袋',None,None,2,'个','THB'],['外仓供应商','错误袋',None,None,2,'个','THB']])
    bad=await send(c,path,mixed)
    if path=='/suppliers/import/products':
     assert bad['valid'] and bad['valid_count']==1 and bad['skipped_count']==1 and bad['skipped_rows'][0]['row_number']==3
@@ -63,12 +70,12 @@ def test_download_products_all_entry_routes_duplicate_policy_and_atomicity(tmp_p
     assert not bad['valid'] and bad['errors'][0]['row_number']==3
     await send(c,path,mixed,{'mode':'confirm','request_key':'bad','preview_version':bad['preview_version'],'choices':'[]'},code=422)
    # Unknown vendor skipping must not relax whole-batch rejection of illegal values.
-   invalid=fill(downloaded,[['本仓供应商','有效新袋',None,None,2,'个','THB'],['本仓供应商','错误价格',None,None,'=1+1','个','THB']])
+   invalid=fill_products(downloaded,[['本仓供应商','有效新袋',None,None,2,'个','THB'],['本仓供应商','错误价格',None,None,'=1+1','个','THB']])
    rejected=await send(c,path,invalid);assert not rejected['valid'] and rejected['errors'][0]['row_number']==3
    await send(c,path,invalid,{'mode':'confirm','request_key':'bad-price','preview_version':rejected['preview_version'],'choices':'[]'},code=422)
    assert await count(f,SupplierProduct)==before+2
    # Product names beginning with 示例: are real data unless the full shipped sample matches.
-   named=fill(downloaded,[['本仓供应商','示例:真实产品',None,None,3,'个','THB']]);assert (await send(c,path,named))['valid']
+   named=fill_products(downloaded,[['本仓供应商','示例:真实产品',None,None,3,'个','THB']]);assert (await send(c,path,named))['valid']
  asyncio.run(run())
 
 @pytest.mark.parametrize('legacy,reordered,origin',[(False,False,'深圳仓'),(False,True,'12345'),(True,False,'深圳仓'),(True,True,'12345')])
@@ -79,7 +86,7 @@ def test_logistics_headers_concurrent_lost_response_and_exact_fields(tmp_path,mo
    headers=['供应商名称','运输方式','货物类型','发货仓库','单价(元/方)','时效','币种'];values=['本仓供应商','陆运','普货',origin,800,'5-7天','CNY']
    if legacy:headers=headers[1:];values=values[1:]
    if reordered:headers=headers[::-1];values=values[::-1]
-   content=blob(headers,[values]) if legacy or reordered else fill(downloaded,[values])
+   content=blob(headers,[values])
    path='/suppliers/1/import/logistics';pre=await send(c,path,content);assert pre['valid'] and await count(f,SupplierCrossBorderPrice)==0
    data={'mode':'confirm','request_key':'concurrent','preview_version':pre['preview_version']}
    results=await asyncio.gather(*(send(c,path,content,data) for _ in range(4)))
@@ -181,7 +188,7 @@ def test_global_logistics_current_warehouse_exact_supplier_names(tmp_path,monkey
    async with f() as db:
     db.add(Supplier(id=3,warehouse_id=1,name='本仓供应商' if kind=='ambiguous' else '合成供应商乙'));await db.commit()
    rows=[['本仓供应商','陆运','普货','12345',20,'5天','THB'],['外仓供应商' if kind=='foreign' else '合成供应商乙','海运','普货','深圳仓',30,None,'CNY']]
-   content=fill(await template(c,'/suppliers/import-template/logistics'),rows);path='/suppliers/import/logistics';pre=await send(c,path,content)
+   content=legacy_logistics(rows);path='/suppliers/import/logistics';pre=await send(c,path,content)
    if kind=='success':
     assert pre['valid'];result,_=await confirm(c,path,content,pre);assert result['imported']==2 and await count(f,SupplierCrossBorderPrice)==2
    else:

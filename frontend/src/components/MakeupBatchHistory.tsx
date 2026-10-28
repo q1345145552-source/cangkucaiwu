@@ -80,12 +80,12 @@ export default function MakeupBatchHistory({ onChange, onBusyChange }: { onChang
         <button type="button" disabled={page * 10 >= total || revoking} onClick={() => setPage(value => value + 1)} className="btn-secondary">下一页</button>
       </div>}
     </>}
-    {confirmBatch && <div className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-3" role="alertdialog" aria-modal="true" aria-labelledby="revoke-makeup-title">
+    {confirmBatch && <div className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-3" role="alertdialog" aria-modal="true" aria-labelledby="revoke-makeup-title" data-modal-overlay="true">
       <div className="bg-white w-full max-w-sm rounded-xl p-5 shadow-xl space-y-4">
         <h3 id="revoke-makeup-title" className="font-semibold">确认撤销这一批吗？</h3>
         <p className="text-sm">批次 #{confirmBatch.id}，{confirmBatch.date}，新建{confirmBatch.created_count}条。会影响这一天这些人的考勤。已算工资单不会自动重算。</p>
         <div className="flex justify-end gap-3">
-          <button type="button" disabled={revoking} onClick={() => setConfirmBatch(null)} className="btn-secondary">暂不撤销</button>
+          <button type="button" disabled={revoking} onClick={() => setConfirmBatch(null)} className="btn-secondary" data-modal-close="true">暂不撤销</button>
           <ActionGate anyOf={["clock_in.revoke_makeup_batch#operate"]}><button type="button" disabled={revoking} onClick={revoke} className="btn-danger">{revoking ? "撤销中..." : "确认撤销"}</button></ActionGate>
         </div>
       </div>

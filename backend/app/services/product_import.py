@@ -10,8 +10,8 @@ from app.services import sku_catalog as catalog
 from app.services.payable_creation import fingerprint
 from app.services.data_history import record_history
 
-HEADERS={'供应商名称':'supplier_name','产品名':'product_name','产品名称':'product_name','产品规格':'spec','规格':'spec','规格报价':'spec_price',
- '单价':'unit_price','单位':'unit','币种':'currency','标准SKU编码':'sku_code','SKU编码':'sku_code','结构化规格JSON':'catalog_attributes','基本单位换算数':'factor'}
+HEADERS={'供应商名称':'supplier_name','品名':'product_name','产品名':'product_name','产品名称':'product_name','产品规格':'spec','规格':'spec','规格报价':'spec_price',
+ '单价':'unit_price','单位':'unit','币种':'currency','标准SKU编码':'sku_code','SKU编码':'sku_code','结构化规格JSON':'catalog_attributes','基本单位换算数':'factor','阶梯起量':'tier_from','阶梯止量':'tier_to','阶梯单价':'tier_price','生效日期':'valid_from','失效日期':'valid_to'}
 
 def validate_filename(filename):
  name=(filename or '').strip().lower()
@@ -37,6 +37,20 @@ def decimal_value(value,name,optional=False):
  if not d.is_finite() or d<=0 or d>1000000000:raise HTTPException(400,name+'必须为有效正数')
  return float(d)
 
+def import_quote_terms(raw):
+ fields=('tier_from','tier_to','tier_price','valid_from','valid_to')
+ if not any(raw.get(k) not in (None,'') for k in fields):return None
+ from datetime import date,datetime
+ from app.services.supplier_quotes import tiers
+ dates={}
+ for key,label in [('valid_from','生效日期'),('valid_to','失效日期')]:
+  value=raw.get(key)
+  if isinstance(value,datetime):value=value.date()
+  try:dates[key]=(value if isinstance(value,date) else date.fromisoformat(str(value))).isoformat()
+  except (ValueError,TypeError):raise HTTPException(400,'阶梯起量、阶梯单价、生效日期和失效日期须成组明确填写；日期为YYYY-MM-DD，不自动补有效期')
+ if dates['valid_to']<dates['valid_from']:raise HTTPException(400,'失效日期不能早于生效日期')
+ return {**dates,'tiers':tiers([{'min_quantity':raw.get('tier_from'),'max_quantity':None if raw.get('tier_to') in (None,'') else raw['tier_to'],'unit_price':raw.get('tier_price')}])}
+
 def duplicate_key(row):return tuple(row.get(k) or '' for k in ('supplier_id','product_name','spec','unit','currency'))
 
 async def preview(db,wid,user,content,supplier_id=None):
@@ -59,7 +73,8 @@ async def preview(db,wid,user,content,supplier_id=None):
     header[key]=index
   if not header:raise HTTPException(400,'文件没有有效表头，请使用产品导入模板')
   if not {'product_name','unit_price'}<=header.keys() or supplier_id is None and 'supplier_name' not in header:
-   errors.append({'row_number':1,'message':'缺少产品名、单价或供应商名称表头；支持旧版全局5列及单供应商4列模板'})
+   errors.append({'row_number':1,'message':'耗材模板列不匹配：缺少品名、单价或批量供应商名称；请下载耗材模板，不要上传物流模板。旧版表头仍支持'})
+  if any(str(c.value or '').strip()=='品名' for c in cells[0]) and not {'product_name','spec','unit','unit_price','currency'}<=header.keys():errors.append({'row_number':1,'message':'耗材新模板必须保留品名、规格、单位、单价、币种五个基础表头；可选列可留空'})
   suppliers=(await db.execute(select(Supplier).where(Supplier.warehouse_id==wid,Supplier.is_active=='true'))).scalars().all()
   names={}
   for s in suppliers:names.setdefault(s.name.strip(),[]).append(s)
@@ -74,7 +89,7 @@ async def preview(db,wid,user,content,supplier_id=None):
    raw={k:cells_row[i].value if i<len(cells_row) else None for k,i in header.items()}
    marker=str(cells_row[0].value or '').strip()
    legacy_example=raw.get('supplier_name') in ('示例: 耗材商A','示例：耗材商A') and raw.get('product_name')=='快递袋' and raw.get('spec')=='一打80个' and raw.get('spec_price')==80 and raw.get('unit_price')==1 and not any(c.data_type=='f' for c in cells_row)
-   if marker.startswith('##') or legacy_example:
+   if marker.startswith('##') or legacy_example or raw.get('product_name')=='## 示例行（不会导入）' or raw.get('supplier_name')=='## 示例供应商（不会导入）':
     example_count+=1;skipped_rows.append({'row_number':number,'message':'跳过了示例行（不会导入）','blocking':False});continue
    entry={'row_number':number,'errors':[],'candidates':[],'catalog_visible':can_catalog,'skipped':False,
     'supplier_name':str(raw.get('supplier_name') or '').strip(),'product_name':str(raw.get('product_name') or '').strip()}
@@ -100,6 +115,7 @@ async def preview(db,wid,user,content,supplier_id=None):
     row={'supplier_id':source.id,'supplier_name':source.name,'product_name':name,'spec':str(raw.get('spec') or '').strip() or None,
      'spec_price':decimal_value(raw.get('spec_price'),'规格报价',True),'unit_price':decimal_value(raw.get('unit_price'),'单价'),'currency':currency,
      'unit':raw_unit,'catalog_attributes':attrs,'sku_code':sku_code,'factor':str(factor) if factor is not None else None}
+    entry['quote_terms']=import_quote_terms(raw)
     key=duplicate_key(row)
     entry['append_quote']=key in existing_keys
     entry['warnings']=['已有该供应商该产品报价，本行将新增报价，不合并、不覆盖旧报价'] if key in existing_keys else []
@@ -152,6 +168,11 @@ async def confirm(db,wid,user,content,supplier_id,request_key,preview_version,ch
  for row in importable:
   choice=by_row[row['row_number']]
   try:
+   if row.get('quote_terms'):
+    from app.core.action_access import access_description
+    catalog.require_mapping(user)
+    if not any(a['id']=='supplier_quotes.create' and a['tier']=='operate' for a in access_description(user)['actions']):raise HTTPException(403,'导入阶梯报价仍需现有报价新增权限')
+    if choice.get('decision')!='map':raise HTTPException(400,'填写阶梯或有效期的产品必须人工映射标准SKU后登记报价；不能以未映射导入绕过原报价规则')
    if choice.get('decision')=='map':
     catalog.require_mapping(user)
     if type(choice.get('sku_id')) is not int or choice['sku_id']<=0:raise HTTPException(400,'SKU编号必须是有效整数')
@@ -176,7 +197,16 @@ async def confirm(db,wid,user,content,supplier_id,request_key,preview_version,ch
      'expected_product_version':catalog.product_version(p),'base_unit_factor':choice.get('base_unit_factor',row.get('factor'))})
     event_id=mapped['event_id']
    except HTTPException as e:raise HTTPException(e.status_code,{'row_number':row['row_number'],'message':str(e.detail),'imported':0})
-  created.append({'row_number':row['row_number'],'product_id':p.id,'mapping_event_id':event_id,'status':'人工映射' if event_id else '未映射/待核对'})
+  quote_id=None
+  if row.get('quote_terms'):
+   from app.services import supplier_quotes as quotes
+   sku=await db.get(StandardSKU,p.standard_sku_id)
+   quote=await quotes.save(db,wid,user,p.id,{**row['quote_terms'],'code':f'IMPORT-{p.id}-{fingerprint(key)[:12]}','request_key':'import-quote:'+fingerprint({'request':key,'row':row['row_number']}),
+    'expected_product_version':catalog.product_version(p),'expected_sku_version':catalog.sku_data(sku)['version'],'currency':p.currency,'unit':p.unit,
+    'base_unit_factor':str(p.base_unit_factor) if p.base_unit_factor is not None else None,'conversion_basis':choice.get('reason',''),
+    'fees':{'tax_mode':'unknown','freight_mode':'unknown','other_fees':'unknown'},'quality_tags':[],'active':True})
+   quote_id=quote['id']
+  created.append({'quote_id':quote_id,'row_number':row['row_number'],'product_id':p.id,'mapping_event_id':event_id,'status':'人工映射' if event_id else '未映射/待核对'})
  result={'mode':'confirmed','imported':len(created),'skipped':current['skipped_count'],'updated':0,'skipped_rows':current['skipped_rows'],'errors':[],'data':created,
   'message':f'导入成功 {len(created)} 条，跳过 {current["skipped_count"]} 条，更新 0 条；已新增报价，未自动合并或覆盖旧报价'}
  operation=ProductImportOperation(warehouse_id=wid,request_key=key,request_fingerprint=signature,result=result,operator_id=user.id)

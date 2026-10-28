@@ -42,7 +42,7 @@ export default function BatchMakeupModal({ employees, scheduleTimes, onClose, on
     finally { setSaving(false); }
   }
 
-  return <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="batch-makeup-title">
+  return <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="batch-makeup-title" data-modal-overlay="true">
     <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90dvh] flex flex-col overflow-hidden">
       <h2 id="batch-makeup-title" className="text-lg font-semibold px-5 py-4 border-b shrink-0">批量补卡</h2>
       <div className="p-5 overflow-y-auto min-h-0">
@@ -88,7 +88,7 @@ export default function BatchMakeupModal({ employees, scheduleTimes, onClose, on
       </fieldset>
       </div>
       <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0">
-        <button type="button" disabled={saving || historyBusy} onClick={onClose} className="btn-secondary">取消</button>
+        <button type="button" disabled={saving || historyBusy} onClick={onClose} className="btn-secondary" data-modal-close="true">取消</button>
         <ActionGate anyOf={["clock_in.batch_makeup_clock_in#operate"]}><button type="button" disabled={saving || historyBusy || !employees.length} onClick={submit} className="btn-primary">{saving ? "补卡中..." : "确认补卡"}</button></ActionGate>
       </div>
     </div>

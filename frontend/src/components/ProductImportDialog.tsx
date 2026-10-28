@@ -40,7 +40,7 @@ export default function ProductImportDialog({file,supplierId,supplierName,canMap
   const payload=pending?.payload||{file_meta:{name:file.name,size:file.size,lastModified:file.lastModified},preview_version:preview.preview_version,choices:selected,preview};
   const result=await submitRegistration<any>('product_import',resource,payload,key=>send('confirm',payload,key));if(originalScope===importScope()&&startedGeneration===generation.current){onImported(result);onClose();}
  }catch(e:any){setError(e.message||'导入未完成');if(originalScope===importScope()&&startedGeneration===generation.current){if(e.detail?.code==='product_import_preview_changed'){try{acceptProductImportRejection(resource,e.detail);adopt(e.detail.preview);}catch(proofError:any){setError(proofError.message);}}const draft=registrationDraft('product_import',resource);setPending(draft?.unknown?draft:null);}}finally{locked.current=false;setBusy(false);}}
- return <div className="modal-overlay z-[80]"><div role="dialog" aria-modal="true" aria-label="产品Excel预览与确认" className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+ return <div className="modal-overlay z-[80]" ><div onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="产品Excel预览与确认" className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
   <div className="p-4 border-b"><h2 className="font-semibold">产品Excel预览与确认</h2><p className="text-sm break-all">{file.name} · 尚未确认的预览不会写入产品</p></div>
   <div className="p-4 overflow-y-auto min-h-0 space-y-3 text-sm">
    <p>当前供应商：{supplierId?`${supplierName||'供应商'}（编号${supplierId}）`:'本仓多供应商，按文件名称严格核对'}。仅支持.xlsx；.xls请另存为.xlsx，不能只改扩展名。</p>   <p>仅支持xlsx，可沿用旧模板。示例行及通用入口无法匹配的供应商行会跳过；有效行逐行核对后整批导入。已有产品新增一条报价，不合并、不覆盖旧报价。</p>{!canMap&&<p>当前只能保持未映射导入；人工映射另需标准SKU目录和标准SKU管理权限。</p>}
@@ -49,6 +49,7 @@ export default function ProductImportDialog({file,supplierId,supplierName,canMap
    {(preview?.skipped_rows||[]).map((r:any)=><p key={r.row_number} className={r.blocking?'text-red-600':'text-amber-700'}>第{r.row_number}行：{r.message}{r.blocking?'；请修正后重新预览，当前整批未导入':''}</p>)}
    {preview?.errors?.map((e:any,i:number)=><p role="alert" key={i} className="text-red-600">第{e.row_number}行：{e.message}</p>)}
    {(preview?.rows||[]).map((row:any)=><div className="border rounded p-3 space-y-2" key={row.row_number}><strong>第{row.row_number}行 · {row.product_name||'解析失败'}</strong><p>{row.supplier_name} · {row.spec||'规格未知'} · {row.unit||'单位未知'} · {row.unit_price} {row.currency}</p>
+    {row.quote_terms&&<p className="text-blue-700">将登记阶梯报价：{row.quote_terms.valid_from} 至 {row.quote_terms.valid_to}；{row.quote_terms.tiers.map((t:any)=>`${t.min_quantity}至${t.max_quantity??'不限'} ${row.unit}，单价${t.unit_price} ${row.currency}`).join('；')}。须人工映射SKU，沿用原报价权限。</p>}
     {(row.candidates||[]).map((c:any)=><div key={c.id} className="text-xs border rounded p-2 min-w-0 break-words"><p>{c.code} · {c.name}；命中{c.matched_fields.join('、')||'无'}</p><p>{c.differences.join('；')}</p><SpecificationSummary value={c.attributes}/></div>)}
     {(row.warnings||[]).map((message:string)=><p key={message} className="text-amber-700">{message}</p>)}
     {!pending&&!row.skipped&&!row.errors.length&&<><label className="block">第{row.row_number}行选择<select aria-label={`第${row.row_number}行映射选择`} className="form-input" value={choices[row.row_number]?.sku_id||''} onChange={e=>{const c=row.candidates.find((v:any)=>String(v.id)===e.target.value);change(row.row_number,{decision:c?'map':'unmapped',sku_id:c?.id||null,expected_sku_version:c?.version||null});}}><option value="">明确保持未映射</option>{row.candidates.map((c:any)=><option key={c.id} value={c.id} disabled={!canMap||!c.can_map}>{c.code} · {c.name}{!c.can_map?'（规格不一致，不能映射）':''}</option>)}</select></label>
@@ -57,6 +58,6 @@ export default function ProductImportDialog({file,supplierId,supplierName,canMap
    </div>)}
    {!pending&&preview?.valid&&<label className="flex gap-2"><input type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/>已逐行核对，按上述选择整批导入</label>}
    {error&&<p role="alert" className="text-red-600">{error}</p>}
- </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>关闭</button><button className="btn-primary" disabled={busy||!matchesPreview||!preview||!pending&&(!preview.valid||!validCount||!ack)} onClick={confirm}>{pending?'原文件原请求重试':`确认导入 ${validCount} 条`}</button></div>
+ </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose} data-modal-close="true">关闭</button><button className="btn-primary" disabled={busy||!matchesPreview||!preview||!pending&&(!preview.valid||!validCount||!ack)} onClick={confirm}>{pending?'原文件原请求重试':`确认导入 ${validCount} 条`}</button></div>
  </div></div>;
 }

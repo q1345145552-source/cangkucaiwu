@@ -22,8 +22,8 @@ export default function PayableDetail({ billId, revision, onClose, onPay, onConf
   async function upload(){if(!fileTask || fileTask.billId!==billId)return;setSaving(true);setNotice("");
     try{await uploadPayableVoucher(fileTask.billId,fileTask.file,fileTask.scope);setNotice("账单级凭证已上传，没有再次付款");setFileTask(null);setReload(n=>n+1);}
     catch(e:any){setNotice(`凭证上传失败：${e.message}，付款记录不变`);}finally{setSaving(false);}}
-  return <div className="modal-overlay z-[70]" onClick={onClose}><div role="dialog" aria-label="应付详情" className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}>
-    <div className="p-4 border-b flex justify-between"><h2 className="font-semibold">应付详情 {bill?.bill_number || `#${billId}`}</h2><button onClick={onClose}>关闭</button></div>
+  return <div className="modal-overlay z-[70]" ><div role="dialog" aria-label="应付详情" className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}>
+    <div className="p-4 border-b flex justify-between"><h2 className="font-semibold">应付详情 {bill?.bill_number || `#${billId}`}</h2><button onClick={onClose} data-modal-close="true">关闭</button></div>
     <div className="p-4 overflow-auto space-y-4 text-sm">
       {error ? <p role="alert" className="text-red-600">{error} <button onClick={()=>setReload(n=>n+1)}>重试</button></p> : !bill ? <p>加载中</p> : <>
         <p>供应商：{bill.supplier_name} · 状态：{billStatus[bill.status] || bill.status}</p>

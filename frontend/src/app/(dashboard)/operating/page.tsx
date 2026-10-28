@@ -490,7 +490,7 @@ export default function OperatingPage() {
       {/* 录入弹窗 */}
       {cost.dialog}
       {canWrite && showForm && (
-        <div className="modal-overlay" onClick={closeForm}>
+        <div className="modal-overlay" >
           <div role="dialog" aria-label="录入运营支出" className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
               <Minus size={20} /><h2 className="text-lg font-semibold">录入运营支出</h2>
@@ -531,7 +531,7 @@ export default function OperatingPage() {
 
       {/* 编辑弹窗 */}
       {canWrite && editingExpense && (
-        <div className="modal-overlay" onClick={closeEdit}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
               <Minus size={20} /><h2 className="text-lg font-semibold">编辑运营支出</h2>
@@ -592,12 +592,12 @@ export default function OperatingPage() {
 
       {/* 删除凭证确认 */}
       {confirmDeleteVoucher && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setConfirmDeleteVoucher(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除凭证</h3>
             <p className="text-sm text-gray-500 mb-5">确定要删除这张凭证图片吗？删除后不可恢复。</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmDeleteVoucher(null)} className="btn-secondary">取消</button>
+              <button onClick={() => setConfirmDeleteVoucher(null)} className="btn-secondary" data-modal-close="true">取消</button>
               <ActionGate anyOf={["income_expense.update_expense"]}><button onClick={doConfirmDeleteVoucher} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
@@ -606,7 +606,7 @@ export default function OperatingPage() {
 
       {/* 凭证大图预览（多图可切换） */}
       {zoomVouchers.length > 0 && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setZoomVouchers([])}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4"  data-modal-overlay="true">
           <div className="relative w-full max-w-4xl" onClick={e => e.stopPropagation()}>
             <button onClick={() => setZoomVouchers([])} className="absolute -top-3 -right-3 bg-white rounded-full w-8 h-8 shadow z-10 text-gray-600 hover:text-black text-xl leading-none">&times;</button>
             <img src={`/${zoomVouchers[zoomIndex]}`} alt={`凭证${zoomIndex + 1}`} className="mx-auto max-h-[68vh] max-w-full rounded-lg shadow-2xl object-contain" />
@@ -628,12 +628,12 @@ export default function OperatingPage() {
 
       {/* 删除记录确认 */}
       {canWrite && deletingExpense && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDeletingExpense(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">删除支出</h3>
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这笔支出吗？删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">
-              <button disabled={!(canWrite)} onClick={() => setDeletingExpense(null)} className="btn-secondary">取消</button>
+              <button disabled={!(canWrite)} onClick={() => setDeletingExpense(null)} className="btn-secondary" data-modal-close="true">取消</button>
               <ActionGate anyOf={["income_expense.delete_expense#operate"]}><button aria-disabled={!canWrite} disabled={!canWrite} onClick={handleDeleteExpense} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
@@ -642,11 +642,11 @@ export default function OperatingPage() {
 
       {/* 历史弹窗 */}
       {historyRow && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setHistoryRow(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-800 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3 sticky top-0">
               <h2 className="text-lg font-semibold">变更历史</h2>
-              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setHistoryRow(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-3">
               {historyLoading ? <div className="text-center py-8 text-gray-400">加载中...</div>

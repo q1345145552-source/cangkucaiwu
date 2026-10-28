@@ -25,7 +25,7 @@ export default function SkuProductMapping({productId,canEdit,onClose,onDone}:{pr
    confirmed_attributes:readSpecDraft(attrs),base_unit_factor:factor||null,reason:reason.trim()};
   await submitRegistration<any>('sku_mapping',productId,payload,key=>api.post(`/sku-catalog/products/${productId}/mapping`,{...payload,request_key:key}));if(expected===liveScope.current&&selectedProduct===liveProduct.current&&scope===JSON.stringify(warehouseRequestHeaders())){onDone();onClose();}
  }catch(e:any){if(expected===liveScope.current&&selectedProduct===liveProduct.current){setError(e.message||'映射未完成');const draft=registrationDraft('sku_mapping',productId);setPending(draft?.unknown?draft:null);}}finally{saving.current=false;setBusy(false);}}
- return <div className="modal-overlay z-[70]"><div role="dialog" aria-modal="true" aria-label="产品SKU人工映射" className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+ return <div className="modal-overlay z-[70]" ><div onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="产品SKU人工映射" className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
   <div className="p-4 border-b"><h2 className="font-semibold">产品SKU人工映射</h2><p className="text-sm">{data?.product_name} · 原规格 {data?.spec||'未填'} · 原单位 {data?.unit||'未知'}</p></div>
   <div className="p-4 overflow-y-auto min-h-0 space-y-3 text-sm">
    {pending&&<p role="status" className="text-amber-700">上一映射结果待确认。请原请求重试，不能改内容另建。</p>}
@@ -42,6 +42,6 @@ export default function SkuProductMapping({productId,canEdit,onClose,onDone}:{pr
    <button className="btn-secondary" onClick={async()=>{try{const result=await api.get<any>(`/sku-catalog/products/${productId}/mapping-history`);if(productId===liveProduct.current&&scope===liveScope.current&&scope===JSON.stringify(warehouseRequestHeaders()))setHistory(result.data);}catch(e:any){if(productId===liveProduct.current&&scope===liveScope.current&&scope===JSON.stringify(warehouseRequestHeaders()))setError(e.message);}}}>查看映射历史</button>
    {history.map(h=><div className="border rounded p-2" key={h.id}>{h.operator_name} · {h.created_at}<p>{h.before?.sku_snapshot?.code||'未映射'} → {h.after?.sku_snapshot?.code||'未映射'}；{h.reason}</p></div>)}
    {error&&<p role="alert" className="text-red-600">{error}</p>}
-  </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>关闭</button>{canEdit&&<ActionGate anyOf={["sku_catalog.mapping#operate"]}><button className="btn-primary" disabled={busy||!data} onClick={save}>{pending?'重试原映射请求':'确认人工映射'}</button></ActionGate>}</div>
+  </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose} data-modal-close="true">关闭</button>{canEdit&&<ActionGate anyOf={["sku_catalog.mapping#operate"]}><button className="btn-primary" disabled={busy||!data} onClick={save}>{pending?'重试原映射请求':'确认人工映射'}</button></ActionGate>}</div>
  </div></div>;
 }

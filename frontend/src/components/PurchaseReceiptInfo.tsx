@@ -56,6 +56,6 @@ export function ReceiptHistory({order}:{order:any}) {
       <ActionGate anyOf={["suppliers.upload_purchase_receipt"]}><button className="text-blue-600 underline" onClick={()=>photo(batch.id)}>查看批次{batch.id}照片</button></ActionGate>
     </div>)}
     {error && <p role="alert" className="text-red-600">{error}</p>}
-    {preview && <div className="modal-overlay z-[95]" onClick={()=>setPreview(null)}><div role="dialog" aria-label="到货照片" className="bg-white rounded p-3 max-w-[95vw] max-h-[90vh] overflow-auto" onClick={e=>e.stopPropagation()}><button className="btn-secondary mb-2" onClick={()=>setPreview(null)}>关闭照片</button>{preview.type.includes("pdf") ? <a href={preview.url} target="_blank" rel="noreferrer">打开PDF凭证</a> : <img className="max-w-full" src={preview.url} alt="本批到货照片"/>}</div></div>}
+    {preview && <div className="modal-overlay z-[95]" ><div role="dialog" aria-label="到货照片" className="bg-white rounded p-3 max-w-[95vw] max-h-[90vh] overflow-auto" onClick={e=>e.stopPropagation()}><button className="btn-secondary mb-2" onClick={()=>setPreview(null)} data-modal-close="true">关闭照片</button>{preview.type.includes("pdf") ? <a href={preview.url} target="_blank" rel="noreferrer">打开PDF凭证</a> : <img className="max-w-full" src={preview.url} alt="本批到货照片"/>}</div></div>}
   </section>;
 }

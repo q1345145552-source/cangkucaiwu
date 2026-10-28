@@ -23,13 +23,13 @@ export function CostDuplicateDialog({challenge,onClose,onConfirm}:{challenge:any
   const [reason,setReason]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const blocked=!!(challenge.hard_duplicate||challenge.permission_required);
   async function confirm(){if(!reason.trim()){setError("请填写本次继续登记的原因");return;}if(busy)return;setBusy(true);try{await onConfirm({candidate_refs:challenge.candidates.map((v:any)=>v.ref),version:challenge.version,reason,target_ref:challenge.target_ref});}finally{setBusy(false);}}
-  return <div className="modal-overlay z-[100]"><div role="dialog" aria-modal="true" aria-label="跨渠道费用核对" className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] flex flex-col">
+  return <div className="modal-overlay z-[100]" ><div onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="跨渠道费用核对" className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] flex flex-col">
     <h2 className="font-semibold p-4 border-b">{challenge.permission_required?"需有原单权限的人员核查":challenge.hard_duplicate?"同一发票不能重复登记":"跨渠道疑似费用，请核对"}</h2>
     <div className="p-4 overflow-y-auto min-h-0 space-y-3 text-sm"><p>{challenge.message}</p>
       {(challenge.candidates||[]).map((c:any)=><div key={c.ref} className="border rounded p-3"><Link href={c.href} target="_blank" className="text-blue-600 underline">查看原单：{c.source_label} #{c.id}</Link><p>{c.date} · {fmtMoney(c.amount,c.currency)} · {c.status}</p><p>{c.reason}</p>{c.source_deleted&&<p>原行已删除，已付发票身份仍保留。</p>}</div>)}
       {!blocked&&<label className="block">本次继续登记原因（必填）<textarea aria-label="跨渠道继续登记原因" className="form-input" maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)}/></label>}
       {error&&<p role="alert" className="text-red-600">{error}</p>}
-    </div><div className="border-t p-4 flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>返回核对</button>{!blocked&&<button className="btn-primary" disabled={busy} onClick={confirm}>说明后继续登记</button>}</div>
+    </div><div className="border-t p-4 flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose} data-modal-close="true">返回核对</button>{!blocked&&<button className="btn-primary" disabled={busy} onClick={confirm}>说明后继续登记</button>}</div>
   </div></div>;
 }
 

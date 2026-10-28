@@ -6,7 +6,7 @@ import { checkExcel,excelApi,excelResponse,importScope } from '@/lib/excelImport
 
 export default function ExcelImportDialog({file,endpoint,title,resource=0,onClose,onImported}:{file:File;endpoint:string;title:string;resource?:number;onClose:()=>void;onImported:(value:any)=>void}) {
  const [preview,setPreview]=useState<any>(null),[pending,setPending]=useState<any>(null),[error,setError]=useState(''),[ack,setAck]=useState(false),[busy,setBusy]=useState(false);
- const labels:Record<string,string>={supplier_name:'供应商',supplier_id:'供应商编号',transport_method:'运输方式',cargo_type:'货物类型',origin_warehouse:'发货仓库',price_per_cbm:'单价',estimated_days:'时效',currency:'币种',received_date:'到账日期',amount:'金额',account_id:'收款账户编号',payer_name:'付款方',payment_method:'付款方式',remark:'备注',customer_id:'客户编号'};
+ const labels:Record<string,string>={quote_format:'报价格式',origin:'起点',destination:'终点',quantity_from:'重量或体积起',quantity_to:'重量或体积止',pricing_unit:'计量单位',unit_price:'单价',transit_days:'时效天数',minimum_charge:'最低收费',supplier_name:'供应商',supplier_id:'供应商编号',transport_method:'运输方式',cargo_type:'货物类型',origin_warehouse:'发货仓库',price_per_cbm:'单价',estimated_days:'时效',currency:'币种',received_date:'到账日期',amount:'金额',account_id:'收款账户编号',payer_name:'付款方',payment_method:'付款方式',remark:'备注',customer_id:'客户编号'};
  const [previewFor,setPreviewFor]=useState<{file:File;endpoint:string;resource:number}|null>(null);
  const matchesPreview=previewFor!==null&&previewFor.file===file&&previewFor.endpoint===endpoint&&previewFor.resource===resource;
  const generation=useRef(0);
@@ -35,7 +35,7 @@ export default function ExcelImportDialog({file,endpoint,title,resource=0,onClos
   if(result.mode!=='confirmed'||result.errors?.length||!(result.imported>0||result.existing>0))throw Error('未取得完整保存结果，请保留原请求核对');
   onImported(result);onClose();
  }catch(e:any){if(scope===importScope()&&startedGeneration===generation.current){setError(e.message||'保存未完成');if(e.detail?.code==='excel_import_not_saved'){try{acceptExcelImportRejection(kind,resource,e.detail);setPreview(e.detail.preview);setPreviewFor({file,endpoint,resource});setAck(false);}catch(proofError:any){setError(proofError.message);}}const draft=registrationDraft(kind,resource);setPending(draft?.unknown?draft:null);}}finally{locked.current=false;setBusy(false);}}
- return <div className="modal-overlay z-[80]"><div role="dialog" aria-modal="true" aria-label={title} className="bg-white rounded-xl w-full max-w-3xl max-h-[90dvh] flex flex-col"><div className="p-4 border-b"><h2 className="font-semibold">{title}</h2><p className="text-sm break-all">{file.name} · 仅支持.xlsx，最多500行、20列、2MB；不接受公式</p></div><div className="p-4 overflow-auto min-h-0 space-y-3 text-sm">
+ return <div className="modal-overlay z-[80]" ><div onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title} className="bg-white rounded-xl w-full max-w-3xl max-h-[90dvh] flex flex-col"><div className="p-4 border-b"><h2 className="font-semibold">{title}</h2><p className="text-sm break-all">{file.name} · 仅支持.xlsx，最多500行、20列、2MB；不接受公式</p></div><div className="p-4 overflow-auto min-h-0 space-y-3 text-sm">
   <p>预览不会保存；错误行必须全部修正后重新选文件。{endpoint.startsWith('/incoming')?'收款账户须由文件明确填写，不自动选择。':'供应商名称必须与当前入口一致，不覆盖旧报价。'}</p>
   {pending&&<p role="status" className="text-amber-700">保存结果待确认，仅允许原文件、原请求安全重试。</p>}
   {preview&&<p role="status">{preview.message} · 有效数据 {preview.rows?.length||0} 条</p>}
@@ -43,5 +43,5 @@ export default function ExcelImportDialog({file,endpoint,title,resource=0,onClos
   {preview?.rows?.map((row:any)=><div className="border rounded p-2 break-all" key={row.row_number}>第{row.row_number}行：{Object.entries(row).filter(([k])=>k!=='row_number').map(([k,v])=>`${labels[k]||k}: ${v??'—'}`).join(' · ')}</div>)}
   {preview?.valid&&!pending&&<label className="flex gap-2"><input type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/>已逐行核对，确认整批保存</label>}
   {error&&<p role="alert" className="text-red-600 break-words">{error}</p>}
- </div><div className="p-4 border-t flex flex-wrap justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>关闭 / 重新选文件</button><button className="btn-primary" disabled={busy||!matchesPreview||!preview||!pending&&(!ack||!preview.valid)} onClick={confirm}>{busy?'保存中…':pending?'原请求重试':'确认整批保存'}</button></div></div></div>;
+ </div><div className="p-4 border-t flex flex-wrap justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose} data-modal-close="true">关闭 / 重新选文件</button><button className="btn-primary" disabled={busy||!matchesPreview||!preview||!pending&&(!ack||!preview.valid)} onClick={confirm}>{busy?'保存中…':pending?'原请求重试':'确认整批保存'}</button></div></div></div>;
 }

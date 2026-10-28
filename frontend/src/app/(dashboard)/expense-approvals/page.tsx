@@ -325,7 +325,7 @@ export default function ExpenseApprovalsPage() {
       {/* 提申请/修改弹窗 */}
       {cost.dialog}
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { if (!submitting) setShowForm(false); }}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Receipt size={20} /><span className="font-semibold">{editingId ? "修改费用申请" : "提费用申请"}</span>
@@ -382,7 +382,7 @@ export default function ExpenseApprovalsPage() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button disabled={submitting} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button disabled={submitting} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["expense_approval.update_approval#operate","expense_approval.create_approval#operate","expense_approval.reject_approval#approve"]}><button disabled={submitting} onClick={()=>handleSubmit()} className="btn-primary text-sm px-6 py-2">{submitting ? "提交中…" : "提交"}</button></ActionGate>
             </div>
           </div>
@@ -391,7 +391,7 @@ export default function ExpenseApprovalsPage() {
 
       {/* 驳回弹窗 */}
       {rejectId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setRejectId(null)}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <XCircle size={20} /><span className="font-semibold">驳回费用申请</span>
@@ -403,7 +403,7 @@ export default function ExpenseApprovalsPage() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setRejectId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button onClick={() => setRejectId(null)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["expense_approval.reject_approval#approve"]}><button onClick={() => reject(rejectId)} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg">确认驳回</button></ActionGate>
             </div>
           </div>
@@ -412,7 +412,7 @@ export default function ExpenseApprovalsPage() {
 
       {/* 付款弹窗（上传付款凭证） */}
       {payId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { if (!paying) setPayId(null); }}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-green-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Banknote size={20} /><span className="font-semibold">确认付款</span>
@@ -433,7 +433,7 @@ export default function ExpenseApprovalsPage() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button disabled={paying} onClick={() => setPayId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button disabled={paying} onClick={() => setPayId(null)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["expense_approval.pay_approval#operate","expense_approval.reject_approval#approve"]}><button onClick={()=>confirmPay()} disabled={!payVoucherFile || paying}
                 className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{paying ? "付款中…" : "确认付款"}</button></ActionGate>
             </div>
@@ -443,7 +443,8 @@ export default function ExpenseApprovalsPage() {
 
       {/* 凭证大图预览 */}
       {previewImage && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onClick={() => { setPreviewImage(null); setPreviewError(false); }}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
+          <button type="button" aria-label="关闭图片预览" onClick={() => setPreviewImage(null)} className="absolute top-4 right-4 z-10 rounded-full bg-black/60 text-white w-10 h-10 text-2xl" data-modal-close="true">&times;</button>
           <div className="max-w-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
             {previewError ? (
               <div className="text-white text-lg px-6 py-4">图片打不开</div>

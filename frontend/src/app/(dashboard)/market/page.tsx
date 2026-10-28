@@ -175,7 +175,7 @@ export default function MarketPage() {
             <div><label className="form-label">描述</label><textarea className="form-input" rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} /></div>
             <div><label className="form-label">商品图片（可选）</label><input type="file" accept="image/png,image/jpeg,image/webp" disabled={imageUploading} onChange={e=>uploadImage(e.target.files?.[0])} />{imageUploading && <p className="text-sm">图片上传中...</p>}{form.image && <img src={"/"+form.image.replace(/^\//,"")} alt="商品图片" className="mt-2 h-24 object-contain" />}</div>
           </div>
-          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><ActionGate anyOf={["market.create_item#operate"]}><button onClick={handleCreate} disabled={imageUploading} className="px-4 py-2 bg-primary text-white rounded">上架</button></ActionGate></div>
+          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded" data-modal-close="true">取消</button><ActionGate anyOf={["market.create_item#operate"]}><button onClick={handleCreate} disabled={imageUploading} className="px-4 py-2 bg-primary text-white rounded">上架</button></ActionGate></div>
         </div></div>
       )}
     </>

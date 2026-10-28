@@ -402,7 +402,7 @@ async def create_category(name: str, current_user: User = Depends(get_current_us
 
 # ═══ Import Templates ════════════════════════════
 @_fixed_routes.get("/import-template/products")
-async def download_products_template(current_user: User = Depends(get_current_user),
+async def download_products_template(batch: bool = False, current_user: User = Depends(get_current_user),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """下载耗材产品导入模板"""
     from openpyxl import Workbook
@@ -410,21 +410,23 @@ async def download_products_template(current_user: User = Depends(get_current_us
     wb = Workbook(); ws = wb.active; ws.title = "耗材产品导入"
     hfill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
-    for c, h in enumerate(["供应商名称", "产品名", "产品规格", "规格报价", "单价", "单位", "币种", "标准SKU编码", "结构化规格JSON", "基本单位换算数"], 1):
-        cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hfill
-    for c, v in enumerate(["## 示例行（不会导入）", "快递袋", "一打80个", 80, 1], 1):
-        ws.cell(row=2, column=c, value=v)
-    for col, w in [('A',20),('B',16),('C',16),('D',12),('E',12)]:
-        ws.column_dimensions[col].width = w
+    columns=["品名","规格","单位","单价","币种","阶梯起量","阶梯止量","阶梯单价","生效日期","失效日期"]
+    if batch:columns.insert(0,"供应商名称")
+    for c,h in enumerate(columns,1):
+        cell=ws.cell(row=1,column=c,value=h);cell.font=hfont;cell.fill=hfill
+    values=["## 示例行（不会导入）","38×52cm","个",1,"THB",None,None,None,None,None]
+    if batch:values.insert(0,"## 示例供应商（不会导入）")
+    ws.append(values)
+    for cells in ws.columns:ws.column_dimensions[cells[0].column_letter].width=18
     notes=wb.create_sheet("填写说明")
-    for value in ["第一列以##开头的行是示例，不会导入；请删除示例行或在新行填写真实供应商和产品。", "只支持.xlsx；.xls请先另存为xlsx。重复已有产品时新增一条报价，不覆盖旧报价。", "旧全局5列、单供应商4列仍支持，新增列可留空；先预览再逐行确认，整批成功或整批不导入。", "同规格不同名称只建议，不自动合并；同编码不同规格拒绝。SKU编码请用文本。", "结构化规格示例：{\"material\":\"PE\",\"width\":{\"value\":38,\"unit\":\"cm\"},\"packaging\":\"single\"}", "单位请从目录清单选择；箱/包换算未知留空，不猜箱=多少个。", "每行明确保持未映射或选择本仓SKU、核对版本并填写映射依据；原报价与历史订单不会覆盖。"]:notes.append([value])
+    for value in ["耗材产品模板，仅.xlsx；不能上传物流模板。品名、规格、单位、单价、币种为基础列。", "第一列##示例行不会导入，请删除示例后填写。单供应商模板从对应供应商行下载并导入；批量模板额外保留供应商名称，按本仓名称严格核对。", "阶梯起量、阶梯单价、生效日期、失效日期成组填写；阶梯止量可空（无上限）。日期格式YYYY-MM-DD。阶梯起点包含、止点不包含。留空不新增阶梯版本，不猜有效期。", "填写阶梯/有效期时必须在预览里人工映射标准SKU，保持现有目录和报价权限、版本校验；每行一档，更多档位请在现有阶梯报价入口补充。", "先预览、逐行确认后整批保存；已有产品新增报价，不合并或覆盖旧报价。原高级SKU模板与旧版表头仍兼容。"]:notes.append([value])
     notes.column_dimensions['A'].width=110
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"})
 
 @_fixed_routes.get("/import-template/logistics")
-async def download_logistics_template(current_user: User = Depends(get_current_user),
+async def download_logistics_template(batch: bool = False, current_user: User = Depends(get_current_user),
     _perm=Depends(check_staff_permission("供应商管理"))):
     """下载跨境物流价格导入模板"""
     from openpyxl import Workbook
@@ -432,14 +434,18 @@ async def download_logistics_template(current_user: User = Depends(get_current_u
     wb = Workbook(); ws = wb.active; ws.title = "跨境物流价格导入"
     hfill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
-    for c, h in enumerate(["供应商名称", "运输方式", "货物类型", "发货仓库", "单价(元/方)", "时效", "币种"], 1):
-        cell = ws.cell(row=1, column=c, value=h); cell.font = hfont; cell.fill = hfill
-    for c, v in enumerate(["示例: 物流公司A", "陆运", "普货", "深圳仓", 800, "5-7天", "CNY"], 1):
-        ws.cell(row=2, column=c, value=v)
-    for col, w in [('A',22),('B',10),('C',10),('D',10),('E',12),('F',10),('G',8)]:
-        ws.column_dimensions[col].width = w
+    columns=["起点","终点","运输方式","重量或体积起","重量或体积止","计量单位","单价","币种","时效天数","最低收费","备注"]
+    if batch:columns.insert(0,"供应商名称")
+    for c,h in enumerate(columns,1):
+        cell=ws.cell(row=1,column=c,value=h);cell.font=hfont;cell.fill=hfill
+    values=["## 示例起点（不会导入）","曼谷","陆运",0,100,"kg",8,"THB",3,50,"示例，请删除后填写"]
+    if batch:values.insert(0,"## 示例供应商（不会导入）")
+    ws.append(values)
+    for cells in ws.columns:ws.column_dimensions[cells[0].column_letter].width=20
     notes=wb.create_sheet("填写说明")
-    notes.append(["仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。最多500行、20列、2MB，不接受公式。请删除示例行后填写实际数据。先预览，确认后整批保存。供应商必须与所选入口一致，多供应商请使用批量入口。单供应商也支持不含供应商名称的旧6列表头，列顺序可调整；币种明确填写THB/CNY，时效可留空。"] )
+    notes.append(["独立物流路线模板，不能上传耗材模板。运输方式：空运/海运/陆运；计量单位：kg/方/件；币种：THB/CNY。起止量、单价、时效天数和最低收费必须明确；起量可0，止量大于起量，时效为非负整数天，最低收费可0，备注可空。"])
+    notes.append(["仅.xlsx，.xls须另存，不能只改扩展名；最多500行、20列、2MB，不接受公式。删除##示例行再填写。单供应商模板从对应供应商行下载导入；批量版增加供应商名称。先只读预览，再明确确认，错误行整批不保存。"])
+    notes.append(["新路线报价独立保存，不套用旧每方价格算法，不猜货物类型，不自动换算kg/方/件。历史7列和单供应商6列物流表头继续兼容，既有报价不覆盖。"])
     notes.column_dimensions["A"].width=110
     output = io.BytesIO(); wb.save(output); output.seek(0)
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1503,9 +1509,13 @@ async def list_logistics_prices(supplier_id: int, current_user = Depends(get_cur
     _perm=Depends(check_staff_permission("供应商管理"))):
     await _require_supplier_owned(db, current_user, supplier_id)
     prices = (await db.execute(select(SupplierCrossBorderPrice).where(SupplierCrossBorderPrice.supplier_id == supplier_id).order_by(SupplierCrossBorderPrice.transport_method, SupplierCrossBorderPrice.origin_warehouse))).scalars().all()
+    from app.models.supplier import SupplierRoutePrice
+    route_prices=(await db.execute(select(SupplierRoutePrice).where(SupplierRoutePrice.supplier_id==supplier_id).order_by(SupplierRoutePrice.id.desc()))).scalars().all()
+    route_data=[{**{key:getattr(p,key) for key in ('id','origin','destination','transport_method','pricing_unit','currency','transit_days','remark')},
+        **{key:float(getattr(p,key)) for key in ('quantity_from','quantity_to','unit_price','minimum_charge')}} for p in route_prices]
     return {"data": [{"id": p.id, "transport_method": p.transport_method, "cargo_type": p.cargo_type,
                       "origin_warehouse": p.origin_warehouse, "price_per_cbm": p.price_per_cbm,
-                      "estimated_days": p.estimated_days, "currency": p.currency} for p in prices]}
+                      "estimated_days": p.estimated_days, "currency": p.currency} for p in prices],"route_data":route_data}
 
 @_supplier_routes.post("/{supplier_id}/logistics-prices")
 async def add_logistics_price(supplier_id: int, req: dict, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),

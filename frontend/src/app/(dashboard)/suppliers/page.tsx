@@ -1,4 +1,6 @@
 "use client";
+import { receiptPhotoError, readReceiptResponse } from "@/lib/receiptUpload";
+import { SUPPLIER_LOGISTICS_ENABLED } from "@/lib/supplierFeatures";
 import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
@@ -22,6 +24,7 @@ import ProductImportDialog from "@/components/ProductImportDialog";
 import StructuredSpecifications from "@/components/StructuredSpecifications";
 import { readSpecDraft,type SpecNode } from "@/lib/specifications";
 import SkuProductMapping from "@/components/SkuProductMapping";
+import SupplierRouteQuoteTable from "@/components/SupplierRouteQuoteTable";
 import SupplierQuoteEditor from "@/components/SupplierQuoteEditor";
 import PurchaseQuotePreview from "@/components/PurchaseQuotePreview";
 import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
@@ -110,6 +113,7 @@ export default function SuppliersPage() {
   const [productSupplierId, setProductSupplierId] = useState(0);
   const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: "" as string | number, unit_price: "" as string | number, unit: "个", remark: "", currency: "THB" });
   // Logistics prices
+  const [routePrices,setRoutePrices]=useState<any[]>([]);
   const [logisticsPrices, setLogisticsPrices] = useState<any[]>([]);
   const [showLogistics, setShowLogistics] = useState(false);
   const [logisticsSupplierId, setLogisticsSupplierId] = useState(0);
@@ -130,6 +134,10 @@ export default function SuppliersPage() {
   const [compareCat, setCompareCat] = useState(0);
   const [aiCompareResult, setAiCompareResult] = useState("");
   // Import
+  const logisticsInputRef=useRef<HTMLInputElement>(null);
+  const [quoteEntry,setQuoteEntry]=useState<"products"|"logistics"|"tiers"|null>(null);
+  const [entrySupplier,setEntrySupplier]=useState(0);
+  const canPayable=useMenuPermission("payable"),canPlans=useMenuPermission("payment_plans"),canInventory=useMenuPermission("inventory"),canAnalysis=useMenuPermission("concentration");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logisticsFile,setLogisticsFile] = useState<File|null>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
@@ -187,21 +195,19 @@ export default function SuppliersPage() {
   }
 
   // ─── Import ───
-  async function downloadTemplate(mode: string) {
+  async function downloadTemplate(mode: string,batch=true) {
     try {
-      await downloadExcel(`/suppliers/import-template/${mode}`,`${mode}_import_template.xlsx`);
+      await downloadExcel(`/suppliers/import-template/${mode}?batch=${batch}`,`${mode}_import_template.xlsx`);
     } catch (e: any) {
       toast("error", e.message || "下载失败");
     }
   }
 
-  async function handleSupplierImport() {
-    const file = fileInputRef.current?.files?.[0];
-    const sid = importSupplierId;
-    if (!file) return;
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    try { checkExcel(file); if(importMode === "products") setProductImportFile(file); else setLogisticsFile(file); }
-    catch(e:any) { toast("error",e.message); }
+  async function handleSupplierImport(mode:"products"|"logistics"="products") {
+    const input=mode==='products'?fileInputRef.current:logisticsInputRef.current;
+    const file=input?.files?.[0];if(!file)return;if(input)input.value='';
+    try {checkExcel(file);if(mode==='products')setProductImportFile(file);else setLogisticsFile(file);}
+    catch(e:any){toast('error',e.message);}
   }
 
   // ─── Products ───
@@ -413,7 +419,8 @@ export default function SuppliersPage() {
   }
   async function submitReceive() {
     if (!receiveTarget || receiptSubmitting) return;
-    if (!receivePhoto) { toast("error", "请上传到货照片"); return; }
+    const photoError=receiptPhotoError(receivePhoto);
+    if (photoError) { toast("error", photoError); return; }
     const items=[];
     for(const it of receiveTarget.items || []) {
       const raw=receiveQty[it.line_id] ?? "";
@@ -429,19 +436,33 @@ export default function SuppliersPage() {
     const payload={items,remark:receiveRemark,...(duty?{duty}:{})},headers=warehouseRequestHeaders();
     setReceiptSubmitting(true);
     try {
-      const fd = new FormData();fd.append("items",JSON.stringify(items));fd.append("file",receivePhoto);fd.append("remark",receiveRemark);
+      const fd = new FormData();fd.append("items",JSON.stringify(items));fd.append("file",receivePhoto!);fd.append("remark",receiveRemark);
       const r=await submitRegistration<any>("purchase_receipt",target.id,payload,async key=>{
         if(controlScope()!==value.scope)throw Error('账号或仓库已变化，未提交');
         fd.set("request_key",key);
         Object.entries(duty||{}).forEach(([k,v])=>fd.set(k,String(v)));
         const res=await fetch(`/api/v1/suppliers/purchase-orders/${target.id}/receive`,{method:"POST",headers,body:fd});
-        const result=await res.json();
+        const result=await readReceiptResponse(res);
         if(controlScope()!==value.scope)throw Error('账号或仓库已变化，原结果待核对，请回原仓沿用原请求重试');
-        if(!res.ok)throw new ApiError(res.status,result.detail || "收货失败");return result;
+        return result;
       });
       toast("success",`收货批次 #${r.receipt_event_id} 已保存${r.replayed ? "，未重复累计" : r.has_diff ? "，累计数量有差异，待老板复核" : ""}`);
-      setReceiveTarget(null);openReceipt();
-      if(poDetail?.id===target.id)await openPoDetail(target.id);
+      setReceiveTarget(null);
+      // Re-read committed detail; update every open order view without clearing sibling dialogs.
+      try {
+        const fresh=await api.get<any>(`/suppliers/purchase-orders/${target.id}`);
+        if(controlScope()!==value.scope)return;
+        setReceiptOrders(rows=>rows.map(po=>po.id===target.id?{...po,...fresh}:po));
+        setPoList(rows=>rows.map(po=>po.id===target.id?{...po,...fresh}:po));
+        setPoDetail((old:any)=>old?.id===target.id?fresh:old);
+      } catch {
+        if(controlScope()===value.scope){
+          const update=(rows:any[])=>rows.map(po=>po.id===target.id?{...po,receipt_status:r.receipt_status,flow_status:r.flow_status,arrival_photo:r.photo_path||po.arrival_photo}:po);
+          setReceiptOrders(update);setPoList(update);
+          setPoDetail((old:any)=>old?.id===target.id?{...old,receipt_status:r.receipt_status,flow_status:r.flow_status,arrival_photo:r.photo_path||old.arrival_photo}:old);
+          toast("error","收货已保存，详情刷新失败，请重新打开核对；不要另建收货批次");
+        }
+      }
       if(showDiscrepancies)openDiscrepancies();
     }catch(e:any){if(controlScope()===value.scope){
       if(e.detail?.code==='procurement_duty_changed')acceptDutyRejection('purchase_receipt',target.id,e.detail);
@@ -564,18 +585,18 @@ export default function SuppliersPage() {
   // ─── Logistics Prices ───
   async function openLogistics(sid: number) {
     setLogisticsSupplierId(sid);
-    try { const r = await api.get<any>(`/suppliers/${sid}/logistics-prices`); setLogisticsPrices(r.data); } catch { setLogisticsPrices([]); }
+    try { const r = await api.get<any>(`/suppliers/${sid}/logistics-prices`); setLogisticsPrices(r.data);setRoutePrices(r.route_data||[]); } catch { setLogisticsPrices([]);setRoutePrices([]); }
     setShowLogistics(true);
   }
   async function addLogisticsPrice() {
     try { await api.post(`/suppliers/${logisticsSupplierId}/logistics-prices`, { ...logisticsForm, price_per_cbm: logisticsForm.price_per_cbm || 0 }); toast("success", "报价添加成功");
-      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);
+      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);setRoutePrices(r.route_data||[]);
       setLogisticsForm({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "CNY" });
     } catch { toast("error", "添加失败"); }
   }
   async function deleteLogisticsPrice(pid: number) {
     try { await api.delete(`/suppliers/${logisticsSupplierId}/logistics-prices/${pid}`); toast("success", "已删除");
-      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);
+      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);setRoutePrices(r.route_data||[]);
     } catch { toast("error", "删除失败"); }
   }
 
@@ -615,7 +636,7 @@ export default function SuppliersPage() {
     try {
       const r = await api.get<any>(`/suppliers/${sid}`);
       try { const prods = await api.get<any>(`/suppliers/${sid}/products`); r.products = prods.data; } catch { r.products = []; }
-      try { const lp = await api.get<any>(`/suppliers/${sid}/logistics-prices`); r.logistics_prices = lp.data; } catch { r.logistics_prices = []; }
+      if(SUPPLIER_LOGISTICS_ENABLED){try { const lp = await api.get<any>(`/suppliers/${sid}/logistics-prices`); r.logistics_prices = lp.data;r.route_prices=lp.route_data||[]; } catch { r.logistics_prices = []; }}
       setDetail(r);
     } catch {}
   }
@@ -641,59 +662,69 @@ export default function SuppliersPage() {
     <>
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       {cost.dialog}
-      {logisticsFile&&<ExcelImportDialog file={logisticsFile} endpoint={importSupplierId?`/suppliers/${importSupplierId}/import/logistics`:'/suppliers/import/logistics'} title={`物流报价预览 · ${data.find((s:any)=>s.id===importSupplierId)?.name||'本仓多供应商'}`} resource={importSupplierId||0} onClose={()=>{setLogisticsFile(null);setImportSupplierId(null);}} onImported={r=>{toast('success',r.message);load();}}/>}
+      {SUPPLIER_LOGISTICS_ENABLED&&logisticsFile&&<ExcelImportDialog file={logisticsFile} endpoint={importSupplierId?`/suppliers/${importSupplierId}/import/logistics`:'/suppliers/import/logistics'} title={`物流报价预览 · ${data.find((s:any)=>s.id===importSupplierId)?.name||'本仓多供应商'}`} resource={importSupplierId||0} onClose={()=>{setLogisticsFile(null);setImportSupplierId(null);}} onImported={r=>{toast('success',r.message);load();}}/>}
       {productImportFile&&<ProductImportDialog canMap={canManageCatalog} file={productImportFile} supplierName={data.find((s:any)=>s.id===importSupplierId)?.name} supplierId={importSupplierId||undefined} onClose={()=>{setProductImportFile(null);setImportSupplierId(null);if(fileInputRef.current)fileInputRef.current.value="";}} onImported={r=>{toast("success",r.message);load();}}/>}
       {quoteProductId>0&&<SupplierQuoteEditor supplierId={productSupplierId} productId={quoteProductId} canEdit={canManageCatalog} onClose={()=>setQuoteProductId(0)} onDone={()=>toast("success","报价版本已保存，旧采购快照不变")}/>}
       {mappingProductId>0&&<SkuProductMapping productId={mappingProductId} canEdit={canManageCatalog} onClose={()=>setMappingProductId(0)} onDone={()=>{toast("success","人工映射已保存，历史订单不变");openProducts(productSupplierId);}}/>}
-      <div className="flex justify-between mb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <h1 className="page-title">{t("suppliers")}</h1>
-          <button onClick={() => { setFilterCat(1); setPage(1); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 1 ? "bg-blue-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-            耗材商
-          </button>
-          <button onClick={() => { setFilterCat(2); setPage(1); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 2 ? "bg-green-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-            物流
-          </button>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {(user as {role?:string}|null)?.role==='warehouse_admin'&&<button className="btn-secondary text-sm" onClick={()=>router.push('/suppliers/risk')}>采购风险看板</button>}
-          {canViewReport&&<button className="btn-secondary text-sm" onClick={()=>router.push("/suppliers/monthly-price-report")}>采购价差月报</button>}
-          {isAdmin && (
-            <>
-              {/* Template download */}
-              <button onClick={() => downloadTemplate("products")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>耗材模板</button>
-              <button onClick={() => downloadTemplate("logistics")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>物流模板</button>
+      <h1 className="page-title mb-3">{t("suppliers")}</h1>
+      <nav aria-label="供应商功能分组" className="overflow-x-auto touch-pan-x mb-4 rounded-xl border bg-white">
+        <div className="flex flex-nowrap w-max min-w-full divide-x py-3 [&_button]:whitespace-nowrap [&_button]:min-h-[44px] [&_button]:shrink-0">
+          <section aria-label="档案" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">档案</p><div className="flex flex-nowrap gap-2">
+            <button className="btn-secondary" onClick={()=>document.getElementById('supplier-records')?.scrollIntoView({behavior:'smooth'})}>供应商档案</button>
+            <button className={filterCat===1?'btn-primary':'btn-secondary'} onClick={()=>{setFilterCat(1);setPage(1);}}>耗材商</button>
+            {SUPPLIER_LOGISTICS_ENABLED&&<button className={filterCat===2?'btn-primary':'btn-secondary'} onClick={()=>{setFilterCat(2);setPage(1);}}>物流</button>}
+            {isAdmin&&<ActionGate anyOf={["suppliers.create_supplier"]}><button className="btn-primary" onClick={()=>{setForm({...form,category_id:SUPPLIER_LOGISTICS_ENABLED?filterCat:1});setShowForm(true);}}>新建供应商</button></ActionGate>}
+          </div></section>
+          <section aria-label="报价" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">报价</p><div className="flex flex-nowrap gap-2">
+            <button className="btn-secondary" onClick={()=>{setEntrySupplier(0);setQuoteEntry('products');}}>产品报价</button>
+            {SUPPLIER_LOGISTICS_ENABLED&&<button className="btn-secondary" onClick={()=>{setEntrySupplier(0);setQuoteEntry('logistics');}}>物流报价</button>}
+            {canReadCatalog&&<button className="btn-secondary" onClick={()=>{setEntrySupplier(0);setQuoteEntry('tiers');}}>阶梯与有效期</button>}
+            {isAdmin&&<>
+              <button onClick={()=>downloadTemplate('products')} className="btn-secondary">耗材模板</button>
+              {SUPPLIER_LOGISTICS_ENABLED&&<button onClick={()=>downloadTemplate('logistics')} className="btn-secondary">物流模板</button>}
               <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('products');setTimeout(()=>fileInputRef.current?.click(),0);}}>多供应商耗材导入</button>
-              <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('logistics');setTimeout(()=>fileInputRef.current?.click(),0);}}>多供应商物流导入</button>
-              <p className="text-xs">仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。单供应商入口在对应供应商行。</p>
-              <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleSupplierImport} className="hidden" />
-              <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }} className="hidden" />
-              <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
-              <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
-              <button onClick={openPriceMonitor}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><BarChart3 size={16}/>价格监控</button>
-              {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
-                <button onClick={openApprovals}
-                  className="border px-3 py-2 rounded text-sm flex items-center gap-1"><CheckCircle size={16}/>采购审批</button>
-              )}
-              <button onClick={openReceipt}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Package size={16}/>收货验收</button>
-              <button onClick={openDiscrepancies}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><AlertCircle size={16}/>收货差异</button>
-              <button onClick={() => openPoList()}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><FileText size={16}/>采购单列表</button>
-              <ActionGate anyOf={["suppliers.create_supplier"]}><button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button></ActionGate>
-            </>
-          )}
+              {SUPPLIER_LOGISTICS_ENABLED&&<button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('logistics');setTimeout(()=>logisticsInputRef.current?.click(),0);}}>多供应商物流导入</button>}
+            </>}
+          </div></section>
+          <section aria-label="采购" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">采购</p><div className="flex flex-nowrap gap-2">{isAdmin&&<>
+            <button onClick={()=>openPoList()} className="btn-secondary">采购单列表</button>
+            <button onClick={openApprovals} className="btn-secondary">采购审批</button>
+            <button onClick={openReceipt} className="btn-secondary">收货验收</button>
+            <button onClick={openDiscrepancies} className="btn-secondary">收货差异</button>
+          </>}</div></section>
+          <section aria-label="结算" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">结算</p><div className="flex flex-nowrap gap-2">
+            {canPayable&&<button className="btn-secondary" onClick={()=>router.push('/payable')}>应付账单</button>}
+            {canPlans&&<button className="btn-secondary" onClick={()=>router.push('/payment-plans')}>付款计划</button>}
+            {canPayable&&<button className="btn-secondary" onClick={async()=>{try{await downloadExcel('/payable/supplier-statement','supplier_statement.xlsx');}catch(e:any){toast('error',e.message||'对账单下载失败');}}}>对账单</button>}
+          </div></section>
+          <section aria-label="库存" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">库存</p><div className="flex flex-nowrap gap-2">
+            {canReadCatalog&&<button className="btn-secondary" onClick={()=>router.push('/supplier-skus')}>标准SKU目录</button>}
+            {canInventory&&<><button className="btn-secondary" onClick={()=>router.push('/inventory')}>耗材库存</button><button className="btn-secondary" onClick={()=>router.push('/inventory')}>盘点</button></>}
+          </div></section>
+          <section aria-label="分析" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">分析</p><div className="flex flex-nowrap gap-2">
+            {isAdmin&&<button className="btn-secondary" onClick={()=>{setCompareMode('product');setShowCompare(true);}}>比价</button>}
+            {canAnalysis&&<button className="btn-secondary" onClick={()=>router.push('/concentration')}>供应商采购分析</button>}
+            {isAdmin&&<><button className="btn-secondary" onClick={async()=>{try{const r=await api.get<any>('/suppliers/procurement-summary');setProcurement(r);setShowProcurement(true);}catch{}}}>采购汇总</button><button className="btn-secondary" onClick={openPriceMonitor}>价格监控</button></>}
+            {canViewReport&&<button className="btn-secondary" onClick={()=>router.push('/suppliers/monthly-price-report')}>采购价差月报</button>}
+            {user?.role==='warehouse_admin'&&<button className="btn-secondary" onClick={()=>router.push('/suppliers/risk')}>采购风险看板</button>}
+          </div></section>
         </div>
-      </div>
+      </nav>
+      {isAdmin&&<p className="text-xs text-gray-500 mb-3">顶栏模板为批量版（增加供应商名称）；单供应商模板在对应供应商行下载。仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。</p>}
+      <input ref={fileInputRef} aria-label="耗材产品导入文件" type="file" accept=".xlsx" onChange={()=>handleSupplierImport('products')} className="hidden" />
+      {SUPPLIER_LOGISTICS_ENABLED&&<input ref={logisticsInputRef} aria-label="物流报价导入文件" type="file" accept=".xlsx" onChange={()=>handleSupplierImport('logistics')} className="hidden" />}
+      <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)handleReceiptUpload(f);}} className="hidden" />
+      {quoteEntry&&<div className="modal-overlay" ><div role="dialog" aria-modal="true" aria-label="报价供应商选择" className="modal-content max-h-[90dvh] overflow-y-auto p-5 space-y-4" onClick={e=>e.stopPropagation()}>
+        <h2 className="font-semibold">{quoteEntry==='logistics'?'物流报价':quoteEntry==='tiers'?'阶梯与有效期':'产品报价'} · 选择供应商</h2>
+        <p className="text-sm text-gray-500">从当前供应商列表选择；更多供应商请先翻页或切换分类。阶梯与有效期沿用产品内的阶梯报价入口。</p>
+        <select className="form-input" aria-label="报价供应商" value={entrySupplier||''} onChange={e=>setEntrySupplier(+e.target.value)}><option value="">请选择供应商</option>{data.map((row:any)=><option value={row.id} key={row.id}>{row.name}</option>)}</select>
+        <div className="flex gap-3"><button className="btn-secondary" onClick={()=>setQuoteEntry(null)} data-modal-close="true">取消</button><button className="btn-primary" disabled={!entrySupplier} onClick={()=>{if(quoteEntry==='logistics')openLogistics(entrySupplier);else openProducts(entrySupplier);setQuoteEntry(null);}}>打开报价</button></div>
+      </div></div>}
+      <div id="supplier-records" />
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "name", label: "名称" },
         { key: "is_active", label: "状态", render: (value: string) => <span className={value === "false" ? "text-gray-400" : "text-green-600"}>{value === "false" ? "已停用" : "启用中"}</span> },
+        {key:'template',label:'单供应商模板',render:(_:any,row:any)=>isAdmin?<div className="flex gap-2"><button className="text-blue-600 text-xs min-h-[44px]" onClick={()=>downloadTemplate('products',false)}>耗材模板</button>{SUPPLIER_LOGISTICS_ENABLED&&<button className="text-blue-600 text-xs min-h-[44px]" onClick={()=>downloadTemplate('logistics',false)}>物流模板</button>}</div>:null},
         { key: "category_name", label: "类别", render: (v:any) => v ? <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${v==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>{v}</span> : "-" },
         { key: "contact_person", label: "联系人" },
         { key: "contact_info", label: "联系方式" },
@@ -706,9 +737,9 @@ export default function SuppliersPage() {
                 <button onClick={()=>openProducts(row.id)} className="text-green-600 hover:bg-green-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><Plus size={12}/>产品</button>
               </>
             )}
-            {row.category_id === 2 && (
+            {SUPPLIER_LOGISTICS_ENABLED && row.category_id === 2 && (
               <>
-                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button></ActionGate>
+                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>logisticsInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button></ActionGate>
                 <button onClick={()=>openLogistics(row.id)} className="text-orange-600 hover:bg-orange-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><TrendingUp size={12}/>物流</button>
               </>
             )}
@@ -723,13 +754,13 @@ export default function SuppliersPage() {
       
       {/* Products Modal */}
       {showProducts && (
-        <div className="modal-overlay z-50" onClick={()=>setShowProducts(false)}>
-          <div className="bg-white rounded-2xl w-[900px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="modal-overlay z-50" >
+          <div role="dialog" aria-modal="true" aria-label="产品报价" className="bg-white rounded-2xl w-[900px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
             {/* Header */}
             <div className="bg-blue-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <Package size={18} />
               <h2 className="font-semibold">产品定价 - {data.find((s:any)=>s.id===productSupplierId)?.name || ""}{(()=>{const s=data.find((x:any)=>x.id===productSupplierId); return s?.settlement_cycle ? ` （账期: ${s.settlement_cycle}）` : "";})()}</h2>
-              <button onClick={()=>setShowProducts(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none">&times;</button>
+              <button onClick={()=>setShowProducts(false)} className="ml-auto text-blue-200 hover:text-white text-lg leading-none" data-modal-close="true">&times;</button>
             </div>
             {/* Form */}
             <div className="p-5 space-y-3">
@@ -832,7 +863,7 @@ export default function SuppliersPage() {
               </div>
               <div className="flex gap-3">
                 <button disabled={data.find(s => s.id === productSupplierId)?.is_active === "false"} onClick={()=>openOrder(productSupplierId)} className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"><ShoppingCart size={16}/>下单</button>
-                <button onClick={()=>setShowProducts(false)} className="btn-secondary text-sm px-6 py-2">关闭</button>
+                <button onClick={()=>setShowProducts(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">关闭</button>
               </div>
             </div>
           </div>
@@ -841,12 +872,12 @@ export default function SuppliersPage() {
 
       {/* Order Modal */}
       {showOrder && (
-        <div className="modal-overlay z-50" onClick={()=>setShowOrder(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-[800px] max-h-[85vh] overflow-auto shadow-2xl" onClick={e=>e.stopPropagation()}>
             <div className="bg-green-600 text-white px-5 py-3.5 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <ShoppingCart size={18} />
               <h2 className="font-semibold">下单 - {data.find((s:any)=>s.id===orderSupplierId)?.name || ""}{(()=>{const s=data.find((x:any)=>x.id===orderSupplierId); return s?.settlement_cycle ? ` （账期: ${s.settlement_cycle}）` : "";})()}</h2>
-              <button onClick={()=>setShowOrder(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none">&times;</button>
+              <button onClick={()=>setShowOrder(false)} className="ml-auto text-green-200 hover:text-white text-lg leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5">
               <div className="overflow-x-auto touch-pan-x">
@@ -874,7 +905,7 @@ export default function SuppliersPage() {
                       <tr key={p.id} className={`border-b hover:bg-gray-50/50 transition-colors ${selected ? "bg-green-50/50" : ""} ${!hasPrice ? "opacity-50" : ""}`}>
                         <td className="px-3 py-3 text-center">
                           {hasPrice ? (
-                            <button disabled={!!orderDraft?.unknown} onClick={()=>toggleOrderItem(p.id)}
+                            <button disabled={!!orderDraft?.unknown} data-modal-edit="true" onClick={()=>toggleOrderItem(p.id)}
                               className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                                 selected ? "bg-green-600 border-green-600 text-white" : "border-gray-300 hover:border-green-400"
                               }`}>
@@ -897,11 +928,11 @@ export default function SuppliersPage() {
                         <td className="px-3 py-3 text-center">
                           {selected ? (
                             <div className="flex items-center justify-center gap-1">
-                              <button disabled={!!orderDraft?.unknown} onClick={()=>updateQuantity(p.id, qty-1)}
+                              <button disabled={!!orderDraft?.unknown} data-modal-edit="true" onClick={()=>updateQuantity(p.id, qty-1)}
                                 className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-sm">-</button>
                               <input aria-label={`采购数量 ${p.id}`} type="number" step="1" disabled={!!orderDraft?.unknown} value={qty} onChange={e=>updateQuantity(p.id, Number(e.target.value))}
                                 className="w-14 text-center border rounded py-1 text-sm" min="1" />
-                              <button disabled={!!orderDraft?.unknown} onClick={()=>updateQuantity(p.id, qty+1)}
+                              <button disabled={!!orderDraft?.unknown} data-modal-edit="true" onClick={()=>updateQuantity(p.id, qty+1)}
                                 className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-sm">+</button>
                             </div>
                           ) : (
@@ -929,7 +960,7 @@ export default function SuppliersPage() {
                 总价 <span className="font-semibold text-green-600 text-lg">{orderDraft?.unknown||(selectedOrderIds.some(id=>orderQuotes[id])&&!orderPricingCurrent)?"待核对":fmtMoney(orderTotal, orderCurrency)}</span>
               </div>
               <div className="flex gap-3">
-                <button onClick={()=>setShowOrder(false)} className="btn-secondary text-sm px-5 py-2">取消</button>
+                <button onClick={()=>setShowOrder(false)} className="btn-secondary text-sm px-5 py-2" data-modal-close="true">取消</button>
                 <ActionGate anyOf={["suppliers.create_purchase_order#operate"]}><button onClick={submitOrder} disabled={orderSubmitting || (!orderDraft?.unknown && orderTotal === 0)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
                     !orderDraft?.unknown&&orderTotal === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
@@ -943,8 +974,8 @@ export default function SuppliersPage() {
       )}
 
       {/* Logistics Prices Modal */}
-      {showLogistics && (
-        <div className="modal-overlay" onClick={()=>setShowLogistics(false)}>
+      {SUPPLIER_LOGISTICS_ENABLED && showLogistics && (
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl p-6 w-[700px] max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4">跨境物流报价</h2>
             <div className="grid grid-cols-3 gap-2 mb-2 p-3 bg-gray-50 rounded">
@@ -971,13 +1002,14 @@ export default function SuppliersPage() {
                   <td><ActionGate anyOf={["suppliers.delete_logistics_price#operate"]}><button onClick={()=>deleteLogisticsPrice(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></ActionGate></td></tr>)}</tbody></table>
               </div>
             )}
-            <button onClick={()=>setShowLogistics(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
+            <SupplierRouteQuoteTable rows={routePrices}/>
+            <button onClick={()=>setShowLogistics(false)} className="mt-4 px-4 py-2 border rounded text-sm" data-modal-close="true">关闭</button>
           </div></div>
       )}
 
       {/* Compare Modal */}
       {showCompare && (
-        <div className="modal-overlay" onClick={()=>setShowCompare(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl p-6 w-[800px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4 flex items-center gap-2"><Scale size={20}/>供应商比价</h2>
             <p className="text-sm text-gray-600 mb-3">按同币种、同规格和同单位分别比较，不跨币种排名或换算。标准SKU及阶梯价格请在对应供应商的报价入口核对。</p>
@@ -987,8 +1019,8 @@ export default function SuppliersPage() {
             <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">
               <button onClick={() => { setCompareMode("product"); setCompareData([]); setAiCompareResult(""); }}
                 className={`px-4 py-1.5 rounded-md text-sm ${compareMode==="product"?"bg-white shadow font-medium":"text-gray-500"}`}>耗材比价</button>
-              <button onClick={() => { setCompareMode("logistics"); setCompareData([]); setAiCompareResult(""); }}
-                className={`px-4 py-1.5 rounded-md text-sm ${compareMode==="logistics"?"bg-white shadow font-medium":"text-gray-500"}`}>物流比价</button>
+              {SUPPLIER_LOGISTICS_ENABLED&&<button onClick={() => { setCompareMode("logistics"); setCompareData([]); setAiCompareResult(""); }}
+                className={`px-4 py-1.5 rounded-md text-sm ${compareMode==="logistics"?"bg-white shadow font-medium":"text-gray-500"}`}>物流比价</button>}
             </div>
 
             {compareMode === "product" ? (
@@ -997,7 +1029,7 @@ export default function SuppliersPage() {
                 <input className="border rounded px-3 py-2 text-sm flex-1 min-w-[150px]" placeholder="规格（可选）" value={compareSpec} onChange={e=>setCompareSpec(e.target.value)} />
                 <select className="border rounded px-3 py-2 text-sm" value={compareCat} onChange={e=>setCompareCat(+e.target.value)}>
                   <option value={0}>全部类别</option>
-                  {categories.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.filter((c:any)=>SUPPLIER_LOGISTICS_ENABLED||c.id===1).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <button onClick={()=>doCompare("product")} className="btn-primary">查询</button>
               </div>
@@ -1040,13 +1072,13 @@ export default function SuppliersPage() {
                 {aiCompareResult && <div className="bg-purple-50 rounded-lg p-4 text-sm whitespace-pre-wrap">{aiCompareResult}</div>}
               </>
             )}
-            <button onClick={()=>setShowCompare(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
+            <button onClick={()=>setShowCompare(false)} className="mt-4 px-4 py-2 border rounded text-sm" data-modal-close="true">关闭</button>
           </div></div>
       )}
 
       {/* Detail Modal */}
       {detail && (
-        <div className="modal-overlay" onClick={()=>setDetail(null)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-[700px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             {/* Header - Blue Bar */}
             <div className="sticky top-0 bg-blue-600 text-white px-5 py-3.5 rounded-t-xl flex items-center justify-between z-10">
@@ -1059,7 +1091,7 @@ export default function SuppliersPage() {
                   </span>
                 )}
               </div>
-              <button onClick={()=>setDetail(null)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={()=>setDetail(null)} className="text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
 
             <div className="p-6 space-y-5">
@@ -1123,7 +1155,7 @@ export default function SuppliersPage() {
               )}
 
               {/* 第四块：物流报价（仅物流商） */}
-              {detail.category_id === 2 && (
+              {SUPPLIER_LOGISTICS_ENABLED && detail.category_id === 2 && (
                 <div className="bg-gray-50 rounded-xl p-5">
                   <h3 className="font-semibold text-sm text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
                     <Truck size={15} className="text-orange-500"/>物流报价
@@ -1141,12 +1173,13 @@ export default function SuppliersPage() {
                       </tr>)}</tbody></table>
                     </div>
                   )}
+                  <SupplierRouteQuoteTable rows={detail.route_prices||[]}/>
                 </div>
               )}
 
               {/* 底部操作 */}
               <div className="flex justify-end pt-2">
-                <button onClick={()=>setDetail(null)} className="px-5 py-2 border rounded-lg text-sm hover:bg-gray-50">关闭</button>
+                <button onClick={()=>setDetail(null)} className="px-5 py-2 border rounded-lg text-sm hover:bg-gray-50" data-modal-close="true">关闭</button>
               </div>
             </div>
           </div></div>
@@ -1154,11 +1187,11 @@ export default function SuppliersPage() {
 
       {/* Procurement Modal */}
       {showProcurement && (
-        <div className="modal-overlay" onClick={()=>setShowProcurement(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-[92vw] max-w-6xl max-h-[90vh] overflow-auto p-6" onClick={e=>e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">采购汇总报表</h2>
-              <button onClick={()=>setShowProcurement(false)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">关闭</button>
+              <button onClick={()=>setShowProcurement(false)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50" data-modal-close="true">关闭</button>
             </div>
 
             {/* 顶部总览卡片 */}
@@ -1245,13 +1278,13 @@ export default function SuppliersPage() {
 
       {/* 价格监控 */}
       {showPriceMonitor && (
-        <div className="modal-overlay z-50" onClick={() => setShowPriceMonitor(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-xl w-[760px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-indigo-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <BarChart3 size={20} />
               <h2 className="font-semibold">价格监控</h2>
               <span className="text-xs text-indigo-200 ml-2">偏高阈值 {priceThreshold}%</span>
-              <button onClick={() => setShowPriceMonitor(false)} className="ml-auto text-indigo-200 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setShowPriceMonitor(false)} className="ml-auto text-indigo-200 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-5">
               {/* 价格异常列表 */}
@@ -1373,7 +1406,7 @@ export default function SuppliersPage() {
               )}
             </div>
             <div className="border-t px-5 py-3 text-center">
-              <button onClick={() => setShowPriceMonitor(false)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setShowPriceMonitor(false)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1381,13 +1414,13 @@ export default function SuppliersPage() {
 
       {/* 采购审批弹窗 */}
       {showApprovals && (
-        <div className="modal-overlay z-[60]" onClick={() => setShowApprovals(false)}>
+        <div className="modal-overlay z-[60]" >
           <div className="bg-white rounded-xl w-[820px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <CheckCircle size={20} />
               <h2 className="font-semibold">采购审批</h2>
               <span className="text-xs text-blue-200 ml-2">门槛 {approvalThreshold} 泰铢</span>
-              <button onClick={() => setShowApprovals(false)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setShowApprovals(false)} className="ml-auto text-blue-200 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-5">
               {/* 门槛只读（去配置中心修改） */}
@@ -1450,23 +1483,23 @@ export default function SuppliersPage() {
         </div>
       )}
 
-      {dutyDialog?.action==='approve'&&<div className="modal-overlay z-[70]" onClick={()=>!dutyBusy&&setDutyDialog(null)}>
+      {dutyDialog?.action==='approve'&&<div className="modal-overlay z-[70]" >
         <div role="dialog" aria-label="采购审批职责确认" className="bg-white rounded-xl p-5 w-[480px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
           <h3 className="font-semibold mb-3">采购审批职责确认 · PO #{dutyDialog.po.id}</h3>
           <ProcurementDutyFields value={dutyDialog} onChange={setDutyDialog} onRefresh={()=>startDuty(dutyDialog.po,'approve')}/>
-          <div className="flex gap-3 justify-end mt-4"><button onClick={()=>setDutyDialog(null)} disabled={dutyBusy} className="btn-secondary">取消</button><ActionGate anyOf={["suppliers.approve_purchase"]}><button disabled={dutyBusy} onClick={confirmApprove} className="btn-primary">{dutyBusy?'提交中...':'确认通过'}</button></ActionGate></div>
+          <div className="flex gap-3 justify-end mt-4"><button onClick={()=>setDutyDialog(null)} disabled={dutyBusy} className="btn-secondary" data-modal-close="true">取消</button><ActionGate anyOf={["suppliers.approve_purchase"]}><button disabled={dutyBusy} onClick={confirmApprove} className="btn-primary">{dutyBusy?'提交中...':'确认通过'}</button></ActionGate></div>
         </div>
       </div>}
       {/* 驳回原因弹窗 */}
       {rejectTarget && (
-        <div className="modal-overlay z-[70]" onClick={() => setRejectTarget(null)}>
+        <div className="modal-overlay z-[70]" >
           <div className="bg-white rounded-xl w-[420px] max-w-[95vw] max-h-[85vh] overflow-auto p-5" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold mb-3">驳回采购单 {rejectTarget.order_number}</h3>
             <ProcurementDutyFields value={dutyDialog} onChange={setDutyDialog} onRefresh={()=>startDuty(rejectTarget,'reject')}/>
             <textarea value={rejectReason} disabled={dutyDialog?.locked} onChange={e => setRejectReason(e.target.value)}
               className="w-full border rounded px-3 py-2 text-sm" rows={3} placeholder="填写驳回原因" />
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setRejectTarget(null)} className="px-4 py-2 border rounded text-sm">取消</button>
+              <button onClick={() => setRejectTarget(null)} className="px-4 py-2 border rounded text-sm" data-modal-close="true">取消</button>
               <ActionGate anyOf={["suppliers.reject_purchase"]}><button onClick={confirmReject} disabled={dutyBusy} className="px-4 py-2 bg-red-500 text-white rounded text-sm">确认驳回</button></ActionGate>
             </div>
           </div>
@@ -1475,12 +1508,12 @@ export default function SuppliersPage() {
 
       {/* 非最低价原因弹窗 */}
       {showReasonDialog && (
-        <div className="modal-overlay z-[60]" onClick={() => setShowReasonDialog(false)}>
+        <div className="modal-overlay z-[60]" >
           <div className="bg-white rounded-xl w-[560px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-amber-500 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <AlertCircle size={20} />
               <h2 className="font-semibold">非最低价采购原因</h2>
-              <button onClick={() => setShowReasonDialog(false)} className="ml-auto text-amber-100 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setShowReasonDialog(false)} className="ml-auto text-amber-100 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <p className="text-sm text-gray-600">以下产品所选价格高于该产品最低报价，需填写采购原因后才能提交。</p>
@@ -1504,7 +1537,7 @@ export default function SuppliersPage() {
               ))}
             </div>
             <div className="border-t px-5 py-3 flex justify-end gap-3">
-              <button onClick={() => setShowReasonDialog(false)} className="px-4 py-2 border rounded text-sm">取消</button>
+              <button onClick={() => setShowReasonDialog(false)} className="px-4 py-2 border rounded text-sm" data-modal-close="true">取消</button>
               <ActionGate anyOf={["suppliers.create_purchase_order#operate"]}><button onClick={confirmReasonSubmit} className="px-4 py-2 bg-amber-500 text-white rounded text-sm">确认提交</button></ActionGate>
             </div>
           </div>
@@ -1513,10 +1546,11 @@ export default function SuppliersPage() {
 
       {/* Create Supplier Form */}
       {showForm && (
-        <div className="modal-overlay" onClick={()=>setShowForm(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl p-6 w-[500px] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
             <h2 className="font-semibold mb-4">新建供应商</h2>
             <div className="grid grid-cols-2 gap-3">
+              <div><label className="form-label">类型</label><select aria-label="供应商类型" className="form-input" value={form.category_id||1} onChange={e=>setForm({...form,category_id:+e.target.value})}><option value={1}>耗材商</option>{SUPPLIER_LOGISTICS_ENABLED&&<option value={2}>物流</option>}</select></div>
               <div><label className="form-label">名称</label><input className="form-input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></div>
 
               <div><label className="form-label">联系人</label><input className="form-input" value={form.contact_person} onChange={e=>setForm({...form,contact_person:e.target.value})} /></div>
@@ -1533,18 +1567,18 @@ export default function SuppliersPage() {
             </div>
             <div className="mt-3"><label className="form-label">合作内容</label><textarea className="form-input" rows={2} value={form.cooperation_content} onChange={e=>setForm({...form,cooperation_content:e.target.value})} /></div>
 
-            <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><ActionGate anyOf={["suppliers.create_supplier#operate"]}><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">保存</button></ActionGate></div>
+            <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded" data-modal-close="true">取消</button><ActionGate anyOf={["suppliers.create_supplier#operate"]}><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">保存</button></ActionGate></div>
           </div></div>
       )}
 
       {/* 收货验收弹窗 */}
       {showReceipt && (
-        <div className="modal-overlay z-50" onClick={() => setShowReceipt(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-xl w-[880px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-green-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <Package size={20} />
               <h2 className="font-semibold">采购收货验收</h2>
-              <button onClick={() => setShowReceipt(false)} className="ml-auto text-green-200 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setShowReceipt(false)} className="ml-auto text-green-200 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5">
               {receiptOrders.length === 0 ? (
@@ -1592,7 +1626,7 @@ export default function SuppliersPage() {
               )}
             </div>
             <div className="border-t px-5 py-3 text-center">
-              <button onClick={() => setShowReceipt(false)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setShowReceipt(false)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1600,12 +1634,12 @@ export default function SuppliersPage() {
 
       {/* 收货录入弹窗 */}
       {receiveTarget && (
-        <div className="modal-overlay z-[60]" onClick={() => setReceiveTarget(null)}>
+        <div className="modal-overlay z-[60]" >
           <div role="dialog" aria-label="登记本次收货" className="bg-white rounded-xl w-[760px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-green-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <CheckCircle size={20} />
               <h2 className="font-semibold">登记本次收货 - {receiveTarget.order_number}</h2>
-              <button onClick={() => setReceiveTarget(null)} className="ml-auto text-green-200 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setReceiveTarget(null)} className="ml-auto text-green-200 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div className="text-sm text-gray-600">供应商：{receiveTarget.supplier_name || "-"} · 金额：{receiveTarget.total_amount}</div>
@@ -1620,12 +1654,12 @@ export default function SuppliersPage() {
               <label className="block text-sm">本次备注<textarea className="form-input" maxLength={1000} value={receiveRemark} onChange={e=>setReceiveRemark(e.target.value)}/></label>
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">到货照片 <span className="text-red-400">*</span></label>
-                <input type="file" accept="image/*" onChange={e => setReceivePhoto(e.target.files?.[0] || null)} className="text-sm text-gray-500" />
+                <input type="file" accept="image/*" onChange={e => {const file=e.target.files?.[0]||null;const error=receiptPhotoError(file);if(error){setReceivePhoto(null);e.target.value="";toast("error",error);}else setReceivePhoto(file);}} className="text-sm text-gray-500" />
                 {receivePhoto && <div className="text-xs text-green-600 mt-1">{receivePhoto.name}</div>}
               </div>
             </div>
             <div className="border-t px-5 py-3 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
-              <button onClick={() => setReceiveTarget(null)} className="btn-secondary text-sm px-5 py-2">取消</button>
+              <button onClick={() => setReceiveTarget(null)} className="btn-secondary text-sm px-5 py-2" data-modal-close="true">取消</button>
               <ActionGate anyOf={["suppliers.receive_purchase"]}><button onClick={submitReceive} disabled={receiptSubmitting}
                 className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
                 {receiptSubmitting ? "提交中..." : "确认本次收货"}
@@ -1637,12 +1671,12 @@ export default function SuppliersPage() {
 
       {/* 收货差异列表弹窗 */}
       {showDiscrepancies && (
-        <div className="modal-overlay z-50" onClick={() => setShowDiscrepancies(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-xl w-[900px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <AlertCircle size={20} />
               <h2 className="font-semibold">收货差异列表</h2>
-              <button onClick={() => setShowDiscrepancies(false)} className="ml-auto text-red-200 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setShowDiscrepancies(false)} className="ml-auto text-red-200 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5">
               {discrepancies.length === 0 ? (
@@ -1679,7 +1713,7 @@ export default function SuppliersPage() {
               )}
             </div>
             <div className="border-t px-5 py-3 text-center">
-              <button onClick={() => setShowDiscrepancies(false)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setShowDiscrepancies(false)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1687,12 +1721,12 @@ export default function SuppliersPage() {
 
       {/* 采购单列表弹窗 */}
       {showPoList && (
-        <div className="modal-overlay z-50" onClick={() => setShowPoList(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-xl w-[960px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <FileText size={20} />
               <h2 className="font-semibold">采购单列表</h2>
-              <button onClick={() => setShowPoList(false)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setShowPoList(false)} className="ml-auto text-blue-200 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5">
               <label className="flex items-center gap-2 mb-3 text-sm">采购状态
@@ -1753,7 +1787,7 @@ export default function SuppliersPage() {
               )}
             </div>
             <div className="border-t px-5 py-3 text-center">
-              <button onClick={() => setShowPoList(false)} className="text-sm text-gray-400">关闭</button>
+              <button onClick={() => setShowPoList(false)} className="text-sm text-gray-400" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>
@@ -1761,12 +1795,12 @@ export default function SuppliersPage() {
 
       {/* 采购单明细弹窗 */}
       {poDetail && (
-        <div className="modal-overlay z-[60]" onClick={() => setPoDetail(null)}>
+        <div className="modal-overlay z-[60]" >
           <div className="bg-white rounded-xl w-[720px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-xl flex items-center gap-2 sticky top-0 z-10">
               <FileText size={20} />
               <h2 className="font-semibold">采购单明细 - {poDetail.order_number}</h2>
-              <button onClick={() => setPoDetail(null)} className="ml-auto text-blue-200 hover:text-white text-xl">&times;</button>
+              <button onClick={() => setPoDetail(null)} className="ml-auto text-blue-200 hover:text-white text-xl" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -1807,7 +1841,7 @@ export default function SuppliersPage() {
                 <button onClick={() => window.open(uploadUrl(poDetail.receipt_file), "_blank")} className="bg-amber-500 text-white px-4 py-2 rounded text-sm flex items-center gap-1"><Eye size={14}/>查看回执</button>
               )}
               <button onClick={() => downloadPoPdf(poDetail)} className="bg-green-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>下载PDF</button>
-              <button onClick={() => setPoDetail(null)} className="btn-secondary text-sm px-5 py-2">关闭</button>
+              <button onClick={() => setPoDetail(null)} className="btn-secondary text-sm px-5 py-2" data-modal-close="true">关闭</button>
             </div>
           </div>
         </div>

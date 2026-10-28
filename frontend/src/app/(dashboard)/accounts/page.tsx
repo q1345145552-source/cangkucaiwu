@@ -170,13 +170,13 @@ export default function AccountsPage() {
 
       {/* 新建/编辑弹窗 */}
       {canCreateAccount && showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Edit size={22} />
               <h2 className="text-lg font-semibold">{editingId ? "编辑收款账户" : "新建收款账户"}</h2>
               <div className="flex-1" />
-              <button onClick={() => setShowForm(false)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setShowForm(false)} className="text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
 
             <div className="p-6 space-y-5">
@@ -273,7 +273,7 @@ export default function AccountsPage() {
             </div>
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payment_accounts.update_account#operate","payment_accounts.create_account#operate"]}><button onClick={handleSave} className="btn-primary min-w-[80px]">{editingId ? "保存修改" : "新建账户"}</button></ActionGate>
             </div>
           </div>
@@ -288,7 +288,7 @@ export default function AccountsPage() {
         <div className="form-group"><label className="form-label">日期</label><input type="date" className="form-input" value={transfer.transfer_date} onChange={e => setTransfer({ ...transfer, transfer_date: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={transfer.amount} onChange={e => setTransfer({ ...transfer, amount: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">备注</label><input className="form-input" value={transfer.remark} onChange={e => setTransfer({ ...transfer, remark: e.target.value })} /></div>
-        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={transferring} onClick={() => setShowTransfer(false)}>取消</button><ActionGate anyOf={["payment_accounts.create_transfer"]}><button className="btn-primary" disabled={transferring || !transfer.amount || !transfer.from_account_id || !transfer.to_account_id} onClick={saveTransfer}>确认转账</button></ActionGate></div>
+        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={transferring} onClick={() => setShowTransfer(false)} data-modal-close="true">取消</button><ActionGate anyOf={["payment_accounts.create_transfer"]}><button className="btn-primary" disabled={transferring || !transfer.amount || !transfer.from_account_id || !transfer.to_account_id} onClick={saveTransfer}>确认转账</button></ActionGate></div>
       </div></div>}
     </>
   );

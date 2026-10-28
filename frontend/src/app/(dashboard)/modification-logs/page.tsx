@@ -274,11 +274,11 @@ export default function ModificationLogsPage() {
 
       {/* 详情弹窗 */}
       {detail && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDetail(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-gray-800 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3 sticky top-0">
               <h2 className="text-lg font-semibold">修改详情</h2>
-              <button onClick={() => setDetail(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none">&times;</button>
+              <button onClick={() => setDetail(null)} className="ml-auto text-gray-300 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div className="flex items-center gap-2">

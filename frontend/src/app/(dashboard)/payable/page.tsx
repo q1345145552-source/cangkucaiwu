@@ -498,7 +498,7 @@ function PayablePageContent() {
       {cost.dialog}
       {/* 新建账单弹窗 */}
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <FileText size={22} />
@@ -551,7 +551,7 @@ function PayablePageContent() {
             </div>
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payable.create_bill"]}><button onClick={()=>handleCreate()} disabled={creating} className="btn-primary min-w-[80px]">{creating ? "保存中" : "保存"}</button></ActionGate>
             </div>
           </div></div>
@@ -559,7 +559,7 @@ function PayablePageContent() {
 
       {/* 编辑弹窗 */}
       {showEditModal && editingBill && (
-        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-orange-500 text-white px-6 py-4 rounded-t-xl flex items-center gap-3 shrink-0">
               <Edit size={22} />
@@ -616,7 +616,7 @@ function PayablePageContent() {
             </div>
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
-              <button onClick={() => setShowEditModal(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowEditModal(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payable.update_bill#operate"]}><button onClick={()=>handleEdit()} className="btn-primary min-w-[80px]">保存修改</button></ActionGate>
             </div>
           </div>
@@ -625,7 +625,7 @@ function PayablePageContent() {
 
       {/* 作废弹窗 */}
       {showVoidModal && voidTarget && (
-        <div className="modal-overlay" onClick={() => setShowVoidModal(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-6 py-4 rounded-t-xl flex items-center gap-3 shrink-0">
               <Trash2 size={22} />
@@ -645,7 +645,7 @@ function PayablePageContent() {
               <div className="text-xs text-gray-400">作废后这条账单会从应付里去掉，但记录会保留</div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
-              <button onClick={() => setShowVoidModal(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowVoidModal(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payable.void_bill#operate"]}><button onClick={handleVoid} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 min-w-[100px]">确认作废</button></ActionGate>
             </div>
           </div>
@@ -654,7 +654,7 @@ function PayablePageContent() {
 
       {/* 付款弹窗 */}
       {showPayModal && payingRow && (
-        <div className="modal-overlay" onClick={() => setShowPayModal(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-green-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Receipt size={22} />
@@ -705,7 +705,7 @@ function PayablePageContent() {
             </div>
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-              <button onClick={() => setShowPayModal(false)} className="btn-secondary min-w-[80px]">取消</button>
+              <button onClick={() => setShowPayModal(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
               <ActionGate anyOf={["payable.pay_bill"]}><button onClick={handlePay} disabled={paymentSaving || !payAccountId} className="btn-primary min-w-[80px]">确认付款</button></ActionGate>
             </div>
           </div></div>
@@ -713,10 +713,10 @@ function PayablePageContent() {
 
       {/* 图片预览弹窗 */}
       {previewUrl && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={() => { setPreviewUrl(null); setPreviewLabel(""); }}>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center"  data-modal-overlay="true">
           <div className="relative max-w-[90vw] max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <div className="absolute top-2 left-4 text-white text-sm bg-black/50 px-3 py-1 rounded-full z-10">{previewLabel}</div>
-            <button onClick={() => { setPreviewUrl(null); setPreviewLabel(""); }} className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 rounded-full w-8 h-8 flex items-center justify-center z-10 text-lg leading-none">&times;</button>
+            <button onClick={() => { setPreviewUrl(null); setPreviewLabel(""); }} className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 rounded-full w-8 h-8 flex items-center justify-center z-10 text-lg leading-none" data-modal-close="true">&times;</button>
             {previewUrl.endsWith(".pdf") ? (
               <div className="bg-white rounded-xl p-8 text-center">
                 <FileText size={48} className="mx-auto text-gray-400 mb-4" />
@@ -732,11 +732,11 @@ function PayablePageContent() {
 
       {/* 趋势图弹窗 */}
       {showTrend && (
-        <div className="modal-overlay" onClick={() => setShowTrend(false)}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-indigo-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <TrendingUp size={22} /><h2 className="text-lg font-semibold">订单量 vs 耗材支出 趋势对比</h2>
-              <div className="flex-1" /><button onClick={() => setShowTrend(false)} className="text-indigo-200 hover:text-white text-xl leading-none">&times;</button>
+              <div className="flex-1" /><button onClick={() => setShowTrend(false)} className="text-indigo-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6">
               {/* SVG Chart */}

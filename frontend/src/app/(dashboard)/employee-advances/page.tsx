@@ -311,26 +311,26 @@ function EmployeeAdvancePageContent() {
         </div>
       )}
 
-      {voidId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      {voidId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" data-modal-overlay="true">
         <div role="dialog" aria-label="作废预支" className="bg-white rounded-xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto space-y-4">
           <h2 className="font-semibold">确认作废预支</h2>
           <p className="text-sm text-red-600">作废后当作没预支过 关联的支出也会删除</p>
           <label className="block text-sm">作废原因 <span className="text-red-500">*</span>
             <textarea aria-label="作废原因" required maxLength={500} value={voidReason} onChange={e => setVoidReason(e.target.value)} className="form-input w-full mt-2" placeholder="请填写作废原因"/>
           </label>
-          <div className="flex justify-end gap-3"><button disabled={voiding} onClick={() => setVoidId(null)}>取消</button><ActionGate anyOf={["employee_advance.delete_advance#operate"]}><button disabled={voiding} className="btn-primary" onClick={handleVoid}>{voiding ? "作废中…" : "确认作废"}</button></ActionGate></div>
+          <div className="flex justify-end gap-3"><button disabled={voiding} onClick={() => setVoidId(null)} data-modal-close="true">取消</button><ActionGate anyOf={["employee_advance.delete_advance#operate"]}><button disabled={voiding} className="btn-primary" onClick={handleVoid}>{voiding ? "作废中…" : "确认作废"}</button></ActionGate></div>
         </div>
       </div>}
-      {rejectId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      {rejectId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" data-modal-overlay="true">
         <div role="dialog" aria-label="驳回预支" className="bg-white rounded-xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto space-y-4">
           <h2 className="font-semibold">驳回预支</h2>
           <textarea aria-label="驳回原因" placeholder="请填写驳回原因" maxLength={500} value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="form-input w-full"/>
-          <div className="flex justify-end gap-3"><button disabled={reviewing !== null} onClick={() => setRejectId(null)}>取消</button><ActionGate anyOf={["employee_advance.approve_advance"]}><button disabled={reviewing !== null} className="btn-primary" onClick={() => review(rejectId, true)}>确认驳回</button></ActionGate></div>
+          <div className="flex justify-end gap-3"><button disabled={reviewing !== null} onClick={() => setRejectId(null)} data-modal-close="true">取消</button><ActionGate anyOf={["employee_advance.approve_advance"]}><button disabled={reviewing !== null} className="btn-primary" onClick={() => review(rejectId, true)}>确认驳回</button></ActionGate></div>
         </div>
       </div>}
       {/* 记预支弹窗 */}
       {canWrite && showForm && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => { if (!saving) setShowForm(false); }}>
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <DollarSign size={20} /><span className="font-semibold">记预支</span>
@@ -397,7 +397,7 @@ function EmployeeAdvancePageContent() {
               </div>
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3">
-              <button disabled={saving} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              <button disabled={saving} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>
               {form.funding_source==='company_account'&&<p role="alert" className="order-first w-full text-sm text-red-600">{balanceWarningText(paymentAccounts.find(a=>a.id===form.payment_account_id)?.current_balance,form.amount)}</p>}
               <ActionGate anyOf={["employee_advance.create_advance#operate"]}><button disabled={saving || fundingLoading || !!fundingError} onClick={handleCreate} className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{saving ? "提交中..." : "提交"}</button></ActionGate>
             </div>

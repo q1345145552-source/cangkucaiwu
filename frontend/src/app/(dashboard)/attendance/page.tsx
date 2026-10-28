@@ -474,11 +474,11 @@ export default function AttendancePage() {
 
       {/* Leave Form Modal */}
       {showLeaveForm && (
-        <div className="modal-overlay z-50" onClick={() => setShowLeaveForm(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-[420px]" onClick={e => e.stopPropagation()}>
             <div className="bg-purple-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Bed size={18} /><h3 className="font-semibold">{t("att_leave_form_title")}</h3>
-              <button onClick={() => setShowLeaveForm(false)} className="ml-auto text-purple-200 hover:text-white">&times;</button>
+              <button onClick={() => setShowLeaveForm(false)} className="ml-auto text-purple-200 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -529,7 +529,7 @@ export default function AttendancePage() {
               <p className="text-xs text-gray-400">{t("att_leave_wage_hint")}</p>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={() => setShowLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">{t("cancel")}</button>
               <button onClick={submitLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">{t("att_submit_application")}</button>
             </div>
           </div>
@@ -538,11 +538,11 @@ export default function AttendancePage() {
 
       {/* Proxy Leave Form Modal (管理员/主管代录) */}
       {showProxyLeaveForm && (
-        <div className="modal-overlay z-50" onClick={() => setShowProxyLeaveForm(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-[460px]" onClick={e => e.stopPropagation()}>
             <div className="bg-purple-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Bed size={18} /><h3 className="font-semibold">{t("att_proxy_leave_form_title")}</h3>
-              <button onClick={() => setShowProxyLeaveForm(false)} className="ml-auto text-purple-200 hover:text-white">&times;</button>
+              <button onClick={() => setShowProxyLeaveForm(false)} className="ml-auto text-purple-200 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -601,7 +601,7 @@ export default function AttendancePage() {
               <p className="text-xs text-gray-400">{t("att_proxy_leave_hint")}</p>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowProxyLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={() => setShowProxyLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">{t("cancel")}</button>
               <ActionGate anyOf={["attendance.admin_record_leave#approve"]}><button onClick={submitProxyLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">{t("att_submit_application")}</button></ActionGate>
             </div>
           </div>
@@ -610,11 +610,11 @@ export default function AttendancePage() {
 
       {/* Rest Day Form Modal */}
       {showRestForm && (
-        <div className="modal-overlay z-50" onClick={() => setShowRestForm(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-[420px]" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <Settings size={18} /><h3 className="font-semibold">{t("att_rest_day_form_title")}</h3>
-              <button onClick={() => setShowRestForm(false)} className="ml-auto text-blue-200 hover:text-white">&times;</button>
+              <button onClick={() => setShowRestForm(false)} className="ml-auto text-blue-200 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -637,7 +637,7 @@ export default function AttendancePage() {
               <p className="text-xs text-gray-400">{t("att_rest_limit_hint")}</p>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowRestForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={() => setShowRestForm(false)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">{t("cancel")}</button>
               <ActionGate anyOf={["attendance.set_rest_days#operate"]}><button onClick={submitRestDays} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">{t("save")}</button></ActionGate>
             </div>
           </div>
@@ -646,11 +646,11 @@ export default function AttendancePage() {
 
       {/* Absence Form Modal */}
       {showAbsenceForm && (
-        <div className="modal-overlay z-50" onClick={() => setShowAbsenceForm(false)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl w-[420px]" onClick={e => e.stopPropagation()}>
             <div className="bg-red-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2">
               <UserX size={18} /><h3 className="font-semibold">{t("att_absence_form_title")}</h3>
-              <button onClick={() => setShowAbsenceForm(false)} className="ml-auto text-red-200 hover:text-white">&times;</button>
+              <button onClick={() => setShowAbsenceForm(false)} className="ml-auto text-red-200 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -670,7 +670,7 @@ export default function AttendancePage() {
               </div>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowAbsenceForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
+              <button onClick={() => setShowAbsenceForm(false)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">{t("cancel")}</button>
               <ActionGate anyOf={["attendance.mark_absence#operate"]}><button onClick={submitAbsence} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">{t("att_confirm_mark")}</button></ActionGate>
             </div>
           </div>
@@ -679,12 +679,12 @@ export default function AttendancePage() {
 
       {/* Photo Popup */}
       {photoPopup && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPhotoPopup(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <Camera size={20} />
               <span className="font-semibold">{t("att_clock_photos").replace("{name}", photoPopup.employee_name).replace("{date}", photoPopup.date)}</span>
-              <button onClick={() => setPhotoPopup(null)} className="ml-auto text-2xl text-blue-200">&times;</button>
+              <button onClick={() => setPhotoPopup(null)} className="ml-auto text-2xl text-blue-200" data-modal-close="true">&times;</button>
             </div>
             <div className="p-4 space-y-4">
               {photoSessions.map((s: any) => (
@@ -726,7 +726,7 @@ export default function AttendancePage() {
               ))}
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl text-center">
-              <button onClick={() => setPhotoPopup(null)} className="text-sm text-gray-400">{t("close")}</button>
+              <button onClick={() => setPhotoPopup(null)} className="text-sm text-gray-400" data-modal-close="true">{t("close")}</button>
             </div>
           </div>
         </div>

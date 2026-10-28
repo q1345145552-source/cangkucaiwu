@@ -287,7 +287,7 @@ export default function OtherIncomePage() {
 
       {/* 新建/编辑弹窗 */}
       {canWrite && showForm && (
-        <div className="modal-overlay" onClick={() => resetForm()}>
+        <div className="modal-overlay" >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-green-600 text-white px-6 py-4 rounded-t-2xl flex items-center gap-3">
               <DollarSign size={20} />

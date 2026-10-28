@@ -339,13 +339,13 @@ export default function FundReviewPage() {
 
       {/* 凭证大图弹窗 */}
       {previewUrl && (
-        <div className="modal-overlay z-50" onClick={() => setPreviewUrl(null)}>
+        <div className="modal-overlay z-50" >
           <div className="bg-white rounded-2xl max-w-2xl max-h-[85vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3 border-b">
               <h3 className="font-semibold text-gray-700 flex items-center gap-2">
                 <ImageIcon size={18} />凭证查看
               </h3>
-              <button onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600" data-modal-close="true">
                 <X size={20} />
               </button>
             </div>

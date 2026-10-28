@@ -58,7 +58,7 @@ export default function CashAdvanceRepaymentHistory({ advance, canRevoke, onClos
     } catch (err: any) { toast("error", err.message || "撤销失败"); }
     finally { setRevoking(false); }
   }
-  return <div role="dialog" aria-modal="true" aria-labelledby="repayment-history-title" className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3">
+  return <div role="dialog" aria-modal="true" aria-labelledby="repayment-history-title" className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-3" data-modal-overlay="true">
     <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden">
       <h2 id="repayment-history-title" className="font-semibold px-5 py-4 border-b shrink-0">垫款 #{advance.id} 归还与使用记录</h2>
       <div className="p-5 overflow-y-auto min-h-0 space-y-3">
@@ -95,13 +95,13 @@ export default function CashAdvanceRepaymentHistory({ advance, canRevoke, onClos
           {FINANCIAL_REVERSALS_ENABLED && canRevoke && row.status === "active" && <button type="button" disabled={revoking} onClick={() => { setTarget(row); setReason(""); }} className="block text-red-600">撤销这一笔</button>}
         </article>)}
       </div>
-      <div className="px-5 py-4 border-t flex justify-end shrink-0"><button type="button" disabled={revoking} onClick={onClose} className="btn-secondary">关闭</button></div>
+      <div className="px-5 py-4 border-t flex justify-end shrink-0"><button type="button" disabled={revoking} onClick={onClose} className="btn-secondary" data-modal-close="true">关闭</button></div>
     </div>
-    {FINANCIAL_REVERSALS_ENABLED && target && <div role="alertdialog" aria-modal="true" aria-labelledby="revoke-repayment-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3">
+    {FINANCIAL_REVERSALS_ENABLED && target && <div role="alertdialog" aria-modal="true" aria-labelledby="revoke-repayment-title" className="fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-3" data-modal-overlay="true">
       <form onSubmit={event => { event.preventDefault(); void revoke(); }} className="bg-white rounded-xl p-5 w-full max-w-sm max-h-[90dvh] overflow-y-auto space-y-4">
         <h3 id="revoke-repayment-title" className="font-semibold">确认撤销这一笔归还吗？</h3><p className="text-sm">{money(target.amount)} {target.currency} 将退回原账户，流水保留冲销记录。</p>
         <label className="block text-sm">撤销原因<textarea aria-label="撤销归还原因" className="form-input mt-1" rows={3} maxLength={500} value={reason} disabled={revoking} onChange={event => setReason(event.target.value)} /></label>
-        <div className="flex justify-end gap-3"><button type="button" disabled={revoking} onClick={() => setTarget(null)} className="btn-secondary">取消</button><button type="submit" disabled={revoking} className="btn-danger">{revoking ? "撤销中..." : "确认撤销"}</button></div>
+        <div className="flex justify-end gap-3"><button type="button" disabled={revoking} onClick={() => setTarget(null)} className="btn-secondary" data-modal-close="true">取消</button><button type="submit" disabled={revoking} className="btn-danger">{revoking ? "撤销中..." : "确认撤销"}</button></div>
       </form>
     </div>}
   </div>;
