@@ -1,0 +1,495 @@
+FFF........FF............F....F...............F..................F.F.... [ 46%]
+...................................F....................FF.............. [ 92%]
+..........F.                                                             [100%]
+=================================== FAILURES ===================================
+____________ test_report_costs_accounts_debt_details_and_no_writes _____________
+tests/test_cost_funds_debt.py:93: in test_report_costs_accounts_debt_details_and_no_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cost_funds_debt.py:92: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'THB-original-total-7234.56', 'actual_failure': 'assert 4234.56 == 7234.56'}, {'assertion': 'THB-detail-sum-7234.56', 'actual_failure': "assert Decimal('4234.56') == Decimal('7234.56')\n +  where Decimal('4234.56') = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x103077760>, Decimal('0'))\n +    where Decimal('0') = Decimal(0)\n +  and   Decimal('7234.56') = Decimal('7234.56')"}, {'assertion': 'cash-and-fund-cost-original', 'actual_failure': 'assert (0.0 == 2000)'}, {'assertion': 'reconciliation-original-3000', 'actual_failure': 'assert (0 == 3000)\n +  where 0 = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x10c0f4c70>)'}]
+----------------------------- Captured stdout call -----------------------------
+REPORT_INITIAL {"internal_transfers": {"label": "内部转账", "excluded_from_income_expense": true, "scope_label": "所选仓库及期间的调拨额", "by_currency": {}, "count_by_currency": {}, "total_count": 0}, "start_date": "2026-10-01", "end_date": "2026-10-31", "warehouse_ids": [1], "currencies": [{"currency": "CNY", "symbol": "¥", "costs": {"data": [{"name": "员工工资", "count": 0, "amount": 0.0}, {"name": "报销", "count": 0, "amount": 0.0}, {"name": "采购", "count": 0, "amount": 0.0}, {"name": "备用金拨付", "count": 0, "amount": 0.0}, {"name": "手工采购", "count": 1, "amount": 300.0}], "count": 1, "total": 300.0}, "funds": {"data": [{"account_id": 4, "account_name": "人民币账户", "opening_balance": 30000.0, "inflow": 0.0, "outflow": 300.0, "closing_balance": 29700.0, "status": "active"}, {"account_id": 5, "account_name": "人民币银行", "opening_balance": 4000.0, "inflow": 0.0, "outflow": 0.0, "closing_balance": 4000.0, "status": "inactive"}], "total": {"opening_balance": 34000.0, "inflow": 0.0, "outflow": 300.0, "closing_balance": 33700.0}, "unassigned": {"inflow": 0.0, "outflow": 0.0}}, "debt": {"data": [], "total": {"amount": 0.0, "repaid_amount": 0.0, "outstanding_amount": 0.0}}, "reconciliation": {"cost_total": 300.0, "company_outflow": 300.0, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}}, {"currency": "THB", "symbol": "฿", "costs": {"data": [{"name": "员工工资", "count": 3, "amount": 1984.56}, {"name": "报销", "count": 1, "amount": 2000.0}, {"name": "采购", "count": 0, "amount": 0.0}, {"name": "备用金拨付", "count": 0, "amount": 0.0}, {"name": "手工采购", "count": 1, "amount": 250.0}], "count": 5, "total": 4234.56}, "funds": {"data": [{"account_id": 1, "account_name": "测试现金", "opening_balance": 10750.0, "inflow": 500.0, "outflow": 4234.56, "closing_balance": 7015.44, "status": "active"}, {"account_id": 3, "account_name": "测试银行", "opening_balance": 20000.0, "inflow": 0.0, "outflow": 0.0, "closing_balance": 20000.0, "status": "active"}], "total": {"opening_balance": 30750.0, "inflow": 500.0, "outflow": 4234.56, "closing_balance": 27015.44}, "unassigned": {"inflow": 0.0, "outflow": 0.0}}, "debt": {"data": [{"key": "user:4", "payer_id": 4, "payer_name": "supervisor", "amount": 10000.0, "repaid_amount": 0.0, "outstanding_amount": 10000.0, "count": 1}], "total": {"amount": 10000.0, "repaid_amount": 0.0, "outstanding_amount": 10000.0}}, "reconciliation": {"cost_total": 4234.56, "company_outflow": 4234.56, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}}], "balance_anchor_date": "2026-10-01", "notes": ["采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。", "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。", "备用金在拨付时计一次支出，后续开销和备用金报销仅记录使用；原记录保留，不重复合计。", "收入只认实际到账和收款；垫款业务不先记公司支出，归还垫款当天按用途记支出。内部转账只影响各账户余额，不计公司收入支出。", "账户按保存的期初日期与同一套有效流水推算；旧累计付款和未指定账户单列，历史余额仍需结合银行账单核对。", "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。", "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"], "undated_flows": []}
+_______ test_original_formula_balances_and_non_cost_repayment_stays_red ________
+tests/test_cost_funds_debt.py:132: in test_original_formula_balances_and_non_cost_repayment_stays_red
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cost_funds_debt.py:131: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-line-111', 'actual_failure': 'assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\n  \n  At index 0 diff: 4234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-117', 'actual_failure': 'assert (not True)'}, {'assertion': 'original-cost-line-119', 'actual_failure': 'assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\n  \n  At index 0 diff: 5234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-121', 'actual_failure': "assert [] == [{'amount': 1...ame': '垫款归还'}]\n  \n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\n  Use -v to get more diff"}]
+----------------------------- Captured stdout call -----------------------------
+THREE_BOOKS_DIFF {"before": {"cost_total": 4234.56, "company_outflow": 4234.56, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}, "after_repay": {"cost_total": 5234.56, "company_outflow": 5234.56, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}, "debt_after_repay": {"amount": 10000.0, "repaid_amount": 1000.0, "outstanding_amount": 9000.0}}
+_______________ test_fund_withdrawal_unassigned_and_weekly_dates _______________
+tests/test_cost_funds_debt.py:164: in test_fund_withdrawal_unassigned_and_weekly_dates
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cost_funds_debt.py:163: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-line-144', 'actual_failure': 'assert (250.0 == 1250)'}, {'assertion': 'original-cost-line-146', 'actual_failure': 'assert (250.0 == 250 and 0.0 == 1000)'}, {'assertion': 'original-cost-line-155', 'actual_failure': 'assert 0.0 == -5000'}, {'assertion': 'original-cost-line-157', 'actual_failure': "assert [] == [{'amount': 5...用金领用（未指定账户）'}]\n  \n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\n  Use -v to get more diff"}]
+----------------------------- Captured stdout call -----------------------------
+THREE_BOOKS_WEEK_EXPECTED_ORIGINAL {"range": {"start_date": "2026-10-05", "end_date": "2026-10-11"}, "THB": {"cost": 1250, "company_outflow": 250, "difference": 1000}, "CNY": {"cost": 300}}
+_______ test_pagination_category_exact_payer_and_shared_list_projection ________
+tests/test_cost_funds_debt.py:242: in test_pagination_category_exact_payer_and_shared_list_projection
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cost_funds_debt.py:241: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-line-226', 'actual_failure': 'assert 6 == 8'}, {'assertion': 'original-shared-cost-projection', 'actual_failure': "assert {'cost_basis'...ize': 25, ...} == {'cost_basis'...ize': 25, ...}\n  \n  Omitting 4 identical items, use -vv to show\n  Differing items:\n  {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]} != {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]}\n  {'cost_basis': '公司钱包实际收付；不含内部转账，到...\n  \n  ...Full output truncated (4 lines hidden), use '-vv' to show"}]
+__________ test_actual_postgres_union_types_currency_and_business_day __________
+tests/test_cost_funds_debt_postgres.py:56: in test_actual_postgres_union_types_currency_and_business_day
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cost_funds_debt_postgres.py:53: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-total-2100-two-rows', 'actual_failure': 'assert (2000.0 == 2100)\n +  where 2000.0 = sum(<generator object test_actual_postgres_union_types_currency_and_business_day.<locals>.run.<locals>.<genexpr> at 0x10c187bc0>)'}]
+----------------------------- Captured stdout call -----------------------------
+THREE_BOOKS_PG {'expected_cost': 2100, 'actual_cost': 2000.0, 'expected_outflow': 2000, 'expected_inflow': 300, 'thai_business_date': '2026-10-19', 'no_duplicate_reimbursement_or_fund_flow': True}
+___ test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals ____
+tests/test_fund_disbursement.py:285: in test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_fund_disbursement.py:284: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-legacy-formal-expense-1400', 'actual_failure': 'assert 6400.0 == 1400'}, {'assertion': 'original-legacy-unified-cost-2900', 'actual_failure': 'assert 6400.0 == 2900'}]
+----------------------------- Captured stdout call -----------------------------
+FUND_LEGACY_AUDIT {"before": {"legacy_merged_operating_costs": [{"warehouse_id": 1, "currency": "THB", "count": 2, "amount": 1500.0}], "legacy_ledger_item_rows": [{"warehouse_id": 1, "currency": "THB", "count": 4, "amount": 2000.0}], "formal_expenses_with_fund_category_name": [{"warehouse_id": 1, "currency": "THB", "count": 1, "amount": 400.0}], "known_fund_source_employee_advance_expenses": [], "notes": ["合并成本与资金流水引用同一条开销时不是两条数据库支出，不能把这些合计重复相加。", "按分类名称检出的正式支出须人工确认来源；不按名字或金额猜测关联。", "此审计只读，不回填或删除历史账目。"]}, "after": {"legacy_merged_operating_costs": [{"warehouse_id": 1, "currency": "THB", "count": 2, "amount": 1500.0}], "legacy_ledger_item_rows": [{"warehouse_id": 1, "currency": "THB", "count": 4, "amount": 2000.0}], "formal_expenses_with_fund_category_name": [{"warehouse_id": 1, "currency": "THB", "count": 1, "amount": 400.0}], "known_fund_source_employee_advance_expenses": [], "notes": ["合并成本与资金流水引用同一条开销时不是两条数据库支出，不能把这些合计重复相加。", "按分类名称检出的正式支出须人工确认来源；不按名字或金额猜测关联。", "此审计只读，不回填或删除历史账目。"]}, "after_new_disbursement_and_spend": {"expense_count": 3, "expense_amount": 6400.0, "unified_count": 3, "unified_amount": 6400.0, "flow_count": 2, "flow_amount": 6000.0, "company_flow_count": 3, "company_flow_amount": 6400.0, "company_cash": 18600.0, "fund": {"can_record": true, "can_request": false, "id": 1, "employee_id": 4, "employee_name": "supervisor", "currency": "THB", "total_topped_up": 6000.0, "current_balance": 6000.0, "total_spent": 2000.0, "spent_by_currency": {"THB": 2000.0}, "available": 4000.0, "fund_limit": 20000.0, "alert_threshold": 500.0, "is_low": false}}}
+_________ test_full_repayment_money_ledger_and_costs_exactly_unchanged _________
+tests/test_cash_advance_repayments.py:129: in test_full_repayment_money_ledger_and_costs_exactly_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:128: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_full_repayment_money_ledger_and_costs_exactly_unchanged:100', 'actual_failure': 'assert (3000.0 == 3000 and False is True)'}, {'assertion': 'test_full_repayment_money_ledger_and_costs_exactly_unchanged:104', 'actual_failure': "assert ({'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\n  \n  Differing items:\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\n  \n  ...Full output truncated (3 lines hidden), use '-vv' to show)"}]
+----------------------------- Captured stdout call -----------------------------
+REPAYMENT_FULL {"response": {"repayment": {"id": 1, "cash_advance_id": 1, "warehouse_id": 1, "repayment_date": "2026-10-18", "amount": 3000.0, "account_id": 1, "account_name": "测试现金", "currency": "THB", "payment_method": "cash", "payment_method_label": "现金", "voucher_path": "uploads/1/2026-10-28/cash-advances/f4bb857130434a9ab5f959ed7e656fbb.png", "description": null, "created_by_id": 3, "created_by_name": "staff", "created_at": "2026-10-28T09:12:59.935814+07:00", "status": "active", "status_label": "有效", "revoked_by_id": null, "revoked_by_name": null, "revoked_at": null, "revoke_reason": null, "ledger_ref_no": "CAR-1", "remark": "归还垫款 #1"}, "advance": {"id": 1, "warehouse_id": 1, "payer_id": 4, "payer_name": "supervisor", "advance_date": "2026-10-18", "amount": 3000.0, "currency": "THB", "purpose": "salary", "purpose_label": "工资", "description": "主管垫付工资", "voucher_path": null, "status": "repaid", "status_label": "已归还", "repaid_amount": 3000.0, "outstanding_amount": 0.0, "created_by_id": 94, "created_by_name": "SYNTHETIC finance recorder", "created_at": "2026-10-28T09:12:59.772454", "reviewed_by_id": 1, "reviewed_by_name": "warehouse_admin", "reviewed_at": "2026-10-28T09:12:59.800853", "reject_reason": null, "amount_difference_note": null}, "account": {"id": 1, "name": "测试现金", "current_balance": 7000.0, "currency": "THB"}}, "balance_before": 10000.0, "balance_after": 7000.0, "ledger": {"data": [{"id": 1, "warehouse_id": 1, "date": "2026-10-18", "amount": 3000.0, "currency": "THB", "type": "expense", "source": "cash_advance_repayment", "source_label": "垫款归还", "account_id": 1, "status": "active", "ref_no": "CAR-1", "remark": "归还垫款 #1", "category_name": "员工工资", "category_id": null, "is_internal_transfer": false, "cash_advance_id": 1, "account_name": "测试现金", "is_non_cost_flow": false, "status_label": "有效"}], "internal_transfers": {"label": "内部转账", "excluded_from_income_expense": true, "scope_label": "所选仓库及期间的调拨额", "by_currency": {}, "count_by_currency": {}, "total_count": 0}, "total": 1, "page": 1, "page_size": 30, "income_by_currency": {}, "expense_by_currency": {"THB": 3000.0}, "total_income": 0, "total_expense": 3000.0, "net": -3000.0, "flow_scope": "company", "card_income": 0, "card_expense": 3000.0, "card_net": -3000.0}, "cost_before": {"count": 2, "amount": 750}, "cost_after": {"data": [{"id": "cash_advance_repayment-1", "source": "cash_advance_repayment", "source_id": 1, "wallet_source": "cash_advance_repayment", "source_label": "垫款归还", "ref_no": "CAR-1", "status": "active", "account_name": "测试现金", "warehouse_id": 1, "date": "2026-10-18", "category_id": null, "category_name": "员工工资", "amount": 3000.0, "currency": "THB", "account_id": 1, "remark": "归还垫款 #1", "voucher": null, "funding_source": "company_account", "cash_advance_id": 1, "reimbursement_id": null, "payroll_record_id": null, "is_read_only": true, "employee_advance_id": null, "employee_id": null, "fund_disbursement_id": null, "fund_id": null, "customer_id": null, "supplier_id": null, "customer_name": "", "supplier_name": "", "record_category": "员工工资", "category_group": "operating", "display_category": "员工工资", "source_link": "/cash-advances", "expense_date": "2026-10-18"}, {"id": 2, "source": "expense", "source_id": 2, "wallet_source": "manual", "source_label": "公司账户支出", "ref_no": "EX-2", "status": "active", "account_name": "测试现金", "warehouse_id": 1, "date": "2026-10-18", "category_id": 1, "category_name": "员工工资", "amount": 250.0, "currency": "THB", "account_id": 1, "remark": "原有运营支出", "voucher": null, "funding_source": "company_account", "cash_advance_id": null, "reimbursement_id": null, "payroll_record_id": null, "is_read_only": false, "employee_advance_id": null, "employee_id": null, "fund_disbursement_id": null, "fund_id": null, "customer_id": null, "supplier_id": null, "customer_name": "", "supplier_name": "", "record_category": "员工工资", "category_group": "operating", "display_category": "员工工资", "source_link": "", "expense_date": "2026-10-18"}, {"id": 1, "source": "expense", "source_id": 1, "wallet_source": "manual", "source_label": "公司账户支出", "ref_no": "EX-1", "status": "active", "account_name": "测试现金", "warehouse_id": 1, "date": "2026-10-18", "category_id": 1, "category_name": "员工工资", "amount": 500.0, "currency": "THB", "account_id": 1, "remark": "原有运营支出", "voucher": null, "funding_source": "company_account", "cash_advance_id": null, "reimbursement_id": null, "payroll_record_id": null, "is_read_only": false, "employee_advance_id": null, "employee_id": null, "fund_disbursement_id": null, "fund_id": null, "customer_id": null, "supplier_id": null, "customer_name": "", "supplier_name": "", "record_category": "员工工资", "category_group": "operating", "display_category": "员工工资", "source_link": "", "expense_date": "2026-10-18"}], "total": 3, "page": 1, "page_size": 20, "totals_by_currency": {"THB": 3750.0}, "scope": "company_wallet", "cost_basis": "公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计"}, "report_expense_before": {"THB": 750.0}, "report_expense_after": {"THB": 3750.0}, "reports_unchanged": false}
+_ test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies _
+tests/test_cash_advance_repayments.py:307: in test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:306: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies:294', 'actual_failure': "assert {'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\n  \n  Differing items:\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\n  \n  ...Full output truncated (3 lines hidden), use '-vv' to show"}]
+----------------------------- Captured stdout call -----------------------------
+REPAYMENT_CURRENCY {'CNY_before': 20000, 'CNY_after': 17000, 'THB_unchanged': 10000, 'remaining_THB': 3000}
+___ test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow ____
+tests/test_employee_advance_expense.py:322: in test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_employee_advance_expense.py:321: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-pending-fund-zero-cost', 'actual_failure': "assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\n +    where all = <sqlalchemy.engine.result.ChunkedIteratorResult object at 0x10de6cd50>.all"}, {'assertion': 'original-executed-fund-zero-cost', 'actual_failure': "assert [{'id': 8, 's...nd_id': None}] == []\n  \n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\n  Use -v to get more diff"}]
+___________ test_source_money_cost_ledger_and_void[company_account] ____________
+tests/test_employee_advance_funding.py:134: in test_source_money_cost_ledger_and_void
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_employee_advance_funding.py:133: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_source_money_cost_ledger_and_void:108', 'actual_failure': "assert (2 == 1)\n +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])"}]
+----------------------------- Captured stdout call -----------------------------
+ADVANCE_FUNDING {"source": "company_account", "before": {"balance": 20000.0, "expenses": 0, "expense_amount": 0, "fund_available": 10000.0}, "after": {"balance": 19000.0, "expenses": 1, "expense_amount": 1000.0, "fund_available": 10000.0}, "flows_before": 1, "flows_after": 2, "response": {"message": "预支记录已创建", "id": 1, "approval_status": "pending", "approval_status_label": "待核验", "reviewer_id": null, "reviewed_at": null, "reject_reason": null, "expense_record_id": null, "funding_source": "company_account", "funding_source_label": "公司账户", "cash_advance_id": null, "payment_account_id": 1, "fund_account_id": null, "limit_check": {"checked": true, "currency": "THB", "monthly_salary": 10400.0, "occupied_amount": 0.0, "requested_amount": 1000.0, "available_amount": 10400.0, "remaining_amount": 9400.0}}}
+_______ test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke _______
+tests/test_payroll_cash_advance.py:131: in test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:125: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': '7000 salary cost row/count/amount/source', 'actual_failure': 'assert (2, 750.0) == (3, 7750)\n  \n  At index 0 diff: 2 != 3\n  Use -v to get more diff'}, {'assertion': '7000 report cost total', 'actual_failure': "assert (200 == 200 and {'THB': 750.0} == {'THB': 7750}\n +  where 200 = <Response [200 OK]>.status_code\n  \n  Differing items:\n  {'THB': 750.0} != {'THB': 7750}\n  Use -v to get more diff)"}, {'assertion': 'linked cost edit protection requires generated expense', 'actual_failure': "{'account_id': None, 'cash_advance_id': 1, 'disbursed_at': '2026-10-28T09:13:44.801724+07:00', 'expense_record_id': None, ...}\nassert None is not None"}]
+_ test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow _
+tests/test_reimbursement_payments.py:165: in test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:164: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:124', 'actual_failure': 'assert (4, 7750.0) == (3, 2750)\n  \n  At index 0 diff: 4 != 3\n  Use -v to get more diff'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:133', 'actual_failure': 'assert (400 == 400 and 4 == 3)\n +  where 400 = <Response [400 Bad Request]>.status_code'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:137', 'actual_failure': "assert (200 == 200 and {'THB': 7750.0} == {'THB': 2750}\n +  where 200 = <Response [200 OK]>.status_code\n  \n  Differing items:\n  {'THB': 7750.0} != {'THB': 2750}\n  Use -v to get more diff)"}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:142', 'actual_failure': 'assert (5750.0 == 750)'}]
+----------------------------- Captured stdout call -----------------------------
+REIMB_COMPANY {"response": {"message": "付款成功", "id": 1, "status": "paid", "expense_record_id": 3, "cash_advance_id": null, "payment": {"id": 1, "reimbursement_id": 1, "warehouse_id": 1, "amount": 2000.0, "currency": "THB", "funding_source": "company_account", "funding_source_label": "公司账户", "payment_account_id": 1, "account_name": "测试现金", "payment_method": "cash", "payment_method_label": "现金", "payment_voucher_path": "uploads/1/2026-10-28/reimbursement-payments/95dcdded5f9f4b1f9a2a136875c2206d.png", "cash_advance_id": null, "expense_record_id": 3, "paid_by_id": 3, "paid_by_name": "staff", "paid_at": "2026-10-28T09:13:57.294506+07:00", "status": "active", "status_label": "有效", "revoked_by_id": null, "revoked_by_name": null, "revoked_at": null, "revoke_reason": null, "ledger_ref_no": "RB-P-1"}, "account_balance": 8000.0}, "cost_before": 5750.0, "cost_after": 7750.0, "balances_before": {"1": 10000.0, "3": 20000.0, "4": 30000.0}, "balances_after": {"1": 8000, "3": 20000.0, "4": 30000.0}, "flows_before": 3, "flows_after": 4, "historical_fixture": {"id": 1, "status": "approved", "expense_record_id": null, "cash_advance_id": null, "payment": {"id": 1, "reimbursement_id": 1, "warehouse_id": 1, "amount": 2000.0, "currency": "THB", "funding_source": "company_account", "funding_source_label": "公司账户", "payment_account_id": 1, "account_name": "测试现金", "payment_method": "cash", "payment_method_label": "现金", "payment_voucher_path": "uploads/1/2026-10-28/reimbursement-payments/95dcdded5f9f4b1f9a2a136875c2206d.png", "cash_advance_id": null, "expense_record_id": 3, "paid_by_id": 3, "paid_by_name": "staff", "paid_at": "2026-10-28T09:13:57.294506", "status": "revoked", "status_label": "已撤销", "revoked_by_id": 1, "revoked_by_name": "synthetic historical admin", "revoked_at": "2026-10-28T09:13:57.494703+07:00", "revoke_reason": "付款账户选错，合成历史", "ledger_ref_no": "RB-P-1"}, "account_balance": 10000.0}, "cost_after_historical_fixture": 5750.0, "flows_expense_after_revoke": 5750.0}
+___ test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost ___
+tests/test_reimbursement_payments.py:214: in test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:213: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:171', 'actual_failure': 'assert (5750.0 == 2750)'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:187', 'actual_failure': 'assert (5750.0 == 750)'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:190', 'actual_failure': 'assert (200 == 200 and 5750.0 == 2750)\n +  where 200 = <Response [200 OK]>.status_code'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:193', 'actual_failure': 'assert (200 == 200 and 7750.0 == 2750)\n +  where 200 = <Response [200 OK]>.status_code'}]
+----------------------------- Captured stdout call -----------------------------
+REIMB_ADVANCE {"response": {"message": "付款成功", "id": 1, "status": "paid", "expense_record_id": null, "cash_advance_id": 1, "payment": {"id": 1, "reimbursement_id": 1, "warehouse_id": 1, "amount": 2000.0, "currency": "THB", "funding_source": "cash_advance", "funding_source_label": "垫款单", "payment_account_id": null, "account_name": null, "payment_method": "cash", "payment_method_label": "现金", "payment_voucher_path": "uploads/1/2026-10-28/reimbursement-payments/ea4ba0da4b7549088179095b3a578abf.png", "cash_advance_id": 1, "expense_record_id": null, "paid_by_id": 3, "paid_by_name": "staff", "paid_at": "2026-10-28T09:13:58.357186+07:00", "status": "active", "status_label": "有效", "revoked_by_id": null, "revoked_by_name": null, "revoked_at": null, "revoke_reason": null, "ledger_ref_no": null}, "account_balance": null}, "cost_before": 5750.0, "cost_after_repayment": 7750.0, "balances_before": {"1": 10000.0, "3": 20000.0, "4": 30000.0}, "balances_after": {"1": 10000.0, "3": 20000.0, "4": 30000.0}, "flows_before": 3, "flows_after": 3, "usage": {"reimbursement_used_amount": 2000.0, "data": [{"payment_id": 1, "reimbursement_id": 1, "employee_name": "supervisor", "amount": 2000.0, "currency": "THB", "paid_at": "2026-10-28T09:13:58.357186", "paid_by_name": "staff"}]}, "historical_fixture": {"id": 1, "status": "approved", "expense_record_id": null, "cash_advance_id": null, "payment": {"id": 1, "reimbursement_id": 1, "warehouse_id": 1, "amount": 2000.0, "currency": "THB", "funding_source": "cash_advance", "funding_source_label": "垫款单", "payment_account_id": null, "account_name": null, "payment_method": "cash", "payment_method_label": "现金", "payment_voucher_path": "uploads/1/2026-10-28/reimbursement-payments/ea4ba0da4b7549088179095b3a578abf.png", "cash_advance_id": 1, "expense_record_id": null, "paid_by_id": 3, "paid_by_name": "staff", "paid_at": "2026-10-28T09:13:58.357186", "status": "revoked", "status_label": "已撤销", "revoked_by_id": 1, "revoked_by_name": "synthetic historical admin", "revoked_at": "2026-10-28T09:13:58.524461+07:00", "revoke_reason": "付款账户选错，合成历史", "ledger_ref_no": null}, "account_balance": null}, "cost_after_historical_fixture": 7750.0}
+_____ test_decimal_item_sums_and_partially_approved_total_used_for_payment _____
+tests/test_reimbursement_payments.py:409: in test_decimal_item_sums_and_partially_approved_total_used_for_payment
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:408: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_decimal_item_sums_and_partially_approved_total_used_for_payment:388', 'actual_failure': 'assert 5750.3 == 750.3'}]
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_cost_funds_debt.py: 464 warnings
+tests/test_fund_disbursement.py: 317 warnings
+tests/test_cash_advance_repayments.py: 339 warnings
+tests/test_employee_advance_expense.py: 133 warnings
+tests/test_employee_advance_funding.py: 689 warnings
+tests/test_payroll_cash_advance.py: 258 warnings
+tests/test_reimbursement_payments.py: 466 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_cost_funds_debt.py::test_report_costs_accounts_debt_details_and_no_writes
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[1-False-200]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[2-True-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-True-200]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-False-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-True-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-False-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[5-True-403]
+tests/test_cost_funds_debt.py::test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:56: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for t in Base.metadata.sorted_tables}
+
+tests/test_cost_funds_debt_postgres.py::test_actual_postgres_union_types_currency_and_business_day
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt_postgres.py:30: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for table in Base.metadata.sorted_tables:
+
+tests/test_fund_disbursement.py: 18 warnings
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/app/api/v1/expense_fund.py:181: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    receive_date=datetime.utcnow(), amount=0, purpose="",
+
+tests/test_fund_disbursement.py: 18 warnings
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/app/api/v1/expense_fund.py:837: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rr.reviewed_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================== PASSES ====================================
+___ test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links ___
+----------------------------- Captured stdout call -----------------------------
+FUND_DISBURSEMENT_MAIN {"payment_response": {"message": "拨付已执行", "status": "executed", "id": 1, "disbursement_id": 1, "fund_id": 1, "warehouse_id": 1, "amount": 10000.0, "currency": "THB", "disbursed_date": "2026-10-10", "payment_account_id": 1, "account_name": "测试现金", "expense_record_id": 1, "recharge_request_id": 1, "operator_name": "staff", "created_at": "2026-10-28T02:12:54", "remark": "拨给supervisor 仓1 备用金", "account_balance": 10000.0, "new_balance": 10000.0, "total_topped_up": 10000.0}, "after_disbursement": {"expense_count": 1, "expense_amount": 10000.0, "unified_count": 1, "unified_amount": 10000.0, "flow_count": 1, "flow_amount": 10000.0, "company_flow_count": 1, "company_flow_amount": 10000.0, "company_cash": 10000.0, "fund": {"can_record": true, "can_request": false, "id": 1, "employee_id": 4, "employee_name": "supervisor", "currency": "THB", "total_topped_up": 10000.0, "current_balance": 10000.0, "total_spent": 0, "spent_by_currency": {}, "available": 10000.0, "fund_limit": 20000.0, "alert_threshold": 500.0, "is_low": false}}, "after_spend_2000": {"expense_count": 1, "expense_amount": 10000.0, "unified_count": 1, "unified_amount": 10000.0, "flow_count": 1, "flow_amount": 10000.0, "company_flow_count": 1, "company_flow_amount": 10000.0, "company_cash": 10000.0, "fund": {"can_record": true, "can_request": false, "id": 1, "employee_id": 4, "employee_name": "supervisor", "currency": "THB", "total_topped_up": 10000.0, "current_balance": 10000.0, "total_spent": 2000.0, "spent_by_currency": {"THB": 2000.0}, "available": 8000.0, "fund_limit": 20000.0, "alert_threshold": 500.0, "is_low": false}}, "after_approve": {"expense_count": 1, "expense_amount": 10000.0, "unified_count": 1, "unified_amount": 10000.0, "flow_count": 1, "flow_amount": 10000.0, "company_flow_count": 1, "company_flow_amount": 10000.0, "company_cash": 10000.0, "fund": {"can_record": true, "can_request": false, "id": 1, "employee_id": 4, "employee_name": "supervisor", "currency": "THB", "total_topped_up": 10000.0, "current_balance": 10000.0, "total_spent": 2000.0, "spent_by_currency": {"THB": 2000.0}, "available": 8000.0, "fund_limit": 20000.0, "alert_threshold": 500.0, "is_low": false}}, "final_cost_total": 10000.0}
+____ test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance ____
+----------------------------- Captured stdout call -----------------------------
+REPAYMENT_REVOKE {"partial": {"repayment": {"id": 1, "cash_advance_id": 1, "warehouse_id": 1, "repayment_date": "2026-10-18", "amount": 1000.0, "account_id": 1, "account_name": "测试现金", "currency": "THB", "payment_method": "cash", "payment_method_label": "现金", "voucher_path": "uploads/1/2026-10-28/cash-advances/fe4a0018c7d949e5a939353790dc6f83.png", "description": null, "created_by_id": 3, "created_by_name": "staff", "created_at": "2026-10-28T09:13:00.745801+07:00", "status": "active", "status_label": "有效", "revoked_by_id": null, "revoked_by_name": null, "revoked_at": null, "revoke_reason": null, "ledger_ref_no": "CAR-1", "remark": "归还垫款 #1"}, "advance": {"id": 1, "warehouse_id": 1, "payer_id": 4, "payer_name": "supervisor", "advance_date": "2026-10-18", "amount": 3000.0, "currency": "THB", "purpose": "salary", "purpose_label": "工资", "description": "主管垫付工资", "voucher_path": null, "status": "confirmed", "status_label": "部分归还", "repaid_amount": 1000.0, "outstanding_amount": 2000.0, "created_by_id": 94, "created_by_name": "SYNTHETIC finance recorder", "created_at": "2026-10-28T09:13:00.595022", "reviewed_by_id": 1, "reviewed_by_name": "warehouse_admin", "reviewed_at": "2026-10-28T09:13:00.622372", "reject_reason": null, "amount_difference_note": null}, "account": {"id": 1, "name": "测试现金", "current_balance": 9000.0, "currency": "THB"}}, "revoked": {"repayment": {"id": 1, "cash_advance_id": 1, "warehouse_id": 1, "repayment_date": "2026-10-18", "amount": 1000.0, "account_id": 1, "account_name": "测试现金", "currency": "THB", "payment_method": "cash", "payment_method_label": "现金", "voucher_path": "uploads/1/2026-10-28/cash-advances/fe4a0018c7d949e5a939353790dc6f83.png", "description": null, "created_by_id": 3, "created_by_name": "staff", "created_at": "2026-10-28T09:13:00.745801", "status": "revoked", "status_label": "已撤销", "revoked_by_id": 1, "revoked_by_name": "synthetic historical admin", "revoked_at": "2026-10-28T09:13:00.802080+07:00", "revoke_reason": "账户选错，合成历史", "ledger_ref_no": "CAR-1", "remark": "归还垫款 #1"}, "advance": {"id": 1, "warehouse_id": 1, "payer_id": 4, "payer_name": "supervisor", "advance_date": "2026-10-18", "amount": 3000.0, "currency": "THB", "purpose": "salary", "purpose_label": "工资", "description": "主管垫付工资", "voucher_path": null, "status": "confirmed", "status_label": "已确认", "repaid_amount": 0.0, "outstanding_amount": 3000.0, "created_by_id": 94, "created_by_name": "SYNTHETIC finance recorder", "created_at": "2026-10-28T09:13:00.595022", "reviewed_by_id": 1, "reviewed_by_name": "warehouse_admin", "reviewed_at": "2026-10-28T09:13:00.622372", "reject_reason": null, "amount_difference_note": null}, "account": {"id": 1, "name": "测试现金", "current_balance": 10000.0, "currency": "THB"}}, "ledger": {"data": [{"id": 1, "warehouse_id": 1, "date": "2026-10-18", "amount": 1000.0, "currency": "THB", "type": "expense", "source": "cash_advance_repayment", "source_label": "垫款归还", "account_id": 1, "status": "revoked", "ref_no": "CAR-1", "remark": "归还垫款 #1；已冲销：账户选错，合成历史", "category_name": "员工工资", "category_id": null, "is_internal_transfer": false, "cash_advance_id": 1, "account_name": "测试现金", "is_non_cost_flow": false, "status_label": "已冲销"}], "internal_transfers": {"label": "内部转账", "excluded_from_income_expense": true, "scope_label": "所选仓库及期间的调拨额", "by_currency": {}, "count_by_currency": {}, "total_count": 0}, "total": 1, "page": 1, "page_size": 30, "income_by_currency": {}, "expense_by_currency": {}, "total_income": 0, "total_expense": 0, "net": 0, "flow_scope": "company", "card_income": 0, "card_expense": 0, "card_net": 0}, "cost_before": 750, "cost_after": 750}
+____ test_repayment_never_recalculates_and_manual_payroll_amount_stays_same ____
+----------------------------- Captured stdout call -----------------------------
+REPAYMENT_PAYROLL {'before': 800, 'after_manual_recalc': 800}
+_______ test_self_pending_approve_once_and_payroll_never_writes_expense ________
+----------------------------- Captured stdout call -----------------------------
+ADVANCE_EXPENSE_PAYROLL {"pending_expense_count": 0, "approve_response": {"message": "预支已执行", "id": 1, "approval_status": "approved", "approval_status_label": "已出款", "reviewer_id": 95, "reviewed_at": "2026-10-16T00:00:00", "reject_reason": null, "expense_record_id": 1, "funding_source": "company_account", "funding_source_label": "公司账户", "cash_advance_id": null, "payment_account_id": 1, "fund_account_id": null}, "expense_date": "2026-10-16", "expense_remark": "员工1 预支（预支单 #1）", "approved_expense_count": 1, "expense_amount": 1000, "gross_pay": 1200, "advance_deduction": 1000, "net_pay": 200, "after_calc_and_recalc_expense_count": 1, "after_disburse_expense_count": 2, "after_disburse_total_cost": 1200}
+____________ test_legacy_approved_pending_rejected_never_backfilled ____________
+----------------------------- Captured stdout call -----------------------------
+ADVANCE_EXPENSE_LEGACY {'old_advance_count_before': 3, 'old_advance_count_after': 3, 'old_linked_expense_count': 0, 'expense_count_before': 0, 'expense_count_after': 0, 'category_count_per_warehouse': 1}
+_____________ test_source_money_cost_ledger_and_void[cash_advance] _____________
+----------------------------- Captured stdout call -----------------------------
+ADVANCE_FUNDING {"source": "cash_advance", "before": {"balance": 20000.0, "expenses": 0, "expense_amount": 0, "fund_available": 10000.0}, "after": {"balance": 20000.0, "expenses": 0, "expense_amount": 0, "fund_available": 10000.0}, "flows_before": 1, "flows_after": 1, "response": {"message": "预支记录已创建", "id": 1, "approval_status": "pending", "approval_status_label": "待核验", "reviewer_id": null, "reviewed_at": null, "reject_reason": null, "expense_record_id": null, "funding_source": "cash_advance", "funding_source_label": "垫款单", "cash_advance_id": 1, "payment_account_id": null, "fund_account_id": null, "limit_check": {"checked": true, "currency": "THB", "monthly_salary": 10400.0, "occupied_amount": 0.0, "requested_amount": 1000.0, "available_amount": 10400.0, "remaining_amount": 9400.0}}}
+_____________ test_source_money_cost_ledger_and_void[expense_fund] _____________
+----------------------------- Captured stdout call -----------------------------
+ADVANCE_FUNDING {"source": "expense_fund", "before": {"balance": 20000.0, "expenses": 0, "expense_amount": 0, "fund_available": 10000.0}, "after": {"balance": 20000.0, "expenses": 0, "expense_amount": 0, "fund_available": 9000.0}, "flows_before": 1, "flows_after": 1, "response": {"message": "预支记录已创建", "id": 1, "approval_status": "pending", "approval_status_label": "待核验", "reviewer_id": null, "reviewed_at": null, "reject_reason": null, "expense_record_id": null, "funding_source": "expense_fund", "funding_source_label": "备用金", "cash_advance_id": null, "payment_account_id": null, "fund_account_id": 1, "limit_check": {"checked": true, "currency": "THB", "monthly_salary": 10400.0, "occupied_amount": 0.0, "requested_amount": 1000.0, "available_amount": 10400.0, "remaining_amount": 9400.0}}}
+_ test_validation_no_partial_writes[values0-\u8bf7\u9009\u62e9\u8d44\u91d1\u6765\u6e90] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 请选择资金来源
+_ test_validation_no_partial_writes[values1-\u8d44\u91d1\u6765\u6e90\u65e0\u6548] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 资金来源无效
+_ test_validation_no_partial_writes[values2-\u8bf7\u9009\u62e9\u516c\u53f8\u4ed8\u6b3e\u8d26\u6237] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 请选择公司付款账户
+_ test_validation_no_partial_writes[values3-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 付款账户不存在或不属于当前仓库
+_ test_validation_no_partial_writes[values4-\u516c\u53f8\u8d26\u6237\u4f59\u989d\u4e0d\u8db3] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 公司账户余额不足（可用 20,000.00）
+_ test_validation_no_partial_writes[values5-\u4ed8\u6b3e\u8d26\u6237\u5e01\u79cd\u4e0e\u9884\u652f\u4e0d\u4e00\u81f4] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 付款账户币种与预支不一致
+_ test_validation_no_partial_writes[values6-\u8bf7\u9009\u62e9\u57ab\u6b3e\u5355] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 请选择垫款单
+_ test_validation_no_partial_writes[values7-\u57ab\u6b3e\u5355\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 垫款单不存在或不属于当前仓库
+_ test_validation_no_partial_writes[values8-\u7f3a\u5c11\u6709\u6548\u6838\u9a8c] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 409 缺少有效核验或管理员批准；内容已变更或历史记录需重新核对
+_ test_validation_no_partial_writes[values9-\u57ab\u6b3e\u5355\u5e01\u79cd\u4e0e\u9884\u652f\u4e0d\u4e00\u81f4] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 垫款单币种与预支不一致
+_ test_validation_no_partial_writes[values10-\u57ab\u6b3e\u5355\u5269\u4f59\u91d1\u989d\u4e0d\u8db3] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 垫款单剩余金额不足
+_ test_validation_no_partial_writes[values11-\u8bf7\u9009\u62e9\u5907\u7528\u91d1\u8d26\u6237] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 请选择备用金账户
+_ test_validation_no_partial_writes[values12-\u5907\u7528\u91d1\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 备用金账户不存在或不属于当前仓库
+_ test_validation_no_partial_writes[values13-\u8d85\u51fa\u5907\u7528\u91d1\u53ef\u7528\u4f59\u989d] _
+----------------------------- Captured stdout call -----------------------------
+FUNDING_DENIED 400 超出备用金可用余额（可用 10,000.00）
+_______________ test_three_sources_share_original_salary_cap[1] ________________
+----------------------------- Captured stdout call -----------------------------
+MIXED_SOURCE_CAP {'detail': '预支合计不能超过当月工资，当前可用 0.00 元'}
+_______________ test_three_sources_share_original_salary_cap[4] ________________
+----------------------------- Captured stdout call -----------------------------
+MIXED_SOURCE_CAP {'detail': '预支合计不能超过当月工资，当前可用 0.00 元'}
+_______ test_old_null_funding_no_backfill_and_original_salary_deduction ________
+----------------------------- Captured stdout call -----------------------------
+LEGACY_FUNDING {'funding_source': None, 'expenses': 0, 'base_pay': 1200, 'advance': 1000, 'net_pay': 200}
+_ test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow _
+----------------------------- Captured stdout call -----------------------------
+PAYROLL_COMPANY_MONEY {'before': 10000, 'paid': 3000, 'revoked': 10000, 'expense_added': 7000, 'flow_added': 7000}
+- generated xml file: /private/tmp/permissions-round7-20261028/docs/permissions-round7-20261028/raw-logs/cost-baseline-final06.xml -
+=========================== short test summary info ============================
+PASSED tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[1-False-200]
+PASSED tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[2-True-403]
+PASSED tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-True-200]
+PASSED tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-False-403]
+PASSED tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-True-403]
+PASSED tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-False-403]
+PASSED tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[5-True-403]
+PASSED tests/test_cost_funds_debt.py::test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only
+PASSED tests/test_fund_disbursement.py::test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links
+PASSED tests/test_fund_disbursement.py::test_roles_require_verification_approval_and_independent_execution[1]
+PASSED tests/test_fund_disbursement.py::test_roles_require_verification_approval_and_independent_execution[3]
+PASSED tests/test_fund_disbursement.py::test_roles_require_verification_approval_and_independent_execution[4]
+PASSED tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[None-\u8bf7\u9009\u62e9\u5907\u7528\u91d1\u62e8\u4ed8\u8d26\u6237]
+PASSED tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[2-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93]
+PASSED tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[3-\u4ed8\u6b3e\u8d26\u6237\u5e01\u79cd\u5fc5\u987b\u4e0e\u5907\u7528\u91d1\u8d26\u6237\u4e00\u81f4]
+PASSED tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[999-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93]
+PASSED tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[inactive-\u4ed8\u6b3e\u8d26\u6237\u5df2\u505c\u7528]
+PASSED tests/test_fund_disbursement.py::test_account_guards_leave_all_three_ledgers_unchanged[poor-\u4ed8\u6b3e\u8d26\u6237\u4f59\u989d\u4e0d\u8db3]
+PASSED tests/test_fund_disbursement.py::test_history_failure_rolls_back_account_fund_expense_and_approval[False]
+PASSED tests/test_fund_disbursement.py::test_history_failure_rolls_back_account_fund_expense_and_approval[True]
+PASSED tests/test_fund_disbursement.py::test_fifo_sources_multiple_disbursements_and_cross_warehouse
+PASSED tests/test_fund_disbursement.py::test_new_fund_employee_advance_records_usage_without_second_cost
+PASSED tests/test_fund_disbursement.py::test_all_warehouse_admin_review_uses_request_warehouse_not_primary
+PASSED tests/test_fund_disbursement.py::test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb
+PASSED tests/test_cash_advance_repayments.py::test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance
+PASSED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[2]
+PASSED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[3]
+PASSED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[4]
+PASSED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[5]
+PASSED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields0-\u4e0d\u80fd\u8d85\u8fc7\u5269\u4f59\u672a\u8fd8]
+PASSED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields1-\u8bf7\u9009\u62e9\u5f52\u8fd8\u8d26\u6237]
+PASSED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields2-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247]
+PASSED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields3-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247]
+PASSED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields4-\u51ed\u8bc1\u7167\u7247\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93\u7684\u57ab\u6b3e\u5355]
+PASSED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields5-\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247\u4e0d\u5b58\u5728\uff0c\u8bf7\u91cd\u65b0\u4e0a\u4f20]
+PASSED tests/test_cash_advance_repayments.py::test_pending_rejected_inactive_cross_warehouse_and_currency_are_blocked
+PASSED tests/test_cash_advance_repayments.py::test_full_reversal_inactive_account_and_multiple_payments
+PASSED tests/test_cash_advance_repayments.py::test_history_failure_rolls_back_repayment_and_revoke
+PASSED tests/test_cash_advance_repayments.py::test_repayment_never_recalculates_and_manual_payroll_amount_stays_same
+PASSED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[0]
+PASSED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[-1]
+PASSED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[NaN]
+PASSED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[Infinity]
+PASSED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[1.001]
+PASSED tests/test_employee_advance_expense.py::test_self_pending_approve_once_and_payroll_never_writes_expense
+PASSED tests/test_employee_advance_expense.py::test_direct_approved_creation_and_rejected_never_cost[1]
+PASSED tests/test_employee_advance_expense.py::test_direct_approved_creation_and_rejected_never_cost[3]
+PASSED tests/test_employee_advance_expense.py::test_direct_approved_creation_and_rejected_never_cost[4]
+PASSED tests/test_employee_advance_expense.py::test_legacy_approved_pending_rejected_never_backfilled
+PASSED tests/test_employee_advance_expense.py::test_delete_linked_cost_and_history_and_protect_manual_edits[supervisor]
+PASSED tests/test_employee_advance_expense.py::test_delete_linked_cost_and_history_and_protect_manual_edits[fund]
+PASSED tests/test_employee_advance_expense.py::test_expense_failure_rolls_back_both_sides[supervisor-create]
+PASSED tests/test_employee_advance_expense.py::test_expense_failure_rolls_back_both_sides[supervisor-approve]
+PASSED tests/test_employee_advance_expense.py::test_expense_failure_rolls_back_both_sides[supervisor-delete]
+PASSED tests/test_employee_advance_expense.py::test_expense_failure_rolls_back_both_sides[fund-create]
+PASSED tests/test_employee_advance_expense.py::test_expense_failure_rolls_back_both_sides[fund-approve]
+PASSED tests/test_employee_advance_expense.py::test_expense_failure_rolls_back_both_sides[fund-delete]
+PASSED tests/test_employee_advance_expense.py::test_payroll_frontend_and_unrelated_write_code_unchanged
+PASSED tests/test_employee_advance_funding.py::test_source_money_cost_ledger_and_void[cash_advance]
+PASSED tests/test_employee_advance_funding.py::test_source_money_cost_ledger_and_void[expense_fund]
+PASSED tests/test_employee_advance_funding.py::test_pending_no_money_then_approval_once_and_rejection[company_account]
+PASSED tests/test_employee_advance_funding.py::test_pending_no_money_then_approval_once_and_rejection[cash_advance]
+PASSED tests/test_employee_advance_funding.py::test_pending_no_money_then_approval_once_and_rejection[expense_fund]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values0-\u8bf7\u9009\u62e9\u8d44\u91d1\u6765\u6e90]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values1-\u8d44\u91d1\u6765\u6e90\u65e0\u6548]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values2-\u8bf7\u9009\u62e9\u516c\u53f8\u4ed8\u6b3e\u8d26\u6237]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values3-\u4ed8\u6b3e\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values4-\u516c\u53f8\u8d26\u6237\u4f59\u989d\u4e0d\u8db3]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values5-\u4ed8\u6b3e\u8d26\u6237\u5e01\u79cd\u4e0e\u9884\u652f\u4e0d\u4e00\u81f4]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values6-\u8bf7\u9009\u62e9\u57ab\u6b3e\u5355]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values7-\u57ab\u6b3e\u5355\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values8-\u7f3a\u5c11\u6709\u6548\u6838\u9a8c]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values9-\u57ab\u6b3e\u5355\u5e01\u79cd\u4e0e\u9884\u652f\u4e0d\u4e00\u81f4]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values10-\u57ab\u6b3e\u5355\u5269\u4f59\u91d1\u989d\u4e0d\u8db3]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values11-\u8bf7\u9009\u62e9\u5907\u7528\u91d1\u8d26\u6237]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values12-\u5907\u7528\u91d1\u8d26\u6237\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93]
+PASSED tests/test_employee_advance_funding.py::test_validation_no_partial_writes[values13-\u8d85\u51fa\u5907\u7528\u91d1\u53ef\u7528\u4f59\u989d]
+PASSED tests/test_employee_advance_funding.py::test_approval_rechecks_resources_and_keeps_pending_on_failure[company_account]
+PASSED tests/test_employee_advance_funding.py::test_approval_rechecks_resources_and_keeps_pending_on_failure[cash_advance]
+PASSED tests/test_employee_advance_funding.py::test_approval_rechecks_resources_and_keeps_pending_on_failure[expense_fund]
+PASSED tests/test_employee_advance_funding.py::test_history_failure_rolls_back_all_money_and_records[company_account]
+PASSED tests/test_employee_advance_funding.py::test_history_failure_rolls_back_all_money_and_records[cash_advance]
+PASSED tests/test_employee_advance_funding.py::test_history_failure_rolls_back_all_money_and_records[expense_fund]
+PASSED tests/test_employee_advance_funding.py::test_shared_cash_capacity_cannot_be_reused
+PASSED tests/test_employee_advance_funding.py::test_three_sources_share_original_salary_cap[1]
+PASSED tests/test_employee_advance_funding.py::test_three_sources_share_original_salary_cap[4]
+PASSED tests/test_employee_advance_funding.py::test_old_null_funding_no_backfill_and_original_salary_deduction
+PASSED tests/test_employee_advance_funding.py::test_options_wh_isolation_and_advance_permission_only
+PASSED tests/test_employee_advance_funding.py::test_salary_functions_and_cap_unchanged
+PASSED tests/test_employee_advance_funding.py::test_fund_review_cannot_refund_an_approved_advance
+PASSED tests/test_employee_advance_funding.py::test_cny_sources_keep_original_exchange_rate_cap
+PASSED tests/test_employee_advance_funding.py::test_inactive_source_hidden_and_direct_request_rejected[company_account-\u4ed8\u6b3e\u8d26\u6237\u5df2\u505c\u7528]
+PASSED tests/test_employee_advance_funding.py::test_inactive_source_hidden_and_direct_request_rejected[expense_fund-\u5907\u7528\u91d1\u8d26\u6237\u5df2\u505c\u7528\u6216\u7ed3\u6e05]
+PASSED tests/test_employee_advance_funding.py::test_company_balance_keeps_cent_precision_after_fractional_advances
+PASSED tests/test_employee_advance_funding.py::test_locked_validation_refreshes_previously_loaded_resource[company_account-\u516c\u53f8\u8d26\u6237\u4f59\u989d\u4e0d\u8db3]
+PASSED tests/test_employee_advance_funding.py::test_locked_validation_refreshes_previously_loaded_resource[cash_advance-\u53ea\u80fd\u4f7f\u7528\u5df2\u786e\u8ba4\u7684\u57ab\u6b3e\u5355]
+PASSED tests/test_employee_advance_funding.py::test_locked_validation_refreshes_previously_loaded_resource[expense_fund-\u8d85\u51fa\u5907\u7528\u91d1\u53ef\u7528\u4f59\u989d]
+PASSED tests/test_payroll_cash_advance.py::test_company_account_deducts_once_and_revoke_restores_with_same_cost_and_flow
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[insufficient]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[pending]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[rejected]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[repaid]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[currency]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[foreign]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[missing]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[mixed]
+PASSED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[company_mixed]
+PASSED tests/test_payroll_cash_advance.py::test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity
+PASSED tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[False]
+PASSED tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[True]
+PASSED tests/test_payroll_cash_advance.py::test_failed_revoke_restores_cost_usage_and_loan_link
+PASSED tests/test_payroll_cash_advance.py::test_supervisor_with_only_payroll_grant_and_cross_warehouse_rejected
+PASSED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[2]
+PASSED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[4]
+PASSED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[5]
+PASSED tests/test_payroll_cash_advance.py::test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost
+PASSED tests/test_payroll_cash_advance.py::test_no_payroll_calculation_or_other_financial_module_changes
+PASSED tests/test_reimbursement_payments.py::test_fund_path_does_not_deduct_twice_and_reversal_stays_disabled
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[no_voucher]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[bad_voucher]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[no_account]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[foreign_account]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[inactive_account]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[currency]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[no_advance]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[small_advance]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[foreign_advance]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[advance_currency]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[pending_advance]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[mixed]
+PASSED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[not_linked_fund]
+PASSED tests/test_reimbursement_payments.py::test_payment_and_revoke_failures_rollback_everything[company_account]
+PASSED tests/test_reimbursement_payments.py::test_payment_and_revoke_failures_rollback_everything[cash_advance]
+PASSED tests/test_reimbursement_payments.py::test_payment_and_revoke_failures_rollback_everything[expense_fund]
+PASSED tests/test_reimbursement_payments.py::test_only_warehouse_admin_can_revoke[3]
+PASSED tests/test_reimbursement_payments.py::test_only_warehouse_admin_can_revoke[4]
+PASSED tests/test_reimbursement_payments.py::test_only_warehouse_admin_can_revoke[5]
+PASSED tests/test_reimbursement_payments.py::test_only_warehouse_admin_can_revoke[2]
+PASSED tests/test_reimbursement_payments.py::test_cny_account_and_advance_are_independent_from_thb
+PASSED tests/test_reimbursement_payments.py::test_fund_review_separates_approval_payment_and_unpaid_rejection
+PASSED tests/test_reimbursement_payments.py::test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_backfill_idempotent
+PASSED tests/test_reimbursement_payments.py::test_legacy_paid_untouched_warehouse_scope_permissions_and_required_revoke_reason
+FAILED tests/test_cost_funds_debt.py::test_report_costs_accounts_debt_details_and_no_writes
+FAILED tests/test_cost_funds_debt.py::test_original_formula_balances_and_non_cost_repayment_stays_red
+FAILED tests/test_cost_funds_debt.py::test_fund_withdrawal_unassigned_and_weekly_dates
+FAILED tests/test_cost_funds_debt.py::test_pagination_category_exact_payer_and_shared_list_projection
+FAILED tests/test_cost_funds_debt_postgres.py::test_actual_postgres_union_types_currency_and_business_day
+FAILED tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+FAILED tests/test_cash_advance_repayments.py::test_full_repayment_money_ledger_and_costs_exactly_unchanged
+FAILED tests/test_cash_advance_repayments.py::test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies
+FAILED tests/test_employee_advance_expense.py::test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow
+FAILED tests/test_employee_advance_funding.py::test_source_money_cost_ledger_and_void[company_account]
+FAILED tests/test_payroll_cash_advance.py::test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+FAILED tests/test_reimbursement_payments.py::test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+FAILED tests/test_reimbursement_payments.py::test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+FAILED tests/test_reimbursement_payments.py::test_decimal_item_sums_and_partially_approved_total_used_for_payment
+14 failed, 142 passed, 2724 warnings in 89.26s (0:01:29)

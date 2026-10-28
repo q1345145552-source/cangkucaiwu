@@ -1,0 +1,132 @@
+FF.................FF..............................................FF... [ 57%]
+..........F..................F........................                   [100%]
+=================================== FAILURES ===================================
+________________ test_three_creation_cases_filter_and_self_read ________________
+backend/tests/test_round17_advance_approval.py:56: in test_three_creation_cases_filter_and_self_read
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_round17_advance_approval.py:40: in run
+    assert denied.status_code==403
+E   assert 200 == 403
+E    +  where 200 = <Response [200 OK]>.status_code
+____ test_detached_supervisor_archive_still_self_and_same_name_not_identity ____
+backend/tests/test_round17_advance_approval.py:69: in test_detached_supervisor_archive_still_self_and_same_name_not_identity
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_round17_advance_approval.py:68: in run
+    assert r.status_code==403 and set(r.json())=={'detail'},r.text
+E   AssertionError: {"message":"预支记录已创建","id":1,"approval_status":"pending","approval_status_label":"待核验","reviewer_id":null,"reviewed_at":null,"reject_reason":null,"expense_record_id":null,"funding_source":"company_account","funding_source_label":"公司账户","cash_advance_id":null,"payment_account_id":1,"fund_account_id":null,"limit_check":{"checked":true,"currency":"THB","monthly_salary":10400.0,"occupied_amount":0.0,"requested_amount":25.0,"available_amount":10400.0,"remaining_amount":10375.0}}
+E   assert (200 == 403)
+E    +  where 200 = <Response [200 OK]>.status_code
+___________________________ test_hr_route_inventory ____________________________
+backend/tests/test_round3_permissions.py:309: in test_hr_route_inventory
+    assert len(seen)==42
+E   AssertionError: assert 43 == 42
+E    +  where 43 = len([('GET', '/employees/max-limit'), ('PUT', '/employees/max-limit'), ('GET', '/employees'), ('POST', '/employees'), ('PUT', '/employees/{employee_id}'), ('POST', '/employees/{employee_id}/resign'), ...])
+________________________ test_hr_warehouse_isolation[1] ________________________
+backend/tests/test_round3_permissions.py:388: in test_hr_warehouse_isolation
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_round3_permissions.py:386: in run
+    assert response.status_code==200,response.text
+E   AssertionError: {"detail":"已作废或已发放的工资单不能删除或重算"}
+E   assert 409 == 200
+E    +  where 409 = <Response [409 Conflict]>.status_code
+__________________ test_shared_reads_and_cockpit_unchanged[3] __________________
+backend/tests/test_round6_permissions.py:170: in test_shared_reads_and_cockpit_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_round6_permissions.py:152: in run
+    assert r.status_code==(200 if p in ('/dashboard/pending-tasks','/dashboard/stats') else 403),r.text
+E   AssertionError: {"detail":"财务汇总需要财务职责及报表权限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________________ test_shared_reads_and_cockpit_unchanged[4] __________________
+backend/tests/test_round6_permissions.py:170: in test_shared_reads_and_cockpit_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_round6_permissions.py:152: in run
+    assert r.status_code==(200 if p in ('/dashboard/pending-tasks','/dashboard/stats') else 403),r.text
+E   AssertionError: {"detail":"请使用现场待办和本人入口"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+________________ test_shared_fixed_deductions_and_revocation[4] ________________
+backend/tests/test_round10_permissions.py:119: in test_shared_fixed_deductions_and_revocation
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_round10_permissions.py:116: in run
+    await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY[key].label]);assert (await client.get('/api/v1'+path,headers=auth(uid))).status_code==200
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___ test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow ____
+backend/tests/test_employee_advance_expense.py:322: in test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_employee_advance_expense.py:321: in run
+    deferred.finish()
+backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-pending-fund-zero-cost', 'actual_failure': "assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\n +    where all = <sqlalchemy.engine.result.ChunkedIteratorResult object at 0x128254e10>.all"}, {'assertion': 'original-executed-fund-zero-cost', 'actual_failure': "assert [{'id': 8, 's...nd_id': None}] == []\n  \n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\n  Use -v to get more diff"}]
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_round17_advance_approval.py: 50 warnings
+tests/test_round3_permissions.py: 128 warnings
+tests/test_round4_permissions.py: 134 warnings
+tests/test_round5_permissions.py: 157 warnings
+tests/test_round6_permissions.py: 71 warnings
+tests/test_round10_permissions.py: 148 warnings
+tests/test_employee_advance_expense.py: 133 warnings
+tests/test_cash_advances.py: 172 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round7-20261028/docs/permissions-round7-20261028/raw-logs/legacy-rest-03.xml -
+=========================== short test summary info ============================
+FAILED backend/tests/test_round17_advance_approval.py::test_three_creation_cases_filter_and_self_read
+FAILED backend/tests/test_round17_advance_approval.py::test_detached_supervisor_archive_still_self_and_same_name_not_identity
+FAILED backend/tests/test_round3_permissions.py::test_hr_route_inventory - As...
+FAILED backend/tests/test_round3_permissions.py::test_hr_warehouse_isolation[1]
+FAILED backend/tests/test_round6_permissions.py::test_shared_reads_and_cockpit_unchanged[3]
+FAILED backend/tests/test_round6_permissions.py::test_shared_reads_and_cockpit_unchanged[4]
+FAILED backend/tests/test_round10_permissions.py::test_shared_fixed_deductions_and_revocation[4]
+FAILED backend/tests/test_employee_advance_expense.py::test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow
+8 failed, 118 passed, 1243 deselected, 1005 warnings in 26.76s

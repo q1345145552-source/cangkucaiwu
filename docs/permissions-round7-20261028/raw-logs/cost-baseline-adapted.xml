@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="15" time="10.805" timestamp="2026-10-28T08:49:06.576777+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_cost_funds_debt" name="test_report_costs_accounts_debt_details_and_no_writes" time="0.770"><failure message="AssertionError: [{'assertion': 'THB-original-total-7234.56', 'actual_failure': 'assert 4234.56 == 7234.56'}, {'assertion': 'THB-detail-sum-7234.56', 'actual_failure': &quot;assert Decimal('4234.56') == Decimal('7234.56')\n +  where Decimal('4234.56') = sum(&lt;generator object test_report_costs_accounts_debt_details_and_no_writes.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x109e70900&gt;, Decimal('0'))\n +    where Decimal('0') = Decimal(0)\n +  and   Decimal('7234.56') = Decimal('7234.56')&quot;}, {'assertion': 'cash-and-fund-cost-original', 'actual_failure': 'assert (0.0 == 2000)'}, {'assertion': 'reconciliation-original-3000', 'actual_failure': 'assert (0 == 3000)\n +  where 0 = sum(&lt;generator object test_report_costs_accounts_debt_details_and_no_writes.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x10a1657d0&gt;)'}]">../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:93: in test_report_costs_accounts_debt_details_and_no_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:92: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'THB-original-total-7234.56', 'actual_failure': 'assert 4234.56 == 7234.56'}, {'assertion': 'THB-detail-sum-7234.56', 'actual_failure': "assert Decimal('4234.56') == Decimal('7234.56')\n +  where Decimal('4234.56') = sum(&lt;generator object test_report_costs_accounts_debt_details_and_no_writes.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x109e70900&gt;, Decimal('0'))\n +    where Decimal('0') = Decimal(0)\n +  and   Decimal('7234.56') = Decimal('7234.56')"}, {'assertion': 'cash-and-fund-cost-original', 'actual_failure': 'assert (0.0 == 2000)'}, {'assertion': 'reconciliation-original-3000', 'actual_failure': 'assert (0 == 3000)\n +  where 0 = sum(&lt;generator object test_report_costs_accounts_debt_details_and_no_writes.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x10a1657d0&gt;)'}]</failure></testcase><testcase classname="tests.test_cost_funds_debt" name="test_original_formula_balances_and_non_cost_repayment_stays_red" time="0.664"><failure message="AssertionError: [{'assertion': 'original-cost-line-111', 'actual_failure': 'assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\n  \n  At index 0 diff: 4234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-117', 'actual_failure': 'assert (not True)'}, {'assertion': 'original-cost-line-119', 'actual_failure': 'assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\n  \n  At index 0 diff: 5234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-121', 'actual_failure': &quot;assert [] == [{'amount': 1...ame': '垫款归还'}]\n  \n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\n  Use -v to get more diff&quot;}]">../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:132: in test_original_formula_balances_and_non_cost_repayment_stays_red
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:131: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-line-111', 'actual_failure': 'assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\n  \n  At index 0 diff: 4234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-117', 'actual_failure': 'assert (not True)'}, {'assertion': 'original-cost-line-119', 'actual_failure': 'assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\n  \n  At index 0 diff: 5234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-121', 'actual_failure': "assert [] == [{'amount': 1...ame': '垫款归还'}]\n  \n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\n  Use -v to get more diff"}]</failure></testcase><testcase classname="tests.test_cost_funds_debt" name="test_fund_withdrawal_unassigned_and_weekly_dates" time="0.539"><failure message="AssertionError: [{'assertion': 'original-cost-line-144', 'actual_failure': 'assert (250.0 == 1250)'}, {'assertion': 'original-cost-line-146', 'actual_failure': 'assert (250.0 == 250 and 0.0 == 1000)'}, {'assertion': 'original-cost-line-155', 'actual_failure': 'assert 0.0 == -5000'}, {'assertion': 'original-cost-line-157', 'actual_failure': &quot;assert [] == [{'amount': 5...用金领用（未指定账户）'}]\n  \n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\n  Use -v to get more diff&quot;}]">../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:164: in test_fund_withdrawal_unassigned_and_weekly_dates
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:163: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-line-144', 'actual_failure': 'assert (250.0 == 1250)'}, {'assertion': 'original-cost-line-146', 'actual_failure': 'assert (250.0 == 250 and 0.0 == 1000)'}, {'assertion': 'original-cost-line-155', 'actual_failure': 'assert 0.0 == -5000'}, {'assertion': 'original-cost-line-157', 'actual_failure': "assert [] == [{'amount': 5...用金领用（未指定账户）'}]\n  \n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\n  Use -v to get more diff"}]</failure></testcase><testcase classname="tests.test_cost_funds_debt" name="test_reports_permission_does_not_grant_business_writes[1-False-200]" time="0.695" /><testcase classname="tests.test_cost_funds_debt" name="test_reports_permission_does_not_grant_business_writes[2-True-403]" time="0.448" /><testcase classname="tests.test_cost_funds_debt" name="test_reports_permission_does_not_grant_business_writes[3-True-200]" time="0.597" /><testcase classname="tests.test_cost_funds_debt" name="test_reports_permission_does_not_grant_business_writes[3-False-403]" time="0.443" /><testcase classname="tests.test_cost_funds_debt" name="test_reports_permission_does_not_grant_business_writes[4-True-403]" time="0.572" /><testcase classname="tests.test_cost_funds_debt" name="test_reports_permission_does_not_grant_business_writes[4-False-403]" time="0.438" /><testcase classname="tests.test_cost_funds_debt" name="test_reports_permission_does_not_grant_business_writes[5-True-403]" time="0.546" /><testcase classname="tests.test_cost_funds_debt" name="test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only" time="0.729" /><testcase classname="tests.test_cost_funds_debt" name="test_pagination_category_exact_payer_and_shared_list_projection" time="0.700"><failure message="AssertionError: assert {'data': [{'a...: 500.0}, ...} == {'card_expens...e, ...}], ...}&#10;  &#10;  Omitting 11 identical items, use -vv to show&#10;  Right contains 3 more items:&#10;  {'card_expense': 4234.56, 'card_income': 500.0, 'card_net': -3734.5600000000004}&#10;  Use -v to get more diff">../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:242: in test_pagination_category_exact_payer_and_shared_list_projection
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:240: in run
+    assert report == raw
+E   AssertionError: assert {'data': [{'a...: 500.0}, ...} == {'card_expens...e, ...}], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Right contains 3 more items:
+E     {'card_expense': 4234.56, 'card_income': 500.0, 'card_net': -3734.5600000000004}
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_cost_funds_debt_postgres" name="test_actual_postgres_union_types_currency_and_business_day" time="1.037"><failure message="AssertionError: [{'assertion': 'original-cost-total-2100-two-rows', 'actual_failure': 'assert (2000.0 == 2100)\n +  where 2000.0 = sum(&lt;generator object test_actual_postgres_union_types_currency_and_business_day.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x10c2535a0&gt;)'}]">../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt_postgres.py:56: in test_actual_postgres_union_types_currency_and_business_day
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt_postgres.py:53: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-total-2100-two-rows', 'actual_failure': 'assert (2000.0 == 2100)\n +  where 2000.0 = sum(&lt;generator object test_actual_postgres_union_types_currency_and_business_day.&lt;locals&gt;.run.&lt;locals&gt;.&lt;genexpr&gt; at 0x10c2535a0&gt;)'}]</failure></testcase><testcase classname="tests.test_fund_disbursement" name="test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals" time="0.561"><failure message="assert (6400.0 == 1400)">../permissions-round7-cost-baseline-20261028/backend/tests/test_fund_disbursement.py:279: in test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_fund_disbursement.py:275: in run
+    assert state["expense_amount"] == 1400 and state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
+E   assert (6400.0 == 1400)</failure></testcase><testcase classname="tests.test_employee_advance_expense" name="test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow" time="0.255"><failure message="AssertionError: [{'assertion': 'original-pending-fund-zero-cost', 'actual_failure': &quot;assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\n +    where all = &lt;sqlalchemy.engine.result.ChunkedIteratorResult object at 0x10b0aeb50&gt;.all&quot;}, {'assertion': 'original-executed-fund-zero-cost', 'actual_failure': &quot;assert [{'id': 8, 's...nd_id': None}] == []\n  \n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\n  Use -v to get more diff&quot;}]">../permissions-round7-cost-baseline-20261028/backend/tests/test_employee_advance_expense.py:322: in test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_employee_advance_expense.py:321: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-pending-fund-zero-cost', 'actual_failure': "assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\n +    where all = &lt;sqlalchemy.engine.result.ChunkedIteratorResult object at 0x10b0aeb50&gt;.all"}, {'assertion': 'original-executed-fund-zero-cost', 'actual_failure': "assert [{'id': 8, 's...nd_id': None}] == []\n  \n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\n  Use -v to get more diff"}]</failure></testcase></testsuite></testsuites>

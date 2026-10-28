@@ -1,0 +1,14 @@
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:88: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:95: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+receipt-parent-context 200 PASS
+receipt-lines-only-parent 200 PASS
+receipt-line-context 200 PASS
+receipt-other-parent-line 403 PASS
+receipt-foreign-parent 403 PASS
+receipt-labor-denied 403 PASS
+receipt-numeric-object-invalid 400 PASS
+receipt-form-submit 200 PASS
+receipt-form-replay 200 PASS
+receipt-form-stale-reject 409 PASS

@@ -1,0 +1,32 @@
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:88: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:95: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+quote-history-labor 403 PASS
+quote-history-foreign-header 403 PASS
+quote-history 200 PASS
+exception-detail-labor 403 PASS
+exception-detail-foreign-header 403 PASS
+exception-detail 200 PASS
+attendance-times-labor 403 PASS
+attendance-times-foreign-header 403 PASS
+attendance-times 200 PASS
+quote-history-foreign-object 404 PASS
+exception-foreign-object 404 PASS
+credit-create-labor 403 PASS
+credit-create-supervisor 403 PASS
+credit-create-foreign 403 PASS
+credit-create-admin 200 PASS
+credit-update-supervisor 403 PASS
+credit-update-foreign-header 403 PASS
+credit-update-admin 200 PASS
+purchase-reject-context 200 PASS
+purchase-reject-labor 403 PASS
+purchase-reject-cross-header 403 PASS
+purchase-reject 200 PASS
+fund-void-supervisor 403 PASS
+fund-void 200 PASS
+ai-compare-no-input 200 PASS
+ai-evaluation-admin-denied 403 PASS
+ai-evaluation-platform-denied 403 PASS
+ai-evaluation-cross-object 403 PASS

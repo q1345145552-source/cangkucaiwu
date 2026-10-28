@@ -1,0 +1,38 @@
+{
+  "suite": "full-current-final06b",
+  "full": {
+    "passed": 2905,
+    "failed": 14
+  },
+  "total": 2919,
+  "skipped": 0,
+  "exit": 1,
+  "freeze": {
+    "matched": true,
+    "changed": [],
+    "files": 576,
+    "collected": 2919,
+    "executed": 2919,
+    "unique_executed": 2919
+  },
+  "exact_baseline_full": {
+    "total": 2918,
+    "passed": 2149,
+    "failed": 769,
+    "skipped": 0,
+    "exit": 1
+  },
+  "adapted_cost_baseline": {
+    "total": 156,
+    "failed": 14,
+    "passed": 142,
+    "exit": 1
+  },
+  "cost_actual_assertion_exact_matches": 12,
+  "browser_scenarios": 18,
+  "tsc_exit": 0,
+  "build_exit": 0,
+  "runtime_correspondence": "RUNTIME-EVIDENCE-MATCH.json",
+  "cost_additional_reviewed_matches": 2,
+  "cost_comparison_review": "COST-ASSERTION-REVIEW.md"
+}

@@ -1,0 +1,6 @@
+{
+  "source": "backend/tests/permission_round5/history_fields.py",
+  "sha256": "d35872e1d65a8695ffcf9def8f64d299c258da3cc26f8ab9e63a707a60fcb422",
+  "adaptation": "round7 fixtures/output only; original assertion bodies unchanged",
+  "versioned_seed": false
+}

@@ -1,0 +1,51 @@
+[
+  {
+    "round": 1,
+    "worktree": "/private/tmp/permissions-audit-round1-20261028",
+    "branch": "codex/permissions-audit-round1-20261028",
+    "head": "bc903a55c60c865f8eb95a4e6374ef5325ab4685",
+    "note": "local read-only snapshot"
+  },
+  {
+    "round": 2,
+    "worktree": "/private/tmp/permissions-round2-20261028",
+    "branch": "codex/permissions-round2-20261028",
+    "head": "e6cc888187d8ecf21abe56118565879edc4c0312",
+    "note": "local read-only snapshot"
+  },
+  {
+    "round": 3,
+    "worktree": "/private/tmp/permissions-round3-20261028",
+    "branch": "codex/permissions-round3-20261028",
+    "head": "1602e8133ebea004eb2d17d20e41187bab46ccd0",
+    "note": "local read-only snapshot"
+  },
+  {
+    "round": 4,
+    "worktree": "/private/tmp/permissions-round4-20261028",
+    "branch": "codex/permissions-round4-20261028",
+    "head": "a28717065b9752e70094b06ad26660463b7d7a4f",
+    "note": "local read-only snapshot"
+  },
+  {
+    "round": 5,
+    "worktree": "/private/tmp/permissions-round5-20261028",
+    "branch": "codex/permissions-round5-20261028",
+    "head": "a28e128614beec612cd2e639231044b415f97b97",
+    "note": "local read-only snapshot"
+  },
+  {
+    "round": 6,
+    "worktree": "/private/tmp/permissions-round6-20261028",
+    "branch": "codex/permissions-round6-20261028",
+    "head": "0e4d2f9b45f9850754b1996c9127a48d0ff2e816",
+    "note": "local read-only snapshot"
+  },
+  {
+    "round": 7,
+    "worktree": "/private/tmp/permissions-round7-20261028",
+    "branch": "codex/permissions-round7-20261028",
+    "head": "c2a2eab785f62b4b9013b0419cb3d9b02b9ce6bc",
+    "note": "Implementation/test commit; following evidence-only commit final HEAD is reported in delivery."
+  }
+]

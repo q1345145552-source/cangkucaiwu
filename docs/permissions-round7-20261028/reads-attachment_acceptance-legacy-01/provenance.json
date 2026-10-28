@@ -1,0 +1,6 @@
+{
+  "source": "backend/tests/permission_round5/attachment_acceptance.py",
+  "sha256": "ce5a4be7def45dbf88ed7b85ca2719c3ed3d4c4c8facabe0d540befd02ee3b6c",
+  "adaptation": "round7 fixtures/output only; original assertion bodies unchanged",
+  "versioned_seed": false
+}

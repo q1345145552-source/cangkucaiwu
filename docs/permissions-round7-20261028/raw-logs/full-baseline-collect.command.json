@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/tmp/supplier01-py312/bin/python",
+    "-m",
+    "pytest",
+    "--collect-only",
+    "-q"
+  ],
+  "cwd": "/private/tmp/permissions-round7-baseline-20261028/backend",
+  "database": "postgresql+asyncpg://round7@127.0.0.1:65519/round7baseline",
+  "head": "0e4d2f9b45f9850754b1996c9127a48d0ff2e816",
+  "network_guard": "local_guard.py via sitecustomize; no role/auth substitute"
+}

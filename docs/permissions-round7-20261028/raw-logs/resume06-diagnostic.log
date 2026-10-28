@@ -1,0 +1,109 @@
+F
+=================================== FAILURES ===================================
+__________ test_daily_and_hourly_registration_limit_is_26_days[daily] __________
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/default.py:941: in do_execute
+    cursor.execute(statement, parameters)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:147: in execute
+    self._adapt_connection._handle_exception(error)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:298: in _handle_exception
+    raise error
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:129: in execute
+    self.await_(_cursor.execute(operation, parameters))
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/cursor.py:48: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/cursor.py:40: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/core.py:132: in _execute
+    return await future
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/core.py:115: in run
+    result = function()
+E   sqlite3.IntegrityError: NOT NULL constraint failed: users.display_name
+
+The above exception was the direct cause of the following exception:
+backend/tests/test_employee_advance_limit.py:176: in test_daily_and_hourly_registration_limit_is_26_days
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_employee_advance_limit.py:170: in run
+    async with hr_environment(tmp_path, monkeypatch) as (_, factory, client):
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+backend/tests/advance_funding_test_support.py:15: in funded_hr_environment
+    await db.flush()
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:800: in flush
+    await greenlet_spawn(self.sync_session.flush, objects=objects)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4352: in flush
+    self._flush(objects)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4487: in _flush
+    with util.safe_reraise():
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4448: in _flush
+    flush_context.execute()
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1233: in _emit_insert_statements
+    result = connection.execute(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1418: in execute
+    return meth(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:515: in _execute_on_connection
+    return connection._execute_clauseelement(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1640: in _execute_clauseelement
+    ret = self._execute_context(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1846: in _execute_context
+    return self._exec_single_context(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2355: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/engine/default.py:941: in do_execute
+    cursor.execute(statement, parameters)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:147: in execute
+    self._adapt_connection._handle_exception(error)
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:298: in _handle_exception
+    raise error
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py:129: in execute
+    self.await_(_cursor.execute(operation, parameters))
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+/tmp/supplier01-py312/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/cursor.py:48: in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/cursor.py:40: in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/core.py:132: in _execute
+    return await future
+/tmp/supplier01-py312/lib/python3.12/site-packages/aiosqlite/core.py:115: in run
+    result = function()
+E   sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: users.display_name
+E   [SQL: INSERT INTO users (id, username, password_hash, display_name, role, warehouse_id, line_user_id, extra_permissions, attendance_enabled, attendance_employee_id, attendance_enabled_at, is_active, created_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at]
+E   [parameters: (94, 'synthetic_independent_advance_recorder', 'synthetic', None, 'staff', 1, None, '["@wf-actions:1", "employee_advances:operate"]', 0, None, None, 1, None, None)]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED backend/tests/test_employee_advance_limit.py::test_daily_and_hourly_registration_limit_is_26_days[daily]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!

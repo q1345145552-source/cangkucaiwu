@@ -1,0 +1,155 @@
+FFF........FFFF                                                          [100%]
+=================================== FAILURES ===================================
+____________ test_report_costs_accounts_debt_details_and_no_writes _____________
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:93: in test_report_costs_accounts_debt_details_and_no_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:92: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'THB-original-total-7234.56', 'actual_failure': 'assert 4234.56 == 7234.56'}, {'assertion': 'THB-detail-sum-7234.56', 'actual_failure': "assert Decimal('4234.56') == Decimal('7234.56')\n +  where Decimal('4234.56') = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x109e70900>, Decimal('0'))\n +    where Decimal('0') = Decimal(0)\n +  and   Decimal('7234.56') = Decimal('7234.56')"}, {'assertion': 'cash-and-fund-cost-original', 'actual_failure': 'assert (0.0 == 2000)'}, {'assertion': 'reconciliation-original-3000', 'actual_failure': 'assert (0 == 3000)\n +  where 0 = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x10a1657d0>)'}]
+----------------------------- Captured stdout call -----------------------------
+REPORT_INITIAL {"internal_transfers": {"label": "内部转账", "excluded_from_income_expense": true, "scope_label": "所选仓库及期间的调拨额", "by_currency": {}, "count_by_currency": {}, "total_count": 0}, "start_date": "2026-10-01", "end_date": "2026-10-31", "warehouse_ids": [1], "currencies": [{"currency": "CNY", "symbol": "¥", "costs": {"data": [{"name": "员工工资", "count": 0, "amount": 0.0}, {"name": "报销", "count": 0, "amount": 0.0}, {"name": "采购", "count": 0, "amount": 0.0}, {"name": "备用金拨付", "count": 0, "amount": 0.0}, {"name": "手工采购", "count": 1, "amount": 300.0}], "count": 1, "total": 300.0}, "funds": {"data": [{"account_id": 4, "account_name": "人民币账户", "opening_balance": 30000.0, "inflow": 0.0, "outflow": 300.0, "closing_balance": 29700.0, "status": "active"}, {"account_id": 5, "account_name": "人民币银行", "opening_balance": 4000.0, "inflow": 0.0, "outflow": 0.0, "closing_balance": 4000.0, "status": "inactive"}], "total": {"opening_balance": 34000.0, "inflow": 0.0, "outflow": 300.0, "closing_balance": 33700.0}, "unassigned": {"inflow": 0.0, "outflow": 0.0}}, "debt": {"data": [], "total": {"amount": 0.0, "repaid_amount": 0.0, "outstanding_amount": 0.0}}, "reconciliation": {"cost_total": 300.0, "company_outflow": 300.0, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}}, {"currency": "THB", "symbol": "฿", "costs": {"data": [{"name": "员工工资", "count": 3, "amount": 1984.56}, {"name": "报销", "count": 1, "amount": 2000.0}, {"name": "采购", "count": 0, "amount": 0.0}, {"name": "备用金拨付", "count": 0, "amount": 0.0}, {"name": "手工采购", "count": 1, "amount": 250.0}], "count": 5, "total": 4234.56}, "funds": {"data": [{"account_id": 1, "account_name": "测试现金", "opening_balance": 10750.0, "inflow": 500.0, "outflow": 4234.56, "closing_balance": 7015.44, "status": "active"}, {"account_id": 3, "account_name": "测试银行", "opening_balance": 20000.0, "inflow": 0.0, "outflow": 0.0, "closing_balance": 20000.0, "status": "active"}], "total": {"opening_balance": 30750.0, "inflow": 500.0, "outflow": 4234.56, "closing_balance": 27015.44}, "unassigned": {"inflow": 0.0, "outflow": 0.0}}, "debt": {"data": [{"key": "user:4", "payer_id": 4, "payer_name": "supervisor", "amount": 10000.0, "repaid_amount": 0.0, "outstanding_amount": 10000.0, "count": 1}], "total": {"amount": 10000.0, "repaid_amount": 0.0, "outstanding_amount": 10000.0}}, "reconciliation": {"cost_total": 4234.56, "company_outflow": 4234.56, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}}], "balance_anchor_date": "2026-10-01", "notes": ["采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。", "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。", "备用金在拨付时计一次支出，后续开销和备用金报销仅记录使用；原记录保留，不重复合计。", "收入只认实际到账和收款；垫款业务不先记公司支出，归还垫款当天按用途记支出。内部转账只影响各账户余额，不计公司收入支出。", "账户按保存的期初日期与同一套有效流水推算；旧累计付款和未指定账户单列，历史余额仍需结合银行账单核对。", "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。", "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"], "undated_flows": []}
+_______ test_original_formula_balances_and_non_cost_repayment_stays_red ________
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:132: in test_original_formula_balances_and_non_cost_repayment_stays_red
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:131: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-line-111', 'actual_failure': 'assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\n  \n  At index 0 diff: 4234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-117', 'actual_failure': 'assert (not True)'}, {'assertion': 'original-cost-line-119', 'actual_failure': 'assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\n  \n  At index 0 diff: 5234.56 != 7234.56\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-121', 'actual_failure': "assert [] == [{'amount': 1...ame': '垫款归还'}]\n  \n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\n  Use -v to get more diff"}]
+----------------------------- Captured stdout call -----------------------------
+THREE_BOOKS_DIFF {"before": {"cost_total": 4234.56, "company_outflow": 4234.56, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}, "after_repay": {"cost_total": 5234.56, "company_outflow": 5234.56, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}, "debt_after_repay": {"amount": 10000.0, "repaid_amount": 1000.0, "outstanding_amount": 9000.0}}
+_______________ test_fund_withdrawal_unassigned_and_weekly_dates _______________
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:164: in test_fund_withdrawal_unassigned_and_weekly_dates
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:163: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-line-144', 'actual_failure': 'assert (250.0 == 1250)'}, {'assertion': 'original-cost-line-146', 'actual_failure': 'assert (250.0 == 250 and 0.0 == 1000)'}, {'assertion': 'original-cost-line-155', 'actual_failure': 'assert 0.0 == -5000'}, {'assertion': 'original-cost-line-157', 'actual_failure': "assert [] == [{'amount': 5...用金领用（未指定账户）'}]\n  \n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\n  Use -v to get more diff"}]
+----------------------------- Captured stdout call -----------------------------
+THREE_BOOKS_WEEK {"range": {"start_date": "2026-10-05", "end_date": "2026-10-11"}, "THB": {"cost": 1250, "company_outflow": 250, "difference": 1000}, "CNY": {"cost": 300}}
+_______ test_pagination_category_exact_payer_and_shared_list_projection ________
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:242: in test_pagination_category_exact_payer_and_shared_list_projection
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:240: in run
+    assert report == raw
+E   AssertionError: assert {'data': [{'a...: 500.0}, ...} == {'card_expens...e, ...}], ...}
+E     
+E     Omitting 11 identical items, use -vv to show
+E     Right contains 3 more items:
+E     {'card_expense': 4234.56, 'card_income': 500.0, 'card_net': -3734.5600000000004}
+E     Use -v to get more diff
+__________ test_actual_postgres_union_types_currency_and_business_day __________
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt_postgres.py:56: in test_actual_postgres_union_types_currency_and_business_day
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt_postgres.py:53: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-cost-total-2100-two-rows', 'actual_failure': 'assert (2000.0 == 2100)\n +  where 2000.0 = sum(<generator object test_actual_postgres_union_types_currency_and_business_day.<locals>.run.<locals>.<genexpr> at 0x10c2535a0>)'}]
+----------------------------- Captured stdout call -----------------------------
+THREE_BOOKS_PG {'cost': 2100, 'outflow': 2000, 'inflow': 300, 'thai_business_date': '2026-10-19', 'no_duplicate_reimbursement_or_fund_flow': True}
+___ test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals ____
+../permissions-round7-cost-baseline-20261028/backend/tests/test_fund_disbursement.py:279: in test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_fund_disbursement.py:275: in run
+    assert state["expense_amount"] == 1400 and state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
+E   assert (6400.0 == 1400)
+___ test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow ____
+../permissions-round7-cost-baseline-20261028/backend/tests/test_employee_advance_expense.py:322: in test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+../permissions-round7-cost-baseline-20261028/backend/tests/test_employee_advance_expense.py:321: in run
+    deferred.finish()
+../permissions-round7-cost-baseline-20261028/backend/tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'original-pending-fund-zero-cost', 'actual_failure': "assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\n +    where all = <sqlalchemy.engine.result.ChunkedIteratorResult object at 0x10b0aeb50>.all"}, {'assertion': 'original-executed-fund-zero-cost', 'actual_failure': "assert [{'id': 8, 's...nd_id': None}] == []\n  \n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\n  Use -v to get more diff"}]
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_cost_funds_debt.py: 464 warnings
+tests/test_fund_disbursement.py: 22 warnings
+tests/test_employee_advance_expense.py: 8 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_cost_funds_debt.py::test_report_costs_accounts_debt_details_and_no_writes
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[1-False-200]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[2-True-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-True-200]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-False-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-True-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-False-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[5-True-403]
+tests/test_cost_funds_debt.py::test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py:56: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for t in Base.metadata.sorted_tables}
+
+tests/test_cost_funds_debt_postgres.py::test_actual_postgres_union_types_currency_and_business_day
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt_postgres.py:30: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for table in Base.metadata.sorted_tables:
+
+tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/app/api/v1/expense_fund.py:181: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    receive_date=datetime.utcnow(), amount=0, purpose="",
+
+tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+  /private/tmp/permissions-round7-cost-baseline-20261028/backend/app/api/v1/expense_fund.py:837: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rr.reviewed_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round7-20261028/docs/permissions-round7-20261028/raw-logs/cost-baseline-adapted.xml -
+=========================== short test summary info ============================
+FAILED ../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py::test_report_costs_accounts_debt_details_and_no_writes
+FAILED ../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py::test_original_formula_balances_and_non_cost_repayment_stays_red
+FAILED ../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py::test_fund_withdrawal_unassigned_and_weekly_dates
+FAILED ../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt.py::test_pagination_category_exact_payer_and_shared_list_projection
+FAILED ../permissions-round7-cost-baseline-20261028/backend/tests/test_cost_funds_debt_postgres.py::test_actual_postgres_union_types_currency_and_business_day
+FAILED ../permissions-round7-cost-baseline-20261028/backend/tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+FAILED ../permissions-round7-cost-baseline-20261028/backend/tests/test_employee_advance_expense.py::test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow
+7 failed, 8 passed, 518 warnings in 10.81s

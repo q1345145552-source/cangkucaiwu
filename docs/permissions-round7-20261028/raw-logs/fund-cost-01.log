@@ -1,0 +1,529 @@
+F...........FFF.FFFFFFFFFFFFFF..FFFFFF....F.FFFF....F..FF                [100%]
+=================================== FAILURES ===================================
+___ test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links ___
+backend/tests/test_fund_disbursement.py:174: in test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_disbursement.py:132: in run
+    assert item.status_code == 200, item.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___ test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals ____
+backend/tests/test_fund_disbursement.py:278: in test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_disbursement.py:268: in run
+    assert item.status_code == 200, item.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_________ test_fifo_sources_multiple_disbursements_and_cross_warehouse _________
+backend/tests/test_fund_disbursement.py:303: in test_fifo_sources_multiple_disbursements_and_cross_warehouse
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_disbursement.py:285: in run
+    assert (await spend(c, fid, amount=2500)).status_code == 200
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_______ test_new_fund_employee_advance_records_usage_without_second_cost _______
+backend/tests/test_fund_disbursement.py:320: in test_new_fund_employee_advance_records_usage_without_second_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_disbursement.py:319: in run
+    assert state["fund"]["available"] == 9000
+E   assert 10000.0 == 9000
+_____ test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb _____
+backend/tests/test_fund_disbursement.py:387: in test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_disbursement.py:377: in run
+    assert item.status_code == 200, item.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_supervisor_denied_admin_edit_void_history_and_balance __________
+backend/tests/test_fund_item_controls.py:66: in test_supervisor_denied_admin_edit_void_history_and_balance
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:27: in run
+    await topup(c,fid); iid,url=await path_for(c,fid)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______________ test_approved_cannot_edit_void_or_replace_receipt _______________
+backend/tests/test_fund_item_controls.py:82: in test_approved_cannot_edit_void_or_replace_receipt
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:72: in run
+    await topup(c,fid);iid,url=await path_for(c,fid)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________________ test_other_roles_cannot_change_record[2] ___________________
+backend/tests/test_fund_item_controls.py:92: in test_other_roles_cannot_change_record
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:89: in run
+    await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________________ test_other_roles_cannot_change_record[3] ___________________
+backend/tests/test_fund_item_controls.py:92: in test_other_roles_cannot_change_record
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:89: in run
+    await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________________ test_other_roles_cannot_change_record[5] ___________________
+backend/tests/test_fund_item_controls.py:92: in test_other_roles_cannot_change_record
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:89: in run
+    await topup(c,fid);_,url=await path_for(c,fid);await set_perms(f,uid,["备用金管理"])
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_______________ test_warehouse_scope_and_protected_linked_items ________________
+backend/tests/test_fund_item_controls.py:115: in test_warehouse_scope_and_protected_linked_items
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:98: in run
+    await topup(c,fid);iid,url=await path_for(c,fid)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______________ test_history_failure_rolls_back_every_change[edit] ______________
+backend/tests/test_fund_item_controls.py:129: in test_history_failure_rolls_back_every_change
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:122: in run
+    await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______________ test_history_failure_rolls_back_every_change[void] ______________
+backend/tests/test_fund_item_controls.py:129: in test_history_failure_rolls_back_every_change
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:122: in run
+    await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_history_failure_rolls_back_every_change[receipt] _____________
+backend/tests/test_fund_item_controls.py:129: in test_history_failure_rolls_back_every_change
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:122: in run
+    await topup(c,fid);_,url=await path_for(c,fid);before=await finance_snapshot(f)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______ test_void_restores_all_available_queries_and_preserves_legacy_rows ______
+backend/tests/test_fund_item_controls.py:153: in test_void_restores_all_available_queries_and_preserves_legacy_rows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:139: in run
+    iid,url=await path_for(c,fid)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______________ test_amount_validation_currency_and_rejected_entry ______________
+backend/tests/test_fund_item_controls.py:168: in test_amount_validation_currency_and_rejected_entry
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_item_controls.py:159: in run
+    await topup(c,fid);iid,url=await path_for(c,fid)
+backend/tests/test_fund_item_controls.py:20: in path_for
+    result=await spend(c,fid);assert result.status_code==200,result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_original_financial_functions_and_formula_preserved ____________
+backend/tests/test_fund_item_controls.py:177: in test_original_financial_functions_and_formula_preserved
+    assert actions((root/path).read_text()) == actions(previous)
+E   assert {'_payment_re...ams=[])', ...} == {'_payment_re...ams=[])', ...}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {'create_reimbursement': "AsyncFunctionDef(name='create_reimbursement', args=arguments(posonlyargs=[], args=[arg(arg='...pends', ctx=Load()), args=[Name(id='require_non_labor', ctx=Load())], keywords=[])], ctx=Load()))])], type_params=[])"} != {'create_reimbursement': "AsyncFunctionDef(name='create_reimbursement', args=arguments(posonlyargs=[], args=[arg(arg='...ue=Name(id='router', ctx=Load()), attr='post', ctx=Load()), args=[Constant(value='')], keywords=[])], type_params=[])"}
+E     {'list_reimbursements': "AsyncFun...
+E     
+E     ...Full output truncated (169 lines hidden), use '-vv' to show
+_____ test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost _____
+backend/tests/test_fund_receipts.py:42: in test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:30: in run
+    assert made.status_code==200, made.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_empty_fake_or_wrong_scope_receipts_cannot_create[  ] ___________
+backend/tests/test_fund_receipts.py:53: in test_empty_fake_or_wrong_scope_receipts_cannot_create
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:51: in run
+    assert result.status_code==400, result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 400
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_empty_fake_or_wrong_scope_receipts_cannot_create[https://example.com/x.png] _
+backend/tests/test_fund_receipts.py:53: in test_empty_fake_or_wrong_scope_receipts_cannot_create
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:51: in run
+    assert result.status_code==400, result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 400
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/2/1/x.png] _
+backend/tests/test_fund_receipts.py:53: in test_empty_fake_or_wrong_scope_receipts_cannot_create
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:51: in run
+    assert result.status_code==400, result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 400
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/1/999/x.png] _
+backend/tests/test_fund_receipts.py:53: in test_empty_fake_or_wrong_scope_receipts_cannot_create
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:51: in run
+    assert result.status_code==400, result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 400
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/1/1/../x.png] _
+backend/tests/test_fund_receipts.py:53: in test_empty_fake_or_wrong_scope_receipts_cannot_create
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:51: in run
+    assert result.status_code==400, result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 400
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/1/1/missing.png] _
+backend/tests/test_fund_receipts.py:53: in test_empty_fake_or_wrong_scope_receipts_cannot_create
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:51: in run
+    assert result.status_code==400, result.text
+E   AssertionError: {"detail":"本人申请不能关联他人附件"}
+E   assert 403 == 400
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_batch_with_missing_receipt_rolls_back_other_approvals __________
+backend/tests/test_fund_receipts.py:107: in test_batch_with_missing_receipt_rolls_back_other_approvals
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_fund_receipts.py:102: in run
+    result=await c.post(BASE+"/review/batch",headers=auth(1),json={"item_ids":[made["id"],missing],"action":"verify"})
+E   KeyError: 'id'
+________________ test_payout_and_other_business_paths_unchanged ________________
+backend/tests/test_fund_receipts.py:135: in test_payout_and_other_business_paths_unchanged
+    assert actions((root/path).read_text()) == actions(previous)
+E   assert {'_payment_re...ams=[])', ...} == {'_payment_re...ams=[])', ...}
+E     
+E     Omitting 1 identical items, use -vv to show
+E     Differing items:
+E     {'create_reimbursement': "AsyncFunctionDef(name='create_reimbursement', args=arguments(posonlyargs=[], args=[arg(arg='...pends', ctx=Load()), args=[Name(id='require_non_labor', ctx=Load())], keywords=[])], ctx=Load()))])], type_params=[])"} != {'create_reimbursement': "AsyncFunctionDef(name='create_reimbursement', args=arguments(posonlyargs=[], args=[arg(arg='...ue=Name(id='router', ctx=Load()), attr='post', ctx=Load()), args=[Constant(value='')], keywords=[])], type_params=[])"}
+E     {'list_reimbursements': "AsyncFun...
+E     
+E     ...Full output truncated (169 lines hidden), use '-vv' to show
+____________ test_report_costs_accounts_debt_details_and_no_writes _____________
+backend/tests/test_cost_funds_debt.py:86: in test_report_costs_accounts_debt_details_and_no_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cost_funds_debt.py:70: in run
+    assert thb["costs"]["total"] == costs["totals_by_currency"]["THB"] == 7234.56
+E   assert 4234.56 == 7234.56
+----------------------------- Captured stdout call -----------------------------
+REPORT_INITIAL {"internal_transfers": {"label": "内部转账", "excluded_from_income_expense": true, "scope_label": "所选仓库及期间的调拨额", "by_currency": {}, "count_by_currency": {}, "total_count": 0}, "start_date": "2026-10-01", "end_date": "2026-10-31", "warehouse_ids": [1], "currencies": [{"currency": "CNY", "symbol": "¥", "costs": {"data": [{"name": "员工工资", "count": 0, "amount": 0.0}, {"name": "报销", "count": 0, "amount": 0.0}, {"name": "采购", "count": 0, "amount": 0.0}, {"name": "备用金拨付", "count": 0, "amount": 0.0}, {"name": "手工采购", "count": 1, "amount": 300.0}], "count": 1, "total": 300.0}, "funds": {"data": [{"account_id": 4, "account_name": "人民币账户", "opening_balance": 30000.0, "inflow": 0.0, "outflow": 300.0, "closing_balance": 29700.0, "status": "active"}, {"account_id": 5, "account_name": "人民币银行", "opening_balance": 4000.0, "inflow": 0.0, "outflow": 0.0, "closing_balance": 4000.0, "status": "inactive"}], "total": {"opening_balance": 34000.0, "inflow": 0.0, "outflow": 300.0, "closing_balance": 33700.0}, "unassigned": {"inflow": 0.0, "outflow": 0.0}}, "debt": {"data": [], "total": {"amount": 0.0, "repaid_amount": 0.0, "outstanding_amount": 0.0}}, "reconciliation": {"cost_total": 300.0, "company_outflow": 300.0, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}}, {"currency": "THB", "symbol": "฿", "costs": {"data": [{"name": "员工工资", "count": 3, "amount": 1984.56}, {"name": "报销", "count": 1, "amount": 2000.0}, {"name": "采购", "count": 0, "amount": 0.0}, {"name": "备用金拨付", "count": 0, "amount": 0.0}, {"name": "手工采购", "count": 1, "amount": 250.0}], "count": 5, "total": 4234.56}, "funds": {"data": [{"account_id": 1, "account_name": "测试现金", "opening_balance": 10750.0, "inflow": 500.0, "outflow": 4234.56, "closing_balance": 7015.44, "status": "active"}, {"account_id": 3, "account_name": "测试银行", "opening_balance": 20000.0, "inflow": 0.0, "outflow": 0.0, "closing_balance": 20000.0, "status": "active"}], "total": {"opening_balance": 30750.0, "inflow": 500.0, "outflow": 4234.56, "closing_balance": 27015.44}, "unassigned": {"inflow": 0.0, "outflow": 0.0}}, "debt": {"data": [{"key": "user:4", "payer_id": 4, "payer_name": "supervisor", "amount": 10000.0, "repaid_amount": 0.0, "outstanding_amount": 10000.0, "count": 1}], "total": {"amount": 10000.0, "repaid_amount": 0.0, "outstanding_amount": 10000.0}}, "reconciliation": {"cost_total": 4234.56, "company_outflow": 4234.56, "difference": 0.0, "cash_advance_cost": 0.0, "expense_fund_cost": 0.0, "non_company_cost": 0.0, "unreconciled_difference": 0.0, "balanced": true, "non_cost_outflows": [], "details": [], "detail_count": 0}}], "balance_anchor_date": "2026-10-01", "notes": ["采购按逐笔实际付款日统计，作废未付余额不抹掉已付款；原手工采购另列，不按金额猜测关联。", "新付款逐笔保存；旧累计额冻结在原最后付款日，历史缺失的逐笔日期和账户不猜补。", "备用金在拨付时计一次支出，后续开销和备用金报销仅记录使用；原记录保留，不重复合计。", "收入只认实际到账和收款；垫款业务不先记公司支出，归还垫款当天按用途记支出。内部转账只影响各账户余额，不计公司收入支出。", "账户按保存的期初日期与同一套有效流水推算；旧累计付款和未指定账户单列，历史余额仍需结合银行账单核对。", "欠款按所选日期范围内已确认垫款的当前已还/未还统计，包含已归还单，不是历史时点快照。", "未指定账户的历史收付单列，不猜测账户；新备用金逐笔记拨付，旧累计金额扣除新拨付后按原历史口径保留。"], "undated_flows": []}
+_______ test_original_formula_balances_and_non_cost_repayment_stays_red ________
+backend/tests/test_cost_funds_debt.py:117: in test_original_formula_balances_and_non_cost_repayment_stays_red
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cost_funds_debt.py:101: in run
+    assert [old["reconciliation"][k] for k in ("cost_total", "company_outflow", "difference")] == [7234.56, 4234.56, 3000]
+E   assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]
+E     
+E     At index 0 diff: 4234.56 != 7234.56
+E     Use -v to get more diff
+_______________ test_fund_withdrawal_unassigned_and_weekly_dates _______________
+backend/tests/test_cost_funds_debt.py:141: in test_fund_withdrawal_unassigned_and_weekly_dates
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cost_funds_debt.py:127: in run
+    assert thb["costs"]["total"] == 1250 and cny["costs"]["total"] == 300
+E   assert (250.0 == 1250)
+______ test_reports_permission_does_not_grant_business_writes[4-True-200] ______
+backend/tests/test_cost_funds_debt.py:159: in test_reports_permission_does_not_grant_business_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cost_funds_debt.py:152: in run
+    assert r.status_code == expected, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_______ test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only _______
+backend/tests/test_cost_funds_debt.py:187: in test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cost_funds_debt.py:173: in run
+    assert r.status_code == 200
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_______ test_pagination_category_exact_payer_and_shared_list_projection ________
+backend/tests/test_cost_funds_debt.py:212: in test_pagination_category_exact_payer_and_shared_list_projection
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_cost_funds_debt.py:199: in run
+    assert len(set(seen)) == len(seen) == whole["total"] == 8
+E   assert 6 == 8
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_fund_disbursement.py: 245 warnings
+tests/test_fund_item_controls.py: 165 warnings
+tests/test_fund_receipts.py: 189 warnings
+tests/test_cost_funds_debt.py: 423 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_fund_disbursement.py: 18 warnings
+tests/test_fund_item_controls.py: 11 warnings
+tests/test_fund_receipts.py: 15 warnings
+  /private/tmp/permissions-round7-20261028/backend/app/api/v1/expense_fund.py:181: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    receive_date=datetime.utcnow(), amount=0, purpose="",
+
+tests/test_fund_disbursement.py: 17 warnings
+tests/test_fund_item_controls.py: 11 warnings
+tests/test_fund_receipts.py: 12 warnings
+  /private/tmp/permissions-round7-20261028/backend/app/api/v1/expense_fund.py:837: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rr.reviewed_at = datetime.utcnow()
+
+tests/test_cost_funds_debt.py::test_report_costs_accounts_debt_details_and_no_writes
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[1-False-200]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[2-True-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-True-200]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[3-False-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-True-200]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-False-403]
+tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[5-True-403]
+tests/test_cost_funds_debt.py::test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only
+  /private/tmp/permissions-round7-20261028/backend/tests/test_cost_funds_debt.py:56: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for t in Base.metadata.sorted_tables}
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round7-20261028/docs/permissions-round7-20261028/raw-logs/fund-cost-01.xml -
+=========================== short test summary info ============================
+FAILED backend/tests/test_fund_disbursement.py::test_10000_disburse_2000_spend_one_cost_one_flow_and_bidirectional_links
+FAILED backend/tests/test_fund_disbursement.py::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals
+FAILED backend/tests/test_fund_disbursement.py::test_fifo_sources_multiple_disbursements_and_cross_warehouse
+FAILED backend/tests/test_fund_disbursement.py::test_new_fund_employee_advance_records_usage_without_second_cost
+FAILED backend/tests/test_fund_disbursement.py::test_cny_disbursement_cost_flow_and_remaining_are_not_mixed_with_thb
+FAILED backend/tests/test_fund_item_controls.py::test_supervisor_denied_admin_edit_void_history_and_balance
+FAILED backend/tests/test_fund_item_controls.py::test_approved_cannot_edit_void_or_replace_receipt
+FAILED backend/tests/test_fund_item_controls.py::test_other_roles_cannot_change_record[2]
+FAILED backend/tests/test_fund_item_controls.py::test_other_roles_cannot_change_record[3]
+FAILED backend/tests/test_fund_item_controls.py::test_other_roles_cannot_change_record[5]
+FAILED backend/tests/test_fund_item_controls.py::test_warehouse_scope_and_protected_linked_items
+FAILED backend/tests/test_fund_item_controls.py::test_history_failure_rolls_back_every_change[edit]
+FAILED backend/tests/test_fund_item_controls.py::test_history_failure_rolls_back_every_change[void]
+FAILED backend/tests/test_fund_item_controls.py::test_history_failure_rolls_back_every_change[receipt]
+FAILED backend/tests/test_fund_item_controls.py::test_void_restores_all_available_queries_and_preserves_legacy_rows
+FAILED backend/tests/test_fund_item_controls.py::test_amount_validation_currency_and_rejected_entry
+FAILED backend/tests/test_fund_item_controls.py::test_original_financial_functions_and_formula_preserved
+FAILED backend/tests/test_fund_receipts.py::test_missing_rejected_uploaded_create_list_approve_and_no_extra_cost
+FAILED backend/tests/test_fund_receipts.py::test_empty_fake_or_wrong_scope_receipts_cannot_create[  ]
+FAILED backend/tests/test_fund_receipts.py::test_empty_fake_or_wrong_scope_receipts_cannot_create[https:/example.com/x.png]
+FAILED backend/tests/test_fund_receipts.py::test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/2/1/x.png]
+FAILED backend/tests/test_fund_receipts.py::test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/1/999/x.png]
+FAILED backend/tests/test_fund_receipts.py::test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/1/1/../x.png]
+FAILED backend/tests/test_fund_receipts.py::test_empty_fake_or_wrong_scope_receipts_cannot_create[/uploads/fund_receipts/1/1/missing.png]
+FAILED backend/tests/test_fund_receipts.py::test_batch_with_missing_receipt_rolls_back_other_approvals
+FAILED backend/tests/test_fund_receipts.py::test_payout_and_other_business_paths_unchanged
+FAILED backend/tests/test_cost_funds_debt.py::test_report_costs_accounts_debt_details_and_no_writes
+FAILED backend/tests/test_cost_funds_debt.py::test_original_formula_balances_and_non_cost_repayment_stays_red
+FAILED backend/tests/test_cost_funds_debt.py::test_fund_withdrawal_unassigned_and_weekly_dates
+FAILED backend/tests/test_cost_funds_debt.py::test_reports_permission_does_not_grant_business_writes[4-True-200]
+FAILED backend/tests/test_cost_funds_debt.py::test_warehouse_scope_and_bad_dates_and_full_snapshot_select_only
+FAILED backend/tests/test_cost_funds_debt.py::test_pagination_category_exact_payer_and_shared_list_projection
+32 failed, 25 passed, 1127 warnings in 23.09s

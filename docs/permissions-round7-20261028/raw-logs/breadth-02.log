@@ -1,0 +1,131 @@
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:88: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:95: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+read-0-authorized 200 PASS
+read-0-forged-warehouse 403 PASS
+read-0-labor 403 PASS
+read-1-authorized 200 PASS
+read-1-forged-warehouse 403 PASS
+read-1-labor 403 PASS
+read-2-authorized 200 PASS
+read-2-forged-warehouse 403 PASS
+read-2-labor 403 PASS
+read-3-authorized 200 PASS
+read-3-forged-warehouse 403 PASS
+read-3-labor 403 PASS
+read-4-authorized 200 PASS
+read-4-forged-warehouse 403 PASS
+read-4-labor 403 PASS
+read-5-authorized 200 PASS
+read-5-forged-warehouse 403 PASS
+read-5-labor 403 PASS
+read-6-authorized 200 PASS
+read-6-forged-warehouse 403 PASS
+read-6-labor 403 PASS
+read-7-authorized 200 PASS
+read-7-forged-warehouse 403 PASS
+read-7-labor 403 PASS
+read-8-authorized 200 PASS
+read-8-forged-warehouse 403 PASS
+read-8-labor 403 PASS
+read-9-authorized 200 PASS
+read-9-forged-warehouse 403 PASS
+read-9-labor 403 PASS
+read-10-authorized 200 PASS
+read-10-forged-warehouse 403 PASS
+read-10-labor 403 PASS
+read-11-authorized 200 PASS
+read-11-forged-warehouse 403 PASS
+read-11-labor 403 PASS
+read-12-authorized 200 PASS
+read-12-forged-warehouse 403 PASS
+read-12-labor 403 PASS
+read-13-authorized 200 PASS
+read-13-forged-warehouse 403 PASS
+read-13-labor 403 PASS
+read-14-authorized 200 PASS
+read-14-forged-warehouse 403 PASS
+read-14-labor 403 PASS
+read-15-authorized 200 PASS
+read-15-forged-warehouse 403 PASS
+read-15-labor 403 PASS
+read-16-authorized 200 PASS
+read-16-forged-warehouse 403 PASS
+read-16-labor 403 PASS
+read-17-authorized 200 PASS
+read-17-forged-warehouse 403 PASS
+read-17-labor 403 PASS
+read-18-authorized 200 PASS
+read-18-forged-warehouse 403 PASS
+read-18-labor 403 PASS
+read-19-authorized 200 PASS
+read-19-forged-warehouse 403 PASS
+read-19-labor 403 PASS
+read-20-authorized 200 PASS
+read-20-forged-warehouse 403 PASS
+read-20-labor 403 PASS
+read-21-authorized 200 PASS
+read-21-forged-warehouse 403 PASS
+read-21-labor 403 PASS
+read-22-authorized 200 PASS
+read-22-forged-warehouse 403 PASS
+read-22-labor 403 PASS
+read-23-authorized 404 ['expected 200, actual 404']
+read-23-forged-warehouse 403 PASS
+read-23-labor 403 PASS
+read-24-authorized 200 PASS
+read-24-forged-warehouse 403 PASS
+read-24-labor 200 ['expected 403, actual 200']
+read-25-authorized 200 PASS
+read-25-forged-warehouse 403 PASS
+read-25-labor 403 PASS
+read-26-authorized 200 PASS
+read-26-forged-warehouse 403 PASS
+read-26-labor 403 PASS
+read-27-authorized 200 PASS
+read-27-forged-warehouse 403 PASS
+read-27-labor 403 PASS
+read-28-authorized 200 PASS
+read-28-forged-warehouse 403 PASS
+read-28-labor 403 PASS
+read-29-authorized 200 PASS
+read-29-forged-warehouse 403 PASS
+read-29-labor 403 PASS
+read-30-authorized 200 PASS
+read-30-forged-warehouse 403 PASS
+read-30-labor 403 PASS
+public-/ 200 PASS
+public-/health 200 PASS
+own-access-description 200 PASS
+warehouse-list 200 PASS
+warehouse-create-supervisor-deny 403 PASS
+warehouse-create-admin 200 PASS
+warehouse-update-admin 200 PASS
+warehouse-update-foreign 403 PASS
+fund-setting-admin 200 PASS
+logistics-create 200 PASS
+logistics-cross-parent 403 PASS
+logistics-delete 200 PASS
+change-own-password 200 PASS
+attachment-cookie-set 200 PASS
+attachment-cookie-clear 200 PASS
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/breadth_acceptance.py", line 38, in <module>
+    if __name__=='__main__':asyncio.run(main())
+                            ^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/breadth_acceptance.py", line 34, in main
+    ev.finish()
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/harness.py", line 44, in finish
+    def finish(self):assert not self.failures,self.failures
+                            ^^^^^^^^^^^^^^^^^
+AssertionError: ['read-23-authorized: expected 200, actual 404', 'read-24-labor: expected 403, actual 200']

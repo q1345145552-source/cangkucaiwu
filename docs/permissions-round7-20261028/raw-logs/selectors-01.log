@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/selectors.py", line 1, in <module>
+    from harness import *
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/harness.py", line 2, in <module>
+    from fixtures import *
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py", line 2, in <module>
+    import os, sys, json, asyncio, uuid, hashlib, traceback, base64
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/__init__.py", line 8, in <module>
+    from .base_events import *
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py", line 23, in <module>
+    import socket
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/socket.py", line 55, in <module>
+    import os, sys, io, selectors
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/selectors.py", line 2, in <module>
+    from app.core.action_access import VERSION, CATALOG
+ModuleNotFoundError: No module named 'app'

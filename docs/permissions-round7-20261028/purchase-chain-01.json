@@ -1,0 +1,1069 @@
+{
+  "receipt_rollback_with_prior_payment": {
+    "initial_payment": 300,
+    "balance_before_after_failure": 9700,
+    "exception_not_consumed_on_failure": true,
+    "retry": {
+      "inventory": {
+        "recorded_lines": 1,
+        "pending_lines": 0,
+        "receipt_event_id": 2,
+        "note": "仅新收货变动；缺期初不假设零，缺可靠映射列待核对；未记录成本或资金支出"
+      },
+      "id": 2,
+      "receipt_event_id": 2,
+      "message": "本次收货已登记，累计数量有差异，待老板复核",
+      "has_diff": true,
+      "receipt_status": "partially_received",
+      "flow_status": "arrived",
+      "items": [
+        {
+          "product_name": "本仓组合验收耗材",
+          "spec": "38cm PE单只",
+          "line_id": "2702435af58140e0afceba361c4a1f33",
+          "unit": "个",
+          "product_id": 2,
+          "sku_mapping": {
+            "standard_sku_id": 1,
+            "sku_snapshot": {
+              "id": 1,
+              "warehouse_id": 1,
+              "code": "BAG-38",
+              "name": "标准袋",
+              "attributes": {
+                "material": "PE",
+                "packaging": "single",
+                "width": {
+                  "unit": "cm",
+                  "value": 38
+                }
+              },
+              "base_unit": "piece",
+              "category_id": null,
+              "active": true,
+              "revision": 1,
+              "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+              "original_unit": "个",
+              "base_unit_factor": "1",
+              "confirmed_by": 1,
+              "confirmed_at": "2026-10-28T08:07:44.809972+07:00"
+            },
+            "catalog_attributes": {
+              "material": "PE",
+              "packaging": "single",
+              "width": {
+                "unit": "cm",
+                "value": 38
+              }
+            },
+            "base_unit_factor": "1.00000000",
+            "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+            "mapping_status": "mapped",
+            "mapping_label": "已人工映射",
+            "comparable": true,
+            "base_quantity": "100.00000000"
+          },
+          "unit_price": "10",
+          "quantity": 100,
+          "subtotal": 1000.0,
+          "subtotal_exact": "1000",
+          "currency": "THB",
+          "reason": "合成测试人工选择",
+          "pricing_snapshot": {
+            "product_id": 2,
+            "product_name": "本仓组合验收耗材",
+            "quantity": "100",
+            "unit": "个",
+            "currency": "THB",
+            "requirements": {
+              "quality_tags": [],
+              "max_lead_days": null
+            },
+            "selected_quote": {
+              "id": 1,
+              "code": "Q-B228811049",
+              "warehouse_id": 1,
+              "product_id": 2,
+              "revision_id": 1,
+              "revision": 1,
+              "version": "499cf54b0b9f7a8b14f6aa7d11a1f662a7ede689265dd79eceb4e0808e3f1a33",
+              "terms": {
+                "currency": "THB",
+                "unit": "piece",
+                "original_unit": "个",
+                "base_unit": "piece",
+                "base_unit_factor": "1",
+                "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                "valid_from": "2026-10-01",
+                "valid_to": "2026-10-31",
+                "fees": {
+                  "tax_mode": "included",
+                  "tax_rate": null,
+                  "freight_mode": "included",
+                  "freight_terms": "",
+                  "other_fees": "none"
+                },
+                "quality_tags": [
+                  "A级"
+                ],
+                "lead_days": 2,
+                "active": true,
+                "tiers": [
+                  {
+                    "min_quantity": "1",
+                    "max_quantity": null,
+                    "unit_price": "10"
+                  }
+                ]
+              },
+              "product_binding": {
+                "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                "sku_id": 1,
+                "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                "sku_mapping": {
+                  "standard_sku_id": 1,
+                  "sku_snapshot": {
+                    "id": 1,
+                    "warehouse_id": 1,
+                    "code": "BAG-38",
+                    "name": "标准袋",
+                    "attributes": {
+                      "material": "PE",
+                      "packaging": "single",
+                      "width": {
+                        "unit": "cm",
+                        "value": 38
+                      }
+                    },
+                    "base_unit": "piece",
+                    "category_id": null,
+                    "active": true,
+                    "revision": 1,
+                    "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                    "original_unit": "个",
+                    "base_unit_factor": "1",
+                    "confirmed_by": 1,
+                    "confirmed_at": "2026-10-28T08:07:44.809972+07:00"
+                  },
+                  "catalog_attributes": {
+                    "material": "PE",
+                    "packaging": "single",
+                    "width": {
+                      "unit": "cm",
+                      "value": 38
+                    }
+                  },
+                  "base_unit_factor": "1.00000000",
+                  "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                  "mapping_status": "mapped",
+                  "mapping_label": "已人工映射",
+                  "comparable": true
+                },
+                "supplier_id": 1
+              },
+              "operator_name": "测试账号1",
+              "created_at": "2026-10-28T01:07:44.819137+00:00",
+              "supplier_id": 1,
+              "supplier_name": "本仓供应商",
+              "product_name": "本仓组合验收耗材",
+              "quantity": "100",
+              "tier": {
+                "min_quantity": "1",
+                "max_quantity": null,
+                "unit_price": "10"
+              },
+              "comparable_price": "10",
+              "eligible": true,
+              "exclusions": [],
+              "is_lowest": false
+            },
+            "eligible_candidates": [
+              {
+                "id": 1,
+                "code": "Q-B228811049",
+                "warehouse_id": 1,
+                "product_id": 2,
+                "revision_id": 1,
+                "revision": 1,
+                "version": "499cf54b0b9f7a8b14f6aa7d11a1f662a7ede689265dd79eceb4e0808e3f1a33",
+                "terms": {
+                  "currency": "THB",
+                  "unit": "piece",
+                  "original_unit": "个",
+                  "base_unit": "piece",
+                  "base_unit_factor": "1",
+                  "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                  "valid_from": "2026-10-01",
+                  "valid_to": "2026-10-31",
+                  "fees": {
+                    "tax_mode": "included",
+                    "tax_rate": null,
+                    "freight_mode": "included",
+                    "freight_terms": "",
+                    "other_fees": "none"
+                  },
+                  "quality_tags": [
+                    "A级"
+                  ],
+                  "lead_days": 2,
+                  "active": true,
+                  "tiers": [
+                    {
+                      "min_quantity": "1",
+                      "max_quantity": null,
+                      "unit_price": "10"
+                    }
+                  ]
+                },
+                "product_binding": {
+                  "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                  "sku_id": 1,
+                  "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                  "sku_mapping": {
+                    "standard_sku_id": 1,
+                    "sku_snapshot": {
+                      "id": 1,
+                      "warehouse_id": 1,
+                      "code": "BAG-38",
+                      "name": "标准袋",
+                      "attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit": "piece",
+                      "category_id": null,
+                      "active": true,
+                      "revision": 1,
+                      "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                      "original_unit": "个",
+                      "base_unit_factor": "1",
+                      "confirmed_by": 1,
+                      "confirmed_at": "2026-10-28T08:07:44.809972+07:00"
+                    },
+                    "catalog_attributes": {
+                      "material": "PE",
+                      "packaging": "single",
+                      "width": {
+                        "unit": "cm",
+                        "value": 38
+                      }
+                    },
+                    "base_unit_factor": "1.00000000",
+                    "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                    "mapping_status": "mapped",
+                    "mapping_label": "已人工映射",
+                    "comparable": true
+                  },
+                  "supplier_id": 1
+                },
+                "operator_name": "测试账号1",
+                "created_at": "2026-10-28T01:07:44.819137+00:00",
+                "supplier_id": 1,
+                "supplier_name": "本仓供应商",
+                "product_name": "本仓组合验收耗材",
+                "quantity": "100",
+                "tier": {
+                  "min_quantity": "1",
+                  "max_quantity": null,
+                  "unit_price": "10"
+                },
+                "comparable_price": "10",
+                "eligible": true,
+                "exclusions": [],
+                "is_lowest": false
+              },
+              {
+                "id": 2,
+                "code": "Q-0F62524B14",
+                "warehouse_id": 1,
+                "product_id": 3,
+                "revision_id": 2,
+                "revision": 1,
+                "version": "ed71a5e809512629770b45bad17169f8bc3f99affc8123254e8be96f125164c0",
+                "terms": {
+                  "currency": "THB",
+                  "unit": "piece",
+                  "original_unit": "个",
+                  "base_unit": "piece",
+                  "base_unit_factor": "1",
+                  "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                  "valid_from": "2026-10-01",
+                  "valid_to": "2026-10-31",
+                  "fees": {
+                    "tax_mode": "included",
+                    "tax_rate": null,
+                    "freight_mode": "included",
+                    "freight_terms": "",
+                    "other_fees": "none"
+                  },
+                  "quality_tags": [
+                    "A级"
+                  ],
+                  "lead_days": 2,
+                  "active": true,
+                  "tiers": [
+                    {
+                      "min_quantity": "1",
+                      "max_quantity": null,
+                      "unit_price": "9"
+                    }
+                  ]
+                },
+                "product_binding": {
+                  "product_version": "969453e54010dd9888cf4674618c8a68caf1b22f1c173312b10f68a003b8f085",
+                  "sku_id": 1,
+                  "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                  "sku_mapping": {
+                    "standard_sku_id": 1,
+                    "sku_snapshot": {
+                      "id": 1,
+                      "warehouse_id": 1,
+                      "code": "BAG-38",
+                      "name": "标准袋",
+                      "attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit": "piece",
+                      "category_id": null,
+                      "active": true,
+                      "revision": 1,
+                      "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                      "original_unit": "个",
+                      "base_unit_factor": "1",
+                      "confirmed_by": 1,
+                      "confirmed_at": "2026-10-28T08:07:44.868478+07:00"
+                    },
+                    "catalog_attributes": {
+                      "material": "PE",
+                      "packaging": "single",
+                      "width": {
+                        "unit": "cm",
+                        "value": 38
+                      }
+                    },
+                    "base_unit_factor": "1.00000000",
+                    "product_version": "969453e54010dd9888cf4674618c8a68caf1b22f1c173312b10f68a003b8f085",
+                    "mapping_status": "mapped",
+                    "mapping_label": "已人工映射",
+                    "comparable": true
+                  },
+                  "supplier_id": 3
+                },
+                "operator_name": "测试账号1",
+                "created_at": "2026-10-28T01:07:44.876007+00:00",
+                "supplier_id": 3,
+                "supplier_name": "同开票方别名",
+                "product_name": "同规格另一供应商",
+                "quantity": "100",
+                "tier": {
+                  "min_quantity": "1",
+                  "max_quantity": null,
+                  "unit_price": "9"
+                },
+                "comparable_price": "9",
+                "eligible": true,
+                "exclusions": [],
+                "is_lowest": true
+              }
+            ],
+            "excluded_candidates": [],
+            "lowest": [
+              2
+            ],
+            "lowest_comparable_price": "9",
+            "non_lowest": true,
+            "requires_reason": true,
+            "reason": null,
+            "mode": "quote",
+            "base_quantity": "100",
+            "unit_price": "10",
+            "subtotal": "1000",
+            "blockers": [],
+            "message": "同SKU、同币种、同明确费用口径，按本次数量的基本单位单价比较；不自动替换供应商",
+            "effective_date": "2026-10-26",
+            "comparison_reference": {
+              "sku_id": 1,
+              "currency": "THB",
+              "fees": {
+                "tax_mode": "included",
+                "tax_rate": null,
+                "freight_mode": "included",
+                "freight_terms": "",
+                "other_fees": "none"
+              }
+            },
+            "input_line": 1,
+            "preview_version": "07146b0fbcd7a26642b5e1920fc60e762fa910f83754feee3ce574743bc97c17",
+            "evaluated_at": "2026-10-28T08:07:45.001575+07:00",
+            "selection_reason": "合成测试人工选择",
+            "amount_basis": "quoted_goods_only",
+            "amount_note": "采购及应付按所选报价商品价登记，不自动另加税或运费；未含费用须按明确条款另外核定，不代表落地总成本。",
+            "historical_price_review": {
+              "basis": "same_sku_known_terms",
+              "note": "同SKU及版本、同币种、同基本单位和明确费用口径的历史采购行均价参考；不是当前最低报价或真实损失。",
+              "threshold": "10.0",
+              "evaluated_at": "2026-10-28T08:07:45.003087+07:00",
+              "comparison_key": {
+                "sku_id": 1,
+                "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                "base_unit": "piece",
+                "currency": "THB",
+                "fees": {
+                  "tax_mode": "included",
+                  "tax_rate": null,
+                  "freight_mode": "included",
+                  "freight_terms": "",
+                  "other_fees": "none"
+                }
+              },
+              "reference_unit": "piece",
+              "product_id": 2,
+              "product_name": "本仓组合验收耗材",
+              "spec": "38cm PE单只",
+              "currency": "THB",
+              "quantity": "100",
+              "original_unit": "个",
+              "unit_price": "10",
+              "factor": "1",
+              "historical_avg": null,
+              "average_normalized_price": null,
+              "current_normalized_price": "10",
+              "exceed_percent": null,
+              "is_anomaly": false,
+              "samples": [],
+              "excluded": [],
+              "available": false,
+              "unavailable_reason": "没有可核实的可比历史价格，无法计算；未按0处理",
+              "confirmed": false,
+              "confirmed_by": null
+            }
+          },
+          "line_id_source": "stored",
+          "historical_received_quantity": 0,
+          "batch_received_quantity": 80,
+          "received_quantity": 80,
+          "diff_quantity": 20,
+          "remaining_quantity": 20,
+          "over_quantity": 0,
+          "quantity_status": "short",
+          "unit_status": "known"
+        }
+      ],
+      "photo_path": "/uploads/1/2026-10-28/arrival_photos/9dbcf1bda08a46efa4faced8846abd3b.png",
+      "matching": {
+        "kind": "goods",
+        "kind_label": "商品采购",
+        "policy": {
+          "strict": false,
+          "default": false,
+          "quantity_mode": "whole_units",
+          "description": "关闭时保留原付款规则；开启后商品采购必须有结构化匹配依据，累计付款不超过已记录实收金额。预付款和非商品费用不套商品数量上限；旧待老板确认规则始终保留。"
+        },
+        "quantity_match": "matched",
+        "amount_match": "matched",
+        "receipt_quantity_match": "different",
+        "line_amount_match": "matched",
+        "payment_cap": 800.0,
+        "currency": "THB",
+        "notes": [
+          "新采购从0开始，收货以有效批次累计。"
+        ],
+        "lines": [
+          {
+            "product_name": "本仓组合验收耗材",
+            "spec": "38cm PE单只",
+            "line_id": "2702435af58140e0afceba361c4a1f33",
+            "unit": "个",
+            "product_id": 2,
+            "sku_mapping": {
+              "standard_sku_id": 1,
+              "sku_snapshot": {
+                "id": 1,
+                "warehouse_id": 1,
+                "code": "BAG-38",
+                "name": "标准袋",
+                "attributes": {
+                  "material": "PE",
+                  "packaging": "single",
+                  "width": {
+                    "unit": "cm",
+                    "value": 38
+                  }
+                },
+                "base_unit": "piece",
+                "category_id": null,
+                "active": true,
+                "revision": 1,
+                "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                "original_unit": "个",
+                "base_unit_factor": "1",
+                "confirmed_by": 1,
+                "confirmed_at": "2026-10-28T08:07:44.809972+07:00"
+              },
+              "catalog_attributes": {
+                "material": "PE",
+                "packaging": "single",
+                "width": {
+                  "unit": "cm",
+                  "value": 38
+                }
+              },
+              "base_unit_factor": "1.00000000",
+              "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+              "mapping_status": "mapped",
+              "mapping_label": "已人工映射",
+              "comparable": true,
+              "base_quantity": "100.00000000"
+            },
+            "unit_price": "10",
+            "quantity": 100,
+            "subtotal": 1000.0,
+            "subtotal_exact": "1000",
+            "currency": "THB",
+            "reason": "合成测试人工选择",
+            "pricing_snapshot": {
+              "product_id": 2,
+              "product_name": "本仓组合验收耗材",
+              "quantity": "100",
+              "unit": "个",
+              "currency": "THB",
+              "requirements": {
+                "quality_tags": [],
+                "max_lead_days": null
+              },
+              "selected_quote": {
+                "id": 1,
+                "code": "Q-B228811049",
+                "warehouse_id": 1,
+                "product_id": 2,
+                "revision_id": 1,
+                "revision": 1,
+                "version": "499cf54b0b9f7a8b14f6aa7d11a1f662a7ede689265dd79eceb4e0808e3f1a33",
+                "terms": {
+                  "currency": "THB",
+                  "unit": "piece",
+                  "original_unit": "个",
+                  "base_unit": "piece",
+                  "base_unit_factor": "1",
+                  "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                  "valid_from": "2026-10-01",
+                  "valid_to": "2026-10-31",
+                  "fees": {
+                    "tax_mode": "included",
+                    "tax_rate": null,
+                    "freight_mode": "included",
+                    "freight_terms": "",
+                    "other_fees": "none"
+                  },
+                  "quality_tags": [
+                    "A级"
+                  ],
+                  "lead_days": 2,
+                  "active": true,
+                  "tiers": [
+                    {
+                      "min_quantity": "1",
+                      "max_quantity": null,
+                      "unit_price": "10"
+                    }
+                  ]
+                },
+                "product_binding": {
+                  "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                  "sku_id": 1,
+                  "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                  "sku_mapping": {
+                    "standard_sku_id": 1,
+                    "sku_snapshot": {
+                      "id": 1,
+                      "warehouse_id": 1,
+                      "code": "BAG-38",
+                      "name": "标准袋",
+                      "attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit": "piece",
+                      "category_id": null,
+                      "active": true,
+                      "revision": 1,
+                      "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                      "original_unit": "个",
+                      "base_unit_factor": "1",
+                      "confirmed_by": 1,
+                      "confirmed_at": "2026-10-28T08:07:44.809972+07:00"
+                    },
+                    "catalog_attributes": {
+                      "material": "PE",
+                      "packaging": "single",
+                      "width": {
+                        "unit": "cm",
+                        "value": 38
+                      }
+                    },
+                    "base_unit_factor": "1.00000000",
+                    "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                    "mapping_status": "mapped",
+                    "mapping_label": "已人工映射",
+                    "comparable": true
+                  },
+                  "supplier_id": 1
+                },
+                "operator_name": "测试账号1",
+                "created_at": "2026-10-28T01:07:44.819137+00:00",
+                "supplier_id": 1,
+                "supplier_name": "本仓供应商",
+                "product_name": "本仓组合验收耗材",
+                "quantity": "100",
+                "tier": {
+                  "min_quantity": "1",
+                  "max_quantity": null,
+                  "unit_price": "10"
+                },
+                "comparable_price": "10",
+                "eligible": true,
+                "exclusions": [],
+                "is_lowest": false
+              },
+              "eligible_candidates": [
+                {
+                  "id": 1,
+                  "code": "Q-B228811049",
+                  "warehouse_id": 1,
+                  "product_id": 2,
+                  "revision_id": 1,
+                  "revision": 1,
+                  "version": "499cf54b0b9f7a8b14f6aa7d11a1f662a7ede689265dd79eceb4e0808e3f1a33",
+                  "terms": {
+                    "currency": "THB",
+                    "unit": "piece",
+                    "original_unit": "个",
+                    "base_unit": "piece",
+                    "base_unit_factor": "1",
+                    "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                    "valid_from": "2026-10-01",
+                    "valid_to": "2026-10-31",
+                    "fees": {
+                      "tax_mode": "included",
+                      "tax_rate": null,
+                      "freight_mode": "included",
+                      "freight_terms": "",
+                      "other_fees": "none"
+                    },
+                    "quality_tags": [
+                      "A级"
+                    ],
+                    "lead_days": 2,
+                    "active": true,
+                    "tiers": [
+                      {
+                        "min_quantity": "1",
+                        "max_quantity": null,
+                        "unit_price": "10"
+                      }
+                    ]
+                  },
+                  "product_binding": {
+                    "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                    "sku_id": 1,
+                    "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                    "sku_mapping": {
+                      "standard_sku_id": 1,
+                      "sku_snapshot": {
+                        "id": 1,
+                        "warehouse_id": 1,
+                        "code": "BAG-38",
+                        "name": "标准袋",
+                        "attributes": {
+                          "material": "PE",
+                          "packaging": "single",
+                          "width": {
+                            "unit": "cm",
+                            "value": 38
+                          }
+                        },
+                        "base_unit": "piece",
+                        "category_id": null,
+                        "active": true,
+                        "revision": 1,
+                        "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                        "original_unit": "个",
+                        "base_unit_factor": "1",
+                        "confirmed_by": 1,
+                        "confirmed_at": "2026-10-28T08:07:44.809972+07:00"
+                      },
+                      "catalog_attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit_factor": "1.00000000",
+                      "product_version": "1b6e09ab75ed77dfd51b4ce16084fa58d1488822e9dd251235fc891f41a77327",
+                      "mapping_status": "mapped",
+                      "mapping_label": "已人工映射",
+                      "comparable": true
+                    },
+                    "supplier_id": 1
+                  },
+                  "operator_name": "测试账号1",
+                  "created_at": "2026-10-28T01:07:44.819137+00:00",
+                  "supplier_id": 1,
+                  "supplier_name": "本仓供应商",
+                  "product_name": "本仓组合验收耗材",
+                  "quantity": "100",
+                  "tier": {
+                    "min_quantity": "1",
+                    "max_quantity": null,
+                    "unit_price": "10"
+                  },
+                  "comparable_price": "10",
+                  "eligible": true,
+                  "exclusions": [],
+                  "is_lowest": false
+                },
+                {
+                  "id": 2,
+                  "code": "Q-0F62524B14",
+                  "warehouse_id": 1,
+                  "product_id": 3,
+                  "revision_id": 2,
+                  "revision": 1,
+                  "version": "ed71a5e809512629770b45bad17169f8bc3f99affc8123254e8be96f125164c0",
+                  "terms": {
+                    "currency": "THB",
+                    "unit": "piece",
+                    "original_unit": "个",
+                    "base_unit": "piece",
+                    "base_unit_factor": "1",
+                    "conversion_basis": "原报价单位与基本单位相同，恒等换算1",
+                    "valid_from": "2026-10-01",
+                    "valid_to": "2026-10-31",
+                    "fees": {
+                      "tax_mode": "included",
+                      "tax_rate": null,
+                      "freight_mode": "included",
+                      "freight_terms": "",
+                      "other_fees": "none"
+                    },
+                    "quality_tags": [
+                      "A级"
+                    ],
+                    "lead_days": 2,
+                    "active": true,
+                    "tiers": [
+                      {
+                        "min_quantity": "1",
+                        "max_quantity": null,
+                        "unit_price": "9"
+                      }
+                    ]
+                  },
+                  "product_binding": {
+                    "product_version": "969453e54010dd9888cf4674618c8a68caf1b22f1c173312b10f68a003b8f085",
+                    "sku_id": 1,
+                    "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                    "sku_mapping": {
+                      "standard_sku_id": 1,
+                      "sku_snapshot": {
+                        "id": 1,
+                        "warehouse_id": 1,
+                        "code": "BAG-38",
+                        "name": "标准袋",
+                        "attributes": {
+                          "material": "PE",
+                          "packaging": "single",
+                          "width": {
+                            "unit": "cm",
+                            "value": 38
+                          }
+                        },
+                        "base_unit": "piece",
+                        "category_id": null,
+                        "active": true,
+                        "revision": 1,
+                        "version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                        "original_unit": "个",
+                        "base_unit_factor": "1",
+                        "confirmed_by": 1,
+                        "confirmed_at": "2026-10-28T08:07:44.868478+07:00"
+                      },
+                      "catalog_attributes": {
+                        "material": "PE",
+                        "packaging": "single",
+                        "width": {
+                          "unit": "cm",
+                          "value": 38
+                        }
+                      },
+                      "base_unit_factor": "1.00000000",
+                      "product_version": "969453e54010dd9888cf4674618c8a68caf1b22f1c173312b10f68a003b8f085",
+                      "mapping_status": "mapped",
+                      "mapping_label": "已人工映射",
+                      "comparable": true
+                    },
+                    "supplier_id": 3
+                  },
+                  "operator_name": "测试账号1",
+                  "created_at": "2026-10-28T01:07:44.876007+00:00",
+                  "supplier_id": 3,
+                  "supplier_name": "同开票方别名",
+                  "product_name": "同规格另一供应商",
+                  "quantity": "100",
+                  "tier": {
+                    "min_quantity": "1",
+                    "max_quantity": null,
+                    "unit_price": "9"
+                  },
+                  "comparable_price": "9",
+                  "eligible": true,
+                  "exclusions": [],
+                  "is_lowest": true
+                }
+              ],
+              "excluded_candidates": [],
+              "lowest": [
+                2
+              ],
+              "lowest_comparable_price": "9",
+              "non_lowest": true,
+              "requires_reason": true,
+              "reason": null,
+              "mode": "quote",
+              "base_quantity": "100",
+              "unit_price": "10",
+              "subtotal": "1000",
+              "blockers": [],
+              "message": "同SKU、同币种、同明确费用口径，按本次数量的基本单位单价比较；不自动替换供应商",
+              "effective_date": "2026-10-26",
+              "comparison_reference": {
+                "sku_id": 1,
+                "currency": "THB",
+                "fees": {
+                  "tax_mode": "included",
+                  "tax_rate": null,
+                  "freight_mode": "included",
+                  "freight_terms": "",
+                  "other_fees": "none"
+                }
+              },
+              "input_line": 1,
+              "preview_version": "07146b0fbcd7a26642b5e1920fc60e762fa910f83754feee3ce574743bc97c17",
+              "evaluated_at": "2026-10-28T08:07:45.001575+07:00",
+              "selection_reason": "合成测试人工选择",
+              "amount_basis": "quoted_goods_only",
+              "amount_note": "采购及应付按所选报价商品价登记，不自动另加税或运费；未含费用须按明确条款另外核定，不代表落地总成本。",
+              "historical_price_review": {
+                "basis": "same_sku_known_terms",
+                "note": "同SKU及版本、同币种、同基本单位和明确费用口径的历史采购行均价参考；不是当前最低报价或真实损失。",
+                "threshold": "10.0",
+                "evaluated_at": "2026-10-28T08:07:45.003087+07:00",
+                "comparison_key": {
+                  "sku_id": 1,
+                  "sku_version": "a5539f9cd123f2d63f1e665138fb0122abdcc2c9f31c0d1ead7d2c2667e6cc08",
+                  "base_unit": "piece",
+                  "currency": "THB",
+                  "fees": {
+                    "tax_mode": "included",
+                    "tax_rate": null,
+                    "freight_mode": "included",
+                    "freight_terms": "",
+                    "other_fees": "none"
+                  }
+                },
+                "reference_unit": "piece",
+                "product_id": 2,
+                "product_name": "本仓组合验收耗材",
+                "spec": "38cm PE单只",
+                "currency": "THB",
+                "quantity": "100",
+                "original_unit": "个",
+                "unit_price": "10",
+                "factor": "1",
+                "historical_avg": null,
+                "average_normalized_price": null,
+                "current_normalized_price": "10",
+                "exceed_percent": null,
+                "is_anomaly": false,
+                "samples": [],
+                "excluded": [],
+                "available": false,
+                "unavailable_reason": "没有可核实的可比历史价格，无法计算；未按0处理",
+                "confirmed": false,
+                "confirmed_by": null
+              }
+            },
+            "line_id_source": "stored",
+            "historical_received_quantity": 0,
+            "batch_received_quantity": 80,
+            "received_quantity": 80,
+            "diff_quantity": 20,
+            "remaining_quantity": 20,
+            "over_quantity": 0,
+            "quantity_status": "short",
+            "unit_status": "known"
+          }
+        ],
+        "status": "different",
+        "purchase_order_id": 2,
+        "purchase_amount": 1000.0,
+        "bill_amount": 1000.0,
+        "snapshot": {
+          "version": 1,
+          "bill": {
+            "id": 2,
+            "warehouse_id": 1,
+            "supplier_id": 1,
+            "purchase_order_id": 2,
+            "amount": 1000.0,
+            "currency": "THB",
+            "confirmed_amount": null,
+            "matching_kind": "goods",
+            "match_lines": {
+              "source": "purchase_generated_bill",
+              "note": "系统生成应付的原始采购行快照，不代表外部发票独立认证。",
+              "items": [
+                {
+                  "line_id": "2702435af58140e0afceba361c4a1f33",
+                  "quantity": 100,
+                  "unit": "个",
+                  "unit_price": "10",
+                  "subtotal": 1000.0,
+                  "currency": "THB"
+                }
+              ]
+            }
+          },
+          "purchase": {
+            "id": 2,
+            "warehouse_id": 1,
+            "supplier_id": 1,
+            "total_amount": 1000.0,
+            "currency": "THB",
+            "ordered_lines": [
+              {
+                "line_id": "2702435af58140e0afceba361c4a1f33",
+                "quantity": 100,
+                "unit": "个",
+                "unit_price": "10",
+                "subtotal": 1000.0,
+                "currency": "THB"
+              }
+            ],
+            "receipt_baseline": {
+              "source": "new_order_no_receipt",
+              "event_history_known": true,
+              "note": "新采购从0开始，收货以有效批次累计。",
+              "lines": [
+                {
+                  "line_id": "2702435af58140e0afceba361c4a1f33",
+                  "quantity": 0,
+                  "recorded": true
+                }
+              ]
+            },
+            "events": [
+              {
+                "id": 2,
+                "status": "active",
+                "items": [
+                  {
+                    "line_id": "2702435af58140e0afceba361c4a1f33",
+                    "quantity": 80,
+                    "unit": "个",
+                    "product_name": "本仓组合验收耗材",
+                    "spec": "38cm PE单只"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "snapshot_hash": "2486bc78cad3888e42c9140b86ca52d171b7cbf88b9c58edb84a365a53f1e254",
+        "review": null,
+        "review_valid": false,
+        "review_status": "not_reviewed",
+        "need_boss_confirm": true,
+        "review_history": []
+      },
+      "duty_execution_id": 3,
+      "duty_operator_id": 1
+    }
+  },
+  "exact_cross_page_stock": {
+    "first_page_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "target": {
+      "id": 22,
+      "warehouse_id": 1,
+      "sku_id": 22,
+      "sku": {
+        "id": 22,
+        "warehouse_id": 1,
+        "code": "PAGE-21",
+        "name": "标准袋",
+        "attributes": {
+          "material": "PE",
+          "packaging": "single",
+          "width": {
+            "unit": "cm",
+            "value": 38
+          }
+        },
+        "base_unit": "piece",
+        "category_id": null,
+        "active": true,
+        "revision": 1,
+        "version": "725c95fef96c79ef6f3873b5aba306cbd231da355fc2acb7502c2747f0783474"
+      },
+      "base_unit": "piece",
+      "unit_label": "个",
+      "recorded_quantity": "100",
+      "available_quantity": "100",
+      "opening_confirmed": true,
+      "opening_at": "2026-08-31T17:00:00+00:00",
+      "version": "8cf33dd5e52631592b7443492dbed39932691d403030ee959dda1f8478015d86",
+      "amount": null,
+      "currency": null,
+      "valuation_status": "待配置，未确认成本",
+      "note": "真实期初已确认；数量按流水累计"
+    },
+    "risk_url": "/inventory?account_id=22",
+    "foreign_labor_super_and_revoked_denied": true
+  }
+}

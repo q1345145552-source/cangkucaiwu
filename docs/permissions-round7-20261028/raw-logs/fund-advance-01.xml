@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="2.108" timestamp="2026-10-28T08:25:19.162305+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_fund_disbursement" name="test_new_fund_employee_advance_records_usage_without_second_cost" time="0.608" /></testsuite></testsuites>

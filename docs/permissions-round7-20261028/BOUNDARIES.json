@@ -1,0 +1,18 @@
+{
+  "local_only": true,
+  "push_fetch_lsremote": false,
+  "deploy_ssh": false,
+  "production_or_credentials": false,
+  "model_changes": false,
+  "inventory_cost_changes": false,
+  "other_threads_or_agents": false,
+  "automations": false,
+  "approval_bypass": false,
+  "prior_round_original_evidence_changed": false,
+  "protected_source_files": 44,
+  "diff_check": {
+    "exit": 2,
+    "detail": "one extra blank line at EOF in new action_choices.py; retained to preserve exact frozen source hash, no execution effect"
+  },
+  "implementation_commit": "c2a2eab785f62b4b9013b0419cb3d9b02b9ce6bc"
+}

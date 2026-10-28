@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="3" time="6.081" timestamp="2026-10-28T08:07:40.431665+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_supplier_integration_round12" name="test_complete_quote_approval_80_plus20_split_payments_stock_risk_count_and_cross_channel" time="2.470"><failure message="AssertionError: ('PUT', '/payable/2/pay', 409, '{&quot;detail&quot;:&quot;缺少有效核验或管理员批准；内容已变更或历史记录需重新核对&quot;}')&#10;assert 409 == 400&#10; +  where 409 = &lt;Response [409 Conflict]&gt;.status_code">backend/tests/test_supplier_integration_round12.py:113: in test_complete_quote_approval_80_plus20_split_payments_stock_risk_count_and_cross_channel
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_supplier_integration_round12.py:92: in run
+    await pay(c,bid,700,'r12-stale-review',code=400);await confirm(c,bid)
+backend/tests/test_supplier_integration_round12.py:66: in pay
+    async def pay(c,bid,amount,key,code=200):return await request(c,'PUT',f'/payable/{bid}/pay',uid=3,code=code,params={'paid_amount':amount,'account_id':1,'payment_method':'现金','request_key':key})
+backend/tests/test_supplier_workflow_round1.py:54: in request
+    assert r.status_code==code,(method,path,r.status_code,r.text)
+E   AssertionError: ('PUT', '/payable/2/pay', 409, '{"detail":"缺少有效核验或管理员批准；内容已变更或历史记录需重新核对"}')
+E   assert 409 == 400
+E    +  where 409 = &lt;Response [409 Conflict]&gt;.status_code</failure></testcase><testcase classname="tests.test_supplier_integration_round12" name="test_failed_stock_receipt_preserves_previous_payment_and_unconsumed_exception" time="0.849" /><testcase classname="tests.test_supplier_integration_round12" name="test_exact_inventory_target_outside_list_page_still_scoped_and_related_permissions" time="1.218" /></testsuite></testsuites>

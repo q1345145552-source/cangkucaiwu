@@ -1,0 +1,12 @@
+{
+  "runtime_matches_frozen_final05": true,
+  "frontend_matches_built_copy_final05": true,
+  "reused_evidence": [
+    "browser-final05 18 scenarios",
+    "tsc-final05 exit0",
+    "build-final05 exit0"
+  ],
+  "source": "raw-logs/full-current-final05.source-hashes.json",
+  "frontend_source": "raw-logs/frontend-final05-source.json",
+  "new_changes_since_final05": "only tests, isolated fixtures and documentation"
+}

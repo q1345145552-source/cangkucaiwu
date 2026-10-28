@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="20" skipped="0" tests="83" time="29.511" timestamp="2026-10-28T08:07:11.099885+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_management_access" name="test_all_registered_management_routes_deny_labor_before_business_queries" time="2.091"><failure message="AssertionError: assert 405 == 394&#10; +  where 405 = len([{'labor_same_and_foreign': [403, 403], 'method': 'GET', 'module': 'inventory', 'path': '/api/v1/inventory', ...}, {'l..._foreign': [403, 403], 'method': 'GET', 'module': 'inventory', 'path': '/api/v1/inventory/pending-receipts', ...}, ...])">tests/test_management_access.py:156: in test_all_registered_management_routes_deny_labor_before_business_queries
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:150: in run
+    assert len(tested)==394  # Supplier rounds 1–11: independently checked by test_management_inventory.
+E   AssertionError: assert 405 == 394
+E    +  where 405 = len([{'labor_same_and_foreign': [403, 403], 'method': 'GET', 'module': 'inventory', 'path': '/api/v1/inventory', ...}, {'l..._foreign': [403, 403], 'method': 'GET', 'module': 'inventory', 'path': '/api/v1/inventory/pending-receipts', ...}, ...])</failure></testcase><testcase classname="tests.test_management_access" name="test_all_business_management_rejects_super_but_system_account_management_remains" time="1.122" /><testcase classname="tests.test_management_access" name="test_admin_and_authorized_office_reads_and_revoked_permissions" time="1.080"><failure message="AssertionError: (4, '/customers', 403, '{&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_management_access.py:205: in test_admin_and_authorized_office_reads_and_revoked_permissions
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:192: in run
+    assert response.status_code==200,(uid,path,response.status_code,response.text)
+E   AssertionError: (4, '/customers', 403, '{"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_management_access" name="test_employee_self_records_and_other_people_are_never_visible" time="0.392"><failure message="AssertionError: ('/clock-in/today', 403, '{&quot;detail&quot;:&quot;本人功能只能使用员工所属仓库&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_management_access.py:251: in test_employee_self_records_and_other_people_are_never_visible
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:217: in run
+    assert response.status_code==200,(path,response.status_code,response.text)
+E   AssertionError: ('/clock-in/today', 403, '{"detail":"本人功能只能使用员工所属仓库"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_management_access" name="test_granted_office_writes_still_work_and_revocation_denies_them" time="0.641"><failure message="AssertionError: (3, '/accounts/1', 403, '{&quot;detail&quot;:&quot;该动作超出当前角色职责上限&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_management_access.py:284: in test_granted_office_writes_still_work_and_revocation_denies_them
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:268: in run
+    assert response.status_code==200,(uid,path,response.status_code,response.text)
+E   AssertionError: (3, '/accounts/1', 403, '{"detail":"该动作超出当前角色职责上限"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_management_access" name="test_attachments_are_private_scoped_and_browser_cookie_is_file_only" time="0.361"><failure message="assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_management_access.py:329: in test_attachments_are_private_scoped_and_browser_cookie_is_file_only
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:293: in run
+    for uid in (1,3,4,5):assert (await client.get(own,headers=auth(uid))).status_code==200
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_management_access" name="test_attendance_supervisor_self_service_needs_no_management_grant_and_old_token_is_revoked" time="0.387"><failure message="AssertionError: ('/clock-in/today', 403, '{&quot;detail&quot;:&quot;本人功能不能查询其他员工或仓库&quot;}')&#10;assert (403 == 200)&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_management_access.py:368: in test_attendance_supervisor_self_service_needs_no_management_grant_and_old_token_is_revoked
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:349: in run
+    assert response.status_code==200 and 'SECRET-WH2' not in response.text,(path,response.status_code,response.text)
+E   AssertionError: ('/clock-in/today', 403, '{"detail":"本人功能不能查询其他员工或仓库"}')
+E   assert (403 == 200)
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_management_access" name="test_legacy_employee_fallback_is_unique_and_cannot_borrow_bound_same_name" time="0.392"><failure message="assert (403 == 200)&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_management_access.py:390: in test_legacy_employee_fallback_is_unique_and_cannot_borrow_bound_same_name
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:380: in run
+    assert own.status_code==200 and [p['id'] for p in own.json()['data']]==[1]
+E   assert (403 == 200)
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_management_access" name="test_mixed_warehouse_batches_reject_without_partial_changes" time="0.529" /><testcase classname="tests.test_management_access" name="test_single_permissions_keep_shared_selectors_working" time="0.542"><failure message="AssertionError: (4, '充值申报', '/customers', 403, '{&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}')&#10;assert (403 == 200)&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_management_access.py:432: in test_single_permissions_keep_shared_selectors_working
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_management_access.py:429: in run
+    assert response.status_code==200 and 'SECRET-WH2' not in response.text,(uid,permission,path,response.status_code,response.text)
+E   AssertionError: (4, '充值申报', '/customers', 403, '{"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}')
+E   assert (403 == 200)
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_management_access" name="test_foreign_details_updates_and_photos_rejected_for_all_office_roles" time="0.501" /><testcase classname="tests.test_management_access" name="test_shared_platform_is_cross_warehouse_but_publication_and_moderation_are_super_only" time="0.768" /><testcase classname="tests.test_non_labor_read_group1" name="test_labor_seven_denied_before_queries_and_without_changes[/users]" time="0.238" /><testcase classname="tests.test_non_labor_read_group1" name="test_labor_seven_denied_before_queries_and_without_changes[/dashboard/stats]" time="0.237" /><testcase classname="tests.test_non_labor_read_group1" name="test_labor_seven_denied_before_queries_and_without_changes[/dashboard/pending-tasks]" time="0.536" /><testcase classname="tests.test_non_labor_read_group1" name="test_labor_seven_denied_before_queries_and_without_changes[/dashboard/warehouse-summary]" time="0.247" /><testcase classname="tests.test_non_labor_read_group1" name="test_labor_seven_denied_before_queries_and_without_changes[/customers]" time="0.372" /><testcase classname="tests.test_non_labor_read_group1" name="test_labor_seven_denied_before_queries_and_without_changes[/customers/{customer_id}]" time="0.278" /><testcase classname="tests.test_non_labor_read_group1" name="test_labor_seven_denied_before_queries_and_without_changes[/accounts]" time="0.277" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[1-False-/users]" time="0.275" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[1-False-/dashboard/stats]" time="0.247" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[1-False-/dashboard/pending-tasks]" time="0.258" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[1-False-/dashboard/warehouse-summary]" time="0.280" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[1-False-/customers]" time="0.253" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[1-False-/customers/{customer_id}]" time="0.271" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[1-False-/accounts]" time="0.462" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[2-False-/users]" time="0.254" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[2-False-/dashboard/stats]" time="0.235" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[2-False-/dashboard/pending-tasks]" time="0.254" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[2-False-/dashboard/warehouse-summary]" time="0.246" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[2-False-/customers]" time="0.235" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[2-False-/customers/{customer_id}]" time="0.232" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[2-False-/accounts]" time="0.226" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-True-/users]" time="0.243" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-True-/dashboard/stats]" time="0.244" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-True-/dashboard/pending-tasks]" time="0.244" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-True-/dashboard/warehouse-summary]" time="0.423" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-True-/customers]" time="0.267" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-True-/customers/{customer_id}]" time="0.236" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-True-/accounts]" time="0.244" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-True-/users]" time="0.245" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-True-/dashboard/stats]" time="0.226" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-True-/dashboard/pending-tasks]" time="0.210"><failure message="AssertionError: (('GET', '/dashboard/pending-tasks', '/dashboard/pending-tasks', None), 4, '{&quot;detail&quot;:&quot;请使用现场待办和本人入口&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:125: in test_other_roles_exact_original_results_and_original_failure
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:123: in run
+    assert response.status_code==expected,(case,uid,response.text)
+E   AssertionError: (('GET', '/dashboard/pending-tasks', '/dashboard/pending-tasks', None), 4, '{"detail":"请使用现场待办和本人入口"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-True-/dashboard/warehouse-summary]" time="0.297"><failure message="AssertionError: (('GET', '/dashboard/warehouse-summary', '/dashboard/warehouse-summary', None), 4, '{&quot;detail&quot;:&quot;请使用现场待办和本人入口&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:125: in test_other_roles_exact_original_results_and_original_failure
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:123: in run
+    assert response.status_code==expected,(case,uid,response.text)
+E   AssertionError: (('GET', '/dashboard/warehouse-summary', '/dashboard/warehouse-summary', None), 4, '{"detail":"请使用现场待办和本人入口"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-True-/customers]" time="0.210"><failure message="AssertionError: (('GET', '/customers', '/customers', None), 4, '{&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:125: in test_other_roles_exact_original_results_and_original_failure
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:123: in run
+    assert response.status_code==expected,(case,uid,response.text)
+E   AssertionError: (('GET', '/customers', '/customers', None), 4, '{"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-True-/customers/{customer_id}]" time="0.227" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-True-/accounts]" time="0.225" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-False-/users]" time="0.529" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-False-/dashboard/stats]" time="0.228" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-False-/dashboard/pending-tasks]" time="0.206"><failure message="AssertionError: (('GET', '/dashboard/pending-tasks', '/dashboard/pending-tasks', None), 3, '{&quot;detail&quot;:&quot;财务汇总需要财务职责及报表权限&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:125: in test_other_roles_exact_original_results_and_original_failure
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:123: in run
+    assert response.status_code==expected,(case,uid,response.text)
+E   AssertionError: (('GET', '/dashboard/pending-tasks', '/dashboard/pending-tasks', None), 3, '{"detail":"财务汇总需要财务职责及报表权限"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-False-/dashboard/warehouse-summary]" time="0.223" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-False-/customers]" time="0.225" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-False-/customers/{customer_id}]" time="0.231" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[3-False-/accounts]" time="0.228" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-False-/users]" time="0.230" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-False-/dashboard/stats]" time="0.222" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-False-/dashboard/pending-tasks]" time="0.209"><failure message="AssertionError: (('GET', '/dashboard/pending-tasks', '/dashboard/pending-tasks', None), 4, '{&quot;detail&quot;:&quot;请使用现场待办和本人入口&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:125: in test_other_roles_exact_original_results_and_original_failure
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:123: in run
+    assert response.status_code==expected,(case,uid,response.text)
+E   AssertionError: (('GET', '/dashboard/pending-tasks', '/dashboard/pending-tasks', None), 4, '{"detail":"请使用现场待办和本人入口"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-False-/dashboard/warehouse-summary]" time="0.217" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-False-/customers]" time="0.217" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-False-/customers/{customer_id}]" time="0.216" /><testcase classname="tests.test_non_labor_read_group1" name="test_other_roles_exact_original_results_and_original_failure[4-False-/accounts]" time="0.225" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-customers-3]" time="0.474" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-customers-4]" time="0.208"><failure message="AssertionError: {&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:148: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:136: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-recharge-3]" time="0.275" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-recharge-4]" time="0.243"><failure message="AssertionError: {&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:148: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:136: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-incoming-3]" time="0.273" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-incoming-4]" time="0.213"><failure message="AssertionError: {&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:148: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:136: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-credit-3]" time="0.279" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[customers-credit-4]" time="0.215"><failure message="AssertionError: {&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:148: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:136: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-accounts-3]" time="0.276" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-accounts-4]" time="0.262" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-payroll-3]" time="0.271" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-payroll-4]" time="0.256" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-operating-3]" time="0.265" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-operating-4]" time="0.260" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-other_income_expense-3]" time="0.522" /><testcase classname="tests.test_non_labor_read_group1" name="test_each_shared_permission_alone_can_load_scoped_selector[accounts-other_income_expense-4]" time="0.306" /><testcase classname="tests.test_non_labor_read_group1" name="test_original_warehouse_scopes_filters_and_dashboard_numbers[1]" time="0.364" /><testcase classname="tests.test_non_labor_read_group1" name="test_original_warehouse_scopes_filters_and_dashboard_numbers[3]" time="0.359" /><testcase classname="tests.test_non_labor_read_group1" name="test_original_warehouse_scopes_filters_and_dashboard_numbers[4]" time="0.218"><failure message="AssertionError: {&quot;detail&quot;:&quot;请输入具体客户名称或编号查询，不提供客户名册批量读取&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:175: in test_original_warehouse_scopes_filters_and_dashboard_numbers
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:158: in run
+    r=await get(client,path,uid);assert r.status_code==200,r.text
+E   AssertionError: {"detail":"请输入具体客户名称或编号查询，不提供客户名册批量读取"}
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_shared_page_requests_and_complete_report" time="0.252"><failure message="AssertionError: ('/recharge', '{&quot;detail&quot;:&quot;请先关联有效的本人员工档案&quot;}')&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">tests/test_non_labor_read_group1.py:224: in test_shared_page_requests_and_complete_report
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_non_labor_read_group1.py:200: in run
+    assert r.status_code==200,(path,r.text)
+E   AssertionError: ('/recharge', '{"detail":"请先关联有效的本人员工档案"}')
+E   assert 403 == 200
+E    +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code</failure></testcase><testcase classname="tests.test_non_labor_read_group1" name="test_warehouse_summary_old_lazy_loading_failure_reproduced_without_query_change" time="0.227" /><testcase classname="tests.test_non_labor_read_group1" name="test_existing_guards_remain_first_and_round11_only_changes_receivable_reads" time="0.004"><failure message="assert False&#10; +  where False = all(&lt;generator object test_existing_guards_remain_first_and_round11_only_changes_receivable_reads.&lt;locals&gt;.&lt;genexpr&gt; at 0x1324b9220&gt;)">tests/test_non_labor_read_group1.py:255: in test_existing_guards_remain_first_and_round11_only_changes_receivable_reads
+    assert all(r.dependant.dependencies[0].call is require_non_labor for r in routes)
+E   assert False
+E    +  where False = all(&lt;generator object test_existing_guards_remain_first_and_round11_only_changes_receivable_reads.&lt;locals&gt;.&lt;genexpr&gt; at 0x1324b9220&gt;)</failure></testcase></testsuite></testsuites>

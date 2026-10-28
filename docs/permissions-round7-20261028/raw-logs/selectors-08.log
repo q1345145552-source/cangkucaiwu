@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/selector_acceptance.py", line 1, in <module>
+    from harness import *
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/harness.py", line 2, in <module>
+    from fixtures import *
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py", line 8, in <module>
+    assert Path.cwd()==Path('/private/tmp/permissions-round7-env')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

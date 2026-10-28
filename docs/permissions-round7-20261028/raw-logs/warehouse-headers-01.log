@@ -1,0 +1,32 @@
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:88: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:95: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+order-count-invalid-2 200 ['expected 403, actual 200']
+order-count-invalid-abc 200 ['expected 403, actual 200']
+审计日志写入失败: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.ForeignKeyViolationError'>: insert or update on table "audit_logs" violates foreign key constraint "audit_logs_warehouse_id_fkey"
+DETAIL:  Key (warehouse_id)=(0) is not present in table "warehouses".
+[SQL: INSERT INTO audit_logs (user_id, warehouse_id, action_type, module, target_id, detail, ip_address, ip_country, ip_region, ip_city) VALUES ($1::INTEGER, $2::INTEGER, $3::VARCHAR, $4::VARCHAR, $5::INTEGER, $6::JSON, $7::VARCHAR, $8::VARCHAR, $9::VARCHAR, $10::VARCHAR) RETURNING audit_logs.id, audit_logs.created_at]
+[parameters: (1, 0, 'edit', 'efficiency', None, '{"method": "PUT", "path": "/api/v1/efficiency/order-count", "status": 200}', '127.0.0.1', '内网', '', '')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+order-count-invalid-0 200 ['expected 403, actual 200']
+order-count-authorized 200 PASS
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/warehouse_headers.py", line 12, in <module>
+    if __name__=='__main__':asyncio.run(main())
+                            ^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/warehouse_headers.py", line 10, in main
+    ev.finish()
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/harness.py", line 44, in finish
+    def finish(self):assert not self.failures,self.failures
+                            ^^^^^^^^^^^^^^^^^
+AssertionError: ['order-count-invalid-2: expected 403, actual 200', 'order-count-invalid-abc: expected 403, actual 200', 'order-count-invalid-0: expected 403, actual 200']

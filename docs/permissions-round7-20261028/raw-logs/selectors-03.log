@@ -1,0 +1,22 @@
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:88: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:95: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+catalog-contracts 200 PASS
+payroll-employee-page1 200 PASS
+payroll-employee-page5 200 PASS
+payroll-employee-search 200 PASS
+payroll-employee-foreign-search 200 PASS
+payroll-no-grants 403 PASS
+payroll-role-ceiling 403 PASS
+payroll-wrong-field 400 PASS
+payroll-wrong-module 403 PASS
+payroll-foreign-header 403 PASS
+payroll-invalid-header 403 PASS
+fund-not-payment-account 200 PASS
+fund-child-parent 200 PASS
+fund-child-no-parent 200 PASS
+fund-child-other-owner 403 PASS
+reimb-child-parent 200 PASS
+reimb-child-foreign-parent 403 PASS
+disabled-user 401 PASS

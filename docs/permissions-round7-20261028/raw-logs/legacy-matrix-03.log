@@ -1,0 +1,48 @@
+........................................................................ [ 31%]
+........................................................................ [ 63%]
+.........F.............................................................. [ 94%]
+....F.......                                                             [100%]
+=================================== FAILURES ===================================
+_______________ test_all_finance_endpoints[admin-POST /payable] ________________
+tests/test_round5_permissions.py:162: in test_all_finance_endpoints
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_round5_permissions.py:155: in run
+    assert response.status_code==expected,response.text
+E   AssertionError: {"detail":{"code":"payable_duplicate_confirmation","message":"发现疑似重复，请逐项核对；不同业务可填写本次原因后继续","hard_duplicate":false,"candidates":[{"id":1,"bill_number":"BILL-1","bill_date":"2026-10-10T00:00:00","amount":100.0,"currency":"THB","status":"pending","reasons":["同供应商、币种、金额且账单日期相距不超过0天"]}],"window_days":0}}
+E   assert 409 == 200
+E    +  where 409 = <Response [409 Conflict]>.status_code
+______ test_all_finance_endpoints[super-admin-POST /group-order/10/join] _______
+tests/test_round5_permissions.py:162: in test_all_finance_endpoints
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_round5_permissions.py:155: in run
+    assert response.status_code==expected,response.text
+E   AssertionError: {"detail":"超级管理员请使用各仓库管理员账号操作"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_round5_permissions.py: 248 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round7-20261028/docs/permissions-round7-20261028/raw-logs/legacy-matrix-03.xml -
+=========================== short test summary info ============================
+FAILED tests/test_round5_permissions.py::test_all_finance_endpoints[admin-POST /payable]
+FAILED tests/test_round5_permissions.py::test_all_finance_endpoints[super-admin-POST /group-order/10/join]
+2 failed, 226 passed, 260 warnings in 76.46s (0:01:16)

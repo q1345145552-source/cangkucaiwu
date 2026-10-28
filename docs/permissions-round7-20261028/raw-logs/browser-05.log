@@ -1,0 +1,21 @@
+administrator-three-column-editor-role-ceilings PASS
+supervisor-allowed-edit-then-old-modal-revocation PASS
+finance-view-only-has-no-calculation-payment PASS
+finance-operation-only-minimum-calculation PASS
+supervisor-approval-only-minimum-leave PASS
+same-tab-account-switch-clears-admin-controls PASS
+admin-page-expense-fund PASS
+admin-page-reimbursement PASS
+admin-page-payable PASS
+admin-page-suppliers PASS
+admin-page-inventory PASS
+admin-page-modification-logs PASS
+admin-page-audit-logs PASS
+operation-only-logistics-nested-supplier-choice PASS
+operation-only-inventory-issue-version PASS
+operation-only-multipart-receipt-parent-lines TimeoutError: locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('fieldset').filter({ has: locator('legend').filter({ hasText: '本次收货明细' }) }).getByRole('button', { name: '添加一项', exact: true })[22m
+
+delayed-first-warehouse-response-does-not-overwrite-second PASS
+attachment-cookie-real-bytes-and-disabled-account PASS

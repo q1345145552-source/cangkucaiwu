@@ -1,0 +1,2 @@
+{"suite": "full-current-final05", "test_outcomes": {"passed": 2853, "failed": 66}, "registered": 434, "with_requests": 434, "with_2xx": 421, "with_asserted_2xx": 421, "excluded_auth_override_records": 507, "not_claimed": "Full state/role/field coverage, production verification, or independent acceptance."}
+Artifact index: 692 files; final failed: 66

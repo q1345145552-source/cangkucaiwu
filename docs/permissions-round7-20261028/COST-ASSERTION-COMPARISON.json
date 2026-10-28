@@ -1,0 +1,422 @@
+[
+  {
+    "test": "tests.test_cost_funds_debt::test_report_costs_accounts_debt_details_and_no_writes",
+    "current_assertions": [
+      {
+        "assertion": "THB-original-total-7234.56",
+        "actual_failure": "assert 4234.56 == 7234.56"
+      },
+      {
+        "assertion": "THB-detail-sum-7234.56",
+        "actual_failure": "assert Decimal('4234.56') == Decimal('7234.56')\n +  where Decimal('4234.56') = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x1281bec00>, Decimal('0'))\n +    where Decimal('0') = Decimal(0)\n +  and   Decimal('7234.56') = Decimal('7234.56')"
+      },
+      {
+        "assertion": "cash-and-fund-cost-original",
+        "actual_failure": "assert (0.0 == 2000)"
+      },
+      {
+        "assertion": "reconciliation-original-3000",
+        "actual_failure": "assert (0 == 3000)\n +  where 0 = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x15f4aa740>)"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "THB-original-total-7234.56",
+        "actual_failure": "assert 4234.56 == 7234.56"
+      },
+      {
+        "assertion": "THB-detail-sum-7234.56",
+        "actual_failure": "assert Decimal('4234.56') == Decimal('7234.56')\n +  where Decimal('4234.56') = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x103077760>, Decimal('0'))\n +    where Decimal('0') = Decimal(0)\n +  and   Decimal('7234.56') = Decimal('7234.56')"
+      },
+      {
+        "assertion": "cash-and-fund-cost-original",
+        "actual_failure": "assert (0.0 == 2000)"
+      },
+      {
+        "assertion": "reconciliation-original-3000",
+        "actual_failure": "assert (0 == 3000)\n +  where 0 = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x10c0f4c70>)"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'THB-original-total-7234.56', 'actual_failure': 'assert 4234.56 == 7234.56'}, {'assertion': 'THB-detail-sum-7234.56', 'actual_failure': \"assert Decimal('4234.56') == Decimal('7234.56')\\n +  where Decimal('4234.56') = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x1281bec00>, Decimal('0'))\\n +    where Decimal('0') = Decimal(0)\\n +  and   Decimal('7234.56') = Decimal('7234.56')\"}, {'assertion': 'cash-and-fund-cost-original', 'actual_failure': 'assert (0.0 == 2000)'}, {'assertion': 'reconciliation-original-3000', 'actual_failure': 'assert (0 == 3000)\\n +  where 0 = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x15f4aa740>)'}]",
+    "baseline_message": "AssertionError: [{'assertion': 'THB-original-total-7234.56', 'actual_failure': 'assert 4234.56 == 7234.56'}, {'assertion': 'THB-detail-sum-7234.56', 'actual_failure': \"assert Decimal('4234.56') == Decimal('7234.56')\\n +  where Decimal('4234.56') = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x103077760>, Decimal('0'))\\n +    where Decimal('0') = Decimal(0)\\n +  and   Decimal('7234.56') = Decimal('7234.56')\"}, {'assertion': 'cash-and-fund-cost-original', 'actual_failure': 'assert (0.0 == 2000)'}, {'assertion': 'reconciliation-original-3000', 'actual_failure': 'assert (0 == 3000)\\n +  where 0 = sum(<generator object test_report_costs_accounts_debt_details_and_no_writes.<locals>.run.<locals>.<genexpr> at 0x10c0f4c70>)'}]"
+  },
+  {
+    "test": "tests.test_cost_funds_debt::test_original_formula_balances_and_non_cost_repayment_stays_red",
+    "current_assertions": [
+      {
+        "assertion": "original-cost-line-111",
+        "actual_failure": "assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\n  \n  At index 0 diff: 4234.56 != 7234.56\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "original-cost-line-117",
+        "actual_failure": "assert (not True)"
+      },
+      {
+        "assertion": "original-cost-line-119",
+        "actual_failure": "assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\n  \n  At index 0 diff: 5234.56 != 7234.56\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "original-cost-line-121",
+        "actual_failure": "assert [] == [{'amount': 1...ame': '垫款归还'}]\n  \n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\n  Use -v to get more diff"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "original-cost-line-111",
+        "actual_failure": "assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\n  \n  At index 0 diff: 4234.56 != 7234.56\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "original-cost-line-117",
+        "actual_failure": "assert (not True)"
+      },
+      {
+        "assertion": "original-cost-line-119",
+        "actual_failure": "assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\n  \n  At index 0 diff: 5234.56 != 7234.56\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "original-cost-line-121",
+        "actual_failure": "assert [] == [{'amount': 1...ame': '垫款归还'}]\n  \n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\n  Use -v to get more diff"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'original-cost-line-111', 'actual_failure': 'assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\\n  \\n  At index 0 diff: 4234.56 != 7234.56\\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-117', 'actual_failure': 'assert (not True)'}, {'assertion': 'original-cost-line-119', 'actual_failure': 'assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\\n  \\n  At index 0 diff: 5234.56 != 7234.56\\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-121', 'actual_failure': \"assert [] == [{'amount': 1...ame': '垫款归还'}]\\n  \\n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\\n  Use -v to get more diff\"}]",
+    "baseline_message": "AssertionError: [{'assertion': 'original-cost-line-111', 'actual_failure': 'assert [4234.56, 4234.56, 0.0] == [7234.56, 4234.56, 3000]\\n  \\n  At index 0 diff: 4234.56 != 7234.56\\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-117', 'actual_failure': 'assert (not True)'}, {'assertion': 'original-cost-line-119', 'actual_failure': 'assert [5234.56, 5234.56, 0.0, 0.0] == [7234.56, 5234.56, 2000, 3000]\\n  \\n  At index 0 diff: 5234.56 != 7234.56\\n  Use -v to get more diff'}, {'assertion': 'original-cost-line-121', 'actual_failure': \"assert [] == [{'amount': 1...ame': '垫款归还'}]\\n  \\n  Right contains one more item: {'amount': 1000, 'count': 1, 'name': '垫款归还'}\\n  Use -v to get more diff\"}]"
+  },
+  {
+    "test": "tests.test_cost_funds_debt::test_fund_withdrawal_unassigned_and_weekly_dates",
+    "current_assertions": [
+      {
+        "assertion": "original-cost-line-144",
+        "actual_failure": "assert (250.0 == 1250)"
+      },
+      {
+        "assertion": "original-cost-line-146",
+        "actual_failure": "assert (250.0 == 250 and 0.0 == 1000)"
+      },
+      {
+        "assertion": "original-cost-line-155",
+        "actual_failure": "assert 0.0 == -5000"
+      },
+      {
+        "assertion": "original-cost-line-157",
+        "actual_failure": "assert [] == [{'amount': 5...用金领用（未指定账户）'}]\n  \n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\n  Use -v to get more diff"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "original-cost-line-144",
+        "actual_failure": "assert (250.0 == 1250)"
+      },
+      {
+        "assertion": "original-cost-line-146",
+        "actual_failure": "assert (250.0 == 250 and 0.0 == 1000)"
+      },
+      {
+        "assertion": "original-cost-line-155",
+        "actual_failure": "assert 0.0 == -5000"
+      },
+      {
+        "assertion": "original-cost-line-157",
+        "actual_failure": "assert [] == [{'amount': 5...用金领用（未指定账户）'}]\n  \n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\n  Use -v to get more diff"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'original-cost-line-144', 'actual_failure': 'assert (250.0 == 1250)'}, {'assertion': 'original-cost-line-146', 'actual_failure': 'assert (250.0 == 250 and 0.0 == 1000)'}, {'assertion': 'original-cost-line-155', 'actual_failure': 'assert 0.0 == -5000'}, {'assertion': 'original-cost-line-157', 'actual_failure': \"assert [] == [{'amount': 5...用金领用（未指定账户）'}]\\n  \\n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\\n  Use -v to get more diff\"}]",
+    "baseline_message": "AssertionError: [{'assertion': 'original-cost-line-144', 'actual_failure': 'assert (250.0 == 1250)'}, {'assertion': 'original-cost-line-146', 'actual_failure': 'assert (250.0 == 250 and 0.0 == 1000)'}, {'assertion': 'original-cost-line-155', 'actual_failure': 'assert 0.0 == -5000'}, {'assertion': 'original-cost-line-157', 'actual_failure': \"assert [] == [{'amount': 5...用金领用（未指定账户）'}]\\n  \\n  Right contains one more item: {'amount': 5000, 'count': 1, 'name': '备用金领用（未指定账户）'}\\n  Use -v to get more diff\"}]"
+  },
+  {
+    "test": "tests.test_cost_funds_debt::test_pagination_category_exact_payer_and_shared_list_projection",
+    "current_assertions": [
+      {
+        "assertion": "original-cost-line-226",
+        "actual_failure": "assert 6 == 8"
+      },
+      {
+        "assertion": "original-shared-cost-projection",
+        "actual_failure": "assert {'cost_basis'...ize': 25, ...} == {'cost_basis'...ize': 25, ...}\n  \n  Omitting 4 identical items, use -vv to show\n  Differing items:\n  {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计'} != {'cost_basis': '按实际收付日期统计公司支出；垫款归还才计支出，备用金拨付只计一次，内部转账不计收支'}\n  {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]} != {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {...\n  \n  ...Full output truncated (4 lines hidden), use '-vv' to show"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "original-cost-line-226",
+        "actual_failure": "assert 6 == 8"
+      },
+      {
+        "assertion": "original-shared-cost-projection",
+        "actual_failure": "assert {'cost_basis'...ize': 25, ...} == {'cost_basis'...ize': 25, ...}\n  \n  Omitting 4 identical items, use -vv to show\n  Differing items:\n  {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]} != {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]}\n  {'cost_basis': '公司钱包实际收付；不含内部转账，到...\n  \n  ...Full output truncated (4 lines hidden), use '-vv' to show"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": false,
+    "current_message": "AssertionError: [{'assertion': 'original-cost-line-226', 'actual_failure': 'assert 6 == 8'}, {'assertion': 'original-shared-cost-projection', 'actual_failure': \"assert {'cost_basis'...ize': 25, ...} == {'cost_basis'...ize': 25, ...}\\n  \\n  Omitting 4 identical items, use -vv to show\\n  Differing items:\\n  {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计'} != {'cost_basis': '按实际收付日期统计公司支出；垫款归还才计支出，备用金拨付只计一次，内部转账不计收支'}\\n  {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]} != {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {...\\n  \\n  ...Full output truncated (4 lines hidden), use '-vv' to show\"}]",
+    "baseline_message": "AssertionError: [{'assertion': 'original-cost-line-226', 'actual_failure': 'assert 6 == 8'}, {'assertion': 'original-shared-cost-projection', 'actual_failure': \"assert {'cost_basis'...ize': 25, ...} == {'cost_basis'...ize': 25, ...}\\n  \\n  Omitting 4 identical items, use -vv to show\\n  Differing items:\\n  {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]} != {'data': [{'account_id': 1, 'account_name': '测试现金', 'amount': 1234.56, 'cash_advance_id': None, ...}, {'account_id': 1...ash_advance_id': None, ...}, {'account_id': 1, 'account_name': '测试现金', 'amount': 250.0, 'cash_advance_id': None, ...}]}\\n  {'cost_basis': '公司钱包实际收付；不含内部转账，到...\\n  \\n  ...Full output truncated (4 lines hidden), use '-vv' to show\"}]"
+  },
+  {
+    "test": "tests.test_payroll_cash_advance::test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke",
+    "current_assertions": [
+      {
+        "assertion": "7000 salary cost row/count/amount/source",
+        "actual_failure": "assert (2, 750.0) == (3, 7750)\n  \n  At index 0 diff: 2 != 3\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "7000 report cost total",
+        "actual_failure": "assert (200 == 200 and {'THB': 750.0} == {'THB': 7750}\n +  where 200 = <Response [200 OK]>.status_code\n  \n  Differing items:\n  {'THB': 750.0} != {'THB': 7750}\n  Use -v to get more diff)"
+      },
+      {
+        "assertion": "linked cost edit protection requires generated expense",
+        "actual_failure": "{'account_id': None, 'cash_advance_id': 1, 'disbursed_at': '2026-10-28T09:16:57.622634+07:00', 'expense_record_id': None, ...}\nassert None is not None"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "7000 salary cost row/count/amount/source",
+        "actual_failure": "assert (2, 750.0) == (3, 7750)\n  \n  At index 0 diff: 2 != 3\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "7000 report cost total",
+        "actual_failure": "assert (200 == 200 and {'THB': 750.0} == {'THB': 7750}\n +  where 200 = <Response [200 OK]>.status_code\n  \n  Differing items:\n  {'THB': 750.0} != {'THB': 7750}\n  Use -v to get more diff)"
+      },
+      {
+        "assertion": "linked cost edit protection requires generated expense",
+        "actual_failure": "{'account_id': None, 'cash_advance_id': 1, 'disbursed_at': '2026-10-28T09:13:44.801724+07:00', 'expense_record_id': None, ...}\nassert None is not None"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": false,
+    "current_message": "AssertionError: [{'assertion': '7000 salary cost row/count/amount/source', 'actual_failure': 'assert (2, 750.0) == (3, 7750)\\n  \\n  At index 0 diff: 2 != 3\\n  Use -v to get more diff'}, {'assertion': '7000 report cost total', 'actual_failure': \"assert (200 == 200 and {'THB': 750.0} == {'THB': 7750}\\n +  where 200 = <Response [200 OK]>.status_code\\n  \\n  Differing items:\\n  {'THB': 750.0} != {'THB': 7750}\\n  Use -v to get more diff)\"}, {'assertion': 'linked cost edit protection requires generated expense', 'actual_failure': \"{'account_id': None, 'cash_advance_id': 1, 'disbursed_at': '2026-10-28T09:16:57.622634+07:00', 'expense_record_id': None, ...}\\nassert None is not None\"}]",
+    "baseline_message": "AssertionError: [{'assertion': '7000 salary cost row/count/amount/source', 'actual_failure': 'assert (2, 750.0) == (3, 7750)\\n  \\n  At index 0 diff: 2 != 3\\n  Use -v to get more diff'}, {'assertion': '7000 report cost total', 'actual_failure': \"assert (200 == 200 and {'THB': 750.0} == {'THB': 7750}\\n +  where 200 = <Response [200 OK]>.status_code\\n  \\n  Differing items:\\n  {'THB': 750.0} != {'THB': 7750}\\n  Use -v to get more diff)\"}, {'assertion': 'linked cost edit protection requires generated expense', 'actual_failure': \"{'account_id': None, 'cash_advance_id': 1, 'disbursed_at': '2026-10-28T09:13:44.801724+07:00', 'expense_record_id': None, ...}\\nassert None is not None\"}]"
+  },
+  {
+    "test": "tests.test_cost_funds_debt_postgres::test_actual_postgres_union_types_currency_and_business_day",
+    "current_assertions": [
+      {
+        "assertion": "original-cost-total-2100-two-rows",
+        "actual_failure": "assert (2000.0 == 2100)\n +  where 2000.0 = sum(<generator object test_actual_postgres_union_types_currency_and_business_day.<locals>.run.<locals>.<genexpr> at 0x12d8fdb60>)"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "original-cost-total-2100-two-rows",
+        "actual_failure": "assert (2000.0 == 2100)\n +  where 2000.0 = sum(<generator object test_actual_postgres_union_types_currency_and_business_day.<locals>.run.<locals>.<genexpr> at 0x10c187bc0>)"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'original-cost-total-2100-two-rows', 'actual_failure': 'assert (2000.0 == 2100)\\n +  where 2000.0 = sum(<generator object test_actual_postgres_union_types_currency_and_business_day.<locals>.run.<locals>.<genexpr> at 0x12d8fdb60>)'}]",
+    "baseline_message": "AssertionError: [{'assertion': 'original-cost-total-2100-two-rows', 'actual_failure': 'assert (2000.0 == 2100)\\n +  where 2000.0 = sum(<generator object test_actual_postgres_union_types_currency_and_business_day.<locals>.run.<locals>.<genexpr> at 0x10c187bc0>)'}]"
+  },
+  {
+    "test": "tests.test_reimbursement_payments::test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow",
+    "current_assertions": [
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:124",
+        "actual_failure": "assert (4, 7750.0) == (3, 2750)\n  \n  At index 0 diff: 4 != 3\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:133",
+        "actual_failure": "assert (400 == 400 and 4 == 3)\n +  where 400 = <Response [400 Bad Request]>.status_code"
+      },
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:137",
+        "actual_failure": "assert (200 == 200 and {'THB': 7750.0} == {'THB': 2750}\n +  where 200 = <Response [200 OK]>.status_code\n  \n  Differing items:\n  {'THB': 7750.0} != {'THB': 2750}\n  Use -v to get more diff)"
+      },
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:142",
+        "actual_failure": "assert (5750.0 == 750)"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:124",
+        "actual_failure": "assert (4, 7750.0) == (3, 2750)\n  \n  At index 0 diff: 4 != 3\n  Use -v to get more diff"
+      },
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:133",
+        "actual_failure": "assert (400 == 400 and 4 == 3)\n +  where 400 = <Response [400 Bad Request]>.status_code"
+      },
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:137",
+        "actual_failure": "assert (200 == 200 and {'THB': 7750.0} == {'THB': 2750}\n +  where 200 = <Response [200 OK]>.status_code\n  \n  Differing items:\n  {'THB': 7750.0} != {'THB': 2750}\n  Use -v to get more diff)"
+      },
+      {
+        "assertion": "test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:142",
+        "actual_failure": "assert (5750.0 == 750)"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:124', 'actual_failure': 'assert (4, 7750.0) == (3, 2750)\\n  \\n  At index 0 diff: 4 != 3\\n  Use -v to get more diff'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:133', 'actual_failure': 'assert (400 == 400 and 4 == 3)\\n +  where 400 = <Response [400 Bad Request]>.status_code'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:137', 'actual_failure': \"assert (200 == 200 and {'THB': 7750.0} == {'THB': 2750}\\n +  where 200 = <Response [200 OK]>.status_code\\n  \\n  Differing items:\\n  {'THB': 7750.0} != {'THB': 2750}\\n  Use -v to get more diff)\"}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:142', 'actual_failure': 'assert (5750.0 == 750)'}]",
+    "baseline_message": "AssertionError: [{'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:124', 'actual_failure': 'assert (4, 7750.0) == (3, 2750)\\n  \\n  At index 0 diff: 4 != 3\\n  Use -v to get more diff'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:133', 'actual_failure': 'assert (400 == 400 and 4 == 3)\\n +  where 400 = <Response [400 Bad Request]>.status_code'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:137', 'actual_failure': \"assert (200 == 200 and {'THB': 7750.0} == {'THB': 2750}\\n +  where 200 = <Response [200 OK]>.status_code\\n  \\n  Differing items:\\n  {'THB': 7750.0} != {'THB': 2750}\\n  Use -v to get more diff)\"}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:142', 'actual_failure': 'assert (5750.0 == 750)'}]"
+  },
+  {
+    "test": "tests.test_reimbursement_payments::test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost",
+    "current_assertions": [
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:171",
+        "actual_failure": "assert (5750.0 == 2750)"
+      },
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:187",
+        "actual_failure": "assert (5750.0 == 750)"
+      },
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:190",
+        "actual_failure": "assert (200 == 200 and 5750.0 == 2750)\n +  where 200 = <Response [200 OK]>.status_code"
+      },
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:193",
+        "actual_failure": "assert (200 == 200 and 7750.0 == 2750)\n +  where 200 = <Response [200 OK]>.status_code"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:171",
+        "actual_failure": "assert (5750.0 == 2750)"
+      },
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:187",
+        "actual_failure": "assert (5750.0 == 750)"
+      },
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:190",
+        "actual_failure": "assert (200 == 200 and 5750.0 == 2750)\n +  where 200 = <Response [200 OK]>.status_code"
+      },
+      {
+        "assertion": "test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:193",
+        "actual_failure": "assert (200 == 200 and 7750.0 == 2750)\n +  where 200 = <Response [200 OK]>.status_code"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:171', 'actual_failure': 'assert (5750.0 == 2750)'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:187', 'actual_failure': 'assert (5750.0 == 750)'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:190', 'actual_failure': 'assert (200 == 200 and 5750.0 == 2750)\\n +  where 200 = <Response [200 OK]>.status_code'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:193', 'actual_failure': 'assert (200 == 200 and 7750.0 == 2750)\\n +  where 200 = <Response [200 OK]>.status_code'}]",
+    "baseline_message": "AssertionError: [{'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:171', 'actual_failure': 'assert (5750.0 == 2750)'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:187', 'actual_failure': 'assert (5750.0 == 750)'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:190', 'actual_failure': 'assert (200 == 200 and 5750.0 == 2750)\\n +  where 200 = <Response [200 OK]>.status_code'}, {'assertion': 'test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:193', 'actual_failure': 'assert (200 == 200 and 7750.0 == 2750)\\n +  where 200 = <Response [200 OK]>.status_code'}]"
+  },
+  {
+    "test": "tests.test_reimbursement_payments::test_decimal_item_sums_and_partially_approved_total_used_for_payment",
+    "current_assertions": [
+      {
+        "assertion": "test_decimal_item_sums_and_partially_approved_total_used_for_payment:388",
+        "actual_failure": "assert 5750.3 == 750.3"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "test_decimal_item_sums_and_partially_approved_total_used_for_payment:388",
+        "actual_failure": "assert 5750.3 == 750.3"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'test_decimal_item_sums_and_partially_approved_total_used_for_payment:388', 'actual_failure': 'assert 5750.3 == 750.3'}]",
+    "baseline_message": "AssertionError: [{'assertion': 'test_decimal_item_sums_and_partially_approved_total_used_for_payment:388', 'actual_failure': 'assert 5750.3 == 750.3'}]"
+  },
+  {
+    "test": "tests.test_fund_disbursement::test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals",
+    "current_assertions": [
+      {
+        "assertion": "original-legacy-formal-expense-1400",
+        "actual_failure": "assert 6400.0 == 1400"
+      },
+      {
+        "assertion": "original-legacy-unified-cost-2900",
+        "actual_failure": "assert 6400.0 == 2900"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "original-legacy-formal-expense-1400",
+        "actual_failure": "assert 6400.0 == 1400"
+      },
+      {
+        "assertion": "original-legacy-unified-cost-2900",
+        "actual_failure": "assert 6400.0 == 2900"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'original-legacy-formal-expense-1400', 'actual_failure': 'assert 6400.0 == 1400'}, {'assertion': 'original-legacy-unified-cost-2900', 'actual_failure': 'assert 6400.0 == 2900'}]",
+    "baseline_message": "AssertionError: [{'assertion': 'original-legacy-formal-expense-1400', 'actual_failure': 'assert 6400.0 == 1400'}, {'assertion': 'original-legacy-unified-cost-2900', 'actual_failure': 'assert 6400.0 == 2900'}]"
+  },
+  {
+    "test": "tests.test_employee_advance_expense::test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow",
+    "current_assertions": [
+      {
+        "assertion": "original-pending-fund-zero-cost",
+        "actual_failure": "assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\n +    where all = <sqlalchemy.engine.result.ChunkedIteratorResult object at 0x1308dda90>.all"
+      },
+      {
+        "assertion": "original-executed-fund-zero-cost",
+        "actual_failure": "assert [{'id': 8, 's...nd_id': None}] == []\n  \n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\n  Use -v to get more diff"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "original-pending-fund-zero-cost",
+        "actual_failure": "assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\n +    where all = <sqlalchemy.engine.result.ChunkedIteratorResult object at 0x10de6cd50>.all"
+      },
+      {
+        "assertion": "original-executed-fund-zero-cost",
+        "actual_failure": "assert [{'id': 8, 's...nd_id': None}] == []\n  \n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\n  Use -v to get more diff"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'original-pending-fund-zero-cost', 'actual_failure': \"assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\\n +    where all = <sqlalchemy.engine.result.ChunkedIteratorResult object at 0x1308dda90>.all\"}, {'assertion': 'original-executed-fund-zero-cost', 'actual_failure': \"assert [{'id': 8, 's...nd_id': None}] == []\\n  \\n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\\n  Use -v to get more diff\"}]",
+    "baseline_message": "AssertionError: [{'assertion': 'original-pending-fund-zero-cost', 'actual_failure': \"assert not [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)]\\n +  where [(8, 'expense_fund', 8, 'expense_fund', '历史备用金拨付（未指定账户）', 'EF-8', 'active', '未指定账户', 1, datetime.date(2026, 9, 30), No...用金拨付', Decimal('5000.00'), 'CNY', None, '测试', None, 'company_account', None, None, None, True, None, None, None, None)] = all()\\n +    where all = <sqlalchemy.engine.result.ChunkedIteratorResult object at 0x10de6cd50>.all\"}, {'assertion': 'original-executed-fund-zero-cost', 'actual_failure': \"assert [{'id': 8, 's...nd_id': None}] == []\\n  \\n  Left contains one more item: {'id': 8, 'source': 'expense_fund', 'source_id': 8, 'wallet_source': 'expense_fund', 'source_label': '历史备用金拨付（未指定账户）',... 'is_read_only': True, 'employee_advance_id': None, 'employee_id': None, 'fund_disbursement_id': None, 'fund_id': None}\\n  Use -v to get more diff\"}]"
+  },
+  {
+    "test": "tests.test_employee_advance_funding::test_source_money_cost_ledger_and_void[company_account]",
+    "current_assertions": [
+      {
+        "assertion": "test_source_money_cost_ledger_and_void:108",
+        "actual_failure": "assert (2 == 1)\n +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "test_source_money_cost_ledger_and_void:108",
+        "actual_failure": "assert (2 == 1)\n +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'test_source_money_cost_ledger_and_void:108', 'actual_failure': \"assert (2 == 1)\\n +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])\"}]",
+    "baseline_message": "AssertionError: [{'assertion': 'test_source_money_cost_ledger_and_void:108', 'actual_failure': \"assert (2 == 1)\\n +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])\"}]"
+  },
+  {
+    "test": "tests.test_cash_advance_repayments::test_full_repayment_money_ledger_and_costs_exactly_unchanged",
+    "current_assertions": [
+      {
+        "assertion": "test_full_repayment_money_ledger_and_costs_exactly_unchanged:100",
+        "actual_failure": "assert (3000.0 == 3000 and False is True)"
+      },
+      {
+        "assertion": "test_full_repayment_money_ledger_and_costs_exactly_unchanged:104",
+        "actual_failure": "assert ({'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\n  \n  Differing items:\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\n  \n  ...Full output truncated (3 lines hidden), use '-vv' to show)"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "test_full_repayment_money_ledger_and_costs_exactly_unchanged:100",
+        "actual_failure": "assert (3000.0 == 3000 and False is True)"
+      },
+      {
+        "assertion": "test_full_repayment_money_ledger_and_costs_exactly_unchanged:104",
+        "actual_failure": "assert ({'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\n  \n  Differing items:\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\n  \n  ...Full output truncated (3 lines hidden), use '-vv' to show)"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'test_full_repayment_money_ledger_and_costs_exactly_unchanged:100', 'actual_failure': 'assert (3000.0 == 3000 and False is True)'}, {'assertion': 'test_full_repayment_money_ledger_and_costs_exactly_unchanged:104', 'actual_failure': \"assert ({'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\\n  \\n  Differing items:\\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\\n  \\n  ...Full output truncated (3 lines hidden), use '-vv' to show)\"}]",
+    "baseline_message": "AssertionError: [{'assertion': 'test_full_repayment_money_ledger_and_costs_exactly_unchanged:100', 'actual_failure': 'assert (3000.0 == 3000 and False is True)'}, {'assertion': 'test_full_repayment_money_ledger_and_costs_exactly_unchanged:104', 'actual_failure': \"assert ({'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\\n  \\n  Differing items:\\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\\n  \\n  ...Full output truncated (3 lines hidden), use '-vv' to show)\"}]"
+  },
+  {
+    "test": "tests.test_cash_advance_repayments::test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies",
+    "current_assertions": [
+      {
+        "assertion": "test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies:294",
+        "actual_failure": "assert {'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\n  \n  Differing items:\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\n  \n  ...Full output truncated (3 lines hidden), use '-vv' to show"
+      }
+    ],
+    "baseline_assertions": [
+      {
+        "assertion": "test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies:294",
+        "actual_failure": "assert {'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\n  \n  Differing items:\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\n  \n  ...Full output truncated (3 lines hidden), use '-vv' to show"
+      }
+    ],
+    "same_actual_assertions_after_memory_address_normalization": true,
+    "current_message": "AssertionError: [{'assertion': 'test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies:294', 'actual_failure': \"assert {'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\\n  \\n  Differing items:\\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\\n  \\n  ...Full output truncated (3 lines hidden), use '-vv' to show\"}]",
+    "baseline_message": "AssertionError: [{'assertion': 'test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies:294', 'actual_failure': \"assert {'/income-exp...', ...}, ...}} == {'/income-exp...', ...}, ...}}\\n  \\n  Differing items:\\n  {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}} != {'/income-expense/expense?category_group=operating': {'cost_basis': '公司钱包实际收付；不含内部转账，到账只计一次，备用金拨付及垫款归还按原钱包规则统计', 'data...ount_id': 1, 'account_name': '测试现金', 'amount': 500.0, 'cash_advance_id': None, ...}], 'page': 1, 'page_size': 20, ...}}\\n  {'/income-expense/monthly-summary?start_date=2026-10-01&end_date=2026-10-31&...\\n  \\n  ...Full output truncated (3 lines hidden), use '-vv' to show\"}]"
+  }
+]

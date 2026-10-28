@@ -1,0 +1,41 @@
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:88: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/fixtures.py:95: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+  for table in database.Base.metadata.sorted_tables:
+catalog-contracts 200 PASS
+payroll-employee-page1 200 PASS
+payroll-employee-page5 200 PASS
+payroll-employee-search 200 PASS
+payroll-employee-foreign-search 200 PASS
+payroll-no-grants 403 PASS
+payroll-role-ceiling 403 PASS
+payroll-wrong-field 400 PASS
+payroll-wrong-module 403 PASS
+payroll-foreign-header 403 PASS
+payroll-invalid-header 403 ['expected 400, actual 403']
+fund-not-payment-account 200 PASS
+fund-child-parent 403 ['expected 200, actual 403', "KeyError('data')"]
+fund-child-no-parent 403 ['expected 200, actual 403', "KeyError('data')"]
+fund-child-other-owner 403 PASS
+reimb-child-parent 200 PASS
+reimb-child-foreign-parent 403 PASS
+disabled-user 401 ['expected 403, actual 401']
+Traceback (most recent call last):
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/selector_acceptance.py", line 39, in <module>
+    if __name__=='__main__':asyncio.run(main())
+                            ^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/selector_acceptance.py", line 37, in main
+    ev.finish()
+  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/harness.py", line 44, in finish
+    def finish(self):assert not self.failures,self.failures
+                            ^^^^^^^^^^^^^^^^^
+AssertionError: ['payroll-invalid-header: expected 400, actual 403', 'fund-child-parent: expected 200, actual 403', "fund-child-parent: KeyError('data')", 'fund-child-no-parent: expected 200, actual 403', "fund-child-no-parent: KeyError('data')", 'disabled-user: expected 403, actual 401']

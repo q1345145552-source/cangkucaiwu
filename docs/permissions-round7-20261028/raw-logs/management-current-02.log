@@ -1,0 +1,120 @@
+...F..........................................................F.F.F.F... [ 78%]
+........F..F........                                                     [100%]
+=================================== FAILURES ===================================
+________ test_employee_self_records_and_other_people_are_never_visible _________
+backend/tests/test_management_access.py:260: in test_employee_self_records_and_other_people_are_never_visible
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_management_access.py:247: in run
+    assert leave.status_code==403,leave.text
+E   AssertionError: {"detail":"请求包含不允许的字段"}
+E   assert 400 == 403
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+_ test_each_shared_permission_alone_can_load_scoped_selector[customers-customers-4] _
+backend/tests/test_non_labor_read_group1.py:149: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_non_labor_read_group1.py:137: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"现场客户查询最多20条，请缩小搜索范围"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_each_shared_permission_alone_can_load_scoped_selector[customers-recharge-4] _
+backend/tests/test_non_labor_read_group1.py:149: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_non_labor_read_group1.py:137: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"现场客户查询最多20条，请缩小搜索范围"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_each_shared_permission_alone_can_load_scoped_selector[customers-incoming-4] _
+backend/tests/test_non_labor_read_group1.py:149: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_non_labor_read_group1.py:137: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"现场客户查询最多20条，请缩小搜索范围"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_each_shared_permission_alone_can_load_scoped_selector[customers-credit-4] _
+backend/tests/test_non_labor_read_group1.py:149: in test_each_shared_permission_alone_can_load_scoped_selector
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_non_labor_read_group1.py:137: in run
+    assert r.status_code==200,r.text
+E   AssertionError: {"detail":"现场客户查询最多20条，请缩小搜索范围"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+________________ test_shared_page_requests_and_complete_report _________________
+backend/tests/test_non_labor_read_group1.py:232: in test_shared_page_requests_and_complete_report
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+backend/tests/test_non_labor_read_group1.py:208: in run
+    assert r.status_code==expected,(path,r.text)
+E   AssertionError: ('/customers?page_size=99999', '{"detail":"现场客户查询最多20条，请缩小搜索范围"}')
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_________________ test_menu_coverage_and_legacy_compatibility __________________
+backend/tests/test_menu_permissions.py:51: in test_menu_coverage_and_legacy_compatibility
+    assert (ROOT / "frontend/src/app/(dashboard)" / item.path.lstrip("/") / "page.tsx").is_file()
+E   AssertionError: assert False
+E    +  where False = is_file()
+E    +    where is_file = (((PosixPath('/private/tmp/permissions-round7-20261028') / 'frontend/src/app/(dashboard)') / '') / 'page.tsx').is_file
+E    +      where '' = <built-in method lstrip of str object at 0x101225660>('/')
+E    +        where <built-in method lstrip of str object at 0x101225660> = ''.lstrip
+E    +          where '' = MenuPermission(menu_key='sku_catalog_manage', label='标准SKU管理', path='', roles=('warehouse_admin', 'staff', 'supervisor'), selectable=True, legacy_permission=False, permission_menu_key='sku_catalog_manage').path
+=============================== warnings summary ===============================
+../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_management_access.py: 3400 warnings
+tests/test_non_labor_read_group1.py: 368 warnings
+tests/test_menu_permissions.py: 36 warnings
+tests/test_warehouse_summary.py: 70 warnings
+tests/test_supplier_integration_round12.py: 424 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round7-20261028/docs/permissions-round7-20261028/raw-logs/management-current-02.xml -
+=========================== short test summary info ============================
+FAILED backend/tests/test_management_access.py::test_employee_self_records_and_other_people_are_never_visible
+FAILED backend/tests/test_non_labor_read_group1.py::test_each_shared_permission_alone_can_load_scoped_selector[customers-customers-4]
+FAILED backend/tests/test_non_labor_read_group1.py::test_each_shared_permission_alone_can_load_scoped_selector[customers-recharge-4]
+FAILED backend/tests/test_non_labor_read_group1.py::test_each_shared_permission_alone_can_load_scoped_selector[customers-incoming-4]
+FAILED backend/tests/test_non_labor_read_group1.py::test_each_shared_permission_alone_can_load_scoped_selector[customers-credit-4]
+FAILED backend/tests/test_non_labor_read_group1.py::test_shared_page_requests_and_complete_report
+FAILED backend/tests/test_menu_permissions.py::test_menu_coverage_and_legacy_compatibility
+7 failed, 85 passed, 4310 warnings in 37.90s
