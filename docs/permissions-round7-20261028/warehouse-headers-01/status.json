@@ -1,8 +1,0 @@
-{
-  "requests": 4,
-  "failures": [
-    "order-count-invalid-2: expected 403, actual 200",
-    "order-count-invalid-abc: expected 403, actual 200",
-    "order-count-invalid-0: expected 403, actual 200"
-  ]
-}

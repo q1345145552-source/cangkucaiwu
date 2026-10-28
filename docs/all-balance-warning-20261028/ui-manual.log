@@ -1,1 +1,0 @@
-PASS: real manual-wallet transport persists IDs before sending, recovers committed lost response after reload, permits independent equal amounts, coalesces double clicks, retains uncertain transfers, rejects changed pending content, scopes drafts by user/warehouse, and fails closed on storage errors

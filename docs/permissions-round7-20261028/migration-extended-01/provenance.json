@@ -1,5 +1,0 @@
-{
-  "source": "backend/tests/permission_round6/extended.py",
-  "sha256": "71217c4f4693748fb0ad52157dd31c596ae24d26c1fd64c6a0fff4a7e0fe28a5",
-  "adaptation": "round7 fixture/output; unchanged assertion bodies"
-}

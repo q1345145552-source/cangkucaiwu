@@ -1,3 +1,0 @@
-src/app/(dashboard)/deduction-templates/page.tsx(2,35): error TS2307: Cannot find module '@/hooks/useBusinessAction' or its corresponding type declarations.
-src/app/(dashboard)/employee-deductions/page.tsx(2,35): error TS2307: Cannot find module '@/hooks/useBusinessAction' or its corresponding type declarations.
-src/app/(dashboard)/salary-templates/page.tsx(2,35): error TS2307: Cannot find module '@/hooks/useBusinessAction' or its corresponding type declarations.

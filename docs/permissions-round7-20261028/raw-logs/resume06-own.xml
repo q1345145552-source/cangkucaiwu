@@ -1,1 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="1.605" timestamp="2026-10-28T09:12:33.135057+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_advance_manager_recipients" name="test_existing_enabled_archive_and_self_approval_preserved" time="0.341" /></testsuite></testsuites>

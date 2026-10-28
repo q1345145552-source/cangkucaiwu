@@ -1,5 +1,0 @@
-{
-  "source": "backend/tests/permission_round6/acceptance.py",
-  "sha256": "5b1f3f68e9a7002244bb8f2d37c711eaa9d9ee9f6e02b88de7b11f23e5d6c3e5",
-  "adaptation": "round7 fixture/output; unchanged assertion bodies"
-}

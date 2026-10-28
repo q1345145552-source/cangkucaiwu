@@ -1,1 +1,0 @@
-{"result":"PASS","scenarios":12,"scope":"source required, cash default, source/currency payloads, insufficient funds, no extra permissions, failure preservation, loading and duplicate submit guards"}

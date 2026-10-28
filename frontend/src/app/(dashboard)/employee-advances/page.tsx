@@ -16,6 +16,12 @@ function todayStr(): string {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
 
+type FundingOptionsResponse = {
+  accounts?: { id: number; current_balance: number }[];
+  cash_advances?: { id: number; available_amount: number }[];
+  funds?: { id: number; available: number }[];
+};
+
 const SOURCE_LABELS: Record<string, string> = { company_account: "公司账户", cash_advance: "垫款单", expense_fund: "备用金" };
 const STATUS_LABELS: Record<string, string> = { unpaid: "待结算", partial: "部分结清", deducted: "已随工资结清", voided: "已作废" };
 
@@ -74,7 +80,22 @@ function EmployeeAdvancePageContent() {
   }
 
   async function executeStage(id: number, action: "verify" | "execute") {
-    try { await api.post(`/employee-advances/${id}/${action}`, {}); toast("success", action === "verify" ? "核验完成，尚未出款" : "出款完成"); void load(); }
+    try {
+      if (action === "execute") {
+        const row = rows.find(r => r.id === id);
+        if (!row?.funding_source) throw Error("预支记录已变化，请刷新后重试");
+        const fresh = await api.get<FundingOptionsResponse>("/employee-advances/funding-options");
+        const source = row.funding_source === "company_account" ? fresh.accounts?.find(a => a.id === row.payment_account_id)
+          : row.funding_source === "cash_advance" ? fresh.cash_advances?.find(a => a.id === row.cash_advance_id)
+          : fresh.funds?.find(a => a.id === row.fund_account_id);
+        if (!source) throw Error("资金来源已变化，请重新选择");
+        const available = "current_balance" in source ? source.current_balance
+          : "available_amount" in source ? source.available_amount : source.available;
+        if (!confirmBalanceWarning(available, row.amount)) return;
+      }
+      await api.post(`/employee-advances/${id}/${action}`, {});
+      toast("success", action === "verify" ? "核验完成，尚未出款" : "出款完成"); void load();
+    }
     catch (error: unknown) { toast("error", error instanceof Error ? error.message : "操作失败"); }
   }
   async function load() {

@@ -1,8 +1,0 @@
-{
-  "head": "0e4d2f9b45f9850754b1996c9127a48d0ff2e816",
-  "branch": "codex/permissions-round7-20261028",
-  "worktree": "/private/tmp/permissions-round7-20261028",
-  "prompt_sha256": "66d3076457389c036ae671b0709033ed960d5dc533e0327c9b62b616064a7265",
-  "creation": "new independent worktree from exact accepted round6 HEAD",
-  "prior_worktree_clean": true
-}

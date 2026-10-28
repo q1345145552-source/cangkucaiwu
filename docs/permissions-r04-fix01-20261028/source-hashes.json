@@ -1,9 +1,0 @@
-{
-  "backend/app/api/v1/reimbursement.py": "152d8b937839d0cea2fcce30b4aeb1504bdf903450188ad8bc52bf9ef3b22860",
-  "backend/app/core/personal_finance.py": "d6a3706c0417ed9111b965d150c3d23d9530227a6bd2607f12f42f3d8f3105d4",
-  "backend/app/core/round4_access.py": "b1fe2f3aac5065695c6a5ba243c10c49e2bb63153106fbbdef16006df356bb53",
-  "backend/app/services/personal_receipts.py": "e0319aba1de0cb5dac68e1e58d66e60f2d52288a710766391dee23c3bc185e3e",
-  "backend/tests/permission_round4/fix01_media.py": "a0a22de398363a620dde4b13dd9111c669f165047d501d272a6db38ca9f5b814",
-  "backend/tests/permission_round4/fix01_regression.py": "57b6b2c13eaee96b3f576d88a1dacc2a56410d19390ed10fb5bf3f3781568260",
-  "backend/tests/permission_round4/fix01_run.py": "663ca690f7938028f892a6011cdeb56bae3663c68c63487324459513a60a7370"
-}

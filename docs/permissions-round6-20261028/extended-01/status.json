@@ -1,6 +1,0 @@
-{
-  "requests": 66,
-  "failures": [
-    "replay-no-regrant: replay writes/regrants"
-  ]
-}

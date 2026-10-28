@@ -1,9 +1,0 @@
-{
-  "passed": 4,
-  "checks": [
-    "actual React render accepts historical special property names without a blank page",
-    "literal labels and values do not resolve through Object.prototype",
-    "nested specifications round-trip without dropping custom keys",
-    "ordinary object prototypes remain unchanged"
-  ]
-}

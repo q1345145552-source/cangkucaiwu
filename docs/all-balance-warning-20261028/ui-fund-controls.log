@@ -1,4 +1,0 @@
-Warning: Each child in a list should have a unique "key" prop.
-
-Check the top-level render call using <tbody>. See https://reactjs.org/link/warning-keys for more information.
-PASS: admin edit with retained receipt, unchanged currency, reason-required soft void, balance refresh, gray inactive record and hidden controls for supervisor/staff/labor/super-admin/approved items

@@ -1,7 +1,0 @@
-{
-  "actual": 434,
-  "catalogue": 434,
-  "missing": [],
-  "stale": [],
-  "source": "actual FastAPI APIRoute paths/methods exact match"
-}

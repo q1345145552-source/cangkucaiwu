@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/private/tmp/permissions-round7-20261028/backend/tests/permission_round7/full_sharded.py", line 16, in <module>
-    nodes=[x for x in collect.stdout.splitlines() if x.startswith('tests/') and '::' in x];assert len(nodes)==len(set(nodes)) and len(nodes)>2900
-                                                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError

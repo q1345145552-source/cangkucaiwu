@@ -1,7 +1,0 @@
-{
-  "requests": 108,
-  "failures": [
-    "read-23-authorized: expected 200, actual 404",
-    "read-24-labor: expected 403, actual 200"
-  ]
-}

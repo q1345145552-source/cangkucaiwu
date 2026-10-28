@@ -1,8 +1,0 @@
-{
-  "records": 122,
-  "failures": [
-    "C-purchase-pdf-1: ModuleNotFoundError(\"No module named 'fitz'\")",
-    "C-purchase-pdf-2: ModuleNotFoundError(\"No module named 'fitz'\")",
-    "C-purchase-pdf-3: ModuleNotFoundError(\"No module named 'fitz'\")"
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "requests": 66,
-  "failures": [
-    "choices-2: expected 200, got 403",
-    "choices-3: expected 200, got 403"
-  ]
-}

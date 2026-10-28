@@ -1,7 +1,0 @@
-原工作树：/Users/xiongliu/Desktop/海外仓财务系统
-原分支：codex/supplier-optimization-20261026
-原HEAD：79fae5f59d710e1e4e8176b325f0bfe861b4269a
-本批隔离工作树：/tmp/all-balance-warning-20261028
-本批分支：codex/all-balance-warning-20261028
-基线：6ec3d6216203e35415fb749de8f1f8fe0763fe7f
-原工作树的员工及代办等未提交任务均未修改和提交；未读取.deploy内容。

@@ -1,1 +1,0 @@
-{"suite": "full-current-02", "test_outcomes": {"passed": 2633, "failed": 286}, "registered": 434, "with_requests": 432, "with_2xx": 413, "with_asserted_2xx": 409, "excluded_auth_override_records": 467, "not_claimed": "Full state/role/field coverage, production verification, or independent acceptance."}

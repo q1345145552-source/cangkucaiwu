@@ -28,3 +28,16 @@ uploads/
 Thumbs.db
 deploy.sh
 tsconfig.tsbuildinfo
+
+# Generated audit evidence stays in local archives; commit Markdown summaries only.
+docs/**/*.log
+docs/**/*.json
+docs/**/*.jsonl
+docs/**/*.jsonl.gz
+docs/**/*.xml
+docs/**/*.png
+docs/**/*.jpg
+docs/**/*.jpeg
+docs/**/*.webp
+docs/**/*.gif
+docs/**/raw-logs/

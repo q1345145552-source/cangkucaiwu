@@ -1,8 +1,0 @@
-{
-  "requests": 37,
-  "failures": [
-    "inventory-operation-only-real-issue: expected 200, actual 404",
-    "inventory-operation-only-real-issue: AssertionError(('10.00000000', 8))",
-    "inventory-stale-version-no-mutation: expected 409, actual 404"
-  ]
-}

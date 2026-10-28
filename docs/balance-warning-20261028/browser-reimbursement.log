@@ -1,5 +1,0 @@
-page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"
-    at /private/tmp/balance-warning-browser-reimb.cjs:4:853 {
-  log: [],
-  name: 'TimeoutError'
-}
