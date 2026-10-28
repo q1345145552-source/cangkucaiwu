@@ -64,3 +64,5 @@ __all__ = [
     "StandardSKU", "SupplierWarehouseTag", "SupplierTagLink", "ProductSkuMappingEvent", "ProductImportOperation",
     "SupplierQuote", "SupplierQuoteRevision", "SupplierQuoteTier",
 ]
+
+from app.models.supplier import SupplierRoutePrice

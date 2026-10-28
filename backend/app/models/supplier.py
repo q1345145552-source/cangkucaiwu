@@ -185,3 +185,22 @@ class ProcurementNonLowestRecord(Base):
     orderer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     orderer_name = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class SupplierRoutePrice(Base):
+    """独立路线报价；不把kg/件价格写入旧每方报价，不改变旧报价计算。"""
+    __tablename__ = 'supplier_route_prices'
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False, index=True)
+    origin = Column(String(200), nullable=False)
+    destination = Column(String(200), nullable=False)
+    transport_method = Column(String(20), nullable=False)
+    quantity_from = Column(Numeric(20, 6), nullable=False)
+    quantity_to = Column(Numeric(20, 6), nullable=False)
+    pricing_unit = Column(String(10), nullable=False)
+    unit_price = Column(Numeric(20, 6), nullable=False)
+    currency = Column(String(10), nullable=False)
+    transit_days = Column(Integer, nullable=False)
+    minimum_charge = Column(Numeric(20, 6), nullable=False)
+    remark = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -6,7 +6,7 @@ import { checkExcel,excelApi,excelResponse,importScope } from '@/lib/excelImport
 
 export default function ExcelImportDialog({file,endpoint,title,resource=0,onClose,onImported}:{file:File;endpoint:string;title:string;resource?:number;onClose:()=>void;onImported:(value:any)=>void}) {
  const [preview,setPreview]=useState<any>(null),[pending,setPending]=useState<any>(null),[error,setError]=useState(''),[ack,setAck]=useState(false),[busy,setBusy]=useState(false);
- const labels:Record<string,string>={supplier_name:'供应商',supplier_id:'供应商编号',transport_method:'运输方式',cargo_type:'货物类型',origin_warehouse:'发货仓库',price_per_cbm:'单价',estimated_days:'时效',currency:'币种',received_date:'到账日期',amount:'金额',account_id:'收款账户编号',payer_name:'付款方',payment_method:'付款方式',remark:'备注',customer_id:'客户编号'};
+ const labels:Record<string,string>={quote_format:'报价格式',origin:'起点',destination:'终点',quantity_from:'重量或体积起',quantity_to:'重量或体积止',pricing_unit:'计量单位',unit_price:'单价',transit_days:'时效天数',minimum_charge:'最低收费',supplier_name:'供应商',supplier_id:'供应商编号',transport_method:'运输方式',cargo_type:'货物类型',origin_warehouse:'发货仓库',price_per_cbm:'单价',estimated_days:'时效',currency:'币种',received_date:'到账日期',amount:'金额',account_id:'收款账户编号',payer_name:'付款方',payment_method:'付款方式',remark:'备注',customer_id:'客户编号'};
  const [previewFor,setPreviewFor]=useState<{file:File;endpoint:string;resource:number}|null>(null);
  const matchesPreview=previewFor!==null&&previewFor.file===file&&previewFor.endpoint===endpoint&&previewFor.resource===resource;
  const generation=useRef(0);

@@ -6,7 +6,7 @@ from app.models import User,ProductImportOperation
 from app.models.supplier import SupplierCrossBorderPrice
 from app.models.recharge import IncomingFlow
 from app.models.customer import PaymentAccount
-from tests.test_excel_import_repair import send,template,fill,count
+from tests.test_excel_import_repair import send,template,fill,count,legacy_logistics
 from tests.test_supplier_workflow_round1 import setup
 from tests.test_incoming_operations import URL
 pytestmark=pytest.mark.skipif(not URL,reason='Explicit isolated localhost PostgreSQL required')
@@ -15,7 +15,7 @@ async def workbook(c,kind):
     if kind=='incoming':
         path='/incoming/import-excel';blob=fill(await template(c,'/incoming/template'),[['2026-10-20',200,'THB','独立合成人甲','现金','复核',1],['2026-10-21',300,'THB','独立合成人乙','现金','复核',1]])
     else:
-        path='/suppliers/1/import/logistics';blob=fill(await template(c,'/suppliers/import-template/logistics'),[['本仓供应商','陆运','普货','深圳仓',800,'5天','CNY'],['本仓供应商','海运','普货','12345',900,'7天','CNY']])
+        path='/suppliers/1/import/logistics';blob=legacy_logistics([['本仓供应商','陆运','普货','深圳仓',800,'5天','CNY'],['本仓供应商','海运','普货','12345',900,'7天','CNY']])
     return path,blob
 
 @pytest.mark.parametrize('kind',['incoming','logistics'])
@@ -96,7 +96,7 @@ def test_replay_is_scoped_by_warehouse_and_old_preview_never_crosses_scope(tmp_p
    if kind=='incoming':
     target=path;other=fill(await template(c,'/incoming/template'),[['2026-10-20',200,'THB','独立合成人甲','现金','复核',2],['2026-10-21',300,'THB','独立合成人乙','现金','复核',2]])
    else:
-    target='/suppliers/2/import/logistics';other=fill(await template(c,'/suppliers/import-template/logistics'),[['外仓供应商','陆运','普货','深圳仓',800,'5天','CNY'],['外仓供应商','海运','普货','12345',900,'7天','CNY']])
+    target='/suppliers/2/import/logistics';other=legacy_logistics([['外仓供应商','陆运','普货','深圳仓',800,'5天','CNY'],['外仓供应商','海运','普货','12345',900,'7天','CNY']])
    await send(c,target,other,data,warehouse='2',code=409)
    assert await count(f,ProductImportOperation)==1
    own=await send(c,target,other,warehouse='2');other_data={**data,'preview_version':own['preview_version']}

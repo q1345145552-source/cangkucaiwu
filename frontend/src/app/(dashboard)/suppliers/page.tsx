@@ -22,6 +22,7 @@ import ProductImportDialog from "@/components/ProductImportDialog";
 import StructuredSpecifications from "@/components/StructuredSpecifications";
 import { readSpecDraft,type SpecNode } from "@/lib/specifications";
 import SkuProductMapping from "@/components/SkuProductMapping";
+import SupplierRouteQuoteTable from "@/components/SupplierRouteQuoteTable";
 import SupplierQuoteEditor from "@/components/SupplierQuoteEditor";
 import PurchaseQuotePreview from "@/components/PurchaseQuotePreview";
 import PayableDuplicateDialog, { DuplicateConfirmation } from "@/components/PayableDuplicateDialog";
@@ -110,6 +111,7 @@ export default function SuppliersPage() {
   const [productSupplierId, setProductSupplierId] = useState(0);
   const [productForm, setProductForm] = useState({ product_name: "", spec: "", spec_price: "" as string | number, unit_price: "" as string | number, unit: "个", remark: "", currency: "THB" });
   // Logistics prices
+  const [routePrices,setRoutePrices]=useState<any[]>([]);
   const [logisticsPrices, setLogisticsPrices] = useState<any[]>([]);
   const [showLogistics, setShowLogistics] = useState(false);
   const [logisticsSupplierId, setLogisticsSupplierId] = useState(0);
@@ -130,6 +132,10 @@ export default function SuppliersPage() {
   const [compareCat, setCompareCat] = useState(0);
   const [aiCompareResult, setAiCompareResult] = useState("");
   // Import
+  const logisticsInputRef=useRef<HTMLInputElement>(null);
+  const [quoteEntry,setQuoteEntry]=useState<"products"|"logistics"|"tiers"|null>(null);
+  const [entrySupplier,setEntrySupplier]=useState(0);
+  const canPayable=useMenuPermission("payable"),canPlans=useMenuPermission("payment_plans"),canInventory=useMenuPermission("inventory"),canAnalysis=useMenuPermission("concentration");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logisticsFile,setLogisticsFile] = useState<File|null>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
@@ -187,21 +193,19 @@ export default function SuppliersPage() {
   }
 
   // ─── Import ───
-  async function downloadTemplate(mode: string) {
+  async function downloadTemplate(mode: string,batch=true) {
     try {
-      await downloadExcel(`/suppliers/import-template/${mode}`,`${mode}_import_template.xlsx`);
+      await downloadExcel(`/suppliers/import-template/${mode}?batch=${batch}`,`${mode}_import_template.xlsx`);
     } catch (e: any) {
       toast("error", e.message || "下载失败");
     }
   }
 
-  async function handleSupplierImport() {
-    const file = fileInputRef.current?.files?.[0];
-    const sid = importSupplierId;
-    if (!file) return;
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    try { checkExcel(file); if(importMode === "products") setProductImportFile(file); else setLogisticsFile(file); }
-    catch(e:any) { toast("error",e.message); }
+  async function handleSupplierImport(mode:"products"|"logistics"="products") {
+    const input=mode==='products'?fileInputRef.current:logisticsInputRef.current;
+    const file=input?.files?.[0];if(!file)return;if(input)input.value='';
+    try {checkExcel(file);if(mode==='products')setProductImportFile(file);else setLogisticsFile(file);}
+    catch(e:any){toast('error',e.message);}
   }
 
   // ─── Products ───
@@ -564,18 +568,18 @@ export default function SuppliersPage() {
   // ─── Logistics Prices ───
   async function openLogistics(sid: number) {
     setLogisticsSupplierId(sid);
-    try { const r = await api.get<any>(`/suppliers/${sid}/logistics-prices`); setLogisticsPrices(r.data); } catch { setLogisticsPrices([]); }
+    try { const r = await api.get<any>(`/suppliers/${sid}/logistics-prices`); setLogisticsPrices(r.data);setRoutePrices(r.route_data||[]); } catch { setLogisticsPrices([]);setRoutePrices([]); }
     setShowLogistics(true);
   }
   async function addLogisticsPrice() {
     try { await api.post(`/suppliers/${logisticsSupplierId}/logistics-prices`, { ...logisticsForm, price_per_cbm: logisticsForm.price_per_cbm || 0 }); toast("success", "报价添加成功");
-      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);
+      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);setRoutePrices(r.route_data||[]);
       setLogisticsForm({ transport_method: "陆运", cargo_type: "普货", origin_warehouse: "深圳仓", price_per_cbm: "", estimated_days: "", currency: "CNY" });
     } catch { toast("error", "添加失败"); }
   }
   async function deleteLogisticsPrice(pid: number) {
     try { await api.delete(`/suppliers/${logisticsSupplierId}/logistics-prices/${pid}`); toast("success", "已删除");
-      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);
+      const r = await api.get<any>(`/suppliers/${logisticsSupplierId}/logistics-prices`); setLogisticsPrices(r.data);setRoutePrices(r.route_data||[]);
     } catch { toast("error", "删除失败"); }
   }
 
@@ -615,7 +619,7 @@ export default function SuppliersPage() {
     try {
       const r = await api.get<any>(`/suppliers/${sid}`);
       try { const prods = await api.get<any>(`/suppliers/${sid}/products`); r.products = prods.data; } catch { r.products = []; }
-      try { const lp = await api.get<any>(`/suppliers/${sid}/logistics-prices`); r.logistics_prices = lp.data; } catch { r.logistics_prices = []; }
+      try { const lp = await api.get<any>(`/suppliers/${sid}/logistics-prices`); r.logistics_prices = lp.data;r.route_prices=lp.route_data||[]; } catch { r.logistics_prices = []; }
       setDetail(r);
     } catch {}
   }
@@ -645,55 +649,65 @@ export default function SuppliersPage() {
       {productImportFile&&<ProductImportDialog canMap={canManageCatalog} file={productImportFile} supplierName={data.find((s:any)=>s.id===importSupplierId)?.name} supplierId={importSupplierId||undefined} onClose={()=>{setProductImportFile(null);setImportSupplierId(null);if(fileInputRef.current)fileInputRef.current.value="";}} onImported={r=>{toast("success",r.message);load();}}/>}
       {quoteProductId>0&&<SupplierQuoteEditor supplierId={productSupplierId} productId={quoteProductId} canEdit={canManageCatalog} onClose={()=>setQuoteProductId(0)} onDone={()=>toast("success","报价版本已保存，旧采购快照不变")}/>}
       {mappingProductId>0&&<SkuProductMapping productId={mappingProductId} canEdit={canManageCatalog} onClose={()=>setMappingProductId(0)} onDone={()=>{toast("success","人工映射已保存，历史订单不变");openProducts(productSupplierId);}}/>}
-      <div className="flex justify-between mb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <h1 className="page-title">{t("suppliers")}</h1>
-          <button onClick={() => { setFilterCat(1); setPage(1); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 1 ? "bg-blue-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-            耗材商
-          </button>
-          <button onClick={() => { setFilterCat(2); setPage(1); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterCat === 2 ? "bg-green-600 text-white shadow" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-            物流
-          </button>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {(user as {role?:string}|null)?.role==='warehouse_admin'&&<button className="btn-secondary text-sm" onClick={()=>router.push('/suppliers/risk')}>采购风险看板</button>}
-          {canViewReport&&<button className="btn-secondary text-sm" onClick={()=>router.push("/suppliers/monthly-price-report")}>采购价差月报</button>}
-          {isAdmin && (
-            <>
-              {/* Template download */}
-              <button onClick={() => downloadTemplate("products")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>耗材模板</button>
-              <button onClick={() => downloadTemplate("logistics")} className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Download size={14}/>物流模板</button>
+      <h1 className="page-title mb-3">{t("suppliers")}</h1>
+      <nav aria-label="供应商功能分组" className="overflow-x-auto touch-pan-x mb-4 rounded-xl border bg-white">
+        <div className="flex flex-nowrap w-max min-w-full divide-x py-3 [&_button]:whitespace-nowrap [&_button]:min-h-[44px] [&_button]:shrink-0">
+          <section aria-label="档案" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">档案</p><div className="flex flex-nowrap gap-2">
+            <button className="btn-secondary" onClick={()=>document.getElementById('supplier-records')?.scrollIntoView({behavior:'smooth'})}>供应商档案</button>
+            <button className={filterCat===1?'btn-primary':'btn-secondary'} onClick={()=>{setFilterCat(1);setPage(1);}}>耗材商</button>
+            <button className={filterCat===2?'btn-primary':'btn-secondary'} onClick={()=>{setFilterCat(2);setPage(1);}}>物流</button>
+            {isAdmin&&<ActionGate anyOf={["suppliers.create_supplier"]}><button className="btn-primary" onClick={()=>{setForm({...form,category_id:filterCat});setShowForm(true);}}>新建供应商</button></ActionGate>}
+          </div></section>
+          <section aria-label="报价" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">报价</p><div className="flex flex-nowrap gap-2">
+            <button className="btn-secondary" onClick={()=>{setEntrySupplier(0);setQuoteEntry('products');}}>产品报价</button>
+            <button className="btn-secondary" onClick={()=>{setEntrySupplier(0);setQuoteEntry('logistics');}}>物流报价</button>
+            {canReadCatalog&&<button className="btn-secondary" onClick={()=>{setEntrySupplier(0);setQuoteEntry('tiers');}}>阶梯与有效期</button>}
+            {isAdmin&&<>
+              <button onClick={()=>downloadTemplate('products')} className="btn-secondary">耗材模板</button>
+              <button onClick={()=>downloadTemplate('logistics')} className="btn-secondary">物流模板</button>
               <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('products');setTimeout(()=>fileInputRef.current?.click(),0);}}>多供应商耗材导入</button>
-              <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('logistics');setTimeout(()=>fileInputRef.current?.click(),0);}}>多供应商物流导入</button>
-              <p className="text-xs">仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。单供应商入口在对应供应商行。</p>
-              <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleSupplierImport} className="hidden" />
-              <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }} className="hidden" />
-              <button onClick={() => { setCompareMode("product"); setShowCompare(true); }}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Scale size={16}/>比价</button>
-              <button onClick={async () => { try { const r = await api.get<any>("/suppliers/procurement-summary"); setProcurement(r); setShowProcurement(true); } catch {} }}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><TrendingUp size={16}/>采购汇总</button>
-              <button onClick={openPriceMonitor}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><BarChart3 size={16}/>价格监控</button>
-              {(user?.role === "warehouse_admin" || user?.role === "supervisor") && (
-                <button onClick={openApprovals}
-                  className="border px-3 py-2 rounded text-sm flex items-center gap-1"><CheckCircle size={16}/>采购审批</button>
-              )}
-              <button onClick={openReceipt}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><Package size={16}/>收货验收</button>
-              <button onClick={openDiscrepancies}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><AlertCircle size={16}/>收货差异</button>
-              <button onClick={() => openPoList()}
-                className="border px-3 py-2 rounded text-sm flex items-center gap-1"><FileText size={16}/>采购单列表</button>
-              <ActionGate anyOf={["suppliers.create_supplier"]}><button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button></ActionGate>
-            </>
-          )}
+              <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('logistics');setTimeout(()=>logisticsInputRef.current?.click(),0);}}>多供应商物流导入</button>
+            </>}
+          </div></section>
+          <section aria-label="采购" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">采购</p><div className="flex flex-nowrap gap-2">{isAdmin&&<>
+            <button onClick={()=>openPoList()} className="btn-secondary">采购单列表</button>
+            <button onClick={openApprovals} className="btn-secondary">采购审批</button>
+            <button onClick={openReceipt} className="btn-secondary">收货验收</button>
+            <button onClick={openDiscrepancies} className="btn-secondary">收货差异</button>
+          </>}</div></section>
+          <section aria-label="结算" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">结算</p><div className="flex flex-nowrap gap-2">
+            {canPayable&&<button className="btn-secondary" onClick={()=>router.push('/payable')}>应付账单</button>}
+            {canPlans&&<button className="btn-secondary" onClick={()=>router.push('/payment-plans')}>付款计划</button>}
+            {canPayable&&<button className="btn-secondary" onClick={async()=>{try{await downloadExcel('/payable/supplier-statement','supplier_statement.xlsx');}catch(e:any){toast('error',e.message||'对账单下载失败');}}}>对账单</button>}
+          </div></section>
+          <section aria-label="库存" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">库存</p><div className="flex flex-nowrap gap-2">
+            {canReadCatalog&&<button className="btn-secondary" onClick={()=>router.push('/supplier-skus')}>标准SKU目录</button>}
+            {canInventory&&<><button className="btn-secondary" onClick={()=>router.push('/inventory')}>耗材库存</button><button className="btn-secondary" onClick={()=>router.push('/inventory')}>盘点</button></>}
+          </div></section>
+          <section aria-label="分析" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">分析</p><div className="flex flex-nowrap gap-2">
+            {isAdmin&&<button className="btn-secondary" onClick={()=>{setCompareMode('product');setShowCompare(true);}}>比价</button>}
+            {canAnalysis&&<button className="btn-secondary" onClick={()=>router.push('/concentration')}>供应商采购分析</button>}
+            {isAdmin&&<><button className="btn-secondary" onClick={async()=>{try{const r=await api.get<any>('/suppliers/procurement-summary');setProcurement(r);setShowProcurement(true);}catch{}}}>采购汇总</button><button className="btn-secondary" onClick={openPriceMonitor}>价格监控</button></>}
+            {canViewReport&&<button className="btn-secondary" onClick={()=>router.push('/suppliers/monthly-price-report')}>采购价差月报</button>}
+            {user?.role==='warehouse_admin'&&<button className="btn-secondary" onClick={()=>router.push('/suppliers/risk')}>采购风险看板</button>}
+          </div></section>
         </div>
-      </div>
+      </nav>
+      {isAdmin&&<p className="text-xs text-gray-500 mb-3">顶栏模板为批量版（增加供应商名称）；单供应商模板在对应供应商行下载。仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。</p>}
+      <input ref={fileInputRef} aria-label="耗材产品导入文件" type="file" accept=".xlsx" onChange={()=>handleSupplierImport('products')} className="hidden" />
+      <input ref={logisticsInputRef} aria-label="物流报价导入文件" type="file" accept=".xlsx" onChange={()=>handleSupplierImport('logistics')} className="hidden" />
+      <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)handleReceiptUpload(f);}} className="hidden" />
+      {quoteEntry&&<div className="modal-overlay" onClick={()=>setQuoteEntry(null)}><div className="modal-content max-h-[90dvh] overflow-y-auto p-5 space-y-4" onClick={e=>e.stopPropagation()}>
+        <h2 className="font-semibold">{quoteEntry==='logistics'?'物流报价':quoteEntry==='tiers'?'阶梯与有效期':'产品报价'} · 选择供应商</h2>
+        <p className="text-sm text-gray-500">从当前供应商列表选择；更多供应商请先翻页或切换分类。阶梯与有效期沿用产品内的阶梯报价入口。</p>
+        <select className="form-input" aria-label="报价供应商" value={entrySupplier||''} onChange={e=>setEntrySupplier(+e.target.value)}><option value="">请选择供应商</option>{data.map((row:any)=><option value={row.id} key={row.id}>{row.name}</option>)}</select>
+        <div className="flex gap-3"><button className="btn-secondary" onClick={()=>setQuoteEntry(null)}>取消</button><button className="btn-primary" disabled={!entrySupplier} onClick={()=>{if(quoteEntry==='logistics')openLogistics(entrySupplier);else openProducts(entrySupplier);setQuoteEntry(null);}}>打开报价</button></div>
+      </div></div>}
+      <div id="supplier-records" />
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <DataTable columns={[
         { key: "name", label: "名称" },
         { key: "is_active", label: "状态", render: (value: string) => <span className={value === "false" ? "text-gray-400" : "text-green-600"}>{value === "false" ? "已停用" : "启用中"}</span> },
+        {key:'template',label:'单供应商模板',render:(_:any,row:any)=>isAdmin?<div className="flex gap-2"><button className="text-blue-600 text-xs min-h-[44px]" onClick={()=>downloadTemplate('products',false)}>耗材模板</button><button className="text-blue-600 text-xs min-h-[44px]" onClick={()=>downloadTemplate('logistics',false)}>物流模板</button></div>:null},
         { key: "category_name", label: "类别", render: (v:any) => v ? <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${v==="耗材商"?"bg-blue-100 text-blue-700":"bg-green-100 text-green-700"}`}>{v}</span> : "-" },
         { key: "contact_person", label: "联系人" },
         { key: "contact_info", label: "联系方式" },
@@ -708,7 +722,7 @@ export default function SuppliersPage() {
             )}
             {row.category_id === 2 && (
               <>
-                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button></ActionGate>
+                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>logisticsInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button></ActionGate>
                 <button onClick={()=>openLogistics(row.id)} className="text-orange-600 hover:bg-orange-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><TrendingUp size={12}/>物流</button>
               </>
             )}
@@ -971,6 +985,7 @@ export default function SuppliersPage() {
                   <td><ActionGate anyOf={["suppliers.delete_logistics_price#operate"]}><button onClick={()=>deleteLogisticsPrice(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></ActionGate></td></tr>)}</tbody></table>
               </div>
             )}
+            <SupplierRouteQuoteTable rows={routePrices}/>
             <button onClick={()=>setShowLogistics(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
           </div></div>
       )}
@@ -1141,6 +1156,7 @@ export default function SuppliersPage() {
                       </tr>)}</tbody></table>
                     </div>
                   )}
+                  <SupplierRouteQuoteTable rows={detail.route_prices||[]}/>
                 </div>
               )}
 
