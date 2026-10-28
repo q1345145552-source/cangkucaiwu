@@ -34,7 +34,7 @@ async def salary(factory, kind="monthly", amount=10000):
         await db.commit()
 
 
-async def create(client, amount, uid=4, **extra):
+async def create(client, amount, uid=126, **extra):
     return await client.post(BASE, headers=auth(uid), json=funding_body(BODY, {"amount": amount, **extra}))
 
 

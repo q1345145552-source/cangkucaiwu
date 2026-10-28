@@ -193,14 +193,19 @@ def test_money_basis_numbers_on_real_postgres(tmp_path, monkeypatch):
                     bill_date=datetime(2026, 9, 20), due_date=datetime(2026, 11, 1), amount=1000,
                     paid_amount=0, status="pending", currency="THB"))
                 await db.commit()
-            paid = await c.put("/api/v1/payable/40/pay", headers=auth(1),
+            await set_perms(f,3,['应付账款'])
+            verified=await c.post('/api/v1/payable/40/verify-payment',headers=auth(3))
+            assert verified.status_code==200,verified.text
+            approved=await c.post('/api/v1/payable/40/approve-payment',headers=auth(1))
+            assert approved.status_code==200,approved.text
+            paid = await c.put("/api/v1/payable/40/pay", headers=auth(3),
                 params={"paid_amount": 300, "account_id": 1, "payment_method": "银行转账", "request_key": "pg-pay-A"})
             assert paid.status_code == 200, paid.text
             assert paid.json()["amount"] == 300
-            replay = await c.put("/api/v1/payable/40/pay", headers=auth(1),
+            replay = await c.put("/api/v1/payable/40/pay", headers=auth(3),
                 params={"paid_amount": 300, "account_id": 1, "payment_method": "银行转账", "request_key": "pg-pay-A"})
             assert replay.json()["payment_id"] == paid.json()["payment_id"]
-            conflict = await c.put("/api/v1/payable/40/pay", headers=auth(1),
+            conflict = await c.put("/api/v1/payable/40/pay", headers=auth(3),
                 params={"paid_amount": 200, "account_id": 1, "payment_method": "银行转账", "request_key": "pg-pay-A"})
             assert conflict.status_code == 409
             september = (await c.get("/api/v1/reports/income-expense", headers=auth(1),

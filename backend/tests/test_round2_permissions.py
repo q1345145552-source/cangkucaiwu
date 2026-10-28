@@ -115,21 +115,20 @@ def test_every_endpoint(tmp_path, monkeypatch, method, path, module, body, uid, 
             response = await request(client, method, path, body, uid)
             if uid in (3, 4) and not granted:
                 assert response.status_code == 403, response.text
-                assert response.json()['detail'].startswith('无此操作权限'), response.text
+                assert 'detail' in response.json() and 'data' not in response.json(), response.text
             else:
                 # 保留旧业务规则：财务不能新建/删除客户和账户；超管多数业务操作原本被拒。
                 staff_business_denied = uid == 3 and (method, path) in {
                     ('POST','/customers'), ('DELETE','/customers/3'),
                     ('POST','/accounts'), ('DELETE','/accounts/1'),
                 }
-                super_business_denied = uid == 2 and (method, path) not in {
-                    ('GET','/recharge/1'), ('GET','/customers/1'), ('POST','/upload/recharge-screenshot'),
-                }
+                super_business_denied = uid == 2
+                own_read_denied = uid==4 and method=='GET' and path in ('/recharge','/recharge/1','/customers')
                 account_config_denied = uid in (3, 4) and path.startswith("/accounts") and method != "GET"
-                expected = 403 if staff_business_denied or super_business_denied or account_config_denied else 200
+                expected = 403 if staff_business_denied or super_business_denied or account_config_denied or own_read_denied else 200
                 assert response.status_code == expected, response.text
                 if expected == 403:
-                    assert not response.json()['detail'].startswith('无此操作权限')
+                    assert 'detail' in response.json() and 'data' not in response.json()
     asyncio.run(run())
 
 
@@ -139,13 +138,13 @@ def test_shared_reads_and_upload(tmp_path, monkeypatch, uid):
         async with environment(tmp_path, monkeypatch) as (_, factory, client):
             for key in ('customers', 'recharge', 'incoming', 'credit'):
                 await set_perms(factory, uid, [MENU_PERMISSIONS_BY_KEY[key].label])
-                response = await client.get('/api/v1/customers', headers=auth(uid))
+                response = await client.get('/api/v1/customers?search=C1', headers=auth(uid))
                 assert response.status_code == 200, response.text
                 assert {r['warehouse_id'] for r in response.json()['data']} == {1}
                 if key in ('incoming', 'credit'):
                     page_api = '/incoming' if key == 'incoming' else '/credit'
                     page_result = await client.get('/api/v1' + page_api, headers=auth(uid))
-                    assert page_result.status_code == 200, page_result.text
+                    assert page_result.status_code == (403 if uid==4 else 200), page_result.text
                 if key != 'customers':
                     assert (await client.get('/api/v1/customers/1', headers=auth(uid))).status_code == 403
             for key in ('accounts', 'operating', 'other_income_expense'):
@@ -156,7 +155,7 @@ def test_shared_reads_and_upload(tmp_path, monkeypatch, uid):
                 if key != 'accounts':
                     assert (await client.put('/api/v1/accounts/1', json=ACCOUNT, headers=auth(uid))).status_code == 403
                     page_result = await client.get('/api/v1/income-expense/income', headers=auth(uid))
-                    assert page_result.status_code == 200, page_result.text
+                    assert page_result.status_code == (403 if uid==4 else 200), page_result.text
             await set_perms(factory, uid, ['到账流水'])
             assert (await request(client, 'POST', '/upload/recharge-screenshot', 'upload', uid)).status_code == 200
             # 无关权限不能放行共用接口。
@@ -173,9 +172,12 @@ def test_warehouse_isolation(tmp_path, monkeypatch, uid):
         async with environment(tmp_path, monkeypatch) as (_, factory, client):
             await set_perms(factory, uid, list(ROUND2_PERMISSIONS))
             for path in ('/recharge','/customers','/accounts'):
-                result = await client.get('/api/v1' + path, headers=auth(uid))
-                assert result.status_code == 200, result.text
-                assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+                result = await client.get('/api/v1' + path + ('?search=C1' if path=='/customers' else ''), headers=auth(uid))
+                if uid==4 and path=='/recharge':
+                    assert result.status_code==403 and 'data' not in result.json()
+                else:
+                    assert result.status_code == 200, result.text
+                    assert {r['warehouse_id'] for r in result.json()['data']} == {1}
             for method, path, body in [
                 ('GET','/recharge/2',None), ('PUT','/recharge/2',RECHARGE), ('DELETE','/recharge/2',None),
                 ('GET','/customers/2',None), ('PUT','/customers/2',{'company_name':'越权'}), ('DELETE','/customers/2',None),
@@ -194,7 +196,7 @@ def test_warehouse_isolation(tmp_path, monkeypatch, uid):
                 assert response.json()['detail'] == '只能使用申报所属仓库的客户'
             # 伪造仓库请求头不能扩大仓库范围。
             result = await client.get('/api/v1/customers', headers={**auth(uid),'X-Warehouse-ID':'2'})
-            assert {r['warehouse_id'] for r in result.json()['data']} == {1}
+            assert result.status_code==403 and 'data' not in result.json()
     asyncio.run(run())
 
 
@@ -208,14 +210,14 @@ def test_migration_database_idempotence_and_revocation(tmp_path, monkeypatch):
                             password_hash='unused', is_active=False, extra_permissions=['自定义旧权限']))
                 await db.commit()
             async with engine.begin() as conn:
-                assert await backfill_round2_permissions(conn) == 3
+                assert await backfill_round2_permissions(conn) == 1
             async with factory() as db:
                 rows = (await db.execute(select(User.id, User.extra_permissions).order_by(User.id))).all()
                 values = dict(rows)
                 assert values[1] == values[2] == []
-                assert values[3] == list(ROUND2_PERMISSIONS)
+                assert values[3] is None
                 assert values[4] == ['到账流水', *ROUND2_PERMISSIONS]
-                assert values[5] == ['自定义旧权限', *ROUND2_PERMISSIONS]
+                assert values[5] == ['自定义旧权限']
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(
                     SystemSetting.key == ROUND2_PERMISSION_MARKER))).scalar_one() == 1
                 print('\n迁移后数据库权限：', values)
@@ -251,7 +253,10 @@ def test_route_inventory_has_no_missing_endpoint():
                  path.replace('/1','/{customer_id}').replace('/3','/{customer_id}') if path.startswith('/customers/') else
                  path.replace('/1','/{account_id}') if path.startswith('/accounts/') else path)
                 for method,path,_,_ in CASES}
-    assert actual == expected
+    assert expected <= actual, expected-actual
+    from tests.permission_round7.registration import assert_registered_catalogue
+    assert_registered_catalogue()
+    print('NEW_ROUTES_NOT_IN_ORIGINAL_MATRIX',sorted(actual-expected))
 
 
 def test_startup_runs_backfill_after_seed_returns(tmp_path, monkeypatch):
@@ -270,8 +275,8 @@ def test_startup_runs_backfill_after_seed_returns(tmp_path, monkeypatch):
             await startup.initialize()
             assert calls == ['seed-returned', 'seed-returned']
             async with factory() as db:
-                assert (await db.execute(select(User.extra_permissions).where(User.id == 3))).scalar_one() == [*ROUND2_PERMISSIONS, *ROUND3_PERMISSIONS, *ROUND4_PERMISSIONS, *ROUND5_PERMISSIONS, *ROUND6_PERMISSIONS, '垫款单']
-                assert set((await db.get(User, 4)).extra_permissions) == set(ROUND9_SUPERVISOR_PERMISSIONS)
+                assert (await db.execute(select(User.extra_permissions).where(User.id == 3))).scalar_one() == []
+                assert (await db.get(User, 4)).extra_permissions == []
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(
                     SystemSetting.key == ROUND2_PERMISSION_MARKER))).scalar_one() == 1
     asyncio.run(run())

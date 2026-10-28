@@ -7,8 +7,10 @@ def test_original94_registered_management_all_guarded():
     result=audit()
     # Current published import/employee baseline registers 418 method-paths.
     # Keep exact counts and every original per-route guard assertion.
-    assert result['total_method_paths']==418
-    assert result['management_method_paths']==395
+    from tests.permission_round7.registration import assert_registered_catalogue
+    assert_registered_catalogue()
+    assert result['total_method_paths']==434
+    assert result['management_method_paths']==sum(r['access'] in MANAGEMENT for r in result['routes'])
     assert len(result['original94_comparison'])==94
     assert all(r['non_labor_guard'] and r['current_access'] in MANAGEMENT for r in result['original94_comparison'])
     assert result['unprotected_or_unclassified']==[]
@@ -24,6 +26,9 @@ def test_original94_registered_management_all_guarded():
             assert (r['module'],r['function']) in ACCOUNT_UTILITIES
         elif r['access']=='protected_attachment':
             assert r['path']=='/uploads/{file_path:path}'
+        elif r['access']=='explicit_action_handler':
+            assert r['path'] in ('/api/v1/access/choices/{module}','/api/v1/access/migrate')
+            assert 'get_current_user' in r['dependencies']
         else:
             assert r['method']=='GET' and r['path'] in ('/','/health')
 

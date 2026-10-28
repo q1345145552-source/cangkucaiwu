@@ -157,6 +157,9 @@ def test_month_keeps_currency_warehouse_other_filters_and_pagination(tmp_path,mo
             for uid in (1,3,4):
                 for path in JSON_READS:
                     response=await client.get('/api/v1'+path,headers=auth(uid),params={'month':'2026-09','page_size':1})
+                    if uid==4:
+                        assert response.status_code==403 and set(response.json())=={'detail'}
+                        continue
                     assert response.status_code==200 and 'FOREIGN-DO-NOT-READ' not in response.text,(uid,path,response.text)
                     assert expense_total(path,response.json(),'THB')==200 and expense_total(path,response.json(),'CNY')==50
             pages=[]

@@ -8,8 +8,9 @@ from sqlalchemy import select
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.employee_advance import EmployeeAdvance
+from app.models import PaymentAccount
 from tests.test_round2_permissions import auth, set_perms
-from tests.test_round3_permissions import hr_environment, CASES as HR_CASES, call, snapshot
+from tests.test_round3_permissions import hr_environment, CASES as HR_CASES, call, snapshot, business_status
 from tests.test_round6_permissions import CASES as R6_CASES
 
 CASES=[c for c in HR_CASES if c[2] in ('employees','salary_templates','deduction_templates')]
@@ -23,7 +24,7 @@ CASES += [
  ('POST','/employee-deductions/fixed','employee_deductions',{'employee_id':1,'name':'宿舍费','amount':20}),
  ('PUT','/employee-deductions/fixed/1','employee_deductions',{'amount':25}),
  ('DELETE','/employee-deductions/fixed/1','employee_deductions',None),
- ('POST','/employee-advances','employee_advances',{'employee_id':1,'amount':20,'advance_date':'2026-10-10','source':'supervisor'}),
+ ('POST','/employee-advances','employee_advances',{'employee_id':1,'amount':20,'advance_date':'2026-10-10','source':'supervisor','funding_source':'company_account','payment_account_id':1}),
  ('GET','/employee-advances','employee_advances',None),
  ('GET','/employee-advances/summary','employee_advances',None),
  ('DELETE','/employee-advances/1','employee_advances',None),
@@ -48,14 +49,25 @@ def test_endpoint_matrix(tmp_path,monkeypatch,method,path,key,body,uid,grant):
     perms=[MENU_PERMISSIONS_BY_KEY[key].label]
     if path.endswith('/resign'):perms.append(MENU_PERMISSIONS_BY_KEY['payroll'].label)
     await set_perms(factory,uid,perms)
+   if path=='/employee-advances' and method=='POST':
+    async with factory() as db:
+     (await db.get(PaymentAccount,1)).opening_balance=1000;await db.commit()
    before=await snapshot(factory)
    r=await call(client,method,path,body,uid)
    if uid in (3,4) and not grant:
     assert r.status_code==403,r.text
-    assert r.json()['detail'].startswith('无此操作权限'),r.text
+    assert 'detail' in r.json() and 'data' not in r.json(),r.text
    else:
-    expected=403 if uid==5 else 200
+    if uid in (2,5):expected=403
+    elif key in ('employees','salary_templates','deduction_templates'):expected=business_status(uid,path,method)
+    elif key=='employee_deductions':expected=200 if uid==1 or (uid==3 and method=='GET') else 403
+    elif key=='employee_advances':expected=403 if uid==4 else (400 if uid==1 else 403) if method=='DELETE' else 200
+    elif path=='/efficiency/standard' and method=='PUT':expected=200 if uid==1 else 403
+    else:expected=200
     assert r.status_code==expected,r.text
+    if expected==200 and method=='POST' and path=='/employee-advances':
+     assert r.json()['approval_status']=='pending'
+     async with factory() as db:assert (await db.get(PaymentAccount,1)).opening_balance==1000
    if not path.endswith('/resign'):assert await snapshot(factory)==before
  asyncio.run(run())
 
@@ -77,7 +89,7 @@ def test_id_and_batch_warehouse_checks(tmp_path,monkeypatch,uid):
     ('DELETE','/employee-deductions/2',None),('GET','/employee-deductions/fixed?employee_id=2',None),
     ('POST','/employee-deductions/fixed',{'employee_id':2,'name':'跨仓','amount':20}),
     ('PUT','/employee-deductions/fixed/2',{'amount':25}),('DELETE','/employee-deductions/fixed/2',None),
-    ('POST','/employee-advances',{'employee_id':2,'amount':20,'advance_date':'2026-10-10','source':'supervisor'}),
+    ('POST','/employee-advances',{'employee_id':2,'amount':20,'advance_date':'2026-10-10','source':'supervisor','funding_source':'company_account','payment_account_id':1}),
     ('DELETE','/employee-advances/2',None),
     ('PUT','/efficiency/manual-hour',{'employee_id':2,'date':'2026-10-10','hours':8}),
    ]
@@ -85,8 +97,8 @@ def test_id_and_batch_warehouse_checks(tmp_path,monkeypatch,uid):
     r=await call(client,method,path,body,uid);assert r.status_code in (400,403,404),(path,r.text)
     assert await snapshot(factory)==before
    for path in ('/employees','/employee-deductions','/employee-advances'):
-    r=await client.get('/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':'2'});assert r.status_code==200,r.text
-    assert {x['id'] for x in r.json()['data']}=={1},(path,r.text)
+    r=await client.get('/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':'2'});assert r.status_code==403 and set(r.json())=={'detail'},r.text
+    assert await snapshot(factory)==before
  asyncio.run(run())
 
 @pytest.mark.parametrize('uid',[3,4])
@@ -96,13 +108,13 @@ def test_shared_fixed_deductions_and_revocation(tmp_path,monkeypatch,uid):
    await set_perms(factory,uid,['员工档案'])
    for method,path,key,body in CASES:
     if '/employee-deductions/fixed' not in path:continue
-    r=await call(client,method,path,body,uid);assert r.status_code==200,r.text
+    r=await call(client,method,path,body,uid);assert r.status_code==(200 if method=='GET' and uid==3 else 403),r.text
    # Employee-file access cannot grant the independent temporary deduction/advance APIs.
    for path in ('/employee-deductions','/employee-advances'):
-    r=await client.get('/api/v1'+path,headers=auth(uid));assert r.status_code==403 and '无此操作权限' in r.text
+    r=await client.get('/api/v1'+path,headers=auth(uid));assert r.status_code==403 and set(r.json())=={'detail'}
    for key,path in [('employee_deductions','/employee-deductions'),('employee_advances','/employee-advances'),('labor_efficiency','/efficiency/standard')]:
-    await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY[key].label]);assert (await client.get('/api/v1'+path,headers=auth(uid))).status_code==200
-    await set_perms(factory,uid,[]);r=await client.get('/api/v1'+path,headers=auth(uid));assert r.status_code==403 and '无此操作权限' in r.text
+    await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY[key].label]);assert (await client.get('/api/v1'+path,headers=auth(uid))).status_code==(403 if uid==4 and key in ('employee_deductions','employee_advances') else 200)
+    await set_perms(factory,uid,[]);r=await client.get('/api/v1'+path,headers=auth(uid));assert r.status_code==403 and set(r.json())=={'detail'}
    r=await client.get('/api/v1/employee-advances/my-debt',headers=auth(5));assert r.status_code==200 and r.json()['total_by_currency']==[{'currency':'THB','total':100.0}]
  asyncio.run(run())
 
@@ -142,15 +154,25 @@ def test_advance_fund_money_and_ownership_preserved(tmp_path,monkeypatch,uid):
     for i,owner in ((1,4),(2,6)):
      db.add(ExpenseFund(id=i,warehouse_id=i,employee_id=owner,receive_date=datetime(2026,10,1),amount=100,remaining_balance=100,purpose='测试预支'))
     await db.commit()
+   from app.models import Employee,User,UserWarehouse
+   async with factory() as db:
+    if uid==4:
+     u=await db.get(User,4);u.attendance_enabled=True;u.attendance_employee_id=1
+     (await db.get(Employee,1)).user_id=4
+    db.add(User(id=94,username='r10-independent',display_name='SYN finance',password_hash='unused',role='staff',warehouse_id=1,extra_permissions=['员工预支']))
+    await db.flush();db.add(UserWarehouse(user_id=94,warehouse_id=1));await db.commit()
    before=await snapshot(factory)
    async def counts():
     async with factory() as db:return (len((await db.execute(select(EmployeeAdvance))).scalars().all()),len((await db.execute(select(ExpenseFundItem))).scalars().all()))
    initial=await counts()
-   for fund,amount,expected in ((2,20,404),(1,101,400)):
-    r=await client.post('/api/v1/employee-advances',headers=auth(uid),json={'employee_id':1,'amount':amount,'advance_date':'2026-10-10','source':'fund','fund_account_id':fund})
+   for fund,amount,expected in ((2,20,403 if uid==4 else 400),(1,101,400)):
+    r=await client.post('/api/v1/employee-advances',headers=auth(uid),json={'employee_id':1,'amount':amount,'advance_date':'2026-10-10','source':'fund','funding_source':'expense_fund','fund_account_id':fund})
     assert r.status_code==expected,r.text;assert await counts()==initial
-   r=await client.post('/api/v1/employee-advances',headers=auth(uid),json={'employee_id':1,'amount':20,'advance_date':'2026-10-10','source':'fund','fund_account_id':1})
+   r=await client.post('/api/v1/employee-advances',headers=auth(uid),json={'employee_id':1,'amount':20,'advance_date':'2026-10-10','source':'fund','funding_source':'expense_fund','fund_account_id':1})
    assert r.status_code==200,r.text
+   assert r.json()['approval_status']=='pending'
+   for action,actor in [('verify',94),('approve',1),('execute',94)]:
+    step=await client.post(f"/api/v1/employee-advances/{r.json()['id']}/{action}",headers=auth(actor));assert step.status_code==200,step.text
    async with factory() as db:
     advance=await db.get(EmployeeAdvance,r.json()['id'])
     items=(await db.execute(select(ExpenseFundItem))).scalars().all()
@@ -167,17 +189,19 @@ def test_config_and_history_actual_behavior(tmp_path,monkeypatch):
     await set_perms(factory,uid,['配置中心','修改日志','采购分析'])
     read=await client.get('/api/v1/config/work-schedule',headers=auth(uid))
     assert read.status_code==200,read.text
-    assert read.json()['editable'] is (uid==4)
+    assert read.json()['editable'] is False
     write=await client.put('/api/v1/config/work-schedule',headers=auth(uid),json=default_work_schedule())
-    assert write.status_code==(200 if uid==4 else 403),write.text
-    if uid==3:assert write.json()['detail']=='财务只能查看配置中心'
+    assert write.status_code==403 and set(write.json())=={'detail'},write.text
+    assert set(write.json())=={'detail'}
     write=await client.put('/api/v1/suppliers/concentration-threshold',headers=auth(uid),json={'threshold':80})
-    assert write.status_code==(200 if uid==4 else 403),write.text
-    if uid==3:assert write.json()['detail']=='财务只能查看配置中心'
+    assert write.status_code==403 and set(write.json())=={'detail'},write.text
+    assert set(write.json())=={'detail'}
     history=await client.get('/api/v1/history',headers=auth(uid));assert history.status_code==200,history.text
  asyncio.run(run())
 
 def test_route_inventory():
+ from tests.permission_round7.registration import assert_registered_catalogue
+ assert_registered_catalogue()
  for key in ("employee_deductions","employee_advances"):
   assert MENU_PERMISSIONS_BY_KEY[key].as_dict()["default_roles"]==["warehouse_admin"]
  root=Path(__file__).resolve().parents[1]/'app/api/v1';seen=set()
@@ -192,4 +216,4 @@ def test_route_inventory():
     if file=='suppliers' and (not route.startswith('/concentration') or d.func.attr!='get'):continue
     seen.add((d.func.attr.upper(),'/'+prefix+route))
  def normalize(p):return __import__('re').sub(r'/[123](?=/|$)','/{}',__import__('re').sub(r'\{[^}]+\}','{}',p.split('?')[0]))
- assert {(m,normalize(p)) for m,p in seen}==({(m,normalize(p)) for m,p,_,_ in CASES} | {("POST","/employee-advances/{}/approve"),("POST","/employee-advances/{}/reject"),("GET","/employee-advances/recipients")})
+ assert {(m,normalize(p)) for m,p in seen}==({(m,normalize(p)) for m,p,_,_ in CASES} | {("POST","/employee-advances/{}/approve"),("POST","/employee-advances/{}/reject"),("GET","/employee-advances/recipients"),("GET","/employee-advances/funding-options"),("GET","/employee-advances/{}"),("POST","/employee-advances/{}/verify"),("POST","/employee-advances/{}/execute")})

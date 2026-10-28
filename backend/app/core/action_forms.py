@@ -35,11 +35,31 @@ def contract(app, row, role):
                 ('transport_method','string','运输方式'),('cargo_type','string','货物类型'),
                 ('origin_warehouse','string','发货仓库'),('price_per_cbm','number','每立方米价格'),
                 ('estimated_days','string','预计时效'),('currency','string','币种'),('remark','string','备注')]}}
+    if row['id']=='suppliers.receive_purchase':
+        body['properties']['items']={'type':'array','title':'本次收货明细','encoding':'json-string','items':{'type':'object','required':['line_id','received_quantity'],'properties':{'line_id':{'type':'string','title':'采购明细'},'received_quantity':{'type':'integer','title':'本次收货数量','minimum':0}}}}
+    if row['id']=='payable.confirm_bill':
+        body={'type':'object','required':['reason'],'properties':{'reason':{'type':'string','title':'匹配复核原因','maxLength':1000}}}
+    if row['id']=='suppliers.approve_purchase':
+        body={'type':'object','properties':{'request_key':{'type':'string','title':'本次操作标识'},'exception_id':{'type':'integer','title':'例外授权'}}}
+    if row['id']=='reimbursement.review_reimb':
+        body['properties']['items']['items']={'type':'object','required':['item_id','status'],'properties':{'item_id':{'type':'integer','title':'报销明细'},'status':{'type':'string','enum':['approved','rejected'],'title':'审核结论'}}}
     if row['module'].rsplit('.',1)[-1] == 'employees' and role != 'warehouse_admin':
         from app.core.round5_access import PAY_FIELDS, DOCUMENT_FIELDS
         protected = PAY_FIELDS | DOCUMENT_FIELDS | {'user_id','employee_no','password'}
         body['properties'] = {k:v for k,v in body.get('properties',{}).items() if k not in protected}
         body['required'] = [k for k in body.get('required',[]) if k not in protected]
+    from app.core.action_choices import binding
+    def annotate(schema, field):
+        if not isinstance(schema,dict):return
+        b=binding(row,field)
+        if b and schema.get('type') not in ('object','array'):
+            schema['selector']={'field':field,'entity':b.entity,'parent':b.parent,'discriminator':b.discriminator}
+        for key,value in schema.get('properties',{}).items():annotate(value,field+'.'+key if field!='body:' else field+key)
+        if 'items' in schema:annotate(schema['items'],field+'.[]')
+        for variant in schema.get('anyOf',[])+schema.get('allOf',[]):annotate(variant,field)
+    annotate(body,'body:')
+    parameters=[resolve(p) for p in operation.get('parameters',[]) if p.get('in') in ('path','query')]
+    for p in parameters:annotate(p['schema'],p['in']+':'+p['name'])
     return {'label':action_label(row,route.endpoint),'method':row['methods'][0], 'path':row['path'].removeprefix('/api/v1'),
-        'parameters':[resolve(p) for p in operation.get('parameters',[]) if p.get('in') in ('path','query')],
+        'parameters':parameters,
         'body':body, 'media':media}

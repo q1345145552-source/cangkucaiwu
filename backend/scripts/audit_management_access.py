@@ -12,7 +12,7 @@ from app.main import app
 from app.core.permissions import require_non_labor
 
 MANAGEMENT = {'business_management', 'platform_management', 'shared_platform'}
-KINDS = MANAGEMENT | {'account_utility', 'employee_self_or_management', 'protected_attachment'}
+KINDS = MANAGEMENT | {'account_utility', 'employee_self_or_management', 'protected_attachment', 'explicit_action_handler'}
 
 
 def dependencies(node):
@@ -54,7 +54,7 @@ def inventory():
                 'business_access': '先拒绝劳工，再执行原角色、中文权限和仓库归属检查' if access in MANAGEMENT else
                     '本人及管理共用，按本人身份或管理权限分支检查' if access == 'employee_self_or_management' else
                     '文件身份、仓库及实际业务关联检查' if access == 'protected_attachment' else
-                    '登录、本人资料、改密或仅附件会话工具' if access == 'account_utility' else '首页或健康检查'})
+                    '登录、本人资料、改密或仅附件会话工具' if access == 'account_utility' else '动作选择或迁移入口，鉴权后由处理函数独立检查动作授权' if access == 'explicit_action_handler' else '首页或健康检查'})
     return sorted(result, key=lambda r: (r['path'], r['method']))
 
 
@@ -69,7 +69,7 @@ def audit():
             'current_module': current['module'] if current else None,
             'non_labor_guard': bool(current and current['non_labor_guard']),
             'result': '已保护' if current and current['non_labor_guard'] else '待人工核对，禁止自动视为已保护'})
-    problems = [r for r in rows if (r['access'] in MANAGEMENT and not r['non_labor_guard']) or
+    problems = [r for r in rows if (r['access']=='explicit_action_handler' and 'get_current_user' not in r['dependencies']) or (r['access'] in MANAGEMENT and not r['non_labor_guard']) or
         (r['access'] not in KINDS and (r['method'], r['path']) not in {('GET', '/'), ('GET', '/health')})]
     return {'total_method_paths': len(rows),
         'management_method_paths': sum(r['access'] in MANAGEMENT for r in rows),

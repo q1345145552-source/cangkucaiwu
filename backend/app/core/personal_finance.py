@@ -22,7 +22,9 @@ def personal_finance_access(permissions):
         module = endpoint.__module__.rsplit('.', 1)[-1]
         from app.core.round5_access import PERSONAL_FINANCE_READ
         from app.core.permissions import Role
-        supervisor_personal = user.role == Role.SUPERVISOR and request.method == 'GET' and (module, endpoint.__name__) in PERSONAL_FINANCE_READ
+        supervisor_personal = user.role == Role.SUPERVISOR and (
+            (request.method == 'GET' and (module, endpoint.__name__) in PERSONAL_FINANCE_READ)
+            or (module == 'employee_advance' and endpoint.__name__ == 'create_advance'))
         if request.query_params.get('view') != 'self' and not supervisor_personal:
             return await management(user)
         if endpoint.__name__ not in ACTIONS.get(module, set()):

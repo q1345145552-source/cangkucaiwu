@@ -102,6 +102,15 @@ async def scenario_manual(path,mp):
   assert amt(cockpit['finance']['month']['income'])==500
   report['cases']['manual_receipt_payment_balance_and_dashboard']={'views':v,'dashboard_income':500,'expected_wallet_income':500,'expected_cash_balance':10300}
 
+async def prepare_bill(f,c,bid=1):
+ await set_perms(f,3,['应付账款','付款计划','工资'])
+ from tests.round3_flow_support import money_state
+ before=await money_state(f)
+ for action,uid in [('verify-payment',3),('approve-payment',1)]:
+  response=await c.post(f'/api/v1/payable/{bid}/{action}',headers=auth(uid))
+  assert response.status_code==200,response.text
+  assert await money_state(f)==before
+
 async def scenario_payable(path,mp):
  import app.services.payable_payment as api
  async with clean(path,mp) as (f,c):
@@ -114,7 +123,8 @@ async def scenario_payable(path,mp):
   report['cases']['unpaid_bill_in_dashboard_headline']={'views':v,'dashboard_expense':amt(cockpit['finance']['month']['expense']),
    'dashboard_procurement_card':amt(cockpit['finance']['procurement']['expense']),'expected_wallet_expense':0}
   mp.setattr(api,'thai_now',lambda:fixed(2026,10,20))
-  r=await c.put('/api/v1/payable/1/pay',headers=auth(1),params={'paid_amount':300,'account_id':1});assert r.status_code==200,r.text
+  await prepare_bill(f,c)
+  r=await c.put('/api/v1/payable/1/pay',headers=auth(3),params={'paid_amount':300,'account_id':1});assert r.status_code==200,r.text
   paid=await views(c)
   assert paid['old_report_expense']==paid['unified_cost']==paid['company_expense']==300 and paid['cash_current_api']==9700
   report['cases']['paid_procurement_missing_in_old_report_and_account']={'views':paid,'paid_amount':300,'expected_wallet_expense':300,'payment_account_recorded':True}
@@ -131,10 +141,12 @@ async def scenario_split_payable(path,mp):
    db.add(PayableBill(id=1,warehouse_id=1,supplier_id=1,bill_number='SPLIT-1000',bill_date=datetime(2026,9,1),due_date=datetime(2026,12,1),amount=1000))
    await db.commit()
   mp.setattr(api,'thai_now',lambda:fixed(2026,9,30))
-  r=await c.put('/api/v1/payable/1/pay',headers=auth(1),params={'paid_amount':400,'account_id':1});assert r.status_code==200,r.text
+  await prepare_bill(f,c)
+  r=await c.put('/api/v1/payable/1/pay',headers=auth(3),params={'paid_amount':400,'account_id':1});assert r.status_code==200,r.text
   sep_before=await views(c,start_date='2026-09-01',end_date='2026-09-30')
   mp.setattr(api,'thai_now',lambda:fixed(2026,10,20))
-  r=await c.put('/api/v1/payable/1/pay',headers=auth(1),params={'paid_amount':600,'account_id':1});assert r.status_code==200,r.text
+  await prepare_bill(f,c)
+  r=await c.put('/api/v1/payable/1/pay',headers=auth(3),params={'paid_amount':600,'account_id':1});assert r.status_code==200,r.text
   sep_after=await views(c,start_date='2026-09-01',end_date='2026-09-30');oct_after=await views(c)
   assert sep_before['company_expense']==sep_after['company_expense']==400 and oct_after['company_expense']==600
   report['cases']['split_payment_last_date_overwrites_prior_month']={'september_before_second_payment':sep_before,
@@ -168,7 +180,6 @@ async def scenario_cash_reimbursement(path,mp):
 async def scenario_fund(path,mp):
  from tests.test_fund_disbursement import environment,topup,spend,values
  async with environment(path,mp) as (_,f,c,fid):
-  mp.setenv('UPLOAD_DIR',str(path/'approval-uploads'))
   r=await topup(c,fid);assert r.status_code==200,r.text
   after_topup=await values(c,fid)
   r=await spend(c,fid,amount=2000);assert r.status_code==200,r.text
@@ -218,7 +229,8 @@ async def scenario_pending_date(path,mp):
   aid=r.json()['id'];before=await views(c,start_date='2026-09-01',end_date='2026-09-30')
   assert r.json()['approval_status']=='pending' and before['company_expense']==0
   mp.setattr(api,'thai_now',lambda:fixed(2026,10,20))
-  approved=await post(c,f'/employee-advances/{aid}/approve')
+  from tests.round3_flow_support import execute_advance
+  approved=(await execute_advance(f,c,aid)).json()
   sep=await views(c,start_date='2026-09-01',end_date='2026-09-30');october=await views(c)
   assert sep['company_expense']==0 and october['company_expense']==1000
   report['cases']['pending_advance_executes_on_approval_but_posts_registration_date']={'approval':approved,'september':sep,'october':october,

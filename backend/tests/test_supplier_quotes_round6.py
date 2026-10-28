@@ -1,3 +1,4 @@
+from tests.test_supplier_workflow_round1 import funded_payment
 """Disposable localhost only: actual quote HTTP, Decimal tiers, immutable purchase evidence."""
 import asyncio,json,uuid,os
 from datetime import date
@@ -86,7 +87,7 @@ def test_real_quote_order_receipt_payable_payment_keeps_line_identity(tmp_path,m
    v=await preview(c,p['id'],q['id'],2);order=await request(c,'POST','/suppliers/1/purchase-order',json={'request_key':'whole-chain','pricing_version':v['version'],'items':[{'product_id':p['id'],'quote_id':q['id'],'quantity':2}]})
    oid=order['order']['id'];bid=order['payable_bill_id'];line=order['order']['items'][0]
    received=await request(c,'POST',f'/suppliers/purchase-orders/{oid}/receive',data={'request_key':'receive-quoted','items':json.dumps([{'line_id':line['line_id'],'received_quantity':2}])},files={'file':('proof.png',png(),'image/png')})
-   paid=await request(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':24.68,'account_id':1,'payment_method':'现金','request_key':'pay-quoted'})
+   paid=await funded_payment(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':24.68,'account_id':1,'payment_method':'现金','request_key':'pay-quoted'})
    async with f() as db:assert (await db.get(PurchaseOrder,oid)).items[0]['pricing_snapshot']==line['pricing_snapshot']
    actual('quote_procurement_chain',{'line':line,'received':received,'paid':paid})
  asyncio.run(run())

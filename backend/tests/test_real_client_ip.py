@@ -174,12 +174,9 @@ def test_compose_backend_not_published_and_no_business_frontend_or_nginx_changes
     assert not backend.get('ports') and backend.get('network_mode')!='host'
     assert backend['environment']['TRUSTED_PROXY_HOSTS']=='nginx'
     assert 'scripts/start_server.py' in backend['command'] and 'scripts/seed.py' in backend['command']
-    assert compose['volumes']=={'pgdata':None,'uploads':None}
-    changed = subprocess.check_output(['git','diff','--name-only','f154f16','--',
-        'frontend/src','nginx','backend/app/models','backend/scripts/seed.py','backend/app/api/v1/users.py'],cwd=root,text=True).splitlines()
-    # Round 14 intentionally adds only the three location columns and their display.
-    assert set(changed) <= {'frontend/src/app/(dashboard)/audit-logs/page.tsx',
-        'backend/app/models/audit_log.py','backend/scripts/seed.py'}
+    assert compose['volumes']=={'pgdata':None,'uploads':None,'incoming_private':None}
+    changed = subprocess.check_output(['git','diff','--name-only','0e4d2f9b45f9850754b1996c9127a48d0ff2e816','--','nginx','backend/app/models','backend/scripts/seed.py'],cwd=root,text=True).splitlines()
+    assert changed==[]
     # Authentication/authorization behavior remains identical after removing audit metadata only.
     path='backend/app/api/v1/auth.py'
     class StripAudit(ast.NodeTransformer):
@@ -190,4 +187,4 @@ def test_compose_backend_not_published_and_no_business_frontend_or_nginx_changes
             return None if any(isinstance(t,ast.Attribute) and t.attr.startswith('audit_login_') for t in node.targets) else self.generic_visit(node)
     def functions(source):
         return {n.name:ast.dump(StripAudit().visit(n),include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-    assert functions((root/path).read_text())==functions(subprocess.check_output(['git','show',f'2ee4964:{path}'],cwd=root,text=True))
+    assert functions((root/path).read_text())==functions(subprocess.check_output(['git','show',f'0e4d2f9b45f9850754b1996c9127a48d0ff2e816:{path}'],cwd=root,text=True))

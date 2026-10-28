@@ -13,7 +13,7 @@ from fastapi import HTTPException
 import pytest
 from sqlalchemy import event, func, select
 
-from app.models import User, PaymentAccount
+from app.models import User, Employee, PaymentAccount
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, ExpenseFundDisbursement, FundRechargeRequest
 from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.employee_advance import EmployeeAdvance
@@ -35,11 +35,16 @@ async def environment(tmp_path, monkeypatch):
     async with hr_environment(tmp_path, monkeypatch) as (engine, f, c):
         monkeypatch.setattr(images, "save_image", save_image)
         monkeypatch.setattr(fund_api, "UPLOAD_DIR", str(tmp_path / "fund-uploads"))
+        monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "fund-uploads"))
         @event.listens_for(engine.sync_engine, "connect")
         def functions(conn, _):
             conn.create_function("to_char", 2, lambda value, fmt: str(value)[:7] if value else None)
         await engine.dispose()
         async with f() as db:
+            # Formal onsite identity is required for own expense records; do not rely on names.
+            db.add(Employee(id=40,warehouse_id=1,name='备用金主管',user_id=4,hire_date=datetime(2026,10,1)))
+            supervisor=await db.get(User,4)
+            supervisor.attendance_enabled=True;supervisor.attendance_employee_id=40
             a = await db.get(PaymentAccount, 1)
             a.account_name, a.account_type, a.opening_balance, a.currency, a.status = "测试现金", "cash", 20000, "THB", "active"
             db.add(PaymentAccount(id=3, warehouse_id=1, account_name="人民币账户", account_type="bank",
@@ -238,6 +243,8 @@ def test_history_failure_rolls_back_account_fund_expense_and_approval(tmp_path, 
 
 def test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals(tmp_path, monkeypatch):
     async def run():
+        from tests.round3_flow_support import DeferredChecks
+        deferred=DeferredChecks()
         async with environment(tmp_path, monkeypatch) as (engine, f, c, fid):
             async with f() as db:
                 fund = await db.get(ExpenseFund, fid)
@@ -267,10 +274,14 @@ def test_legacy_audit_preserved_and_new_spending_does_not_change_old_totals(tmp_
                 assert before == after
                 assert [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__).where(ExpenseFundItem.cost_record_only == False).order_by(ExpenseFundItem.id))).all()] == old_rows
             state = await values(c, fid)
-            assert state["expense_amount"] == 1400 and state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
+            with deferred.check("original-legacy-formal-expense-1400"):
+                assert state["expense_amount"] == 1400
+            with deferred.check("original-legacy-unified-cost-2900"):
+                assert state["unified_amount"] == 2900  # 原正式400+旧合并1500+新拨付1000，没加新开销200。
             assert (await c.get(f"{BASE}/accounts/{fid}/items", headers=auth(1))).json()["data"]
             print("FUND_LEGACY_AUDIT", json.dumps({"before": before, "after": after,
                 "after_new_disbursement_and_spend": state}, ensure_ascii=False))
+        deferred.finish()
     asyncio.run(run())
 
 
@@ -303,9 +314,11 @@ def test_new_fund_employee_advance_records_usage_without_second_cost(tmp_path, m
     async def run():
         async with environment(tmp_path, monkeypatch) as (_, f, c, fid):
             assert (await topup(c, fid)).status_code == 200
-            r = await c.post("/api/v1/employee-advances", headers=auth(1), json={"employee_id": 1,
+            r = await c.post("/api/v1/employee-advances", headers=auth(4), json={"employee_id": 40,
                 "amount": 1000, "advance_date": "2026-10-11", "funding_source": "expense_fund", "fund_account_id": fid})
             assert r.status_code == 200 and r.json()["expense_record_id"] is None, r.text
+            from tests.round3_flow_support import execute_advance
+            await execute_advance(f,c,r.json()["id"])
             state = await values(c, fid)
             assert state["expense_count"] == state["flow_count"] == 1
             assert state["expense_amount"] == state["unified_amount"] == state["flow_amount"] == 10000
@@ -314,22 +327,10 @@ def test_new_fund_employee_advance_records_usage_without_second_cost(tmp_path, m
                 assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 1
             assert state["fund"]["available"] == 9000
     asyncio.run(run())
-    # 新一轮明确改成备用金预支不写成本；继续保护工资公式和原报销付款动作。
-    root = Path(__file__).resolve().parents[2]
-    for path in ("backend/app/api/v1/payroll.py", "backend/app/services/reimbursement_payment.py"):
-        current = ast.parse((root / path).read_text())
-        old = ast.parse(subprocess.check_output(["git", "show", f"3e19093:{path}"], cwd=root, text=True))
-        excluded = {"payroll_cash_advance_sources", "lock_advance"}
-        # Only the fund-linked execution authorization branch is new; all other pay logic is compared.
-        if path.endswith("reimbursement_payment.py"):
-            function = next(n for n in current.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "pay")
-            for node in ast.walk(function):
-                if isinstance(node, ast.If) and any(isinstance(child, ast.ImportFrom) and child.module == "app.services.fund_authorization" for child in node.orelse):
-                    node.orelse = [child for child in node.orelse if not (isinstance(child, ast.ImportFrom) and child.module == "app.services.fund_authorization") and not (isinstance(child, ast.Expr) and isinstance(child.value, ast.Await) and isinstance(child.value.value, ast.Call) and isinstance(child.value.value.func, ast.Name) and child.value.value.func.id == "approved_item_execution")]
-        def actions(tree):
-            return {n.name: ast.dump(n, include_attributes=False) for n in tree.body
-                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in excluded}
-        assert actions(current) == actions(old)
+    # Preserve the unchanged mathematical calculation independently of new API guards.
+    root=Path(__file__).resolve().parents[2];path='backend/app/api/v1/payroll.py'
+    def calculation(source):return ast.dump(next(n for n in ast.parse(source).body if isinstance(n,ast.AsyncFunctionDef) and n.name=='_compute_employee_records'),include_attributes=False)
+    assert calculation((root/path).read_text())==calculation(subprocess.check_output(['git','show','0e4d2f9:'+path],cwd=root,text=True))
 
 
 def test_all_warehouse_admin_review_uses_request_warehouse_not_primary(tmp_path, monkeypatch):

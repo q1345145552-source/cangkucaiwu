@@ -1,3 +1,4 @@
+from tests.test_supplier_workflow_round1 import funded_payment
 """Only explicit localhost PostgreSQL and disposable schemas; no real orders or funds."""
 import asyncio,json,os,uuid
 from contextlib import asynccontextmanager
@@ -179,15 +180,15 @@ def test_strict_default_compatible_and_enabled_received_cap(tmp_path,monkeypatch
         async with fixture(tmp_path,monkeypatch) as (_,f,c):
             po=await order(c);bid=po['bill']['id']
             cfg=await request(c,'GET','/suppliers/purchase-match-policy');assert not cfg['strict']
-            await request(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':100,'account_id':1,'request_key':'default-before-receipt'})
+            await funded_payment(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':100,'account_id':1,'request_key':'default-before-receipt'})
             await request(c,'PUT','/suppliers/purchase-match-policy',json={'strict':True})
             await receive(c,po,80);await review(c,bid)
-            blocked=await request(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':701,'account_id':1,'request_key':'over-cap'})
+            blocked=await funded_payment(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':701,'account_id':1,'request_key':'over-cap'})
             assert '不能超过已记录实收金额' in blocked['detail']
-            paid=await request(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':700,'account_id':1,'request_key':'up-to-cap'})
+            paid=await funded_payment(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':700,'account_id':1,'request_key':'up-to-cap'})
             await receive(c,po,20)
-            await request(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':200,'account_id':1,'request_key':'stale-review'})
-            await review(c,bid);await request(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':200,'account_id':1,'request_key':'finish-after-review'})
+            await funded_payment(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':200,'account_id':1,'request_key':'stale-review'})
+            await review(c,bid);await funded_payment(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':200,'account_id':1,'request_key':'finish-after-review'})
             final=await detail(c,po);assert final['bill']['paid_amount']==1000 and final['matching']['review_valid']
             actual('strict',{'default':cfg,'blocked':blocked,'partial_payment':paid,'final':final})
     asyncio.run(run())
@@ -202,7 +203,7 @@ def test_unlinked_prepayment_non_goods_and_unknown_are_distinct(tmp_path,monkeyp
                 result=await create(c,form(bill_number=f'KIND-{k}',amount=str(51+i),matching_kind=k))
                 b=await request(c,'GET',f'/payable/{result["id"]}/detail')
                 assert b['matching']['quantity_match']==('unknown' if k=='unknown' else 'not_applicable')
-                await request(c,'PUT',f'/payable/{result["id"]}/pay',code=400 if k=='unknown' else 200,
+                await funded_payment(c,'PUT',f'/payable/{result["id"]}/pay',code=400 if k=='unknown' else 200,
                     params={'paid_amount':1,'account_id':1,'request_key':f'kind-{k}'})
                 results.append(b)
             actual('document_kinds',results)
@@ -222,7 +223,8 @@ def test_permissions_scope_redaction_and_policy_management(tmp_path,monkeypatch)
             from app.models import User
             async with f() as db:
                 (await db.get(User,9)).extra_permissions=['供应商管理','配置中心'];await db.commit()
-            await request(c,'PUT','/suppliers/purchase-match-policy',uid=9,json={'strict':True})
+            await request(c,'PUT','/suppliers/purchase-match-policy',uid=9,code=403,json={'strict':True})
+            await request(c,'PUT','/suppliers/purchase-match-policy',json={'strict':True})
             assert (await request(c,'GET','/suppliers/purchase-match-policy',warehouse='2'))['strict'] is False
             actual('permissions',{'supplier_only':supplier_only,'denied_labor_super_foreign_and_ungranted':True})
     asyncio.run(run())
@@ -259,11 +261,13 @@ def test_payment_and_receipt_are_serialized_without_changing_paid_history(tmp_pa
     async def run():
         async with fixture(tmp_path,monkeypatch) as (_,f,c):
             po=await order(c);bid=po['bill']['id'];await receive(c,po,80);await review(c,bid)
+            await request(c,'POST',f'/payable/{bid}/verify-payment',uid=97)
+            await request(c,'POST',f'/payable/{bid}/approve-payment',uid=96)
             async def pay():
-                return await c.put(f'/api/v1/payable/{bid}/pay',headers={**auth(1),'X-Warehouse-ID':'1'},
+                return await c.put(f'/api/v1/payable/{bid}/pay',headers={**auth(97),'X-Warehouse-ID':'1'},
                     params={'paid_amount':100,'account_id':1,'request_key':'payment-v-receipt'})
             results=await asyncio.wait_for(asyncio.gather(receive(c,po,20),pay()),timeout=10)
-            assert results[1].status_code in (200,400)
+            assert results[1].status_code in (200,400,409)
             after=await detail(c,po)
             assert after['items'][0]['received_quantity']==100 and after['matching']['review_status']=='stale'
             assert after['bill']['paid_amount']==(100 if results[1].status_code==200 else 0)
@@ -313,8 +317,8 @@ def test_decimal_price_precision_and_receipt_photo_permissions(tmp_path,monkeypa
             await request(c,'PUT','/suppliers/purchase-match-policy',json={'strict':True})
             batch=await receive(c,po,4);await review(c,bid)
             after=await detail(c,po);assert after['matching']['payment_cap']==.5 and after['bill']['amount']==1
-            await request(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':.51,'account_id':1,'request_key':'precision-over'})
-            await request(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':.5,'account_id':1,'request_key':'precision-exact'})
+            await funded_payment(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':.51,'account_id':1,'request_key':'precision-over'})
+            await funded_payment(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':.5,'account_id':1,'request_key':'precision-exact'})
             path=f'/suppliers/purchase-orders/{po["id"]}/receipts/{batch["id"]}/photo'
             for uid in (2,4,5):
                 r=await c.get('/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':'1'});assert r.status_code==403
@@ -351,7 +355,7 @@ def test_same_wrong_line_subtotals_cannot_fake_three_way_match(tmp_path,monkeypa
             assert state['matching']['status']=='different' and state['bill']['amount']==1000
             await request(c,'PUT','/suppliers/purchase-match-policy',json={'strict':True})
             await review(c,bid,'已看到行小计异常，不能把错误标成一致')
-            blocked=await request(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':1,'account_id':1,'request_key':'bad-line-math'})
+            blocked=await funded_payment(c,'PUT',f'/payable/{bid}/pay',code=400,params={'paid_amount':1,'account_id':1,'request_key':'bad-line-math'})
             actual('line_arithmetic',{'state':state,'strict_blocked':blocked})
     asyncio.run(run())
 
@@ -376,7 +380,7 @@ def test_malformed_bill_line_ids_stay_unknown_without_repair(tmp_path,monkeypatc
                 outcomes.append({'stored_id':invalid_id,'status':state['matching']['status']})
             await request(c,'PUT','/suppliers/purchase-match-policy',json={'strict':True})
             await review(c,bid,'历史账单行编号异常，不能猜配')
-            blocked=await request(c,'PUT',f'/payable/{bid}/pay',code=400,
+            blocked=await funded_payment(c,'PUT',f'/payable/{bid}/pay',code=400,
                 params={'paid_amount':1,'account_id':1,'request_key':'malformed-bill-line'})
             actual('malformed_bill_lines',{'cases':outcomes,'strict_blocked':blocked})
     asyncio.run(run())

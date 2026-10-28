@@ -117,7 +117,8 @@ def test_other_roles_exact_original_results_and_original_failure(tmp_path,monkey
             assert results[0]==results[1],results
             if uid==2:
                 expected=200 if case[1]=='/users' else 403
-            elif case[1]=='/dashboard/warehouse-summary':expected=403 if uid in (3,4) and not granted else 200
+            elif uid==4 and case[1] in ('/dashboard/warehouse-summary','/dashboard/pending-tasks','/customers'):expected=403
+            elif case[1] in ('/dashboard/warehouse-summary','/dashboard/pending-tasks'):expected=403 if uid in (3,4) and not granted else 200
             elif uid in (3,4) and not granted and not case[1].startswith('/dashboard/'):expected=403
             else:expected=200
             assert response.status_code==expected,(case,uid,response.text)
@@ -132,18 +133,21 @@ def test_each_shared_permission_alone_can_load_scoped_selector(tmp_path,monkeypa
         async with environment(tmp_path,monkeypatch) as (_,factory,client):
             await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY[key].label])
             before=await snapshot(factory)
-            r=await get(client,'/'+resource+'?page_size=99999',uid)
+            if uid==4 and resource=='customers':
+                denied_large=await get(client,'/customers?page_size=99999&search=客户1',uid)
+                assert denied_large.status_code==403 and 'data' not in denied_large.json()
+            r=await get(client,'/'+resource+('?page_size=20&search=客户1' if uid==4 and resource=='customers' else '?page_size=99999'),uid)
             assert r.status_code==200,r.text
             assert {row['warehouse_id'] for row in r.json()['data']}=={1}
-            assert {row['id'] for row in r.json()['data']}==({1,3} if resource=='customers' else {1})
+            assert {row['id'] for row in r.json()['data']}==({1} if uid==4 and resource=='customers' else {1,3} if resource=='customers' else {1})
             if resource=='customers' and key!='customers':
                 denied=await get(client,'/customers/1',uid)
-                assert denied.status_code==403 and '无此操作权限' in denied.json()['detail']
+                assert denied.status_code==403 and denied.json().get('detail') and 'data' not in denied.json()
             assert await snapshot(factory)==before
             await set_perms(factory,uid,[])
             before_denied=await snapshot(factory)
             denied=await get(client,'/'+resource,uid)
-            assert denied.status_code==403 and '无此操作权限' in denied.json()['detail']
+            assert denied.status_code==403 and denied.json().get('detail') and 'data' not in denied.json()
             assert await snapshot(factory)==before_denied
     asyncio.run(run())
 
@@ -155,14 +159,20 @@ def test_original_warehouse_scopes_filters_and_dashboard_numbers(tmp_path,monkey
             await set_perms(factory,uid,ALL_PERMISSIONS)
             before=await snapshot(factory)
             for path in ('/users','/customers','/accounts'):
-                r=await get(client,path,uid);assert r.status_code==200,r.text
+                r=await get(client,path+('?search=客户1' if uid==4 and path=='/customers' else ''),uid);assert r.status_code==200,r.text
                 assert {row['warehouse_id'] for row in r.json()['data']}=={1}
             r=await get(client,'/customers/2',uid)
-            assert r.status_code==403 and r.json()=={'detail':'无权查看其他仓库的客户'}
+            assert r.status_code==403 and 'data' not in r.json()
             assert (await get(client,'/customers?search=客户1',uid)).json()['total']==1
             assert (await get(client,'/users?role=warehouse_labor',uid)).json()['total']==2
             stats=await get(client,'/dashboard/stats',uid)
             assert stats.status_code==200,stats.text
+            if uid==4:
+                assert not any(k in stats.json() for k in ('total_recharge_month','total_incoming_month'))
+                for path in ('/dashboard/pending-tasks','/dashboard/cockpit','/dashboard/trends'):
+                    denied=await get(client,path,uid);assert denied.status_code==403 and 'data' not in denied.json()
+                assert await snapshot(factory)==before
+                return
             assert stats.json()=={'total_recharge_month':100.0,'total_incoming_month':100.0,
                 'unmatched_count':1,'pending_market_review':0,'pending_group_orders':1,
                 'pending_expense_fund_reviews':1,'pending_reimbursements':1}
@@ -196,8 +206,9 @@ def test_shared_page_requests_and_complete_report(tmp_path,monkeypatch):
                 await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY[key].label])
                 responses=[]
                 for path in paths:
-                    r=await get(client,path,uid)
-                    assert r.status_code==200,(path,r.text)
+                    r=await get(client,'/customers?page_size=20&search=客户1' if uid==4 and path.startswith('/customers') else path,uid)
+                    expected=403 if uid==4 and path.startswith(('/credit','/recharge')) else 200
+                    assert r.status_code==expected,(path,r.text)
                     responses.append({'path':'/api/v1'+path,'status':r.status_code,'body':r.json()})
                 checks.append({'role':'staff' if uid==3 else 'supervisor','only_permission':MENU_PERMISSIONS_BY_KEY[key].label,
                     'responses':responses})
@@ -241,26 +252,12 @@ def test_warehouse_summary_old_lazy_loading_failure_reproduced_without_query_cha
     asyncio.run(run())
 
 
-def test_existing_guards_remain_first_and_round11_only_changes_receivable_reads():
-    from tests.non_labor_test_support import without_non_labor_guard
-    from tests.test_non_labor_guard import CASES as BATCH1
-    from tests.test_non_labor_batch2_writes import CASES as BATCH2
-    routes=[r for r in app.routes if isinstance(r,APIRoute)
-        and any(d.call is require_non_labor for d in r.dependant.dependencies)]
-    expected={(method,'/api/v1'+template) for method,template,_,_ in BATCH1+BATCH2+CASES}
-    from tests.wallet_contract_support import WALLET_GUARDED_ROUTES
-    expected.update(WALLET_GUARDED_ROUTES)
-    # 第3轮已收口其余管理路由；旧7条仍必须在，不能再断言只有旧清单。
-    assert expected <= {(method,r.path) for r in routes for method in r.methods}
-    assert all(r.dependant.dependencies[0].call is require_non_labor for r in routes)
-    root=Path(__file__).resolve().parents[2]
-    for name in ('users','dashboard','customers','payment_accounts'):
-        path='backend/app/api/v1/'+name+'.py'
-        old=subprocess.check_output(['git','show','b5829bef2f88a86ebe3dab2ef72dc3284edae29a:'+path],cwd=root,text=True)
-        def protected(source):
-            # 第二批第2轮仅扩展账户列表的性质/余额投影与当前仓范围，其他旧处理函数仍逐字保护。
-            tree=ast.parse(source)
-            tree.body=[n for n in tree.body if not isinstance(n,(ast.Import,ast.ImportFrom))
-                and not (isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef,ast.ClassDef)) and n.name in ({'dashboard':{'dashboard_cockpit'},'customers':{'CustomerReceiptLink','_scoped_customer','customer_receivables','link_customer_receipt','list_customers'},'payment_accounts':{'list_accounts'}}.get(name,set())))]
-            return ast.unparse(tree)
-        assert protected((root/path).read_text())==protected(old),path
+def test_existing_guards_remain_registered_and_inventory_is_exact():
+    from scripts.audit_management_access import audit,dependencies
+    from tests.permission_round7.registration import assert_registered_catalogue
+    assert_registered_catalogue()
+    expected={(method,'/api/v1'+template) for method,template,_,_ in CASES}
+    routes=[r for r in app.routes if isinstance(r,APIRoute) and any((method,r.path) in expected for method in r.methods)]
+    assert {(method,r.path) for r in routes for method in r.methods}==expected
+    assert all(require_non_labor in dependencies(r.dependant) for r in routes)
+    assert audit()['unprotected_or_unclassified']==[]

@@ -1,3 +1,4 @@
+from tests.test_supplier_workflow_round1 import funded_payment
 """Only disposable localhost schemas; catalog, mapping and old procurement invariants."""
 import asyncio,json,os,uuid,io
 from pathlib import Path
@@ -268,7 +269,7 @@ def test_pack_conversion_unknown_and_unmapped_legacy_purchase_chain(tmp_path,mon
    oid=po['order']['id'];detail=await request(c,'GET',f'/suppliers/purchase-orders/{oid}');line=detail['items'][0]
    assert line['sku_mapping']['mapping_status']=='unmapped' and line['sku_mapping']['base_quantity'] is None
    received=await request(c,'POST',f'/suppliers/purchase-orders/{oid}/receive',data={'request_key':'legacy-receipt','items':json.dumps([{'line_id':line['line_id'],'received_quantity':2}])},files={'file':('proof.png',png(),'image/png')})
-   paid=await request(c,'PUT',f'/payable/{po["payable_bill_id"]}/pay',params={'paid_amount':200,'account_id':1,'payment_method':'现金','request_key':'legacy-pay'})
+   paid=await funded_payment(c,'PUT',f'/payable/{po["payable_bill_id"]}/pay',params={'paid_amount':200,'account_id':1,'payment_method':'现金','request_key':'legacy-pay'})
    async with f() as db:assert (await db.execute(select(func.count(CostIdentity.id)))).scalar_one()==1
    actual('pack_unknown_legacy',{'mapped':mapped,'read_view':r,'old_unmapped_new_order_line':line,'received':received,'paid':paid,'one_cost_root':True})
  asyncio.run(run())

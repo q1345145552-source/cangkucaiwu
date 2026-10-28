@@ -91,7 +91,8 @@ def test_closed_routes_all_roles_keep_history_and_wallet(tmp_path, monkeypatch):
                     for method, path, payload in CLOSED:
                         r = await client.request(method, '/api/v1' + path, headers=auth(uid), **({'json':payload} if payload else {}))
                         assert r.status_code == 403, (uid, method, path, r.text)
-                        if uid in (1, 3, 4, 7): assert r.json() == {'detail':'经营报表及客户应收、发货录入功能已停用'}
+                        assert set(r.json())=={'detail'}
+                        if uid==1: assert r.json()=={'detail':'经营报表及客户应收、发货录入功能已停用'}
                         results.append({'user_id':uid, 'method':method, 'path':path, 'status':r.status_code, 'body':r.json()})
             finally:
                 event.remove(engine.sync_engine, 'before_cursor_execute', trace)
@@ -108,7 +109,12 @@ def test_closed_routes_all_roles_keep_history_and_wallet(tmp_path, monkeypatch):
             for uid in (1, 3, 4):
                 for path in ('/customers', '/customers/1', '/recharge', '/incoming', '/accounts', '/payable', '/reports/previews', '/income-expense/expense', '/reports/cost-funds-debt', '/credit'):
                     r = await client.get('/api/v1' + path, headers=auth(uid))
-                    assert r.status_code == 200, (uid, path, r.text)
+                    expected=403 if uid==4 and path not in ('/customers/1','/accounts') else 200
+                    assert r.status_code == expected, (uid, path, r.text)
+                    if expected==403: assert set(r.json())=={'detail'}
+                    if uid==4 and path=='/accounts':
+                        assert r.json()['scope']=='account_selection_only'
+                        assert all(set(row)=={'id','warehouse_id','account_name','currency','status'} for row in r.json()['data'])
                     pages[f'{uid}:{path}'] = r.status_code
             if os.environ.get('RETIRED_ENTRIES_TEST_REPORT'):
                 Path(os.environ['RETIRED_ENTRIES_TEST_REPORT']).write_text(json.dumps({'blocked':results, 'before':before, 'after':await snapshots(client), 'invariants_before':invariants_before, 'invariants_after':await invariants(factory), 'closed_count':len(CLOSED), 'read_regression':pages, 'history_kept':True, 'blocked_mutation_count':0}, ensure_ascii=False, indent=2))

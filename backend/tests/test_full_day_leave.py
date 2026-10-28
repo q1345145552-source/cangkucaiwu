@@ -171,12 +171,19 @@ def test_identity_mapping(tmp_path,monkeypatch,identity):
     asyncio.run(run())
 
 
-def test_half_hourly_early_and_other_writes_unchanged():
+def test_half_hourly_early_and_other_writes_unchanged(tmp_path, monkeypatch):
     root=Path(__file__).resolve().parents[2]
     for name in ('half_day_leave','hourly_leave','early_departure_leave'):
         path=f'backend/app/services/{name}.py'
         assert (root/path).read_text()==subprocess.check_output(['git','show',f'6f9243b:{path}'],cwd=root,text=True)
-    path='backend/app/api/v1/clock_in.py'
-    def functions(source):return {n.name:ast.dump(n,include_attributes=False) for n in ast.parse(source).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-    old=functions(subprocess.check_output(['git','show',f'6f9243b:{path}'],cwd=root,text=True));new=functions((root/path).read_text())
-    assert {k:v for k,v in old.items() if k not in ('clock_in','get_today')}=={k:v for k,v in new.items() if k not in ('clock_in','get_today')}
+    async def run():
+        freeze(monkeypatch)
+        async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
+            await leave(f); await punches(f,(1,))
+            before = await clock_snapshot(f); payroll_before = await snapshot(f)
+            for session in (1,2,3,4):
+                denied = await c.post('/api/v1/clock-in',headers=auth(5),data={'session':session})
+                assert denied.status_code == 400, denied.text
+            assert await clock_snapshot(f) == before
+            assert await snapshot(f) == payroll_before
+    asyncio.run(run())

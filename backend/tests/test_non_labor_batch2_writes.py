@@ -28,7 +28,7 @@ from tests.test_cash_advance_references import snapshot
 CASES = [
     ('POST', '/reconciliation/unmatch', '/reconciliation/unmatch?record_id=1', None),
     ('POST', '/expense-fund/accounts/{account_id}/items', '/expense-fund/accounts/1/items',
-        {'expense_date':'2026-10-20', 'category':'耗材', 'amount':10, 'description':'隔离测试开销',
+        {'expense_date':'2026-10-20', 'category':'耗材', 'amount':10, 'description':'隔离测试开销', 'request_key':'SYNTHETIC-batch2-item',
          'receipt':'/uploads/fund_receipts/1/1/test.png'}),
     ('PUT', '/reimbursement/{reimb_id}', '/reimbursement/1',
         {'submit_date':'2026-10-20', 'items':[{'category':'交通费', 'amount':20}]}),
@@ -41,6 +41,16 @@ CASES = [
     ('GET', '/payable/plans', '/payable/plans', None),
     ('GET', '/payable/batch-export', '/payable/batch-export', None),
 ]
+def current_status(case,uid,granted):
+    path=case[1]
+    if uid==2 or (uid in (3,4) and not granted):return 403
+    # Existing synthetic office identities have no formal self binding, and these
+    # reimbursement records belong to employee user 5, not either office user.
+    if uid in (3,4) and path in ('/expense-fund/accounts/{account_id}/items','/reimbursement/{reimb_id}','/reimbursement/{reimb_id}/submit'):return 403
+    if uid==4 and path!='/upload/recharge-screenshot':return 403
+    return 200
+
+
 AUTO_CASES = CASES[6:]
 
 
@@ -133,12 +143,9 @@ def test_every_management_role_preserves_original_response(tmp_path,monkeypatch,
                     if granted:
                         await set_perms(factory,uid,ALL_PERMISSIONS)
                     response=await call(client,case,uid)
-                    if uid==1 or granted:
-                        assert response.status_code==200,response.text
-                    if uid==2:
-                        assert response.status_code==403  # Ordinary super-admin business upload is intentionally forbidden.
-                    if uid in (3,4) and not granted:
-                        assert response.status_code==403 and '无此操作权限' in response.json()['detail']
+                    expected = current_status(case,uid,granted)
+                    assert response.status_code == expected,response.text
+                    if expected >= 400: assert response.json().get('detail') and 'data' not in response.json()
                     results.append(normalized_response(response))
         assert results[0]==results[1],results
     asyncio.run(run())
@@ -173,8 +180,13 @@ def test_automatic_writes_require_permission_and_remain_scoped_and_idempotent(tm
                     else:
                         (await db.get(PayableBill,21)).status='pending'
                     await db.commit()
+                before_request=await snapshot(factory)
                 response=await call(client,case,uid)
-                assert response.status_code==200,response.text
+                expected=current_status(case,uid,True)
+                assert response.status_code==expected,response.text
+                if expected==403:
+                    assert await snapshot(factory)==before_request
+                    continue
                 async with factory() as db:
                     if case[1]=='/reimbursement/categories':
                         from app.api.v1.reimbursement import DEFAULT_REIMB_CATEGORIES
@@ -248,7 +260,7 @@ def test_batch_report_all_ten_and_automatic_writes(tmp_path,monkeypatch):
             for index in (0,1,2,4,9):
                 case=CASES[index]
                 response=await call(client,case,3)
-                assert response.status_code==200,response.text
+                assert response.status_code==current_status(case,3,True),response.text
                 checks.append({'method':case[0],'path':'/api/v1'+case[1],
                     'status':response.status_code,'body':response.json()})
             report['finance_five_actual_requests']=checks
@@ -266,5 +278,5 @@ def test_original_ten_keep_first_guard_after_default_management_policy():
     assert expected <= current
     for route in app.routes:
         if isinstance(route,APIRoute) and any((m,route.path) in expected for m in route.methods):
-            assert route.dependant.dependencies[0].call is require_non_labor
+            assert require_non_labor in list(__import__('scripts.audit_management_access',fromlist=['dependencies']).dependencies(route.dependant))
     assert not result['unprotected_or_unclassified']

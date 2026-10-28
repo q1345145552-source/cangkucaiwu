@@ -11,7 +11,7 @@ from app.models import (PaymentAccount, IncomingFlow, CreditRepayment, CreditCus
 from app.models.credit import CreditShipment
 from app.models.payroll import PayrollRecord
 from app.models.payable import PayablePlan
-from tests.test_wallet_basis import clean, views, get, post, RANGE, fixed
+from tests.test_wallet_basis import clean, views, get, post, RANGE, fixed, prepare_bill
 from tests.test_round2_permissions import auth
 
 
@@ -62,13 +62,19 @@ def test_purchase_legacy_snapshot_plan_rollback_and_payment_request_idempotency(
                 await db.commit()
             assert (await views(c,start_date='2026-09-01',end_date='2026-09-30'))['company_expense']==300
             r=await c.put('/api/v1/payable/plans/1/execute',params={'account_id':1},headers=auth(1))
-            assert r.status_code==400 and '币种' in r.text
+            assert r.status_code==409  # Historical plan lacks verified preparation.
+            await prepare_bill(f,c,1)
+            await prepare_bill(f,c,2)
+            created=await c.post('/api/v1/payable/plans',headers=auth(3),json={'plan_name':'合成混币种计划','planned_date':'2026-10-20','bill_ids':[1,2]})
+            assert created.status_code==200,created.text
+            mixed=await c.put(f'/api/v1/payable/plans/{created.json()["id"]}/execute',headers=auth(3),params={'account_id':1})
+            assert mixed.status_code==409 and '币种' in mixed.text,mixed.text
             async with f() as db:
                 assert (await db.get(PayableBill,1)).paid_amount==300
                 assert (await db.execute(select(func.count(PayablePayment.id)))).scalar_one()==0
             params={'paid_amount':600,'account_id':1,'request_key':'purchase-one'}
             for _ in range(2):
-                r=await c.put('/api/v1/payable/1/pay',params=params,headers=auth(1));assert r.status_code==200,r.text
+                r=await c.put('/api/v1/payable/1/pay',params=params,headers=auth(3));assert r.status_code==200,r.text
             assert (await views(c))['company_expense']==600
             assert (await views(c,start_date='2026-09-01',end_date='2026-09-30'))['company_expense']==300
             async with f() as db:
@@ -162,7 +168,7 @@ def test_credit_new_receipt_retry_is_idempotent_and_category_filter_includes_fun
                 assert (await db.execute(select(func.count(CreditRepayment.id)))).scalar_one()==1
     asyncio.run(run())
 
-@pytest.mark.parametrize('uid,expected', [(1,200),(2,403),(3,200),(4,200),(5,403)])
+@pytest.mark.parametrize('uid,expected', [(1,200),(2,403),(3,200),(4,403),(5,403)])
 def test_receipt_and_payment_roles_with_required_accounts_and_original_payroll_roles(tmp_path,monkeypatch,uid,expected):
     async def run():
         from tests.test_round2_permissions import set_perms
@@ -177,9 +183,11 @@ def test_receipt_and_payment_roles_with_required_accounts_and_original_payroll_r
             r=await c.post('/api/v1/credit/1/payment',headers=auth(uid),json={'repayment_date':'2026-10-20','amount':100,'account_id':1})
             assert r.status_code==expected,r.text
             r=await c.put('/api/v1/payable/plans/1/execute',headers=auth(uid),params={'account_id':1})
-            assert r.status_code==expected,r.text
+            assert r.status_code==(409 if uid in (1,3) else 403),r.text
+            from tests.round3_flow_support import prepare_payroll
+            await prepare_payroll(f,c,2)
             r=await c.post('/api/v1/payroll/2/disburse',headers=auth(uid),json={'account_id':1,'funding_source':'company_account'})
-            assert r.status_code==(200 if uid in (1,4) else 403),r.text
+            assert r.status_code==(200 if uid==3 else 403),r.text
     asyncio.run(run())
 
 

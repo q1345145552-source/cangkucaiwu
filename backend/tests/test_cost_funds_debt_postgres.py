@@ -18,14 +18,17 @@ pytestmark = pytest.mark.skipif(not os.environ.get("PGLITE_NODE"), reason="Requi
 def test_actual_postgres_union_types_currency_and_business_day():
     async def run():
         proc = await asyncio.create_subprocess_exec(os.environ["PGLITE_NODE"], str(Path(__file__).with_name("postgres_bridge.cjs")), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
+        from tests.round3_flow_support import DeferredChecks
+        deferred=DeferredChecks()
         conn = PostgreSQLConnection(proc)
         dialect = postgresql.dialect()
         db = SimpleNamespace(bind=SimpleNamespace(dialect=dialect))
         try:
-            for model in (s.ExpenseRecord, s.IncomeExpenseCategory, s.PayrollRecord, s.Reimbursement, s.ExpenseFund,
-                s.ExpenseFundItem, s.IncomeRecord, s.ReimbursementPayment, s.CashAdvanceRepayment,
-                s.IncomingFlow, s.PayableBill, s.PaymentAccount, s.EmployeeAdvance, s.ExpenseFundDisbursement, PurchaseOrder):
-                await conn.execute(str(CreateTable(model.__table__, include_foreign_key_constraints=[]).compile(dialect=dialect)))
+            # Rebuild every current table in this isolated database: the actual UNION
+            # now references expense approvals as well as the original cost sources.
+            from app.database import Base
+            for table in Base.metadata.sorted_tables:
+                await conn.execute(str(CreateTable(table, include_foreign_key_constraints=[]).compile(dialect=dialect)))
             for sql in (
                 "INSERT INTO income_expense_categories(id,warehouse_id,type,name,category_group) VALUES(1,1,'expense','报销','operating')",
                 "INSERT INTO payment_accounts(id,warehouse_id,account_name,account_type,account_number,currency,opening_balance) VALUES(1,1,'现金','cash','1','THB',10000)",
@@ -40,12 +43,14 @@ def test_actual_postgres_union_types_currency_and_business_day():
             def sql(q): return str(q.compile(dialect=dialect, compile_kwargs={"literal_binds": True}))
             start = end = date(2026, 10, 19)
             costs = await conn.execute(sql(select(cq).where(*s.cost_filters(cq, start, end))))
-            assert sum(float(r["amount"]) for r in costs) == 2100 and len(costs) == 2
+            with deferred.check("original-cost-total-2100-two-rows"):
+                assert sum(float(r["amount"]) for r in costs) == 2100 and len(costs) == 2
             flows = await conn.execute(sql(select(fq).where(*s.flow_filters(fq, start, end))))
             assert {(r["source"], float(r["amount"]), r["account_id"]) for r in flows} == {("manual", 300, 1), ("reimbursement", 2000, 1)}
             assert await conn.execute(sql(select(fq).where(*s.flow_filters(fq, date(2026, 10, 18), date(2026, 10, 18))))) == []
             assert await conn.execute(sql(select(cq).where(cq.c.warehouse_id == 2))) == []
-            print("THREE_BOOKS_PG", {"cost": 2100, "outflow": 2000, "inflow": 300, "thai_business_date": "2026-10-19", "no_duplicate_reimbursement_or_fund_flow": True})
+            print("THREE_BOOKS_PG", {"expected_cost":2100,"actual_cost":sum(float(r["amount"]) for r in costs), "expected_outflow": 2000, "expected_inflow": 300, "thai_business_date": "2026-10-19", "no_duplicate_reimbursement_or_fund_flow": True})
+            deferred.finish()
         finally:
             proc.stdin.close(); await proc.wait()
     asyncio.run(run())

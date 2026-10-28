@@ -136,6 +136,11 @@ async def enforce_action(request, user):
         raise HTTPException(403, '没有可使用的上传操作权限或本人身份')
     selected = row
     if row.get('variants'):
+        # A role with no permitted variant must be denied before inspecting
+        # approval payloads; malformed input cannot precede the role ceiling.
+        if not any(user.role in v['roles'] for v in row['variants']['values'].values()):
+            message = '无权访问' if user.role == 'warehouse_labor' else '超级管理员请使用各仓库管理员账号操作' if user.role == 'super_admin' else '该动作超出当前角色职责上限'
+            raise HTTPException(403, message)
         try:
             body = await request.json()
         except (ValueError, UnicodeDecodeError):

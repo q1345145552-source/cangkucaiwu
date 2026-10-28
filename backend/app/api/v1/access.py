@@ -32,7 +32,7 @@ async def catalog(request: Request, role: str = Query('staff'), user=Depends(get
                 'reason':'仍受对象、仓库、状态及本人隔离限制' if f'{item.menu_key}:{tier}' in ceiling else '超出角色职责或本模块没有该类动作',
                 'actions':[{'id':r['id'],'method':r['methods'],'path':r['path'],'roles':r['roles'],'label':r.get('label') or action_label(r)} for r in actions]}
         modules.append({'key':item.menu_key,'label':item.label,'tiers':tiers,
-            'minimum_read':'操作/审批不授予查看；必要ID/名称/状态通过 /access/choices/{module} 单独校验，不含工资、银行、金额或凭证'})
+            'minimum_read':'操作/审批不授予全仓查看；按具体动作和字段校验对象选择。选中单据仅返回办理所需金额、状态及版本，不返回银行资料、证件或全仓汇总'})
     return {'version':1,'role':role,'modules':modules,'routes':[{**{k:r[k] for k in ('id','module_key','grant_modules','tier','mode','variants') if k in r},'form':contracts.get(r['id'])} for r in CATALOG['routes']]}
 
 
@@ -42,8 +42,34 @@ async def my_actions(user=Depends(get_current_user)):
 
 
 @router.get('/choices/{module}')
-async def choices(module: str, request: Request, kind: str = 'records', user=Depends(get_current_user), db=Depends(get_db)):
-    if not (has_module(user,module,'operate') or has_module(user,module,'approve')):
+async def choices(module: str, request: Request, kind: str = 'records',
+                  action: str | None = None, field: str | None = None,
+                  parent_id: int | None = Query(None,gt=0), selected_id: str | None = Query(None,min_length=1,max_length=100), document_type: str | None = None, search: str = Query('',max_length=100),
+                  page: int = Query(1,ge=1,le=100000), page_size: int = Query(30,ge=1,le=100),
+                  user=Depends(get_current_user), db=Depends(get_db)):
+    if action is not None or field is not None:
+        from app.core.action_choices import authorize, select_choices
+        from app.core.action_forms import contract
+        row=next((r for r in CATALOG['routes'] if r['id']==action),None)
+        authorize(user,row)
+        if module not in row.get('grant_modules',[row['module_key']]):
+            raise HTTPException(403,'动作与模块不匹配')
+        form=contract(request.app,row,user.role)
+        def selectors(value):
+            if isinstance(value,dict):
+                if 'selector' in value:yield value['selector']['field']
+                for child in value.values():yield from selectors(child)
+            elif isinstance(value,list):
+                for child in value:yield from selectors(child)
+        if not form or field not in set(selectors(form)):
+            raise HTTPException(400,'该动作没有此对象字段')
+        from app.services.warehouse_summary import warehouse_scope
+        wh_ids=[w.id for w in await warehouse_scope(db,user,request.headers.get('X-Warehouse-ID'))]
+        return await select_choices(db,user,wh_ids,row,field,parent_id,search,page,page_size,selected_id,document_type)
+
+    from app.core.action_access import variants
+    eligible=any(r['mode']=='business' and module in r.get('grant_modules',[r['module_key']]) and any(user.role in v['roles'] and v['tier'] in ('operate','approve') and has_module(user,module,v['tier']) for v in variants(r)) for r in CATALOG['routes'])
+    if permission_state(user)['version']=='invalid' or not eligible:
         raise HTTPException(403,'缺少该模块操作或审批授权，不能使用最小选择器')
     from app.services.warehouse_summary import warehouse_scope
     wh_ids=[w.id for w in await warehouse_scope(db,user,request.headers.get('X-Warehouse-ID'))]

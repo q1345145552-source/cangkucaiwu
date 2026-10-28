@@ -79,8 +79,13 @@ def test_metadata_changes_and_old_clients_do_not_change_money(tmp_path,monkeypat
 def test_permissions_warehouse_and_original_transfer(tmp_path,monkeypatch):
  async def run():
   async with environment(tmp_path,monkeypatch) as (_,f,c):
-   await setup(f);a=await create(c,uid=4,account_nature='cash',opening_balance=500);b=await create(c,account_nature='corporate',opening_balance=300)
-   for uid in (3,4):assert (await accounts(c,uid))['wallet_balances_by_currency']['THB']['classified_wallet_balance']==800
+   await setup(f);a=await create(c,uid=1,account_nature='cash',opening_balance=500);b=await create(c,account_nature='corporate',opening_balance=300)
+   assert (await accounts(c,3))['wallet_balances_by_currency']['THB']['classified_wallet_balance']==800
+   restricted=await c.get('/api/v1/accounts',headers=auth(4))
+   assert restricted.status_code==200 and restricted.json()['scope']=='account_selection_only'
+   assert all(set(row)=={'id','warehouse_id','account_name','currency','status'} for row in restricted.json()['data'])
+   assert 'wallet_balances_by_currency' not in restricted.json()
+   assert (await c.post('/api/v1/accounts',headers=auth(4),json=payload(account_nature='cash'))).status_code==403
    denied={}
    for uid in (2,5):
     for method,path,data in [('GET','/accounts',None),('POST','/accounts',payload(account_nature='cash')),('PUT',f'/accounts/{a}',payload(account_nature='cash'))]:

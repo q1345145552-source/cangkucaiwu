@@ -41,6 +41,11 @@ async def setup(tmp_path, mp):
             for table in ("purchase_orders","payable_bills"):
                 await db.execute(text(f"SELECT setval(pg_get_serial_sequence('{table}','id'),(SELECT max(id) FROM {table}))"))
             await db.commit()
+        c.synthetic_factory=f
+        async with f() as db:
+            db.add(User(id=96,username='synthetic-independent-admin-96',display_name='SYN fund approver',role='warehouse_admin',warehouse_id=1,password_hash='unused',extra_permissions=[]))
+            db.add(User(id=97,username='synthetic-independent-finance-97',display_name='SYN fund executor',role='staff',warehouse_id=1,password_hash='unused',extra_permissions=['应付账款','付款计划','备用金管理']))
+            await db.flush();db.add_all([UserWarehouse(user_id=96,warehouse_id=1),UserWarehouse(user_id=97,warehouse_id=1)]);await db.commit()
         yield engine,f,c
 
 async def request(c, method, path, uid=1, warehouse='1', code=200, **kwargs):
@@ -54,6 +59,28 @@ async def request(c, method, path, uid=1, warehouse='1', code=200, **kwargs):
     assert r.status_code==code,(method,path,r.status_code,r.text)
     return r.json()
 
+async def funded_payment(c,method,path,uid=1,code=200,**kwargs):
+    """Explicit monetary-regression adapter, never used for permission-matrix requests.
+
+    The legacy tests' administrator recorded the purchase. Supply real independent
+    verification/approval and staff execution before reaching original money assertions.
+    This helper never edits a business status or fabricates proof. Replays reuse proof.
+    """
+    from app.services import financial_authorization as duties
+    if uid!=1 or code==403:
+        return await request(c,method,path,uid=uid,code=code,**kwargs)
+    bid=int(path.split('/')[2]);needs_proof=False
+    async with c.synthetic_factory() as db:
+        bill=await db.get(PayableBill,bid)
+        try:await duties.proof(db,bill,'bill_approve',await duties.bill_payload(db,bill))
+        except HTTPException as exc:
+            assert exc.status_code==409
+            needs_proof=True
+    if needs_proof:
+        await request(c,'POST',f'/payable/{bid}/verify-payment',uid=97)
+        await request(c,'POST',f'/payable/{bid}/approve-payment',uid=96)
+    return await request(c,method,path,uid=97,code=code,**kwargs)
+
 def test_new_order_real_two_payments_voucher_failure_retry_and_read_only(tmp_path,monkeypatch):
     async def run():
         import app.services.image_utils as images
@@ -64,8 +91,8 @@ def test_new_order_real_two_payments_voucher_failure_retry_and_read_only(tmp_pat
             assert po['items'][0]['received_quantity']==0 and not po['receipt_batches'] and po['bill']['id']==bid
             assert po['bill']['amount']==1000 and po['bill']['paid_amount']==0
             parameters={'paid_amount':300,'account_id':1,'payment_method':'现金','request_key':'supplier-first-300'}
-            first=await request(c,'PUT',f'/payable/{bid}/pay',params=parameters)
-            again=await request(c,'PUT',f'/payable/{bid}/pay',params=parameters);assert again['payment_id']==first['payment_id']
+            first=await funded_payment(c,'PUT',f'/payable/{bid}/pay',params=parameters)
+            again=await funded_payment(c,'PUT',f'/payable/{bid}/pay',params=parameters);assert again['payment_id']==first['payment_id']
             partial=await request(c,'GET',f'/payable/{bid}/detail');assert partial['paid_amount']==300 and partial['remaining_amount']==700 and len(partial['payments'])==1
             def fail(*a,**k):raise HTTPException(500,'isolated voucher failure')
             original=images.save_image;monkeypatch.setattr(images,'save_image',fail)
@@ -73,7 +100,7 @@ def test_new_order_real_two_payments_voucher_failure_retry_and_read_only(tmp_pat
             assert (await request(c,'GET',f'/payable/{bid}/detail'))['paid_amount']==300
             monkeypatch.setattr(images,'save_image',lambda content,_folder,prefix,name:original(content,str(tmp_path/'vouchers'),prefix,name))
             await request(c,'POST',f'/payable/{bid}/upload-voucher',files={'file':('proof.png',png(),'image/png')})
-            await request(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':700,'account_id':1,'payment_method':'银行转账','request_key':'supplier-second-700'})
+            await funded_payment(c,'PUT',f'/payable/{bid}/pay',params={'paid_amount':700,'account_id':1,'payment_method':'银行转账','request_key':'supplier-second-700'})
             changes=[]
             def trace(conn,cursor,statement,*args):
                 if statement.lstrip().upper().startswith(('INSERT','UPDATE','DELETE')):changes.append(statement)
@@ -100,7 +127,7 @@ def test_summary_drill_currency_legacy_and_plan_records(tmp_path,monkeypatch):
                 db.add(PayableBill(id=3,warehouse_id=1,supplier_id=1,bill_number='VOID',bill_date=datetime(2020,1,1),due_date=datetime(2020,2,1),amount=999,paid_amount=0,currency='THB',status='voided'))
                 db.add(PayablePlan(id=1,warehouse_id=1,plan_name='原有计划',planned_date=datetime(2026,10,26),total_amount=400,bill_ids=[1]))
                 await db.commit()
-            await request(c,'PUT','/payable/1/pay',params={'paid_amount':200,'account_id':1,'request_key':'legacy-200'})
+            await funded_payment(c,'PUT','/payable/1/pay',params={'paid_amount':200,'account_id':1,'request_key':'legacy-200'})
             detail=await request(c,'GET','/payable/1/detail')
             assert detail['legacy_paid_amount']==400 and detail['recorded_payment_total']==200 and detail['paid_amount']==600
             summary=await request(c,'GET','/payable/stats',params={'all_dates':True,'supplier_id':1})
@@ -113,7 +140,11 @@ def test_summary_drill_currency_legacy_and_plan_records(tmp_path,monkeypatch):
                 assert len(drill['data'])==group['bill_count']
                 assert sum(b['amount'] for b in drill['data'])==group['total_amount']
                 assert sum(b['paid_amount'] for b in drill['data'])==group['paid_amount']
-            await request(c,'PUT','/payable/plans/1/execute',params={'account_id':1})
+            await request(c,'PUT','/payable/plans/1/execute',params={'account_id':1},code=409)
+            async with f() as db:
+                await db.execute(text("SELECT setval(pg_get_serial_sequence('payable_plans','id'),(SELECT max(id) FROM payable_plans))"));await db.commit()
+            plan=await request(c,'POST','/payable/plans',uid=97,json={'plan_name':'SYN newly prepared','planned_date':'2026-10-26','bill_ids':[1]})
+            await request(c,'PUT',f'/payable/plans/{plan["id"]}/execute',uid=97,params={'account_id':1})
             after=await request(c,'GET','/payable/1/detail')
             assert after['paid_amount']==1000 and after['legacy_paid_amount']==400 and after['recorded_payment_total']==600
             assert [p['amount'] for p in after['payments']]==[200,400]
@@ -124,7 +155,7 @@ def test_permissions_selected_warehouse_and_corrupt_history_fail_closed(tmp_path
     async def run():
         async with setup(tmp_path,monkeypatch) as (_,f,c):
             results=[]
-            for uid in (1,3,8):
+            for uid in (1,3):
                 b=await request(c,'GET','/payable/1/detail',uid=uid);assert b['id']==1
                 assert (await request(c,'GET','/suppliers/purchase-orders/1',uid=uid))['bill']['id']==1
                 assert [s['id'] for s in (await request(c,'GET','/suppliers',uid=uid))['data']]==[1]
@@ -133,13 +164,16 @@ def test_permissions_selected_warehouse_and_corrupt_history_fail_closed(tmp_path
             assert redacted['bill'] is None and not redacted['can_read_payable']
             for path in ('/payable/1/detail','/payable/stats'):
                 await request(c,'GET',path,uid=9,code=403)
+            redacted_legacy=await request(c,'GET','/suppliers/purchase-orders/1',uid=8)
+            assert redacted_legacy['bill'] is None and not redacted_legacy['can_read_payable']
+            await request(c,'GET','/payable/1/detail',uid=8,code=403)
             for uid in (2,4,5,7):
                 for path in ('/payable/1/detail','/suppliers/purchase-orders/1'):
                     await request(c,'GET',path,uid=uid,warehouse='2' if uid==7 else '1',code=403)
             for header in ('2','999','garbage'):
                 await request(c,'GET','/payable/1/detail',warehouse=header,code=403)
             await request(c,'POST','/suppliers/2/purchase-order',code=403,json={'items':[{'product_id':1,'quantity':1}]})
-            await request(c,'PUT','/payable/1/pay',uid=3,code=403,params={'paid_amount':10,'account_id':1})
+            await funded_payment(c,'PUT','/payable/1/pay',uid=3,code=409,params={'paid_amount':10,'account_id':1})
             async with f() as db:
                 (await db.get(PurchaseOrder,1)).payable_bill_id=None;await db.commit()
             error=await request(c,'GET','/payable/1/detail',code=409)
@@ -193,10 +227,10 @@ def test_over_200_old_documents_exact_lookup_and_receipt_refresh_guard(tmp_path,
             after=await request(c,'GET','/suppliers/purchase-orders/1')
             assert after['receipt_status']=='partially_received' and after['items'][0]['received_quantity']==8 and after['items'][0]['diff_quantity']==2
             assert after['bill']['need_boss_confirm']=='true'
-            denied=await request(c,'PUT','/payable/1/pay',code=400,params={'paid_amount':300,'account_id':1,'request_key':'must-confirm'})
+            denied=await funded_payment(c,'PUT','/payable/1/pay',code=400,params={'paid_amount':300,'account_id':1,'request_key':'must-confirm'})
             assert '需老板确认' in denied['detail']
             await request(c,'PUT','/payable/1/confirm',json={'reason':'核实旧单少收两件，按当前凭据复核'})
-            await request(c,'PUT','/payable/1/pay',params={'paid_amount':300,'account_id':1,'request_key':'after-confirm'})
+            await funded_payment(c,'PUT','/payable/1/pay',params={'paid_amount':300,'account_id':1,'request_key':'after-confirm'})
             final=await request(c,'GET','/suppliers/purchase-orders/1')
             assert final['bill']['paid_amount']==300 and final['bill']['remaining_amount']==700
             actual('over200_and_receive',{'total':206,'old_detail':old,'after_receive':after,'payment_blocked':denied,'after_confirm_payment':final})
@@ -228,11 +262,12 @@ def test_unknown_summary_drill_and_bad_history_remain_explicit(tmp_path,monkeypa
             assert summary['month_paid_by_currency']=={'THB':None,'CNY':0}
             assert summary['month_unpaid_by_currency']=={'THB':None,'CNY':50}
             assert summary['month_paid_known_by_currency']=={'THB':200,'CNY':0}
-            drill=await request(c,'GET','/payable',params={'supplier_id':1,'currency':'THB','effective_only':True})
-            assert drill['total']==2 and sum(b['amount'] for b in drill['data'])==1700
-            unknown=next(b for b in drill['data'] if b['id']==1)
-            assert unknown['paid_amount'] is None and unknown['remaining_amount'] is None and unknown['payment_totals_unknown']
-            assert next(b for b in drill['data'] if b['id']==2)['link_warning']
+            drill=await request(c,'GET','/payable',code=409,params={'supplier_id':1,'currency':'THB','effective_only':True})
+            assert set(drill)=={'detail'}
+            async with f() as db:
+                originals=(await db.execute(select(PayableBill).where(PayableBill.warehouse_id==1,PayableBill.currency=='THB'))).scalars().all()
+                assert len(originals)==2 and sum(row.amount for row in originals)==1700
+                assert next(row for row in originals if row.id==1).paid_amount is None
             detail=await request(c,'GET','/payable/1/detail')
             assert detail['paid_amount'] is None and detail['remaining_amount'] is None
             bad=await request(c,'GET','/payable/2/detail',code=409)

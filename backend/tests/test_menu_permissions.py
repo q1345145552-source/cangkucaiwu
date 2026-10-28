@@ -31,7 +31,7 @@ def test_menu_coverage_and_legacy_compatibility():
         entry["roles"].update(re.findall(r'"([^"]+)"', roles))
     actual = {p.menu_key: p for p in MENU_PERMISSIONS}
     assert len(actual) == len(MENU_PERMISSIONS)
-    assert set(actual) == set(expected) | {"leave", "attendance_enabled"}
+    assert set(actual) == set(expected) | {"leave", "attendance_enabled", "sku_catalog_manage"}
     for key, item in expected.items():
         assert actual[key].path == item["path"]
         assert set(actual[key].roles) == item["roles"]
@@ -42,11 +42,15 @@ def test_menu_coverage_and_legacy_compatibility():
     settings = (ROOT / "frontend/src/app/(dashboard)/settings/page.tsx").read_text()
     assert "PERM_LABELS" not in settings
     assert 'api.get<MenuPermission[]>("/users/permissions")' in settings
-    assert "permission.selectable" in settings
+    assert "ActionPermissionsEditor" in settings
     identity = actual["attendance_enabled"]
     assert identity.label == "纳入考勤" and not identity.selectable and identity.path == ""
     for item in MENU_PERMISSIONS:
         if item.menu_key == "attendance_enabled":
+            continue
+        if item.menu_key == "sku_catalog_manage":
+            assert item.path == "" and item.selectable
+            assert (ROOT / "frontend/src/app/(dashboard)/supplier-skus/page.tsx").is_file()
             continue
         assert (ROOT / "frontend/src/app/(dashboard)" / item.path.lstrip("/") / "page.tsx").is_file()
 
@@ -81,7 +85,8 @@ def test_http_permissions_and_account_lifecycle(tmp_path, monkeypatch):
                 response = await client.get("/api/v1/users/permissions", headers=headers)
                 assert response.status_code == 200, response.text
                 items = response.json()
-                assert len(items) == len(MENU_PERMISSIONS) == 39
+                assert len(items) == len(MENU_PERMISSIONS)
+                assert {i["menu_key"] for i in items}=={p.menu_key for p in MENU_PERMISSIONS}
                 for item in items:
                     assert {"key", "label", "menu_key", "path", "roles", "default_roles", "selectable"} <= item.keys()
                     assert isinstance(item["selectable"], bool)
@@ -90,7 +95,7 @@ def test_http_permissions_and_account_lifecycle(tmp_path, monkeypatch):
                 assert (await client.get("/api/v1/users/permissions")).status_code == 403
                 created = await client.post("/api/v1/users", headers=headers, json={
                     "username": "test_staff", "display_name": "测试财务", "password": "test-password",
-                    "role": "staff", "warehouse_ids": [1], "extra_permissions": LEGACY_NAMES,
+                    "role": "staff", "warehouse_ids": [1], "action_permissions": ["incoming:view","incoming:operate"], "permission_reason":"SYNTHETIC lifecycle",
                 })
                 assert created.status_code == 200, created.text
                 uid = created.json()["id"]
@@ -98,12 +103,12 @@ def test_http_permissions_and_account_lifecycle(tmp_path, monkeypatch):
                     result = await client.get("/api/v1/users", headers=headers)
                     assert result.status_code == 200, result.text
                     return next(u for u in result.json()["data"] if u["id"] == uid)
-                assert (await saved_user())["extra_permissions"] == LEGACY_NAMES
-                for permissions in (LEGACY_NAMES[:2], [], LEGACY_NAMES):
+                assert (await saved_user())["action_access"]["grants"] == ["incoming:operate","incoming:view"]
+                for permissions in (["incoming:view"], [], ["incoming:view","incoming:operate"]):
                     updated = await client.put(f"/api/v1/users/{uid}", headers=headers,
-                                               json={"display_name": "已编辑", "extra_permissions": permissions})
+                                               json={"display_name": "已编辑", "action_permissions": permissions, "permission_reason":"SYNTHETIC lifecycle change"})
                     assert updated.status_code == 200, updated.text
-                    assert (await saved_user())["extra_permissions"] == permissions
+                    assert set((await saved_user())["action_access"]["grants"]) == set(permissions)
                 staff_headers = {"Authorization": "Bearer " + create_access_token({"sub": str(uid)})}
                 assert (await client.get("/api/v1/users/permissions", headers=staff_headers)).status_code == 200
                 disabled = await client.put(f"/api/v1/users/{uid}", headers=headers, json={"is_active": False})

@@ -24,12 +24,16 @@ def test_counts_and_handling(tmp_path,monkeypatch):
    async with f() as db:
     counts=[(await db.execute(select(func.count(EmployeeAdvance.id)).where(EmployeeAdvance.warehouse_id==1,EmployeeAdvance.approval_status=='pending'))).scalar_one(),(await db.execute(select(func.count(OvertimeAssignment.id)).join(OvertimeTask).where(OvertimeTask.warehouse_id==1,OvertimeAssignment.actual_hours.is_(None)))).scalar_one()]
    assert counts==[before['advances']['count'],before['overtime']['count']]==[3,2]
-   for uid in (3,4):assert await todos(c,uid)==before
+   await set_perms(f,3,['员工预支'])
+   finance=await todos(c,3);onsite=await todos(c,4)
+   assert [finance['advances']['count'],finance['overtime']['count']]==[3,0]
+   assert [onsite['advances']['count'],onsite['overtime']['count']]==[0,2]
+   assert (await c.post(f'/api/v1/employee-advances/{ids[0]}/verify',headers=auth(3))).status_code==200
    assert (await c.post(f'/api/v1/employee-advances/{ids[0]}/approve',headers=auth(1))).status_code==200
    a=(await assignments(f,tid))[0];assert (await verify(c,tid,[a.id],uid=1)).status_code==200
    after=await todos(c);assert [after['advances']['count'],after['overtime']['count']]==[2,1]
    await set_perms(f,4,['加班','员工预支'])
-   r=await c.get('/api/v1/employee-advances?approval_status=pending',headers=auth(4));assert r.status_code==200
+   r=await c.get('/api/v1/employee-advances?approval_status=pending',headers=auth(3));assert r.status_code==200
    assert {x['id'] for x in r.json()['data']}=={x['id'] for x in after['advances']['items']}
    r=await c.get('/api/v1/overtime?pending_verification=true',headers=auth(4));assert r.status_code==200,r.text
    assert {x['id'] for t in r.json()['data'] for x in t['assignments']}=={x['id'] for x in after['overtime']['items']}
@@ -45,12 +49,13 @@ def test_warehouse_roles(tmp_path,monkeypatch):
   async with hr_environment(tmp_path,monkeypatch) as (_,f,c):
    await setup(f);own=await add(f);foreign=await add(f,wid=2,eid=2);await create(c,[1])
    d=await todos(c);assert [x['id'] for x in d['advances']['items']]==[own] and d['overtime']['count']==1
-   assert await todos(c,headers={**auth(1),'X-Warehouse-ID':'2'})==d
-   s=await todos(c,2);assert s['advances']['count']==s['overtime']['count']==0
+   assert (await c.get('/api/v1/dashboard/boss-todos',headers={**auth(1),'X-Warehouse-ID':'2'})).status_code==403
+   assert (await c.get('/api/v1/dashboard/boss-todos',headers=auth(2))).status_code==403
    for uid in (5,6):assert (await c.get('/api/v1/dashboard/boss-todos',headers=auth(uid))).status_code==403
    assert (await c.get('/api/v1/dashboard/boss-todos')).status_code in (401,403)
    from app.models.user import User
    async with f() as db:(await db.get(User,6)).role='staff';await db.commit()
+   await set_perms(f,6,['员工预支'])
    assert [x['id'] for x in (await todos(c,6))['advances']['items']]==[foreign]
  asyncio.run(run())
 

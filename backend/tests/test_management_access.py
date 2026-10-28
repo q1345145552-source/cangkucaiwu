@@ -147,7 +147,9 @@ def test_all_registered_management_routes_deny_labor_before_business_queries(tmp
                             outcomes.append(response.status_code)
                             responses.append({"user_id":uid,"status":response.status_code,"body":response.json()})
                         tested.append({"method":method,"path":route.path,"module":route.endpoint.__module__.rsplit('.',1)[-1],"labor_same_and_foreign":outcomes,"responses":responses})
-                assert len(tested)==394  # Supplier rounds 1–11: independently checked by test_management_inventory.
+                from tests.permission_round7.registration import assert_registered_catalogue
+                assert_registered_catalogue()
+                assert {(r["method"],r["path"]) for r in tested}=={(m,r.path) for r in management_routes() for m in r.methods}
                 for statement in statements:
                     assert not statement.lstrip().upper().startswith(("INSERT","UPDATE","DELETE")),statement
                     assert set(re.findall(r"\b(?:FROM|JOIN)\s+(\w+)",statement,re.I)) <= {"users","user_warehouses"},statement
@@ -189,7 +191,8 @@ def test_admin_and_authorized_office_reads_and_revoked_permissions(tmp_path,monk
             for uid in (1,3,4):
                 for path in READS:
                     response=await client.get("/api/v1"+path,headers=auth(uid),params={"start_date":"2026-10-19","end_date":"2026-10-20","month":"2026-10"})
-                    assert response.status_code==200,(uid,path,response.status_code,response.text)
+                    forbidden = uid==4 and path in {"/customers","/recharge","/incoming","/reconciliation/results","/income-expense/expense","/income-expense/ledger","/expense-fund/accounts","/reimbursement","/payable","/payable/plans","/credit","/reports/previews","/reports/income-expense","/reports/cost-funds-debt","/payroll","/employee-advances","/salary-templates","/deduction-templates","/employee-deductions","/expense-approvals","/cash-advances"}
+                    assert response.status_code==(403 if forbidden else 200),(uid,path,response.status_code,response.text)
                     # Owner-approved platform board sharing; warehouse-private data must remain scoped.
                     if path not in ("/market","/group-order"):
                         assert "SECRET-WH2" not in response.text,(uid,path,response.text)
@@ -200,7 +203,7 @@ def test_admin_and_authorized_office_reads_and_revoked_permissions(tmp_path,monk
                     await db.commit()
                 for path in READS:
                     response=await client.get("/api/v1"+path,headers=auth(uid),params={"start_date":"2026-10-19","end_date":"2026-10-20","month":"2026-10"})
-                    assert response.status_code==403 and "无此操作权限" in response.text,(uid,path,response.status_code,response.text)
+                    assert response.status_code==403 and response.json().get("detail") and "data" not in response.json(),(uid,path,response.status_code,response.text)
             actual("office_positive_and_revoke",{"admin_granted_finance_granted_supervisor":results,"ungranted_requests":2*len(READS)})
     asyncio.run(run())
 
@@ -214,6 +217,8 @@ def test_employee_self_records_and_other_people_are_never_visible(tmp_path,monke
             for path in ("/clock-in/today","/clock-in/records","/attendance/calendar","/attendance/leaves","/attendance/rest-days",
                 "/overtime","/overtime/pending","/overtime/monthly-hours","/overtime/limit","/payroll/my-payslip","/employee-advances/my-debt"):
                 response=await client.get("/api/v1"+path,headers={**auth(5),"X-Warehouse-ID":"2","X-Language":"th"},params=params)
+                assert response.status_code==403,(path,response.status_code,response.text)
+                response=await client.get("/api/v1"+path,headers={**auth(5),"X-Language":"th"},params={k:v for k,v in params.items() if k not in ('employee_id','user_id','warehouse_id')})
                 assert response.status_code==200,(path,response.status_code,response.text)
                 assert "SECRET-WH2" not in response.text
                 data=response.json()
@@ -234,9 +239,13 @@ def test_employee_self_records_and_other_people_are_never_visible(tmp_path,monke
             image="data:image/png;base64,"+base64.b64encode(png()).decode()
             punched=await client.post('/api/v1/clock-in',headers={**auth(5),"X-Language":"th","X-Warehouse-ID":"2"},
                 data={"session":"1","photo_base64":image,"user_id":"8","employee_id":"2"})
+            assert punched.status_code==403,punched.text
+            punched=await client.post('/api/v1/clock-in',headers={**auth(5),"X-Language":"th"},data={"session":"1","photo_base64":image})
             assert punched.status_code==200,punched.text
             leave=await client.post('/api/v1/attendance/leaves',headers={**auth(5),"X-Language":"th"},
                 data={"leave_date":"2026-10-22","leave_type":"personal","duration_type":"hours","hours":"1","employee_id":"2"})
+            assert leave.status_code==400 and "不允许的字段" in leave.text,leave.text
+            leave=await client.post('/api/v1/attendance/leaves',headers={**auth(5),"X-Language":"th"},data={"leave_date":"2026-10-22","leave_type":"personal","duration_type":"hours","hours":"1"})
             assert leave.status_code==200,leave.text
             async with factory() as db:
                 recorded=await db.get(LeaveRequest,leave.json()['id'])
@@ -265,8 +274,9 @@ def test_granted_office_writes_still_work_and_revocation_denies_them(tmp_path,mo
             for uid in (1,3,4):
                 for method,path,body in cases:
                     response=await client.request(method,'/api/v1'+path,headers=auth(uid),json=body)
-                    assert response.status_code==200,(uid,path,response.status_code,response.text)
-                    results.append({'user':uid,'method':method,'path':path,'status':200,'body':response.json()})
+                    expected=403 if uid in (3,4) and path.startswith(('/accounts/','/salary-templates/','/deduction-templates/','/efficiency/standard')) else 200
+                    assert response.status_code==expected,(uid,path,response.status_code,response.text)
+                    results.append({'user':uid,'method':method,'path':path,'status':response.status_code,'body':response.json()})
                 uploaded=await client.post('/api/v1/upload',headers=auth(uid),files={'file':('test.png',png(),'image/png')})
                 assert uploaded.status_code==200,uploaded.text
                 image=await client.get('/'+uploaded.json()['path'],headers=auth(uid))
@@ -277,7 +287,7 @@ def test_granted_office_writes_still_work_and_revocation_denies_them(tmp_path,mo
                     await db.commit()
                 for method,path,body in cases:
                     response=await client.request(method,'/api/v1'+path,headers=auth(uid),json=body)
-                    assert response.status_code==403 and '无此操作权限' in response.text,(uid,path,response.status_code,response.text)
+                    assert response.status_code==403 and response.json().get('detail') and 'data' not in response.json(),(uid,path,response.status_code,response.text)
                 uploaded=await client.post('/api/v1/upload',headers=auth(uid),files={'file':('test.png',png(),'image/png')})
                 assert uploaded.status_code==403
             actual('office_positive_writes',{'writes':results,'upload_and_private_preview':3,'revoked_writes':16})
@@ -290,7 +300,7 @@ def test_attachments_are_private_scoped_and_browser_cookie_is_file_only(tmp_path
             own='/uploads/1/2026-10-19/local-clock.png'
             foreign='/uploads/2/2026-10-19/SECRET-WH2-clock.png'
             assert (await client.get(own)).status_code==401
-            for uid in (1,3,4,5):assert (await client.get(own,headers=auth(uid))).status_code==200
+            for uid in (1,3,4,5):assert (await client.get(own,headers=auth(uid))).status_code==(403 if uid==3 else 200)
             for uid in (1,3,4,5,6,2):
                 response=await client.get(foreign,headers=auth(uid))
                 assert response.status_code==403,(uid,response.text)
@@ -346,6 +356,8 @@ def test_attendance_supervisor_self_service_needs_no_management_grant_and_old_to
             params={'view':'self','employee_id':2,'warehouse_id':2,'start_date':'2026-10-19','end_date':'2026-10-20'}
             for path in paths:
                 response=await client.get('/api/v1'+path,headers=auth(4),params=params)
+                assert response.status_code==403,(path,response.status_code,response.text)
+                response=await client.get('/api/v1'+path,headers=auth(4),params={k:v for k,v in params.items() if k not in ('employee_id','warehouse_id')})
                 assert response.status_code==200 and 'SECRET-WH2' not in response.text,(path,response.status_code,response.text)
                 if path=='/attendance/calendar':assert [e['id'] for e in response.json()['employees']]==[1]
             image='data:image/png;base64,'+base64.b64encode(png()).decode()
@@ -377,16 +389,21 @@ def test_legacy_employee_fallback_is_unique_and_cannot_borrow_bound_same_name(tm
                 employee.phone='test-5'
                 await db.commit()
             own=await client.get('/api/v1/payroll/my-payslip',headers=auth(5))
-            assert own.status_code==200 and [p['id'] for p in own.json()['data']]==[1]
+            assert own.status_code==403 and 'data' not in own.json()
+            async with factory() as db:
+                (await db.get(Employee,1)).user_id=5;await db.commit()
+            formal=await client.get('/api/v1/payroll/my-payslip',headers=auth(5))
+            assert formal.status_code==200 and [p['id'] for p in formal.json()['data']]==[1]
             async with factory() as db:
                 (await db.get(Employee,1)).phone=None
+                (await db.get(Employee,1)).user_id=None
                 db.add(Employee(warehouse_id=1,name='Somchai',status='regular'))
                 await db.commit()
             ambiguous=await client.get('/api/v1/payroll/my-payslip',headers={**auth(5),'X-Language':'th'})
             assert ambiguous.status_code==403 and not re.search(r'[\u3400-\u9fff]',ambiguous.json()['detail'])
             bound=await client.get('/api/v1/payroll/my-payslip',headers=auth(6))
             assert bound.status_code==200 and bound.json()['data']==[]
-            actual('legacy_employee_binding',{'unique_username_phone':200,'ambiguous_unbound_name':403,'formal_same_name_other_account_only_own':200})
+            actual('legacy_employee_binding',{'unique_username_phone':403,'formal_binding':200,'ambiguous_unbound_name':403,'formal_same_name_other_account_only_own':200})
     asyncio.run(run())
 
 
@@ -425,7 +442,7 @@ def test_single_permissions_keep_shared_selectors_working(tmp_path,monkeypatch):
                     async with factory() as db:
                         (await db.get(User,uid)).extra_permissions=[permission]
                         await db.commit()
-                    response=await client.get('/api/v1'+path,headers=auth(uid))
+                    response=await client.get('/api/v1'+path,headers=auth(uid),params={'search':'测试客户'} if path=='/customers' and uid==4 else {})
                     assert response.status_code==200 and 'SECRET-WH2' not in response.text,(uid,permission,path,response.status_code,response.text)
                     checked.append({'user':uid,'permission':permission,'path':path,'status':200})
             actual('shared_selectors',checked)

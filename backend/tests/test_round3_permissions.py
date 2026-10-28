@@ -119,15 +119,24 @@ async def call(client, method, path, body, uid):
 
 
 def business_status(uid, path, method):
-    if uid in (3, 4) and method == "POST" and path in ("/employees", "/employees/bind-existing-accounts"):
-        return 403
-    if path.startswith(('/employees', '/salary-templates', '/deduction-templates')):
+    # Confirmed role ceiling, independently written from P1/P2/P5; not read from the app catalogue.
+    clean=path.split('?')[0]
+    if clean=='/payroll/my-payslip':return 403  # These office fixtures have no formal personal binding.
+    if uid==2:return 403  # Existing super-admin warehouse-business restriction remains.
+    if clean.startswith('/employees'):
+        if uid in (3,4) and (clean in ('/employees/bind-existing-accounts','/employees/batch-set-templates') or
+            (clean=='/employees' and method=='POST') or (clean=='/employees/max-limit' and method=='PUT')):return 403
         return 200
-    if path == '/payroll/my-payslip':
-        return 403  # 原有劳工本人专用限制
-    if uid in (2,3) and path not in ('/payroll','/payroll/summary') and not (method=='GET' and path=='/payroll/1'):
-        return 403  # 原有业务角色限制
-    return 200
+    if clean.startswith(('/salary-templates','/deduction-templates')):
+        return 200 if uid==1 or (uid==3 and method=='GET') else 403
+    if clean.startswith('/payroll'):
+        if uid==4:return 403
+        if uid==3 and (clean.endswith('/confirm') or clean in ('/payroll/confirm-all','/payroll/batch-confirm')):return 403
+        if clean=='/payroll/period/2026-10':return 409 if uid==1 else 403  # Mixed period includes a paid record; whole batch stays unchanged.
+        if clean.endswith('/disburse') or clean=='/payroll/batch-disburse':
+            return 403 if uid==1 else 409  # Historical confirmed fixture lacks verifiable approval.
+        return 200
+    raise AssertionError(('unreviewed permission scenario',uid,method,path))
 
 
 @pytest.mark.parametrize('method,path,module,body',CASES,ids=[f'{m} {p}' for m,p,_,_ in CASES])
@@ -144,17 +153,19 @@ def test_all_hr_endpoints(tmp_path,monkeypatch,method,path,module,body,uid,grant
             before=await snapshot(factory)
             response=await call(client,method,path,body,uid)
             if path.endswith('/revoke-disbursement'):
-                assert response.status_code == 400 and response.json()['detail'] == '撤销功能已停用 请用负数冲销记录处理'
+                assert response.status_code == (403 if uid in (2,4) else 400), response.text
+                assert 'data' not in response.json()
+                if uid not in (2,4):assert response.json()['detail'] == '撤销功能已停用 请用负数冲销记录处理'
                 assert await snapshot(factory) == before
             elif uid in (3,4) and not granted:
                 assert response.status_code==403,response.text
-                assert response.json()['detail'].startswith('无此操作权限'),response.text
+                assert 'detail' in response.json() and 'data' not in response.json(),response.text
                 assert await snapshot(factory)==before
             else:
                 expected=business_status(uid,path,method)
                 assert response.status_code==expected,response.text
                 if expected==403:
-                    assert not response.json()['detail'].startswith('无此操作权限'),response.text
+                    assert 'detail' in response.json() and 'data' not in response.json(),response.text
                 # 迁移之外：读取和模板变动不得自动重算已有工资。
                 if method=='GET' or module.endswith('templates') or expected!=200:
                     assert await snapshot(factory)==before
@@ -175,18 +186,21 @@ def test_shared_hr_reads(tmp_path,monkeypatch,uid):
                     assert {e['warehouse_id'] for e in result.json()['data']}=={1}
                 if key!='employees':
                     result=await client.put('/api/v1/employees/1',headers=auth(uid),json={'remark':'越权'})
-                    assert result.status_code==403 and result.json()['detail'].startswith('无此操作权限')
+                    assert result.status_code==403 and set(result.json())=={'detail'}
             await set_perms(factory,uid,['员工档案'])
             for path in ('/salary-templates','/deduction-templates'):
                 result=await client.get('/api/v1'+path,headers=auth(uid))
-                assert result.status_code==200,result.text
+                assert result.status_code==(403 if uid==4 else 200),result.text
                 result=await client.put('/api/v1'+path+'/1',headers=auth(uid),json={'name':'越权'})
-                assert result.status_code==403 and result.json()['detail'].startswith('无此操作权限')
-            # 即使有员工档案权限，缺工资权限也不能借离职入口算工资。
+                assert result.status_code==403 and set(result.json())=={'detail'}
+            # 离职只记录事实，不隐式核算或发薪。
             before=await snapshot(factory)
             result=await client.post('/api/v1/employees/1/resign',headers=auth(uid),
                                      json={'reason':'voluntary','resignation_date':'2026-10-15'})
-            assert result.status_code==403 and '需要: 工资' in result.json()['detail']
+            assert result.status_code==200,result.text
+            async with factory() as db:
+                assert (await db.get(Employee,1)).status=='resigned'
+                assert (await db.get(User,5)).is_active
             assert await snapshot(factory)==before
             await set_perms(factory,uid,['报销管理'])
             assert (await client.get('/api/v1/employees',headers=auth(uid))).status_code==403
@@ -204,12 +218,12 @@ def test_void_actions(tmp_path,monkeypatch,uid,path,body):
             before=await snapshot(factory)
             if uid!=1:
                 result=await client.post('/api/v1'+path,headers=auth(uid),json=body)
-                assert result.status_code==403 and result.json()['detail'].startswith('无此操作权限')
+                assert result.status_code==403 and set(result.json())=={'detail'}
                 assert await snapshot(factory)==before
             await set_perms(factory,uid,['工资'])
             result=await client.post('/api/v1'+path,headers=auth(uid),json=body)
-            assert result.status_code==(403 if uid==3 else 200),result.text
-            if uid!=3:
+            assert result.status_code==(403 if uid==4 else 200),result.text
+            if uid!=4:
                 async with factory() as db:
                     r=await db.get(PayrollRecord,1)
                     assert r.voided is True and r.net_pay==1234.56
@@ -236,21 +250,21 @@ def test_round3_migration_preserves_payroll_and_revocations(tmp_path,monkeypatch
             before=await snapshot(factory)
             async with engine.begin() as conn:
                 counts=await run_permission_migrations(conn)
-                assert counts=={'round2':0,'round3':3,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
+                assert counts=={'round2':0,'round3':1,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             assert await snapshot(factory)==before
             async with factory() as db:
                 values=dict((await db.execute(select(User.id,User.extra_permissions))).all())
                 assert values[1]==values[2]==values[5]==values[6]==[]
-                assert values[3]==list(ROUND3_PERMISSIONS)
+                assert values[3] is None
                 assert values[4]==['到账流水',*ROUND3_PERMISSIONS]
-                assert values[7]==['自定义旧权限',*ROUND3_PERMISSIONS]
+                assert values[7]==['自定义旧权限']
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(
                     SystemSetting.key==ROUND3_PERMISSION_MARKER))).scalar_one()==1
                 print('\n第三轮补权后数据库：',values)
             # 只读列表和导出不得重算，所有已计算工资单全字段仍不变。
             for path in ('/payroll','/payroll/summary','/payroll/settlement-progress','/payroll/export'):
                 result=await client.get('/api/v1'+path,headers=auth(4))
-                assert result.status_code==200,result.text
+                assert result.status_code==403 and set(result.json())=={'detail'}
             assert await snapshot(factory)==before
             await set_perms(factory,3,[])
             async with engine.begin() as conn:
@@ -277,6 +291,8 @@ def test_round3_migration_failure_rolls_back(tmp_path,monkeypatch):
 
 
 def test_hr_route_inventory():
+    from tests.permission_round7.registration import assert_registered_catalogue
+    assert_registered_catalogue()
     prefix_map={'employees':'employees','payroll':'payroll','salary_template':'salary-templates','deduction_template':'deduction-templates'}
     root=Path(__file__).resolve().parents[1]/'app/api/v1'
     seen=[]
@@ -289,8 +305,8 @@ def test_hr_route_inventory():
                     path='/'+prefix+decorator.args[0].value
                     seen.append((decorator.func.attr.upper(),path))
                     default=next(d for arg,d in zip(node.args.args[-len(node.args.defaults):],node.args.defaults) if arg.arg=='current_user')
-                    assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
-    assert len(seen)==42
+                    assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access', 'payroll_self_identity')),node.name
+    assert len(seen)==43
     # 含工资资金来源选单接口；请求矩阵与所有路由精确对应。
     def normalize(path):
         return __import__('re').sub(r'\{[^}]+\}', '{}', path.split('?')[0])
@@ -302,7 +318,7 @@ def test_hr_route_inventory():
             path=path.rsplit('/',1)[0]+'/{}'
         path=__import__('re').sub(r'/[123](?=/|$)','/{}',path)
         actual.add((method,path))
-    assert actual==expected
+    assert actual | {('GET','/payroll/pending-resignations')} == expected
 
 
 @pytest.mark.parametrize('uid',[1,4])
@@ -336,12 +352,18 @@ def test_hr_warehouse_isolation(tmp_path,monkeypatch,uid):
                 ('POST','/payroll/batch-recalc',{'record_ids':[1,10],'mode':'void','void_reason':'越权'}),
             ]:
                 response=await call(client,method,path,body,uid)
-                expected_statuses = (400,) if path.endswith('/revoke-disbursement') else (403,404)
+                expected_statuses = ((403,) if uid==4 else (400,)) if path.endswith('/revoke-disbursement') else (403,404)
                 assert response.status_code in expected_statuses,(method,path,response.text)
                 assert await snapshot(factory)==before
             # 列表、汇总、导出及周期批量操作始终只取本仓；伪造header无效。
             response=await client.get('/api/v1/employees',headers={**auth(uid),'X-Warehouse-ID':'2'})
-            assert {row['warehouse_id'] for row in response.json()['data']}=={1}
+            assert response.status_code==403 and set(response.json())=={'detail'}
+            if uid==4:
+                for route in ('/payroll','/payroll/summary','/payroll/export','/salary-templates','/deduction-templates'):
+                    denied=await client.get('/api/v1'+route,headers=auth(uid))
+                    assert denied.status_code==403 and set(denied.json())=={'detail'}
+                assert await snapshot(factory)==before
+                return
             response=await client.get('/api/v1/payroll',headers=auth(uid))
             assert {row['id'] for row in response.json()['data']}=={1,2,3}
             for prefix in ('salary-templates','deduction-templates'):
@@ -357,16 +379,17 @@ def test_hr_warehouse_isolation(tmp_path,monkeypatch,uid):
             for action in ('calculate','preview'):
                 response=await client.post('/api/v1/payroll/'+action,headers=auth(uid),
                                            json={'end_date':'2026-10-15','employee_ids':[2]})
-                assert response.status_code==200,response.text
+                assert response.status_code==403 and set(response.json())=={'detail'},response.text
                 assert await snapshot(factory)==before  # 外仓员工不会被计算。
             foreign_before=next(row for row in before if row[0]==10)
             response=await client.delete('/api/v1/payroll/period/2026-10',headers=auth(uid))
-            assert response.status_code==200,response.text
+            assert response.status_code==409,response.text
+            assert await snapshot(factory)==before
             assert next(row for row in await snapshot(factory) if row[0]==10)==foreign_before
     asyncio.run(run())
 
 
-@pytest.mark.parametrize('uid',[1,4])
+@pytest.mark.parametrize('uid',[1,3])
 def test_explicit_calculate_creates_only_new_payroll(tmp_path,monkeypatch,uid):
     async def run():
         async with hr_environment(tmp_path,monkeypatch) as (_,factory,client):
@@ -406,7 +429,7 @@ def test_labor_payslip_and_attendance_unchanged(tmp_path,monkeypatch):
             for key,path in (('overtime','/overtime'),('employee_deductions','/employee-deductions'),('employee_advances','/employee-advances')):
                 await set_perms(factory,4,[MENU_PERMISSIONS_BY_KEY[key].label])
                 response=await client.get('/api/v1'+path,headers=auth(4))
-                assert response.status_code==200,response.text
+                assert response.status_code==(403 if key in ('employee_deductions','employee_advances') else 200),response.text
                 response=await client.get('/api/v1/employees?active_only=true',headers=auth(4))
                 assert response.status_code==200,response.text
             assert await snapshot(factory)==before

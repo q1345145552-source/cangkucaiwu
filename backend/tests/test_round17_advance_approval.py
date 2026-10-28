@@ -9,7 +9,8 @@ from app.models.employee_advance import EmployeeAdvance
 from app.models.expense_fund import ExpenseFund,ExpenseFundItem
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 from tests.test_round2_permissions import auth,set_perms
-from tests.test_round3_permissions import hr_environment,snapshot
+from tests.test_round3_permissions import snapshot
+from tests.test_employee_advance_expense import hr_environment,execute
 from tests.test_round15_employee_self import enable
 
 FIELDS={'approval_status','reviewer_id','reviewed_at','reject_reason'}
@@ -21,8 +22,12 @@ def test_three_creation_cases_filter_and_self_read(tmp_path,monkeypatch):
    await enable(factory)
    await set_perms(factory,4,[MENU_PERMISSIONS_BY_KEY['employee_advances'].label])
    before=await snapshot(factory);created=[]
-   for uid,eid,expected in [(1,5,'approved'),(4,5,'pending'),(4,1,'approved')]:
-    r=await c.post('/api/v1/employee-advances',headers=auth(uid),json={'employee_id':eid,'amount':100,'advance_date':'2026-10-16','source':'supervisor','approval_status':'approved','reviewer_id':99})
+   await set_perms(factory,3,['员工预支'])
+   for uid,eid,expected in [(1,5,'pending'),(4,5,'pending'),(3,1,'pending')]:
+    body={'employee_id':eid,'amount':100,'advance_date':'2026-10-16','source':'supervisor','funding_source':'company_account','payment_account_id':1}
+    denied=await c.post('/api/v1/employee-advances',headers=auth(uid),json={**body,'approval_status':'approved','reviewer_id':99})
+    assert denied.status_code==422
+    r=await c.post('/api/v1/employee-advances',headers=auth(uid),json=body)
     assert r.status_code==200,r.text
     data=r.json();assert data['approval_status']==expected
     assert FIELDS<=data.keys()
@@ -30,9 +35,11 @@ def test_three_creation_cases_filter_and_self_read(tmp_path,monkeypatch):
     async with factory() as db:
      row=await db.get(EmployeeAdvance,data['id']);assert row.approval_status==expected and row.amount==100 and row.deducted_amount==0
     created.append(data)
-   # Rejected fixture demonstrates all three states and preserves exact metadata.
-   async with factory() as db:
-    row=await db.get(EmployeeAdvance,created[0]['id']);row.approval_status='rejected';row.reviewer_id=1;row.reviewed_at=datetime(2026,10,16,12);row.reject_reason='测试拒绝原因';await db.commit()
+   await execute(factory,c,created[0]['id'])
+   denied=await c.post('/api/v1/employee-advances',headers=auth(4),json={'employee_id':1,'amount':100,'advance_date':'2026-10-16','source':'supervisor','funding_source':'company_account','payment_account_id':1})
+   assert denied.status_code==403
+   rejected=await c.post(f"/api/v1/employee-advances/{created[1]['id']}/reject",headers=auth(1),json={'reject_reason':'测试拒绝原因'})
+   assert rejected.status_code==200,rejected.text
    for status in ('pending','approved','rejected','待审批','已通过','已驳回'):
     r=await c.get('/api/v1/employee-advances',headers=auth(1),params={'approval_status':status});assert r.status_code==200,r.text
     expected={'待审批':'pending','已通过':'approved','已驳回':'rejected'}.get(status,status)
@@ -42,7 +49,7 @@ def test_three_creation_cases_filter_and_self_read(tmp_path,monkeypatch):
    own=await c.get('/api/v1/employee-advances/my-debt',headers=auth(4));assert own.status_code==200,own.text
    assert {r['id'] for r in own.json()['data']}=={created[0]['id'],created[1]['id']}
    rejection=next(r for r in own.json()['data'] if r['approval_status']=='rejected')
-   assert rejection['reviewer_id']==1 and rejection['reviewed_at'].startswith('2026-10-16T12:00') and rejection['reject_reason']=='测试拒绝原因'
+   assert rejection['reviewer_id']==1 and bool(rejection['reviewed_at']) and rejection['reject_reason']=='测试拒绝原因'
    assert own.json()['total_by_currency']==[{'currency':'THB','total':200.0}]
    assert await snapshot(factory)==before
    print('ROUND17_CREATIONS',json.dumps(created,ensure_ascii=False))
@@ -57,8 +64,8 @@ def test_detached_supervisor_archive_still_self_and_same_name_not_identity(tmp_p
    async with factory() as db:
     (await db.get(Employee,1)).name='supervisor';await db.commit()
    for eid,expected in [(5,'pending'),(1,'approved')]:
-    r=await c.post('/api/v1/employee-advances',headers=auth(4),json={'employee_id':eid,'amount':25,'advance_date':'2026-10-16','source':'supervisor'})
-    assert r.status_code==200 and r.json()['approval_status']==expected,r.text
+    r=await c.post('/api/v1/employee-advances',headers=auth(4),json={'employee_id':eid,'amount':25,'advance_date':'2026-10-16','source':'supervisor','funding_source':'company_account','payment_account_id':1})
+    assert r.status_code==403 and set(r.json())=={'detail'},r.text
  asyncio.run(run())
 
 
@@ -67,15 +74,23 @@ def test_permission_warehouse_and_delete_guards(tmp_path,monkeypatch,uid):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (_,factory,c):
    if uid in (3,4):await set_perms(factory,uid,[])
-   body={'employee_id':1,'amount':50,'advance_date':'2026-10-16','source':'supervisor'}
-   if uid in (3,4):
-    denied=await c.post('/api/v1/employee-advances',headers=auth(uid),json=body);assert denied.status_code==403 and '无此操作权限' in denied.text
+   body={'employee_id':1,'amount':50,'advance_date':'2026-10-16','source':'supervisor','funding_source':'company_account','payment_account_id':1}
+   if uid==4:
+    await enable(factory);body['employee_id']=5
+   if uid==3:
+    denied=await c.post('/api/v1/employee-advances',headers=auth(uid),json=body);assert denied.status_code==403 and set(denied.json())=={'detail'}
     await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY['employee_advances'].label])
-   other=await c.post('/api/v1/employee-advances',headers=auth(uid),json={**body,'employee_id':2});assert other.status_code==404,other.text
-   good=await c.post('/api/v1/employee-advances',headers=auth(uid),json=body);assert good.status_code==200 and good.json()['approval_status']=='approved',good.text
+   other=await c.post('/api/v1/employee-advances',headers=auth(uid),json={**body,'employee_id':2});assert other.status_code==(403 if uid in (2,4) else 404),other.text
+   if uid==2:
+    denied=await c.post('/api/v1/employee-advances',headers=auth(uid),json=body);assert denied.status_code==403
+    denied=await c.request('DELETE','/api/v1/employee-advances/100',headers=auth(uid),json={'void_reason':'测试'});assert denied.status_code==403
+    async with factory() as db:assert not (await db.execute(select(EmployeeAdvance))).scalars().all()
+    return
+   good=await c.post('/api/v1/employee-advances',headers=auth(uid),json=body);assert good.status_code==200 and good.json()['approval_status']=='pending',good.text
    async with factory() as db:
     db.add(EmployeeAdvance(id=100,employee_id=2,warehouse_id=2,amount=50,advance_date=datetime(2026,10,16).date(),period='2026-10',approval_status='pending'));await db.commit()
    baddelete=await c.request('DELETE','/api/v1/employee-advances/100',headers=auth(uid),json={'void_reason':'测试'});assert baddelete.status_code==(404 if uid==1 else 403)
+   await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY['employee_advances'].label])
    for status in ('pending','approved'):
     rows=(await c.get('/api/v1/employee-advances',headers=auth(uid),params={'approval_status':status})).json()['data'];assert all(r['id']!=100 for r in rows)
    deleted=await c.request('DELETE','/api/v1/employee-advances/'+str(good.json()['id']),headers=auth(uid),json={'void_reason':'测试'});assert deleted.status_code==(200 if uid==1 else 403)

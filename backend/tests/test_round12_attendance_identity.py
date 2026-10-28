@@ -142,7 +142,13 @@ def test_link_and_timestamp_are_server_owned(tmp_path, monkeypatch):
             r = await client.get('/api/v1/users/permissions', headers=auth(1))
             flag = next(item for item in r.json() if item['menu_key'] == 'attendance_enabled')
             assert flag['label'] == '纳入考勤' and flag['selectable'] is False and flag['path'] == ''
-            assert len([p for p in MENU_PERMISSIONS if p.selectable]) == 34
+            # The catalogue gained modules; attendance identity remains a separate switch.
+            assert {p['menu_key'] for p in r.json() if p['selectable']} == {p.menu_key for p in MENU_PERMISSIONS if p.selectable}
+            actions = await client.get('/api/v1/access/catalog?role=supervisor',headers=auth(1))
+            assert actions.status_code == 200
+            modules = {m['key']:m for m in actions.json()['modules']}
+            assert not modules['payroll']['tiers']['operate']['allowed']
+            assert modules['leave']['tiers']['approve']['allowed']
     asyncio.run(run())
 
 

@@ -102,6 +102,17 @@ def test_each_write_rejects_labor_without_changes_even_with_permissions(tmp_path
     asyncio.run(run())
 
 
+def current_status(case, uid, granted):
+    """Confirmed role ceilings; this fixture has no valid plan funding approval."""
+    path = case[1]
+    if path == '/market/{item_id}/confirm': return 200 if uid == 2 else 403
+    if uid == 2 or (uid in (3,4) and not granted): return 403
+    if path.startswith('/accounts/') and uid != 1: return 403
+    if uid == 4 and path.startswith(('/income-expense/','/payable/','/credit/')): return 403
+    if path == '/payable/plans/{plan_id}/execute': return 409
+    return 200
+
+
 async def no_guard():
     """仅测试用：恢复加守卫前的依赖行为，不修改处理函数或其他依赖。"""
 
@@ -120,10 +131,9 @@ def test_all_other_roles_preserve_original_responses(tmp_path, monkeypatch, case
                         await set_perms(factory,uid,ALL_PERMISSIONS)
                     response = await call(client,case,uid)
                     results.append((response.status_code,response.json()))
-                    if case[1]=="/market/{item_id}/confirm" and (uid==1 or granted):
-                        assert response.status_code==403 and "只有超级管理员" in response.text
-                    elif uid==1 or granted:
-                        assert response.status_code==200,response.text
+                    expected = current_status(case, uid, granted)
+                    assert response.status_code == expected, response.text
+                    if expected >= 400: assert response.json().get('detail') and 'data' not in response.json()
         assert results[0]==results[1],results
     asyncio.run(run())
 
@@ -145,7 +155,7 @@ def test_batch_report_admin_all_fifteen_and_original_credit_rejection(tmp_path, 
                         (await db.get(PaymentAccount,1)).status = 'active'
                         await db.commit()
                 response = await call(client,case,1)
-                expected=403 if case[1]=='/market/{item_id}/confirm' else 200
+                expected=current_status(case,1,False)
                 assert response.status_code==expected,response.text
                 row['warehouse_admin']={'status':response.status_code,'body':response.json()}
             # Correct a previous static-audit false positive: existing explicit role branch.
@@ -175,4 +185,4 @@ def test_original_fifteen_stay_protected_under_current_management_router():
     assert result['unprotected_or_unclassified']==[]
     for route in app.routes:
         if isinstance(route,APIRoute) and (route.openapi_extra or {}).get('x-access-kind') in MANAGEMENT:
-            assert route.dependant.dependencies[0].call is require_non_labor
+            assert require_non_labor in list(__import__('scripts.audit_management_access',fromlist=['dependencies']).dependencies(route.dependant))

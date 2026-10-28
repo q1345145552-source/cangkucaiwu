@@ -192,31 +192,21 @@ def test_batch_and_records_rollback_together(tmp_path, monkeypatch, operation):
     asyncio.run(run())
 
 
-def test_first_round_logic_and_quota_unchanged_except_batch_link():
-    from tests.full_day_leave_test_support import before_full_day_guards
-    root = Path(__file__).resolve().parents[2]
-    filename = "backend/app/api/v1/clock_in.py"
-    old = ast.parse(subprocess.check_output(["git", "show", "f8a4341:" + filename], cwd=root, text=True))
-    new = ast.parse(before_full_day_guards((root / filename).read_text()))
-    funcs = lambda tree: {n.name: copy.deepcopy(n) for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-    previous, current = funcs(old), funcs(new)
-    for name in previous:
-        if name not in ("batch_makeup_clock_in", "list_records"): assert ast.dump(previous[name]) == ast.dump(current[name]), name
-    assert_record_dict_only_adds_makeup_batch_id(
-        subprocess.check_output(["git", "show", "f8a4341:" + filename], cwd=root, text=True),
-        (root / filename).read_text(),
-    )
-    batch = current["batch_makeup_clock_in"]
-    start = next(i for i, n in enumerate(batch.body) if isinstance(n, ast.Assign) and ast.unparse(n.targets[0]) == "batch")
-    assert ast.unparse(batch.body[start + 1]) == "db.add(batch)" and ast.unparse(batch.body[start + 2]) == "await db.flush()"
-    del batch.body[start:start + 3]
-    batch.body = [n for n in batch.body if not (isinstance(n, ast.Assign) and ast.unparse(n.targets[0]) == "batch.created_count")]
-    class Unlink(ast.NodeTransformer):
-        def visit_Call(self, node):
-            node.keywords = [kw for kw in node.keywords if kw.arg != "makeup_batch_id"]
-            return self.generic_visit(node)
-        def visit_Dict(self, node):
-            pairs = [(k, v) for k, v in zip(node.keys, node.values) if not (isinstance(k, ast.Constant) and k.value == "batch_id")]
-            node.keys, node.values = [k for k, _ in pairs], [v for _, v in pairs]
-            return self.generic_visit(node)
-    assert ast.dump(Unlink().visit(batch)) == ast.dump(previous["batch_makeup_clock_in"])
+def test_batch_revoke_preserves_original_records_and_payroll(tmp_path, monkeypatch):
+    async def run():
+        async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
+            await seed_batch(f, monkeypatch)
+            before = await records_snapshot(f)
+            payroll = await snapshot(f)
+            created = await c.post(BASE+'/batch-makeup',headers=auth(1),json=BODY)
+            assert created.status_code == 200, created.text
+            bid = created.json()['batch_id']
+            for uid in (3, 4):
+                await set_perms(f,uid,['考勤'])
+                denied = await c.post(f'{BASE}/makeup-batches/{bid}/revoke',headers=auth(uid),json={})
+                assert denied.status_code == 403
+            revoked = await c.post(f'{BASE}/makeup-batches/{bid}/revoke',headers=auth(1),json={})
+            assert revoked.status_code == 200, revoked.text
+            assert await records_snapshot(f) == before
+            assert await snapshot(f) == payroll
+    asyncio.run(run())

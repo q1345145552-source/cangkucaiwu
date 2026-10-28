@@ -27,7 +27,7 @@ BASE = "/api/v1/employee-advances"
 
 
 async def create(client, uid=None, **extra):
-    response = await client.post(BASE, headers=auth(4 if uid is None else uid), json=funding_body(BODY, extra))
+    response = await client.post(BASE, headers=auth(126 if uid is None else uid), json=funding_body(BODY, extra))
     assert response.status_code == 200, response.text
     created=response.json()
     if uid is None:

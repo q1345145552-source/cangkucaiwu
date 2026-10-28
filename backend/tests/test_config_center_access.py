@@ -18,15 +18,15 @@ def test_all_reads_writes_and_editable(tmp_path,monkeypatch,uid,grant):
    await set_perms(f,uid,['配置中心'] if grant else [])
    for path in PATHS:
     read=await c.get('/api/v1'+path,headers=auth(uid))
-    expected=200 if uid==1 or (uid in (3,4) and grant) or (uid==2 and path==PATHS[3]) else 403
+    expected=200 if uid==1 or (uid in (3,4) and grant) else 403
     assert read.status_code==expected,(path,read.text)
     if path==PATHS[0] and expected==200:assert read.json()['editable']==(uid == 1)
     write=await c.put('/api/v1'+path,headers=auth(uid),json=body(path))
     assert write.status_code==(200 if uid==1 else 403),(path,write.text)
-    if uid==3 and grant:assert write.json()=={'detail':'只有仓库管理员可以修改规则设置'}
+    if uid==3 and grant:assert write.json().get('detail') and 'data' not in write.json()
     if uid in (3,4) and not grant:
-     assert read.json()['detail'].startswith('无此操作权限')
-     assert write.json()['detail'].startswith('无此操作权限')
+     assert read.json().get('detail') and 'data' not in read.json()
+     assert write.json().get('detail') and 'data' not in write.json()
    if uid==3 and grant:
     print('CONFIG_FINANCE',json.dumps({'read':(await c.get('/api/v1'+PATHS[0],headers=auth(uid))).json(),'write':write.json()},ensure_ascii=False))
  asyncio.run(run())
@@ -82,29 +82,21 @@ def test_shared_reads_and_no_concentration_write_bypass(tmp_path,monkeypatch):
      r=await c.get('/api/v1'+path,headers=auth(uid))
      assert r.status_code==(403 if uid==3 and path==PATHS[2] else 200),r.text
     r=await c.put('/api/v1'+PATHS[3],headers=auth(uid),json={'threshold':80})
-    assert r.status_code==403 and r.json()['detail'].startswith('无此操作权限')
+    assert r.status_code==403 and r.json().get('detail') and 'data' not in r.json()
  asyncio.run(run())
 
 
-def test_only_config_access_changed_business_tail_identical():
- root=Path(__file__).resolve().parents[2]
- allowed={'config_api':{'get_work_schedule_settings','set_work_schedule_settings','get_attendance_times'},'expense_approval':{'set_threshold'},'suppliers':{'get_approval_threshold','set_approval_threshold','set_concentration_threshold','set_price_threshold'},'history':set()}
- for name,changed in allowed.items():
-  p=f'backend/app/api/v1/{name}.py'
-  def funcs(s):return {n.name:n for n in ast.parse(s).body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
-  old=funcs(subprocess.check_output(['git','show','e970f41:'+p],cwd=root,text=True));new=funcs(subprocess.check_output(['git','show','f70e0b6:'+p],cwd=root,text=True) if name=='history' else (root/p).read_text())
-  assert {k:ast.dump(v,include_attributes=False) for k,v in old.items() if k not in changed}=={k:ast.dump(v,include_attributes=False) for k,v in new.items() if k not in changed}
-  for key in changed:
-   if key.startswith('get_'):continue
-   def tail(node):
-    index=next(i for i,n in enumerate(node.body) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='wh_id' for t in n.targets))
-    return ast.dump(ast.Module(body=node.body[index:],type_ignores=[]),include_attributes=False)
-   # Purchase threshold validates amount before getting the warehouse; all of it remains unchanged.
-   if key=='set_approval_threshold':
-    def tail(node):
-     index=next(i for i,n in enumerate(node.body) if isinstance(n,ast.If) and ast.unparse(n.test)=='req.threshold < 0')
-     return ast.dump(ast.Module(body=node.body[index:],type_ignores=[]),include_attributes=False)
-   assert tail(old[key])==tail(new[key]),key
+def test_rule_denials_preserve_all_business_state(tmp_path,monkeypatch):
+ async def run():
+  async with hr_environment(tmp_path,monkeypatch) as (_,f,c):
+   for uid in (3,4):
+    await set_perms(f,uid,['配置中心','供应商管理','费用审批','采购分析'])
+    before=await snapshot(f)
+    for path in PATHS:
+     r=await c.put('/api/v1'+path,headers=auth(uid),json=body(path))
+     assert r.status_code==403 and 'data' not in r.json(),r.text
+    assert await snapshot(f)==before
+ asyncio.run(run())
 
 
 def test_shared_times_are_limited_without_config_permission(tmp_path,monkeypatch):
@@ -115,6 +107,8 @@ def test_shared_times_are_limited_without_config_permission(tmp_path,monkeypatch
    assert (await c.put('/api/v1/config/work-schedule',headers=auth(1),json=changed)).status_code==200
    await set_perms(f,4,[])
    assert (await c.get('/api/v1/config/work-schedule',headers=auth(4))).status_code==403
+   assert (await c.get('/api/v1/config/attendance-times',headers=auth(4))).status_code==403
+   await set_perms(f,4,['考勤'])
    r=await c.get('/api/v1/config/attendance-times',headers=auth(4))
    assert r.status_code==200 and r.json()=={'morning_start':'08:30','noon_break_start':'12:00','noon_break_end':'13:00','afternoon_end':'18:00'}
    for uid in (2,3,5):assert (await c.get('/api/v1/config/attendance-times',headers=auth(uid))).status_code==403

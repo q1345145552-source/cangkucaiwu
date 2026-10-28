@@ -157,7 +157,9 @@ def test_income_filters_share_all_rows_summary_and_export_with_no_writes(tmp_pat
                 for filters,amounts,count in scenarios:
                     listed,_,_=await check_scope(client,'income',amounts,count,**filters)
                     assert 'SECRET-WH2' not in json.dumps(listed)
-                for uid in (3,4): await check_scope(client,'income',{'THB':1000},1,uid=uid,source='incoming')
+                await check_scope(client,'income',{'THB':1000},1,uid=3,source='incoming')
+                denied=await client.get('/api/v1/income-expense/income',headers=auth(4),params={'source':'incoming'})
+                assert denied.status_code==403 and set(denied.json())=={'detail'}
                 await check_scope(client,'income',{'THB':999},1,uid=7)
                 for uid in (2,5):
                     for path in ('income','expense','monthly-summary','income/export','expense/export'):

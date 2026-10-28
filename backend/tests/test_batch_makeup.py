@@ -211,30 +211,19 @@ def assert_record_dict_only_adds_makeup_batch_id(before_src, after_src):
     assert ast.dump(new_dict) == ast.dump(old_dict)
 
 
-def test_single_makeup_function_and_unrelated_business_unchanged():
-    from tests.full_day_leave_test_support import before_full_day_guards
-    root = Path(__file__).resolve().parents[2]
-    filename = "backend/app/api/v1/clock_in.py"
-    original = subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root, text=True)
-    current = before_full_day_guards((root / filename).read_text())
-    functions = lambda s: {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(s).body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-    old, new = functions(original), functions(current)
-    for key in old:
-        if key not in ("_count_makeup_days", "list_records"): assert new[key] == old[key], key
-    assert_record_dict_only_adds_makeup_batch_id(original, current)
-    for filename in ("backend/app/api/v1/attendance.py", "backend/app/api/v1/payroll.py", "backend/app/services/schedule.py"):
-        baseline = subprocess.check_output(["git", "show", "c515151:" + filename], cwd=root)
-        if filename.endswith("/payroll.py"):
-            # 后续资金来源、预支审批和文字轮次已验收。与本轮前版本比较所有函数，
-            # 只剥离新增的全天假工时归零，继续严格保护工资公式、补卡和付款。
-            baseline = subprocess.check_output(["git", "show", "6f9243b:" + filename], cwd=root)
-            before_funcs, after_funcs = functions(baseline), functions(before_full_day_guards((root / filename).read_text()))
-            assert before_funcs == after_funcs
-        else:
-            assert ast.dump(ast.parse(before_full_day_guards((root / filename).read_text()))) == ast.dump(ast.parse(baseline))
-
-    # 本轮只给唯一清单追加垫款单；其余菜单仍与补卡前相同。
-    registry = "backend/app/core/menu_registry.py"
-    current_registry = (root / registry).read_text()
-    without_cash = "\n".join(line for line in current_registry.split("\n") if 'MenuPermission("cash_advances"' not in line)
-    assert without_cash == subprocess.check_output(["git", "show", "c515151:" + registry], cwd=root, text=True)
+def test_batch_makeup_replay_preserves_quota_and_payroll(tmp_path, monkeypatch):
+    # Replace old whole-function snapshots with real route/state invariants.
+    async def run():
+        async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
+            await seed_batch(f, monkeypatch)
+            before = await snapshot(f)
+            quota_path = '/api/v1/clock-in/makeup-count?employee_id=1&date=2026-10-18'
+            quota = await c.get(quota_path, headers=auth(1))
+            assert quota.status_code == 200 and quota.json() == {'used_days':1,'remaining':1}
+            created = await c.post('/api/v1/clock-in/batch-makeup', headers=auth(1), json=BODY)
+            assert created.status_code == 200 and created.json()['created_count'] == 4, created.text
+            repeated = await c.post('/api/v1/clock-in/batch-makeup', headers=auth(1), json=BODY)
+            assert repeated.status_code == 200 and repeated.json()['created_count'] == 0
+            assert (await c.get(quota_path, headers=auth(1))).json() == quota.json()
+            assert await snapshot(f) == before
+    asyncio.run(run())

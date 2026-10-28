@@ -24,7 +24,8 @@ async def current_supplier_warehouse(request: Request, user=Depends(get_current_
 
 def can_read_bills(user):
     labels = {MENU_PERMISSIONS_BY_KEY[k].label for k in ('payable', 'payment_plans')}
-    return user.role == Role.WAREHOUSE_ADMIN or any(has_module(user,k,'view') for k in ('payable','payment_plans'))
+    return user.role == Role.WAREHOUSE_ADMIN or (user.role == Role.STAFF and any(
+        has_module(user,k,'view') for k in ('payable','payment_plans')))
 
 
 async def owned(db, model, ident, warehouse_id, label):

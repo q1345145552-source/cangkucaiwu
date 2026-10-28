@@ -120,7 +120,10 @@ def test_edit_void_preserves_history_and_account_with_any_repayment_is_locked(tm
             row=await post(c);sid=row['id']; data=payload(amount='450',order_count=2);data.pop('request_key')
             changed=await c.put(f'/api/v1/credit/1/shipment/{sid}',headers=auth(3),json=data)
             assert changed.status_code==200 and changed.json()['current_debt']==450
-            void=await c.post(f'/api/v1/credit/1/shipment/{sid}/void',headers=auth(4),json={'reason':'录入批次错误'})
+            denied=await c.post(f'/api/v1/credit/1/shipment/{sid}/void',headers=auth(4),json={'reason':'录入批次错误'})
+            assert denied.status_code==403
+            async with f() as db:assert (await db.get(CreditShipment,sid)).amount==450 and (await db.get(CreditShipment,sid)).status=='active'
+            void=await c.post(f'/api/v1/credit/1/shipment/{sid}/void',headers=auth(1),json={'reason':'录入批次错误'})
             assert void.status_code==200 and void.json()['current_debt']==0 and void.json()['status']=='voided'
             assert (await c.post(f'/api/v1/credit/1/shipment/{sid}/void',headers=auth(1),json={'reason':'重复'})).status_code==400
             detail=(await c.get('/api/v1/credit/1/detail',headers=auth(1))).json()
@@ -129,7 +132,7 @@ def test_edit_void_preserves_history_and_account_with_any_repayment_is_locked(tm
             for path in ['/credit','/credit/dashboard','/credit/alerts','/credit/assessment']:
                 response=await c.get('/api/v1'+path,headers=auth(1));assert response.status_code==200,response.text
             async with f() as db:
-                assert (await db.get(CreditShipment,sid)).voided_by==4
+                assert (await db.get(CreditShipment,sid)).voided_by==1
                 assert (await db.execute(select(func.count(DataChangeHistory.id)).where(DataChangeHistory.module=='credit'))).scalar_one()==3
             row=await post(c,cid=3)
             async with f() as db:
@@ -173,7 +176,7 @@ def test_permission_scope_ids_and_invalid_payload(tmp_path,monkeypatch):
                 for method,path,body in [('GET','/credit/shipments',None),('POST','/credit/1/shipment',payload()),('PUT',f'/credit/1/shipment/{sid}',{k:v for k,v in payload().items() if k!='request_key'}),('POST',f'/credit/1/shipment/{sid}/void',{'reason':'test'})]:
                     r=await c.request(method,'/api/v1'+path,headers=auth(uid),json=body);assert r.status_code==403
                 statuses[str(uid)]=403
-            for uid in (3,4): assert (await c.get('/api/v1/credit/shipments',headers=auth(uid))).status_code==200
+            for uid in (3,4): assert (await c.get('/api/v1/credit/shipments',headers=auth(uid))).status_code==(200 if uid==3 else 403)
             async with f() as db:
                 (await db.get(User,3)).extra_permissions=[];await db.commit()
             assert (await c.get('/api/v1/credit/shipments',headers=auth(3))).status_code==403
@@ -222,7 +225,7 @@ def test_role_writes_year_bounds_currency_snapshot_and_savepoint_failure(tmp_pat
     async def run():
         from sqlalchemy.ext.asyncio import AsyncConnection
         async with shipments_environment(tmp_path,monkeypatch) as (engine,f,c):
-            for uid,value,when in [(3,'0.10','2026-12-31'),(4,'0.20','2027-01-01')]:
+            for uid,value,when in [(3,'0.10','2026-12-31'),(1,'0.20','2027-01-01')]:
                 row=await post(c,uid=uid,amount=value,ship_date=when,order_count=1)
                 assert row['current_debt']==(.1 if uid==3 else .3)
             for month,value in [('2026-12',.1),('2027-01',.2)]:

@@ -70,7 +70,7 @@ def test_disburse_reverse_reissue_and_reports(tmp_path,monkeypatch,uid):
    assert linked['payroll_record_id']==2 and linked['amount']==1234.56
    ledger=await c.get('/api/v1/income-expense/ledger?source=manual&flow_type=expense',headers=auth(1));assert ledger.status_code==200,ledger.text
    assert ledger.json()['total_expense']==1234.56
-   legacy_ledger_label=any('员工工资' in x['remark'] for x in ledger.json()['data'])
+   legacy_ledger_label=any(x['category_name']=='员工工资' and x['remark']=='仓1 10-01到10-15 1人' for x in ledger.json()['data'])
    summary=await c.get('/api/v1/income-expense/monthly-summary?category_group=operating',headers=auth(1))
    assert summary.status_code==200 and summary.json()["total_expense"]==1234.56,summary.text
    report=await c.get("/api/v1/reports/income-expense",headers=auth(1));assert report.status_code==200,report.text

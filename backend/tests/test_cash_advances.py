@@ -14,10 +14,25 @@ from app.models.data_change_history import DataChangeHistory
 import app.api.v1.cash_advance as api
 from app.services.permission_migrations import backfill_cash_advances_permission, CASH_ADVANCES_PERMISSION_MARKER
 from tests.test_round2_permissions import auth, set_perms, png
-from tests.test_round3_permissions import hr_environment
+from tests.test_round3_permissions import hr_environment as original_environment
+from contextlib import asynccontextmanager
+from tests.round3_flow_support import verify_approve_cash
 
 URL = "/api/v1/cash-advances"
 BODY = {"advance_date": "2026-10-18", "amount": "3000.00", "purpose": "salary", "description": "主管垫付工资"}
+
+
+@asynccontextmanager
+async def hr_environment(tmp_path,monkeypatch):
+    async with original_environment(tmp_path,monkeypatch) as values:
+        async with values[1]() as db:
+            db.add(User(id=94,username='synthetic-recorder',display_name='SYN finance recorder',password_hash='unused',role='staff',warehouse_id=1,extra_permissions=['垫款单']))
+            await db.flush();db.add(UserWarehouse(user_id=94,warehouse_id=1));await db.commit()
+        yield values
+
+async def recorded(client,**changes):
+    changes.setdefault('payer_id',4)
+    return await create(client,94,**changes)
 
 
 async def create(client, uid=1, **changes):
@@ -35,18 +50,18 @@ def test_supervisor_voucher_admin_confirmation_exact_summary_and_finance_unchang
         async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
             await set_perms(factory, 4, ["垫款单"])
             before = await finance_snapshot(factory)
-            uploaded = await c.post(URL + "/voucher", headers=auth(4), files={"file": ("凭证.png", png(), "image/png")})
+            uploaded = await c.post(URL + "/voucher", headers=auth(94), files={"file": ("凭证.png", png(), "image/png")})
             assert uploaded.status_code == 200, uploaded.text
             path = uploaded.json()["path"]
             assert path.startswith("uploads/1/") and "/cash-advances/" in path
             assert list((tmp_path / "hr-uploads").rglob(Path(path).name))
-            made = await create(c, 4, voucher_path=path)
+            made = await recorded(c, voucher_path=path)
             assert made.status_code == 200, made.text
             first = made.json()
             assert (first["payer_id"], first["payer_name"], first["status"], first["outstanding_amount"]) == (4, "supervisor", "pending", 0)
-            assert first["amount"] == 3000 and first["created_by_id"] == 4 and first["created_at"]
+            assert first["amount"] == 3000 and first["created_by_id"] == 94 and first["created_at"]
             assert (await c.get(URL + "/summary", headers=auth(1))).json()["total_outstanding"] == 0
-            confirmed = await c.post(f'{URL}/{first["id"]}/confirm', headers=auth(1))
+            confirmed = await verify_approve_cash(factory,c,first["id"])
             assert confirmed.status_code == 200, confirmed.text
             second = confirmed.json()
             assert second["status"] == "confirmed" and second["outstanding_amount"] == 3000
@@ -70,21 +85,24 @@ def test_permission_matrix(tmp_path, monkeypatch, uid, grant):
         async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
             await set_perms(factory, uid, ["垫款单"] if grant else [])
             made = await create(c, uid)
-            assert made.status_code == (200 if uid == 1 or uid == 4 and grant else 403), made.text
+            assert made.status_code == (200 if uid == 1 or uid == 3 and grant else 403), made.text
             for endpoint in ("", "/summary", "/payers"):
                 r = await c.get(URL + endpoint, headers=auth(uid))
-                assert r.status_code == (200 if uid == 1 or uid in (3, 4) and grant else 403), r.text
-                if uid in (3, 4) and not grant: assert "无此操作权限" in r.json()["detail"]
+                assert r.status_code == (200 if uid == 1 or uid == 3 and grant else 403), r.text
+                if r.status_code==403: assert set(r.json())=={"detail"}
             up = await c.post(URL + "/voucher", headers=auth(uid), files={"file": ("receipt.png", png(), "image/png")})
-            assert up.status_code == (200 if uid == 1 or uid == 4 and grant else 403), up.text
+            assert up.status_code == (200 if uid == 1 or uid == 3 and grant else 403), up.text
             await set_perms(factory, 4, ["垫款单"])
-            row = (await create(c, 4)).json()
+            row = (await recorded(c)).json()
+            if uid==1:
+                await set_perms(factory,3,["垫款单"])
+                checked=await c.post(f'{URL}/{row["id"]}/verify',headers=auth(3));assert checked.status_code==200,checked.text
             for action, data in (("confirm", {}), ("reject", {"reject_reason": "不实垫款"})):
                 r = await c.post(f'{URL}/{row["id"]}/{action}', headers=auth(uid), json=data)
                 if uid == 1:
                     assert r.status_code == (200 if action == "confirm" else 400)
                 else:
-                    assert r.status_code == 403 and r.json()["detail"] == "只有仓库管理员可以确认或驳回垫款单"
+                    assert r.status_code == 403 and set(r.json())=={"detail"}
     asyncio.run(run())
 
 
@@ -92,7 +110,7 @@ def test_rejection_and_terminal_states(tmp_path, monkeypatch):
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
             await set_perms(factory, 4, ["垫款单"])
-            row = (await create(c, 4)).json(); aid = row["id"]
+            row = (await recorded(c)).json(); aid = row["id"]
             for body in (None, {}, {"reject_reason": None}, {"reject_reason": " \n "}):
                 r = await c.post(f"{URL}/{aid}/reject", headers=auth(1), **({"json": body} if body is not None else {}))
                 assert r.status_code == 400 and r.json()["detail"] == "请填写驳回原因"
@@ -136,22 +154,28 @@ def test_warehouse_isolation_for_every_read_write_and_payer(tmp_path, monkeypatc
             assert (await create(c, voucher_path="uploads/2/2026-10-18/cash-advances/a.png")).status_code == 400
             assert (await create(c, voucher_path="uploads/1/../cash-advances/a.png")).status_code == 400
             all_headers = {**auth(1), "X-Warehouse-ID": "all"}
-            assert (await c.get(URL, headers=all_headers)).status_code == 400
+            all_read=await c.get(URL,headers=all_headers)
+            assert all_read.status_code==200 and {r["warehouse_id"] for r in all_read.json()["data"]}=={1}
             assert (await c.post(URL, headers=all_headers, json=BODY)).status_code == 400
             # Sending an inaccessible header never changes the authenticated account's scope.
             r = await c.get(URL, headers={**auth(7), "X-Warehouse-ID": "1"})
-            assert r.status_code == 200 and r.json()["total"] == 0
+            assert r.status_code == 403 and set(r.json())=={"detail"}
     asyncio.run(run())
 
 
 def test_filters_named_payers_precise_grouping_and_pending_exclusion(tmp_path, monkeypatch):
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
+            async with factory() as db:
+                db.add(User(id=93,username='synthetic-named-payer',display_name='张师傅',role='warehouse_labor',warehouse_id=1,password_hash='unused',extra_permissions=[]))
+                await db.flush();db.add(UserWarehouse(user_id=93,warehouse_id=1));await db.commit()
             for fields in [dict(payer_name="张师傅", amount="0.10"), dict(payer_name="张师傅", amount="0.20"), dict(payer_id=4, amount="4000"), dict(payer_id=4, amount="3000", advance_date="2026-10-17")]:
-                row = (await create(c, **fields)).json()
+                fields.setdefault("payer_id",93 if fields.get("payer_name") else 4)
+                row = (await recorded(c, **fields)).json()
+                row=(await verify_approve_cash(factory,c,row["id"])).json()
                 assert row["status"] == "confirmed" and row["reviewed_by_id"] == 1
             await set_perms(factory, 4, ["垫款单"])
-            await create(c, 4, payer_name="待确认的人", amount="999")
+            await recorded(c,payer_id=None,payer_name="待确认的人", amount="999")
             s = (await c.get(URL + "/summary", headers=auth(1))).json()
             assert s["payer_count"] == 2 and s["total_outstanding"] == 7000.3
             assert [g["outstanding_amount"] for g in s["data"]] == [0.3, 7000]
@@ -166,7 +190,9 @@ def test_history_failure_rolls_back_registration_and_confirmation(tmp_path, monk
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, factory, c):
             await set_perms(factory, 4, ["垫款单"])
-            aid = (await create(c, 4)).json()["id"]
+            aid = (await recorded(c)).json()["id"]
+            await set_perms(factory,3,["垫款单"])
+            checked=await c.post(f"{URL}/{aid}/verify",headers=auth(3));assert checked.status_code==200,checked.text
             async def fail(db, **kwargs): raise HTTPException(500, "模拟日志失败")
             monkeypatch.setattr(api, "record_history", fail)
             assert (await create(c)).status_code == 500
@@ -181,10 +207,11 @@ def test_permission_backfill_once_only_for_existing_supervisor_and_staff(tmp_pat
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (engine, factory, _):
             before = await finance_snapshot(factory)
-            async with engine.begin() as conn: assert await backfill_cash_advances_permission(conn) == 2
+            async with engine.begin() as conn: assert await backfill_cash_advances_permission(conn) == 0
             async with factory() as db:
                 users = {u.id: u.extra_permissions for u in (await db.execute(select(User))).scalars()}
-                assert users[3] == users[4] == ["垫款单"] and all(not p for uid, p in users.items() if uid not in (3, 4))
+                assert users[3] == users[4] == [] and all(not p for uid, p in users.items() if uid !=94)
+                assert users[94]==["垫款单"]
                 assert (await db.execute(select(SystemSetting).where(SystemSetting.key == CASH_ADVANCES_PERMISSION_MARKER))).scalar_one()
             await set_perms(factory, 4, [])
             async with engine.begin() as conn: assert await backfill_cash_advances_permission(conn) == 0

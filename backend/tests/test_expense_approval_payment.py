@@ -227,7 +227,8 @@ def test_roles_grants_warehouse_currency_and_voucher(tmp_path, monkeypatch):
             for uid in (2, 5):
                 assert (await client.get("/api/v1/expense-approvals", headers=auth(uid))).status_code == 403
             for uid in (3, 4):
-                assert (await client.get("/api/v1/expense-approvals", headers=auth(uid))).status_code == 200
+                # The unbound supervisor cannot read a personal application list.
+                assert (await client.get("/api/v1/expense-approvals", headers=auth(uid))).status_code == (200 if uid==3 else 403)
                 async with factory() as db:
                     (await db.get(User, uid)).extra_permissions = []
                     await db.commit()
@@ -340,12 +341,32 @@ def test_cash_advance_wage_reimbursement_and_repayment_do_not_duplicate_wallet_c
                 db.add(PayrollRecord(id=1, warehouse_id=1, employee_id=1, period="2026-10", half="first_half", status="confirmed", net_pay=7000))
                 db.add(Reimbursement(id=1, warehouse_id=1, employee_id=4, submit_date=datetime(2026,10,20), total_amount=2000, currency="THB", status="approved"))
                 await db.commit()
-            created = await client.post("/api/v1/cash-advances", headers=auth(1), json={
+            from tests.round3_flow_support import grants,verify_approve_cash,prepare_payroll
+            await grants(factory)
+            async with factory() as db:
+                actor=await db.get(User,4);actor.extra_permissions=['垫款单','报销管理']
+                from app.models import UserWarehouse
+                db.add(User(id=94,username='synthetic-independent-recorder',display_name='SYNTHETIC finance recorder',role='staff',warehouse_id=1,password_hash='unused',extra_permissions=['@wf-actions:1','cash_advances:operate']))
+                await db.flush();db.add(UserWarehouse(user_id=94,warehouse_id=1));await db.commit()
+            created = await client.post("/api/v1/cash-advances", headers=auth(94), json={
                 "advance_date":"2026-10-20", "amount":"10000.00", "currency":"THB", "purpose":"salary", "payer_id":4})
             assert created.status_code == 200, created.text
             aid = created.json()["id"]
+            await verify_approve_cash(factory,client,aid)
+            await prepare_payroll(factory,client,1)
+            # Seeded historical approved text is not valid funding approval. Use
+            # actual verification and administrator decisions for the same 2000.
+            from app.models.reimbursement import ReimbursementItem
+            async with factory() as db:
+                row=await db.get(Reimbursement,1);row.status='pending'
+                db.add(ReimbursementItem(id=1,reimbursement_id=1,category='交通费',amount=2000,description='SYNTHETIC'))
+                await db.commit()
+            verified=await client.post('/api/v1/reimbursement/1/verify',headers=auth(3))
+            assert verified.status_code==200,verified.text
+            approved=await client.post('/api/v1/reimbursement/1/review',headers=auth(1),json={'items':[{'item_id':1,'status':'approved'}]})
+            assert approved.status_code==200,approved.text
             initial = await numbers(factory)
-            wages = await client.post("/api/v1/payroll/1/disburse", headers=auth(1), json={"funding_source":"cash_advance", "cash_advance_id":aid})
+            wages = await client.post("/api/v1/payroll/1/disburse", headers=auth(3), json={"funding_source":"cash_advance", "cash_advance_id":aid})
             assert wages.status_code == 200, wages.text
             reimb = await reimb_pay(client, 1, await upload(client,1), funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
             assert reimb.status_code == 200, reimb.text

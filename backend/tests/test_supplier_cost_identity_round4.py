@@ -1,3 +1,4 @@
+from tests.test_supplier_workflow_round1 import funded_payment
 """Only disposable localhost PostgreSQL: four channels, actual HTTP and transaction rollback."""
 import asyncio,json,os,uuid,itertools
 from contextlib import asynccontextmanager
@@ -59,11 +60,11 @@ def test_exact_origin_voucher_keeps_legacy_paths_private_and_scoped(tmp_path,mon
                 if statement.lstrip().upper().startswith(('INSERT','UPDATE','DELETE')):changes.append(statement)
             event.listen(engine.sync_engine,'before_cursor_execute',trace)
             try:
-                for uid in (1,3,8):
+                for uid in (1,3):
                     response=await c.get(path,headers={**auth(uid),'X-Warehouse-ID':'1'},params={'voucher_index':0})
                     assert response.status_code==200 and response.content==png(),(response.status_code,response.text)
                     assert response.headers['cache-control']=='private, no-store'
-                for uid in (2,4,5):
+                for uid in (2,4,5,8):
                     assert (await c.get(path,headers={**auth(uid),'X-Warehouse-ID':'1'},params={'voucher_index':0})).status_code==403
                 assert (await c.get(path,headers={**auth(7),'X-Warehouse-ID':'2'},params={'voucher_index':0})).status_code==404
                 assert (await c.get(path,headers=auth(1),params={'voucher_index':1})).status_code==404
@@ -79,7 +80,7 @@ def test_exact_origin_voucher_keeps_legacy_paths_private_and_scoped(tmp_path,mon
             assert (await c.get(path,headers=auth(1),params={'voucher_index':0})).status_code==404
             # The general upload route remains closed for unscoped legacy paths.
             assert (await c.get(legacy_path,headers=auth(1))).status_code==404
-            actual('exact_origin_voucher',{'authorized_roles':[1,3,8],'denied_roles':[2,4,5],'cross_warehouse':404,'read_write_queries':changes,'generic_upload_policy_unchanged':True})
+            actual('exact_origin_voucher',{'authorized_roles':[1,3],'denied_roles':[2,4,5,8],'cross_warehouse':404,'read_write_queries':changes,'generic_upload_policy_unchanged':True})
     asyncio.run(run())
 
 async def create(c,kind,receipt,*,identity=None,amount=100,supplier=1,key=None,confirmation=None,code=200,activate=True,uid=1):
@@ -229,9 +230,9 @@ def test_installments_void_paid_protection_and_unpaid_reopen(tmp_path,monkeypatc
     async def run():
         async with fixture(tmp_path,monkeypatch) as (_,f,c,receipt):
             a=await create(c,'payable',receipt,identity=invoice(),amount=1000)
-            await request(c,'PUT',f'/payable/{a["id"]}/pay',params={'paid_amount':300,'account_id':1,'request_key':'cost-part-300'})
+            await funded_payment(c,'PUT',f'/payable/{a["id"]}/pay',params={'paid_amount':300,'account_id':1,'request_key':'cost-part-300'})
             async with f() as db:assert (await db.execute(select(func.count(CostIdentity.id)))).scalar_one()==1
-            await request(c,'PUT',f'/payable/{a["id"]}/pay',params={'paid_amount':700,'account_id':1,'request_key':'cost-part-700'})
+            await funded_payment(c,'PUT',f'/payable/{a["id"]}/pay',params={'paid_amount':700,'account_id':1,'request_key':'cost-part-700'})
             async with f() as db:
                 assert (await db.execute(select(func.count(CostIdentity.id)))).scalar_one()==1
                 assert (await db.execute(select(func.count(PayablePayment.id)))).scalar_one()==2
@@ -241,7 +242,7 @@ def test_installments_void_paid_protection_and_unpaid_reopen(tmp_path,monkeypatc
             await request(c,'PUT',f'/payable/{unpaid["id"]}/void',params={'void_reason':'未付原单作废'})
             reopened=await create(c,'fund_item',receipt,identity=invoice('UNPAID'),amount=110)
             partial=await create(c,'payable',receipt,identity=invoice('PART'),amount=120)
-            await request(c,'PUT',f'/payable/{partial["id"]}/pay',params={'paid_amount':20,'account_id':1,'request_key':'cost-part-20'})
+            await funded_payment(c,'PUT',f'/payable/{partial["id"]}/pay',params={'paid_amount':20,'account_id':1,'request_key':'cost-part-20'})
             await request(c,'PUT',f'/payable/{partial["id"]}/void',params={'void_reason':'保留已付部分'})
             blocked=await create(c,'expense',receipt,identity=invoice('PART'),amount=120,code=409)
             actual('installments_lifecycle',{'first':a,'unpaid':unpaid,'reopened':reopened,'part_paid_blocked':blocked,'snapshot':await snapshot(f)})
@@ -295,8 +296,10 @@ def test_alias_exact_identity_scope_and_private_candidates(tmp_path,monkeypatch)
             await create(c,'payable',receipt,identity=invoice(),supplier=3,amount=900,code=409)
             async with f() as db:
                 (await db.get(User,4)).extra_permissions=['应付账款'];await db.commit()
-            hidden=await create(c,'payable',receipt,identity=invoice('ALIAS-OTHER'),supplier=3,amount=102,uid=4,code=409)
-            assert hidden['detail']['code']=='cost_duplicate_restricted' and 'candidates' not in hidden['detail']
+            denied=await create(c,'payable',receipt,identity=invoice('ALIAS-OTHER'),supplier=3,amount=102,uid=4,code=403)
+            assert set(denied)=={'detail'}
+            hidden=await create(c,'payable',receipt,identity=invoice('ALIAS-OTHER'),supplier=3,amount=102,uid=3,code=403)
+            assert set(hidden)=={'detail'} and 'candidates' not in hidden['detail']  # Role ceiling refuses creation before candidate disclosure.
             assert '102' not in json.dumps(hidden) and 'href' not in json.dumps(hidden)
             for uid in (2,5):
                 await request(c,'GET','/expense-identities/suppliers',uid=uid,code=403)
@@ -391,7 +394,16 @@ def test_photo_failure_rolls_back_registry_and_disbursement_is_not_a_cost_root(t
             await create(c,'payable',receipt,identity=invoice(),code=500)
             assert await snapshot(f)==before
             monkeypatch.setattr(images,'save_image',original)
-            topup=await request(c,'POST','/expense-fund/accounts/1/topup',json={'amount':500,'payment_account_id':1,'receive_date':'2026-10-26'})
+            await request(c,'POST','/expense-fund/accounts/1/topup',code=403,json={'amount':500,'payment_account_id':1,'receive_date':'2026-10-26'})
+            from app.models import User,Employee
+            async with f() as db:
+                db.add(Employee(id=40,warehouse_id=1,user_id=4,name='SYN fund owner',status='regular'));await db.flush()
+                u=await db.get(User,4);u.attendance_enabled=True;u.attendance_employee_id=40;u.extra_permissions=['备用金管理']
+                await db.commit()
+            applied=await request(c,'POST','/expense-fund/recharge/request',uid=4,json={'amount':500,'reason':'SYN requested funds'})
+            for action,actor in [('verify',97),('approve',96)]:
+                await request(c,'POST','/expense-fund/recharge/review',uid=actor,json={'request_id':applied['id'],'action':action})
+            topup=await request(c,'POST','/expense-fund/recharge/execute',uid=97,json={'request_id':applied['id'],'action':'execute','payment_account_id':1,'receive_date':'2026-10-26'})
             async with f() as db:
                 assert (await db.execute(select(func.count(CostIdentity.id)))).scalar_one()==0
                 expenses=(await db.execute(select(ExpenseRecord))).scalars().all();assert len(expenses)==1 and expenses[0].cost_identity_id is None

@@ -91,9 +91,9 @@ def expected_status(uid,method,path):
     labor_only=path in ('/clock-in','/clock-in/today','/overtime/1/confirm','/overtime/2/dispute','/overtime/pending')
     if uid==5:return 200 if path in LABOR_PATHS and (method=='GET' or path in ('/clock-in','/attendance/leaves','/overtime/1/confirm','/overtime/2/dispute')) else 403
     if labor_only:return 403
-    if uid==2 and method=='POST' and path=='/overtime/3/verify':return 200
-    if uid==2:return 200 if method=='GET' and path in ('/overtime','/overtime/monthly-hours','/overtime/limit') else 403
-    if uid==3:return 200 if (method=='GET' and path in ('/attendance/calendar','/attendance/rest-days','/attendance/leaves','/overtime','/overtime/monthly-hours','/overtime/limit')) or (method=='POST' and path=='/attendance/leaves') else 403
+    if uid==2:return 403
+    if uid==3:return 200 if method=='GET' and path in ('/clock-in/records','/clock-in/photos','/attendance/calendar','/attendance/rest-days','/attendance/leaves','/overtime','/overtime/monthly-hours','/overtime/limit') else 403
+    if uid==4 and method=='PUT' and path=='/overtime/limit':return 403
     if method=='POST' and path=='/attendance/leaves':return 403
     return 200
 
@@ -103,15 +103,19 @@ def test_all_attendance_endpoints(tmp_path,monkeypatch,method,path,module,body,u
     async def run():
         async with attendance_environment(tmp_path,monkeypatch) as (_,factory,client):
             if granted:await set_perms(factory,uid,[MENU_PERMISSIONS_BY_KEY[module].label])
+            # Matrix success branch uses a genuinely pending leave; other payroll fixtures stay unchanged.
+            if path=='/attendance/leaves/1/approve':
+                async with factory() as db:
+                    (await db.get(LeaveRequest,1)).status='pending';await db.commit()
             before=await snapshot(factory)
             response=await call(client,method,path,body,uid)
             if uid in (3,4) and not granted:
                 assert response.status_code==403,response.text
-                assert response.json()['detail'].startswith('无此操作权限'),response.text
+                assert 'detail' in response.json() and 'data' not in response.json(),response.text
             else:
                 expected=expected_status(uid,method,path)
                 assert response.status_code==expected,response.text
-                if expected==403:assert not response.json()['detail'].startswith('无此操作权限'),response.text
+                if expected==403:assert 'detail' in response.json() and 'data' not in response.json(),response.text
                 if expected==200 and method=='POST' and path=='/clock-in':
                     assert response.json()['photo_path']
                     today=await client.get('/api/v1/clock-in/today',headers=auth(uid))
@@ -132,6 +136,8 @@ def test_all_attendance_endpoints(tmp_path,monkeypatch,method,path,module,body,u
     asyncio.run(run())
 
 def test_round4_inventory():
+    from tests.permission_round7.registration import assert_registered_catalogue
+    assert_registered_catalogue()
     root=Path(__file__).resolve().parents[1]/'app/api/v1'
     seen=[]
     batch_routes=[]
@@ -153,9 +159,9 @@ def test_round4_inventory():
                     seen.append((d.func.attr.upper(),'/'+prefix+d.args[0].value))
                     assert any(dep in ast.unparse(default) for dep in ('check_staff_permission', 'employee_access')),node.name
     assert batch_routes==['batch_makeup_clock_in','list_makeup_batches','revoke_makeup_batch']
-    assert len(seen)==28
+    assert len(seen)==31
     requested={(m,re.sub(r'/[123](?=/|$)','/{}',p.split('?')[0])) for m,p,_,_ in CASES}
-    assert requested=={(m,re.sub(r'\{[^}]+\}','{}',p)) for m,p in seen}
+    assert requested | {('GET','/clock-in/makeup-requests'),('POST','/clock-in/makeup-requests/{}/approve'),('POST','/clock-in/makeup-requests')}=={(m,re.sub(r'\{[^}]+\}','{}',p)) for m,p in seen}
 
 async def business_snapshot(factory):
     async with factory() as db:
@@ -170,21 +176,21 @@ def test_shared_attendance_reads(tmp_path,monkeypatch,uid):
                 await set_perms(factory,uid,[permission])
                 for path in ('/attendance/calendar?'+DATES,'/attendance/rest-days','/attendance/leaves','/clock-in/records?'+DATES,'/clock-in/photos?employee_id=1&date=2026-10-10'):
                     response=await client.get('/api/v1'+path,headers=auth(uid))
-                    expected=403 if uid==3 and path.startswith('/clock-in') else 200
+                    expected=200
                     assert response.status_code==expected,response.text
                 before=await business_snapshot(factory)
                 if permission=='请假':
                     for path,body in (('/clock-in/makeup',CASES[3][3]),('/attendance/rest-days',CASES[8][3]),('/attendance/absences',CASES[11][3])):
                         response=await call(client,'POST',path,body,uid)
-                        assert response.status_code==403 and response.json()['detail'].startswith('无此操作权限')
+                        assert response.status_code==403 and set(response.json())=={'detail'}
                 else:
                     response=await call(client,'PUT','/attendance/leaves/1/approve',None,uid)
-                    assert response.status_code==403 and response.json()['detail'].startswith('无此操作权限')
+                    assert response.status_code==403 and set(response.json())=={'detail'}
                 assert await business_snapshot(factory)==before
             await set_perms(factory,uid,['员工档案'])
             for path in ('/attendance/calendar','/attendance/leaves','/overtime'):
                 response=await client.get('/api/v1'+path,headers=auth(uid))
-                assert response.status_code==403 and response.json()['detail'].startswith('无此操作权限')
+                assert response.status_code==403 and set(response.json())=={'detail'}
     asyncio.run(run())
 
 
@@ -199,13 +205,13 @@ def test_round4_migration_database_and_payroll_snapshot(tmp_path,monkeypatch):
                 await db.commit()
             before=await business_snapshot(factory)
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':3,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':1,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             assert await business_snapshot(factory)==before
             async with factory() as db:
                 values=dict((await db.execute(select(User.id,User.extra_permissions))).all())
-                assert values[3]==list(ROUND4_PERMISSIONS)
+                assert values[3] is None
                 assert values[4]==['到账流水',*ROUND4_PERMISSIONS]
-                assert values[8]==['旧自定义权限',*ROUND4_PERMISSIONS]
+                assert values[8]==['旧自定义权限']
                 for uid in (1,2,5,6,7):assert values[uid]==[]
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(SystemSetting.key==ROUND4_PERMISSION_MARKER))).scalar_one()==1
             await set_perms(factory,3,[])
@@ -256,12 +262,8 @@ def test_attendance_warehouse_isolation(tmp_path,monkeypatch,uid):
                 assert await business_snapshot(factory)==before
             for path in ('/attendance/leaves','/attendance/rest-days','/attendance/calendar?'+DATES,'/clock-in/records?'+DATES,'/overtime'):
                 response=await client.get('/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':'2'})
-                assert response.status_code==200,response.text
-                payload=response.json()
-                if path.startswith('/attendance/calendar'):assert 2 not in {row['id'] for row in payload['employees']}
-                elif path.startswith('/clock-in'):assert 6 not in {row['user_id'] for row in payload['records']}
-                elif path=='/overtime':assert {row['warehouse_id'] for row in payload['data']}=={1}
-                else:assert 2 not in {row['employee_id'] for row in payload['data']}
+                assert response.status_code==403 and set(response.json())=={'detail'}
+                assert await business_snapshot(factory)==before
             from io import BytesIO
             from openpyxl import load_workbook
             response=await client.get('/api/v1/clock-in/records/export?'+DATES,headers=auth(uid))
@@ -288,13 +290,16 @@ def test_labor_only_self_and_assigned_tasks(tmp_path,monkeypatch):
                     assert response.status_code==403,response.text
             assert await business_snapshot(factory)==before
             for path in ('/attendance/leaves','/attendance/rest-days','/attendance/calendar?'+DATES,'/clock-in/records?'+DATES,'/overtime','/overtime/pending'):
-                response=await client.get('/api/v1'+path,headers={**auth(5),'X-Warehouse-ID':'2'})
+                denied=await client.get('/api/v1'+path,headers={**auth(5),'X-Warehouse-ID':'2'})
+                assert denied.status_code==403 and set(denied.json())=={'detail'}
+                response=await client.get('/api/v1'+path,headers=auth(5))
                 assert response.status_code==200,response.text
                 payload=response.json()
                 if path.startswith('/attendance/calendar'):assert {row['id'] for row in payload['employees']}=={1}
                 elif path.startswith('/clock-in'):assert {row['user_id'] for row in payload['records']}=={5}
                 elif path.startswith('/overtime'):assert {row['id'] for row in payload['data']}<={1,2,3}
                 else:assert {row['employee_id'] for row in payload['data']}=={1}
+            assert await business_snapshot(factory)==before
     asyncio.run(run())
 
 @pytest.mark.parametrize('duration,hours,leave_type,status,work_hours,leave_days',[
@@ -311,7 +316,7 @@ def test_labor_only_self_and_assigned_tasks(tmp_path,monkeypatch):
 def test_calendar_and_payroll_leave_rules_unchanged(tmp_path,monkeypatch,duration,hours,leave_type,status,work_hours,leave_days):
     async def run():
         async with attendance_environment(tmp_path,monkeypatch) as (_,factory,client):
-            await set_perms(factory,4,['考勤','工资'])
+            await set_perms(factory,4,['考勤']);await set_perms(factory,3,['工资'])
             async with factory() as db:
                 await db.execute(delete(PayrollRecord).where(PayrollRecord.employee_id==1))
                 await db.execute(update(Employee).where(Employee.id==1).values(hire_date=datetime(2026,10,10)))
@@ -330,7 +335,7 @@ def test_calendar_and_payroll_leave_rules_unchanged(tmp_path,monkeypatch,duratio
                 assert event['leave_hours']==2.3
             assert await snapshot(factory)==before
             # 显式算这一个测试员工；不是启动时或读取时触发计算。
-            response=await client.post('/api/v1/payroll/calculate',headers=auth(4),json={'end_date':'2026-10-10','employee_ids':[1]})
+            response=await client.post('/api/v1/payroll/calculate',headers=auth(3),json={'end_date':'2026-10-10','employee_ids':[1]})
             assert response.status_code==200,response.text
             assert response.json()['record_count']==1,response.text
             async with factory() as db:
@@ -347,7 +352,7 @@ def test_calendar_and_payroll_leave_rules_unchanged(tmp_path,monkeypatch,duratio
 def test_hourly_leave_multiple_entries_are_summed(tmp_path,monkeypatch):
     async def run():
         async with attendance_environment(tmp_path,monkeypatch) as (_,factory,client):
-            await set_perms(factory,4,['考勤','工资'])
+            await set_perms(factory,4,['考勤']);await set_perms(factory,3,['工资'])
             async with factory() as db:
                 await db.execute(delete(PayrollRecord).where(PayrollRecord.employee_id==1))
                 await db.execute(update(Employee).where(Employee.id==1).values(hire_date=datetime(2026,10,10)))
@@ -357,7 +362,7 @@ def test_hourly_leave_multiple_entries_are_summed(tmp_path,monkeypatch):
             response=await client.get('/api/v1/attendance/calendar?'+DATES,headers=auth(4))
             event=next(e for e in response.json()['events'] if e['employee_id']==1)
             assert event['leave_hours']==2.3 and event['work_hours']==5.68
-            response=await client.post('/api/v1/payroll/calculate',headers=auth(4),json={'end_date':'2026-10-10','employee_ids':[1]})
+            response=await client.post('/api/v1/payroll/calculate',headers=auth(3),json={'end_date':'2026-10-10','employee_ids':[1]})
             assert response.status_code==200,response.text
             async with factory() as db:
                 record=(await db.execute(select(PayrollRecord).where(PayrollRecord.employee_id==1))).scalar_one()

@@ -94,7 +94,9 @@ def test_office_roles_permission_membership_and_old_token_revocation(tmp_path,mo
             results=[]
             for uid in (3,4):
                 for wid,amount in [(1,100),(2,200)]:
-                    r=await get(c,uid,header=wid);assert r.status_code==200 and r.json()['totals']['income_by_currency']['THB']==amount
+                    r=await get(c,uid,header=wid)
+                    if uid==3:assert r.status_code==200 and r.json()['totals']['income_by_currency']['THB']==amount
+                    else:assert r.status_code==403 and 'totals' not in r.json()
                     results.append({'user':uid,'warehouse':wid,'status':r.status_code,'income_thb':amount})
                 assert (await get(c,uid,header='all')).status_code==403
                 cached_headers={**auth(uid),'X-Warehouse-ID':'2'}
@@ -102,7 +104,7 @@ def test_office_roles_permission_membership_and_old_token_revocation(tmp_path,mo
                     await db.execute(delete(UserWarehouse).where(UserWarehouse.user_id==uid,UserWarehouse.warehouse_id==2));await db.commit()
                 r=await c.get('/api/v1/dashboard/warehouse-summary',headers=cached_headers);assert r.status_code==403 and '测试仓2' not in r.text
                 async with factory() as db:(await db.get(User,uid)).extra_permissions=[];await db.commit()
-                r=await get(c,uid,header=1);assert r.status_code==403 and '无此操作权限' in r.text
+                r=await get(c,uid,header=1);assert r.status_code==403 and r.json().get('detail') and 'data' not in r.json()
             actual('office',{'positive':results,'old_token_removed_membership':403,'removed_report_permission':403,'office_all':403})
     asyncio.run(run())
 
@@ -121,7 +123,7 @@ def test_forged_batch_inactive_roles_and_unassigned_no_leak(tmp_path,monkeypatch
             empty=await get(c,header=3);assert empty.status_code==200 and empty.json()['data'][0]['income_count']==0 and empty.json()['totals']['total_income']==0
             async with factory() as db:
                 await db.execute(delete(UserWarehouse).where(UserWarehouse.user_id==1));(await db.get(User,1)).warehouse_id=None;await db.commit()
-            r=await get(c);assert r.status_code==200 and r.json()['data']==[] and r.json()['totals']['total_income']==0
+            r=await get(c);assert r.status_code==403 and 'data' not in r.json()
             assert (await get(c,header=1)).status_code==403
             actual('guards',{'forged':replies,'super_labor':403,'valid_admin_batch':200,'empty_warehouse':empty.json(),'unassigned':r.json()})
     asyncio.run(run())

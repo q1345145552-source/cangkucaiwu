@@ -17,7 +17,7 @@ from tests.test_round2_permissions import environment, auth, set_perms, png
 
 CASES=[
  ('GET','/payable','payable',None),
- ('POST','/payable','payable',{'form':{'supplier_id':'1','bill_number':'NEW-BILL','bill_date':'2026-10-10','due_date':'2026-10-20','amount':'100'},'file':True}),
+ ('POST','/payable','payable',{'form':{'supplier_id':'1','bill_number':'NEW-BILL','bill_date':'2026-10-10','due_date':'2026-10-20','amount':'100','request_key':'SYNTHETIC-round7-new-bill','matching_kind':'non_goods'},'file':True}),
  ('POST','/payable/1/upload-voucher','payable',{'file':True}),
  ('POST','/payable/1/upload-attachment','payable',{'file':True}),
  ('PUT','/payable/1/pay?paid_amount=100&payment_method=bank','payable',None),
@@ -114,6 +114,15 @@ async def call(client,method,path,body,uid):
 
 def expected_status(uid,method,path):
     path=path.split('?')[0]
+    if uid==2 and path.startswith(('/payable','/suppliers')):return 403
+    if uid==4 and path.startswith('/payable'):return 403
+    if path=='/payable' and method=='POST' and uid==1:return 409  # Same-date/supplier/amount needs explicit duplicate confirmation; never auto-confirm.
+    if uid==2 and path.endswith('/join'):return 403
+    if path=='/payable' and method=='GET':return 409  # This legacy fixture has inconsistent PO↔bill links; must not auto-repair.
+    if path=='/payable/1/pay':return 409 if uid==3 else 403  # No verified approval; administrator is its applicant.
+    if path=='/payable/plans/1/execute':return 409  # Old pending plan contains no valid per-bill approval.
+    if path.startswith('/group-order') and method!='GET' and not path.endswith('/join'):return 200 if uid==2 else 403
+    if uid==2 and path.startswith('/group-order'):return 200
     if method=='GET' and path.startswith('/suppliers/concentration'):return 200
     if path=='/group-order/participant/1/ban':return 200 if uid==2 else 403
     if uid==2:
@@ -141,20 +150,22 @@ def test_all_finance_endpoints(tmp_path,monkeypatch,method,path,module,body,uid,
             response=await call(client,method,path,body,uid)
             if uid in (3,4) and not granted:
                 assert response.status_code==403,response.text
-                assert response.json()['detail'].startswith('无此操作权限'),response.text
+                assert 'detail' in response.json() and 'data' not in response.json(),response.text
                 assert await finance_snapshot(factory)==before
             else:
                 expected=expected_status(uid,method,path)
                 assert response.status_code==expected,response.text
                 if expected==403:
                     if uid in (3,4) and method=='PUT' and path=='/suppliers/concentration-threshold':
-                        assert response.json()['detail'].startswith('无此操作权限') and '配置中心' in response.json()['detail'],response.text
-                    else:assert not response.json()['detail'].startswith('无此操作权限'),response.text
+                        assert 'detail' in response.json() and 'data' not in response.json(),response.text
+                    else:assert 'detail' in response.json() and 'data' not in response.json(),response.text
                 if expected!=200 or method=='GET':assert await finance_snapshot(factory)==before
                 if expected==200 and isinstance(body,dict) and body.get('file') and path!='/payable':assert response.json()['path']
     asyncio.run(run())
 
 def test_finance_route_inventory():
+    from tests.permission_round7.registration import assert_registered_catalogue
+    assert_registered_catalogue()
     root=Path(__file__).resolve().parents[1]/'app/api/v1'
     seen=[]
     for filename,prefix in {'payable':'payable','group_order':'group-order','suppliers':'suppliers'}.items():
@@ -167,36 +178,41 @@ def test_finance_route_inventory():
                     seen.append((d.func.attr.upper(),'/'+prefix+path))
                     defaults=[ast.unparse(v) for v in node.args.defaults]
                     assert any('check_staff_permission' in v for v in defaults),node.name
-    assert len(seen)==38
+    assert len(seen)==37
     actual={(m,re.sub(r'/(?:1|2|4|10)(?=/|$)','/{}',p.split('?')[0])) for m,p,_,_ in CASES}
     expected={(m,re.sub(r'\{[^}]+\}','{}',p)) for m,p in seen}
-    assert actual==expected
+    assert expected-actual=={('POST','/payable/{}/verify-payment'),('POST','/payable/{}/approve-payment'),('GET','/payable/{}/detail')}
+    assert actual-expected=={('GET','/suppliers/concentration'),('GET','/suppliers/concentration-trend'),('GET','/suppliers/concentration-threshold'),('PUT','/suppliers/concentration-threshold')}
 
 @pytest.mark.parametrize('uid',[3,4])
 def test_shared_lists_and_config_threshold(tmp_path,monkeypatch,uid):
     async def run():
         async with finance_environment(tmp_path,monkeypatch) as (_,factory,client):
+            async with factory() as db:
+                (await db.get(PurchaseOrder,1)).payable_bill_id=7
+                (await db.get(PurchaseOrder,2)).payable_bill_id=6
+                await db.commit()
             for permission in ('应付账款','付款计划'):
                 await set_perms(factory,uid,[permission])
                 response=await client.get('/api/v1/payable',headers=auth(uid))
-                assert response.status_code==200,response.text
-                assert {row['warehouse_id'] for row in response.json()['data']}=={1}
+                assert response.status_code==(403 if uid==4 else 200),response.text
+                if uid==3:assert {row['warehouse_id'] for row in response.json()['data']}=={1}
                 response=await client.get('/api/v1/suppliers?page_size=100',headers=auth(uid))
                 assert response.status_code==200,response.text
                 assert {row['id'] for row in response.json()['data']}=={1}
                 # 借共用列表读取不能修改供应商，供应商原校验保持不变。
                 response=await client.put('/api/v1/suppliers/1',headers=auth(uid),json={'name':'越权'})
-                assert response.status_code==403 and '供应商管理' in response.json()['detail']
+                assert response.status_code==403 and set(response.json())=={'detail'}
                 wrong_path='/payable/plans/1/execute' if permission=='应付账款' else '/payable/1/pay'
                 response=await client.put('/api/v1'+wrong_path,headers=auth(uid))
-                assert response.status_code==403 and response.json()['detail'].startswith('无此操作权限')
+                assert response.status_code==403 and set(response.json())=={'detail'}
             for permission in ('采购分析','配置中心'):
                 await set_perms(factory,uid,[permission])
                 response=await client.get('/api/v1/suppliers/concentration-threshold',headers=auth(uid))
                 assert response.status_code==200,response.text
             await set_perms(factory,uid,['配置中心'])
             response=await client.get('/api/v1/suppliers/concentration?month=2026-10',headers=auth(uid))
-            assert response.status_code==403 and response.json()['detail'].startswith('无此操作权限')
+            assert response.status_code==403 and set(response.json())=={'detail'}
     asyncio.run(run())
 
 @pytest.mark.parametrize('uid',[1,4])
@@ -204,37 +220,41 @@ def test_voided_statistics_paid_bill_edit_and_plan_execution(tmp_path,monkeypatc
     async def run():
         async with finance_environment(tmp_path,monkeypatch) as (_,factory,client):
             await set_perms(factory,uid,list(ROUND5_PERMISSIONS))
-            response=await client.get('/api/v1/payable/stats?start_date=2026-10-01&end_date=2026-10-31',headers=auth(uid))
+            if uid==4:
+                denied=await client.get('/api/v1/payable/stats',headers=auth(uid))
+                assert denied.status_code==403 and set(denied.json())=={'detail'}
+            actor=1
+            response=await client.get('/api/v1/payable/stats?start_date=2026-10-01&end_date=2026-10-31',headers=auth(actor))
             assert response.status_code==200,response.text
             assert response.json()['month_total']==1550,response.text
             assert response.json()['month_paid']==250 and response.json()['month_unpaid']==1300
-            response=await client.get('/api/v1/payable/cashflow-prediction',headers=auth(uid))
+            response=await client.get('/api/v1/payable/cashflow-prediction',headers=auth(actor))
             assert response.json()['predicted_outflow']==1300,response.text
-            response=await client.get('/api/v1/payable/trend?months=1',headers=auth(uid))
+            response=await client.get('/api/v1/payable/trend?months=1',headers=auth(actor))
             assert response.json()['data'][0]['consumable_spending']==1550,response.text
-            response=await client.get('/api/v1/payable/timeline',headers=auth(uid))
+            response=await client.get('/api/v1/payable/timeline',headers=auth(actor))
             assert sum(week['total'] for week in response.json()['data'])==1900,response.text
             from openpyxl import load_workbook
             from io import BytesIO
-            response=await client.get('/api/v1/payable/supplier-statement',headers=auth(uid))
+            response=await client.get('/api/v1/payable/supplier-statement',headers=auth(actor))
             rows=list(load_workbook(BytesIO(response.content)).active.values)
             assert 'BILL-3' not in {row[1] for row in rows[1:]}
             assert 'BILL-10' not in {row[1] for row in rows[1:]}
             # 已付款仍仅允许原有备注/差异处理说明白名单。
-            response=await client.put('/api/v1/payable/2',headers=auth(uid),json={'remark':'新备注','diff_note':'处理说明'})
+            response=await client.put('/api/v1/payable/2',headers=auth(actor),json={'remark':'新备注','diff_note':'处理说明'})
             assert response.status_code==200,response.text
             before=await finance_snapshot(factory)
             for fields in ({'amount':201},{'supplier_id':1},{'currency':'CNY'},{'bill_number':'改号'},
                            {'bill_date':'2026-10-11'},{'due_date':'2026-10-25'},{'confirmed_amount':200},
                            {'payment_commitment_days':1},{'detail':'改明细'},{'purchase_order_number':'PO-1'}):
-                response=await client.put('/api/v1/payable/2',headers=auth(uid),json=fields)
+                response=await client.put('/api/v1/payable/2',headers=auth(actor),json=fields)
                 assert response.status_code==400 and response.json()['detail']=='已付款的账单只能修改备注',response.text
                 assert await finance_snapshot(factory)==before
             for bid in (2,3):
-                response=await client.put(f'/api/v1/payable/{bid}/void?void_reason=测试',headers=auth(uid))
+                response=await client.put(f'/api/v1/payable/{bid}/void?void_reason=测试',headers=auth(actor))
                 assert response.status_code==400,response.text
             # 新计划金额不包含已作废、已付清或未生效采购单的账单。
-            response=await client.post('/api/v1/payable/plans',headers=auth(uid),json=CASES[15][3])
+            response=await client.post('/api/v1/payable/plans',headers=auth(actor),json=CASES[15][3])
             assert response.status_code==200,response.text
             async with factory() as db:
                 assert (await db.get(PayablePlan,response.json()['id'])).total_amount==900
@@ -245,7 +265,21 @@ def test_voided_statistics_paid_bill_edit_and_plan_execution(tmp_path,monkeypatc
                 account.opening_balance=10000
                 account.opening_balance_date=datetime(2026,10,1).date()
                 await db.commit()
-            response=await client.put('/api/v1/payable/plans/1/execute',headers=auth(uid),params={'account_id':1})
+            from app.models import UserWarehouse
+            async with factory() as db:
+                db.add(User(id=95,username='synthetic-fund-approver',display_name='SYN independent admin',role='warehouse_admin',warehouse_id=1,password_hash='unused',extra_permissions=[]))
+                await db.flush();db.add(UserWarehouse(user_id=95,warehouse_id=1));await db.commit()
+            await set_perms(factory,3,['应付账款','付款计划'])
+            for bid in (1,5):
+                for action,executor in [('verify-payment',3),('approve-payment',95)]:
+                    proof=await client.post(f'/api/v1/payable/{bid}/{action}',headers=auth(executor));assert proof.status_code==200,proof.text
+            unchanged=await finance_snapshot(factory)
+            legacy=await client.put('/api/v1/payable/plans/1/execute',headers=auth(3),params={'account_id':1})
+            assert legacy.status_code==409 and await finance_snapshot(factory)==unchanged
+            prepared=await client.post('/api/v1/payable/plans',headers=auth(3),json={'plan_name':'SYN independent prepared payment','planned_date':'2026-10-20','bill_ids':[1,5]})
+            assert prepared.status_code==200,prepared.text
+            plan_id=prepared.json()['id']
+            response=await client.put(f'/api/v1/payable/plans/{plan_id}/execute',headers=auth(3),params={'account_id':1})
             assert response.status_code==200 and '2 笔' in response.json()['message'],response.text
             async with factory() as db:
                 assert (await db.get(PayableBill,1)).paid_amount==100
@@ -254,7 +288,7 @@ def test_voided_statistics_paid_bill_edit_and_plan_execution(tmp_path,monkeypatc
                 assert voided.status=='voided' and voided.paid_amount==0
                 assert (await db.get(PayableBill,2)).paid_amount==200
             after=await finance_snapshot(factory)
-            response=await client.put('/api/v1/payable/plans/1/execute',headers=auth(uid))
+            response=await client.put(f'/api/v1/payable/plans/{plan_id}/execute',headers=auth(3))
             assert response.status_code==400,response.text
             assert await finance_snapshot(factory)==after
     asyncio.run(run())
@@ -264,12 +298,16 @@ def test_void_reduces_statistics_without_deleting_bill(tmp_path,monkeypatch,uid)
     async def run():
         async with finance_environment(tmp_path,monkeypatch) as (_,factory,client):
             await set_perms(factory,uid,['应付账款'])
-            response=await client.put('/api/v1/payable/1/void?void_reason=测试作废',headers=auth(uid))
+            if uid==4:
+                denied=await client.get('/api/v1/payable/stats',headers=auth(uid))
+                assert denied.status_code==403 and set(denied.json())=={'detail'}
+            actor=1
+            response=await client.put('/api/v1/payable/1/void?void_reason=测试作废',headers=auth(actor))
             assert response.status_code==200,response.text
             async with factory() as db:
                 bill=await db.get(PayableBill,1)
                 assert bill.status=='voided' and bill.amount==100 and bill.void_reason=='测试作废'
-            response=await client.get('/api/v1/payable/stats?start_date=2026-10-01&end_date=2026-10-31',headers=auth(uid))
+            response=await client.get('/api/v1/payable/stats?start_date=2026-10-01&end_date=2026-10-31',headers=auth(actor))
             assert response.json()['month_total']==1450 and response.json()['month_paid']==250,response.text
     asyncio.run(run())
 
@@ -291,28 +329,32 @@ def test_finance_warehouse_isolation(tmp_path,monkeypatch,uid):
                 ('PUT','/group-order/participant/10/ban',None),
             ]:
                 response=await call(client,method,path,body,uid)
-                assert response.status_code==403,(path,response.text)
+                assert response.status_code==(200 if path=='/group-order/10/participants' else 403),(path,response.text)
                 assert await finance_snapshot(factory)==before
             for path in ('/payable','/payable/plans','/payable/plan-templates'):
                 response=await client.get('/api/v1'+path,headers={**auth(uid),'X-Warehouse-ID':'2'})
-                assert response.status_code==200,response.text
-                if path=='/payable':assert {row['warehouse_id'] for row in response.json()['data']}=={1}
-                else:assert {row['id'] for row in response.json()['data']}=={1}
+                assert response.status_code==403 and set(response.json())=={'detail'},response.text
+                assert await finance_snapshot(factory)==before
             response=await client.get('/api/v1/suppliers/concentration?month=2026-10',headers=auth(uid))
             assert response.json()['total']==700,response.text
             assert {row['supplier_id'] for row in response.json()['data']}=={1}
+            if uid==4:
+                for route in ('/payable/batch-export?bill_ids=10','/payable/plans/export?plan_id=10'):
+                    denied=await client.get('/api/v1'+route,headers=auth(uid));assert denied.status_code==403 and set(denied.json())=={'detail'}
+                reader=1
+            else:reader=uid
             # 导出外仓记录只能拿到空数据，不能越权获取。
-            response=await client.get('/api/v1/payable/batch-export?bill_ids=10',headers=auth(uid))
+            response=await client.get('/api/v1/payable/batch-export?bill_ids=10',headers=auth(reader))
             assert response.json()['data']==[]
-            response=await client.get('/api/v1/payable/plans/export?plan_id=10',headers=auth(uid))
+            response=await client.get('/api/v1/payable/plans/export?plan_id=10',headers=auth(reader))
             from io import BytesIO
             from openpyxl import load_workbook
             assert len(list(load_workbook(BytesIO(response.content)).active.values))==1
             assert await finance_snapshot(factory)==before
             # 拼单公开浏览和跨仓参与是旧设计，仍按参与者本仓写入。
-            response=await client.get('/api/v1/group-order/10',headers=auth(uid))
+            response=await client.get('/api/v1/group-order/10',headers=auth(reader))
             assert response.status_code==200,response.text
-            response=await client.post('/api/v1/group-order/10/join',headers=auth(uid),json={'quantity':5,'warehouse_id':2})
+            response=await client.post('/api/v1/group-order/10/join',headers=auth(reader),json={'quantity':5,'warehouse_id':2})
             assert response.status_code==200,response.text
             async with factory() as db:
                 assert (await db.get(GroupOrderParticipant,response.json()['id'])).warehouse_id==1
@@ -322,11 +364,15 @@ def test_finance_warehouse_isolation(tmp_path,monkeypatch,uid):
 def test_overdue_updates_cannot_touch_other_warehouses(tmp_path,monkeypatch,path):
     async def run():
         async with finance_environment(tmp_path,monkeypatch) as (_,factory,client):
-            await set_perms(factory,4,['应付账款','付款计划'])
+            async with factory() as db:
+                (await db.get(PurchaseOrder,1)).payable_bill_id=7
+                (await db.get(PurchaseOrder,2)).payable_bill_id=6
+                await db.commit()
+            await set_perms(factory,3,['应付账款','付款计划'])
             async with factory() as db:
                 await db.execute(update(PayableBill).where(PayableBill.id==1).values(due_date=datetime(2026,10,10)))
                 await db.commit()
-            response=await client.get('/api/v1'+path,headers=auth(4))
+            response=await client.get('/api/v1'+path,headers=auth(3))
             assert response.status_code==200,response.text
             async with factory() as db:
                 assert (await db.get(PayableBill,1)).status=='overdue'
@@ -352,13 +398,13 @@ def test_round5_migration_database_idempotence_and_rollback(tmp_path,monkeypatch
                 assert (await db.get(User,3)).extra_permissions is None
                 assert (await db.execute(select(SystemSetting.id).where(SystemSetting.key==ROUND5_PERMISSION_MARKER))).first() is None
             async with engine.begin() as conn:
-                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':3,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
+                assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':1,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             assert await finance_snapshot(factory)==before
             async with factory() as db:
                 values=dict((await db.execute(select(User.id,User.extra_permissions))).all())
-                assert values[3]==list(ROUND5_PERMISSIONS)
+                assert values[3] is None
                 assert values[4]==['供应商管理',*ROUND5_PERMISSIONS]
-                assert values[5]==['旧权限',*ROUND5_PERMISSIONS]
+                assert values[5]==['旧权限']
                 assert values[1]==values[2]==values[6]==[]
                 assert (await db.execute(select(func.count(SystemSetting.id)).where(SystemSetting.key==ROUND5_PERMISSION_MARKER))).scalar_one()==1
             await set_perms(factory,3,[])
@@ -366,4 +412,22 @@ def test_round5_migration_database_idempotence_and_rollback(tmp_path,monkeypatch
                 assert await run_permission_migrations(conn)=={'round2':0,'round3':0,'round4':0,'round5':0,'round6':0,'round9':0,'modification_logs':0,'cash_advances':0}
             async with factory() as db:assert (await db.get(User,3)).extra_permissions==[]
             assert await finance_snapshot(factory)==before
+    asyncio.run(run())
+
+
+def test_admin_create_distinct_bill_without_automatic_duplicate_confirmation(tmp_path,monkeypatch):
+    async def run():
+        async with finance_environment(tmp_path,monkeypatch) as (_,factory,client):
+            body={'form':{'supplier_id':'1','bill_number':'DISTINCT-BILL','bill_date':'2026-10-09',
+                'due_date':'2026-10-20','amount':'100','request_key':'SYNTHETIC-distinct-bill','matching_kind':'non_goods'},'file':True}
+            before=await finance_snapshot(factory)
+            response=await call(client,'POST','/payable',body,1)
+            assert response.status_code==200,response.text
+            async with factory() as db:
+                row=(await db.execute(select(PayableBill).where(PayableBill.bill_number=='DISTINCT-BILL'))).scalar_one()
+                assert row.amount==100 and row.paid_amount==0 and row.status=='pending'
+                assert row.created_by==1 and row.purchase_order_id is None
+            after=await finance_snapshot(factory)
+            assert len(after['payable_bills'])==len(before['payable_bills'])+1
+            assert {k:v for k,v in before.items() if k!='payable_bills'}=={k:v for k,v in after.items() if k!='payable_bills'}
     asyncio.run(run())

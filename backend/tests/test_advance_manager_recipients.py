@@ -81,8 +81,13 @@ def test_existing_enabled_archive_and_self_approval_preserved(tmp_path,monkeypat
             assert next(x for x in opts if x['user_id']==4)['value']=='employee:5'
             assert (await create(c,user_id=4)).status_code==200
             await set_perms(f,4,['员工预支'])
-            own=await create(c,uid=4,user_id=4);assert own.status_code==200 and own.json()['approval_status']=='pending'
-            other=await create(c,uid=4,employee_id=1);assert other.status_code==200 and other.json()['approval_status']=='pending'
+            account_alias=await create(c,uid=4,user_id=4);assert account_alias.status_code==403
+            own=await create(c,uid=4,employee_id=5);assert own.status_code==200 and own.json()['approval_status']=='pending'
+            before_other=await employee_count(f)
+            async with f() as db: advance_count=(await db.execute(select(func.count(EmployeeAdvance.id)))).scalar_one()
+            other=await create(c,uid=4,employee_id=1);assert other.status_code==403 and set(other.json())=={'detail'}
+            assert await employee_count(f)==before_other
+            async with f() as db: assert (await db.execute(select(func.count(EmployeeAdvance.id)))).scalar_one()==advance_count
             assert await employee_count(f)==initial
             async with f() as db:
                 u=await db.get(User,4);e=await db.get(Employee,5)

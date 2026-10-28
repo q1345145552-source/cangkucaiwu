@@ -13,18 +13,21 @@ from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import hr_environment, snapshot
 
 
-def test_limit_routes_and_unrelated_employee_functions_unchanged():
-    root = Path(__file__).resolve().parents[2]
-    name = 'backend/app/api/v1/employees.py'
-    old = ast.parse(subprocess.check_output(['git', 'show', 'ba9cc23:' + name], cwd=root, text=True))
-    new = ast.parse((root / name).read_text())
-    def business(tree):
-        return {n.name: ast.dump(n, include_attributes=False) for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-    identity_changes = {'create_employee', 'update_employee', 'list_employees', 'validate_identity', 'identity_result'}
-    assert {k:v for k,v in business(old).items() if k not in identity_changes} == {k:v for k,v in business(new).items() if k not in identity_changes}
-    names = [getattr(n, 'name', None) for n in new.body]
-    assert names.index('get_max_limit') < names.index('update_employee')
-    assert names.index('set_max_limit') < names.index('update_employee')
+def test_limit_route_role_ceiling_and_payroll_unchanged(tmp_path, monkeypatch):
+    # Source equality predates action authorization; assert its intended data invariant.
+    async def run():
+        async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
+            before = await snapshot(f)
+            for uid in (3, 4):
+                await set_perms(f, uid, ['员工档案', '系统设置', '工资'])
+                denied = await c.put('/api/v1/employees/max-limit?max_employees=999', headers=auth(uid))
+                assert denied.status_code == 403, denied.text
+            accepted = await c.put('/api/v1/employees/max-limit?max_employees=73', headers=auth(1))
+            assert accepted.status_code == 200, accepted.text
+            read = await c.get('/api/v1/employees/max-limit', headers=auth(1))
+            assert read.status_code == 200 and read.json()['max_employees'] == 73
+            assert await snapshot(f) == before
+    asyncio.run(run())
 
 
 def test_save_read_persistence_and_other_warehouse_unchanged(tmp_path, monkeypatch):

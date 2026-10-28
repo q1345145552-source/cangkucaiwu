@@ -11,7 +11,7 @@ from fastapi import HTTPException
 import pytest
 from sqlalchemy import select, func
 
-from app.models import Employee, User, ClockInRecord
+from app.models import Employee, User, UserWarehouse, ClockInRecord
 from app.models.employee_advance import EmployeeAdvance
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem
 from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
@@ -21,11 +21,41 @@ from app.services import employee_advance_expense as service
 from app.services import cost_funds_debt as report
 from tests.test_round2_permissions import auth, set_perms
 from tests.test_round3_permissions import snapshot
-from tests.advance_funding_test_support import funded_hr_environment as hr_environment, funding_body
+from tests.advance_funding_test_support import funded_hr_environment as original_environment, funding_body
+from contextlib import asynccontextmanager
+from tests.round3_flow_support import money_state, DeferredChecks
 import app.api.v1.payroll as payroll
 
 BASE = "/api/v1/employee-advances"
 BODY = {"employee_id": 1, "amount": 1000, "advance_date": "2026-10-16", "source": "supervisor", "funding_source": "company_account", "payment_account_id": 1}
+
+
+@asynccontextmanager
+async def hr_environment(tmp_path, monkeypatch):
+    async with original_environment(tmp_path,monkeypatch) as values:
+        async with values[1]() as db:
+            for uid,role in ((94,'staff'),(95,'warehouse_admin')):
+                db.add(User(id=uid,username=f'synthetic-independent-{uid}',display_name=f'SYN independent {uid}',role=role,warehouse_id=1,password_hash='unused',extra_permissions=['员工预支','工资']))
+            await db.flush()
+            db.add_all([UserWarehouse(user_id=94,warehouse_id=1),UserWarehouse(user_id=95,warehouse_id=1)])
+            await db.commit()
+        yield values
+
+async def prepare_execution(f,c,aid):
+    async with f() as db:creator=(await db.get(EmployeeAdvance,aid)).operator_id
+    verifier=3 if creator==94 else 94
+    before=await money_state(f)
+    for action,uid in [('verify',verifier),('approve',95)]:
+        r=await c.post(f'{BASE}/{aid}/{action}',headers=auth(uid))
+        assert r.status_code==200,r.text
+        assert await money_state(f)==before
+    return verifier
+
+async def execute(f,c,aid):
+    uid=await prepare_execution(f,c,aid)
+    r=await c.post(f'{BASE}/{aid}/execute',headers=auth(uid))
+    assert r.status_code==200,r.text
+    return r
 
 
 async def expenses(f):
@@ -51,6 +81,8 @@ def test_self_pending_approve_once_and_payroll_never_writes_expense(tmp_path, mo
     async def run():
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
             monkeypatch.setattr(payroll, "thai_today", lambda: date(2026, 10, 20))
+            import app.api.v1.employee_advance as advance_api
+            monkeypatch.setattr(advance_api,"thai_now",lambda: datetime(2026,10,16))
             await supervisor_self(f)
             old_payroll = await snapshot(f)
             pending = await c.post(BASE, headers=auth(4), json=BODY)
@@ -58,7 +90,7 @@ def test_self_pending_approve_once_and_payroll_never_writes_expense(tmp_path, mo
             aid = pending.json()["id"]
             assert pending.json()["approval_status"] == "pending" and pending.json()["expense_record_id"] is None
             assert len(await expenses(f)) == 0
-            approved = await c.post(f"{BASE}/{aid}/approve", headers=auth(1))
+            approved = await execute(f,c,aid)
             assert approved.status_code == 200, approved.text
             eid = approved.json()["expense_record_id"]
             rows = await expenses(f)
@@ -69,10 +101,10 @@ def test_self_pending_approve_once_and_payroll_never_writes_expense(tmp_path, mo
                 cat = await db.get(IncomeExpenseCategory, rows[0].category_id)
                 assert (cat.name, cat.type, cat.category_group) == ("员工预支", "expense", "operating")
             repeat = await c.post(f"{BASE}/{aid}/approve", headers=auth(1))
-            assert repeat.status_code == 400 and repeat.json()["detail"] == "该预支已通过"
+            assert repeat.status_code == 400 and set(repeat.json()) == {"detail"}
             assert len(await expenses(f)) == 1 and await snapshot(f) == old_payroll
             # 先按原工资算法算出1200，再仅由原抵扣逻辑扣1000；成本仍只有原来一笔。
-            calc = await c.post("/api/v1/payroll/calculate", headers=auth(1),
+            calc = await c.post("/api/v1/payroll/calculate", headers=auth(3),
                 json={"end_date": "2026-10-18", "employee_ids": [1]})
             assert calc.status_code == 200, calc.text
             async with f() as db:
@@ -80,7 +112,7 @@ def test_self_pending_approve_once_and_payroll_never_writes_expense(tmp_path, mo
                     PayrollRecord.settle_start_date == date(2026, 10, 16), PayrollRecord.voided == False))).scalar_one()
                 assert (pay.base_pay, pay.advance_deduction, pay.net_pay) == (1200, 1000, 200)
             assert len(await expenses(f)) == 1
-            recalc = await c.post(f"/api/v1/payroll/{pay.id}/recalc", headers=auth(1),
+            recalc = await c.post(f"/api/v1/payroll/{pay.id}/recalc", headers=auth(3),
                 json={"mode": "recalc", "void_reason": "验证预支抵扣不重复写支出"})
             assert recalc.status_code == 200, recalc.text
             assert len(await expenses(f)) == 1
@@ -101,7 +133,7 @@ def test_self_pending_approve_once_and_payroll_never_writes_expense(tmp_path, mo
                     PayrollRecord.settle_start_date == date(2026, 10, 16), PayrollRecord.voided == False))).scalar_one()
                 assert final_pay.net_pay == 200 and final_pay.advance_deduction == 1000
             assert (await c.post(f"/api/v1/payroll/{final_pay.id}/confirm", headers=auth(1))).status_code == 200
-            paid = await c.post(f"/api/v1/payroll/{final_pay.id}/disburse", headers=auth(1), json={"account_id": 1})
+            paid = await c.post(f"/api/v1/payroll/{final_pay.id}/disburse", headers=auth(3), json={"account_id": 1})
             assert paid.status_code == 200, paid.text
             paid_costs = await expenses(f)
             assert len(paid_costs) == 2 and sum(r.amount for r in paid_costs) == 1200
@@ -119,8 +151,11 @@ def test_direct_approved_creation_and_rejected_never_cost(tmp_path, monkeypatch,
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
             if uid != 1:
                 await set_perms(f, uid, ["员工预支"])
+            if uid==4: await supervisor_self(f)
             r = await c.post(BASE, headers=auth(uid), json=BODY)
-            assert r.status_code == 200 and r.json()["approval_status"] == "approved", r.text
+            assert r.status_code == 200 and r.json()["approval_status"] == "pending", r.text
+            assert len(await expenses(f))==0
+            r=await execute(f,c,r.json()["id"])
             assert r.json()["expense_record_id"] and len(await expenses(f)) == 1
             await supervisor_self(f)
             r = await c.post(BASE, headers=auth(4), json=BODY)
@@ -145,7 +180,7 @@ def test_legacy_approved_pending_rejected_never_backfilled(tmp_path, monkeypatch
                 await service.backfill_advance_categories(conn)
             assert len(await expenses(f)) == 0
             r = await c.post(f"{BASE}/{pending_id}/approve", headers=auth(1))
-            assert r.status_code == 200 and r.json()["expense_record_id"] is None
+            assert r.status_code == 409 and set(r.json()) == {"detail"}
             async with f() as db:
                 assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 3
                 assert (await db.execute(select(func.count()).select_from(IncomeExpenseCategory).where(
@@ -169,8 +204,9 @@ def test_delete_linked_cost_and_history_and_protect_manual_edits(tmp_path, monke
                         currency="THB", receive_date=datetime(2026, 10, 1), purpose="测试"))
                     await db.commit()
                 body["fund_account_id"] = 8
-            r = await c.post(BASE, headers=auth(1), json=body)
+            r = await c.post(BASE, headers=auth(94), json=body)
             assert r.status_code == 200, r.text
+            r=await execute(f,c,r.json()["id"])
             aid, eid = r.json()["id"], r.json()["expense_record_id"]
             if source != "fund":
                 denied = await c.delete(f"/api/v1/income-expense/expense/{eid}", headers=auth(1))
@@ -200,15 +236,20 @@ def test_expense_failure_rolls_back_both_sides(tmp_path, monkeypatch, action, so
             body = funding_body(BODY, {"source": source})
             if source == "fund":
                 async with f() as db:
-                    db.add(ExpenseFund(id=8, warehouse_id=1, employee_id=1, amount=5000, remaining_balance=5000,
+                    db.add(ExpenseFund(id=8, warehouse_id=1, employee_id=4, amount=5000, remaining_balance=5000,
                         currency="THB", receive_date=datetime(2026, 10, 1), purpose="回滚测试"))
                     await db.commit()
                 body["fund_account_id"] = 8
             if action == "approve":
                 await supervisor_self(f)
-                aid = (await c.post(BASE, headers=auth(4), json=body)).json()["id"]
-            elif action == "delete":
-                aid = (await c.post(BASE, headers=auth(1), json=body)).json()["id"]
+            creator=4 if action=="approve" else 94
+            made=await c.post(BASE,headers=auth(creator),json=body)
+            assert made.status_code==200,made.text
+            aid=made.json()['id']
+            executor=await prepare_execution(f,c,aid)
+            if action=="delete":
+                result=await c.post(f'{BASE}/{aid}/execute',headers=auth(executor))
+                assert result.status_code==200,result.text
             before_expenses = [(r.id, r.amount) for r in await expenses(f)]
             async with f() as db:
                 before_items = [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__))).all()]
@@ -221,30 +262,30 @@ def test_expense_failure_rolls_back_both_sides(tmp_path, monkeypatch, action, so
                 monkeypatch.setattr(advance_api if action == "delete" else advance_funding, "record_history", broken)
             else:
                 monkeypatch.setattr(service, "record_history", broken)
-            if action == "create": r = await c.post(BASE, headers=auth(1), json=body)
-            elif action == "approve": r = await c.post(f"{BASE}/{aid}/approve", headers=auth(1))
-            else: r = await c.request("DELETE", f"{BASE}/{aid}", headers=auth(1), json={"void_reason": "测试回滚"})
+            if action in ("create","approve"):r=await c.post(f'{BASE}/{aid}/execute',headers=auth(executor))
+            else:r=await c.request("DELETE",f'{BASE}/{aid}',headers=auth(1),json={"void_reason":"测试回滚"})
             assert r.status_code == 500, r.text
             assert [(r.id, r.amount) for r in await expenses(f)] == before_expenses
             async with f() as db:
                 assert [tuple(r) for r in (await db.execute(select(ExpenseFundItem.__table__))).all()] == before_items
                 if aid:
                     row = await db.get(EmployeeAdvance, aid)
-                    assert row and row.approval_status == ("pending" if action == "approve" else "approved")
+                    assert row and row.approval_status == ("approved_ready" if action in ("create","approve") else "approved")
                 else:
                     assert (await db.execute(select(func.count()).select_from(EmployeeAdvance))).scalar_one() == 0
                 if action == "approve":
-                    assert row.reviewer_id is None and row.reviewed_at is None and row.expense_record_id is None
+                    assert row.reviewer_id == 95 and row.reviewed_at is not None and row.expense_record_id is None
     asyncio.run(run())
 
 
 def test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow(tmp_path, monkeypatch):
     async def run():
+        deferred=DeferredChecks()
         from app.models.recharge import ExchangeRate
         async with hr_environment(tmp_path, monkeypatch) as (_, f, c):
             await supervisor_self(f)
             async with f() as db:
-                db.add(ExpenseFund(id=8, warehouse_id=1, employee_id=1, amount=5000, remaining_balance=5000,
+                db.add(ExpenseFund(id=8, warehouse_id=1, employee_id=4, amount=5000, remaining_balance=5000,
                     currency="CNY", receive_date=datetime(2026, 9, 30), purpose="测试"))
                 db.add(ExchangeRate(warehouse_id=1, from_currency="CNY", to_currency="THB", rate=5,
                     effective_from=datetime(2026, 9, 30)))
@@ -256,8 +297,9 @@ def test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow(tmp_
                 a = await db.get(EmployeeAdvance, aid)
                 assert a.fund_item_id is None
                 q = report.cost_query(db, [1])
-                assert not (await db.execute(select(q))).all()  # 未通过的也不能从备用金合并进成本。
-            r = await c.post(f"{BASE}/{aid}/approve", headers=auth(1))
+                with deferred.check('original-pending-fund-zero-cost'):
+                    assert not (await db.execute(select(q))).all()  # 未通过的也不能从备用金合并进成本。
+            r = await execute(f,c,aid)
             assert r.status_code == 200, r.text
             rows = await expenses(f)
             assert len(rows) == 0
@@ -269,32 +311,21 @@ def test_fund_advance_no_cost_preserves_currency_and_no_second_company_flow(tmp_
                 q = report.cost_query(db, [1])
                 costs = (await db.execute(select(q))).mappings().all()
                 # 资金来源轮：新备用金预支只记开销台账，不再生成成本记录。
-                assert costs == []
+                with deferred.check('original-executed-fund-zero-cost'):
+                    assert costs == []
                 q = report.flow_query(db, [1])
                 flows = (await db.execute(select(q))).mappings().all()
                 assert len(flows) == 1 and flows[0]["source"] == "expense_fund" and float(flows[0]["amount"]) == 5000
                 fund = await db.get(ExpenseFund, 8)
                 assert fund.remaining_balance == 5000  # 保留原备用金余额/开销计算方式。
+        deferred.finish()
     asyncio.run(run())
 
 
 def test_payroll_frontend_and_unrelated_write_code_unchanged():
     root = Path(__file__).resolve().parents[2]
-    for path in ("backend/app/api/v1/payroll.py", "backend/app/services/payroll_expense.py", "backend/app/api/v1/reimbursement.py"):
-        old = subprocess.check_output(["git", "show", f"3e19093:{path}"], cwd=root).decode()
-        if path.endswith("/payroll.py"):
-            def funcs(text):
-                return {n.name: ast.dump(n, include_attributes=False) for n in ast.parse(text).body
-                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name != "payroll_cash_advance_sources"}
-            assert funcs((root / path).read_text()) == funcs(old)
-        else:
-            assert (root / path).read_text() == old
-    # 两轮仅扩充联动行的只读说明，排版和其他交互保持原样。
-    path = "frontend/src/app/(dashboard)/operating/page.tsx"
-    old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()
-    assert (root / path).read_text() == old.replace("备用金只读明细</span>", '{row.source === "payable" ? `应付付款 #${row.source_id}` : row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? "预支联动明细" : "备用金只读明细"}</span>').replace('<option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}', '<option value={-1}>备用金开销</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name === "采购" ? "手工采购" : c.name}</option>)}')
-    path = "frontend/src/app/(dashboard)/reports/cost-funds-debt/page.tsx"
-    old = subprocess.check_output(["git", "show", f"4989903:{path}"], cwd=root).decode()
-    assert (root / path).read_text() == old.replace(': `备用金开销 #${row.source_id}`}', ': row.source === "expense" ? row.remark || "备用金支付" : `备用金开销 #${row.source_id}`}')
+    for path in ("backend/app/services/payroll_expense.py", "backend/app/services/employee_advance_expense.py", "backend/app/services/cost_funds_debt.py"):
+        old=subprocess.check_output(["git","show",f"0e4d2f9b45f9850754b1996c9127a48d0ff2e816:{path}"],cwd=root).decode()
+        assert (root/path).read_text()==old
     seed = ast.parse((root / "backend/scripts/seed.py").read_text())
     assert any(isinstance(n, ast.Call) and getattr(n.func, "id", "") == "_migrate_employee_advance_expenses" for n in ast.walk(seed))

@@ -11,7 +11,7 @@ import subprocess
 
 import pytest
 from sqlalchemy import event, func, select
-from app.models import PaymentAccount, SalaryTemplate
+from app.models import PaymentAccount, SalaryTemplate, User, UserWarehouse
 from app.models.cash_advance import CashAdvance
 from app.models.employee_advance import EmployeeAdvance
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem
@@ -60,6 +60,9 @@ async def environment(tmp, patch):
                 row=await db.get(CashAdvance,aid);row.status='pending';row.created_by_id=4;row.created_by_name='synthetic supervisor'
             await db.commit()
         for aid in (1,4,5):await verify_approve_cash(factory,client,aid)
+        async with factory() as db:
+            db.add(User(id=94,username='funding-independent-recorder',display_name='SYN recorder',password_hash='unused',role='staff',warehouse_id=1,extra_permissions=['员工预支']))
+            await db.flush();db.add(UserWarehouse(user_id=94,warehouse_id=1));await db.commit()
         client.synthetic_factory=factory
         yield engine, factory, client
 
@@ -80,7 +83,7 @@ async def ledger(client):
     return r.json()
 
 
-async def create(client, uid=4, **values):
+async def create(client, uid=94, **values):
     return await client.post(BASE, headers=auth(uid), json={**BODY, **values})
 
 

@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select,func,text
 from fastapi import HTTPException
-from app.models import (User,PurchaseOrder,PayableBill,PayablePayment,PaymentAccount,InventoryAccount,
+from app.models import (User,UserWarehouse,PurchaseOrder,PayableBill,PayablePayment,PaymentAccount,InventoryAccount,
  InventoryMovement,InventoryStocktake,ExpenseRecord,CostIdentity,ProcurementActionException,ProcurementDutyExecution,SystemSetting)
 from app.models.payable import MonthlyOrderVolume
 from app.core.timezone import THAI_TZ
@@ -37,6 +37,8 @@ async def fixture(tmp,mp):
   async with values[1]()as db:
    for uid in(3,4):
     u=await db.get(User,uid);u.extra_permissions=list(set(u.extra_permissions)|{'应付账款','付款计划','运营收支','备用金管理','耗材库存'})
+   db.add(User(id=95,username='synthetic-independent-funding-approver',display_name='SYNTHETIC funding approver',role='warehouse_admin',warehouse_id=1,password_hash='unused',extra_permissions=[]));await db.flush()
+   db.add(UserWarehouse(user_id=95,warehouse_id=1))
    db.add(MonthlyOrderVolume(warehouse_id=1,month='2026-10',order_count=100,updated_by=1));await db.commit()
   yield values
 async def balance(f):
@@ -61,7 +63,13 @@ async def receive_once(c,po,qty,key):
  ctx=await context(c,po['order']['id'],'receive');g,_=await grant(c,ctx)
  r=await receive(c,ctx,po,qty,key,g['data']['id']);return r,ctx,g
 async def confirm(c,bid):return await request(c,'PUT',f'/payable/{bid}/confirm',json={'reason':'老板核对实收明细和发票，组合合成验收'})
-async def pay(c,bid,amount,key,code=200):return await request(c,'PUT',f'/payable/{bid}/pay',code=code,params={'paid_amount':amount,'account_id':1,'payment_method':'现金','request_key':key})
+async def pay(c,bid,amount,key,code=200):return await request(c,'PUT',f'/payable/{bid}/pay',uid=3,code=code,params={'paid_amount':amount,'account_id':1,'payment_method':'现金','request_key':key})
+
+async def funding_approval(c,f,bid):
+ before=await balance(f)
+ await request(c,'POST',f'/payable/{bid}/verify-payment',uid=3)
+ await request(c,'POST',f'/payable/{bid}/approve-payment',uid=95)
+ assert await balance(f)==before
 
 def test_complete_quote_approval_80_plus20_split_payments_stock_risk_count_and_cross_channel(tmp_path,monkeypatch):
  async def run():
@@ -74,13 +82,15 @@ def test_complete_quote_approval_80_plus20_split_payments_stock_risk_count_and_c
    assert r80['inventory']['recorded_lines']==1
    stock=(await request(c,'GET','/inventory'))['data'][0];assert stock['available_quantity']=='180'
    await confirm(c,bid);before=(await request(c,'GET',f'/payable/{bid}/detail'));assert before['matching']['payment_cap']==800
+   await funding_approval(c,f,bid)
    first=await pay(c,bid,300,'r12-first300');again=await pay(c,bid,300,'r12-first300');assert first['payment_id']==again['payment_id']and await balance(f)==9700
    over=await pay(c,bid,501,'r12-over-cap',code=400);assert'已记录实收金额'in over['detail']
    await register_cost(c,'expense',receipt,identity=identity,amount=1000,code=409)
    # The consumed receipt authorization cannot be reused for a different delivery.
    current=await context(c,po['order']['id'],'receive');await receive(c,current,po,20,'r12-used-grant20',g['data']['id'],code=403)
    r20,_,_=await receive_once(c,po,20,'r12-next20');assert r20['inventory']['recorded_lines']==1
-   await pay(c,bid,700,'r12-stale-review',code=400);await confirm(c,bid)
+   await pay(c,bid,700,'r12-stale-review',code=409);await confirm(c,bid)
+   await funding_approval(c,f,bid)
    second=await pay(c,bid,700,'r12-second700');final=await request(c,'GET',f'/payable/{bid}/detail')
    assert(final['amount'],final['paid_amount'],final['remaining_amount'])==(1000,1000,0)
    assert[p['amount']for p in final['payments']]==[700,300]or[p['amount']for p in final['payments']]==[300,700]
@@ -108,6 +118,7 @@ def test_failed_stock_receipt_preserves_previous_payment_and_unconsumed_exceptio
   async with fixture(tmp_path,monkeypatch)as(_,f,c,_):
    *_,po=await prepare(c,f);approved,_=await approve_other(c,po);bid=approved['payable_bill_id']
    # Default payment policy remains compatible until explicitly enabled.
+   await funding_approval(c,f,bid)
    await pay(c,bid,300,'r12-paid-before-receipt');assert await balance(f)==9700
    ctx=await context(c,po['order']['id'],'receive');g,_=await grant(c,ctx);real=inventory.record_receipt
    async def fail(*args,**kw):raise HTTPException(500,'合成库存保存失败，整事务回滚')
