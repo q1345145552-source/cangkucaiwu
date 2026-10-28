@@ -1,4 +1,5 @@
 "use client";
+import { confirmAccountBalance,confirmBalanceWarning } from "@/lib/balanceWarning";
 import { useTierPermission } from "@/hooks/useActionPermission";
 import ActionGate from "@/components/permissions/ActionGate";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
@@ -395,11 +396,17 @@ function PayrollPageContent() {
       const advance = disburseAdvances.find(a => String(a.id) === disburseAdvanceId);
       if (!advance) { toast("error", "请选择工资垫款单"); return; }
       const total = batch ? batch.reduce((sum: number, r: any) => sum + Math.round(Number(r.net_pay || 0) * 100), 0) / 100 : Number(disburseModal.net_pay || 0);
-      if (total > Number(advance.payroll_available_amount)) { toast("error", "垫款单剩余金额不足"); return; }
+
     }
     const recordId = batch ? -1 : disburseModal.id;
     setDisbursing(recordId);
     try {
+      const amount=batch?batch.reduce((sum:number,r:any)=>sum+Math.round(Number(r.net_pay||0)*100),0)/100:Number(disburseModal.net_pay||0);
+      if(fromAdvance){
+        const fresh=await api.get<any>('/payroll/cash-advance-sources');const source=(fresh.data||[]).find((a:any)=>String(a.id)===disburseAdvanceId);
+        if(!source)throw Error('垫款单已变化，请重新选择');
+        if(!confirmBalanceWarning(source.payroll_available_amount,amount))return;
+      }else if(!await confirmAccountBalance(api,disburseAccountId,amount))return;
       const funding = fromAdvance ? { funding_source: "cash_advance", cash_advance_id: Number(disburseAdvanceId) } : { account_id: Number(disburseAccountId) };
       let r: any;
       if (batch) {

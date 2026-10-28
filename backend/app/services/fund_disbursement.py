@@ -13,6 +13,7 @@ from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.user import User
 from app.models.warehouse import Warehouse
 from app.services.data_history import record_history
+from app.services.balance_warning import balance_warning, record_balance_warning
 
 CATEGORY = "备用金拨付"
 ZERO = Decimal("0.00")
@@ -67,7 +68,7 @@ async def create_disbursement(db, fund, amount, payment_account_id, operator, *,
     when = disbursement_date(receive_date)
     if not payment_account_id:
         raise HTTPException(400, "请选择备用金拨付账户")
-    # 调用者已锁备用金账户；付款账户也锁定，避免并发拨付越过余额。
+    # 调用者已锁备用金账户；付款账户也锁定，使并发拨付的余额快照保持一致。
     account = (await db.execute(select(PaymentAccount).where(
         PaymentAccount.id == payment_account_id, PaymentAccount.warehouse_id == fund.warehouse_id,
     ).with_for_update())).scalar_one_or_none()
@@ -80,8 +81,7 @@ async def create_disbursement(db, fund, amount, payment_account_id, operator, *,
         raise HTTPException(400, "付款账户币种必须与备用金账户一致")
     from app.services.account_balances import current_account_balances
     before_balance = (await current_account_balances(db, [account]))[account.id]
-    if before_balance < amount:
-        raise HTTPException(400, "付款账户余额不足")
+    warning = balance_warning(before_balance,amount,currency,source='company_account',source_id=account.id)
     await db.execute(select(Warehouse.id).where(Warehouse.id == fund.warehouse_id).with_for_update())
     category = (await db.execute(select(IncomeExpenseCategory).where(
         IncomeExpenseCategory.warehouse_id == fund.warehouse_id, IncomeExpenseCategory.type == "expense",
@@ -117,7 +117,8 @@ async def create_disbursement(db, fund, amount, payment_account_id, operator, *,
     await record_history(db, module="expense_fund", record_id=fund.id, operator=operator,
         operation_type="disburse", after={"disbursement_id": row.id, "expense_record_id": expense.id,
             "amount": float(amount), "currency": currency, "payment_account_id": account.id}, warehouse_id=fund.warehouse_id)
-    return {**disbursement_fields(row), "account_balance": float(before_balance - amount),
+    await record_balance_warning(db,warning,operator,module='expense_fund',record_id=fund.id,warehouse_id=fund.warehouse_id)
+    return {'warning':warning,**disbursement_fields(row), "account_balance": float(before_balance - amount),
         "new_balance": fund.remaining_balance, "total_topped_up": fund.amount}
 
 

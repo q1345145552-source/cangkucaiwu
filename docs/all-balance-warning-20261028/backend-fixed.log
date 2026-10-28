@@ -1,0 +1,374 @@
+..F....F...                                                              [100%]
+=================================== FAILURES ===================================
+_____________ test_negative_payable_concurrency_and_original_retry _____________
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-391/test_negative_payable_concurre0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112c0b6e0>
+
+    def test_negative_payable_concurrency_and_original_retry(tmp_path,monkeypatch):
+     async def run():
+      async with setup(tmp_path,monkeypatch) as (_,f,c):
+       async with f() as db:(await db.get(PaymentAccount,1)).opening_balance=-1000;await db.commit()
+       params={'paid_amount':500,'account_id':1,'payment_method':'现金','request_key':'all-balance-payable-original'}
+       async def pay():return await c.put('/api/v1/payable/1/pay',headers=auth(1),params=params)
+       responses=await asyncio.gather(*(pay() for _ in range(5)));assert all(r.status_code==200 for r in responses),[r.text for r in responses]
+       data=responses[0].json();assert len({r.json()['payment_id'] for r in responses})==1
+       assert data['warning']['balance_before']==-1000 and await balance(f)==-1500 and len(await logs(f,'payable'))==1
+       replay=await pay();assert replay.json()['warning']==data['warning'] and await balance(f)==-1500
+       save('step2-payable.json',{'statuses':[r.status_code for r in responses],'response':data,'retry':replay.json(),'balance':await balance(f),'logs':await logs(f,'payable')})
+>    asyncio.run(run())
+
+tests/test_all_balance_warning.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+     async with setup(tmp_path,monkeypatch) as (_,f,c):
+      async with f() as db:(await db.get(PaymentAccount,1)).opening_balance=-1000;await db.commit()
+      params={'paid_amount':500,'account_id':1,'payment_method':'现金','request_key':'all-balance-payable-original'}
+      async def pay():return await c.put('/api/v1/payable/1/pay',headers=auth(1),params=params)
+      responses=await asyncio.gather(*(pay() for _ in range(5)));assert all(r.status_code==200 for r in responses),[r.text for r in responses]
+      data=responses[0].json();assert len({r.json()['payment_id'] for r in responses})==1
+>     assert data['warning']['balance_before']==-1000 and await balance(f)==-1500 and len(await logs(f,'payable'))==1
+E     assert (-1000.0 == -1000 and -1000.0 == -1500)
+
+tests/test_all_balance_warning.py:59: AssertionError
+________________ test_other_manual_expense_transfer_and_replay _________________
+  + Exception Group Traceback (most recent call last):
+  |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py", line 186, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/runner.py", line 341, in from_call
+    |     result: TResult | None = func()
+    |                              ^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/runner.py", line 242, in <lambda>
+    |     lambda: runtest_hook(item=item, **kwds), when=when, reraise=reraise
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_caller.py", line 197, in __call__
+    |     return self._hookexec(
+    |            ^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_manager.py", line 183, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 195, in _multicall
+    |     raise exception
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 167, in _multicall
+    |     teardown.throw(exception)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/threadexception.py", line 92, in pytest_runtest_call
+    |     yield from thread_exception_runtest_hook()
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/threadexception.py", line 68, in thread_exception_runtest_hook
+    |     yield
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 167, in _multicall
+    |     teardown.throw(exception)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 95, in pytest_runtest_call
+    |     yield from unraisable_exception_runtest_hook()
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 70, in unraisable_exception_runtest_hook
+    |     yield
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 167, in _multicall
+    |     teardown.throw(exception)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/logging.py", line 848, in pytest_runtest_call
+    |     yield from self._runtest_for(item, "call")
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/logging.py", line 831, in _runtest_for
+    |     yield
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 167, in _multicall
+    |     teardown.throw(exception)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/capture.py", line 879, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 167, in _multicall
+    |     teardown.throw(exception)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 147, in _multicall
+    |     res = hook_impl.function(*args)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/runner.py", line 174, in pytest_runtest_call
+    |     item.runtest()
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/python.py", line 1627, in runtest
+    |     self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_caller.py", line 197, in __call__
+    |     return self._hookexec(
+    |            ^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_manager.py", line 183, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 195, in _multicall
+    |     raise exception
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/pluggy/_execution.py", line 147, in _multicall
+    |     res = hook_impl.function(*args)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/_pytest/python.py", line 159, in pytest_pyfunc_call
+    |     result = testfunction(**testargs)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/private/tmp/all-balance-warning-20261028/backend/tests/test_all_balance_warning.py", line 119, in test_other_manual_expense_transfer_and_replay
+    |     asyncio.run(run())
+    |   File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 195, in run
+    |     return runner.run(main)
+    |            ^^^^^^^^^^^^^^^^
+    |   File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py", line 118, in run
+    |     return self._loop.run_until_complete(task)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    |     return future.result()
+    |            ^^^^^^^^^^^^^^^
+    |   File "/private/tmp/all-balance-warning-20261028/backend/tests/test_all_balance_warning.py", line 113, in run
+    |     replay=await c.post('/api/v1/income-expense/expense',headers=auth(1),data=body);assert replay.json()['warning']==result.json()['warning']
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py", line 1905, in post
+    |     return await self.request(
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py", line 1585, in request
+    |     return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py", line 1674, in send
+    |     response = await self._send_handling_auth(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py", line 1702, in _send_handling_auth
+    |     response = await self._send_handling_redirects(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py", line 1739, in _send_handling_redirects
+    |     response = await self._send_single_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py", line 1776, in _send_single_request
+    |     response = await transport.handle_async_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_transports/asgi.py", line 157, in handle_async_request
+    |     await self.app(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    |     raise exc
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py", line 185, in __call__
+    |     with collapse_excgroups():
+    |          ^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py", line 187, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/private/tmp/all-balance-warning-20261028/backend/app/core/audit.py", line 65, in dispatch
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py", line 163, in call_next
+    |     raise app_exc
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py", line 715, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py", line 735, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/fastapi/routing.py", line 301, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/tmp/supplier01-py312/lib/python3.12/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/private/tmp/all-balance-warning-20261028/backend/app/api/v1/income_expense.py", line 245, in create_expense
+    |     if previous:return {'warning':await saved_balance_warning(db,module='expense',record_id=previous.id),'id':previous.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':previous.voucher,**await costs.metadata_for(db,previous)}
+    |                                         ^^^^^^^^^^^^^^^^^^^^^
+    | UnboundLocalError: cannot access local variable 'saved_balance_warning' where it is not associated with a value
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = PosixPath('/private/var/folders/vd/f14t5_q5437b19jh635qkkw40000gn/T/pytest-of-xiongliu/pytest-391/test_other_manual_expense_tran0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1170a7920>
+
+    def test_other_manual_expense_transfer_and_replay(tmp_path,monkeypatch):
+     async def run():
+      from tests.test_cash_wallet import cash_environment,payment,balances
+      async with cash_environment(tmp_path,monkeypatch) as (_,f,c,cash,bank):
+       async with f() as db:(await db.get(PaymentAccount,cash)).opening_balance=-1000;await db.commit()
+       body=payment(cash,key='negative-manual-expense');result=await c.post('/api/v1/income-expense/expense',headers=auth(1),data=body)
+       assert result.status_code==200 and result.json()['warning']['balance_before']==-1000,result.text
+       assert (await balances(f,cash))[cash]==-1200
+       replay=await c.post('/api/v1/income-expense/expense',headers=auth(1),data=body);assert replay.json()['warning']==result.json()['warning']
+       transfer={'from_account_id':cash,'to_account_id':bank,'amount':300,'transfer_date':'2026-10-20','request_key':'negative-transfer'}
+       result=await c.post('/api/v1/accounts/transfers',headers=auth(1),json=transfer);assert result.status_code==200,result.text
+       assert result.json()['warning']['balance_before']==-1200 and await balances(f,cash,bank)=={cash:-1500,bank:300}
+       replay=await c.post('/api/v1/accounts/transfers',headers=auth(1),json=transfer);assert replay.json()['warning']==result.json()['warning']
+       assert len(await logs(f,'expense'))==1 and len(await logs(f,'accounts'))==1
+>    asyncio.run(run())
+
+tests/test_all_balance_warning.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_all_balance_warning.py:113: in run
+    replay=await c.post('/api/v1/income-expense/expense',headers=auth(1),data=body);assert replay.json()['warning']==result.json()['warning']
+/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py:1905: in post
+    return await self.request(
+/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py:1585: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py:1674: in send
+    response = await self._send_handling_auth(
+/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py:1702: in _send_handling_auth
+    response = await self._send_handling_redirects(
+/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py:1739: in _send_handling_redirects
+    response = await self._send_single_request(request)
+/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_client.py:1776: in _send_single_request
+    response = await transport.handle_async_request(request)
+/tmp/supplier01-py312/lib/python3.12/site-packages/httpx/_transports/asgi.py:157: in handle_async_request
+    await self.app(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/fastapi/applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/applications.py:113: in __call__
+    await self.middleware_stack(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/errors.py:187: in __call__
+    raise exc
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/errors.py:165: in __call__
+    await self.app(scope, receive, _send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py:185: in __call__
+    with collapse_excgroups():
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/contextlib.py:158: in __exit__
+    self.gen.throw(value)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_utils.py:83: in collapse_excgroups
+    raise exc
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py:187: in __call__
+    response = await self.dispatch_func(request, call_next)
+app/core/audit.py:65: in dispatch
+    response = await call_next(request)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py:163: in call_next
+    raise app_exc
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/base.py:149: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/cors.py:85: in __call__
+    await self.app(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/middleware/exceptions.py:62: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py:715: in __call__
+    await self.middleware_stack(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py:735: in app
+    await route.handle(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py:288: in handle
+    await self.app(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py:76: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/tmp/supplier01-py312/lib/python3.12/site-packages/starlette/routing.py:73: in app
+    response = await f(request)
+/tmp/supplier01-py312/lib/python3.12/site-packages/fastapi/routing.py:301: in app
+    raw_response = await run_endpoint_function(
+/tmp/supplier01-py312/lib/python3.12/site-packages/fastapi/routing.py:212: in run_endpoint_function
+    return await dependant.call(**values)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+category_id = 1, account_id = 3, amount = 200.0, currency = 'THB'
+expense_date = '2026-10-20', supplier_id = None, remark = 'cash payment'
+request_key = 'negative-manual-expense', invoice_identity = None
+cost_confirmation = None, files = None
+current_user = <app.models.user.User object at 0x1173463c0>
+db = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x117345580>
+_perm = <app.models.user.User object at 0x1173463c0>
+
+    @router.post("/expense")
+    async def create_expense(
+        category_id: int = Form(...),
+        account_id: int = Form(...),
+        amount: float = Form(...),
+        currency: str = Form("THB"),
+        expense_date: str = Form(...),
+        supplier_id: Optional[int] = Form(None),
+        remark: Optional[str] = Form(None),
+        request_key: Optional[str] = Form(None),
+        invoice_identity: Optional[str] = Form(None),
+        cost_confirmation: Optional[str] = Form(None),
+        files: Optional[List[UploadFile]] = File(None),
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+        _perm=Depends(check_staff_permission("运营收支")),
+    ):
+        if current_user.role == Role.SUPER_ADMIN:
+            raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
+            raise HTTPException(403, "无权限")
+    
+        wh_id = get_wh_id(current_user)
+    
+        try:when=datetime.fromisoformat(expense_date)
+        except ValueError:raise HTTPException(400,'付款日期格式错误')
+        values=dict(warehouse_id=wh_id,category_id=category_id,account_id=account_id,supplier_id=supplier_id,
+            amount=amount,currency=currency,expense_date=when,remark=remark,approved_by=current_user.id)
+        costs.number(request_key,'登记请求编号',100)
+        await costs.lock(db,wh_id)
+        identity=costs.parse_identity(invoice_identity,current_user)
+        import hashlib
+        attachments=[]
+        for attachment in files or []:
+            if attachment and attachment.filename:
+                attachments.append(hashlib.sha256(await attachment.read()).hexdigest());await attachment.seek(0)
+        signature=costs.fingerprint({**values,'invoice_key':identity[1],'attachments':attachments})
+        previous=await costs.replay(db,'expense',wh_id,request_key,signature)
+>       if previous:return {'warning':await saved_balance_warning(db,module='expense',record_id=previous.id),'id':previous.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':previous.voucher,**await costs.metadata_for(db,previous)}
+E       UnboundLocalError: cannot access local variable 'saved_balance_warning' where it is not associated with a value
+
+app/api/v1/income_expense.py:245: UnboundLocalError
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_all_balance_warning.py: 66 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_all_balance_warning.py::test_default_5000_fund_cap_still_blocks
+tests/test_all_balance_warning.py::test_other_fund_item_create_and_edit
+  /private/tmp/all-balance-warning-20261028/backend/app/api/v1/expense_fund.py:174: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    receive_date=datetime.utcnow(), amount=0, purpose="",
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /tmp/all-balance-warning-20261028/docs/all-balance-warning-20261028/backend-fixed.xml -
+=========================== short test summary info ============================
+FAILED tests/test_all_balance_warning.py::test_negative_payable_concurrency_and_original_retry
+FAILED tests/test_all_balance_warning.py::test_other_manual_expense_transfer_and_replay

@@ -18,6 +18,7 @@ router = APIRouter()
 
 @router.get("/unmatched")
 async def get_unmatched(
+    request: Request,
     start_date: str = None, end_date: str = None,
     warehouse_id: int = None,
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),
@@ -25,17 +26,15 @@ async def get_unmatched(
 ):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
-    wh_id = warehouse_id or get_wh_id(current_user)
-    if current_user.role != Role.SUPER_ADMIN:
-        if warehouse_id and warehouse_id != get_wh_id(current_user):
-            raise HTTPException(403, "无权查看其他仓库")
-        wh_id = get_wh_id(current_user)
+    scope=[w.id for w in await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))]
+    if warehouse_id and warehouse_id not in scope:raise HTTPException(403,'无权查看其他仓库')
+    if warehouse_id:scope=[warehouse_id]
     today = thai_today()
     sd = datetime.fromisoformat(start_date) if start_date else datetime(today.year, today.month, 1)
     ed = datetime.fromisoformat(end_date) if end_date else datetime(today.year, today.month, today.day) + timedelta(days=1) - timedelta(microseconds=1)
 
     decl_q = select(RechargeDeclaration).where(and_(
-        RechargeDeclaration.warehouse_id.in_(get_wh_ids(current_user)),
+        RechargeDeclaration.warehouse_id.in_(scope),
         RechargeDeclaration.declare_date >= sd,
         RechargeDeclaration.declare_date <= ed,
         RechargeDeclaration.match_status == MatchStatus.UNMATCHED,
@@ -58,14 +57,16 @@ async def get_unmatched(
     } for d in decls]
 
     flow_q = select(IncomingFlow).where(and_(
-        IncomingFlow.warehouse_id.in_(get_wh_ids(current_user)),
+        IncomingFlow.warehouse_id.in_(scope),
         IncomingFlow.received_date >= sd,
         IncomingFlow.received_date <= ed,
         IncomingFlow.match_status == MatchStatus.UNMATCHED,
     )).order_by(IncomingFlow.received_date.desc())
     flows = (await db.execute(flow_q)).scalars().all()
+    from app.services.incoming_suggestions import suggestions_for
+    suggestions=await suggestions_for(db,flows)
     incoming = [{
-        "id": f.id, "payer_name": f.payer_name,
+        "id": f.id, "payer_name": f.payer_name,"suggestions":suggestions[f.id],
         "received_date": f.received_date.isoformat() if f.received_date else None,
         "amount": f.amount, "currency": f.currency or "THB",
         "payment_method": f.payment_method,
@@ -101,6 +102,7 @@ async def manual_match(
         raise HTTPException(400, f"币种不一致（申报 {decl.currency or 'THB'} / 流水 {flow.currency or 'THB'}），不能匹配")
     customer = await db.get(Customer,decl.customer_id)
     if not customer or customer.warehouse_id != decl.warehouse_id: raise HTTPException(409,'申报客户归属异常，请先核对')
+    original_customer_id=flow.customer_id
     await bind_receipt(db,customer,flow,current_user)
     rr = ReconciliationResult(
         warehouse_id=decl.warehouse_id,
@@ -111,7 +113,12 @@ async def manual_match(
         handling_note=handling_note, confirmed_by=current_user.id, confirmed_at=thai_now(),
     )
     db.add(rr); decl.match_status = MatchStatus.MATCHED; flow.match_status = MatchStatus.MATCHED
-    await db.flush(); return {"message": "匹配成功"}
+    await db.flush()
+    from app.services.data_history import record_history
+    await record_history(db,module='reconciliation',record_id=rr.id,operator=current_user,operation_type='match',
+        before={'customer_id':original_customer_id},after={'flow_id':flow.id,'declaration_id':decl.id,'customer_id':customer.id,'action':'人工确认匹配'},warehouse_id=flow.warehouse_id)
+    return {'id':rr.id,'flow_id':flow.id,'declaration_id':decl.id,'customer_id':customer.id,'customer_code':customer.customer_code,
+        'amount':flow.amount,'currency':flow.currency,'message':f'已匹配到 {customer.customer_code} 的 {flow.amount:,.2f} {flow.currency or "THB"}'}
 
 @router.post("/unmatch", dependencies=[Depends(require_non_labor)])
 async def unmatch_record(
@@ -126,16 +133,32 @@ async def unmatch_record(
     if not rr: raise HTTPException(404, "记录不存在")
     scope = [w.id for w in await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))]
     if rr.warehouse_id not in scope: raise HTTPException(403,'只能操作当前仓库的匹配')
-    # 解对账只解除申报凭证匹配，不等于退回已经收到的钱或重新分配客户资金。
+    # 撤销只恢复本次匹配前归属；保留独立账期回款与历史既有归属，不退银行款。
+    restored_customer=False
     if rr.flow_id:
         flow = (await db.execute(select(IncomingFlow).where(IncomingFlow.id==rr.flow_id).with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
-        declaration = await db.get(RechargeDeclaration,rr.declaration_id) if rr.declaration_id else None
+        rr=(await db.execute(select(ReconciliationResult).where(ReconciliationResult.id==record_id).with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
+        if rr is None:raise HTTPException(409,'匹配已撤销，请刷新列表')
+        declaration = (await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id==rr.declaration_id).with_for_update().execution_options(populate_existing=True))).scalar_one_or_none() if rr.declaration_id else None
         customer = await db.get(Customer,declaration.customer_id) if declaration else None
         if flow and flow.warehouse_id != rr.warehouse_id: raise HTTPException(403,'匹配中的到账归属异常，不能操作其他仓库')
         if declaration and declaration.warehouse_id != rr.warehouse_id: raise HTTPException(403,'匹配中的申报归属异常，不能操作其他仓库')
         if customer and customer.warehouse_id != rr.warehouse_id: raise HTTPException(409,'匹配中的客户归属异常，请先核对')
         if flow and customer and flow.warehouse_id==rr.warehouse_id and customer.warehouse_id==rr.warehouse_id:
-            await bind_receipt(db,customer,flow,current_user)
+            from app.models.data_change_history import DataChangeHistory
+            from app.models.credit import CreditRepayment
+            evidence=(await db.execute(select(DataChangeHistory).where(DataChangeHistory.module=='reconciliation',DataChangeHistory.record_id==rr.id,
+                DataChangeHistory.operation_type=='match',DataChangeHistory.warehouse_id==rr.warehouse_id).order_by(DataChangeHistory.id.desc()))).scalars().first()
+            independent=(await db.execute(select(CreditRepayment.id).where(CreditRepayment.incoming_flow_id==flow.id).limit(1))).scalar_one_or_none()
+            other=(await db.execute(select(ReconciliationResult.id).where(ReconciliationResult.flow_id==flow.id,ReconciliationResult.id!=rr.id,
+                ReconciliationResult.match_status.in_(('matched','manual_matched'))).limit(1))).scalar_one_or_none()
+            if evidence and evidence.after_data.get('flow_id')==flow.id and evidence.before_data.get('customer_id') is None and not independent and not other:
+                if flow.customer_id!=customer.id:raise HTTPException(409,'到账客户归属已变化，请先核对')
+                flow.customer_id=None;restored_customer=True
+                from app.services.data_history import record_history
+                await record_history(db,module='reconciliation',record_id=rr.id,operator=current_user,operation_type='unmatch',
+                    before={'flow_id':flow.id,'customer_id':customer.id},after={'flow_id':flow.id,'customer_id':None,'action':'撤销本次匹配归属，银行到账保留'},warehouse_id=rr.warehouse_id)
+            else:await bind_receipt(db,customer,flow,current_user)
     if current_user.role != Role.SUPER_ADMIN and rr.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "无权限")
     if rr.declaration_id:
@@ -144,7 +167,7 @@ async def unmatch_record(
     if rr.flow_id:
         f = (await db.execute(select(IncomingFlow).where(IncomingFlow.id == rr.flow_id))).scalar_one_or_none()
         if f: f.match_status = MatchStatus.UNMATCHED
-    await db.delete(rr); await db.flush(); return {"message": "已解除申报匹配，实际到账及已明确的客户归属保留，未退款"}
+    await db.delete(rr); await db.flush(); return {'customer_binding_reverted':restored_customer,"message": "已撤销匹配，客户归属和余额已恢复，银行到账保留" if restored_customer else "已解除申报匹配，独立客户归属保留，未退款"}
 
 @router.get("/results")
 async def list_results(

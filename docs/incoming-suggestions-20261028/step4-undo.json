@@ -1,0 +1,22 @@
+{
+  "http": 200,
+  "response": {
+    "customer_binding_reverted": true,
+    "message": "已撤销匹配，客户归属和余额已恢复，银行到账保留"
+  },
+  "customer_received_after_undo": 0,
+  "rematch": {
+    "id": 2,
+    "flow_id": 1,
+    "declaration_id": 1,
+    "customer_id": 1,
+    "customer_code": "XT10022",
+    "amount": 3000.0,
+    "currency": "THB",
+    "message": "已匹配到 XT10022 的 3,000.00 THB"
+  },
+  "wallet": {
+    "count": 1,
+    "balance": 3000.0
+  }
+}

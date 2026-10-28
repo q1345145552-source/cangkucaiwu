@@ -1,5 +1,5 @@
 from tests.round3_flow_support import DeferredChecks
-from tests.round3_flow_support import historical_reimbursement, prepare_payroll, post_ok
+from tests.round3_flow_support import historical_reimbursement, historical_payroll, prepare_payroll, post_ok
 """报销成本、公司资金、凭证、垫款和撤销的真实 HTTP/数据库验收。"""
 import asyncio
 import json
@@ -192,7 +192,8 @@ def test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost(tmp
                 await db.commit()
             await prepare_payroll(f,c,2)
             rejected = await c.post("/api/v1/payroll/2/disburse", headers=auth(3), json={"funding_source": "cash_advance", "cash_advance_id": aid})
-            assert rejected.status_code == 400 and rejected.json()["detail"] == "垫款单剩余金额不足"
+            assert rejected.status_code == 200 and rejected.json()["warning"]["balance_after"] == -1000,rejected.text
+            await historical_payroll(f,c,2)
             revoked = await historical_reimbursement(f,c,rid)
             assert revoked["cash_advance_id"] is None
             with deferred.check('test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost:187'):
@@ -262,10 +263,15 @@ def test_validation_no_partial_money_changes(tmp_path, monkeypatch, kind):
                     (await db.get(PaymentAccount, 1)).status = "inactive"
                     await db.commit()
             before = await snapshot(f)
+            before_balance=await balances(c)
             r = await pay(c, rid, path, **fields)
+            if kind=='small_advance':
+                assert r.status_code==200 and r.json()['warning']['balance_after']==-1000,r.text
+                assert r.json()['warning']['source']=='cash_advance'
+                assert await balances(c)==before_balance
+                return
             assert r.status_code == 400, r.text
             if kind == "no_voucher": assert r.json()["detail"] == "请上传付款凭证"
-            if kind == "small_advance": assert r.json()["detail"] == "垫款单剩余金额不足"
             assert await snapshot(f) == before
     asyncio.run(run())
 
@@ -379,8 +385,10 @@ def test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_ba
             photo = await upload(c, rid)
             before = await snapshot(f)
             r = await pay(c, rid, photo, funding_source="cash_advance", payment_account_id=None, cash_advance_id=aid)
-            assert r.status_code == 400 and r.json()["detail"] == "垫款单剩余金额不足"
-            assert await snapshot(f) == before
+            assert r.status_code == 200 and r.json()["warning"]["balance_after"] == -234.56,r.text
+            saved=await snapshot(f)
+            repeated=await pay(c,rid,photo,funding_source="cash_advance",payment_account_id=None,cash_advance_id=aid)
+            assert repeated.status_code==400 and await snapshot(f)==saved
     asyncio.run(run())
 
 

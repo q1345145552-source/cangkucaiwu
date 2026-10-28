@@ -1550,7 +1550,8 @@ async def compare_prices(product_name: str = None, spec: str = None, category_id
         pass
     q = q.where(Supplier.warehouse_id == warehouse_id)
     if currency:
-        q = q.where(func.coalesce(SupplierProduct.currency, "THB") == currency)
+        from app.services.supplier_comparison import legacy_product_currency
+        q = q.where(legacy_product_currency() == currency)
     prods = (await db.execute(q.order_by(SupplierProduct.unit_price.asc()))).scalars().all()
     sids = list({p.supplier_id for p in prods})
     smap = {}
@@ -1894,12 +1895,14 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         })
 
     # --- 产品比价汇总按币种 ---
-    prod_q = (select(SupplierProduct.product_name, SupplierProduct.spec, SupplierProduct.currency,
+    from app.services.supplier_comparison import legacy_product_currency
+    quote_currency = legacy_product_currency()
+    prod_q = (select(SupplierProduct.product_name, SupplierProduct.spec, quote_currency.label("currency"), SupplierProduct.unit,
         func.count(SupplierProduct.supplier_id.distinct()).label("supplier_count"),
         func.min(SupplierProduct.unit_price).label("min_price"),
         func.max(SupplierProduct.unit_price).label("max_price"))
         .join(Supplier, SupplierProduct.supplier_id == Supplier.id)
-        .group_by(SupplierProduct.product_name, SupplierProduct.spec, SupplierProduct.currency)
+        .group_by(SupplierProduct.product_name, SupplierProduct.spec, quote_currency, SupplierProduct.unit)
         .where(Supplier.warehouse_id == warehouse_id).order_by(SupplierProduct.product_name))
     prod_rows = (await db.execute(prod_q)).all()
     product_compare = []
@@ -1910,11 +1913,11 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
         min_sup_q = (select(SupplierProduct.supplier_id, Supplier.name)
             .join(Supplier, SupplierProduct.supplier_id == Supplier.id)
             .where(SupplierProduct.product_name == p.product_name, SupplierProduct.spec == p.spec,
-                   func.coalesce(SupplierProduct.currency, "THB") == cur,
+                   quote_currency == cur, SupplierProduct.unit.is_(None) if p.unit is None else SupplierProduct.unit == p.unit,
                    SupplierProduct.unit_price == p.min_price, Supplier.warehouse_id == warehouse_id))
         min_sup = (await db.execute(min_sup_q)).first()
         product_compare.append({
-            "product_name": p.product_name, "spec": p.spec, "currency": cur,
+            "product_name": p.product_name, "spec": p.spec, "currency": cur, "unit": p.unit,
             "supplier_count": p.supplier_count,
             "min_price": float(p.min_price) if p.min_price else 0,
             "max_price": float(p.max_price) if p.max_price else 0,
@@ -1924,15 +1927,15 @@ async def procurement_summary(current_user: User = Depends(get_current_user),
     # --- 省钱提示按币种 ---
     savings_tips = []
     for prod in product_compare:
-        if prod["supplier_count"] >= 2 and prod["max_price"] > prod["min_price"]:
+        if prod["unit"] and prod["supplier_count"] >= 2 and prod["max_price"] > prod["min_price"]:
             diff = round(prod["max_price"] - prod["min_price"], 2)
             sym = "¥" if prod["currency"] == "CNY" else "฿"
             savings_tips.append({
-                "product_name": prod["product_name"], "spec": prod["spec"], "currency": prod["currency"],
+                "product_name": prod["product_name"], "spec": prod["spec"], "currency": prod["currency"], "unit": prod["unit"],
                 "cheapest_price": prod["min_price"], "cheapest_supplier": prod["min_supplier"],
                 "highest_price": prod["max_price"],
                 "savings_per_unit": diff,
-                "tip": f"{prod['product_name']}{prod['spec'] or ''}：最便宜 {prod['min_supplier']} {sym}{prod['min_price']}，最贵 {sym}{prod['max_price']}，用便宜的可省 {sym}{diff}/件",
+                "tip": f"{prod['product_name']}{prod['spec'] or ''}：最便宜 {prod['min_supplier']} {sym}{prod['min_price']}，最贵 {sym}{prod['max_price']}，用便宜的可省 {sym}{diff}/{prod['unit']}",
             })
 
     return {

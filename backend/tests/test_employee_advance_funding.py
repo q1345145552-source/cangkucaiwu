@@ -166,7 +166,7 @@ def test_pending_no_money_then_approval_once_and_rejection(tmp_path, monkeypatch
 @pytest.mark.parametrize('values,message', [
     ({'funding_source':None}, '请选择资金来源'), ({'funding_source':'nope'}, '资金来源无效'),
     ({'payment_account_id':None}, '请选择公司付款账户'), ({'payment_account_id':2}, '付款账户不存在或不属于当前仓库'),
-    ({'amount':20001}, '公司账户余额不足'), ({'payment_account_id':3,'currency':'THB'}, '付款账户币种与预支不一致'),
+    ({'amount':20001}, '预支合计不能超过当月工资'), ({'payment_account_id':3,'currency':'THB'}, '付款账户币种与预支不一致'),
     ({'funding_source':'cash_advance'}, '请选择垫款单'),
     ({'funding_source':'cash_advance','cash_advance_id':2}, '垫款单不存在或不属于当前仓库'),
     ({'funding_source':'cash_advance','cash_advance_id':3}, '缺少有效核验'),
@@ -181,6 +181,12 @@ def test_validation_no_partial_writes(tmp_path, monkeypatch, values, message):
         async with environment(tmp_path, monkeypatch) as (_, f, c):
             before = await state(f)
             r = await create(c, **values)
+            if message in ('垫款单剩余金额不足','超出备用金可用余额'):
+                assert r.status_code==200 and r.json()['approval_status']=='pending',r.text
+                assert await state(f)==before
+                executed=await execute_advance(f,c,r.json()['id'])
+                assert executed.json()['warning']['balance_after']<0
+                return
             assert r.status_code == (409 if message=='缺少有效核验' else 400) and r.json()['detail'].startswith(message), r.text
             assert await state(f) == before
             async with f() as db:
@@ -204,11 +210,14 @@ def test_approval_rechecks_resources_and_keeps_pending_on_failure(tmp_path, monk
                 await db.commit()
             before = await state(f)
             r = await c.post(f'{BASE}/{aid}/execute', headers=auth(3))
-            assert r.status_code == 400, r.text
+            assert r.status_code == 200, r.text
+            assert r.json()['warning']['balance_before']==0 and r.json()['warning']['balance_after']==-1000
             async with f() as db:
                 a = await db.get(EmployeeAdvance, aid)
-                assert a.approval_status == 'approved_ready' and a.reviewer_id == 1 and a.reviewed_at is not None
-            assert await state(f) == before
+                assert a.approval_status == 'approved' and a.reviewer_id == 1 and a.reviewed_at is not None
+            saved=await state(f)
+            repeated=await c.post(f'{BASE}/{aid}/execute',headers=auth(3))
+            assert repeated.status_code==409 and await state(f)==saved
     asyncio.run(run())
 
 
@@ -239,13 +248,15 @@ def test_shared_cash_capacity_cannot_be_reused(tmp_path, monkeypatch):
             assert r.status_code == 200, r.text
             await execute_advance(f,c,r.json()['id'])
             again = await create(c, funding_source='cash_advance', cash_advance_id=1, amount=1)
-            assert again.status_code == 400 and again.json()['detail'] == '垫款单剩余金额不足'
+            assert again.status_code==200 and again.json()['approval_status']=='pending',again.text
+            executed=await execute_advance(f,c,again.json()['id'])
+            assert executed.json()['warning']['balance_after']==-1
             from types import SimpleNamespace
             async with f() as db:
-                with pytest.raises(Exception, match='垫款单剩余金额不足'):
-                    await lock_payroll_advance(db,1,1,[SimpleNamespace(net_pay=1)])
-                with pytest.raises(Exception, match='垫款单剩余金额不足'):
-                    await lock_advance(db,SimpleNamespace(warehouse_id=1,currency='THB'),1,Decimal(1))
+                payroll_source=await lock_payroll_advance(db,1,1,[SimpleNamespace(net_pay=1)])
+                assert payroll_source._balance_warning['balance_after']==-2
+                reimb_source=await lock_advance(db,SimpleNamespace(warehouse_id=1,currency='THB'),1,Decimal(1))
+                assert reimb_source._balance_warning['balance_after']==-2
             rows = (await c.get('/api/v1/payroll/cash-advance-sources', headers=auth(1))).json()['data']
             assert next(x for x in rows if x['id'] == 1)['available_amount'] == 0
     asyncio.run(run())
@@ -406,6 +417,10 @@ def test_locked_validation_refreshes_previously_loaded_resource(tmp_path, monkey
                         loan.repaid_amount, loan.status = 10000, 'repaid'
                     else: (await changed.get(ExpenseFund,1)).remaining_balance = 0
                     await changed.commit()
+                if source in ('company_account','expense_fund'):
+                    _, fresh = await funding.validate_funding(held,source,1,1000,payment_account_id=1,fund_account_id=1,lock=True)
+                    assert (fresh.opening_balance if source=='company_account' else fresh.remaining_balance)==0
+                    return
                 with pytest.raises(HTTPException) as rejected:
                     await funding.validate_funding(held,source,1,1000,payment_account_id=1,
                         cash_advance_id=1,fund_account_id=1,lock=True)

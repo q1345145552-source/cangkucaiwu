@@ -1,0 +1,65 @@
+{
+  "status": 200,
+  "response": {
+    "warning": {
+      "message": "当前账户余额不足（可用 -1,000.00，本次 1,334.57），确认继续吗",
+      "balance_before": -1000.0,
+      "amount": 1334.57,
+      "balance_after": -2334.57,
+      "currency": "THB",
+      "source": "company_account",
+      "source_id": 1,
+      "record_ids": [
+        1,
+        2
+      ]
+    },
+    "message": "已发放 2 条",
+    "count": 2,
+    "account_id": 1,
+    "funding_source": "company_account",
+    "cash_advance_id": null,
+    "total_net": 1334.57,
+    "expenses": [
+      {
+        "payroll_record_id": 1,
+        "expense_record_id": 1,
+        "amount": 100.01
+      },
+      {
+        "payroll_record_id": 2,
+        "expense_record_id": 2,
+        "amount": 1234.56
+      }
+    ]
+  },
+  "before": -1000.0,
+  "after": -2334.57,
+  "expenses_before": 0,
+  "expenses_after": 2,
+  "logs": [
+    {
+      "id": 3,
+      "module": "payroll",
+      "operator_id": 1,
+      "operator_name": "warehouse_admin",
+      "created_at": "2026-10-27 18:05:10",
+      "data": {
+        "message": "当前账户余额不足（可用 -1,000.00，本次 1,334.57），确认继续吗",
+        "balance_before": -1000.0,
+        "amount": 1334.57,
+        "balance_after": -2334.57,
+        "currency": "THB",
+        "source": "company_account",
+        "source_id": 1,
+        "record_ids": [
+          1,
+          2
+        ],
+        "operation_id": null,
+        "remark": "余额不足仍然执行",
+        "executed_at": "2026-10-28T01:05:10.970037+07:00"
+      }
+    }
+  ]
+}

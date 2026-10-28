@@ -12,7 +12,7 @@ SELF_FIXED = {('payroll','my_payslip'),('employee_advance','my_debt'),('clock_in
 SELF_ONSITE = {('clock_in',n) for n in ('list_records','get_photos','list_makeup_requests')} | {
     ('attendance',n) for n in ('list_leaves','list_rest_days','get_calendar')} | {
     ('overtime',n) for n in ('list_overtimes','pending_overtimes','monthly_hours','get_overtime_limit')}
-PERSONAL_FINANCE_READ = {('reimbursement',n) for n in ('list_reimbursements','get_reimb_detail','list_reimb_categories')} | {
+PERSONAL_FINANCE_READ = {('reimbursement',n) for n in ('list_reimbursements','get_reimb_detail','list_reimb_categories','own_fund_balance')} | {
     ('expense_fund',n) for n in ('list_accounts','list_items','list_recharge_requests','list_disbursements')} | {('employee_advance','list_funding_options')}
 PAY_FIELDS = {'daily_wage','base_salary','salary_template_id','salary_template_name','salary_template_type',
     'salary_template_amount','salary_template_overtime_fee','deduction_template_id','deduction_template_name',

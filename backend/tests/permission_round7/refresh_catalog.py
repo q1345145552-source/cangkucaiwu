@@ -38,6 +38,10 @@ for route in app.routes:
  elif r['tier']=='approve':r['approval_handoff']='现有现场事实/平台审核；本人隔离及单据前置状态仍执行，不能从操作授权推导审批。'
  else:r['approval_handoff']='不产生新增批准授权；执行现有业务状态和相关服务限制。'
  r['minimal_read_dependencies']=[{'endpoint':'/api/v1/access/choices/'+r['module_key'],'required_any_tier':['operate','approve'],'fields':['id','label','status','entity'],'binding':'action+exact schema field+authorized parent; search/page; selected_id provides explicit action-context whitelist only','unsupported_module':'Legacy choices can reject; specific bindings and gaps are separately inventoried'}] if r['mode']=='business' and r['tier']!='view' else []
-p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+from tests.evidence_path import evidence_dir
+(evidence_dir('action-catalog')/'full-metadata.json').write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+for row in d['routes']:
+ for key in ('guards','associated_services'):row.pop(key,None)
+p.write_text(json.dumps(d,ensure_ascii=False,separators=(',',':'))+'\n')
 (ROOT/'docs/permissions-round7-20261028/registration-check.json').write_text(json.dumps({'actual':len(rows),'catalogue':len(d['routes']),'missing':[],'stale':[],'source':'actual FastAPI APIRoute paths/methods exact match'},indent=2))
 print(len(rows),'registered routes with source, original contracts and associated services')

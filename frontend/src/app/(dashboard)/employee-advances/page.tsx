@@ -1,4 +1,5 @@
 "use client";
+import { balanceWarningText,confirmBalanceWarning } from "@/lib/balanceWarning";
 import ActionGate from "@/components/permissions/ActionGate";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import CashAdvanceLink from "@/components/CashAdvanceLink";
@@ -58,6 +59,13 @@ function EmployeeAdvancePageContent() {
     if (reject && !rejectReason.trim()) { toast("error", "请填写驳回原因"); return; }
     setReviewing(id);
     try {
+      const row=rows.find((r:any)=>r.id===id);
+      if(!reject&&row?.funding_source){
+        const fresh=await api.get<any>('/employee-advances/funding-options');
+        const source=row.funding_source==='company_account'?(fresh.accounts||[]).find((a:any)=>a.id===row.payment_account_id):row.funding_source==='cash_advance'?(fresh.cash_advances||[]).find((a:any)=>a.id===row.cash_advance_id):(fresh.funds||[]).find((a:any)=>a.id===row.fund_account_id);
+        if(!source)throw Error('资金来源已变化，请重新选择');
+        if(!confirmBalanceWarning(row.funding_source==='company_account'?source.current_balance:row.funding_source==='cash_advance'?source.available_amount:source.available,row.amount))return;
+      }
       await api.post(`/employee-advances/${id}/${reject ? "reject" : "approve"}`, reject ? { reject_reason: rejectReason.trim() } : {});
       toast("success", reject ? "已驳回" : "已通过");
       setRejectId(null); setRejectReason(""); await load();
@@ -129,9 +137,14 @@ function EmployeeAdvancePageContent() {
     if (!selected) { toast("error", form.funding_source === "company_account" ? "请选择公司付款账户" : form.funding_source === "cash_advance" ? "请选择垫款单" : "请选择备用金账户"); return; }
     if (selected.currency !== form.currency) { toast("error", "资金来源币种与预支不一致"); return; }
     const available = form.funding_source === "company_account" ? selected.current_balance : form.funding_source === "cash_advance" ? selected.available_amount : selected.available;
-    if (amt > available) { toast("error", form.funding_source === "company_account" ? "公司账户余额不足" : form.funding_source === "cash_advance" ? "垫款单剩余金额不足" : "超出备用金可用余额"); return; }
+
     setSaving(true);
     try {
+      const fresh=await api.get<any>('/employee-advances/funding-options');
+      const source=form.funding_source==='company_account'?(fresh.accounts||[]).find((a:any)=>a.id===form.payment_account_id):form.funding_source==='cash_advance'?(fresh.cash_advances||[]).find((a:any)=>a.id===form.cash_advance_id):(fresh.funds||[]).find((a:any)=>a.id===form.fund_account_id);
+      if(!source)throw Error('资金来源已变化，请重新选择');
+      setPaymentAccounts(fresh.accounts||[]);setCashAdvances(fresh.cash_advances||[]);setFundAccounts(fresh.funds||[]);
+      if(!confirmBalanceWarning(form.funding_source==='company_account'?source.current_balance:form.funding_source==='cash_advance'?source.available_amount:source.available,amt))return;
       const [kind, id] = recipient.split(":");
       const result = await api.post<{ message?: string }>("/employee-advances", { ...form, amount: amt,
         employee_id: kind === "employee" ? Number(id) : undefined,
@@ -362,8 +375,9 @@ function EmployeeAdvancePageContent() {
                 <input className="form-input py-2.5 w-full" value={form.remark} onChange={e => setForm({ ...form, remark: e.target.value })} placeholder="可选" />
               </div>
             </div>
-            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+            <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3">
               <button disabled={saving} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
+              {form.funding_source==='company_account'&&<p role="alert" className="order-first w-full text-sm text-red-600">{balanceWarningText(paymentAccounts.find(a=>a.id===form.payment_account_id)?.current_balance,form.amount)}</p>}
               <ActionGate anyOf={["employee_advance.create_advance#operate"]}><button disabled={saving || fundingLoading || !!fundingError} onClick={handleCreate} className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{saving ? "提交中..." : "提交"}</button></ActionGate>
             </div>
           </div>

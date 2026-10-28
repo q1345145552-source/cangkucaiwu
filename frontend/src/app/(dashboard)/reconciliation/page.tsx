@@ -1,9 +1,10 @@
 "use client";
+import { useEffect, useState, useRef } from "react";
 import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
-import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { api, getToken } from "@/lib/api";
+import { importScope } from "@/lib/excelImport";
+import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
@@ -12,6 +13,9 @@ import { Download, Link2, CheckCircle, Search, ArrowRight, Image as ImageIcon } 
 export default function ReconciliationPage() {
   const canWrite = useBusinessAction("reconciliation", "bookkeeping");
   const { toast } = useToast(); const router = useRouter();
+  const dataScope=useRef('');const matchBusy=useRef(false);
+  const [matching,setMatching]=useState(false);
+  const [rowSelections,setRowSelections]=useState<Record<number,string>>({});
   const [loading, setLoading] = useState(false);
   const [loadingResults, setLoadingResults] = useState(false);
 
@@ -56,7 +60,7 @@ export default function ReconciliationPage() {
     try {
       const r = await api.get<any>("/warehouses"); setWarehouses(r.data);
       if (r.data.length > 0) {
-        const wid = r.data[0].id; setWhId(wid);
+        const wid = r.data.find((w:any)=>String(w.id)===getActiveWarehouseId())?.id||r.data[0].id; setWhId(wid);
         queryUnmatched(startDate, endDate, wid);
         loadResults(resultsStartDate, resultsEndDate, wid);
       }
@@ -65,10 +69,12 @@ export default function ReconciliationPage() {
 
   async function queryUnmatched(sd?: string, ed?: string, wid?: number) {
     const s = sd || startDate; const e = ed || endDate; const w = wid ?? whId;
-    setLoading(true);
+    const scope=importScope();setLoading(true);
+    setDecls([]);setFlows([]);setRowSelections({});setShowMatchConfirm(false);dataScope.current="";
     try {
       const res = await api.get<any>(`/reconciliation/unmatched?start_date=${s}&end_date=${e}&warehouse_id=${w}`);
-      setDecls(res.declarations || []);
+      if(scope!==importScope())return;
+      dataScope.current=scope;setDecls(res.declarations || []);
       setFlows(res.incoming || []);
       setSelectedDeclId(null); setSelectedFlowId(null);
     } catch (err: any) { toast("error", err.message || "查询失败"); }
@@ -106,24 +112,39 @@ export default function ReconciliationPage() {
     setNote(""); setShowMatchConfirm(true);
   }
 
-  async function confirmMatch() {
+  function declarationFor(id:number|null){return decls.find(d=>d.id===id)||flows.flatMap(f=>f.suggestions||[]).find(d=>d.declaration_id===id);}
+  function chooseSuggestion(flow:any){
+    if(dataScope.current!==importScope()){toast('error','账号或仓库已变化，请重新查询');return;}
+    const id=Number(rowSelections[flow.id]);if(!id)return;
+    return performMatch(id,flow.id,'');
+  }
+  async function confirmMatch() {return performMatch(selectedDeclId,selectedFlowId,note);}
+  async function performMatch(declarationId:number|null,flowId:number|null,handlingNote:string) {
+    if(matchBusy.current)return;
+    if(dataScope.current!==importScope()){toast('error','账号或仓库已变化，请重新查询');setShowMatchConfirm(false);return;}
+    matchBusy.current=true;setMatching(true);
     try {
-      await api.post(`/reconciliation/manual-match?declaration_id=${selectedDeclId}&flow_id=${selectedFlowId}&handling_note=${encodeURIComponent(note)}`, {});
-      toast("success", "匹配成功");
+      const result=await api.post<any>(`/reconciliation/manual-match?declaration_id=${declarationId}&flow_id=${flowId}&handling_note=${encodeURIComponent(handlingNote)}`, {});
+      toast("success", result.message || "匹配成功");
       setShowMatchConfirm(false);
       setSelectedDeclId(null); setSelectedFlowId(null);
       queryUnmatched();
       setResultsPage(1); loadResults();
     } catch (err: any) { toast("error", err.message || "匹配失败"); }
+    finally{matchBusy.current=false;setMatching(false);}
   }
 
   async function handleUnmatch(row: any) {
-    if (!confirm("确认解除匹配？")) return;
+    if(matchBusy.current)return;
+    if(dataScope.current!==importScope()){toast('error','账号或仓库已变化，请重新查询');return;}
+    if (!confirm("确认解除匹配？本次匹配新增的客户归属将撤回，银行到账保留。")) return;
+    matchBusy.current=true;setMatching(true);
     try {
-      await api.post(`/reconciliation/unmatch?record_id=${row.id}`, {});
-      toast("success", "已解除匹配");
+      const result=await api.post<any>(`/reconciliation/unmatch?record_id=${row.id}`, {});
+      toast("success", result.message||"已解除匹配");
       queryUnmatched(); loadResults();
     } catch (err: any) { toast("error", err.message || "操作失败"); }
+    finally{matchBusy.current=false;setMatching(false);}
   }
 
   async function handleExport() {
@@ -166,6 +187,13 @@ export default function ReconciliationPage() {
       <button onClick={() => setPreviewScreenshot(v.startsWith("http") ? v : `/${v}`)} className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"><ImageIcon size={12} />查看</button>
     ) : <span className="text-red-400 text-xs">未上传</span> },
     { key: "payment_method", label: "方式", render: (v: string) => v || "-" },
+    {key:'suggestions',label:'匹配建议',render:(_:any,row:any)=>(row.suggestions||[]).length?<div className="flex flex-col gap-2 min-w-[220px] max-w-[300px] whitespace-normal">
+      <select aria-label={`到账${row.id}匹配建议`} className="form-input min-h-[44px]" value={rowSelections[row.id]||''} disabled={matching} onChange={e=>setRowSelections({...rowSelections,[row.id]:e.target.value})}>
+        <option value="">请选择申报（仅建议）</option>{row.suggestions.map((s:any)=><option key={s.declaration_id} value={s.declaration_id}>{s.customer_code} · {s.amount} {s.currency} · {s.declare_date.slice(0,10)} · 命中{s.matched_count}/3条</option>)}
+      </select>
+      <p className="text-xs text-gray-500">{row.suggestions.find((x:any)=>String(x.declaration_id)===rowSelections[row.id])?.matched_conditions.join('、')||'请核对客户、金额和日期后确认'}</p>
+      <button className="btn-primary min-h-[44px]" disabled={!rowSelections[row.id]||matching} onClick={()=>chooseSuggestion(row)}>确认匹配</button>
+    </div>:<span className="text-xs text-gray-500 whitespace-normal">暂无匹配建议 请主管认领</span>},
   ];
 
   const resultColumns = [
@@ -240,16 +268,16 @@ export default function ReconciliationPage() {
       {/* 匹配确认弹窗 */}
       {canWrite && showMatchConfirm && (
         <div className="modal-overlay" onClick={() => setShowMatchConfirm(false)}>
-          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-600 text-white px-6 py-4 rounded-t-xl flex items-center gap-3">
               <Link2 size={22} /><h2 className="text-lg font-semibold">确认匹配</h2>
               <div className="flex-1" /><button onClick={() => setShowMatchConfirm(false)} className="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
             </div>
             <div className="p-6 space-y-4">
-              <div><div className="text-xs text-gray-400 mb-1">申报记录</div><div className="bg-blue-50 rounded-lg p-3 text-sm">{decls.find(d => d.id === selectedDeclId)?.customer_name} · {fmtMoney(decls.find(d => d.id === selectedDeclId)?.amount, decls.find(d => d.id === selectedDeclId)?.currency)}</div></div>
+              <div><div className="text-xs text-gray-400 mb-1">申报记录</div><div className="bg-blue-50 rounded-lg p-3 text-sm">{declarationFor(selectedDeclId)?.customer_name} · {fmtMoney(declarationFor(selectedDeclId)?.amount, declarationFor(selectedDeclId)?.currency)}</div></div>
               <div><div className="text-xs text-gray-400 mb-1">到账流水</div><div className="bg-green-50 rounded-lg p-3 text-sm">{flows.find(f => f.id === selectedFlowId)?.payer_name} · {fmtMoney(flows.find(f => f.id === selectedFlowId)?.amount, flows.find(f => f.id === selectedFlowId)?.currency)}</div></div>
               {(() => {
-                const d = decls.find(d => d.id === selectedDeclId); const f = flows.find(f => f.id === selectedFlowId);
+                const d = declarationFor(selectedDeclId); const f = flows.find(f => f.id === selectedFlowId);
                 const diff = (d?.amount || 0) - (f?.amount || 0);
                 return diff !== 0 ? <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700">差异金额：{fmtMoney(Math.abs(diff), d?.currency || f?.currency)}</div>
                   : <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2"><CheckCircle size={16} />金额一致</div>;
@@ -258,7 +286,7 @@ export default function ReconciliationPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowMatchConfirm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <ActionGate anyOf={["reconciliation.manual_match#operate"]}><button disabled={!(canWrite)} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button></ActionGate>
+              <ActionGate anyOf={["reconciliation.manual_match#operate"]}><button disabled={matching || !(canWrite)} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button></ActionGate>
             </div>
           </div>
         </div>

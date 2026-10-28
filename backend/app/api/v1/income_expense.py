@@ -1,3 +1,4 @@
+from app.services.balance_warning import saved_balance_warning
 from app.services.payroll_expense import require_manual_expense
 from app.services.reimbursement_payment import require_manual_reimbursement_expense
 from app.services.employee_advance_expense import require_manual_advance_expense
@@ -121,7 +122,7 @@ async def create_income(req: IncomeRecordCreate, current_user: User = Depends(ge
     old=await lookup(db,'income',values,req.request_key)
     if old:return {'id':old.id,'created':False,'message':'收款记录已保存，请勿重复录入'}
     account=await validate_manual_money(db, get_wh_id(current_user), req.account_id, req.category_id, req.currency, "income", req.amount)
-    old,fingerprint=await prepare(db,'income',values,req.request_key,account=account)
+    old,fingerprint,_warning=await prepare(db,'income',values,req.request_key,account=account)
     if old:return {'id':old.id,'created':False,'message':'收款记录已保存，请勿重复录入'}
     r,created=await insert_once(db,'income',values,req.request_key,fingerprint)
     return {'id':r.id,'created':created,'message':'收款记录创建成功' if created else '收款记录已保存，请勿重复录入'}
@@ -240,13 +241,14 @@ async def create_expense(
             attachments.append(hashlib.sha256(await attachment.read()).hexdigest());await attachment.seek(0)
     signature=costs.fingerprint({**values,'invoice_key':identity[1],'attachments':attachments})
     previous=await costs.replay(db,'expense',wh_id,request_key,signature)
-    if previous:return {'id':previous.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':previous.voucher,**await costs.metadata_for(db,previous)}
+    if previous:return {'warning':await saved_balance_warning(db,module='expense',record_id=previous.id),'id':previous.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':previous.voucher,**await costs.metadata_for(db,previous)}
+    from app.services.balance_warning import record_balance_warning
     from app.services.manual_wallet import prepare,insert_once,lookup
     old=await lookup(db,'expense',values,request_key)
-    if old:return {'id':old.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':old.voucher}
+    if old:return {'warning':await saved_balance_warning(db,module='expense',record_id=old.id),'id':old.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':old.voucher}
     account=await validate_manual_money(db, wh_id, account_id, category_id, currency, "expense", amount)
-    old,fingerprint=await prepare(db,'expense',values,request_key,account=account)
-    if old:return {'id':old.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':old.voucher}
+    old,fingerprint,warning=await prepare(db,'expense',values,request_key,account=account)
+    if old:return {'warning':await saved_balance_warning(db,module='expense',record_id=old.id),'id':old.id,'created':False,'message':'付款记录已保存，请勿重复录入','voucher':old.voucher}
     # 凭证图片（可选，可多张）：保存到 uploads 目录，路径以 JSON 数组写入 voucher 字段
     import os, uuid, json
     from app.services.image_utils import save_image
@@ -283,7 +285,9 @@ async def create_expense(
                               "expense_date": expense_date, "category_id": category_id,
                               "account_id": account_id, "remark": remark, "voucher": voucher_field,
                           }, warehouse_id=wh_id)
-    return {"id": r.id, "created":created,"message": "付款记录创建成功" if created else '付款记录已保存，请勿重复录入', "voucher": r.voucher,**costs.metadata(root)}
+    if created:await record_balance_warning(db,warning,current_user,module='expense',record_id=r.id,warehouse_id=wh_id)
+    else:warning=await saved_balance_warning(db,module='expense',record_id=r.id)
+    return {'warning':warning,"id": r.id, "created":created,"message": "付款记录创建成功" if created else '付款记录已保存，请勿重复录入', "voucher": r.voucher,**costs.metadata(root)}
 
 @router.put("/expense/{expense_id}")
 async def update_expense(

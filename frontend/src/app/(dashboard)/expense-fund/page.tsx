@@ -1,4 +1,5 @@
 "use client";
+import { balanceWarningText,confirmBalanceWarning } from "@/lib/balanceWarning";
 import { useTierPermission } from "@/hooks/useActionPermission";
 import ActionGate from "@/components/permissions/ActionGate";
 import type { MessageResponse } from "@/lib/api";
@@ -167,6 +168,11 @@ export default function ExpenseFundPage() {
     setTopUpBusy(true);
     try {
       if (rechargeReviewId !== null) {
+        const fresh=await api.get<any>('/expense-fund/payment-accounts');
+        const selected=(fresh.data||[]).find((a:any)=>String(a.id)===paymentAccountId);
+        if(!selected)throw Error('付款账户已变化，请重新选择');
+        setPaymentAccounts((fresh.data||[]).filter((a:any)=>(a.currency||'THB')===(topUpAccount.currency||'THB')));
+        if(!confirmBalanceWarning(selected.current_balance,+topUpAmount))return;
         const r = await api.post<MessageResponse>("/expense-fund/recharge/execute", { request_id: rechargeReviewId, action: "execute", payment_account_id: +paymentAccountId, receive_date: topUpDate });
         toast("success", r.message || "拨付已执行");
       } else {
@@ -206,6 +212,13 @@ export default function ExpenseFundPage() {
     if (!receiptFile && !editingItem?.receipt && !registrationDraft('cost_fund_item',expenseAccount.id)?.payload?.receipt) { toast("error", "请上传开销凭证"); return; }
     setExpenseBusy(true);
     try {
+      if(itemForm.category!=='报销'){
+        const fresh=await api.get<any>('/expense-fund/accounts');const fund=(fresh.data||[]).find((f:any)=>f.id===expenseAccount.id);
+        if(!fund)throw Error('备用金账户已变化，请重新选择');
+        const available=Number(fund.available??fund.current_balance??0)+(editingItem&&editingItem.category!=='报销'?Number(editingItem.amount):0);
+        if(!confirmBalanceWarning(available,itemForm.amount))return;
+      }
+
       let receipt = editingItem?.receipt || registrationDraft('cost_fund_item',expenseAccount.id)?.payload?.receipt;
       if (receiptFile && receiptCache.current?.file!==receiptFile) {
         const fd = new FormData(); fd.append("file", receiptFile);
@@ -607,8 +620,8 @@ export default function ExpenseFundPage() {
                   </div>
                   <div><label className="form-label">备用金上限（默认 5,000）</label><input type="number" className="form-input" value={newLimit} onChange={e => setNewLimit(e.target.value)} placeholder="5000" /></div>
                 </div>
-                <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-                  <button onClick={() => setShowCreate(false)} className="btn-secondary text-sm">取消</button>
+                <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3">
+                  <button onClick={() => setShowCreate(false)} className="btn-secondary text-sm whitespace-nowrap shrink-0">取消</button>
                   <ActionGate anyOf={["expense_fund.create_account#operate"]}><button onClick={doCreate} className="btn-primary text-sm">创建</button></ActionGate>
                 </div>
               </div>
@@ -645,8 +658,8 @@ export default function ExpenseFundPage() {
                     <p className="mt-1 text-xs text-gray-500">必须上传凭证，没有凭证不能报销。照片不超过10MB。</p>
                   </div>
                 </div>
-                <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
-                  <button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm">取消</button>
+                <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3 shrink-0">
+                  <button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm whitespace-nowrap shrink-0">取消</button>
                   <ActionGate anyOf={["expense_fund.edit_item#operate","expense_fund.add_item#operate"]}><button disabled={expenseBusy} onClick={()=>doAddExpense()} className="btn-primary text-sm">{expenseBusy ? "保存中..." : "保存"}</button></ActionGate>
                 </div>
               </div>
@@ -673,8 +686,9 @@ export default function ExpenseFundPage() {
                 {!paymentAccounts.length && <p className="text-xs text-red-500 mt-1">没有同币种可用账户，请先到收款账户中建立或启用账户</p>}</div>
               </>}
             </div>
-            <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-              <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm">取消</button>
+            <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex flex-wrap justify-end gap-3">
+              <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm whitespace-nowrap shrink-0">取消</button>
+              {rechargeReviewId !== null&&<p role="alert" className="order-first w-full text-sm text-red-600">{balanceWarningText(paymentAccounts.find((a:any)=>String(a.id)===paymentAccountId)?.current_balance,topUpAmount)}</p>}
               <ActionGate anyOf={["expense_fund.execute_recharge#operate","expense_fund.submit_recharge_request#operate"]}><button onClick={doTopUp} disabled={topUpBusy || (rechargeReviewId !== null && !paymentAccounts.length)} className="btn-primary text-sm bg-green-600 hover:bg-green-700">{topUpBusy ? "提交中…" : rechargeReviewId !== null ? "执行拨付" : "提交补充申请"}</button></ActionGate>
             </div>
           </div>

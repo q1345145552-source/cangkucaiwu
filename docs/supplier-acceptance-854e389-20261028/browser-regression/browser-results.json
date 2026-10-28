@@ -1,0 +1,73 @@
+{
+  "results": [
+    {
+      "name": "empty-inventory",
+      "table_headers": true,
+      "onboarding": true,
+      "automatic_opening": false
+    },
+    {
+      "name": "six-unmapped-products",
+      "supplier": "合成供应商R",
+      "count": 6,
+      "unmapped": 6
+    },
+    {
+      "name": "create-edit-sku",
+      "code": "SYNTH-BROWSER-38",
+      "attributes": {
+        "material": "PE",
+        "width": {
+          "value": 38,
+          "unit": "cm"
+        }
+      },
+      "edit_persisted": true
+    },
+    {
+      "name": "manual-mapping",
+      "product_id": 1,
+      "sku": "SYNTH-BROWSER-38",
+      "saved": true
+    },
+    {
+      "name": "template-preview",
+      "download_bytes": 6381,
+      "example_rows_not_imported": true
+    },
+    {
+      "name": "actual-import-confirm",
+      "read": 1,
+      "imported": 1,
+      "acknowledgement_required": true,
+      "pricing_unchanged_for_existing_products": true
+    },
+    {
+      "name": "mobile-390",
+      "catalog_table_scrolls": true,
+      "spec_form_save_visible": true,
+      "original_styles_loaded": true
+    },
+    {
+      "name": "synthetic-opening-issue",
+      "opening": 100,
+      "issued": 5,
+      "available": 95,
+      "cost_amount": null
+    },
+    {
+      "name": "errors-empty-retry",
+      "filtered_empty": true,
+      "failed_load_keeps_headers": true,
+      "retry": true,
+      "forbidden_visible": true
+    },
+    {
+      "name": "currency-comparison",
+      "mixed_currencies_separated": true,
+      "mixed_ai_disabled": true,
+      "single_currency_filter": true
+    }
+  ],
+  "errors": []
+}

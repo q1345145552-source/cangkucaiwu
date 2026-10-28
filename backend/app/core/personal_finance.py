@@ -8,7 +8,7 @@ from app.models.expense_fund import ExpenseFund
 from app.services.fund_authorization import identities
 
 ACTIONS = {
-    'reimbursement': {'list_reimbursements', 'create_reimbursement', 'list_reimb_categories',
+    'reimbursement': {'own_fund_balance', 'list_reimbursements', 'create_reimbursement', 'list_reimb_categories',
                       'get_reimb_detail', 'edit_reimb', 'delete_reimb', 'submit_reimb'},
     'expense_fund': {'list_accounts', 'list_items', 'add_item', 'upload_receipt',
                      'submit_recharge_request', 'list_recharge_requests', 'upload_new_item_receipt', 'list_disbursements'},

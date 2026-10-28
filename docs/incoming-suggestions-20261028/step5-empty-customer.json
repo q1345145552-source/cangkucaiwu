@@ -1,0 +1,66 @@
+{
+  "http": 200,
+  "response": {
+    "id": 2,
+    "warehouse_id": 1,
+    "received_date": "2026-10-20T00:00:00",
+    "amount": 123.0,
+    "currency": "THB",
+    "account_id": 1,
+    "payer_name": "未知付款方",
+    "payment_method": "银行转账",
+    "remark": null,
+    "match_status": "unmatched",
+    "entrant_name": "",
+    "created_at": "2026-10-27T19:03:42.340113+00:00",
+    "request_key": "ead08f10ddf141b2904f03d752f4ab48",
+    "has_screenshot": false,
+    "customer_id": null,
+    "suggestions": [
+      {
+        "declaration_id": 1,
+        "customer_id": 1,
+        "customer_code": "XT10022",
+        "customer_name": "合成客户甲",
+        "declare_date": "2026-10-20T00:00:00",
+        "amount": 3000.0,
+        "currency": "THB",
+        "matched_count": 1,
+        "matched_conditions": [
+          "日期相差不超过3天"
+        ],
+        "date_distance_days": 0
+      },
+      {
+        "declaration_id": 2,
+        "customer_id": 2,
+        "customer_code": "XT20022",
+        "customer_name": "合成客户乙",
+        "declare_date": "2026-10-20T00:00:00",
+        "amount": 3000.0,
+        "currency": "THB",
+        "matched_count": 1,
+        "matched_conditions": [
+          "日期相差不超过3天"
+        ],
+        "date_distance_days": 0
+      },
+      {
+        "declaration_id": 3,
+        "customer_id": 2,
+        "customer_code": "XT20022",
+        "customer_name": "合成客户乙",
+        "declare_date": "2026-10-20T00:00:00",
+        "amount": 4000.0,
+        "currency": "THB",
+        "matched_count": 1,
+        "matched_conditions": [
+          "日期相差不超过3天"
+        ],
+        "date_distance_days": 0
+      }
+    ],
+    "created": true,
+    "message": "录入成功"
+  }
+}

@@ -157,7 +157,8 @@ def test_amount_validation_currency_and_rejected_entry(tmp_path,monkeypatch):
     async def run():
         async with environment(tmp_path,monkeypatch) as (_,f,c,fid):
             await topup(c,fid);iid,url=await path_for(c,fid)
-            assert (await c.put(url,headers=auth(1),json={"amount":11000})).status_code==400
+            result=await c.put(url,headers=auth(1),json={"amount":11000})
+            assert result.status_code==200 and result.json()["warning"]["balance_after"]==-1000,result.text
             assert (await c.put(url,headers=auth(1),json={"amount":0})).status_code==422
             assert (await c.put(url,headers=auth(1),json={"currency":"CNY"})).status_code==400
             assert (await c.put(url,headers=auth(1),json={"receipt":""})).status_code==400

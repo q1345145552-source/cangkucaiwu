@@ -165,9 +165,12 @@ def test_advance_fund_money_and_ownership_preserved(tmp_path,monkeypatch,uid):
    async def counts():
     async with factory() as db:return (len((await db.execute(select(EmployeeAdvance))).scalars().all()),len((await db.execute(select(ExpenseFundItem))).scalars().all()))
    initial=await counts()
-   for fund,amount,expected in ((2,20,403 if uid==4 else 400),(1,101,400)):
+   for fund,amount,expected in ((2,20,403 if uid==4 else 400),(1,101,200)):
     r=await client.post('/api/v1/employee-advances',headers=auth(uid),json={'employee_id':1,'amount':amount,'advance_date':'2026-10-10','source':'fund','funding_source':'expense_fund','fund_account_id':fund})
-    assert r.status_code==expected,r.text;assert await counts()==initial
+    assert r.status_code==expected,r.text
+    if expected==200:
+     assert r.json()['approval_status']=='pending' and await counts()==(initial[0]+1,initial[1])
+    else:assert await counts()==initial
    r=await client.post('/api/v1/employee-advances',headers=auth(uid),json={'employee_id':1,'amount':20,'advance_date':'2026-10-10','source':'fund','funding_source':'expense_fund','fund_account_id':1})
    assert r.status_code==200,r.text
    assert r.json()['approval_status']=='pending'

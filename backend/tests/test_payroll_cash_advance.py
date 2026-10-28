@@ -172,8 +172,12 @@ def test_invalid_funding_never_changes_any_money(tmp_path, monkeypatch, kind):
             if kind == "company_mixed": fields = {"funding_source": "company_account", "account_id": 1}
             before = await finance_snapshot(f)
             r = await disburse(c, None if kind == "missing" else aid, **fields)
+            if kind=='insufficient':
+                assert r.status_code==200 and r.json()['warning']['balance_after']==-6000,r.text
+                assert r.json()['warning']['source']=='cash_advance'
+                assert (await usage(c,aid))['payroll_usage']['payroll_used_amount']==7000
+                return
             assert r.status_code == 400, r.text
-            if kind == "insufficient": assert r.json()["detail"] == "垫款单剩余金额不足"
             if kind == "currency":
                 assert "币种" in r.json()["detail"]
                 assert (await usage(c, aid))["payroll_usage"]["payroll_available_amount"] == 0
@@ -185,24 +189,20 @@ def test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity(tmp_pa
     async def run():
         async with environment(tmp_path, monkeypatch) as (f, c):
             aid = await approved(c, amount=10000)
+            initial_balances=await balances(c)
             assert (await disburse(c, aid)).status_code == 200
             async with f() as db:
                 r = await db.get(PayrollRecord, 1)
                 r.status, r.net_pay = "confirmed", 4000
                 await db.commit()
             await prepare_payroll(f,c,1)
-            r = await disburse(c, aid, rid=1)
-            assert r.status_code == 400 and r.json()["detail"] == "垫款单剩余金额不足"
-            async with f() as db:
-                (await db.get(PayrollRecord, 1)).net_pay = 3000
-                await db.commit()
-            await prepare_payroll(f,c,1)
             invalid = await c.post("/api/v1/payroll/batch-disburse",headers=auth(3),json={"record_ids":[1,2,2,3],"funding_source":"cash_advance","cash_advance_id":aid})
             assert invalid.status_code==400
             body = {"record_ids": [1], "funding_source": "cash_advance", "cash_advance_id": aid}
             r = await c.post("/api/v1/payroll/batch-disburse", headers=auth(3), json=body)
-            assert r.status_code == 200 and r.json()["count"] == 1 and r.json()["total_net"] == 3000
-            assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 10000
+            assert r.status_code == 200 and r.json()["count"] == 1 and r.json()["total_net"] == 4000
+            assert r.json()["warning"]["balance_before"]==3000 and r.json()["warning"]["balance_after"]==-1000
+            assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 11000
             retry = await c.post("/api/v1/payroll/batch-disburse", headers=auth(3), json=body)
             assert retry.status_code == 409
             assert (await usage(c, aid))["advance"]["outstanding_amount"] == 10000
@@ -236,7 +236,11 @@ def test_batch_aggregate_budget_and_atomic_rollback(tmp_path, monkeypatch, fail)
             r = await c.post("/api/v1/payroll/batch-disburse", headers=auth(3), json={
                 "record_ids": [1, 2], "funding_source": "cash_advance", "cash_advance_id": aid,
             })
-            assert r.status_code == (500 if fail else 400), r.text
+            if not fail:
+                assert r.status_code==200 and r.json()['warning']['balance_after']==-500,r.text
+                assert r.json()['count']==2 and (await usage(c,aid))['payroll_usage']['payroll_used_amount']==8000
+                return
+            assert r.status_code == 500, r.text
             assert await finance_snapshot(f) == before
             assert (await usage(c, aid))["payroll_usage"]["payroll_used_amount"] == 0
             assert await balances(c) == {1: 10000, 3: 20000}

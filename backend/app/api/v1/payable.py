@@ -276,7 +276,7 @@ async def pay_bill(bill_id: int, paid_amount: float = None, payment_method: str 
     from app.services.wallet import money
     row = await record_payment(db, b, paid_amount if paid_amount is not None else money(b.amount) - money(b.paid_amount),
         account_id, payment_method, current_user, request_key)
-    return {"message": "付款记录成功", "payment_id": row.id, "amount": float(row.amount),
+    return {"warning":getattr(row,"_balance_warning",None),"message": "付款记录成功", "payment_id": row.id, "amount": float(row.amount),
         "account_id": row.account_id, "paid_at": row.paid_at.isoformat()}
 
 @router.put("/{bill_id}/confirm", dependencies=[Depends(require_non_labor)])
@@ -812,16 +812,18 @@ async def execute_plan(plan_id: int, account_id: int = None, current_user: User 
         raise HTTPException(409,'同一执行批次不能混合币种')
     if sum(money(b.amount)-money(b.paid_amount) for b in bills)!=money(p.total_amount):
         raise HTTPException(409,'计划金额已失效，请按当前剩余应付重新生成计划')
+    warnings=[]
     paid_count=0
     from app.services.payable_payment import record_payment
     for bill in bills:
         await bill_detail(db,bill.id,warehouse_id)
-        await record_payment(db,bill,money(bill.amount)-money(bill.paid_amount),account_id,
+        payment=await record_payment(db,bill,money(bill.amount)-money(bill.paid_amount),account_id,
             bill.payment_method or '银行转账',current_user)
+        if getattr(payment,'_balance_warning',None): warnings.append(payment._balance_warning)
         paid_count+=1
     p.status = PlanStatus.EXECUTED.value
     await db.flush()
-    return {"message": f"计划执行成功，已结算 {paid_count} 笔账单"}
+    return {"warning":warnings[0] if warnings else None,"warnings":warnings,"message": f"计划执行成功，已结算 {paid_count} 笔账单"}
 
 # === Plan Detail ===
 @router.get("/plans/{plan_id}/detail")

@@ -66,7 +66,9 @@ async def create_incoming(req: IncomingCreate, request: Request, current_user: U
     if len(scope) != 1: raise HTTPException(400,'请先选择一个仓库')
     wh_id = scope[0].id
     r, created = await create_once(db, req, wh_id, current_user)
-    return {**incoming_dict(r), "created": created, "message": "录入成功" if created else "到账已保存，未重复录入"}
+    from app.services.incoming_suggestions import suggestions_for
+    suggestions=(await suggestions_for(db,[r]))[r.id]
+    return {**incoming_dict(r), "suggestions":suggestions,"created": created, "message": "录入成功" if created else "到账已保存，未重复录入"}
 
 
 @router.get("/by-request/{request_key}", dependencies=[Depends(require_non_labor)])
@@ -76,7 +78,8 @@ async def lookup_incoming(request_key: str, current_user=Depends(check_staff_per
     row = (await db.execute(select(IncomingFlow).where(IncomingFlow.warehouse_id == get_wh_id(current_user),
         IncomingFlow.request_key == request_key))).scalar_one_or_none()
     if row is None: raise HTTPException(404, "尚未找到本次到账")
-    return incoming_dict(row)
+    from app.services.incoming_suggestions import suggestions_for
+    return {**incoming_dict(row),"suggestions":(await suggestions_for(db,[row]))[row.id]}
 
 
 async def _own_incoming(db, incoming_id, user, *, lock=False):

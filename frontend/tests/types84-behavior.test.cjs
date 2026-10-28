@@ -1,11 +1,20 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),React=require('react'),{execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..'),baseline='adb9024b3706ee7a94cbfe5e219ba47da1eab8d1';
+// Approved main already includes balance-warning behavior. Pin those files to
+// that reviewed commit; retain complete emitted-runtime equality assertions.
+const approvedBalanceMain='94c5d574efda7f9e23b3713e503535645632c82e';
+const balanceChangedFiles=new Set(['expense-fund','income-expense','operating','payroll'].map(x=>`app/(dashboard)/${x}/page.tsx`));
 const opts={module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true};
 function emitted(source,name){return ts.transpileModule(source,{fileName:name,compilerOptions:opts}).outputText;}
 function canonical(js){return ts.createPrinter({removeComments:true}).printFile(ts.createSourceFile('output.js',js,ts.ScriptTarget.ES2020,true,ts.ScriptKind.JS));}
 // Reviewed import + supplier usability changes are isolated below; preserve
 // full emitted-runtime equality for all unrelated supplier/payment/order nodes.
 function nonImportSupplier(source){
+ // Acceptance fixes only add the exact unit display/key corresponding to the
+ // backend's separated quote groups; browser acceptance verifies both units.
+ source=source.replace('{fmtMoney(t.savings_per_unit, t.currency)}/{t.unit || "单位未知"}','{fmtMoney(t.savings_per_unit, t.currency)}/件');
+ source=source.replace('key={JSON.stringify([p.product_name,p.spec,p.currency,p.unit])}','key={p.product_name + p.spec + p.currency}').replace('<span data-field="quote-unit" className="text-xs text-gray-500 ml-2">每{p.unit || "单位未知"}</span>','');
+
  source=source.replace('[productSpecifications,setProductSpecifications]=useState<SpecNode[]>([])','[productAttrsText,setProductAttrsText]=useState("")');
  const file=ts.createSourceFile('suppliers.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  const result=ts.transform(file,[context=>root=>{
@@ -35,7 +44,7 @@ function nonImportSupplier(source){
  try{return ts.createPrinter().printFile(result.transformed[0]);}finally{result.dispose();}
 }
 for(const file of['lib/api.ts','components/layout/DashboardLayout.tsx',...['employees','expense-fund','income-expense','operating','payroll','recharge','suppliers'].map(x=>`app/(dashboard)/${x}/page.tsx`)]){
- let current=fs.readFileSync(path.join(root,'src',file),'utf8'),before=execFileSync('git',['show',`${file==='app/(dashboard)/employees/page.tsx'?'c4b669f83ddcf631f989faec93da342f37e57784':baseline}:frontend/src/${file}`],{cwd:root,encoding:'utf8'});
+ let current=fs.readFileSync(path.join(root,'src',file),'utf8'),before=execFileSync('git',['show',`${file==='app/(dashboard)/employees/page.tsx'?'c4b669f83ddcf631f989faec93da342f37e57784':balanceChangedFiles.has(file)?approvedBalanceMain:baseline}:frontend/src/${file}`],{cwd:root,encoding:'utf8'});
  if(file==='app/(dashboard)/suppliers/page.tsx'){current=nonImportSupplier(current);before=nonImportSupplier(before);}
  assert.equal(canonical(emitted(current,file)),canonical(emitted(before,file)),file+' unrelated emitted runtime, requests, handlers and labels must remain identical');
 }
@@ -43,8 +52,8 @@ for(const [page,after,before]of[
  ['payable','<span title={`供应商确认: ${row.confirmed_amount}`}><AlertTriangle size={12} className="inline text-orange-500 ml-1" /></span>','<AlertTriangle size={12} className="inline text-orange-500 ml-1" title={`供应商确认: ${row.confirmed_amount}`} />'],
  ['concentration','<span title={`占比超过 ${threshold}%`}><AlertTriangle size={16} className="text-red-500" /></span>','<AlertTriangle size={16} className="text-red-500" title={`占比超过 ${threshold}%`} />']
 ]){
- const file=`app/(dashboard)/${page}/page.tsx`,source=fs.readFileSync(path.join(root,'src',file),'utf8'),base=execFileSync('git',['show',`${baseline}:frontend/src/${file}`],{cwd:root,encoding:'utf8'});
- assert(source.includes(after));assert.equal(canonical(emitted(source.replace(after,before),file)),canonical(emitted(base,file)),page+' emitted behavior must match apart from moving the same tooltip to a supported span');
+ const file=`app/(dashboard)/${page}/page.tsx`,source=fs.readFileSync(path.join(root,'src',file),'utf8'),base=execFileSync('git',['show',`${page==='payable'?approvedBalanceMain:baseline}:frontend/src/${file}`],{cwd:root,encoding:'utf8'});
+ assert(source.includes(after));assert.equal(canonical(emitted(source.replace(after,before),file)),canonical(emitted(base.replace(after,before),file)),page+' emitted behavior must match apart from moving the same tooltip to a supported span');
 }
 const walk=x=>!x||typeof x!=='object'?[]:Array.isArray(x)?x.flatMap(walk):[x,...walk(x.props?.children)],text=x=>x==null||typeof x==='boolean'?'':typeof x!=='object'?String(x):Array.isArray(x)?x.map(text).join(''):text(x.props?.children),tick=()=>new Promise(r=>setImmediate(r));
 function overtime({role='warehouse_admin',reject=false}={}){

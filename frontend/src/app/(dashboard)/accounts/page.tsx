@@ -1,4 +1,5 @@
 "use client";
+import { confirmAccountBalance } from "@/lib/balanceWarning";
 import ActionGate from "@/components/permissions/ActionGate";
 import { useTierPermission } from "@/hooks/useActionPermission";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
@@ -109,6 +110,7 @@ export default function AccountsPage() {
   async function saveTransfer() {
     setTransferring(true);
     try {
+      if(!await confirmAccountBalance(api,transfer.from_account_id,transfer.amount))return;
       await submitWalletOperation("transfer", transfer);
       toast("success", "内部转账已记录，不计收入支出"); setShowTransfer(false); load();
     } catch (err: any) { toast("error", err.message || "转账登记失败"); }

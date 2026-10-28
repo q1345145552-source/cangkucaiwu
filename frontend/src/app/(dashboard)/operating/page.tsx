@@ -1,4 +1,5 @@
 "use client";
+import { confirmAccountBalance } from "@/lib/balanceWarning";
 import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
 import InternalTransferSummary from "@/components/InternalTransferSummary";
@@ -163,6 +164,7 @@ export default function OperatingPage() {
     if (!form.category_id) { toast("error", "请选择类别"); return; }
     if (!form.account_id) { toast("error", "请选择账户"); return; }
     try {
+      if(Number(form.amount)>0&&!await confirmAccountBalance(api,form.account_id,form.amount))return;
       const result = await submitWalletOperation("expense", { ...form,...cost.payload(), amount: form.amount || 0, expense_date: form.date }, voucherFiles,costConfirmation);
       toast("success", result.message || "支出录入成功");
       setShowForm(false);

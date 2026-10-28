@@ -1,0 +1,33 @@
+node:assert:152
+  throw new AssertionError(obj);
+  ^
+
+AssertionError [ERR_ASSERTION]: Got unwanted exception: An allowed historical custom key must not crash any of the shared specification forms
+Actual message: "Objects are not valid as a React child (found: object with keys {}). If you meant to render a collection of children, use an array instead."
+    at Object.<anonymous> (/private/tmp/supplier-acceptance-20261028/frontend/tests/supplier-acceptance-854e389.test.cjs:6:17)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: Error: Objects are not valid as a React child (found: object with keys {}). If you meant to render a collection of children, use an array instead.
+      at renderNodeDestructiveImpl (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6194:11)
+      at renderNodeDestructive (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+      at renderNode (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6274:12)
+      at renderHostElement (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5646:3)
+      at renderElement (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:5967:5)
+      at renderNodeDestructiveImpl (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6119:11)
+      at renderNodeDestructive (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6091:14)
+      at renderNode (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6274:12)
+      at renderChildrenArray (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6226:7)
+      at renderNodeDestructiveImpl (/Users/xiongliu/.codex/validation-runtimes/supplier-acceptance-20261028/node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js:6156:7),
+  expected: undefined,
+  operator: 'doesNotThrow',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

@@ -1,4 +1,5 @@
 "use client";
+import { balanceWarningText,confirmBalanceWarning } from "@/lib/balanceWarning";
 import ActionGate from "@/components/permissions/ActionGate";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import { useEffect, useState } from "react";
@@ -40,6 +41,7 @@ function ReimbursementPageContent() {
   const [selRange, setSelRange] = useState({ start_date: `${curMonth}-01`, end_date: todayStr });
   const [selStatus, setSelStatus] = useState("");
   const [selEmployee, setSelEmployee] = useState("");
+  const [ownFund,setOwnFund]=useState<any>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<any>(null);
@@ -86,6 +88,7 @@ function ReimbursementPageContent() {
       const seen = new Set<number>();
       setEmployees((r.data || []).filter((a: any) => { if (seen.has(a.employee_id)) return false; seen.add(a.employee_id); return true; }));
     } catch {}
+    try{const r=await api.get<any>('/reimbursement/fund-balance');setOwnFund(r.fund);}catch{setOwnFund(null);}
   }
 
   // ===== List logic =====
@@ -108,6 +111,12 @@ function ReimbursementPageContent() {
     if (!entryDesc.trim()) { toast("error", "请输入说明"); return; }
     setSubmitting(true);
     try {
+      if(fundLinked){
+        const fresh=await api.get<any>('/reimbursement/fund-balance');
+        const fund=fresh.fund;setOwnFund(fund);
+        if(!fund)throw Error('未找到当前账号的可用备用金账户');
+        if(!confirmBalanceWarning(fund.current_balance,+entryAmount)){setSubmitting(false);return;}
+      }
       let receiptPath = null;
       if (entryFile) {
         const fd = new FormData(); fd.append("file", entryFile);
@@ -343,6 +352,7 @@ function ReimbursementPageContent() {
                 <input type="checkbox" checked={fundLinked} onChange={e => setFundLinked(e.target.checked)} className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600" />
                 <span className="text-xs font-medium text-gray-600 flex items-center gap-1"><PiggyBank size={13} className="text-purple-600" />关联备用金扣款</span>
               </label>
+              {fundLinked&&<p role="alert" className="text-sm text-red-600">{balanceWarningText(ownFund?.current_balance,entryAmount)}</p>}
               {fundLinked && (
                 <p className="text-[11px] text-gray-400 mt-1 ml-5 flex items-start gap-1">
                   <Info size={11} className="mt-0.5 flex-shrink-0" />

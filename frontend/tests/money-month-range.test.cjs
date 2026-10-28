@@ -20,7 +20,7 @@ function harness(warehouse='1'){
  const modules=require('./legacy-regression-support.cjs').moneyModules(react,api,()=>flags.warehouse,async(url,options)=>{writes.push({url,headers:options.headers,body:Object.fromEntries(options.body)});return{ok:true,status:200,json:async()=>({id:77,message:'创建成功'})};});
  const mod={exports:{}};
  const src=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src/app/(dashboard)/income-expense/page.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
- const imports={react,'@/lib/api':{api,getToken:()=> 'synthetic-token'},'@/hooks/useAuth':{useAuth:()=>({user:{id:1,role:'warehouse_admin'}})},
+ const imports={react,'@/lib/balanceWarning':require('./balance-warning-test-support.cjs'),'@/lib/api':{api,getToken:()=> 'synthetic-token'},'@/hooks/useAuth':{useAuth:()=>({user:{id:1,role:'warehouse_admin'}})},
  '@/lib/manualWallet':modules.wallet,'@/components/CostIdentity':modules.cost,
  '@/hooks/useI18n':{useI18n:()=>({t:k=>k})},'@/components/ui/Toast':{useToast:()=>({toast:(...v)=>messages.push(v)})},
  '@/components/common/DataTable':{__esModule:true,default:DataTable},'@/lib/currency':{fmtMoney:(v,c)=>`${c} ${v}`,fmtMoneyByCurrency:v=>JSON.stringify(v)},

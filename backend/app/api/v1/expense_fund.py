@@ -1,3 +1,4 @@
+from app.services.balance_warning import balance_warning,record_balance_warning,saved_balance_warning
 from app.core.action_access import has_module
 from app.core.personal_finance import personal_finance_access
 from app.core.round2_access import require_account_manager, mutation_scope, own_scope, mutation_ids
@@ -387,14 +388,15 @@ async def add_item(
     account=(await db.execute(select(ExpenseFund).where(ExpenseFund.id==account_id).with_for_update().execution_options(populate_existing=True))).scalar_one()
     signature=costs.fingerprint({'fund_id':account_id,**req.model_dump(exclude={'cost_confirmation'})})
     previous=await costs.replay(db,'fund_item',account.warehouse_id,req.request_key,signature)
-    if previous:return {'id':previous.id,'replayed':True,'message':'原开销已保存，未重复登记','receipt':previous.receipt,**await costs.metadata_for(db,previous)}
+    if previous:return {'warning':await saved_balance_warning(db,module='expense_fund_item',record_id=previous.id,operation_id=req.request_key),'id':previous.id,'replayed':True,'message':'原开销已保存，未重复登记','receipt':previous.receipt,**await costs.metadata_for(db,previous)}
     if req.amount is None or req.amount <= 0:
         raise HTTPException(400, "开销金额必须大于0")
     if (req.currency or "THB") != (account.currency or "THB"):
         raise HTTPException(400, "开销币种必须与备用金账户一致")
     receipt = _required_receipt(req.receipt, account)
 
-    # 超支守卫：常规开销（非报销）不得超过备用金里的现金余额
+    warning=None
+    # 常规开销保留原可用额算法；超支仅提示。
     # （报销类开销走报销流程，创建时已扣减 remaining_balance，这里不重复限制）
     if req.category != "报销":
         spent_regular = float((await db.execute(
@@ -406,8 +408,7 @@ async def add_item(
         )).scalar() or 0)
         from app.services.flow_rules import fund_available
         available = fund_available(account.remaining_balance, spent_regular)
-        if req.amount > available:
-            raise HTTPException(400, f"超出备用金可用余额（可用 {available:,.2f}），请先充值或核减")
+        warning=balance_warning(available,req.amount,req.currency or 'THB',source='expense_fund',source_id=account.id)
 
     i = ExpenseFundItem(
         fund_id=account_id, expense_date=datetime.fromisoformat(req.expense_date),
@@ -420,7 +421,8 @@ async def add_item(
         identity=costs.parse_identity(req.invoice_identity,current_user),confirmation=req.cost_confirmation,
         key=req.request_key,signature=signature)
     _, sources = await fund_sources(db, account)
-    return {"id": i.id, "message": "开销记录添加成功", "receipt": i.receipt, "cost_record_only": True,**costs.metadata(root),
+    await record_balance_warning(db,warning,current_user,module='expense_fund_item',record_id=i.id,warehouse_id=account.warehouse_id,operation_id=req.request_key)
+    return {'warning':warning,"id": i.id, "message": "开销记录添加成功", "receipt": i.receipt, "cost_record_only": True,**costs.metadata(root),
             "disbursement_sources": sources.get(i.id, [])}
 
 

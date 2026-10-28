@@ -40,11 +40,13 @@ def test_internal_transfer_balances_only_no_income_or_expense_and_idempotency(tm
                 {'to_account_id':1,'request_key':'same'}, {'amount':10001,'request_key':'over'},
                 {'transfer_date':'2099-01-01','request_key':'future'}):
                 r=await c.post('/api/v1/accounts/transfers',headers=auth(1),json={**body,**extra})
-                assert r.status_code==400,r.text
+                if extra.get('request_key')=='over':
+                    assert r.status_code==200 and r.json()['warning']['balance_after']==-201,r.text
+                else:assert r.status_code==400,r.text
             for uid in (5,6):
                 r=await c.post('/api/v1/accounts/transfers',headers=auth(uid),json=body)
                 assert r.status_code==403
-            async with f() as db: assert (await db.execute(select(func.count(AccountTransfer.id)))).scalar_one()==1
+            async with f() as db: assert (await db.execute(select(func.count(AccountTransfer.id)))).scalar_one()==2
     asyncio.run(run())
 
 

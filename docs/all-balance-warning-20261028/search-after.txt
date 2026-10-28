@@ -1,0 +1,7 @@
+frontend/src/lib/balanceWarning.ts:6: return `当前账户余额不足（可用 ${fmt(before)}，本次 ${fmt(value)}），确认继续吗`;
+frontend/src/app/(dashboard)/modification-logs/page.tsx:258:                      {h.after_data?.remark === "余额不足仍然执行" ? "余额不足仍然执行" : h.operation_type === "resign" ? "离职" : h.operation_type === "void" ? (h.before_data?.void_reason || "作废") : h.operation_type === "undisburse" ? "撤销发放" : h.operation_type === "edit" ? (diffSummary(h.before_data, h.after_data) || "更新") : h.operation_type === "delete" ? "删除记录" : "新建记录"}
+frontend/src/app/(dashboard)/expense-fund/page.tsx:409:              <div className="flex items-center gap-2 text-xs text-gray-400 mb-2"><AlertTriangle size={14} />余额不足</div>
+frontend/src/app/(dashboard)/expense-fund/page.tsx:462:                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acc.is_low ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>{acc.is_low ? "余额不足" : "正常"}</span>
+backend/app/services/balance_warning.py:11:    return {'message': f'当前账户余额不足（可用 {before:,.2f}，本次 {value:,.2f}），确认继续吗',
+backend/app/services/balance_warning.py:20:        after={**warning,'operation_id':operation_id,'remark':'余额不足仍然执行','executed_at':thai_now().isoformat()},warehouse_id=warehouse_id)
+backend/app/services/balance_warning.py:31:        if data.get('remark')=='余额不足仍然执行' and (operation_id is None or data.get('operation_id')==operation_id):

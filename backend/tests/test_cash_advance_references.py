@@ -99,7 +99,10 @@ def test_permissions_warehouse_isolation_and_unpaid_purpose_links_not_payment_li
                     assert denied.status_code==403 and set(denied.json())=={'detail'}
                 assert await snapshot(f)==before
                 return
-            async with f() as db:original_permissions=list((await db.get(User,uid)).extra_permissions or [])
+            async with f() as db:
+                original_user=await db.get(User,uid)
+                original_permissions=list(original_user.extra_permissions or [])
+                original_updated_at=original_user.updated_at
             for route in ('/payroll/2',f'/employee-advances/{ids["advance_id"]}',f'/reimbursement/{ids["reimbursement_id"]}/payments'):
                 r=await c.get('/api/v1'+route,headers=auth(uid));assert r.status_code==200,r.text
             assert (await c.get('/api/v1/payroll/10',headers=auth(uid))).status_code==404
@@ -113,6 +116,10 @@ def test_permissions_warehouse_isolation_and_unpaid_purpose_links_not_payment_li
                 # Seeing a reference does not grant access to the advance's contents.
                 assert (await c.get(f'/api/v1/cash-advances/{aid}/repayments',headers=auth(uid))).status_code==403
                 await set_perms(f,uid,original_permissions)
+                # Restore the test's own permission-edit timestamp, not application side effects.
+                from sqlalchemy import update
+                async with f() as db:
+                    await db.execute(update(User).where(User.id==uid).values(updated_at=original_updated_at));await db.commit()
             assert await snapshot(f)==before
     asyncio.run(run())
 

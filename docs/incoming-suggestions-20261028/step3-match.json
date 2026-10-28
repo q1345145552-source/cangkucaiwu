@@ -1,0 +1,178 @@
+{
+  "listing": {
+    "declarations": [
+      {
+        "id": 1,
+        "customer_id": 1,
+        "customer_name": "合成客户甲",
+        "customer_code": "XT10022",
+        "declare_date": "2026-10-20T00:00:00",
+        "amount": 3000.0,
+        "currency": "THB",
+        "screenshot": "synthetic-proof.png",
+        "payment_method": null
+      },
+      {
+        "id": 2,
+        "customer_id": 2,
+        "customer_name": "合成客户乙",
+        "customer_code": "XT20022",
+        "declare_date": "2026-10-20T00:00:00",
+        "amount": 3000.0,
+        "currency": "THB",
+        "screenshot": "synthetic-proof.png",
+        "payment_method": null
+      },
+      {
+        "id": 3,
+        "customer_id": 2,
+        "customer_name": "合成客户乙",
+        "customer_code": "XT20022",
+        "declare_date": "2026-10-20T00:00:00",
+        "amount": 4000.0,
+        "currency": "THB",
+        "screenshot": "synthetic-proof.png",
+        "payment_method": null
+      },
+      {
+        "id": 7,
+        "customer_id": 1,
+        "customer_name": "合成客户甲",
+        "customer_code": "XT10022",
+        "declare_date": "2026-10-20T00:00:00",
+        "amount": 3000.0,
+        "currency": "CNY",
+        "screenshot": "synthetic-proof.png",
+        "payment_method": null
+      },
+      {
+        "id": 4,
+        "customer_id": 1,
+        "customer_name": "合成客户甲",
+        "customer_code": "XT10022",
+        "declare_date": "2026-10-15T00:00:00",
+        "amount": 3000.0,
+        "currency": "THB",
+        "screenshot": "synthetic-proof.png",
+        "payment_method": null
+      },
+      {
+        "id": 5,
+        "customer_id": 2,
+        "customer_name": "合成客户乙",
+        "customer_code": "XT20022",
+        "declare_date": "2026-10-15T00:00:00",
+        "amount": 4000.0,
+        "currency": "THB",
+        "screenshot": "synthetic-proof.png",
+        "payment_method": null
+      }
+    ],
+    "incoming": [
+      {
+        "id": 1,
+        "payer_name": "XT10022",
+        "suggestions": [
+          {
+            "declaration_id": 1,
+            "customer_id": 1,
+            "customer_code": "XT10022",
+            "customer_name": "合成客户甲",
+            "declare_date": "2026-10-20T00:00:00",
+            "amount": 3000.0,
+            "currency": "THB",
+            "matched_count": 3,
+            "matched_conditions": [
+              "日期相差不超过3天",
+              "金额完全相同",
+              "付款方与客户名称或编号一致"
+            ],
+            "date_distance_days": 0
+          },
+          {
+            "declaration_id": 2,
+            "customer_id": 2,
+            "customer_code": "XT20022",
+            "customer_name": "合成客户乙",
+            "declare_date": "2026-10-20T00:00:00",
+            "amount": 3000.0,
+            "currency": "THB",
+            "matched_count": 2,
+            "matched_conditions": [
+              "日期相差不超过3天",
+              "金额完全相同"
+            ],
+            "date_distance_days": 0
+          },
+          {
+            "declaration_id": 4,
+            "customer_id": 1,
+            "customer_code": "XT10022",
+            "customer_name": "合成客户甲",
+            "declare_date": "2026-10-15T00:00:00",
+            "amount": 3000.0,
+            "currency": "THB",
+            "matched_count": 2,
+            "matched_conditions": [
+              "金额完全相同",
+              "付款方与客户名称或编号一致"
+            ],
+            "date_distance_days": 5
+          },
+          {
+            "declaration_id": 3,
+            "customer_id": 2,
+            "customer_code": "XT20022",
+            "customer_name": "合成客户乙",
+            "declare_date": "2026-10-20T00:00:00",
+            "amount": 4000.0,
+            "currency": "THB",
+            "matched_count": 1,
+            "matched_conditions": [
+              "日期相差不超过3天"
+            ],
+            "date_distance_days": 0
+          }
+        ],
+        "received_date": "2026-10-20T00:00:00",
+        "amount": 3000.0,
+        "currency": "THB",
+        "payment_method": "银行转账"
+      }
+    ]
+  },
+  "http": 200,
+  "response": {
+    "id": 1,
+    "flow_id": 1,
+    "declaration_id": 1,
+    "customer_id": 1,
+    "customer_code": "XT10022",
+    "amount": 3000.0,
+    "currency": "THB",
+    "message": "已匹配到 XT10022 的 3,000.00 THB"
+  },
+  "customer_before": {
+    "received": 0,
+    "prepayment": 0,
+    "receipt_count": 0
+  },
+  "customer_after": {
+    "customer_id": 1,
+    "currency": "THB",
+    "shipped": 0.0,
+    "received": 3000.0,
+    "shipment_count": 0,
+    "receipt_count": 1,
+    "order_count": 0,
+    "unknown_order_count_records": 0,
+    "opening_signed_balance": 0.0,
+    "applied": 0.0,
+    "outstanding": 0.0,
+    "prepayment": 3000.0
+  },
+  "wallet": {
+    "count": 1,
+    "balance": 3000.0
+  }
+}

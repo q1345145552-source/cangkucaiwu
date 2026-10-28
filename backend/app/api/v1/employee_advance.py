@@ -106,7 +106,7 @@ async def create_advance(
     half = "first_half" if adv_dt.day <= 15 else "second_half"
 
     try:
-        currency, _ = await validate_funding(db, req.funding_source, wh_id, req.amount,
+        currency, funding_account = await validate_funding(db, req.funding_source, wh_id, req.amount,
             currency=req.currency, payment_account_id=req.payment_account_id,
             cash_advance_id=req.cash_advance_id, fund_account_id=req.fund_account_id)
     except HTTPException as exc:
@@ -114,6 +114,11 @@ async def create_advance(
             raise HTTPException(exc.status_code, '所选资金来源不可用于该申请，请由财务核对') from exc
         raise
 
+    pending_warning = None
+    if req.funding_source == 'company_account' and not getattr(current_user, '_personal_finance', False):
+        from app.services.account_balances import current_account_balances
+        from app.services.balance_warning import balance_warning
+        pending_warning = balance_warning((await current_account_balances(db,[funding_account]))[funding_account.id],req.amount,currency,source='company_account',source_id=funding_account.id)
     limit_check = await check_advance_limit(db, emp, req.amount, currency, adv_dt)
 
     approval_status = AdvanceApprovalStatus.PENDING.value
@@ -142,11 +147,12 @@ async def create_advance(
     await db.flush()
 
     # Request registration does not approve or move funds.
+    warning = pending_warning
 
     message = "预支记录已创建"
     if limit_check.get("warning"):
         message += "；" + limit_check["warning"]
-    return {"message": message, "id": adv.id, **_approval_fields(adv), "limit_check": limit_check}
+    return {"message": message, "id": adv.id, **_approval_fields(adv), "limit_check": limit_check,"warning":warning}
 
 
 @router.get("/funding-options")
@@ -439,6 +445,7 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
     advance.reviewer_id = current_user.id
     advance.reviewed_at = thai_now()
     advance.reject_reason = reason if action == "reject" else None
+    warning = None
     if action == "approve":
         await duties.evidence(db,current_user,advance,'advance_approve',await duties.advance_payload(db,advance))
     await record_history(db, module="employee_advances", record_id=advance.id,
@@ -446,7 +453,7 @@ async def _review_advance(db, advance_id, current_user, action, reason=None):
         after={"amount": advance.amount, **_approval_fields(advance)}, warehouse_id=wh_id)
     await db.flush()
     return {"message": "预支已通过" if action == "approve" else "预支已驳回",
-            "id": advance.id, "amount": advance.amount, **_approval_fields(advance)}
+            "id": advance.id, "amount": advance.amount,"warning":warning, **_approval_fields(advance)}
 
 
 @router.post("/{advance_id}/approve")
@@ -495,6 +502,6 @@ async def execute_advance(advance_id: int, current_user: User = Depends(check_st
     if not row.funding_source or not row.expense_tracking_enabled:
         raise HTTPException(409,'历史预支缺少可验证资金来源，请先独立核对')
     row.approval_status='approved'
-    await apply_advance_funding(db,row,current_user)
+    warning = await apply_advance_funding(db,row,current_user)
     await duties.evidence(db,current_user,row,'advance_execute',await duties.advance_payload(db,row))
-    return {'message':'预支已执行','id':row.id,**_approval_fields(row)}
+    return {'message':'预支已执行','id':row.id,'warning':warning,**_approval_fields(row)}

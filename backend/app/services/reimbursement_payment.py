@@ -15,6 +15,7 @@ from app.models.income_expense import ExpenseRecord, IncomeExpenseCategory
 from app.models.reimbursement import Reimbursement
 from app.models.reimbursement_payment import ReimbursementPayment
 from app.services.data_history import record_history
+from app.services.balance_warning import balance_warning, record_balance_warning
 
 REIMBURSEMENT_CATEGORY = "报销"
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/app/uploads")
@@ -115,8 +116,7 @@ async def lock_advance(db, r, advance_id, amount):
     wages = (await payroll_usage_totals(db, [advance]))[advance.id]
     expenses = (await reimbursement_usage_totals(db, [advance]))[advance.id]
     advances = (await employee_advance_usage_totals(db, [advance]))[advance.id]
-    if amount > advance.amount - advance.repaid_amount or amount > advance.amount - wages - expenses - advances:
-        raise HTTPException(400, "垫款单剩余金额不足")
+    advance._balance_warning=balance_warning(min(advance.amount-advance.repaid_amount,advance.amount-wages-expenses-advances),amount,r.currency or 'THB',source='cash_advance',source_id=advance.id)
     return advance
 
 
@@ -126,7 +126,7 @@ def fund_snapshot(item):
         "review_status": item.review_status, "review_remark": item.review_remark, "review_action": item.review_action}
 
 
-async def fund_details(db, r):
+async def fund_details(db, r, operator=None, warning_out=None):
     """初次付款不再扣款；撤销后的再次付款重建原开销、只扣回原来退还的金额。"""
     if r.fund_item_id:
         item = (await db.execute(select(ExpenseFundItem).where(ExpenseFundItem.id == r.fund_item_id).with_for_update())).scalar_one_or_none()
@@ -148,13 +148,16 @@ async def fund_details(db, r):
         if fund.status != "active": raise HTTPException(400, "关联备用金已结算，不能再次扣款")
         snapshot = dict(old.fund_item_snapshot)
         amount = money(snapshot["amount"])
-        if Decimal(str(fund.remaining_balance or 0)) < amount: raise HTTPException(400, "备用金余额不足")
+        warning = balance_warning(fund.remaining_balance or 0,amount,r.currency or 'THB',source='expense_fund',source_id=fund.id)
         snapshot["expense_date"] = datetime.fromisoformat(snapshot["expense_date"])
         item = ExpenseFundItem(fund_id=fund.id, **snapshot)
         db.add(item)
         fund.remaining_balance = float(Decimal(str(fund.remaining_balance or 0)) - amount)
         await db.flush()
         r.fund_item_id = item.id
+        if operator:
+            if warning_out is not None: warning_out["warning"] = warning
+            await record_balance_warning(db,warning,operator,module="reimbursement",record_id=r.id,warehouse_id=r.warehouse_id)
     if item.review_status == "rejected": raise HTTPException(400, "关联备用金开销已驳回，不能付款")
     return fund, item
 
@@ -204,17 +207,22 @@ async def pay(db, r, req, user):
         raise HTTPException(400, "该资金来源不应选择垫款单")
     amount, now, previous = money(r.total_amount), thai_now(), r.status
     account, advance, fund, item, voucher = None, None, None, None, None
+    warning = None
     if source != "expense_fund":
         voucher = validate_voucher(req.payment_voucher_path, r.warehouse_id)
         if req.payment_method not in ("cash", "transfer"): raise HTTPException(400, "请选择现金或转账付款方式")
         if source == "company_account":
             account = await payment_account(db, r, req.payment_account_id)
             from app.services.account_balances import current_account_balances
-            if (await current_account_balances(db, [account]))[account.id] < amount:
-                raise HTTPException(400, "公司账户余额不足")
-        else: advance = await lock_advance(db, r, req.cash_advance_id, amount)
+            before_balance = (await current_account_balances(db,[account]))[account.id]
+            warning = balance_warning(before_balance,amount,r.currency or 'THB',source='company_account',source_id=account.id)
+        else:
+            advance = await lock_advance(db, r, req.cash_advance_id, amount)
+            warning=getattr(advance,"_balance_warning",None)
     else:
-        fund, item = await fund_details(db, r)
+        fund_warning = {}
+        fund, item = await fund_details(db, r, user, fund_warning)
+        warning = fund_warning.get("warning")
         from app.services.fund_authorization import approved_item_execution
         await approved_item_execution(db, user, r, fund, item)
     r.funding_source = source
@@ -238,7 +246,9 @@ async def pay(db, r, req, user):
     if advance:
         await record_history(db, module="cash_advances", record_id=advance.id, operator=user, operation_type="reimbursement_use",
             after={"reimbursement_id": r.id, "payment_id": p.id, "amount": float(amount), "currency": p.currency}, warehouse_id=r.warehouse_id)
-    return {"message": "付款成功", **output}
+    if source in ('company_account','cash_advance'):
+        await record_balance_warning(db,warning,user,module='reimbursement',record_id=r.id,warehouse_id=r.warehouse_id)
+    return {'warning':warning,"message": "付款成功", **output}
 
 
 async def revoke(db, r, user, reason):
@@ -319,3 +329,22 @@ async def sync_fund_review_payment(db, r, user, *, approved, reason=None):
         r.funding_source = None
         await record_history(db, module="reimbursement", record_id=r.id, operator=user, operation_type="revoke_payment",
             before=before, after={"reason": p.revoke_reason, "via": "expense_fund_review"}, warehouse_id=r.warehouse_id)
+
+
+async def fund_payment_preview(db,r):
+    """Only disclose the existing fund and the amount this payment will actually deduct."""
+    if r.is_fund_linked != '1': return None
+    if r.fund_item_id:
+        item=await db.get(ExpenseFundItem,r.fund_item_id)
+        fund_id=item.fund_id if item else None
+        debit=0
+    else:
+        old=(await db.execute(select(ReimbursementPayment).where(
+            ReimbursementPayment.reimbursement_id==r.id,ReimbursementPayment.warehouse_id==r.warehouse_id,
+            ReimbursementPayment.funding_source=='expense_fund',ReimbursementPayment.status=='revoked')
+            .order_by(ReimbursementPayment.id.desc()).limit(1))).scalar_one_or_none()
+        fund_id=old.fund_id if old else None
+        debit=float(old.fund_item_snapshot['amount']) if old and old.fund_item_snapshot else 0
+    fund=await db.get(ExpenseFund,fund_id) if fund_id else None
+    if not fund or fund.warehouse_id!=r.warehouse_id or fund.employee_id!=r.employee_id: return None
+    return {'id':fund.id,'current_balance':fund.remaining_balance or 0,'debit_amount':debit,'currency':fund.currency or 'THB'}

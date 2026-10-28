@@ -1,0 +1,2 @@
+TypeError: button(...).props.onClick is not a function
+    at /private/tmp/balance-warning-20261028/frontend/tests/reimbursement-payments.test.cjs:36:333

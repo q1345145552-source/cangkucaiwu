@@ -1,4 +1,5 @@
 "use client";
+import { confirmAccountBalance } from "@/lib/balanceWarning";
 import ActionGate from "@/components/permissions/ActionGate";
 import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useRef, useState } from "react";
@@ -55,6 +56,7 @@ export default function IncomeExpensePage() {
 
   async function handleCreate(costConfirmation?: CostConfirmation) {
     try {
+      if(tab==='expense'&&Number(form.amount)>0&&!await confirmAccountBalance(api,form.account_id,form.amount))return;
       const result = await submitWalletOperation(tab === "income" ? "income" : "expense", { ...form, ...(tab === "expense" ? cost.payload() : {}), amount: form.amount || 0, [tab === "income" ? "income_date" : "expense_date"]: form.date }, [], costConfirmation);
       toast("success", result.message || "创建成功");
       setShowForm(false); load();

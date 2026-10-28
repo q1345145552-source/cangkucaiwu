@@ -1,4 +1,5 @@
 "use client";
+import { confirmAccountBalance } from "@/lib/balanceWarning";
 import ActionGate from "@/components/permissions/ActionGate";
 import { useTierPermission } from "@/hooks/useActionPermission";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
@@ -77,6 +78,9 @@ function PaymentPlansPageContent() {
     if (!accountId) { toast("error", "请选择付款账户"); return; }
     setExecuting(true);
     try {
+      const detail=await api.get<any>(`/payable/plans/${plan.id}/detail`);
+      const amount=(detail.bills||[]).filter((b:any)=>b.status!=='voided'&&b.amount>b.paid_amount).reduce((sum:number,b:any)=>sum+Number(b.amount)-Number(b.paid_amount||0),0);
+      if(!await confirmAccountBalance(api,accountId,amount))return;
       await api.put(`/payable/plans/${plan.id}/execute?account_id=${accountId}`, {});
       toast("success", "计划执行成功，关联账单已付款");
       setExecutePlan(null); load(); loadBills();

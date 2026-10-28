@@ -6,6 +6,7 @@ from app.models import PayablePayment
 from app.services.wallet import positive_money, money, lock_account
 from app.services.account_balances import current_account_balances
 from app.services.data_history import record_history
+from app.services.balance_warning import balance_warning,record_balance_warning,saved_balance_warning
 
 
 async def record_payment(db, bill, value, account_id, method, operator, request_key=None):
@@ -16,6 +17,7 @@ async def record_payment(db, bill, value, account_id, method, operator, request_
         if old:
             if old.bill_id != bill.id or old.warehouse_id != bill.warehouse_id or old.account_id != account_id or money(old.amount) != money(value):
                 raise HTTPException(409, '付款请求已使用，请刷新后重试')
+            old._balance_warning=await saved_balance_warning(db,module='payable',record_id=bill.id,operation_id=old.id)
             return old
     if bill.status in ('voided', 'paid'): raise HTTPException(400, '已作废或已付清的账单不能付款')
     if bill.need_boss_confirm == 'true': raise HTTPException(400, '该账单存在收货差异，需老板确认后才能付款')
@@ -26,7 +28,7 @@ async def record_payment(db, bill, value, account_id, method, operator, request_
     await check_payment(db,bill,n)
     account = await lock_account(db, bill.warehouse_id, account_id, bill.currency or 'THB')
     balance = (await current_account_balances(db, [account]))[account.id]
-    if balance < n: raise HTTPException(400, f'公司账户余额不足（可用 {balance:,.2f}）')
+    warning=balance_warning(balance,n,bill.currency or 'THB',source='company_account',source_id=account.id)
     if bill.legacy_paid_amount is None:
         bill.legacy_paid_amount, bill.legacy_paid_at = bill.paid_amount or 0, bill.paid_at
     now = thai_now()
@@ -42,4 +44,6 @@ async def record_payment(db, bill, value, account_id, method, operator, request_
     await record_history(db, module='payable', record_id=bill.id, operator=operator,
         operation_type='pay', after={'payment_id': row.id, 'amount': float(n), 'account_id': account.id,
             'currency': row.currency, 'paid_at': now.isoformat()}, warehouse_id=bill.warehouse_id)
+    await record_balance_warning(db,warning,operator,module='payable',record_id=bill.id,warehouse_id=bill.warehouse_id,operation_id=row.id)
+    row._balance_warning=warning
     return row

@@ -1,0 +1,15 @@
+Warning: Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <tbody>. See https://reactjs.org/link/warning-keys for more information.
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert(text(t).includes('当前账户余额不足'))
+
+    at /private/tmp/balance-warning-20261028/frontend/tests/fund-disbursement.test.cjs:37:283 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

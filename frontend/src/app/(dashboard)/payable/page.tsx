@@ -1,4 +1,5 @@
 "use client";
+import { confirmAccountBalance } from "@/lib/balanceWarning";
 import ActionGate from "@/components/permissions/ActionGate";
 import { useTierPermission } from "@/hooks/useActionPermission";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
@@ -207,6 +208,7 @@ function PayablePageContent() {
     if(!Number.isFinite(payAmount)||payAmount<=0){toast("error","请填写大于零的付款金额");return;}
     if(paymentSaving)return;setPaymentSaving(true);
     try{
+      if(!await confirmAccountBalance(api,payAccountId,payAmount))return;
       // Capture this payment's file and identity; another modal must never replace a failed upload.
       const scope=payableScope(), billId=payingBillId, file=voucherFile;
       await submitPayablePayment(payingBillId,{paid_amount:payAmount,account_id:payAccountId,payment_method:payMethod});
