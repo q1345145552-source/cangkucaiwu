@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState, useRef } from "react";
 import DataTable from "@/components/common/DataTable";
 import { api, getToken, warehouseRequestHeaders } from "@/lib/api";
@@ -671,7 +672,7 @@ export default function SuppliersPage() {
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><AlertCircle size={16}/>收货差异</button>
               <button onClick={openPoList}
                 className="border px-3 py-2 rounded text-sm flex items-center gap-1"><FileText size={16}/>采购单列表</button>
-              <button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button>
+              <ActionGate anyOf={["suppliers.create_supplier"]}><button onClick={() => { setForm({...form, category_id: filterCat}); setShowForm(true); }} className="btn-primary">新建供应商</button></ActionGate>
             </>
           )}
         </div>
@@ -686,19 +687,19 @@ export default function SuppliersPage() {
           <div className="flex gap-1 flex-wrap items-center">
             {row.category_id === 1 && (
               <>
-                <button onClick={()=>{setImportSupplierId(row.id);setImportMode("products");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入产品"><Upload size={12}/></button>
+                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("products");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入产品"><Upload size={12}/></button></ActionGate>
                 <button onClick={()=>openProducts(row.id)} className="text-green-600 hover:bg-green-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><Plus size={12}/>产品</button>
               </>
             )}
             {row.category_id === 2 && (
               <>
-                <button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button>
+                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button></ActionGate>
                 <button onClick={()=>openLogistics(row.id)} className="text-orange-600 hover:bg-orange-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><TrendingUp size={12}/>物流</button>
               </>
             )}
             <button onClick={()=>viewDetail(row.id)} className="text-blue-500 flex items-center gap-1 text-xs"><Eye size={12}/>详情</button>
             {isAdmin && (
-              <button onClick={()=>deleteSupplier(row.id)} className="text-red-500 flex items-center gap-1 text-xs"><Trash2 size={12}/>删除</button>
+              <ActionGate anyOf={["suppliers.delete_supplier#operate"]}><button onClick={()=>deleteSupplier(row.id)} className="text-red-500 flex items-center gap-1 text-xs"><Trash2 size={12}/>删除</button></ActionGate>
             )}
           </div>
         )},
@@ -743,10 +744,10 @@ export default function SuppliersPage() {
                   </select>
                 </div>
                 <div className="flex items-end">
-                  <button onClick={addProduct} disabled={!productForm.product_name.trim() || !productForm.unit_price}
+                  <ActionGate anyOf={["suppliers.add_product#operate"]}><button onClick={addProduct} disabled={!productForm.product_name.trim() || !productForm.unit_price}
                     className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${!productForm.product_name.trim() || !productForm.unit_price ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"}`}>
                     + 添加产品
-                  </button>
+                  </button></ActionGate>
                 </div>
               </div>
 
@@ -796,9 +797,9 @@ export default function SuppliersPage() {
                             <td className="px-3 py-3 text-center">
                               {canReadCatalog&&<button className="text-blue-600 px-2" onClick={()=>setMappingProductId(p.id)}>SKU映射</button>}
                               {canReadCatalog&&<button className="text-xs text-indigo-600" onClick={()=>setQuoteProductId(p.id)}>阶梯报价</button>}
-                              <button onClick={()=>deleteProduct(p.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="停用产品，保留历史">
+                              <ActionGate anyOf={["suppliers.delete_product#operate"]}><button onClick={()=>deleteProduct(p.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors" title="停用产品，保留历史">
                                 <Trash2 size={16} />
-                              </button>
+                              </button></ActionGate>
                             </td>
                           </tr>
                         ))}
@@ -913,12 +914,12 @@ export default function SuppliersPage() {
               </div>
               <div className="flex gap-3">
                 <button onClick={()=>setShowOrder(false)} className="btn-secondary text-sm px-5 py-2">取消</button>
-                <button onClick={submitOrder} disabled={orderSubmitting || (!orderDraft?.unknown && orderTotal === 0)}
+                <ActionGate anyOf={["suppliers.create_purchase_order#operate"]}><button onClick={submitOrder} disabled={orderSubmitting || (!orderDraft?.unknown && orderTotal === 0)}
                   className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
                     !orderDraft?.unknown&&orderTotal === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
                   }`}>
                   <ShoppingCart size={16}/>{orderSubmitting ? "提交中..." : orderDraft?.unknown?"重试原采购请求":"确认下单"}
-                </button>
+                </button></ActionGate>
               </div>
             </div>
           </div>
@@ -945,13 +946,13 @@ export default function SuppliersPage() {
               <div><label className="text-xs text-gray-500">单价(元/方)</label><input type="number" className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.price_per_cbm||""} onChange={e=>setLogisticsForm({...logisticsForm,price_per_cbm:e.target.value===""?"":+e.target.value})} /></div>
               <div><label className="text-xs text-gray-500">时效</label><input className="border rounded px-2 py-1.5 text-sm w-full" placeholder="如 5-7天" value={logisticsForm.estimated_days} onChange={e=>setLogisticsForm({...logisticsForm,estimated_days:e.target.value})} /></div>
               <div><label className="text-xs text-gray-500">币种</label><input className="border rounded px-2 py-1.5 text-sm w-full" value={logisticsForm.currency} onChange={e=>setLogisticsForm({...logisticsForm,currency:e.target.value})} /></div>
-              <button onClick={addLogisticsPrice} disabled={!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim()} className={`rounded px-2 py-1.5 text-sm self-end ${!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim() ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button>
+              <ActionGate anyOf={["suppliers.add_logistics_price#operate"]}><button onClick={addLogisticsPrice} disabled={!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim()} className={`rounded px-2 py-1.5 text-sm self-end ${!logisticsForm.price_per_cbm || !logisticsForm.estimated_days.trim() ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white"}`}>+添加</button></ActionGate>
             </div>
             {logisticsPrices.length === 0 ? <div className="text-gray-400 text-sm py-4 text-center">暂无报价</div> : (
               <div className="overflow-x-auto touch-pan-x">
               <table className="w-full text-sm min-w-[900px]"><thead><tr className="bg-gray-100"><th className="p-2 text-left">运输方式</th><th>货物类型</th><th>发货仓库</th><th>单价(元/方)</th><th>时效</th><th></th></tr></thead>
                 <tbody>{logisticsPrices.map((p:any)=><tr key={p.id} className="border-t"><td className="p-2">{p.transport_method}</td><td>{p.cargo_type}</td><td>{p.origin_warehouse}</td><td>{p.price_per_cbm}</td><td>{p.estimated_days||"-"}</td>
-                  <td><button onClick={()=>deleteLogisticsPrice(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></td></tr>)}</tbody></table>
+                  <td><ActionGate anyOf={["suppliers.delete_logistics_price#operate"]}><button onClick={()=>deleteLogisticsPrice(p.id)} className="text-red-500 text-xs"><Trash2 size={14}/></button></ActionGate></td></tr>)}</tbody></table>
               </div>
             )}
             <button onClick={()=>setShowLogistics(false)} className="mt-4 px-4 py-2 border rounded text-sm">关闭</button>
@@ -1019,7 +1020,7 @@ export default function SuppliersPage() {
                       <td className="text-xs text-orange-600">{r.price_note}{r.heavy_cargo_warning&&<><br/>{r.heavy_cargo_warning}</>}</td></tr>)}</tbody></table>
                   </div>
                 )}
-                <p className="text-sm text-gray-600 mb-2">AI仅供参考；请先选择单一币种并核实计价依据，不自动改变采购或付款。</p><button disabled={new Set(compareData.map(r=>r.currency)).size!==1||compareData.some(r=>r.comparable===false)} onClick={doAiCompare} className="bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1 mb-4"><Sparkles size={16}/>AI比价分析</button>
+                <p className="text-sm text-gray-600 mb-2">AI仅供参考；请先选择单一币种并核实计价依据，不自动改变采购或付款。</p><ActionGate anyOf={["suppliers.ai_compare#view"]}><button disabled={new Set(compareData.map(r=>r.currency)).size!==1||compareData.some(r=>r.comparable===false)} onClick={doAiCompare} className="bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1 mb-4"><Sparkles size={16}/>AI比价分析</button></ActionGate>
                 {aiCompareResult && <div className="bg-purple-50 rounded-lg p-4 text-sm whitespace-pre-wrap">{aiCompareResult}</div>}
               </>
             )}
@@ -1420,8 +1421,8 @@ export default function SuppliersPage() {
                           ))}
                         </div>
                         <div className="flex gap-2 mt-2">
-                          <button onClick={() => approveOrder(po.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">通过</button>
-                          <button onClick={() => startDuty(po,"reject")} className="px-3 py-1 bg-red-500 text-white rounded text-xs">驳回</button>
+                          <ActionGate anyOf={["suppliers.approve_purchase"]}><button onClick={() => approveOrder(po.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">通过</button></ActionGate>
+                          <ActionGate anyOf={["suppliers.reject_purchase"]}><button onClick={() => startDuty(po,"reject")} className="px-3 py-1 bg-red-500 text-white rounded text-xs">驳回</button></ActionGate>
                         </div>
                       </div>
                     ))}
@@ -1437,7 +1438,7 @@ export default function SuppliersPage() {
         <div role="dialog" aria-label="采购审批职责确认" className="bg-white rounded-xl p-5 w-[480px] max-w-[95vw] max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}>
           <h3 className="font-semibold mb-3">采购审批职责确认 · PO #{dutyDialog.po.id}</h3>
           <ProcurementDutyFields value={dutyDialog} onChange={setDutyDialog} onRefresh={()=>startDuty(dutyDialog.po,'approve')}/>
-          <div className="flex gap-3 justify-end mt-4"><button onClick={()=>setDutyDialog(null)} disabled={dutyBusy} className="btn-secondary">取消</button><button disabled={dutyBusy} onClick={confirmApprove} className="btn-primary">{dutyBusy?'提交中...':'确认通过'}</button></div>
+          <div className="flex gap-3 justify-end mt-4"><button onClick={()=>setDutyDialog(null)} disabled={dutyBusy} className="btn-secondary">取消</button><ActionGate anyOf={["suppliers.approve_purchase"]}><button disabled={dutyBusy} onClick={confirmApprove} className="btn-primary">{dutyBusy?'提交中...':'确认通过'}</button></ActionGate></div>
         </div>
       </div>}
       {/* 驳回原因弹窗 */}
@@ -1450,7 +1451,7 @@ export default function SuppliersPage() {
               className="w-full border rounded px-3 py-2 text-sm" rows={3} placeholder="填写驳回原因" />
             <div className="flex justify-end gap-3 mt-4">
               <button onClick={() => setRejectTarget(null)} className="px-4 py-2 border rounded text-sm">取消</button>
-              <button onClick={confirmReject} disabled={dutyBusy} className="px-4 py-2 bg-red-500 text-white rounded text-sm">确认驳回</button>
+              <ActionGate anyOf={["suppliers.reject_purchase"]}><button onClick={confirmReject} disabled={dutyBusy} className="px-4 py-2 bg-red-500 text-white rounded text-sm">确认驳回</button></ActionGate>
             </div>
           </div>
         </div>
@@ -1488,7 +1489,7 @@ export default function SuppliersPage() {
             </div>
             <div className="border-t px-5 py-3 flex justify-end gap-3">
               <button onClick={() => setShowReasonDialog(false)} className="px-4 py-2 border rounded text-sm">取消</button>
-              <button onClick={confirmReasonSubmit} className="px-4 py-2 bg-amber-500 text-white rounded text-sm">确认提交</button>
+              <ActionGate anyOf={["suppliers.create_purchase_order#operate"]}><button onClick={confirmReasonSubmit} className="px-4 py-2 bg-amber-500 text-white rounded text-sm">确认提交</button></ActionGate>
             </div>
           </div>
         </div>
@@ -1516,7 +1517,7 @@ export default function SuppliersPage() {
             </div>
             <div className="mt-3"><label className="form-label">合作内容</label><textarea className="form-input" rows={2} value={form.cooperation_content} onChange={e=>setForm({...form,cooperation_content:e.target.value})} /></div>
 
-            <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">保存</button></div>
+            <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><ActionGate anyOf={["suppliers.create_supplier#operate"]}><button onClick={handleCreate} className="px-4 py-2 bg-primary text-white rounded">保存</button></ActionGate></div>
           </div></div>
       )}
 
@@ -1561,7 +1562,7 @@ export default function SuppliersPage() {
                         </td>
                         <td className="px-3 py-2 text-center">
                           {po.status === "confirmed" && (
-                            <button onClick={() => openReceiveForm(po)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">登记本次收货</button>
+                            <ActionGate anyOf={["suppliers.receive_purchase"]}><button onClick={() => openReceiveForm(po)} className="px-3 py-1 bg-green-600 text-white rounded text-xs">登记本次收货</button></ActionGate>
                           )}
                           {po.arrival_photo && (
                             <button onClick={() => window.open(uploadUrl(po.arrival_photo), "_blank")} className="text-blue-600 text-xs hover:underline ml-2">照片</button>
@@ -1609,10 +1610,10 @@ export default function SuppliersPage() {
             </div>
             <div className="border-t px-5 py-3 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
               <button onClick={() => setReceiveTarget(null)} className="btn-secondary text-sm px-5 py-2">取消</button>
-              <button onClick={submitReceive} disabled={receiptSubmitting}
+              <ActionGate anyOf={["suppliers.receive_purchase"]}><button onClick={submitReceive} disabled={receiptSubmitting}
                 className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
                 {receiptSubmitting ? "提交中..." : "确认本次收货"}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -1767,9 +1768,9 @@ export default function SuppliersPage() {
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                   <div className="text-sm font-medium text-gray-600">流程操作</div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => markSent(poDetail)} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs">标记已发送</button>
-                    <button onClick={() => triggerReceiptUpload(poDetail.id)} className="px-3 py-1.5 bg-green-600 text-white rounded text-xs">上传回执</button>
-                    <button onClick={() => markShipped(poDetail)} className="px-3 py-1.5 bg-purple-600 text-white rounded text-xs">标记已发货</button>
+                    <ActionGate anyOf={["suppliers.mark_purchase_sent#operate"]}><button onClick={() => markSent(poDetail)} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs">标记已发送</button></ActionGate>
+                    <ActionGate anyOf={["suppliers.upload_purchase_receipt"]}><button onClick={() => triggerReceiptUpload(poDetail.id)} className="px-3 py-1.5 bg-green-600 text-white rounded text-xs">上传回执</button></ActionGate>
+                    <ActionGate anyOf={["suppliers.mark_purchase_shipped#operate"]}><button onClick={() => markShipped(poDetail)} className="px-3 py-1.5 bg-purple-600 text-white rounded text-xs">标记已发货</button></ActionGate>
                   </div>
                   {poDetail.sent_at && <div className="text-xs text-gray-500">已发送：{new Date(poDetail.sent_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" })}</div>}
                   {poDetail.receipt_uploaded_at && <div className="text-xs text-gray-500">回执上传：{new Date(poDetail.receipt_uploaded_at).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" })}</div>}

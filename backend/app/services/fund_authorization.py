@@ -1,3 +1,4 @@
+from app.core.action_access import capability_tiers, has_module
 """Petty-cash separation of duties; evidence lives in existing transactional history."""
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -101,6 +102,7 @@ async def approved_item_execution(db, user, reimb, fund, item):
         raise HTTPException(409, '报销明细、批准金额与备用金记录不一致，请核对')
     await proof(db, item, 'item_approve', payload, fund.warehouse_id)
 
+@capability_tiers("expense_fund")
 async def recharge_capabilities(db, user, rr, fund):
     own = bool({rr.applicant_id, fund.employee_id} & await identities(db, user))
     finance = (await db.execute(select(User.id).where(User.id.in_([rr.applicant_id, fund.employee_id]), User.role == Role.STAFF))).first()
@@ -120,6 +122,8 @@ async def recharge_capabilities(db, user, rr, fund):
     }
 
 async def reimbursement_payment_capability(db, user, reimb):
+    if not has_module(user, 'reimbursement', 'operate'):
+        return False
     if reimb.is_fund_linked != '1' or reimb.status not in ('approved', 'partially_approved') or not reimb.fund_item_id:
         return False
     from app.models.expense_fund import ExpenseFund, ExpenseFundItem

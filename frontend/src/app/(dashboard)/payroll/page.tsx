@@ -1,4 +1,6 @@
 "use client";
+import { useTierPermission } from "@/hooks/useActionPermission";
+import ActionGate from "@/components/permissions/ActionGate";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import type { MessageResponse } from "@/lib/api";
 import { FINANCIAL_REVERSALS_ENABLED } from "@/lib/financial-reversals";
@@ -94,7 +96,8 @@ function PayrollPageContent() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [zoomedSignature, setZoomedSignature] = useState<string | null>(null);
   const [revokeModal, setRevokeModal] = useState<any>(null);
-  const canOperate = user?.role === "warehouse_admin" || user?.role === "staff";
+  const canOperate = useTierPermission("payroll", "operate");
+  const canView = useTierPermission("payroll", "view");
   const [pendingResignations, setPendingResignations] = useState<{employee_id:number;name:string;resignation_date:string}[]>([]);
   useEffect(() => { if (canOperate) void api.get<{data:{employee_id:number;name:string;resignation_date:string}[]}>("/payroll/pending-resignations").then(r => setPendingResignations(r.data)).catch(() => setPendingResignations([])); }, [canOperate]);
 
@@ -543,7 +546,7 @@ function PayrollPageContent() {
     setRecalcWarning(hasNotLast);
   }
 
-  if (user && !canOperate) return <p className="p-4 text-gray-600">工资管理由财务和管理员办理。请从员工自助查看本人工资条。</p>;
+  if (user && !canView && !canOperate) return <p className="p-4 text-gray-600">工资管理由财务和管理员办理。请从员工自助查看本人工资条。</p>;
   return (
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
@@ -559,10 +562,10 @@ function PayrollPageContent() {
                 className="border border-gray-300 text-gray-600 text-sm px-3 py-2 rounded-lg hover:bg-gray-50">15号</button>
               <button onClick={() => setCalcEndDate(pastMonthEndStr())}
                 className="border border-gray-300 text-gray-600 text-sm px-3 py-2 rounded-lg hover:bg-gray-50">月末</button>
-              <button onClick={handleCalculate}
+              <ActionGate anyOf={["payroll.preview_payroll#view"]}><button onClick={handleCalculate}
                 className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
                 <Calculator size={16}/> 计算工资
-              </button>
+              </button></ActionGate>
               <button onClick={openSingleModal}
                 className="border border-blue-300 text-blue-600 flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-blue-50">
                 <User size={16}/> 单人结算
@@ -622,10 +625,10 @@ function PayrollPageContent() {
               <Download size={16}/> 导出Excel
             </button>
             {user?.role === "warehouse_admin" && records.some(r => r.capabilities?.can_confirm) && (
-              <button onClick={handleConfirmAll}
+              <ActionGate anyOf={["payroll.confirm_all_payroll#approve"]}><button onClick={handleConfirmAll}
                 className="bg-green-500 text-white flex items-center gap-1 text-sm px-4 py-2 rounded-lg hover:bg-green-600">
                 <CheckCircle size={16}/> 全部确认
-              </button>
+              </button></ActionGate>
             )}
           </div>
         </div>
@@ -681,12 +684,12 @@ function PayrollPageContent() {
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
           <span className="text-sm font-medium text-blue-700">已选 {selectedIds.length} 条</span>
           <div className="flex gap-2">
-            {user?.role === "warehouse_admin" && <button onClick={handleBatchConfirm} disabled={calculating}
-              className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 disabled:opacity-50">批量确认</button>}
-            <button onClick={handleBatchDisburse} disabled={calculating || !records.filter(r => selectedIds.includes(r.id)).every(r => r.capabilities?.can_pay)}
-              className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 disabled:opacity-50">批量发放</button>
-            <button onClick={openBatchRecalc} disabled={calculating || !records.filter(r => selectedIds.includes(r.id)).every(r => r.capabilities?.can_rework)}
-              className="bg-amber-500 text-white px-3 py-1.5 rounded text-sm hover:bg-amber-600 disabled:opacity-50">批量作废重算</button>
+            {user?.role === "warehouse_admin" && <ActionGate anyOf={["payroll.batch_confirm_payroll#approve"]}><button onClick={handleBatchConfirm} disabled={calculating}
+              className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 disabled:opacity-50">批量确认</button></ActionGate>}
+            <ActionGate anyOf={["payroll.batch_disburse_payroll"]}><button onClick={handleBatchDisburse} disabled={calculating || !records.filter(r => selectedIds.includes(r.id)).every(r => r.capabilities?.can_pay)}
+              className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 disabled:opacity-50">批量发放</button></ActionGate>
+            <ActionGate anyOf={["payroll.batch_recalc_payroll"]}><button onClick={openBatchRecalc} disabled={calculating || !records.filter(r => selectedIds.includes(r.id)).every(r => r.capabilities?.can_rework)}
+              className="bg-amber-500 text-white px-3 py-1.5 rounded text-sm hover:bg-amber-600 disabled:opacity-50">批量作废重算</button></ActionGate>
           </div>
         </div>
       )}
@@ -786,11 +789,11 @@ function PayrollPageContent() {
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-x-2 gap-y-1 flex-wrap">
                       {user?.role === "warehouse_admin" && r.capabilities?.can_confirm && (
-                        <button onClick={() => handleConfirm(r.id)}
+                        <ActionGate anyOf={["payroll.confirm_payroll#approve"]}><button onClick={() => handleConfirm(r.id)}
                           className="text-green-600 hover:text-green-800 text-xs font-medium inline-flex items-center gap-1"
                           title="确认">
                           <CheckCircle size={14}/>确认
-                        </button>
+                        </button></ActionGate>
                       )}
                       {canOperate && r.capabilities?.can_pay && (
                         <button onClick={() => openDisburseModal(r)} disabled={disbursing === r.id}
@@ -812,11 +815,11 @@ function PayrollPageContent() {
                         <Eye size={14}/>查看工资单
                       </button>
                       {canOperate && r.capabilities?.can_rework && (
-                        <button onClick={() => openRecalcOne(r.id, !!r.is_last_record)}
+                        <ActionGate anyOf={["payroll.recalc_payroll"]}><button onClick={() => openRecalcOne(r.id, !!r.is_last_record)}
                           className="text-amber-500 hover:text-amber-700 text-xs font-medium inline-flex items-center gap-1"
                           title="作废重算">
                           <AlertTriangle size={14}/>作废重算
-                        </button>
+                        </button></ActionGate>
                       )}
                     </div>
                   </td>
@@ -850,9 +853,9 @@ function PayrollPageContent() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowSingleModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleSingleSettle} disabled={calculating} className="btn-primary text-sm px-6 py-2">
+              <ActionGate anyOf={["payroll.single_settle#operate"]}><button onClick={handleSingleSettle} disabled={calculating} className="btn-primary text-sm px-6 py-2">
                 {calculating ? "结算中..." : "结算"}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -918,7 +921,7 @@ function PayrollPageContent() {
               ) : (
                 <>
                   <button onClick={() => setShowPreview(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-                  <button onClick={confirmCalculate} disabled={calculating} className="btn-primary text-sm px-6 py-2">确认计算</button>
+                  <ActionGate anyOf={["payroll.calculate_payroll#operate"]}><button onClick={confirmCalculate} disabled={calculating} className="btn-primary text-sm px-6 py-2">确认计算</button></ActionGate>
                 </>
               )}
             </div>
@@ -961,7 +964,7 @@ function PayrollPageContent() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setRecalcModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmRecalc} disabled={calculating} className="btn-primary text-sm px-6 py-2">确定</button>
+              <ActionGate anyOf={["payroll.recalc_payroll#operate","payroll.batch_recalc_payroll#operate"]}><button onClick={confirmRecalc} disabled={calculating} className="btn-primary text-sm px-6 py-2">确定</button></ActionGate>
             </div>
           </div>
         </div>
@@ -1035,8 +1038,8 @@ function PayrollPageContent() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setDisburseModal(null)} disabled={disbursing !== null} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmDisburse} disabled={disbursing !== null || (disburseFundingSource === "cash_advance" ? disburseAdvancesLoading || !!disburseAdvancesError || disburseAdvances.length === 0 : disburseAccountsLoading || !!disburseAccountsError || disburseAccounts.length === 0)}
-                className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{disbursing !== null ? "发放中..." : "确认发放"}</button>
+              <ActionGate anyOf={["payroll.batch_disburse_payroll#operate","payroll.disburse_payroll#operate"]}><button onClick={confirmDisburse} disabled={disbursing !== null || (disburseFundingSource === "cash_advance" ? disburseAdvancesLoading || !!disburseAdvancesError || disburseAdvances.length === 0 : disburseAccountsLoading || !!disburseAccountsError || disburseAccounts.length === 0)}
+                className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{disbursing !== null ? "发放中..." : "确认发放"}</button></ActionGate>
             </div>
           </div>
         </div>
@@ -1066,8 +1069,8 @@ function PayrollPageContent() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setRevokeModal(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={confirmRevoke} disabled={disbursing === revokeModal.id}
-                className="bg-orange-500 text-white text-sm px-6 py-2 rounded-lg">{disbursing === revokeModal.id ? "撤销中..." : "确定撤销"}</button>
+              <ActionGate anyOf={["payroll.revoke_disbursement#operate"]}><button onClick={confirmRevoke} disabled={disbursing === revokeModal.id}
+                className="bg-orange-500 text-white text-sm px-6 py-2 rounded-lg">{disbursing === revokeModal.id ? "撤销中..." : "确定撤销"}</button></ActionGate>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+from app.core.action_access import has_module
 from app.core.round5_access import read_projection
 from app.core.round2_access import mutation_scope
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Body
@@ -914,7 +915,7 @@ async def get_approval_threshold(current_user: User = Depends(check_staff_permis
     _forbid_super_admin(current_user)
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) and not (
         current_user.role == Role.STAFF
-        and MENU_PERMISSIONS_BY_KEY["config_center"].label in (current_user.extra_permissions or [])
+        and has_module(current_user,'config_center','view')
     ):
         raise HTTPException(403, "无权限")
     wh_id = get_wh_id(current_user)

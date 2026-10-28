@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect,useState,useRef } from "react";
 import { api,warehouseRequestHeaders } from "@/lib/api";
 import { registrationDraft,submitRegistration } from "@/lib/registrationRequest";
@@ -41,6 +42,6 @@ export default function SkuProductMapping({productId,canEdit,onClose,onDone}:{pr
    <button className="btn-secondary" onClick={async()=>{try{const result=await api.get<any>(`/sku-catalog/products/${productId}/mapping-history`);if(productId===liveProduct.current&&scope===liveScope.current&&scope===JSON.stringify(warehouseRequestHeaders()))setHistory(result.data);}catch(e:any){if(productId===liveProduct.current&&scope===liveScope.current&&scope===JSON.stringify(warehouseRequestHeaders()))setError(e.message);}}}>查看映射历史</button>
    {history.map(h=><div className="border rounded p-2" key={h.id}>{h.operator_name} · {h.created_at}<p>{h.before?.sku_snapshot?.code||'未映射'} → {h.after?.sku_snapshot?.code||'未映射'}；{h.reason}</p></div>)}
    {error&&<p role="alert" className="text-red-600">{error}</p>}
-  </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>关闭</button>{canEdit&&<button className="btn-primary" disabled={busy||!data} onClick={save}>{pending?'重试原映射请求':'确认人工映射'}</button>}</div>
+  </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>关闭</button>{canEdit&&<ActionGate anyOf={["sku_catalog.mapping#operate"]}><button className="btn-primary" disabled={busy||!data} onClick={save}>{pending?'重试原映射请求':'确认人工映射'}</button></ActionGate>}</div>
  </div></div>;
 }

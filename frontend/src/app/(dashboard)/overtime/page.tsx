@@ -1,4 +1,6 @@
 "use client";
+import { useTierPermission } from "@/hooks/useActionPermission";
+import ActionGate from "@/components/permissions/ActionGate";
 import type { MessageResponse } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
@@ -31,7 +33,8 @@ export default function OvertimePage() {
 
   const isAdmin = !employeeView && user?.role === "warehouse_admin";
   const isLabor = user?.role === "warehouse_labor" || (employeeView && (user?.role === "supervisor" || user?.role === "staff") && user?.attendance_enabled);
-  const canVerify = !employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor");
+  const overtimeApprove = useTierPermission("overtime", "approve");
+  const canVerify = !employeeView && overtimeApprove && (user?.role === "warehouse_admin" || user?.role === "supervisor");
 
   const defaultForm = {
     employee_ids: [] as number[],
@@ -256,9 +259,9 @@ export default function OvertimePage() {
               <div className="flex items-center gap-1 text-sm text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">
                 <span>{t("overtime_limit_hint").replace("{h}", String(limitHours))}</span>
               </div>
-              <button onClick={() => { setForm(f => ({ ...f, start_time: scheduleEnd || f.start_time })); setShowForm(true); }} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+              <ActionGate anyOf={["overtime.create_overtime"]}><button onClick={() => { setForm(f => ({ ...f, start_time: scheduleEnd || f.start_time })); setShowForm(true); }} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
                 <Plus size={16}/> {t("create_overtime")}
-              </button>
+              </button></ActionGate>
             </>
           )}
         </div>
@@ -403,12 +406,12 @@ export default function OvertimePage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {canVerify && task.needs_verification && task.status !== "completed" && (
-                            <button onClick={() => openVerify(task)}
-                              className="text-blue-600 hover:text-blue-800 text-xs font-medium">{t("ot_go_verify")}</button>
+                            <ActionGate anyOf={["overtime.verify_overtime"]}><button onClick={() => openVerify(task)}
+                              className="text-blue-600 hover:text-blue-800 text-xs font-medium">{t("ot_go_verify")}</button></ActionGate>
                           )}
                           {isAdmin && (
-                            <button onClick={() => deleteTask(task.id)}
-                              className="text-red-500 hover:text-red-700 text-xs font-medium">{t("delete")}</button>
+                            <ActionGate anyOf={["overtime.delete_overtime#operate"]}><button onClick={() => deleteTask(task.id)}
+                              className="text-red-500 hover:text-red-700 text-xs font-medium">{t("delete")}</button></ActionGate>
                           )}
                         </div>
                       </td>
@@ -522,7 +525,7 @@ export default function OvertimePage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setVerifyTask(null)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
-              <button onClick={handleVerify} className="btn-primary text-sm px-6 py-2">{t("save_verify")}</button>
+              <ActionGate anyOf={["overtime.verify_overtime#approve"]}><button onClick={handleVerify} className="btn-primary text-sm px-6 py-2">{t("save_verify")}</button></ActionGate>
             </div>
           </div>
         </div>
@@ -603,7 +606,7 @@ export default function OvertimePage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">{t("cancel")}</button>
-              <button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">{t("create_overtime")}</button>
+              <ActionGate anyOf={["overtime.create_overtime#operate"]}><button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">{t("create_overtime")}</button></ActionGate>
             </div>
           </div>
         </div>

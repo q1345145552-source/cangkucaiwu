@@ -1,4 +1,6 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
+import { useTierPermission } from "@/hooks/useActionPermission";
 import type { MessageResponse } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState, useRef } from "react";
@@ -12,7 +14,7 @@ import SafeImage from "@/components/SafeImage";
 const NATIONALITIES = ["泰国", "缅甸", "中国", "其他"];
 
 export default function EmployeesPage() {
-  const canWrite = useMenuPermission("employees");
+  const canWrite = useTierPermission("employees", "operate");
   const { toast } = useToast(); const { user } = useAuth(); const router = useRouter();
   const payrollMenu = useMenuPermission("payroll");
   const canReadPay = user?.role === "warehouse_admin" || (user?.role === "staff" && payrollMenu);
@@ -517,17 +519,17 @@ export default function EmployeesPage() {
               <div className="flex items-center gap-2 bg-white border rounded-lg px-2 py-1">
                 <input type="number" className="w-16 text-sm border rounded px-1 py-0.5" value={limitInput}
                   onChange={e => setLimitInput(e.target.value)} />
-                <button disabled={!(user?.role === "warehouse_admin")} onClick={saveMaxLimit} className="text-xs bg-blue-500 text-white px-2 py-1 rounded">保存</button>
+                <ActionGate anyOf={["employees.set_max_limit#operate","employees.update_employee#operate"]}><button disabled={!(user?.role === "warehouse_admin")} onClick={saveMaxLimit} className="text-xs bg-blue-500 text-white px-2 py-1 rounded">保存</button></ActionGate>
               </div>
             )}
-            {user?.role === "warehouse_admin" && <button onClick={bindExistingAccounts} disabled={binding}
+            {user?.role === "warehouse_admin" && <ActionGate anyOf={["employees.bind_existing_accounts#operate"]}><button onClick={bindExistingAccounts} disabled={binding}
               className="border border-blue-300 text-blue-600 px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-blue-50 disabled:opacity-50">
               <Link2 size={16}/>{binding ? "绑定中..." : "绑定已有账号"}
-            </button>}
-            {user?.role === "warehouse_admin" && <button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}
+            </button></ActionGate>}
+            {user?.role === "warehouse_admin" && <ActionGate anyOf={["employees.create_employee"]}><button onClick={() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}
               className="bg-primary text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1">
               <UserPlus size={16}/>新建员工
-            </button>}
+            </button></ActionGate>}
           </div>
         )}
 
@@ -537,9 +539,9 @@ export default function EmployeesPage() {
       {canWrite && selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-3">
           <span className="text-sm font-medium text-blue-700">已选 {selectedIds.length} 人</span>
-          <button onClick={openBatchModal} className="bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600">
+          <ActionGate anyOf={["employees.batch_set_templates"]}><button onClick={openBatchModal} className="bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600">
             批量设置模板
-          </button>
+          </button></ActionGate>
         </div>
       )}
 
@@ -635,17 +637,17 @@ export default function EmployeesPage() {
                   <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                     {canWrite && (
                       <div className="flex gap-1 justify-end">
-                        <button onClick={() => editEmployee(e)} className="p-1.5 hover:bg-gray-100 rounded min-w-[32px]" title="编辑">
+                        <ActionGate anyOf={["employees.update_employee"]}><button onClick={() => editEmployee(e)} className="p-1.5 hover:bg-gray-100 rounded min-w-[32px]" title="编辑">
                           <Edit2 size={14} className="text-gray-400" />
-                        </button>
+                        </button></ActionGate>
                         <button onClick={() => openResignModal(e.id)}
                           className="p-1.5 hover:bg-red-50 rounded min-w-[32px]" title="离职">
                           <UserX size={14} className="text-red-400" />
                         </button>
-                        <button onClick={() => setDeleteTarget(e)}
+                        <ActionGate anyOf={["employees.delete_employee"]}><button onClick={() => setDeleteTarget(e)}
                           className="p-1.5 hover:bg-red-50 rounded min-w-[32px]" title="删除">
                           <Trash2 size={14} className="text-red-500" />
-                        </button>
+                        </button></ActionGate>
                       </div>
                     )}
                   </td>
@@ -918,9 +920,9 @@ export default function EmployeesPage() {
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={handleCreate} className="bg-primary text-white px-6 py-2 rounded-lg text-sm">
+              <ActionGate anyOf={["employees.update_employee#operate","employees.create_employee#operate"]}><button onClick={handleCreate} className="bg-primary text-white px-6 py-2 rounded-lg text-sm">
                 {editingId ? "保存修改" : "创建员工"}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -1144,14 +1146,14 @@ export default function EmployeesPage() {
                   {(Array.isArray(detailEmp.tags) ? detailEmp.tags : (detailEmp.tags || "").split(",").filter(Boolean)).map((t: string) => (
                     <span key={t} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs flex items-center gap-1">
                       {t}
-                      {canWrite && (<button onClick={() => removeTag(t)} className="text-blue-400 hover:text-red-500"><XIcon size={12}/></button>)}
+                      {canWrite && (<ActionGate anyOf={["employees.update_employee#operate"]}><button onClick={() => removeTag(t)} className="text-blue-400 hover:text-red-500"><XIcon size={12}/></button></ActionGate>)}
                     </span>
                   ))}
                 </div>
                 {canWrite && (<div className="flex gap-2">
                   <input className="form-input py-1.5 text-sm flex-1" placeholder="添加标签..." value={newTag}
                     onChange={e => setNewTag(e.target.value)} onKeyDown={e => e.key === "Enter" && addTag()} />
-                  <button onClick={addTag} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">添加</button>
+                  <ActionGate anyOf={["employees.update_employee#operate"]}><button onClick={addTag} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">添加</button></ActionGate>
                 </div>)}
               </div>
 
@@ -1168,8 +1170,8 @@ export default function EmployeesPage() {
                         <span className="text-sm text-gray-700">{f.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-red-600">{f.amount?.toLocaleString()}</span>
-                          {canWrite && (<button onClick={() => openFixedEdit(f)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={14}/></button>)}
-                          {canWrite && (<button disabled={!(user?.role === "warehouse_admin")} onClick={() => deleteFixedDeduction(f.id)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={14}/></button>)}
+                          {canWrite && (<ActionGate anyOf={["employee_deduction.update_fixed_deduction"]}><button onClick={() => openFixedEdit(f)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={14}/></button></ActionGate>)}
+                          {canWrite && (<ActionGate anyOf={["employee_deduction.delete_fixed_deduction#operate"]}><button disabled={!(user?.role === "warehouse_admin")} onClick={() => deleteFixedDeduction(f.id)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={14}/></button></ActionGate>)}
                         </div>
                       </div>
                     ))}
@@ -1180,9 +1182,9 @@ export default function EmployeesPage() {
                     onChange={e => setFixedForm({ ...fixedForm, name: e.target.value })} />
                   <input className="form-input py-1.5 text-sm w-28" type="number" step="0.01" placeholder="金额" value={fixedForm.amount}
                     onChange={e => setFixedForm({ ...fixedForm, amount: e.target.value })} />
-                  <button disabled={user?.role !== "warehouse_admin"} onClick={saveFixedDeduction} className="bg-blue-500 text-white px-3 py-1 rounded text-sm whitespace-nowrap">
+                  <ActionGate anyOf={["employee_deduction.update_fixed_deduction#operate","employee_deduction.create_fixed_deduction#operate"]}><button disabled={user?.role !== "warehouse_admin"} onClick={saveFixedDeduction} className="bg-blue-500 text-white px-3 py-1 rounded text-sm whitespace-nowrap">
                     {editingFixedId ? "保存" : "添加"}
-                  </button>
+                  </button></ActionGate>
                   {editingFixedId && (
                     <button disabled={!(user?.role === "warehouse_admin")} onClick={() => { setEditingFixedId(null); setFixedForm({ name: "", amount: "" }); }}
                       className="text-gray-500 text-sm px-2">取消</button>
@@ -1209,10 +1211,10 @@ export default function EmployeesPage() {
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               {canWrite && detailEmp.status !== "resigned" && (
                 <>
-                  <button onClick={() => { editEmployee(detailEmp); setDetailEmp(null); }}
+                  <ActionGate anyOf={["employees.update_employee"]}><button onClick={() => { editEmployee(detailEmp); setDetailEmp(null); }}
                     className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm flex items-center gap-1">
                     <Edit2 size={14}/> 编辑
-                  </button>
+                  </button></ActionGate>
                   <button onClick={() => { openResignModal(detailEmp.id); }}
                     className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1">
                     <UserX size={14}/> 离职
@@ -1233,10 +1235,10 @@ export default function EmployeesPage() {
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的照片？</p>
             <div className="flex gap-2 justify-center">
               <button onClick={() => setPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={() => uploadPhoto(detailEmp.id)} disabled={uploadingPhoto}
+              <ActionGate anyOf={["employees.upload_employee_photo"]}><button onClick={() => uploadPhoto(detailEmp.id)} disabled={uploadingPhoto}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
                 {uploadingPhoto ? "上传中..." : "确认上传"}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -1250,10 +1252,10 @@ export default function EmployeesPage() {
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的护照照片？</p>
             <div className="flex gap-2 justify-center">
               <button onClick={() => setPassportPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={() => uploadPassportPhoto(detailEmp.id)} disabled={uploadingPassportPhoto}
+              <ActionGate anyOf={["employees.upload_passport_photo"]}><button onClick={() => uploadPassportPhoto(detailEmp.id)} disabled={uploadingPassportPhoto}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
                 {uploadingPassportPhoto ? "上传中..." : "确认上传"}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -1267,10 +1269,10 @@ export default function EmployeesPage() {
             <p className="text-sm text-gray-600 mb-4">上传 {detailEmp.name} 的工作证照片？</p>
             <div className="flex gap-2 justify-center">
               <button onClick={() => setWorkPermitPhotoFile(null)} className="btn-secondary px-4 py-2 text-sm">取消</button>
-              <button onClick={() => uploadWorkPermitPhoto(detailEmp.id)} disabled={uploadingWorkPermitPhoto}
+              <ActionGate anyOf={["employees.upload_work_permit_photo"]}><button onClick={() => uploadWorkPermitPhoto(detailEmp.id)} disabled={uploadingWorkPermitPhoto}
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
                 {uploadingWorkPermitPhoto ? "上传中..." : "确认上传"}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -1337,9 +1339,9 @@ export default function EmployeesPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setResigningId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={resignEmployee} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-red-600">
+              <ActionGate anyOf={["employees.resign_employee#operate"]}><button onClick={resignEmployee} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg hover:bg-red-600">
                 确认离职
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -1354,10 +1356,10 @@ export default function EmployeesPage() {
             <p className="text-xs text-gray-400 mb-4">删除后该员工从列表隐藏，关联的打卡记录、工资单、加班记录都会保留。{user?.role === "warehouse_admin" ? "绑定登录账号将按账号权限停用。" : "本次只修改员工档案，不停用登录账号；账号状态由仓库管理员处理。"}</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteTarget(null)} className="btn-secondary text-sm px-4 py-2">取消</button>
-              <button onClick={handleDeleteEmployee} disabled={deleting}
+              <ActionGate anyOf={["employees.delete_employee#operate"]}><button onClick={handleDeleteEmployee} disabled={deleting}
                 className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50">
                 {deleting ? "删除中..." : "确认删除"}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>
@@ -1426,7 +1428,7 @@ export default function EmployeesPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowBatchModal(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button disabled={!(user?.role === "warehouse_admin")} onClick={handleBatchSet} className="btn-primary text-sm px-6 py-2">确定</button>
+              <ActionGate anyOf={["employees.batch_set_templates#operate"]}><button disabled={!(user?.role === "warehouse_admin")} onClick={handleBatchSet} className="btn-primary text-sm px-6 py-2">确定</button></ActionGate>
             </div>
           </div>
         </div>

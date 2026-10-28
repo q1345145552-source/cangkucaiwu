@@ -1,0 +1,6 @@
+{
+  "source": "backend/tests/permission_round5/write_responses.py",
+  "sha256": "b0e84ec688f9bafce2c870410324bc5da0b8459ca5e63c95a5f3d6c5daadbd6d",
+  "adaptation": "round6 fixtures/output only; original assertion bodies unchanged",
+  "versioned_seed": true
+}

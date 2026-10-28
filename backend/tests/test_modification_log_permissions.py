@@ -50,6 +50,7 @@ def test_migration_once_supervisor_only_and_real_read(tmp_path,monkeypatch):
   import scripts.seed as startup
   async with hr_environment(tmp_path,monkeypatch) as (engine,f,c):
    await seed_logs(f)
+   await set_perms(f,4,['考勤'])  # Known legacy grants remain eligible; empty grants must stay empty.
    async with f() as db:
     db.add_all([SystemSetting(warehouse_id=1,key=key,value='true') for key in (
      migrations.ROUND2_PERMISSION_MARKER,migrations.ROUND3_PERMISSION_MARKER,migrations.ROUND4_PERMISSION_MARKER,migrations.ROUND5_PERMISSION_MARKER,migrations.ROUND6_PERMISSION_MARKER,migrations.ROUND9_SUPERVISOR_PERMISSION_MARKER,migrations.CASH_ADVANCES_PERMISSION_MARKER)])
@@ -78,12 +79,16 @@ def test_migration_once_supervisor_only_and_real_read(tmp_path,monkeypatch):
 def test_migration_failure_rolls_back(tmp_path,monkeypatch):
  async def run():
   async with hr_environment(tmp_path,monkeypatch) as (engine,f,c):
+   async with f() as db:
+    db.add(User(id=7,username='synthetic-known-legacy',display_name='SYNTHETIC',role='supervisor',warehouse_id=1,password_hash='unused',extra_permissions=['考勤']))
+    await db.commit()
    with pytest.raises(RuntimeError):
     async with engine.begin() as conn:
      await migrations.backfill_modification_logs_permission(conn)
      raise RuntimeError('abort')
    async with f() as db:
     assert (await db.get(User,4)).extra_permissions==[]
+    assert (await db.get(User,7)).extra_permissions==['考勤']
     assert not (await db.execute(select(SystemSetting).where(SystemSetting.key==migrations.MODIFICATION_LOGS_PERMISSION_MARKER))).first()
    async with engine.begin() as conn:assert await migrations.backfill_modification_logs_permission(conn)==1
    async with engine.begin() as conn:assert await migrations.backfill_modification_logs_permission(conn)==0

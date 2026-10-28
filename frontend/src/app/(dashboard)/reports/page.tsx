@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useRef, useState } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
@@ -198,7 +199,7 @@ export default function ReportsPage() {
 
       {selected !== "operations" && <WarehouseSummary startDate={dateRange.start_date} endDate={dateRange.end_date} />}
 
-      {previewError && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{previewError}<button className="ml-3 underline" onClick={() => loadPreviews()}>重试预览</button></div>}
+      {previewError && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{previewError}<ActionGate anyOf={["reports.report_previews#view"]}><button className="ml-3 underline" onClick={() => loadPreviews()}>重试预览</button></ActionGate></div>}
       {reportError && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reportError}<button className="ml-3 underline" onClick={() => loadReport(selected)}>重试报表</button></div>}
       {/* Report type cards with preview badges */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="3" time="1.985" timestamp="2026-10-28T07:15:30.819717+07:00" hostname="XiongdeMac-mini.local"><testcase classname="tests.test_cash_advance_repayments" name="test_admin_only_repayment_upload_accounts_and_revoke[4]" time="0.286"><failure message="AssertionError: assert {'detail': '该动作超出当前角色职责上限'} == {'detail': '只...财务或管理员可以处理核算'}&#10;  &#10;  Differing items:&#10;  {'detail': '该动作超出当前角色职责上限'} != {'detail': '只有获授权财务或管理员可以处理核算'}&#10;  Use -v to get more diff">tests/test_cash_advance_repayments.py:186: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:182: in run
+    assert r.json()=={"detail":message}
+E   AssertionError: assert {'detail': '该动作超出当前角色职责上限'} == {'detail': '只...财务或管理员可以处理核算'}
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '只有获授权财务或管理员可以处理核算'}
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_modification_log_permissions" name="test_migration_failure_rolls_back" time="0.158"><failure message="assert 0 == 1">tests/test_modification_log_permissions.py:90: in test_migration_failure_rolls_back
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:88: in run
+    async with engine.begin() as conn:assert await migrations.backfill_modification_logs_permission(conn)==1
+E   assert 0 == 1</failure></testcase><testcase classname="tests.test_modification_log_permissions" name="test_migration_once_supervisor_only_and_real_read" time="0.175"><failure message="AssertionError: assert 0 == 1&#10; +  where 0 = &lt;built-in method count of list object at 0x10db5c580&gt;('修改日志')&#10; +    where &lt;built-in method count of list object at 0x10db5c580&gt; = [].count&#10; +      where [] = &lt;app.models.user.User object at 0x10db49a30&gt;.extra_permissions">tests/test_modification_log_permissions.py:75: in test_migration_once_supervisor_only_and_real_read
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:65: in run
+    for uid in (4,7):assert users[uid].extra_permissions.count('修改日志')==1
+E   AssertionError: assert 0 == 1
+E    +  where 0 = &lt;built-in method count of list object at 0x10db5c580&gt;('修改日志')
+E    +    where &lt;built-in method count of list object at 0x10db5c580&gt; = [].count
+E    +      where [] = &lt;app.models.user.User object at 0x10db49a30&gt;.extra_permissions</failure></testcase></testsuite></testsuites>

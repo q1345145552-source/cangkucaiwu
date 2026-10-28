@@ -1,0 +1,9 @@
+administrator-three-column-editor-role-ceilings PASS
+supervisor-allowed-edit-then-old-modal-revocation PASS
+finance-view-only-has-no-calculation-payment PASS
+finance-operation-only-minimum-calculation PASS
+supervisor-approval-only-minimum-leave PASS
+same-tab-account-switch-clears-admin-controls AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+

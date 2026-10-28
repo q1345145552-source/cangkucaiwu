@@ -131,6 +131,8 @@ def test_link_and_timestamp_are_server_owned(tmp_path, monkeypatch):
                 'attendance_enabled': True, 'attendance_employee_id': 2,
                 'attendance_enabled_at': '2000-01-01T00:00:00Z',
             })
+            assert r.status_code == 422, r.text  # Explicit schema rejects client-owned identity fields.
+            r = await client.put('/api/v1/users/4', headers=auth(1), json={'attendance_enabled': True})
             assert r.status_code == 200, r.text
             async with factory() as db:
                 user = await db.get(User, 4)

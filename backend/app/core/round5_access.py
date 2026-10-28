@@ -22,8 +22,9 @@ DOCUMENT_FIELDS = {'myanmar_id','thai_id_number','sso_number','passport_number',
 
 
 def has_menu(user, key):
+    from app.core.action_access import has_module
     return user.role == Role.WAREHOUSE_ADMIN or (
-        user.role in (Role.SUPERVISOR,Role.STAFF) and key in MENU_PERMISSIONS_BY_KEY and MENU_PERMISSIONS_BY_KEY[key].label in (user.extra_permissions or []))
+        user.role in (Role.SUPERVISOR, Role.STAFF) and has_module(user, key, 'view'))
 
 
 def financial_reader(user, key):

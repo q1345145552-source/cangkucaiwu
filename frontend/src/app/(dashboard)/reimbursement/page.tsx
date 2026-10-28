@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
@@ -330,10 +331,10 @@ function ReimbursementPageContent() {
                 </div>
               </div>
               <div>
-                <button onClick={handleCreate} disabled={submitting} className="btn-primary text-sm py-1.5 flex items-center gap-1">
+                <ActionGate anyOf={["reimbursement.create_reimbursement#operate"]}><button onClick={handleCreate} disabled={submitting} className="btn-primary text-sm py-1.5 flex items-center gap-1">
                   {submitting ? <span className="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" /> : <Plus size={14} />}
                   提交
-                </button>
+                </button></ActionGate>
               </div>
             </div>
             {/* Fund-linked checkbox */}
@@ -419,13 +420,13 @@ function ReimbursementPageContent() {
                           <div className="flex items-center justify-center gap-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
                             <button onClick={() => viewDetail(row.id)} className="px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">详情</button>
                             {row.status === "pending" && (isAdmin || row.employee_id === user?.id) && (
-                              <button onClick={() => openEdit(row)} className="px-2 py-1 rounded text-xs bg-amber-50 text-amber-700 hover:bg-amber-100">编辑</button>
+                              <ActionGate anyOf={["reimbursement.edit_reimb"]}><button onClick={() => openEdit(row)} className="px-2 py-1 rounded text-xs bg-amber-50 text-amber-700 hover:bg-amber-100">编辑</button></ActionGate>
                             )}
                             {isAdmin && (
                               <button onClick={() => setDeletingRow(row)} className="px-2 py-1 rounded text-xs bg-red-50 text-red-600 hover:bg-red-100">删除</button>
                             )}
-                            {row.capabilities?.can_verify && (isAdmin || user?.role === "staff") && <button onClick={() => workflowAction(row.id, "verify")} className="btn-secondary btn-xs">核验凭证</button>}
-                            {row.capabilities?.can_return && isAdmin && <button onClick={() => workflowAction(row.id, "return-to-draft")} className="btn-secondary btn-xs">退回重审</button>}
+                            {row.capabilities?.can_verify && (isAdmin || user?.role === "staff") && <ActionGate anyOf={["reimbursement.verify_reimb"]}><button onClick={() => workflowAction(row.id, "verify")} className="btn-secondary btn-xs">核验凭证</button></ActionGate>}
+                            {row.capabilities?.can_return && isAdmin && <ActionGate anyOf={["reimbursement.verify_reimb"]}><button onClick={() => workflowAction(row.id, "return-to-draft")} className="btn-secondary btn-xs">退回重审</button></ActionGate>}
                             <button onClick={() => openHistory(row)} className="px-2 py-1 rounded text-xs bg-gray-50 text-gray-600 hover:bg-gray-100">历史</button>
                             {row.capabilities?.can_pay && (isAdmin || user?.role === "staff") && (
                               <button onClick={() => { markPaid(row); }} className="px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">付款</button>
@@ -496,10 +497,10 @@ function ReimbursementPageContent() {
                           <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex items-center gap-1"><Lock size={10} />备用金</span>
                         )}
                       </div>
-                      <button disabled={!reimb.capabilities?.can_approve} onClick={e => { e.stopPropagation(); reviewOne(reimb.id); }}
+                      <ActionGate anyOf={["reimbursement.review_reimb#approve"]}><button disabled={!reimb.capabilities?.can_approve} onClick={e => { e.stopPropagation(); reviewOne(reimb.id); }}
                         className="btn-primary text-xs bg-green-600 hover:bg-green-700 py-1 px-3 flex items-center gap-1">
                         <CheckCircle size={13} />审批
-                      </button>
+                      </button></ActionGate>
                     </div>
 
                     {/* Expanded items */}
@@ -529,10 +530,10 @@ function ReimbursementPageContent() {
                                 </td>
                                 <td className="py-1.5 px-2 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
-                                    <button onClick={() => setItemDecision(it.id, "approved")}
-                                      className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${reviewDecisions[it.id] === "approved" ? "bg-green-100 border-green-300 text-green-700" : "border-gray-200 text-gray-400 hover:border-green-300"}`}>通过</button>
-                                    <button onClick={() => setItemDecision(it.id, "rejected")}
-                                      className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${reviewDecisions[it.id] === "rejected" ? "bg-red-100 border-red-300 text-red-700" : "border-gray-200 text-gray-400 hover:border-red-300"}`}>驳回</button>
+                                    <ActionGate anyOf={["reimbursement.review_reimb"]}><button onClick={() => setItemDecision(it.id, "approved")}
+                                      className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${reviewDecisions[it.id] === "approved" ? "bg-green-100 border-green-300 text-green-700" : "border-gray-200 text-gray-400 hover:border-green-300"}`}>通过</button></ActionGate>
+                                    <ActionGate anyOf={["reimbursement.review_reimb"]}><button onClick={() => setItemDecision(it.id, "rejected")}
+                                      className={`px-2 py-0.5 rounded text-[11px] border transition-colors ${reviewDecisions[it.id] === "rejected" ? "bg-red-100 border-red-300 text-red-700" : "border-gray-200 text-gray-400 hover:border-red-300"}`}>驳回</button></ActionGate>
                                   </div>
                                 </td>
                               </tr>
@@ -635,7 +636,7 @@ function ReimbursementPageContent() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setEditingRow(null)} className="btn-secondary">取消</button>
-              <button onClick={handleEditSave} className="btn-primary">保存</button>
+              <ActionGate anyOf={["reimbursement.edit_reimb#operate"]}><button onClick={handleEditSave} className="btn-primary">保存</button></ActionGate>
             </div>
           </div>
         </div>
@@ -649,7 +650,7 @@ function ReimbursementPageContent() {
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这条报销吗？{deletingRow.is_fund_linked === "1" ? "该报销已关联备用金，删除后将恢复备用金余额。" : ""}删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeletingRow(null)} className="btn-secondary">取消</button>
-              <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
+              <ActionGate anyOf={["reimbursement.delete_reimb#operate"]}><button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
         </div>

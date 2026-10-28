@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
 import ExcelImportDialog from "@/components/ExcelImportDialog";
 import { downloadExcel, checkExcel, importScope } from "@/lib/excelImport";
@@ -240,9 +241,9 @@ export default function IncomingPage() {
             <input ref={initialScreenshotFile} disabled={!canWrite} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               className="w-full min-w-0 max-w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-green-50 file:text-green-700" />
           </div>
-          <button onClick={handleCreate} disabled={!(canWrite) || (saving || !storageReady)} className="btn-primary h-10 flex items-center gap-1.5 w-full sm:w-auto sm:min-w-[100px] justify-center whitespace-nowrap">
+          <ActionGate anyOf={["incoming.create_incoming"]}><button onClick={handleCreate} disabled={!(canWrite) || (saving || !storageReady)} className="btn-primary h-10 flex items-center gap-1.5 w-full sm:w-auto sm:min-w-[100px] justify-center whitespace-nowrap">
             {saving ? "处理中..." : <><Upload size={16} />{operation?.savedId ? operation.screenshotPending ? "补传截图" : "完成本次" : operation ? "重试本次录入" : "录入"}</>}
-          </button>
+          </button></ActionGate>
         </div>
       </div>
 

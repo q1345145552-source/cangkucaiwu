@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Key, UserPlus, MessageCircle, Pencil, Trash2, DollarSign, Clock, History, Phone } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ActionPermissionsEditor from "@/components/permissions/ActionPermissionsEditor";
 import AttendanceToggle, { findAttendanceEmployee, AttendanceEmployee } from "@/components/settings/AttendanceToggle";
 
 interface MenuPermission {
@@ -14,40 +15,6 @@ interface MenuPermission {
   menu_key: string;
   label: string;
   selectable: boolean;
-}
-
-function PermissionCheckboxes({ permissions, selected, onToggle, loading, error, onRetry }: {
-  permissions: MenuPermission[];
-  selected: string[];
-  onToggle: (label: string) => void;
-  loading: boolean;
-  error: string;
-  onRetry: () => void;
-}) {
-  const selectable = permissions.filter(permission => permission.selectable);
-  // 后端原八项兼容中文 key；其余项使用英文 menu_key，不再维护第二份权限名单。
-  const groups = [
-    { label: "财务类", items: selectable.filter(permission => permission.key !== permission.menu_key) },
-    { label: "业务类", items: selectable.filter(permission => permission.key === permission.menu_key) },
-  ];
-  if (loading) return <p className="text-sm text-gray-500" role="status">权限清单加载中...</p>;
-  if (error) return <div className="text-sm text-red-600" role="alert">{error} <button type="button" onClick={onRetry} className="underline">重试</button></div>;
-  return (
-    <div className="border rounded p-2 space-y-3 max-h-72 overflow-y-auto overscroll-contain" aria-label="扩展权限勾选项">
-      {groups.map(group => (
-        <fieldset key={group.label}>
-          <legend className="text-sm font-medium mb-1">{group.label}</legend>
-          {group.items.map(permission => (
-            <label key={permission.menu_key} className="flex items-center gap-2 cursor-pointer py-2 min-h-[44px]">
-              <input type="checkbox" checked={selected.includes(permission.label)}
-                onChange={() => onToggle(permission.label)} className="rounded" />
-              <span className="text-sm">{permission.label}</span>
-            </label>
-          ))}
-        </fieldset>
-      ))}
-    </div>
-  );
 }
 
 export default function SettingsPage() {
@@ -64,6 +31,8 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "", warehouse_ids: [] as number[] });
   const [newPerms, setNewPerms] = useState<string[]>([]);
+  const [newPermissionReason, setNewPermissionReason] = useState("");
+  const [editPermissionReason, setEditPermissionReason] = useState("");
   const [newAttendanceEnabled, setNewAttendanceEnabled] = useState(false);
   const [newAttendanceError, setNewAttendanceError] = useState("");
   const [attendanceNotices, setAttendanceNotices] = useState<Record<number, string>>({});
@@ -197,7 +166,8 @@ export default function SettingsPage() {
         role: newUser.role,
       };
       if (newUser.role === "supervisor" || newUser.role === "staff") {
-        payload.extra_permissions = newPerms;
+        payload.action_permissions = newPerms;
+        payload.permission_reason = newPermissionReason;
       }
       if (newUser.role === "supervisor" || newUser.role === "warehouse_admin") {
         payload.warehouse_ids = newUser.warehouse_ids;
@@ -231,7 +201,8 @@ export default function SettingsPage() {
 
   function openEdit(u: any) {
     setEditUser(u);
-    setEditPerms(u.extra_permissions || []);
+    setEditPerms(u.action_access?.grants || []);
+    setEditPermissionReason("");
     setEditUsername(u.username || "");
     setEditDisplayName(u.display_name || "");
     setEditPassword("");
@@ -260,7 +231,7 @@ export default function SettingsPage() {
       const payload: any = {
         username: editUsername,
         display_name: editDisplayName,
-        extra_permissions: editPerms,
+        ...(["supervisor", "staff"].includes(editUser.role) ? { action_permissions: editPerms, permission_reason: editPermissionReason } : {}),
         is_active: editActive,
       };
       if (editPassword) payload.password = editPassword;
@@ -275,6 +246,7 @@ export default function SettingsPage() {
       }
       if (payload.attendance_enabled !== undefined) setAttendanceSaving(true);
       const result = await api.put<any>(`/users/${editUser.id}`, payload);
+      localStorage.setItem("permissions-revision", String(Date.now()));
       if (result.attendance_notice) setAttendanceNotices(prev => ({ ...prev, [editUser.id]: result.attendance_notice }));
       toast("success", result.attendance_notice || "更新成功");
       setEditUser(null);
@@ -399,14 +371,14 @@ export default function SettingsPage() {
                     {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
                   </select>
                 )}
-                <p className="text-xs text-gray-400 mt-1">勾上哪个仓库 这个人就能看到那个仓库全部的钱和人 请谨慎勾选</p>
+                <p className="text-xs text-gray-400 mt-1">仓库选择只限定可操作范围，具体查看、操作和审批仍受岗位动作权限限制</p>
               </div>
               {(newUser.role === "supervisor" || newUser.role === "staff") && (
                 <div>
                   <label className="form-label">扩展权限</label>
-                  <PermissionCheckboxes permissions={menuPermissions} selected={newPerms}
-                    onToggle={label => setNewPerms(prev => prev.includes(label) ? prev.filter(p => p !== label) : [...prev, label])}
-                    loading={permissionsLoading} error={permissionsError} onRetry={loadPermissions} />
+                  <ActionPermissionsEditor role={newUser.role} selected={newPerms} onChange={setNewPerms}
+                    reason={newPermissionReason} onReasonChange={setNewPermissionReason}
+                    onLoadingChange={setPermissionsLoading} onErrorChange={setPermissionsError} />
                 </div>
               )}
               {(newUser.role === "supervisor" || newUser.role === "staff") && (
@@ -486,7 +458,7 @@ export default function SettingsPage() {
                           {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
                         </select>
                       )}
-                      <p className="text-xs text-gray-400 mt-1">勾上哪个仓库 这个人就能看到那个仓库全部的钱和人 请谨慎勾选</p>
+                      <p className="text-xs text-gray-400 mt-1">仓库选择只限定可操作范围，具体查看、操作和审批仍受岗位动作权限限制</p>
                     </div>
                   )}
                   <div className="flex items-center gap-2 pt-1">
@@ -497,8 +469,9 @@ export default function SettingsPage() {
                 {(editUser.role === "staff" || editUser.role === "supervisor") && (
                   <div className="mb-4">
                     <div className="text-sm font-medium mb-2">扩展权限</div>
-                    <PermissionCheckboxes permissions={menuPermissions} selected={editPerms}
-                      onToggle={togglePerm} loading={permissionsLoading} error={permissionsError} onRetry={loadPermissions} />
+                    <ActionPermissionsEditor role={editUser.role} selected={editPerms} onChange={setEditPerms}
+                      reason={editPermissionReason} onReasonChange={setEditPermissionReason} previous={editUser.action_access}
+                      onLoadingChange={setPermissionsLoading} onErrorChange={setPermissionsError} />
                   </div>
                 )}
                 {(editUser.role === "supervisor" || editUser.role === "staff") && (

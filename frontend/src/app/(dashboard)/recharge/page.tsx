@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
@@ -219,7 +220,7 @@ export default function RechargePage() {
     { key: "declarer_name", label: "申报人", hideOnMobile: true },
     { key: "id", label: "操作", render: (_: any, row: any) => (
       <div className="flex items-center gap-2">
-        <button onClick={() => openEdit(row)} className="text-blue-600 hover:underline text-xs">编辑</button>
+        <ActionGate anyOf={["recharge.edit_recharge"]}><button onClick={() => openEdit(row)} className="text-blue-600 hover:underline text-xs">编辑</button></ActionGate>
         <button onClick={() => setDeletingRow(row)} className="text-red-500 hover:underline text-xs">删除</button>
         <button onClick={() => openHistory(row)} className="text-gray-500 hover:underline text-xs">历史</button>
       </div>
@@ -275,9 +276,9 @@ export default function RechargePage() {
         </div>
 
         <div className="flex items-center gap-3 mt-4 pt-3 border-t">
-          <button onClick={handleCreate} disabled={saving || uploading} className="btn-primary h-10 flex items-center gap-1.5 min-w-[120px] justify-center">
+          <ActionGate anyOf={["recharge.create_recharge#operate"]}><button onClick={handleCreate} disabled={saving || uploading} className="btn-primary h-10 flex items-center gap-1.5 min-w-[120px] justify-center">
             {saving ? "保存中..." : uploading ? "上传中..." : <><Upload size={16} />提交申报</>}
-          </button>
+          </button></ActionGate>
           <span className="text-xs text-gray-400">选择客户后，币种和付款方式自动填入客户默认值，可手动修改</span>
         </div>
       </div>
@@ -310,7 +311,7 @@ export default function RechargePage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setEditingRow(null)} className="btn-secondary">取消</button>
-              <button onClick={handleEditSave} className="btn-primary">保存</button>
+              <ActionGate anyOf={["recharge.edit_recharge#operate"]}><button onClick={handleEditSave} className="btn-primary">保存</button></ActionGate>
             </div>
           </div>
         </div>
@@ -324,7 +325,7 @@ export default function RechargePage() {
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这条申报吗？删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeletingRow(null)} className="btn-secondary">取消</button>
-              <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
+              <ActionGate anyOf={["recharge.delete_recharge#operate"]}><button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
         </div>

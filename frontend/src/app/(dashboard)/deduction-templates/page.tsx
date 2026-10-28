@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
@@ -99,9 +100,9 @@ export default function DeductionTemplatesPage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><Scale size={24}/>扣款模板</h1>
-        {canWrite && (<button onClick={openCreate} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+        {canWrite && (<ActionGate anyOf={["deduction_template.create_deduction_template"]}><button onClick={openCreate} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
           <Plus size={16}/> 新建模板
-        </button>)}
+        </button></ActionGate>)}
       </div>
 
       {loading ? (
@@ -138,8 +139,8 @@ export default function DeductionTemplatesPage() {
                   <td className="px-3 py-3 text-center">{r.usage_count ?? 0}</td>
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-3">
-                      {canWrite && (<button onClick={() => openEdit(r)} className="text-blue-500 hover:text-blue-700" title="编辑"><Edit2 size={16}/></button>)}
-                      {canWrite && (<button onClick={() => handleDelete(r)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={16}/></button>)}
+                      {canWrite && (<ActionGate anyOf={["deduction_template.update_deduction_template"]}><button onClick={() => openEdit(r)} className="text-blue-500 hover:text-blue-700" title="编辑"><Edit2 size={16}/></button></ActionGate>)}
+                      {canWrite && (<ActionGate anyOf={["deduction_template.delete_deduction_template#operate"]}><button onClick={() => handleDelete(r)} className="text-red-400 hover:text-red-600" title="删除"><Trash2 size={16}/></button></ActionGate>)}
                     </div>
                   </td>
                 </tr>
@@ -183,7 +184,7 @@ export default function DeductionTemplatesPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleSave} className="btn-primary text-sm px-6 py-2">保存</button>
+              <ActionGate anyOf={["deduction_template.update_deduction_template#operate","deduction_template.create_deduction_template#operate"]}><button onClick={handleSave} className="btn-primary text-sm px-6 py-2">保存</button></ActionGate>
             </div>
           </div>
         </div>

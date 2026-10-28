@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
@@ -102,7 +103,7 @@ export default function MarketPage() {
             </button>
           )}
           {isSuperAdmin && (
-            <button onClick={() => setShowForm(true)} className="btn-primary">上架商品</button>
+            <ActionGate anyOf={["market.create_item"]}><button onClick={() => setShowForm(true)} className="btn-primary">上架商品</button></ActionGate>
           )}
         </div>
       </div>
@@ -120,8 +121,8 @@ export default function MarketPage() {
                 <div className="text-sm text-gray-400">{i.description}</div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => handleReview(i.id, "approved")} className="bg-green-500 text-white px-3 py-1 rounded text-sm"><Check size={16}/></button>
-                <button onClick={() => handleReview(i.id, "rejected")} className="bg-red-500 text-white px-3 py-1 rounded text-sm"><X size={16}/></button>
+                <ActionGate anyOf={["market.review_item#approve"]}><button onClick={() => handleReview(i.id, "approved")} className="bg-green-500 text-white px-3 py-1 rounded text-sm"><Check size={16}/></button></ActionGate>
+                <ActionGate anyOf={["market.review_item#approve"]}><button onClick={() => handleReview(i.id, "rejected")} className="bg-red-500 text-white px-3 py-1 rounded text-sm"><X size={16}/></button></ActionGate>
               </div>
             </div>
           ))}
@@ -150,12 +151,12 @@ export default function MarketPage() {
                 <div className="text-sm text-gray-500 mb-3">数量: {i.quantity} | {i.price === 0 ? "无偿" : `฿${i.price.toLocaleString()}`}</div>
                 <div className="text-xs text-gray-400 mb-3 line-clamp-2">{i.description}</div>
                 {i.status === "approved" && !isSuperAdmin && (
-                  <button onClick={() => handlePurchase(i.id)} className="w-full bg-primary text-white py-1.5 rounded text-sm flex items-center justify-center gap-1">
+                  <ActionGate anyOf={["market.purchase#operate"]}><button onClick={() => handlePurchase(i.id)} className="w-full bg-primary text-white py-1.5 rounded text-sm flex items-center justify-center gap-1">
                     <ShoppingCart size={14} /> 购买
-                  </button>
+                  </button></ActionGate>
                 )}
                 {isSuperAdmin && i.status === "approved" && (
-                  <button onClick={() => handleConfirm(i.id)} className="w-full mt-1 border border-green-500 text-green-600 py-1.5 rounded text-sm">确认交易完成</button>
+                  <ActionGate anyOf={["market.confirm_trade#operate"]}><button onClick={() => handleConfirm(i.id)} className="w-full mt-1 border border-green-500 text-green-600 py-1.5 rounded text-sm">确认交易完成</button></ActionGate>
                 )}
               </div>
             </div>
@@ -174,7 +175,7 @@ export default function MarketPage() {
             <div><label className="form-label">描述</label><textarea className="form-input" rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} /></div>
             <div><label className="form-label">商品图片（可选）</label><input type="file" accept="image/png,image/jpeg,image/webp" disabled={imageUploading} onChange={e=>uploadImage(e.target.files?.[0])} />{imageUploading && <p className="text-sm">图片上传中...</p>}{form.image && <img src={"/"+form.image.replace(/^\//,"")} alt="商品图片" className="mt-2 h-24 object-contain" />}</div>
           </div>
-          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><button onClick={handleCreate} disabled={imageUploading} className="px-4 py-2 bg-primary text-white rounded">上架</button></div>
+          <div className="flex justify-end gap-3 mt-6"><button onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">取消</button><ActionGate anyOf={["market.create_item#operate"]}><button onClick={handleCreate} disabled={imageUploading} className="px-4 py-2 bg-primary text-white rounded">上架</button></ActionGate></div>
         </div></div>
       )}
     </>

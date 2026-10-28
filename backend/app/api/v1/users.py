@@ -1,3 +1,5 @@
+from app.core.action_access import encode_permissions, convert_legacy, permission_state, access_description, legacy_labels
+from types import SimpleNamespace
 from app.core.round2_access import require_account_manager, mutation_scope, own_scope, login_target_scope
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +19,25 @@ from app.services.data_history import record_history
 from app.services.attendance_identity import bind_attendance_employee
 
 router = APIRouter()
+
+
+def prepared_permissions(req, role, target=None):
+    if req.action_permissions is not None:
+        if req.extra_permissions is not None:
+            raise HTTPException(400, '不能同时提交旧菜单和新动作权限')
+        if not req.permission_reason or not req.permission_reason.strip():
+            raise HTTPException(400, '请填写权限调整原因')
+        return encode_permissions(role, req.action_permissions)
+    if req.extra_permissions is not None:
+        if target is not None and permission_state(target)['version'] != 'legacy':
+            raise HTTPException(409, '该账号已使用三档权限，请刷新权限编辑页；不能回退旧菜单授权')
+        old = SimpleNamespace(role=role, extra_permissions=req.extra_permissions)
+        converted, state = convert_legacy(old)
+        if state['unknown']:
+            raise HTTPException(400, '包含未识别的旧菜单权限，请先核对')
+        return converted
+    return encode_permissions(role, []) if target is None else target.extra_permissions
+
 
 
 def _attendance_fields(user: User) -> dict:
@@ -95,7 +116,8 @@ async def list_users(
                 "warehouse_id": u.warehouse_id,
                 "warehouse_ids": uw_map.get(u.id, []),
                 "warehouse_name": u.warehouse.name if u.warehouse else None,
-                "extra_permissions": u.extra_permissions or [],
+                "extra_permissions": legacy_labels(u),
+                "action_access": access_description(u),
                 **_attendance_fields(u),
                 "is_active": u.is_active,
                 "created_at": u.created_at.isoformat() if u.created_at else None,
@@ -168,7 +190,7 @@ async def create_user(
         role=req.role,
         warehouse_id=primary_wh,
         created_by=current_user.id,
-        extra_permissions=req.extra_permissions or [],
+        extra_permissions=prepared_permissions(req, req.role),
     )
     db.add(user)
     await db.flush()
@@ -180,7 +202,10 @@ async def create_user(
     await record_history(db, module="user", record_id=user.id, operator=current_user,
                           operation_type="create",
                           after={"username": user.username, "display_name": user.display_name,
-                                 "role": user.role, "warehouse_ids": warehouse_ids},
+                                 "role": user.role, "warehouse_ids": warehouse_ids,
+                                 "permissions": user.extra_permissions, "permission_source_version": 1,
+                                 "legacy_source": req.extra_permissions,
+                                 "permission_reason": req.permission_reason or "新建账号：旧菜单保守转换或最小权限"},
                           warehouse_id=primary_wh)
 
     return {"id": user.id, "message": "用户创建成功"}
@@ -225,6 +250,9 @@ async def update_user(
             raise HTTPException(status_code=403, detail="无权修改用户角色")
 
     await login_target_scope(db, current_user, user)
+    if req.role is not None and req.role != user.role and permission_state(user)['version'] != 'legacy' and req.action_permissions is None:
+        raise HTTPException(409, '变更角色时请一并核对三档动作权限')
+    new_permissions = prepared_permissions(req, req.role or user.role, user)
 
     # 修改前快照（用于修改日志）
     before_uws = (await db.execute(
@@ -234,6 +262,8 @@ async def update_user(
         "username": user.username, "display_name": user.display_name,
         "role": user.role, "warehouse_ids": sorted([uw.warehouse_id for uw in before_uws]),
         "is_active": user.is_active,
+        "permissions": user.extra_permissions,
+        "permission_source_version": permission_state(user)["version"],
         **_attendance_fields(user),
     }
 
@@ -296,8 +326,7 @@ async def update_user(
         user.is_active = req.is_active
     if req.line_user_id is not None:
         user.line_user_id = req.line_user_id
-    if req.extra_permissions is not None:
-        user.extra_permissions = req.extra_permissions
+    user.extra_permissions = new_permissions
 
     attendance_result = {}
     if req.attendance_enabled is not None and user.role in (Role.SUPERVISOR, Role.STAFF):
@@ -329,8 +358,14 @@ async def update_user(
         "username": user.username, "display_name": user.display_name,
         "role": user.role, "warehouse_ids": sorted([uw.warehouse_id for uw in after_uws]),
         "is_active": user.is_active,
+        "permissions": user.extra_permissions,
+        "permission_source_version": permission_state(user)["version"],
         **_attendance_fields(user),
     }
+    if req.action_permissions is not None or req.extra_permissions is not None:
+        after_data["permission_reason"] = req.permission_reason or "旧菜单请求保守转换"
+        after_data["permission_source_version"] = 1
+        after_data["permission_change_source"] = "explicit action grants" if req.action_permissions is not None else "legacy menu conversion"
     if req.password:
         after_data["password"] = "已重置密码"
 
@@ -342,7 +377,7 @@ async def update_user(
     message = "用户更新成功"
     if attendance_result.get("attendance_notice"):
         message += "；" + attendance_result["attendance_notice"]
-    return {"message": message, **_attendance_fields(user), **attendance_result}
+    return {"message": message, "action_access": access_description(user), **_attendance_fields(user), **attendance_result}
 
 async def _delete_staff_or_labor(db: AsyncSession, user_id: int, username: str):
     """删除财务/劳工账号：解除关联并彻底删除，保留其所在仓库业务数据。"""

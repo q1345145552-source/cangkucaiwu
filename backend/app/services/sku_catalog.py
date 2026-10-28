@@ -1,4 +1,5 @@
 """Explicit, versioned human mappings. No fuzzy identities or implicit pack conversions."""
+from app.core.action_access import has_module
 import json,re
 from decimal import Decimal,InvalidOperation
 from fastapi import HTTPException
@@ -16,7 +17,7 @@ UNITS={'piece':'个','item':'件','set':'套','roll':'卷','box':'箱','pack':'�
 UNIT_ALIASES={**{k:k for k in UNITS},**{v:k for k,v in UNITS.items()},'只':'piece','公斤':'kg','PCS':'piece','pcs':'piece'}
 
 def permission(user,key):
- return user.role==Role.WAREHOUSE_ADMIN or user.role in (Role.SUPERVISOR,Role.STAFF) and MENU_PERMISSIONS_BY_KEY[key].label in (user.extra_permissions or [])
+ return user.role==Role.WAREHOUSE_ADMIN or user.role in (Role.SUPERVISOR,Role.STAFF) and has_module(user,key)
 
 def require_read(user):
  if not permission(user,'sku_catalog'):raise HTTPException(403,'无此操作权限，需要标准SKU目录权限')

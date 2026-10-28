@@ -16,7 +16,8 @@ import app.api.v1.cash_advance as api
 import app.services.image_utils as images
 from tests.test_round2_permissions import auth, set_perms, png
 from tests.test_round3_permissions import hr_environment, snapshot
-from tests.test_cash_advances import create, finance_snapshot, URL
+from tests.test_cash_advances import finance_snapshot, URL
+from tests.permission_round6.legal_cash_fixture import create
 from tests.round3_flow_support import grants, verify_approve_cash, historical_cash
 
 
@@ -177,7 +178,7 @@ def test_admin_only_repayment_upload_accounts_and_revoke(tmp_path, monkeypatch, 
                 assert r.status_code == expected, r.text
                 if expected==400: assert "撤销功能已停用" in r.text
                 if expected==403:
-                    message="超级管理员请使用各仓库管理员账号操作" if uid==2 else "无权访问" if uid==5 else "只有获授权财务或管理员可以处理核算"
+                    message="超级管理员请使用各仓库管理员账号操作" if uid==2 else "无权访问" if uid==5 else "该动作超出当前角色职责上限"
                     assert r.json()=={"detail":message}
             listing = await c.get(f"{URL}/{aid}/repayments", headers=auth(uid))
             assert listing.status_code == (200 if uid == 3 else 403)

@@ -1,4 +1,6 @@
 "use client";
+import { useTierPermission } from "@/hooks/useActionPermission";
+import ActionGate from "@/components/permissions/ActionGate";
 import MakeupRequests from "@/components/MakeupRequests";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
@@ -59,7 +61,11 @@ export default function AttendancePage() {
   const role = user?.role;
   const selfQuery = employeeView ? "&view=self" : "";
   const isSuperAdmin = role === "super_admin";
-  const canApprove = !employeeView && (role === "warehouse_admin" || role === "supervisor"); // 管理员/主管
+  const leaveApprove = useTierPermission("leave", "approve");
+  const factsOperate = useTierPermission("attendance", "operate");
+  const attendanceApprove = useTierPermission("attendance", "approve");
+  const canFacts = !employeeView && factsOperate && (role === "warehouse_admin" || role === "supervisor");
+  const canApprove = !employeeView && leaveApprove && (role === "warehouse_admin" || role === "supervisor"); // 管理员/主管
   const canSelfLeave = role === "warehouse_labor" || role === "staff" || (employeeView && role === "supervisor" && user?.attendance_enabled); // 劳工/财务
   const canViewRecords = role === "warehouse_admin" || role === "supervisor" || role === "staff" || role === "warehouse_labor";
   const [activeTab, setActiveTab] = useState<"calendar" | "records">("calendar");
@@ -279,7 +285,7 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      {(employeeView || role === "warehouse_labor" || canApprove) && <MakeupRequests personal={employeeView || role === "warehouse_labor"} />}
+      {(employeeView || role === "warehouse_labor" || attendanceApprove) && <MakeupRequests personal={employeeView || role === "warehouse_labor"} />}
       {(employeeView || role === "warehouse_labor") && <EmployeeLanguage />}
       {/* Header: Month Navigation + Tab Bar + Action Buttons */}
       <div className="flex justify-between items-center flex-wrap gap-3">
@@ -289,25 +295,25 @@ export default function AttendancePage() {
             <span className="text-gray-400 text-xs">{t("att_to")}</span>
             <input type="date" value={dateRange.end_date} onChange={e => setDateRange({ ...dateRange, end_date: e.target.value })} className="form-input text-xs py-1.5 w-36" />
           </div>
-          {(canApprove || canSelfLeave) && (
+          {(canApprove || canSelfLeave || canFacts) && (
             <div className="flex items-center gap-1.5 ml-2">
-              <button onClick={() => { canApprove ? setShowProxyLeaveForm(true) : setShowLeaveForm(true); }} className="px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 flex items-center gap-1">
+              {(canApprove || canSelfLeave) && <button onClick={() => { canApprove ? setShowProxyLeaveForm(true) : setShowLeaveForm(true); }} className="px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 flex items-center gap-1">
                 <Bed size={14}/>{t("att_leave_btn")}
-              </button>
-              {canApprove && (
+              </button>}
+              {canFacts && (
                 <>
-                  <button onClick={() => setShowRestForm(true)} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1">
+                  <ActionGate anyOf={["attendance.set_rest_days"]}><button onClick={() => setShowRestForm(true)} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1">
                     <Settings size={14}/>{t("att_rest_day_btn")}
-                  </button>
-                  <button onClick={() => setShowAbsenceForm(true)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1">
+                  </button></ActionGate>
+                  <ActionGate anyOf={["attendance.mark_absence"]}><button onClick={() => setShowAbsenceForm(true)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1">
                     <UserX size={14}/>{t("att_absence_btn")}
-                  </button>
+                  </button></ActionGate>
                 </>
               )}
             </div>
           )}
         </div>
-        {!employeeView && role === "warehouse_admin" && <button type="button" className="btn-secondary" onClick={() => setShowBatchMakeup(true)} disabled={loading}>批量补卡</button>}
+        {!employeeView && role === "warehouse_admin" && <ActionGate anyOf={["clock_in.batch_makeup_clock_in"]}><button type="button" className="btn-secondary" onClick={() => setShowBatchMakeup(true)} disabled={loading}>批量补卡</button></ActionGate>}
         {canViewRecords && (
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => { setActiveTab("calendar"); loadCalendar(); }} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === "calendar" ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
@@ -424,8 +430,8 @@ export default function AttendancePage() {
                   {l.photo_path && <a href={`/${l.photo_path}`} target="_blank" className="text-blue-500 ml-2 text-xs">{t("att_view_proof")}</a>}
                 </div>
                 <div className="flex gap-2">
-                  <button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => approveLeave(l.id)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs">{t("att_approve")}</button>
-                  <button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => rejectLeave(l.id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">{t("att_reject")}</button>
+                  <ActionGate anyOf={["attendance.approve_leave#approve"]}><button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => approveLeave(l.id)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs">{t("att_approve")}</button></ActionGate>
+                  <ActionGate anyOf={["attendance.reject_leave#approve"]}><button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => rejectLeave(l.id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">{t("att_reject")}</button></ActionGate>
                 </div>
               </div>
             ))}
@@ -442,14 +448,14 @@ export default function AttendancePage() {
       )}
 
       {/* Rest Days Panel (Admin/主管) */}
-      {canApprove && restDays.length > 0 && (
+      {canFacts && restDays.length > 0 && (
         <div className="bg-white rounded-xl border p-4">
           <h3 className="font-semibold mb-3 flex items-center gap-2"><Settings size={18} className="text-blue-500"/>{t("att_rest_day_arrange")}</h3>
           <div className="flex flex-wrap gap-2">
             {restDays.map((r: any) => (
               <div key={r.id} className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
                 {r.employee_name}: {r.rest_date}
-                <button onClick={() => deleteRestDay(r.id)} className="ml-1 text-blue-400 hover:text-red-500">&times;</button>
+                <ActionGate anyOf={["attendance.delete_rest_day#operate"]}><button onClick={() => deleteRestDay(r.id)} className="ml-1 text-blue-400 hover:text-red-500">&times;</button></ActionGate>
               </div>
             ))}
           </div>
@@ -589,7 +595,7 @@ export default function AttendancePage() {
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowProxyLeaveForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
-              <button onClick={submitProxyLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">{t("att_submit_application")}</button>
+              <ActionGate anyOf={["attendance.admin_record_leave#approve"]}><button onClick={submitProxyLeave} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">{t("att_submit_application")}</button></ActionGate>
             </div>
           </div>
         </div>
@@ -625,7 +631,7 @@ export default function AttendancePage() {
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowRestForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
-              <button onClick={submitRestDays} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">{t("save")}</button>
+              <ActionGate anyOf={["attendance.set_rest_days#operate"]}><button onClick={submitRestDays} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">{t("save")}</button></ActionGate>
             </div>
           </div>
         </div>
@@ -658,7 +664,7 @@ export default function AttendancePage() {
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowAbsenceForm(false)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
-              <button onClick={submitAbsence} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">{t("att_confirm_mark")}</button>
+              <ActionGate anyOf={["attendance.mark_absence#operate"]}><button onClick={submitAbsence} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">{t("att_confirm_mark")}</button></ActionGate>
             </div>
           </div>
         </div>

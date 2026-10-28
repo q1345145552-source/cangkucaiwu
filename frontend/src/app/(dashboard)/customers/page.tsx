@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
@@ -119,8 +120,8 @@ export default function CustomersPage() {
     { key: "id", label: "操作", render: (_: any, row: any) => (
       <div className="flex items-center gap-1">
         {operatingEntriesEnabled && <button onClick={() => setReconciling(row)} className="btn-secondary btn-xs">客户对账</button>}
-        <button onClick={() => openEdit(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>
-        <button onClick={() => handleDelete(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />删除</button>
+        <ActionGate anyOf={["customers.update_customer"]}><button onClick={() => openEdit(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button></ActionGate>
+        <ActionGate anyOf={["customers.delete_customer#operate"]}><button onClick={() => handleDelete(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />删除</button></ActionGate>
       </div>
     )},
   ].filter(column => operatingEntriesEnabled || !["total_shipments", "total_shipping_cost", "receivables"].includes(column.key));
@@ -129,7 +130,7 @@ export default function CustomersPage() {
     <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="page-title">客户档案</h1>
-        {!onsite && <button onClick={openCreate} className="btn-primary">新建客户</button>}
+        {!onsite && <ActionGate anyOf={["customers.create_customer"]}><button onClick={openCreate} className="btn-primary">新建客户</button></ActionGate>}
       </div>
 
       {/* 筛选栏 */}
@@ -269,7 +270,7 @@ export default function CustomersPage() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleSave} className="btn-primary min-w-[80px]">{editingId ? "保存修改" : "新建客户"}</button>
+              <ActionGate anyOf={["customers.update_customer#operate","customers.create_customer#operate"]}><button onClick={handleSave} className="btn-primary min-w-[80px]">{editingId ? "保存修改" : "新建客户"}</button></ActionGate>
             </div>
           </div>
         </div>

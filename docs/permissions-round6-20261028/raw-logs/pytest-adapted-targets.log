@@ -1,0 +1,71 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+___________ test_admin_only_repayment_upload_accounts_and_revoke[4] ____________
+tests/test_cash_advance_repayments.py:186: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:182: in run
+    assert r.json()=={"detail":message}
+E   AssertionError: assert {'detail': '该动作超出当前角色职责上限'} == {'detail': '只...财务或管理员可以处理核算'}
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '只有获授权财务或管理员可以处理核算'}
+E     Use -v to get more diff
+______________________ test_migration_failure_rolls_back _______________________
+tests/test_modification_log_permissions.py:90: in test_migration_failure_rolls_back
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:88: in run
+    async with engine.begin() as conn:assert await migrations.backfill_modification_logs_permission(conn)==1
+E   assert 0 == 1
+______________ test_migration_once_supervisor_only_and_real_read _______________
+tests/test_modification_log_permissions.py:75: in test_migration_once_supervisor_only_and_real_read
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:65: in run
+    for uid in (4,7):assert users[uid].extra_permissions.count('修改日志')==1
+E   AssertionError: assert 0 == 1
+E    +  where 0 = <built-in method count of list object at 0x10db5c580>('修改日志')
+E    +    where <built-in method count of list object at 0x10db5c580> = [].count
+E    +      where [] = <app.models.user.User object at 0x10db49a30>.extra_permissions
+----------------------------- Captured stdout call -----------------------------
+员工工资分类迁移完成，新增分类数：0
+报销支出分类迁移完成，新增分类数：2
+员工预支支出分类迁移完成，新增分类数：2
+备用金拨付支出分类迁移完成，新增分类数：2
+菜单权限迁移完成，更新主管/财务账号数：{'round2': 0, 'round3': 0, 'round4': 0, 'round5': 0, 'round6': 0, 'round9': 0, 'modification_logs': 1, 'cash_advances': 0}
+员工工资分类迁移完成，新增分类数：0
+报销支出分类迁移完成，新增分类数：0
+员工预支支出分类迁移完成，新增分类数：0
+备用金拨付支出分类迁移完成，新增分类数：0
+菜单权限迁移完成，更新主管/财务账号数：{'round2': 0, 'round3': 0, 'round4': 0, 'round5': 0, 'round6': 0, 'round9': 0, 'modification_logs': 0, 'cash_advances': 0}
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_cash_advance_repayments.py: 11 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round6-20261028/docs/permissions-round6-20261028/raw-logs/pytest-adapted-targets.xml -
+=========================== short test summary info ============================
+FAILED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[4]
+FAILED tests/test_modification_log_permissions.py::test_migration_failure_rolls_back
+FAILED tests/test_modification_log_permissions.py::test_migration_once_supervisor_only_and_real_read

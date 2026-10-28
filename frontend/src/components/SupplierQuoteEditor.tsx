@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import {useEffect,useState} from "react";
 import {api,warehouseRequestHeaders} from "@/lib/api";
 import {registrationDraft,submitRegistration} from "@/lib/registrationRequest";
@@ -43,6 +44,6 @@ export default function SupplierQuoteEditor({supplierId,productId,canEdit,onClos
     <button className="btn-secondary" disabled={form.tiers.length>=50} onClick={()=>update('tiers',[...form.tiers,{min_quantity:'',max_quantity:'',unit_price:''}])}>增加数量档位</button><label className="flex gap-2"><input type="checkbox" checked={form.active} onChange={e=>update('active',e.target.checked)}/>报价启用（取消生成停用版本）</label>
    </fieldset>}
    {error&&<p role="alert" className="text-red-600 break-words">{error}</p>}
-  </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>关闭</button>{canEdit&&(open||pending)&&<button className="btn-primary" disabled={busy||!product} onClick={save}>{pending?'重试原报价请求':'保存报价版本'}</button>}</div>
+  </div><div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={busy} onClick={onClose}>关闭</button>{canEdit&&(open||pending)&&<ActionGate anyOf={["supplier_quotes.revise#operate","supplier_quotes.create#operate"]}><button className="btn-primary" disabled={busy||!product} onClick={save}>{pending?'重试原报价请求':'保存报价版本'}</button></ActionGate>}</div>
  </div></div>;
 }

@@ -45,11 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }).catch(() => { if (active && token === getToken()) setUser(null); });
     };
-    const onStorage = (event: StorageEvent) => { if (event.key === "token" || event.key === null) refreshFromServer(); };
+    const onStorage = (event: StorageEvent) => { if (event.key === "token" || event.key === "permissions-revision" || event.key === null) refreshFromServer(); };
     window.addEventListener("storage", onStorage);
     window.addEventListener("focus", refreshFromServer);
+    window.addEventListener("permissions-changed", refreshFromServer);
     window.addEventListener("auth-user-refreshed", refresh);
-    return () => { active = false; window.removeEventListener("auth-user-refreshed", refresh); window.removeEventListener("storage", onStorage); window.removeEventListener("focus", refreshFromServer); };
+    return () => { active = false; window.removeEventListener("auth-user-refreshed", refresh); window.removeEventListener("storage", onStorage); window.removeEventListener("focus", refreshFromServer);
+      window.removeEventListener("permissions-changed", refreshFromServer); };
   }, []);
 
   async function doLogin(username: string, password: string) {
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       warehouse_name: res.warehouse_name,
       warehouses: res.warehouses || [],
       extra_permissions: res.extra_permissions || [],
+      action_access: res.action_access,
       is_active: true,
       attendance_enabled: !!res.attendance_enabled,
       attendance_employee_id: res.attendance_employee_id,

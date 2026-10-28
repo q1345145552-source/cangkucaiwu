@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState, useRef } from "react";
 import { api, getToken } from "@/lib/api";
@@ -229,9 +230,9 @@ export default function ExpenseApprovalsPage() {
             </div>
           )}
           {canSubmit && (
-            <button onClick={openCreate} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+            <ActionGate anyOf={["expense_approval.create_approval"]}><button onClick={openCreate} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
               <Plus size={16}/> 提申请
-            </button>
+            </button></ActionGate>
           )}
         </div>
       </div>
@@ -298,16 +299,16 @@ export default function ExpenseApprovalsPage() {
                   <td className="px-3 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       {(r.status === "pending" || r.status === "rejected") && (r.applicant_id === (user as any)?.id || canApprove) && (
-                        <button onClick={() => openEdit(r)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={15}/></button>
+                        <ActionGate anyOf={["expense_approval.update_approval"]}><button onClick={() => openEdit(r)} className="text-blue-500 hover:text-blue-700" title="修改"><Edit2 size={15}/></button></ActionGate>
                       )}
                       {r.status === "pending" && canApprove && (
                         <>
-                          <button onClick={() => approve(r.id)} className="text-green-600 hover:text-green-800" title="批准"><CheckCircle size={15}/></button>
+                          <ActionGate anyOf={["expense_approval.approve_approval#approve"]}><button onClick={() => approve(r.id)} className="text-green-600 hover:text-green-800" title="批准"><CheckCircle size={15}/></button></ActionGate>
                           <button onClick={() => { setRejectId(r.id); setRejectNote(""); }} className="text-red-500 hover:text-red-700" title="驳回"><XCircle size={15}/></button>
                         </>
                       )}
                       {r.status === "approved" && canApprove && (
-                        <button onClick={() => openPay(r.id)} className="text-green-600 hover:text-green-800" title="付款"><Banknote size={15}/></button>
+                        <ActionGate anyOf={["expense_approval.pay_approval"]}><button onClick={() => openPay(r.id)} className="text-green-600 hover:text-green-800" title="付款"><Banknote size={15}/></button></ActionGate>
                       )}
                     </div>
                   </td>
@@ -379,7 +380,7 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button disabled={submitting} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button disabled={submitting} onClick={()=>handleSubmit()} className="btn-primary text-sm px-6 py-2">{submitting ? "提交中…" : "提交"}</button>
+              <ActionGate anyOf={["expense_approval.update_approval#operate","expense_approval.create_approval#operate","expense_approval.reject_approval#approve"]}><button disabled={submitting} onClick={()=>handleSubmit()} className="btn-primary text-sm px-6 py-2">{submitting ? "提交中…" : "提交"}</button></ActionGate>
             </div>
           </div>
         </div>
@@ -400,7 +401,7 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setRejectId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={() => reject(rejectId)} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg">确认驳回</button>
+              <ActionGate anyOf={["expense_approval.reject_approval#approve"]}><button onClick={() => reject(rejectId)} className="bg-red-500 text-white text-sm px-6 py-2 rounded-lg">确认驳回</button></ActionGate>
             </div>
           </div>
         </div>
@@ -430,8 +431,8 @@ export default function ExpenseApprovalsPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button disabled={paying} onClick={() => setPayId(null)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={()=>confirmPay()} disabled={!payVoucherFile || paying}
-                className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{paying ? "付款中…" : "确认付款"}</button>
+              <ActionGate anyOf={["expense_approval.pay_approval#operate","expense_approval.reject_approval#approve"]}><button onClick={()=>confirmPay()} disabled={!payVoucherFile || paying}
+                className="bg-green-500 text-white text-sm px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{paying ? "付款中…" : "确认付款"}</button></ActionGate>
             </div>
           </div>
         </div>

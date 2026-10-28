@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useTierPermission } from "@/hooks/useActionPermission";
 
 interface MenuPermission {
   menu_key: string;
@@ -48,6 +49,6 @@ export function useMenuPermission(menuKey: string): boolean {
 // Round-four action ceilings supplement menu visibility; server guards remain authoritative.
 export function useBusinessAction(menuKey: string, action: "bookkeeping" | "rules"): boolean {
   const { user } = useAuth();
-  const menu = useMenuPermission(menuKey);
-  return menu && (user?.role === "warehouse_admin" || (action === "bookkeeping" && user?.role === "staff"));
+  const operate = useTierPermission(menuKey, "operate");
+  return operate && (user?.role === "warehouse_admin" || (action === "bookkeeping" && user?.role === "staff"));
 }

@@ -1,0 +1,170 @@
+..........F.F.F.FFF.F........F........F                                  [100%]
+=================================== FAILURES ===================================
+__________________ test_money_basis_numbers_on_real_postgres ___________________
+tests/test_dashboard_procurement_payments.py:237: in test_money_basis_numbers_on_real_postgres
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_dashboard_procurement_payments.py:198: in run
+    assert paid.status_code == 200, paid.text
+E   AssertionError: {"detail":"仅获授权财务可以执行；财务本人申请可由管理员独立办理"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_same_permission_for_list_operators_export[2-False] ____________
+tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:35: in run
+    elif path=='/history':assert r.json()['total']==2 and {x['id'] for x in r.json()['data']}=={101,102}
+E   assert (0 == 2)
+____________ test_same_permission_for_list_operators_export[3-True] ____________
+tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:35: in run
+    elif path=='/history':assert r.json()['total']==2 and {x['id'] for x in r.json()['data']}=={101,102}
+E   assert (0 == 2)
+____________ test_same_permission_for_list_operators_export[4-True] ____________
+tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:35: in run
+    elif path=='/history':assert r.json()['total']==2 and {x['id'] for x in r.json()['data']}=={101,102}
+E   assert (0 == 2)
+____________ test_same_permission_for_list_operators_export[5-True] ____________
+tests/test_modification_log_permissions.py:45: in test_same_permission_for_list_operators_export
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:34: in run
+    if not allowed:assert r.json()['detail'].startswith('无此操作权限')
+E   AssertionError: assert False
+E    +  where False = <built-in method startswith of str object at 0x11148a310>('无此操作权限')
+E    +    where <built-in method startswith of str object at 0x11148a310> = '该动作超出当前角色职责上限'.startswith
+______________ test_migration_once_supervisor_only_and_real_read _______________
+tests/test_modification_log_permissions.py:75: in test_migration_once_supervisor_only_and_real_read
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:69: in run
+    sup=await c.get('/api/v1/history',headers=auth(4));assert sup.status_code==200 and sup.json()['total']==2
+E   assert (200 == 200 and 0 == 2)
+E    +  where 200 = <Response [200 OK]>.status_code
+----------------------------- Captured stdout call -----------------------------
+员工工资分类迁移完成，新增分类数：0
+报销支出分类迁移完成，新增分类数：2
+员工预支支出分类迁移完成，新增分类数：2
+备用金拨付支出分类迁移完成，新增分类数：2
+菜单权限迁移完成，更新主管/财务账号数：{'round2': 0, 'round3': 0, 'round4': 0, 'round5': 0, 'round6': 0, 'round9': 0, 'modification_logs': 2, 'cash_advances': 0}
+员工工资分类迁移完成，新增分类数：0
+报销支出分类迁移完成，新增分类数：0
+员工预支支出分类迁移完成，新增分类数：0
+备用金拨付支出分类迁移完成，新增分类数：0
+菜单权限迁移完成，更新主管/财务账号数：{'round2': 0, 'round3': 0, 'round4': 0, 'round5': 0, 'round6': 0, 'round9': 0, 'modification_logs': 0, 'cash_advances': 0}
+LOG_MIGRATION {"supervisor": ["修改日志"], "finance": [], "marker": "modification_logs_supervisors_backfilled_v1_20261018"}
+________________ test_warehouse_filter_and_export_exactly_match ________________
+tests/test_modification_log_permissions.py:109: in test_warehouse_filter_and_export_exactly_match
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_modification_log_permissions.py:102: in run
+    r=await c.get('/api/v1/history'+query,headers={**auth(4),'X-Warehouse-ID':'2'});assert r.status_code==200
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______ test_self_approval_exception_replay_other_legal_and_auto_unchanged ______
+tests/test_procurement_controls_round9.py:122: in test_self_approval_exception_replay_other_legal_and_auto_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_procurement_controls_round9.py:119: in run
+    other=await buy(c,p,q,101);oc=await context(c,other['order']['id'],'approve',4);accepted=await request(c,'PUT',f'/suppliers/purchase-approvals/{other["order"]["id"]}/approve',uid=4,json={'request_key':'other-approver',**controls(oc)});assert accepted['duty_operator_id']==4
+tests/test_supplier_workflow_round1.py:54: in request
+    assert r.status_code==code,(method,path,r.status_code,r.text)
+E   AssertionError: ('PUT', '/suppliers/purchase-approvals/5/approve', 403, '{"detail":"该动作超出当前角色职责上限"}')
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____ test_record_original_preview_before_and_after_without_reopening_routes ____
+tests/test_report_preview_scope.py:188: in test_record_original_preview_before_and_after_without_reopening_routes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_report_preview_scope.py:177: in run
+    user=await get_current_user(request,credentials,db)
+app/core/permissions.py:109: in get_current_user
+    await enforce_action(request, user)
+app/core/action_access.py:119: in enforce_action
+    raise HTTPException(403, '该业务动作尚未登记，拒绝访问')
+E   fastapi.exceptions.HTTPException: 403: 该业务动作尚未登记，拒绝访问
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_dashboard_month.py: 53 warnings
+tests/test_dashboard_procurement_payments.py: 16 warnings
+tests/test_modification_log_permissions.py: 15 warnings
+tests/test_operating_report.py: 92 warnings
+tests/test_procurement_controls_round9.py: 330 warnings
+tests/test_report_internal_transfers.py: 157 warnings
+tests/test_report_preview_scope.py: 306 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_dashboard_procurement_payments.py::test_unpaid_excluded_cross_month_paid_included_shared_report_and_other_dashboard_data_unchanged[1]
+tests/test_dashboard_procurement_payments.py::test_unpaid_excluded_cross_month_paid_included_shared_report_and_other_dashboard_data_unchanged[3]
+tests/test_dashboard_procurement_payments.py::test_unpaid_excluded_cross_month_paid_included_shared_report_and_other_dashboard_data_unchanged[4]
+tests/test_dashboard_procurement_payments.py::test_partial_payment_not_bill_total_and_date_currency_warehouse_void_guards
+  /private/tmp/permissions-round6-20261028/backend/tests/test_dashboard_procurement_payments.py:60: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for table in Base.metadata.sorted_tables}
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round6-20261028/docs/permissions-round6-20261028/raw-logs/pytest-reads-current.xml -
+=========================== short test summary info ============================
+FAILED tests/test_dashboard_procurement_payments.py::test_money_basis_numbers_on_real_postgres
+FAILED tests/test_modification_log_permissions.py::test_same_permission_for_list_operators_export[2-False]
+FAILED tests/test_modification_log_permissions.py::test_same_permission_for_list_operators_export[3-True]
+FAILED tests/test_modification_log_permissions.py::test_same_permission_for_list_operators_export[4-True]
+FAILED tests/test_modification_log_permissions.py::test_same_permission_for_list_operators_export[5-True]
+FAILED tests/test_modification_log_permissions.py::test_migration_once_supervisor_only_and_real_read
+FAILED tests/test_modification_log_permissions.py::test_warehouse_filter_and_export_exactly_match
+FAILED tests/test_procurement_controls_round9.py::test_self_approval_exception_replay_other_legal_and_auto_unchanged
+FAILED tests/test_report_preview_scope.py::test_record_original_preview_before_and_after_without_reopening_routes

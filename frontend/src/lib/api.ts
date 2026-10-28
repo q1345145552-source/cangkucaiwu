@@ -11,6 +11,7 @@ export class ApiError extends Error {
 }
 
 let token: string | null = null;
+let lastDeniedAction = "";
 if (typeof window !== "undefined") {
   token = localStorage.getItem("token");
 }
@@ -94,8 +95,9 @@ async function request<T>(
   if (whId !== null) {
     headers["X-Warehouse-ID"] = whId;
   }
+  const requestWarehouse = getActiveWarehouseId();
   const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-  if (requestToken !== getToken()) throw new ApiError(409, "账号已切换，请重新加载");
+  if (requestToken !== getToken() || requestWarehouse !== getActiveWarehouseId()) throw new ApiError(409, "账号或仓库已切换，请重新加载");
   if (res.status === 401) {
     clearToken();
     if (typeof window !== "undefined") {
@@ -104,6 +106,10 @@ async function request<T>(
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
+    if (res.status === 403 && err.detail?.required_tier && typeof window !== "undefined") {
+      const denied = `${requestToken}:${err.detail.action}:${err.detail.required_tier}`;
+      if (denied !== lastDeniedAction) { lastDeniedAction = denied; window.dispatchEvent(new Event("permissions-changed")); }
+    }
     let msg = err.detail || `HTTP ${res.status}`;
     if (Array.isArray(err.detail)) {
       msg = err.detail.map((e: any) => {
@@ -114,7 +120,7 @@ async function request<T>(
     throw new ApiError(res.status,Array.isArray(err.detail) ? msg : err.detail || msg);
   }
   const result = await res.json();
-  if (requestToken !== getToken()) throw new ApiError(409, "账号已切换，请重新加载");
+  if (requestToken !== getToken() || requestWarehouse !== getActiveWarehouseId()) throw new ApiError(409, "账号或仓库已切换，请重新加载");
   return result;
 }
 

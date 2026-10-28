@@ -1,4 +1,6 @@
 "use client";
+import { useTierPermission } from "@/hooks/useActionPermission";
+import ActionGate from "@/components/permissions/ActionGate";
 import type { MessageResponse } from "@/lib/api";
 import { useEffect, useState,useRef } from "react";
 import { useCostIdentity,CostConfirmation } from "@/components/CostIdentity";
@@ -23,7 +25,8 @@ export default function ExpenseFundPage() {
   const { user } = useAuth();
   const router = useRouter();
   const isAdmin = user?.role === "warehouse_admin";
-  const canReview = isAdmin || user?.role === "staff";
+  const fundOperate = useTierPermission("expense_fund", "operate");
+  const canReview = isAdmin || (user?.role === "staff" && fundOperate);
   const requestStates: Record<string, string> = {pending: "待核验", verified: "待批准", approved_ready: "待执行", executed: "已执行", approved: "历史已处理（不可直接执行）", rejected: "已驳回"};
 
   // ====== Tab ======
@@ -367,9 +370,9 @@ export default function ExpenseFundPage() {
           <h1 className="page-title">备用金</h1>
         </div>
         {isAdmin && tab === "manage" && (
-          <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
+          <ActionGate anyOf={["expense_fund.create_account"]}><button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
             <Plus size={16} />新建备用金
-          </button>
+          </button></ActionGate>
         )}
       </div>
 
@@ -430,7 +433,7 @@ export default function ExpenseFundPage() {
             ) : accounts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                 <Wallet size={48} className="text-gray-200 mb-3" /><span className="text-sm">暂无备用金账户</span>
-                {isAdmin && <button onClick={() => setShowCreate(true)} className="btn-primary mt-4 text-sm"><Plus size={14} className="mr-1" />新建备用金</button>}
+                {isAdmin && <ActionGate anyOf={["expense_fund.create_account"]}><button onClick={() => setShowCreate(true)} className="btn-primary mt-4 text-sm"><Plus size={14} className="mr-1" />新建备用金</button></ActionGate>}
               </div>
             ) : (
               <div className="overflow-x-auto touch-pan-x">
@@ -519,7 +522,7 @@ export default function ExpenseFundPage() {
                                           {it.void_reason && <p className="mt-1 max-w-40 whitespace-normal">原因：{it.void_reason}</p>}
                                         </td>
                                         <td className="px-2 py-1.5 text-center">{it.is_voided || it.review_status === "voided" ? <span>—</span> : it.receipt ? <button type="button" onClick={() => setPreviewUrl(it.receipt)} className="text-blue-600 whitespace-nowrap" aria-label={`查看开销 #${it.id} 凭证`}><Eye size={14} className="inline mr-1" />查看凭证</button> : <span className="text-gray-400">未上传</span>}</td>
-                                        {isAdmin && <td className="px-2 py-1.5 text-center whitespace-nowrap">{it.can_edit && <button type="button" aria-label={`编辑开销 #${it.id}`} className="text-blue-600 mr-3" onClick={() => openEditExpense(acc, it)}>编辑</button>}{it.can_void && <button type="button" aria-label={`作废开销 #${it.id}`} className="text-red-600" onClick={() => { setVoidTarget({ account: acc, item: it }); setVoidReason(""); }}>作废</button>}</td>}
+                                        {isAdmin && <td className="px-2 py-1.5 text-center whitespace-nowrap">{it.can_edit && <ActionGate anyOf={["expense_fund.edit_item"]}><button type="button" aria-label={`编辑开销 #${it.id}`} className="text-blue-600 mr-3" onClick={() => openEditExpense(acc, it)}>编辑</button></ActionGate>}{it.can_void && <button type="button" aria-label={`作废开销 #${it.id}`} className="text-red-600" onClick={() => { setVoidTarget({ account: acc, item: it }); setVoidReason(""); }}>作废</button>}</td>}
                                       </tr>
                                     ))}
                                   </tbody>
@@ -606,7 +609,7 @@ export default function ExpenseFundPage() {
                 </div>
                 <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
                   <button onClick={() => setShowCreate(false)} className="btn-secondary text-sm">取消</button>
-                  <button onClick={doCreate} className="btn-primary text-sm">创建</button>
+                  <ActionGate anyOf={["expense_fund.create_account#operate"]}><button onClick={doCreate} className="btn-primary text-sm">创建</button></ActionGate>
                 </div>
               </div>
             </div>
@@ -644,7 +647,7 @@ export default function ExpenseFundPage() {
                 </div>
                 <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
                   <button disabled={expenseBusy} onClick={() => { setShowExpense(false); setReceiptFile(null); }} className="btn-secondary text-sm">取消</button>
-                  <button disabled={expenseBusy} onClick={()=>doAddExpense()} className="btn-primary text-sm">{expenseBusy ? "保存中..." : "保存"}</button>
+                  <ActionGate anyOf={["expense_fund.edit_item#operate","expense_fund.add_item#operate"]}><button disabled={expenseBusy} onClick={()=>doAddExpense()} className="btn-primary text-sm">{expenseBusy ? "保存中..." : "保存"}</button></ActionGate>
                 </div>
               </div>
             </div>
@@ -672,7 +675,7 @@ export default function ExpenseFundPage() {
             </div>
             <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowTopUp(false)} className="btn-secondary text-sm">取消</button>
-              <button onClick={doTopUp} disabled={topUpBusy || (rechargeReviewId !== null && !paymentAccounts.length)} className="btn-primary text-sm bg-green-600 hover:bg-green-700">{topUpBusy ? "提交中…" : rechargeReviewId !== null ? "执行拨付" : "提交补充申请"}</button>
+              <ActionGate anyOf={["expense_fund.execute_recharge#operate","expense_fund.submit_recharge_request#operate"]}><button onClick={doTopUp} disabled={topUpBusy || (rechargeReviewId !== null && !paymentAccounts.length)} className="btn-primary text-sm bg-green-600 hover:bg-green-700">{topUpBusy ? "提交中…" : rechargeReviewId !== null ? "执行拨付" : "提交补充申请"}</button></ActionGate>
             </div>
           </div>
         </div>
@@ -726,9 +729,9 @@ export default function ExpenseFundPage() {
               <button onClick={loadReviews} className="btn-primary text-sm flex items-center gap-1 py-1.5"><Search size={14} />查询</button>
               {selectedIds.size > 0 && (
                 <div className="flex items-center gap-2 ml-auto">
-                  {isAdmin && <button onClick={() => doReview("approve")} className="btn-primary text-sm bg-green-600 hover:bg-green-700 flex items-center gap-1"><CheckC size={15} />通过所选 ({selectedIds.size})</button>}
-                  {isAdmin && <button onClick={() => doReview("reject")} className="btn-secondary text-sm text-red-600 border-red-300 hover:bg-red-50 flex items-center gap-1"><XCircle size={15} />驳回所选</button>}
-                  <button className="btn-secondary" onClick={() => doReview("verify")}>核验所选</button>
+                  {isAdmin && <ActionGate anyOf={["expense_fund.batch_review"]}><button onClick={() => doReview("approve")} className="btn-primary text-sm bg-green-600 hover:bg-green-700 flex items-center gap-1"><CheckC size={15} />通过所选 ({selectedIds.size})</button></ActionGate>}
+                  {isAdmin && <ActionGate anyOf={["expense_fund.batch_review"]}><button onClick={() => doReview("reject")} className="btn-secondary text-sm text-red-600 border-red-300 hover:bg-red-50 flex items-center gap-1"><XCircle size={15} />驳回所选</button></ActionGate>}
+                  <ActionGate anyOf={["expense_fund.batch_review"]}><button className="btn-secondary" onClick={() => doReview("verify")}>核验所选</button></ActionGate>
                   <input className="form-input text-sm py-1 w-36" placeholder="驳回原因" value={rejectRemark} onChange={e => setRejectRemark(e.target.value)} />
                 </div>
               )}
@@ -782,9 +785,9 @@ export default function ExpenseFundPage() {
                         <td className="px-3 py-3 text-center"><span className="px-2 py-0.5 rounded-full text-xs bg-yellow-50 text-yellow-700 font-medium">待审核</span></td>
                         <td className="px-3 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {canReview && row.can_verify && <button onClick={() => approveOne(row.id, undefined, "verify")} className="btn-secondary">核验</button>}
-                            {isAdmin && row.can_approve && <button onClick={() => approveOne(row.id)} className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过"><CheckC size={16} /></button>}
-                            {isAdmin && row.can_reject && <button onClick={() => rejectOne(row.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回"><XCircle size={16} /></button>}
+                            {canReview && row.can_verify && <ActionGate anyOf={["expense_fund.batch_review"]}><button onClick={() => approveOne(row.id, undefined, "verify")} className="btn-secondary">核验</button></ActionGate>}
+                            {isAdmin && row.can_approve && <ActionGate anyOf={["expense_fund.batch_review"]}><button onClick={() => approveOne(row.id)} className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过"><CheckC size={16} /></button></ActionGate>}
+                            {isAdmin && row.can_reject && <ActionGate anyOf={["expense_fund.batch_review#approve"]}><button onClick={() => rejectOne(row.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回"><XCircle size={16} /></button></ActionGate>}
                           </div>
                         </td>
                       </tr>
@@ -839,10 +842,10 @@ export default function ExpenseFundPage() {
                             </td>
                             <td className="px-3 py-3 text-center">
                               <div className="flex items-center justify-center gap-2">
-                                {canReview && r.can_verify && <button className="btn-secondary" onClick={() => reviewRecharge(r.id, "verify")}>核验</button>}
-                                {isAdmin && r.can_approve && <button className="btn-primary" onClick={() => reviewRecharge(r.id, "approve")}>批准</button>}
-                                {canReview && r.can_execute && <button className="btn-primary" onClick={() => executeRecharge(r.id)}>执行拨付</button>}
-                                {isAdmin && r.can_reject && <button className="btn-secondary" onClick={() => rejectRecharge(r.id)}>驳回</button>}
+                                {canReview && r.can_verify && <ActionGate anyOf={["expense_fund.review_recharge_request"]}><button className="btn-secondary" onClick={() => reviewRecharge(r.id, "verify")}>核验</button></ActionGate>}
+                                {isAdmin && r.can_approve && <ActionGate anyOf={["expense_fund.review_recharge_request"]}><button className="btn-primary" onClick={() => reviewRecharge(r.id, "approve")}>批准</button></ActionGate>}
+                                {canReview && r.can_execute && <ActionGate anyOf={["expense_fund.execute_recharge"]}><button className="btn-primary" onClick={() => executeRecharge(r.id)}>执行拨付</button></ActionGate>}
+                                {isAdmin && r.can_reject && <ActionGate anyOf={["expense_fund.review_recharge_request#approve"]}><button className="btn-secondary" onClick={() => rejectRecharge(r.id)}>驳回</button></ActionGate>}
                               </div>
                             </td>
                           </tr>
@@ -866,7 +869,7 @@ export default function ExpenseFundPage() {
       {voidTarget && <div role="dialog" aria-modal="true" aria-label="作废备用金开销" className="modal-overlay z-[120]" onClick={() => { if (!voidBusy) setVoidTarget(null); }}><div className="bg-white rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 space-y-4" onClick={e => e.stopPropagation()}>
         <h3 className="font-semibold">确认作废这条开销？</h3><p className="text-sm">开销 #{voidTarget.item.id} · {fmtMoney(voidTarget.item.amount, voidTarget.item.currency)}</p><p className="text-sm text-gray-500">作废后记录保留，不再计入备用金台账。已审核通过的开销不能作废。</p>
         <label className="block text-sm">作废原因（必填）<textarea aria-label="开销作废原因" className="form-input mt-1" rows={3} maxLength={500} disabled={voidBusy} value={voidReason} onChange={e => setVoidReason(e.target.value)} /></label>
-        <div className="flex justify-end gap-3"><button type="button" disabled={voidBusy} className="btn-secondary" onClick={() => setVoidTarget(null)}>取消</button><button type="button" disabled={voidBusy} className="btn-primary" onClick={doVoidExpense}>{voidBusy ? "作废中..." : "确认作废"}</button></div>
+        <div className="flex justify-end gap-3"><button type="button" disabled={voidBusy} className="btn-secondary" onClick={() => setVoidTarget(null)}>取消</button><ActionGate anyOf={["expense_fund.void_item#operate"]}><button type="button" disabled={voidBusy} className="btn-primary" onClick={doVoidExpense}>{voidBusy ? "作废中..." : "确认作废"}</button></ActionGate></div>
       </div></div>}
     </>
   );

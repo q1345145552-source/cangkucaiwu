@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import { useEffect, useRef, useState } from "react";
 import { api, getActiveWarehouseId, getToken } from "@/lib/api";
@@ -180,7 +181,7 @@ function CashAdvancesPageContent() {
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h1 className="page-title flex items-center gap-2"><Receipt size={24} />{reportView ? "垫款单 · 报表只读明细" : "垫款单"}</h1>
-      {canCreate && <button type="button" onClick={() => void openForm()} className="btn-primary flex items-center gap-1"><Plus size={16} />新建垫款单</button>}
+      {canCreate && <ActionGate anyOf={["cash_advance.edit_advance#operate","cash_advance.create_advance#operate"]}><button type="button" onClick={() => void openForm()} className="btn-primary flex items-center gap-1"><Plus size={16} />新建垫款单</button></ActionGate>}
     </div>
     {!reportView && <section className="bg-white rounded-xl border p-4 space-y-2" aria-label="本仓垫款汇总">
       <p>本仓现在欠垫款 <strong>{summary.payer_count}</strong> 人，共 <strong className="text-red-600">{currencyAmounts(summary.totals_by_currency, summary.total_outstanding)}</strong></p>
@@ -203,10 +204,10 @@ function CashAdvancesPageContent() {
           <td className="px-4 py-3">{!reportView && !!row.linked_documents?.length ? <button type="button" className="text-blue-600" onClick={event => { event.stopPropagation(); detailVersion.current++; setDocumentDetail(null); setDetailError(""); setDetailLoading(false); setDocumentsAdvance(row); }}>查看 {row.linked_documents.length} 张单据</button> : "—"}</td>
           <td className="px-4 py-3"><p className="whitespace-normal max-w-56">{row.description || "—"}</p>{row.amount_difference_note && <p className="whitespace-normal max-w-56 text-xs text-gray-500">差额备注：{row.amount_difference_note}</p>}{row.voucher_path && <a href={`/${row.voucher_path}`} onClick={event => event.stopPropagation()} target="_blank" rel="noreferrer" className="text-blue-600">查看凭证</a>}</td>
           <td className="px-4 py-3" onClick={event => event.stopPropagation()}><div className="flex gap-3">
-            {canCreate && row.can_edit && <button type="button" className="text-blue-600" onClick={() => void openForm(row)}>编辑</button>}
-            {!reportView && ["staff","warehouse_admin"].includes(user?.role) && row.capabilities?.can_verify && <button onClick={() => verify(row.id)} className="text-blue-600">核验</button>}
+            {canCreate && row.can_edit && <ActionGate anyOf={["cash_advance.edit_advance#operate","cash_advance.create_advance#operate"]}><button type="button" className="text-blue-600" onClick={() => void openForm(row)}>编辑</button></ActionGate>}
+            {!reportView && ["staff","warehouse_admin"].includes(user?.role) && row.capabilities?.can_verify && <ActionGate anyOf={["cash_advance.verify_advance#operate"]}><button onClick={() => verify(row.id)} className="text-blue-600">核验</button></ActionGate>}
             {canReview && row.capabilities?.can_approve && <><button type="button" disabled={reviewing !== null} onClick={() => review(row.id)} className="text-green-700 disabled:opacity-50">确认</button><button type="button" disabled={reviewing !== null} onClick={() => { setRejectReason(""); setRejectId(row.id); }} className="text-red-600 disabled:opacity-50">驳回</button></>}
-            {!reportView && ["staff","warehouse_admin"].includes(user?.role) && row.capabilities?.can_repay && row.outstanding_amount > 0 && <button type="button" onClick={() => setRepayAdvance(row)} className="text-blue-600">归还</button>}
+            {!reportView && ["staff","warehouse_admin"].includes(user?.role) && row.capabilities?.can_repay && row.outstanding_amount > 0 && <ActionGate anyOf={["cash_advance.repay_advance"]}><button type="button" onClick={() => setRepayAdvance(row)} className="text-blue-600">归还</button></ActionGate>}
             <button type="button" onClick={() => setHistoryAdvance(row)} className="text-gray-600" disabled={reportView}>{reportView ? "只读" : "归还记录"}</button>
           </div></td>
         </tr>)}{!rows.length && <tr><td colSpan={10} className="text-center text-gray-400 py-10">{loading ? "加载中..." : "暂无垫款单"}</td></tr>}</tbody>

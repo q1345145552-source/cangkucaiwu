@@ -65,6 +65,14 @@ async def _backfill_permissions(
     ).with_for_update())).all()
     changed = 0
     for user_id, permissions in users:
+        # Empty/invalid/unknown historical values are not a request for default grants.
+        known_legacy = {item.label for item in MENU_PERMISSIONS} | {item.key for item in MENU_PERMISSIONS}
+        if not permissions or not isinstance(permissions, list) or any(not isinstance(value, str) for value in permissions):
+            continue
+        if any(value not in known_legacy and not value.startswith("@wf-actions:") for value in permissions):
+            continue
+        if isinstance(permissions, list) and any(isinstance(p, str) and p.startswith("@wf-actions:") for p in permissions):
+            continue  # Versioned action grants and later revocations must never be backfilled.
         existing = permissions or []
         merged = list(dict.fromkeys([*existing, *permissions_to_add]))
         if merged != existing:

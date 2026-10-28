@@ -1,4 +1,6 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
+import { useTierPermission } from "@/hooks/useActionPermission";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,7 +15,7 @@ import { Calendar, Play, Download, Eye, X, ChevronRight, FileText } from "lucide
 
 function PaymentPlansPageContent() {
   const { user } = useAuth();
-  const planPermission = useMenuPermission("payment_plans");
+  const planPermission = useTierPermission("payment_plans", "operate");
   const canWriteWallet = planPermission && ["staff", "warehouse_admin"].includes(user?.role || "");
   const { toast } = useToast(); const router = useRouter();
   const [executePlan, setExecutePlan] = useState<any>(null);
@@ -155,7 +157,7 @@ function PaymentPlansPageContent() {
 
       {/* 操作栏 */}
       <div className="flex items-center gap-3 mb-4">
-        {canWriteWallet && <button onClick={() => setShowForm(true)} className="btn-primary">新建计划</button>}
+        {canWriteWallet && <ActionGate anyOf={["payable.create_plan"]}><button onClick={() => setShowForm(true)} className="btn-primary">新建计划</button></ActionGate>}
         <button onClick={() => handleExport()} className="btn-secondary flex items-center gap-1"><Download size={16} />导出全部</button>
       </div>
 
@@ -168,7 +170,7 @@ function PaymentPlansPageContent() {
               <div key={t.id} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 text-sm">
                 <span className="text-blue-700 cursor-pointer hover:underline" onClick={() => applyTemplate(t)}>{t.name}</span>
                 <span className="text-xs text-gray-400">({(t.bill_ids || []).length}条)</span>
-                <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-400 hover:text-red-600"><X size={14} /></button>
+                <ActionGate anyOf={["payable.delete_template#operate"]}><button onClick={() => handleDeleteTemplate(t.id)} className="text-red-400 hover:text-red-600"><X size={14} /></button></ActionGate>
               </div>
             ))}
           </div>
@@ -266,7 +268,7 @@ function PaymentPlansPageContent() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleCreate} className="btn-primary min-w-[80px]">创建计划</button>
+              <ActionGate anyOf={["payable.create_plan#operate"]}><button onClick={handleCreate} className="btn-primary min-w-[80px]">创建计划</button></ActionGate>
             </div>
           </div>
         </div>
@@ -344,7 +346,7 @@ function PaymentPlansPageContent() {
         <WalletAccountSelect value={accountId} onChange={setAccountId} currency={executePlan.currency} />
         <p className="text-xs text-gray-500">同一计划使用一个账户；不同币种请分开建立计划。</p>
         <div className="flex gap-2 justify-end mt-4"><button className="btn-secondary" disabled={executing} onClick={() => setExecutePlan(null)}>取消</button>
-        <button className="btn-primary" disabled={executing || !accountId} onClick={() => handleExecute(executePlan)}>确认付款</button></div>
+        <ActionGate anyOf={["payable.execute_plan#operate"]}><button className="btn-primary" disabled={executing || !accountId} onClick={() => handleExecute(executePlan)}>确认付款</button></ActionGate></div>
       </div></div>}
     </>
   );

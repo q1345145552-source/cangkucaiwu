@@ -1,0 +1,521 @@
+[
+  {
+    "id": "inventory.get_analysis",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/inventory.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "inventory.export_analysis",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/inventory.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_controls.get_policy",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_controls.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_controls.list_exceptions",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_controls.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_controls.exception_detail",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_controls.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_risk.board",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_risk.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_risk.download",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_risk.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_risk.detail",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_risk.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_risk.review_history",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_risk.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "procurement_risk.export_reviews",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/procurement_risk.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "customers.create_customer",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/customers.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "customers.delete_customer",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/customers.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "suppliers.ai_evaluate",
+    "before": [
+      "super_admin"
+    ],
+    "after": [],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/suppliers.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "expense_fund.topup_account",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/expense_fund.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "expense_fund.upload_receipt",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/expense_fund.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "reimbursement.verify_reimb",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin",
+      "staff"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/reimbursement.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "reimbursement.revoke_payment",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/reimbursement.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payable.create_bill",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payable.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payable.upload_voucher",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payable.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payable.upload_bill_attachment",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payable.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payable.void_bill",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payable.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payable.update_bill",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payable.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payable.upload_plan_attachment",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payable.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payable.save_monthly_order",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payable.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "market.purchase",
+    "before": [
+      "staff",
+      "super_admin",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/market.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "market.confirm_trade",
+    "before": [
+      "staff",
+      "super_admin",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "super_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/market.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "group_order.join_group_order",
+    "before": [
+      "staff",
+      "super_admin",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/group_order.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "group_order.close_order",
+    "before": [
+      "staff",
+      "super_admin",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "super_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/group_order.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "group_order.complete_order",
+    "before": [
+      "staff",
+      "super_admin",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "super_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/group_order.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "group_order.cancel_order",
+    "before": [
+      "staff",
+      "super_admin",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "super_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/group_order.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "clock_in.batch_makeup_clock_in",
+    "before": [
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/clock_in.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "clock_in.list_makeup_batches",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/clock_in.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "clock_in.revoke_makeup_batch",
+    "before": [
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/clock_in.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "clock_in.makeup_count",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/clock_in.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "clock_in.export_records",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/clock_in.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "payroll.revoke_disbursement",
+    "before": [
+      "staff",
+      "warehouse_admin"
+    ],
+    "after": [],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/payroll.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "employee_advance.delete_advance",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/employee_advance.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "employee_advance.verify_advance",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin",
+      "staff"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/employee_advance.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "employee_advance.execute_advance",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin",
+      "staff"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/employee_advance.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  },
+  {
+    "id": "expense_approval.pay_approval",
+    "before": [
+      "staff",
+      "supervisor",
+      "warehouse_admin"
+    ],
+    "after": [
+      "warehouse_admin",
+      "staff"
+    ],
+    "source": "/private/tmp/permissions-round6-20261028/backend/app/api/v1/expense_approval.py",
+    "reason": "explicit confirmed duty or direct existing role guard intersection"
+  }
+]

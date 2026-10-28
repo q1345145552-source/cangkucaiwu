@@ -63,3 +63,6 @@ api_router.include_router(deduction_template.router, prefix="/deduction-template
 api_router.include_router(employee_deduction.router, prefix="/employee-deductions", tags=["员工扣款"])
 api_router.include_router(expense_approval.router, prefix="/expense-approvals", tags=["费用审批"])
 api_router.include_router(cash_advance.router, prefix="/cash-advances", tags=["垫款单"])
+
+from app.api.v1 import access
+api_router.include_router(access.router, prefix='/access', tags=['动作权限'])

@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,12 +64,12 @@ export default function WarehousesPage() {
     <>
       <div className="flex items-center justify-between mb-6">
         <h1 className="page-title">仓库管理</h1>
-        <button
+        <ActionGate anyOf={["warehouses.create_warehouse"]}><button
           onClick={() => { setEditId(null); setForm({ name: "", name_th: "", code: "", address: "", is_active: true }); setShowForm(true); }}
           className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm"
         >
           <Plus size={16} /> 新建仓库
-        </button>
+        </button></ActionGate>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -93,9 +94,9 @@ export default function WarehousesPage() {
               {wh.address && <div>地址: {wh.address}</div>}
             </div>
             <div className="flex gap-2 pt-3 border-t">
-              <button onClick={() => openEdit(wh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
+              <ActionGate anyOf={["warehouses.update_warehouse"]}><button onClick={() => openEdit(wh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
                 <Pencil size={12} /> 编辑
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         ))}
@@ -133,7 +134,7 @@ export default function WarehousesPage() {
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="btn-secondary">取消</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
+              <ActionGate anyOf={["warehouses.update_warehouse#operate","warehouses.create_warehouse#operate"]}><button onClick={handleSave} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button></ActionGate>
             </div>
           </div>
         </div>

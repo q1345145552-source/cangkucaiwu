@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
@@ -73,9 +74,9 @@ export default function EmployeeDeductionsPage() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><MinusCircle size={24}/>员工扣款</h1>
-        {canWrite && (<button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+        {canWrite && (<ActionGate anyOf={["employee_deduction.create_deduction"]}><button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
           <Plus size={16}/> 记一笔扣款
-        </button>)}
+        </button></ActionGate>)}
       </div>
 
       {/* 筛选 */}
@@ -124,9 +125,9 @@ export default function EmployeeDeductionsPage() {
                   <td className="px-3 py-3 text-gray-500 max-w-48 truncate" title={r.reason}>{r.reason}</td>
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-center">
-                    {canWrite && (<button onClick={() => handleDelete(r.id)} className="text-red-400 hover:text-red-600" title="删除">
+                    {canWrite && (<ActionGate anyOf={["employee_deduction.delete_deduction#operate"]}><button onClick={() => handleDelete(r.id)} className="text-red-400 hover:text-red-600" title="删除">
                       <Trash2 size={16}/>
-                    </button>)}
+                    </button></ActionGate>)}
                   </td>
                 </tr>
               ))}
@@ -164,7 +165,7 @@ export default function EmployeeDeductionsPage() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">提交</button>
+              <ActionGate anyOf={["employee_deduction.create_deduction#operate"]}><button onClick={handleCreate} className="btn-primary text-sm px-6 py-2">提交</button></ActionGate>
             </div>
           </div>
         </div>

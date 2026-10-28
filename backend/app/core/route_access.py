@@ -23,7 +23,9 @@ SELF_ROUTES = {
     ("overtime", "monthly_hours"), ("overtime", "get_overtime_limit"),
     ("payroll", "my_payslip"), ("employee_advance", "my_debt"),
 }
-ACCOUNT_UTILITIES = {("auth", name) for name in ("login", "get_me", "change_password", "attachment_session")}
+ACCOUNT_UTILITIES = {("auth", name) for name in ("login", "get_me", "change_password", "attachment_session")} | {("access", "catalog"), ("access", "my_actions")}
+# These handlers perform explicit action/module or scoped account-manager checks.
+EXPLICIT_ACTION_DEPENDENCIES = {("access", "choices"), ("access", "migrate")}
 PLATFORM_MODULES = {"users", "warehouses", "settings_api", "history"}
 # Owner-approved cross-warehouse board: platform publication/moderation, office participation.
 # These are deliberate exceptions to the super-admin business ban, not exceptions for labor.
@@ -73,8 +75,8 @@ class ManagementRouter(APIRouter):
             policy = action_policy(module, key[1], route.methods)
             if policy:
                 dependencies.append(Depends(action_guard(policy)))
-            if key in ACCOUNT_UTILITIES:
-                kind = "account_utility"
+            if key in ACCOUNT_UTILITIES or key in EXPLICIT_ACTION_DEPENDENCIES:
+                kind = "explicit_action_handler" if key in EXPLICIT_ACTION_DEPENDENCIES else "account_utility"
             elif key in SELF_ROUTES:
                 kind = "employee_self_or_management"
                 dependencies.append(Depends(require_business_user))

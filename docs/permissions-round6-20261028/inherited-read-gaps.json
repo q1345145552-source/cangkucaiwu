@@ -1,0 +1,4373 @@
+{
+  "source_count": 169,
+  "coordinator_independent_count": 167,
+  "difference": "Repository round5 coverage: 215 minus 46 =169; independent 167 includes probes absent from this repository. No invented local evidence.",
+  "routes": [
+    {
+      "id": "R05-001",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory",
+      "round6": [
+        {
+          "id": "inventory.listing",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-002",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/catalog",
+      "round6": [
+        {
+          "id": "inventory.available_skus",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/catalog",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-003",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/policy",
+      "round6": [
+        {
+          "id": "inventory.get_policy",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/policy",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-004",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/pending-receipts",
+      "round6": [
+        {
+          "id": "inventory.pending_receipts",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/pending-receipts",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-005",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/accounts/{account_id}",
+      "round6": [
+        {
+          "id": "inventory.detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/accounts/{account_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-006",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/counts",
+      "round6": [
+        {
+          "id": "inventory.counts",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/counts",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-007",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/accounts/{account_id}/controls",
+      "round6": [
+        {
+          "id": "inventory.get_controls",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/accounts/{account_id}/controls",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-008",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/analysis",
+      "round6": [
+        {
+          "id": "inventory.get_analysis",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/analysis",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-009",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/inventory/analysis/export",
+      "round6": [
+        {
+          "id": "inventory.export_analysis",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/inventory/analysis/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-010",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/policy",
+      "round6": [
+        {
+          "id": "procurement_controls.get_policy",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-controls/policy",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-011",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/orders/{po_id}/context",
+      "round6": [
+        {
+          "id": "procurement_controls.get_context",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-controls/orders/{po_id}/context",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-012",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/exceptions",
+      "round6": [
+        {
+          "id": "procurement_controls.list_exceptions",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-controls/exceptions",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-013",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-controls/exceptions/{ident}",
+      "round6": [
+        {
+          "id": "procurement_controls.exception_detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-controls/exceptions/{ident}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-014",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk",
+      "round6": [
+        {
+          "id": "procurement_risk.board",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-risk",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-015",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/export",
+      "round6": [
+        {
+          "id": "procurement_risk.download",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-risk/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-016",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/signals/{signal_id}",
+      "round6": [
+        {
+          "id": "procurement_risk.detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-risk/signals/{signal_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-017",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/reviews",
+      "round6": [
+        {
+          "id": "procurement_risk.review_history",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-risk/reviews",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-018",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-risk/reviews/export",
+      "round6": [
+        {
+          "id": "procurement_risk.export_reviews",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-risk/reviews/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-019",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-price-report",
+      "round6": [
+        {
+          "id": "procurement_report.monthly",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-price-report",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-020",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-price-report/export",
+      "round6": [
+        {
+          "id": "procurement_report.download",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-price-report/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-021",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-price-report/orders/{order_id}/lines/{line_ref}",
+      "round6": [
+        {
+          "id": "procurement_report.detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-price-report/orders/{order_id}/lines/{line_ref}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-022",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-quotes/suppliers/{supplier_id}",
+      "round6": [
+        {
+          "id": "supplier_quotes.listing",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-quotes/suppliers/{supplier_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-023",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/supplier-quotes/{quote_id}/revisions",
+      "round6": [
+        {
+          "id": "supplier_quotes.history",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/supplier-quotes/{quote_id}/revisions",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-024",
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/supplier-quotes/purchase-preview",
+      "round6": [
+        {
+          "id": "supplier_quotes.preview",
+          "methods": [
+            "POST"
+          ],
+          "path": "/api/v1/supplier-quotes/purchase-preview",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-025",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/reference",
+      "round6": [
+        {
+          "id": "sku_catalog.reference",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/sku-catalog/reference",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-026",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog",
+      "round6": [
+        {
+          "id": "sku_catalog.listing",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/sku-catalog",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-027",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/products/{product_id}/candidates",
+      "round6": [
+        {
+          "id": "sku_catalog.candidates",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/sku-catalog/products/{product_id}/candidates",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-028",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/products/{product_id}/mapping-history",
+      "round6": [
+        {
+          "id": "sku_catalog.mapping_history",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/sku-catalog/products/{product_id}/mapping-history",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-029",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/history-candidates",
+      "round6": [
+        {
+          "id": "sku_catalog.history_candidates",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/sku-catalog/history-candidates",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-030",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/tags",
+      "round6": [
+        {
+          "id": "sku_catalog.tags",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/sku-catalog/tags",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-031",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/sku-catalog/suppliers/{supplier_id}/tags",
+      "round6": [
+        {
+          "id": "sku_catalog.supplier_tags",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/sku-catalog/suppliers/{supplier_id}/tags",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-032",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-identities/suppliers",
+      "round6": [
+        {
+          "id": "cost_identity.suppliers",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-identities/suppliers",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-033",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-identities/{source}/{source_id}",
+      "round6": [
+        {
+          "id": "cost_identity.origin",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-identities/{source}/{source_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-034",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/auth/me",
+      "round6": [
+        {
+          "id": "auth.get_me",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/auth/me",
+          "mode": "utility",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "editor",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "editor",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-view",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-view",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-operate",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-operate",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "approve-only",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "approve-only",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "switch",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "switch",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "switch",
+              "method": "GET",
+              "path": "/api/v1/auth/me",
+              "status": 200,
+              "errors": [],
+              "matched_action": "auth.get_me"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 17,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-035",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/users",
+      "round6": [
+        {
+          "id": "users.list_users",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/users",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "editor",
+              "method": "GET",
+              "path": "/api/v1/users",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_users"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 1,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-036",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/users/permissions",
+      "round6": [
+        {
+          "id": "users.list_available_permissions",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/users/permissions",
+          "mode": "utility",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "editor",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-view",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-view",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-operate",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-operate",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "approve-only",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "approve-only",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "switch",
+              "method": "GET",
+              "path": "/api/v1/users/permissions",
+              "status": 200,
+              "errors": [],
+              "matched_action": "users.list_available_permissions"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 20,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-038",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/dashboard/pending-tasks",
+      "round6": [
+        {
+          "id": "dashboard.pending_tasks",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/dashboard/pending-tasks",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-039",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/dashboard/warehouse-summary",
+      "round6": [
+        {
+          "id": "dashboard.warehouse_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/dashboard/warehouse-summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-042",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/dashboard/boss-todos",
+      "round6": [
+        {
+          "id": "dashboard.boss_todos",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/dashboard/boss-todos",
+          "mode": "utility",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-043",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/customers/{customer_id}/receivables",
+      "round6": [
+        {
+          "id": "customers.customer_receivables",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/customers/{customer_id}/receivables",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-046",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/warehouses",
+      "round6": [
+        {
+          "id": "warehouses.list_warehouses",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/warehouses",
+          "mode": "utility",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "editor",
+              "method": "GET",
+              "path": "/api/v1/warehouses",
+              "status": 200,
+              "errors": [],
+              "matched_action": "warehouses.list_warehouses"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 1,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-049",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-match-policy",
+      "round6": [
+        {
+          "id": "suppliers.get_match_policy",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/purchase-match-policy",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-050",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/categories",
+      "round6": [
+        {
+          "id": "suppliers.list_categories",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/categories",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-051",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/import-template/products",
+      "round6": [
+        {
+          "id": "suppliers.download_products_template",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/import-template/products",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-052",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/import-template/logistics",
+      "round6": [
+        {
+          "id": "suppliers.download_logistics_template",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/import-template/logistics",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-053",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-threshold",
+      "round6": [
+        {
+          "id": "suppliers.get_price_threshold",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/price-threshold",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-054",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-stats",
+      "round6": [
+        {
+          "id": "suppliers.price_stats",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/price-stats",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-055",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-trend",
+      "round6": [
+        {
+          "id": "suppliers.price_trend",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/price-trend",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-056",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/price-anomalies",
+      "round6": [
+        {
+          "id": "suppliers.price_anomalies",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/price-anomalies",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-057",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/non-lowest-records",
+      "round6": [
+        {
+          "id": "suppliers.non_lowest_records",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/non-lowest-records",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-058",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/non-lowest-summary",
+      "round6": [
+        {
+          "id": "suppliers.non_lowest_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/non-lowest-summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-059",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-approval-threshold",
+      "round6": [
+        {
+          "id": "suppliers.get_approval_threshold",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/purchase-approval-threshold",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-060",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-approvals",
+      "round6": [
+        {
+          "id": "suppliers.purchase_approvals",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/purchase-approvals",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-061",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-orders",
+      "round6": [
+        {
+          "id": "suppliers.list_purchase_orders",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/purchase-orders",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-062",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}",
+      "round6": [
+        {
+          "id": "suppliers.get_purchase_detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/purchase-orders/{po_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-063",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-orders/{po_id}/receipts/{event_id}/photo",
+      "round6": [
+        {
+          "id": "suppliers.read_receipt_photo",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/purchase-orders/{po_id}/receipts/{event_id}/photo",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-065",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/purchase-receipt-discrepancies",
+      "round6": [
+        {
+          "id": "suppliers.receipt_discrepancies",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/purchase-receipt-discrepancies",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-066",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/concentration-threshold",
+      "round6": [
+        {
+          "id": "suppliers.get_concentration_threshold",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/concentration-threshold",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-067",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/concentration",
+      "round6": [
+        {
+          "id": "suppliers.concentration_analysis",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/concentration",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-068",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/concentration-trend",
+      "round6": [
+        {
+          "id": "suppliers.concentration_trend",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/concentration-trend",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-069",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/compare-prices",
+      "round6": [
+        {
+          "id": "suppliers.compare_prices",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/compare-prices",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-070",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/compare-logistics",
+      "round6": [
+        {
+          "id": "suppliers.compare_logistics",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/compare-logistics",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-071",
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/suppliers/ai-compare",
+      "round6": [
+        {
+          "id": "suppliers.ai_compare",
+          "methods": [
+            "POST"
+          ],
+          "path": "/api/v1/suppliers/ai-compare",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [
+            "frontend/src/app/(dashboard)/suppliers/page.tsx"
+          ],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-072",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/procurement-summary",
+      "round6": [
+        {
+          "id": "suppliers.procurement_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/procurement-summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-073",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}/products",
+      "round6": [
+        {
+          "id": "suppliers.list_products",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/{supplier_id}/products",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-074",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}/logistics-prices",
+      "round6": [
+        {
+          "id": "suppliers.list_logistics_prices",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/{supplier_id}/logistics-prices",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-075",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}",
+      "round6": [
+        {
+          "id": "suppliers.get_supplier",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/{supplier_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-076",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/suppliers/{supplier_id}/ai-evaluation",
+      "round6": [
+        {
+          "id": "suppliers.ai_evaluate",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/suppliers/{supplier_id}/ai-evaluation",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-080",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incoming/by-request/{request_key}",
+      "round6": [
+        {
+          "id": "incoming.lookup_incoming",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/incoming/by-request/{request_key}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-081",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incoming/{incoming_id}/screenshot",
+      "round6": [
+        {
+          "id": "incoming.read_incoming_screenshot",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/incoming/{incoming_id}/screenshot",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-082",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/incoming/template",
+      "round6": [
+        {
+          "id": "incoming.download_template",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/incoming/template",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-083",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reconciliation/unmatched",
+      "round6": [
+        {
+          "id": "reconciliation.get_unmatched",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reconciliation/unmatched",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-085",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reconciliation/export",
+      "round6": [
+        {
+          "id": "reconciliation.export_reconciliation",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reconciliation/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-086",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/categories",
+      "round6": [
+        {
+          "id": "income_expense.list_categories",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/categories",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-087",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/income",
+      "round6": [
+        {
+          "id": "income_expense.list_income",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/income",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-089",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/expense/export",
+      "round6": [
+        {
+          "id": "income_expense.export_expense",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/expense/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-090",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/ledger",
+      "round6": [
+        {
+          "id": "income_expense.ledger",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/ledger",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-091",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/ledger/export",
+      "round6": [
+        {
+          "id": "income_expense.ledger_export",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/ledger/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-092",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/income/export",
+      "round6": [
+        {
+          "id": "income_expense.export_income",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/income/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-093",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/monthly-summary",
+      "round6": [
+        {
+          "id": "income_expense.monthly_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/monthly-summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-094",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/income-expense/operating-dashboard",
+      "round6": [
+        {
+          "id": "income_expense.operating_dashboard",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/income-expense/operating-dashboard",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-095",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/employees",
+      "round6": [
+        {
+          "id": "expense_fund.list_employees",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-fund/employees",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-097",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/payment-accounts",
+      "round6": [
+        {
+          "id": "expense_fund.disbursement_accounts",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-fund/payment-accounts",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-098",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/accounts/{account_id}/disbursements",
+      "round6": [
+        {
+          "id": "expense_fund.list_disbursements",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-fund/accounts/{account_id}/disbursements",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-100",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/review/pending",
+      "round6": [
+        {
+          "id": "expense_fund.list_pending_reviews",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-fund/review/pending",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-102",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/settings",
+      "round6": [
+        {
+          "id": "expense_fund.fund_settings",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-fund/settings",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-103",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/balance",
+      "round6": [
+        {
+          "id": "expense_fund.balance_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-fund/balance",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-104",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-fund/alert",
+      "round6": [
+        {
+          "id": "expense_fund.alert_list",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-fund/alert",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-105",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/payment-sources",
+      "round6": [
+        {
+          "id": "reimbursement.payment_sources",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reimbursement/payment-sources",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-107",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/export",
+      "round6": [
+        {
+          "id": "reimbursement.export_reimbursements",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reimbursement/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-108",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/categories",
+      "round6": [
+        {
+          "id": "reimbursement.list_reimb_categories",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reimbursement/categories",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-110",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reimbursement/{reimb_id}/payments",
+      "round6": [
+        {
+          "id": "reimbursement.payment_history",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reimbursement/{reimb_id}/payments",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-112",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/stats",
+      "round6": [
+        {
+          "id": "payable.payable_stats",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/stats",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-113",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/{bill_id}/detail",
+      "round6": [
+        {
+          "id": "payable.get_bill_detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/{bill_id}/detail",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-114",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plans",
+      "round6": [
+        {
+          "id": "payable.list_plans",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/plans",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-115",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/cashflow-prediction",
+      "round6": [
+        {
+          "id": "payable.cashflow_prediction",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/cashflow-prediction",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-116",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/batch-export",
+      "round6": [
+        {
+          "id": "payable.batch_export",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/batch-export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-117",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/supplier-statement",
+      "round6": [
+        {
+          "id": "payable.supplier_statement",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/supplier-statement",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-118",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plan-templates",
+      "round6": [
+        {
+          "id": "payable.list_templates",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/plan-templates",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-119",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/timeline",
+      "round6": [
+        {
+          "id": "payable.payable_timeline",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/timeline",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-120",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plans/{plan_id}/detail",
+      "round6": [
+        {
+          "id": "payable.plan_detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/plans/{plan_id}/detail",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-121",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/plans/export",
+      "round6": [
+        {
+          "id": "payable.export_plans",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/plans/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-122",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/monthly-order",
+      "round6": [
+        {
+          "id": "payable.get_monthly_order",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/monthly-order",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-123",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payable/trend",
+      "round6": [
+        {
+          "id": "payable.payable_trend",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payable/trend",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-124",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/shipments",
+      "round6": [
+        {
+          "id": "credit.list_shipments",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/credit/shipments",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-125",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit",
+      "round6": [
+        {
+          "id": "credit.list_credit_customers",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/credit",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-126",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/{credit_id}/detail",
+      "round6": [
+        {
+          "id": "credit.credit_detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/credit/{credit_id}/detail",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-127",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/dashboard",
+      "round6": [
+        {
+          "id": "credit.credit_dashboard",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/credit/dashboard",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-128",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/assessment",
+      "round6": [
+        {
+          "id": "credit.credit_assessment",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/credit/assessment",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-129",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/assessment/export",
+      "round6": [
+        {
+          "id": "credit.export_assessment",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/credit/assessment/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-130",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/credit/alerts",
+      "round6": [
+        {
+          "id": "credit.credit_alerts",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/credit/alerts",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-131",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/market",
+      "round6": [
+        {
+          "id": "market.list_items",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/market",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-132",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/market/review-list",
+      "round6": [
+        {
+          "id": "market.review_list",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/market/review-list",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-133",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order",
+      "round6": [
+        {
+          "id": "group_order.list_group_orders",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/group-order",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-134",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order/{go_id}/participants",
+      "round6": [
+        {
+          "id": "group_order.list_participants",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/group-order/{go_id}/participants",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-135",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order/history",
+      "round6": [
+        {
+          "id": "group_order.history",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/group-order/history",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-136",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/group-order/{go_id}",
+      "round6": [
+        {
+          "id": "group_order.get_order_detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/group-order/{go_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-137",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt",
+      "round6": [
+        {
+          "id": "cost_funds_debt.get_report",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/cost-funds-debt",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-138",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt/costs",
+      "round6": [
+        {
+          "id": "cost_funds_debt.costs",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/cost-funds-debt/costs",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-139",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt/flows",
+      "round6": [
+        {
+          "id": "cost_funds_debt.flows",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/cost-funds-debt/flows",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-140",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/cost-funds-debt/advances",
+      "round6": [
+        {
+          "id": "cost_funds_debt.advances",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/cost-funds-debt/advances",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-143",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/incoming-summary",
+      "round6": [
+        {
+          "id": "reports.incoming_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/incoming-summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-145",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/payable",
+      "round6": [
+        {
+          "id": "reports.payable_report",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/payable",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-146",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/expense-fund",
+      "round6": [
+        {
+          "id": "reports.expense_fund_report",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/expense-fund",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-147",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/reimbursement",
+      "round6": [
+        {
+          "id": "reports.reimbursement_report",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/reimbursement",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-149",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/reconciliation-diff",
+      "round6": [
+        {
+          "id": "reports.reconciliation_diff_report",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/reconciliation-diff",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-150",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/reports/operations",
+      "round6": [
+        {
+          "id": "reports.operating_report",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/reports/operations",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-151",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/settings/boss-contact",
+      "round6": [
+        {
+          "id": "settings_api.get_boss_contact",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/settings/boss-contact",
+          "mode": "utility",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "editor",
+              "method": "GET",
+              "path": "/api/v1/settings/boss-contact",
+              "status": 200,
+              "errors": [],
+              "matched_action": "settings_api.get_boss_contact"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 1,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-152",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/settings/logs",
+      "round6": [
+        {
+          "id": "settings_api.operation_logs",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/settings/logs",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/final-r5-legacy-history_fields/requests.json",
+              "id": "audit-metadata-only",
+              "method": "GET",
+              "path": "/api/v1/settings/logs",
+              "status": 200,
+              "errors": [],
+              "matched_action": "settings_api.operation_logs"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/final-r5-versioned-history_fields/requests.json",
+              "id": "audit-metadata-only",
+              "method": "GET",
+              "path": "/api/v1/settings/logs",
+              "status": 200,
+              "errors": [],
+              "matched_action": "settings_api.operation_logs"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 2,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-153",
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v1/settings/backup",
+      "round6": [
+        {
+          "id": "settings_api.backup_all_data",
+          "methods": [
+            "POST"
+          ],
+          "path": "/api/v1/settings/backup",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-154",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/config/attendance-times",
+      "round6": [
+        {
+          "id": "config_api.get_attendance_times",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/config/attendance-times",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-155",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/config/work-schedule",
+      "round6": [
+        {
+          "id": "config_api.get_work_schedule_settings",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/config/work-schedule",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-156",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/rates",
+      "round6": [
+        {
+          "id": "exchange_rates.list_rates",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/rates",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-157",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/rates/query",
+      "round6": [
+        {
+          "id": "exchange_rates.query_rate",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/rates/query",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-158",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employees/max-limit",
+      "round6": [
+        {
+          "id": "employees.get_max_limit",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/employees/max-limit",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/employees/max-limit",
+              "status": 200,
+              "errors": [],
+              "matched_action": "employees.get_max_limit"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/employees/max-limit",
+              "status": 200,
+              "errors": [],
+              "matched_action": "employees.get_max_limit"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/employees/max-limit",
+              "status": 200,
+              "errors": [],
+              "matched_action": "employees.get_max_limit"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/employees/max-limit",
+              "status": 200,
+              "errors": [],
+              "matched_action": "employees.get_max_limit"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "supervisor-revoke",
+              "method": "GET",
+              "path": "/api/v1/employees/max-limit",
+              "status": 200,
+              "errors": [],
+              "matched_action": "employees.get_max_limit"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "second-tab",
+              "method": "GET",
+              "path": "/api/v1/employees/max-limit",
+              "status": 200,
+              "errors": [],
+              "matched_action": "employees.get_max_limit"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 6,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-162",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/records",
+      "round6": [
+        {
+          "id": "clock_in.list_records",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/clock-in/records",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-163",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/makeup-batches",
+      "round6": [
+        {
+          "id": "clock_in.list_makeup_batches",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/clock-in/makeup-batches",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-164",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/makeup-count",
+      "round6": [
+        {
+          "id": "clock_in.makeup_count",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/clock-in/makeup-count",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-165",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/records/export",
+      "round6": [
+        {
+          "id": "clock_in.export_records",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/clock-in/records/export",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-166",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/photos",
+      "round6": [
+        {
+          "id": "clock_in.get_photos",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/clock-in/photos",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-167",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/clock-in/makeup-requests",
+      "round6": [
+        {
+          "id": "clock_in.list_makeup_requests",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/clock-in/makeup-requests",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-169",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/attendance/rest-days",
+      "round6": [
+        {
+          "id": "attendance.list_rest_days",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/attendance/rest-days",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-170",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/attendance/calendar",
+      "round6": [
+        {
+          "id": "attendance.get_calendar",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/attendance/calendar",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-171",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime",
+      "round6": [
+        {
+          "id": "overtime.list_overtimes",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/overtime",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-172",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime/pending",
+      "round6": [
+        {
+          "id": "overtime.pending_overtimes",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/overtime/pending",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-173",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime/monthly-hours",
+      "round6": [
+        {
+          "id": "overtime.monthly_hours",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/overtime/monthly-hours",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-174",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/overtime/limit",
+      "round6": [
+        {
+          "id": "overtime.get_overtime_limit",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/overtime/limit",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-179",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payroll/cash-advance-sources",
+      "round6": [
+        {
+          "id": "payroll.payroll_cash_advance_sources",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payroll/cash-advance-sources",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-182",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/payroll/settlement-progress",
+      "round6": [
+        {
+          "id": "payroll.settlement_progress",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/payroll/settlement-progress",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-view",
+              "method": "GET",
+              "path": "/api/v1/payroll/settlement-progress",
+              "status": 200,
+              "errors": [],
+              "matched_action": "payroll.settlement_progress"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/browser-final/results.json",
+              "id": "finance-view",
+              "method": "GET",
+              "path": "/api/v1/payroll/settlement-progress",
+              "status": 200,
+              "errors": [],
+              "matched_action": "payroll.settlement_progress"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 2,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-184",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/history/operators",
+      "round6": [
+        {
+          "id": "history.list_operators",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/history/operators",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [
+            {
+              "file": "docs/permissions-round6-20261028/final-r5-legacy-history_fields/requests.json",
+              "id": "history-operators",
+              "method": "GET",
+              "path": "/api/v1/history/operators",
+              "status": 200,
+              "errors": [],
+              "matched_action": "history.list_operators"
+            },
+            {
+              "file": "docs/permissions-round6-20261028/final-r5-versioned-history_fields/requests.json",
+              "id": "history-operators",
+              "method": "GET",
+              "path": "/api/v1/history/operators",
+              "status": 200,
+              "errors": [],
+              "matched_action": "history.list_operators"
+            }
+          ],
+          "coverage": "local requests (not all role/state combinations)",
+          "positive": 2,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-188",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/trend",
+      "round6": [
+        {
+          "id": "efficiency.get_trend",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/efficiency/trend",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-189",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/compare",
+      "round6": [
+        {
+          "id": "efficiency.get_compare",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/efficiency/compare",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-190",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/daily-orders",
+      "round6": [
+        {
+          "id": "efficiency.get_daily_orders",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/efficiency/daily-orders",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-191",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/standard",
+      "round6": [
+        {
+          "id": "efficiency.get_standard",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/efficiency/standard",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-192",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/efficiency/standards",
+      "round6": [
+        {
+          "id": "efficiency.get_standards",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/efficiency/standards",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-194",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-advances/recipients",
+      "round6": [
+        {
+          "id": "employee_advance.list_advance_recipients",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/employee-advances/recipients",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-196",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-advances/summary",
+      "round6": [
+        {
+          "id": "employee_advance.advance_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/employee-advances/summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-201",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-deductions",
+      "round6": [
+        {
+          "id": "employee_deduction.list_deductions",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/employee-deductions",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-202",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/employee-deductions/fixed",
+      "round6": [
+        {
+          "id": "employee_deduction.list_fixed_deductions",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/employee-deductions/fixed",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-204",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-approvals/summary",
+      "round6": [
+        {
+          "id": "expense_approval.approval_summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-approvals/summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-205",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/expense-approvals/threshold",
+      "round6": [
+        {
+          "id": "expense_approval.get_threshold",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/expense-approvals/threshold",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-206",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/document-options",
+      "round6": [
+        {
+          "id": "cash_advance.document_options",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/cash-advances/document-options",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-207",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/payers",
+      "round6": [
+        {
+          "id": "cash_advance.list_payers",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/cash-advances/payers",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-208",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/summary",
+      "round6": [
+        {
+          "id": "cash_advance.summary",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/cash-advances/summary",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-210",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/{advance_id}/documents/{link_id}",
+      "round6": [
+        {
+          "id": "cash_advance.linked_document_detail",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/cash-advances/{advance_id}/documents/{link_id}",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-211",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/repayment-accounts",
+      "round6": [
+        {
+          "id": "cash_advance.repayment_accounts",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/cash-advances/repayment-accounts",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-212",
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v1/cash-advances/{advance_id}/repayments",
+      "round6": [
+        {
+          "id": "cash_advance.list_repayments",
+          "methods": [
+            "GET"
+          ],
+          "path": "/api/v1/cash-advances/{advance_id}/repayments",
+          "mode": "business",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-214",
+      "methods": [
+        "GET"
+      ],
+      "path": "/",
+      "round6": [
+        {
+          "id": "main.root",
+          "methods": [
+            "GET"
+          ],
+          "path": "/",
+          "mode": "utility",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "R05-215",
+      "methods": [
+        "GET"
+      ],
+      "path": "/health",
+      "round6": [
+        {
+          "id": "main.health",
+          "methods": [
+            "GET"
+          ],
+          "path": "/health",
+          "mode": "utility",
+          "tier": "view",
+          "frontend_files": [],
+          "evidence": [],
+          "coverage": "registered central guard + source inspection only; NOT directly tested",
+          "positive": 0,
+          "rejected": 0
+        }
+      ]
+    }
+  ]
+}

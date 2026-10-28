@@ -6,7 +6,16 @@ export interface AuthWarehouse {
   code: string;
 }
 
+export interface ActionAccess {
+  version: 1 | "legacy" | "invalid";
+  grants: string[];
+  actions: { id: string; module: string; tier: "view" | "operate" | "approve" }[];
+  unknown_legacy_values: string[];
+  compatibility_note: string;
+}
+
 export interface AuthUser {
+  action_access?: ActionAccess;
   id: number;
   username: string;
   display_name: string | null;
@@ -44,6 +53,14 @@ function warehouse(value: unknown): value is AuthWarehouse {
   return record(value) && identifier(value.id) && typeof value.name === "string" && typeof value.code === "string";
 }
 
+function actionAccess(value: unknown): boolean {
+  return value === undefined || (record(value) && [1,"legacy","invalid"].includes(value.version as string | number)
+    && Array.isArray(value.grants) && value.grants.every(v => typeof v === "string")
+    && Array.isArray(value.actions) && value.actions.every(v => record(v) && typeof v.id === "string" && typeof v.module === "string" && ["view","operate","approve"].includes(String(v.tier)))
+    && Array.isArray(value.unknown_legacy_values) && value.unknown_legacy_values.every(v => typeof v === "string")
+    && typeof value.compatibility_note === "string");
+}
+
 // Cached JSON and browser events are untrusted shapes; invalid values never become an authenticated user.
 export function isAuthUser(value: unknown): value is AuthUser {
   return record(value) && identifier(value.id) && typeof value.username === "string"
@@ -52,5 +69,5 @@ export function isAuthUser(value: unknown): value is AuthUser {
     && Array.isArray(value.warehouses) && value.warehouses.every(warehouse)
     && Array.isArray(value.extra_permissions) && value.extra_permissions.every(p => typeof p === "string")
     && typeof value.is_active === "boolean" && typeof value.attendance_enabled === "boolean"
-    && nullableId(value.attendance_employee_id);
+    && nullableId(value.attendance_employee_id) && actionAccess(value.action_access);
 }

@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -71,7 +72,7 @@ export default function MakeupBatchHistory({ onChange, onBusyChange }: { onChang
         <p className="text-xs text-gray-500">操作时间：{formatTime(batch.operated_at)}</p>
         <p className="break-words">原因：{batch.reason}</p>
         {batch.revoked_at && <p className="text-xs text-gray-500">撤销人：{batch.revoked_by_name || "-"} · {formatTime(batch.revoked_at)}</p>}
-        {batch.can_revoke && <button type="button" aria-label={`撤销批次${batch.id}`} disabled={revoking} onClick={() => setConfirmBatch(batch)} className="text-red-600 border border-red-200 rounded px-3 py-1 mt-1">撤销</button>}
+        {batch.can_revoke && <ActionGate anyOf={["clock_in.revoke_makeup_batch"]}><button type="button" aria-label={`撤销批次${batch.id}`} disabled={revoking} onClick={() => setConfirmBatch(batch)} className="text-red-600 border border-red-200 rounded px-3 py-1 mt-1">撤销</button></ActionGate>}
       </div>)}
       {total > 10 && <div className="flex gap-3 items-center justify-between text-sm">
         <button type="button" disabled={page === 1 || revoking} onClick={() => setPage(value => value - 1)} className="btn-secondary">上一页</button>
@@ -85,7 +86,7 @@ export default function MakeupBatchHistory({ onChange, onBusyChange }: { onChang
         <p className="text-sm">批次 #{confirmBatch.id}，{confirmBatch.date}，新建{confirmBatch.created_count}条。会影响这一天这些人的考勤。已算工资单不会自动重算。</p>
         <div className="flex justify-end gap-3">
           <button type="button" disabled={revoking} onClick={() => setConfirmBatch(null)} className="btn-secondary">暂不撤销</button>
-          <button type="button" disabled={revoking} onClick={revoke} className="btn-danger">{revoking ? "撤销中..." : "确认撤销"}</button>
+          <ActionGate anyOf={["clock_in.revoke_makeup_batch#operate"]}><button type="button" disabled={revoking} onClick={revoke} className="btn-danger">{revoking ? "撤销中..." : "确认撤销"}</button></ActionGate>
         </div>
       </div>
     </div>}

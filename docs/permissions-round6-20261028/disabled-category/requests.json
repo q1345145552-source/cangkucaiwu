@@ -1,0 +1,41 @@
+[
+  {
+    "id": "disabled-category-1",
+    "user": 1,
+    "method": "POST",
+    "path": "/suppliers/categories?name=SYNTHETIC",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "供应商分类为统一参考，只读；请使用本仓标签，不改写历史分类"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "disabled-category-2",
+    "user": 2,
+    "method": "POST",
+    "path": "/suppliers/categories?name=SYNTHETIC",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "供应商分类为统一参考，只读；请使用本仓标签，不改写历史分类"
+    },
+    "database_diff": {},
+    "errors": []
+  },
+  {
+    "id": "disabled-category-3",
+    "user": 3,
+    "method": "POST",
+    "path": "/suppliers/categories?name=SYNTHETIC",
+    "expected": 403,
+    "actual": 403,
+    "response": {
+      "detail": "无此操作权限，需要: 供应商管理"
+    },
+    "database_diff": {},
+    "errors": []
+  }
+]

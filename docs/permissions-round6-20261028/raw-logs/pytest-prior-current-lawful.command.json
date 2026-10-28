@@ -1,0 +1,27 @@
+{
+  "command": [
+    "/tmp/supplier01-py312/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=short",
+    "tests/test_advance_manager_recipients.py",
+    "tests/test_advance_payroll_approval_audit.py",
+    "tests/test_cash_advance_documents.py",
+    "tests/test_cash_advance_repayments.py",
+    "tests/test_disabled_financial_reversals.py",
+    "tests/test_employee_advance_funding.py",
+    "tests/test_employee_advance_limit.py",
+    "tests/test_employee_advance_void.py",
+    "tests/test_payroll_cash_advance.py",
+    "tests/test_payroll_expense.py",
+    "tests/test_payroll_labor_boundary.py",
+    "tests/test_procurement_controls_round9.py",
+    "tests/test_reimbursement_payments.py",
+    "tests/test_round18_advance_review.py",
+    "--junitxml=/private/tmp/permissions-round6-20261028/docs/permissions-round6-20261028/raw-logs/pytest-prior-current-lawful.xml"
+  ],
+  "cwd": "/private/tmp/permissions-round6-regression-final/backend",
+  "database": "postgresql+asyncpg://round6@127.0.0.1:65509/r6regression",
+  "source_head": "a28e128614beec612cd2e639231044b415f97b97"
+}

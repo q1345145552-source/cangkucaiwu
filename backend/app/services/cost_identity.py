@@ -1,4 +1,5 @@
 """Cross-channel expense identity, deliberately separate from cash and cost calculations."""
+from app.core.action_access import has_module
 import json
 from datetime import datetime,timedelta
 from sqlalchemy import select,func
@@ -25,7 +26,7 @@ MODULES={'payable':'payable','approval':'expense_approval','fund_item':'expense_
 def readable(user,source):
     if user.role==Role.WAREHOUSE_ADMIN:return True
     if user.role not in (Role.SUPERVISOR,Role.STAFF):return False
-    return any(MENU_PERMISSIONS_BY_KEY[k].label in (user.extra_permissions or []) for k in PERMISSIONS[source])
+    return any(has_module(user,k,'view') for k in PERMISSIONS[source])
 
 async def lock(db,wid):
     if not isinstance(wid,int) or wid<=0:raise HTTPException(400,'请先选择单个仓库')

@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import {useEffect,useRef,useState} from 'react';
 import {api} from '@/lib/api';
 import {useAuth} from '@/hooks/useAuth';
@@ -33,7 +34,7 @@ export default function ProcurementRiskReview({signalId,query,onSaved}:{signalId
  <label className="block">复核结论<select aria-label="老板复核结论" className="form-input" value={conclusion} disabled={locked||busy} onChange={e=>setConclusion(e.target.value)}>{Object.entries(labels).map(([k,v])=><option key={k} value={k} disabled={k==='cleared'&&record.state==='unavailable'}>{v}</option>)}</select></label>
  {record.state==='unavailable'&&<p>当前依据不足，不能记为已核实无问题；可记录需跟进并说明待补资料。</p>}
  <label className="block">原因（必填）<textarea aria-label="老板复核原因" className="form-input" value={reason} disabled={locked||busy} onChange={e=>setReason(e.target.value)}/></label>
- <div className="flex flex-wrap gap-2"><button className="btn-primary" disabled={busy||(!locked&&conclusion==='cleared'&&record.state==='unavailable')} onClick={submit}>保存老板复核</button><button className="btn-secondary" disabled={busy} onClick={()=>load(true)}>重新读取证据</button></div>
+ <div className="flex flex-wrap gap-2"><ActionGate anyOf={["procurement_risk.save_review"]}><button className="btn-primary" disabled={busy||(!locked&&conclusion==='cleared'&&record.state==='unavailable')} onClick={submit}>保存老板复核</button></ActionGate><button className="btn-secondary" disabled={busy} onClick={()=>load(true)}>重新读取证据</button></div>
  <h4 className="font-semibold">不可覆盖的复核历史（{record.review.history.length}条）</h4>
  {record.review.history.map((h:any)=><article className="border-t pt-2 space-y-1" key={h.id}><p>复核 #{h.id} · {labels[h.conclusion]} · 操作者 #{h.reviewer_id} · {thai(h.created_at)}</p><p>原因：{h.reason}</p><p>规则版本：{h.rule_version}</p><details><summary>查看当时证据快照</summary><pre className="whitespace-pre-wrap break-all text-xs">{JSON.stringify(h.snapshot,null,2)}</pre></details></article>)}
  {!record.review.history.length&&<p>尚无复核记录。</p>}</>:!error&&<p>读取复核依据中</p>}

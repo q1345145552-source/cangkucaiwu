@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useState, useMemo, useEffect } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
@@ -311,10 +312,10 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3 items-center">
               {canMakeup && (
-                <button onClick={openMakeupForm}
+                <ActionGate anyOf={["clock_in.makeup_clock_in"]}><button onClick={openMakeupForm}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-1 hover:bg-purple-700">
                   <CalendarClock size={14}/>{t("makeup")}
-                </button>
+                </button></ActionGate>
               )}
               <button onClick={() => setDetailPopup(null)} className="text-sm text-gray-400 px-4 py-2">{t("close")}</button>
             </div>
@@ -365,10 +366,10 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setMakeupForm(null)} className="btn-secondary px-4 py-2 text-sm">{t("cancel")}</button>
-              <button onClick={submitMakeup}
+              <ActionGate anyOf={["clock_in.makeup_clock_in#operate"]}><button onClick={submitMakeup}
                 className={`px-5 py-2 rounded-lg text-sm ${makeupUsage && makeupUsage.remaining <= 0 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-purple-600 text-white"}`}>
                 {t("submit_makeup")}
-              </button>
+              </button></ActionGate>
             </div>
           </div>
         </div>

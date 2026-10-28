@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { operatingEntriesEnabled } from "@/lib/retiredEntries";
 import CustomerReceivable from "@/components/CustomerReceivable";
@@ -119,9 +120,9 @@ export default function CreditPage() {
         <button onClick={doExport} className="btn-secondary text-sm flex items-center gap-1.5">
           <Download size={14} />导出评估报告
         </button>
-        <button onClick={() => setShowForm(true)} className="btn-primary text-sm flex items-center gap-1.5">
+        <ActionGate anyOf={["credit.create_credit"]}><button onClick={() => setShowForm(true)} className="btn-primary text-sm flex items-center gap-1.5">
           <Plus size={14} />新建账期客户
-        </button>
+        </button></ActionGate>
       </div>
 
       {operatingEntriesEnabled && <CreditShipments onChanged={() => { load(); loadDashboard(); loadAlerts(); setDetail(null); }} onSource={row => {
@@ -219,7 +220,7 @@ export default function CreditPage() {
                           <Icon size={11} />{RATING_LABELS[quickRating]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-800">{row.customer_name}{canWriteWallet && <button className="btn-secondary btn-xs ml-2" onClick={e => { e.stopPropagation(); openPayment(row); }}>登记回款</button>}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800">{row.customer_name}{canWriteWallet && <ActionGate anyOf={["credit.record_repayment"]}><button className="btn-secondary btn-xs ml-2" onClick={e => { e.stopPropagation(); openPayment(row); }}>登记回款</button></ActionGate>}</td>
                       <td className="px-4 py-3 text-right font-mono text-sm">{row.currency === "CNY" ? "¥" : "฿"}{row.credit_limit?.toLocaleString()}</td>
                       <td className="px-4 py-3 text-right font-mono text-sm text-blue-700">{row.currency === "CNY" ? "¥" : "฿"}{row.current_debt?.toLocaleString()}</td>
                       <td className={`px-4 py-3 text-center font-medium ${row.overdue_days > 0 ? "text-red-600" : "text-gray-400"}`}>{row.overdue_days || 0}天</td>
@@ -353,7 +354,7 @@ export default function CreditPage() {
             </div>
             <div className="border-t px-5 py-3.5 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">取消</button>
-              <button onClick={handleCreate} className="btn-primary text-sm">保存</button>
+              <ActionGate anyOf={["credit.create_credit#operate"]}><button onClick={handleCreate} className="btn-primary text-sm">保存</button></ActionGate>
             </div>
           </div>
         </div>
@@ -368,7 +369,7 @@ export default function CreditPage() {
           }}><option value="">请选择已到账的一笔</option>{receipts.filter(r => r.currency === (paymentFor.currency || "THB")).map(r => <option key={r.id} value={r.id}>#{r.id} {r.received_date?.slice(0,10)} {r.payer_name} {r.amount} {r.currency}</option>)}</select></div>}
         <div className="form-group"><label className="form-label">实际收款日期</label><input className="form-input" type="date" value={payment.repayment_date} onChange={e => setPayment({ ...payment, repayment_date: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">金额</label><input className="form-input" type="number" step="0.01" value={payment.amount} onChange={e => setPayment({ ...payment, amount: e.target.value })} /></div>
-        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={paymentSaving} onClick={() => setPaymentFor(null)}>取消</button><button className="btn-primary" disabled={paymentSaving} onClick={savePayment}>确认登记</button></div>
+        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={paymentSaving} onClick={() => setPaymentFor(null)}>取消</button><ActionGate anyOf={["credit.record_repayment#operate"]}><button className="btn-primary" disabled={paymentSaving} onClick={savePayment}>确认登记</button></ActionGate></div>
       </div></div>}
     </>
   );

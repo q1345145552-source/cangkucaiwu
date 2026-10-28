@@ -3,6 +3,7 @@
 The file-only HttpOnly cookie lets existing img/a/download elements authenticate
 without putting tokens into URLs or exposing uploads through nginx aliases.
 """
+from app.core.action_access import has_module
 import json
 import os
 from pathlib import Path
@@ -105,7 +106,7 @@ async def has_private_reference(db, target):
 async def may_read_market_image(db, user, target):
     if user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         return False
-    if user.role in (Role.SUPERVISOR, Role.STAFF) and MENU_PERMISSIONS_BY_KEY['market'].label not in (user.extra_permissions or []):
+    if user.role in (Role.SUPERVISOR, Role.STAFF) and not has_module(user,'market','view'):
         return False
     items = (await db.execute(select(MarketItem).where(reference_filter([MarketItem.image], target)))).scalars().all()
     visible = any(matches(item.image, target) and (user.role == Role.SUPER_ADMIN or item.status == 'approved' or item.uploader_id == user.id) for item in items)

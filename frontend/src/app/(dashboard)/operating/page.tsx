@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
 import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useState } from "react";
@@ -368,9 +369,9 @@ export default function OperatingPage() {
             <span className="text-gray-400 text-xs">至</span>
             <input type="date" value={dateRange.end_date} onChange={e => { setDateRange({ ...dateRange, end_date: e.target.value }); setExpPage(1); }} className="form-input text-sm w-[140px]" />
           </div>
-          {queryReady && !reportView && <button disabled={!canWrite} onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
+          {queryReady && !reportView && <ActionGate anyOf={["income_expense.create_expense"]}><button disabled={!canWrite} onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
             <Plus size={16} />录入支出
-          </button>}
+          </button></ActionGate>}
         </div>
       </div>
 
@@ -438,7 +439,7 @@ export default function OperatingPage() {
                 } },
               ...(!reportView ? [{ key: "id", label: "操作", render: (_: any, row: any) => row.is_read_only ? <span className="text-gray-400 text-xs">{row.source === "payable" ? `采购付款记录 #${row.source_id}` : row.source === "cash_advance_repayment" ? `归还垫款 #${row.cash_advance_id}` : row.payroll_record_id ? `工资单 #${row.payroll_record_id}` : row.reimbursement_id ? `报销单 #${row.reimbursement_id}` : row.fund_disbursement_id ? `备用金拨付 #${row.fund_disbursement_id}` : row.employee_advance_id ? `预支单 #${row.employee_advance_id}` : row.source === "expense_fund" ? "历史备用金拨付" : "业务联动明细"}</span> : (
                   <div className="flex items-center gap-2">
-                    <button disabled={!(canWrite)} onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button>
+                    <ActionGate anyOf={["income_expense.update_expense"]}><button disabled={!(canWrite)} onClick={(e) => { e.stopPropagation(); openEdit(row); }} className="text-blue-600 hover:underline text-xs font-medium">编辑</button></ActionGate>
                     <button disabled={!(canWrite)} onClick={(e) => { e.stopPropagation(); setDeletingExpense(row); }} className="text-red-500 hover:underline text-xs font-medium">删除</button>
                     <button onClick={(e) => { e.stopPropagation(); openHistory(row); }} className="text-gray-500 hover:underline text-xs font-medium">历史</button>
                   </div>
@@ -520,7 +521,7 @@ export default function OperatingPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={closeForm} className="btn-secondary">取消</button>
-              <button disabled={!(canWrite)} onClick={()=>handleCreate()} className="btn-primary">保存</button>
+              <ActionGate anyOf={["income_expense.create_expense"]}><button disabled={!(canWrite)} onClick={()=>handleCreate()} className="btn-primary">保存</button></ActionGate>
             </div>
           </div>
         </div>
@@ -581,7 +582,7 @@ export default function OperatingPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={closeEdit} className="btn-secondary">取消</button>
-              <button disabled={!(canWrite)} onClick={()=>handleEditSave()} className="btn-primary">保存</button>
+              <ActionGate anyOf={["income_expense.update_expense"]}><button disabled={!(canWrite)} onClick={()=>handleEditSave()} className="btn-primary">保存</button></ActionGate>
             </div>
           </div>
         </div>
@@ -595,7 +596,7 @@ export default function OperatingPage() {
             <p className="text-sm text-gray-500 mb-5">确定要删除这张凭证图片吗？删除后不可恢复。</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setConfirmDeleteVoucher(null)} className="btn-secondary">取消</button>
-              <button onClick={doConfirmDeleteVoucher} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
+              <ActionGate anyOf={["income_expense.update_expense"]}><button onClick={doConfirmDeleteVoucher} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
         </div>
@@ -631,7 +632,7 @@ export default function OperatingPage() {
             <p className="text-sm text-gray-500 mb-5">确定要彻底删除这笔支出吗？删除后变更历史仍会保留。</p>
             <div className="flex justify-end gap-3">
               <button disabled={!(canWrite)} onClick={() => setDeletingExpense(null)} className="btn-secondary">取消</button>
-              <button aria-disabled={!canWrite} disabled={!canWrite} onClick={handleDeleteExpense} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button>
+              <ActionGate anyOf={["income_expense.delete_expense#operate"]}><button aria-disabled={!canWrite} disabled={!canWrite} onClick={handleDeleteExpense} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
             </div>
           </div>
         </div>

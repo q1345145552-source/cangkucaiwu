@@ -1,4 +1,6 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
+import { useTierPermission } from "@/hooks/useActionPermission";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import WalletAccountSelect from "@/components/WalletAccountSelect";
 import { useEffect, useState, useRef } from "react";
@@ -48,7 +50,7 @@ function PayablePageContent() {
   const [payingRow, setPayingRow] = useState<any>(null);
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [payAccountId, setPayAccountId] = useState(0);
-  const payablePermission=useMenuPermission("payable");
+  const payablePermission=useTierPermission("payable", "operate");
   const canWriteBill=payablePermission && ["warehouse_admin","supervisor"].includes((user as {role?:string} | null)?.role || "");
   const [pendingRecovery,setPendingRecovery]=useState(false);
   const [billDetailId,setBillDetailId]=useState(0),[detailRevision,setDetailRevision]=useState(0);
@@ -388,7 +390,7 @@ function PayablePageContent() {
           <div className="w-[120px]"><label className="form-label">订单数（笔）</label>
             <input type="number" className="form-input" value={orderCount} onChange={e => setOrderCount(e.target.value)} placeholder="输入数量" />
           </div>
-          <button onClick={saveOrderVolume} className="btn-primary h-[42px]">保存</button>
+          <ActionGate anyOf={["payable.save_monthly_order#operate"]}><button onClick={saveOrderVolume} className="btn-primary h-[42px]">保存</button></ActionGate>
           {orderSaved && orderCount === orderSaved && <span className="text-xs text-green-600 self-center pb-1">已保存</span>}
           <div className="flex-1" />
           <button onClick={loadTrend} className="btn-secondary h-[42px] flex items-center gap-1.5"><TrendingUp size={16} />查看趋势</button>
@@ -454,7 +456,7 @@ function PayablePageContent() {
               清除选择
             </button>
           )}
-          {canWriteBill && <button onClick={openBillForm} className="btn-primary h-[42px]">新建账单</button>}
+          {canWriteBill && <ActionGate anyOf={["payable.create_bill"]}><button onClick={openBillForm} className="btn-primary h-[42px]">新建账单</button></ActionGate>}
         </div>
       </div>
 
@@ -481,14 +483,14 @@ function PayablePageContent() {
         { key: "detail", label: "明细", render: (v: any) => v ? <span className="text-xs text-gray-500 max-w-32 truncate block" title={v}>{v.length > 12 ? v.slice(0, 12) + "..." : v}</span> : "-" },
         { key: "bill_attachment", label: "附件", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "账单附件")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
         { key: "payment_voucher", label: "凭证", render: (v: any) => v ? <button onClick={() => openPreview(getFileUrl(v), "付款凭证")} className="text-blue-600 text-xs hover:underline cursor-pointer">查看</button> : <span className="text-gray-300 text-xs">-</span> },
-        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{["staff","warehouse_admin"].includes(user?.role || "") && row.capabilities?.can_verify && <button onClick={()=>paymentStage(row.id,"verify-payment")} className="btn-secondary btn-xs">核验付款依据</button>}{user?.role === "warehouse_admin" && row.capabilities?.can_approve && <button onClick={()=>paymentStage(row.id,"approve-payment")} className="btn-secondary btn-xs">批准资金</button>}<button onClick={()=>setBillDetailId(row.id)} className="btn-secondary btn-xs">详情</button>{canWriteBill && hasPendingPayment(row.id) && <button onClick={()=>openPayModal(row)} className="btn-secondary btn-xs">核对上次付款</button>}{row.need_boss_confirm === "true" && row.status !== "voided" && user?.role === "warehouse_admin" && <button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button>}{["staff","warehouse_admin"].includes(user?.role || "") && row.capabilities?.can_pay && row.need_boss_confirm !== "true" && <button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button>}{canWriteBill && row.status !== "voided" && <button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>}{user?.role === "warehouse_admin" && row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
+        { key: "id", label: "操作", render: (_: any, row: any) => <div className="flex items-center gap-1">{["staff","warehouse_admin"].includes(user?.role || "") && row.capabilities?.can_verify && <button onClick={()=>paymentStage(row.id,"verify-payment")} className="btn-secondary btn-xs">核验付款依据</button>}{user?.role === "warehouse_admin" && row.capabilities?.can_approve && <button onClick={()=>paymentStage(row.id,"approve-payment")} className="btn-secondary btn-xs">批准资金</button>}<button onClick={()=>setBillDetailId(row.id)} className="btn-secondary btn-xs">详情</button>{canWriteBill && hasPendingPayment(row.id) && <ActionGate anyOf={["payable.pay_bill"]}><button onClick={()=>openPayModal(row)} className="btn-secondary btn-xs">核对上次付款</button></ActionGate>}{row.need_boss_confirm === "true" && row.status !== "voided" && user?.role === "warehouse_admin" && <ActionGate anyOf={["payable.confirm_bill"]}><button onClick={() => confirmBoss(row.id)} className="btn-primary btn-xs bg-purple-600 hover:bg-purple-700">确认</button></ActionGate>}{["staff","warehouse_admin"].includes(user?.role || "") && row.capabilities?.can_pay && row.need_boss_confirm !== "true" && <ActionGate anyOf={["payable.pay_bill"]}><button onClick={() => openPayModal(row)} className="btn-primary btn-xs">付款</button></ActionGate>}{canWriteBill && row.status !== "voided" && <ActionGate anyOf={["payable.update_bill"]}><button onClick={() => openEditModal(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button></ActionGate>}{user?.role === "warehouse_admin" && row.status !== "paid" && row.status !== "voided" && <button onClick={() => openVoidModal(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />作废</button>}</div> },
       ]} data={data} total={total} page={page} pageSize={25} onPageChange={setPage} rowClassName={(row) => row.status === "voided" ? "opacity-50" : ""} />}
 
       {billDetailId>0 && <PayableDetail billId={billDetailId} revision={detailRevision} onClose={()=>setBillDetailId(0)} onPay={bill=>{setBillDetailId(0);openPayModal(bill);}} onConfirm={confirmBoss}/>}
       {reviewTarget>0 && <div className="modal-overlay z-[85]"><div role="dialog" aria-label="匹配复核" className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="p-4 border-b"><h2 className="font-semibold">本次采购、收货与应付复核</h2></div>
         <div className="p-4 overflow-auto space-y-3"><p className="text-sm">记录当前匹配快照、复核人和时间。后续收货或账单变化须重新复核；已有付款保持原样。</p><label className="block text-sm">本次匹配复核原因<textarea className="form-input min-h-[120px]" maxLength={1000} value={reviewReason} onChange={e=>setReviewReason(e.target.value)}/></label></div>
-        <div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={reviewSaving} onClick={()=>setReviewTarget(0)}>取消复核</button><button className="btn-primary" disabled={reviewSaving} onClick={saveMatchReview}>{reviewSaving ? "保存中" : "保存本次复核"}</button></div>
+        <div className="p-4 border-t flex justify-end gap-3"><button className="btn-secondary" disabled={reviewSaving} onClick={()=>setReviewTarget(0)}>取消复核</button><ActionGate anyOf={["payable.confirm_bill#approve"]}><button className="btn-primary" disabled={reviewSaving} onClick={saveMatchReview}>{reviewSaving ? "保存中" : "保存本次复核"}</button></ActionGate></div>
       </div></div>}
       {duplicateChallenge && <PayableDuplicateDialog challenge={duplicateChallenge.detail} onClose={()=>setDuplicateChallenge(null)} onConfirm={async data=>{const retry=duplicateChallenge.retry;setDuplicateChallenge(null);await retry(data);}}/>}
       {cost.dialog}
@@ -548,7 +550,7 @@ function PayablePageContent() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={()=>handleCreate()} disabled={creating} className="btn-primary min-w-[80px]">{creating ? "保存中" : "保存"}</button>
+              <ActionGate anyOf={["payable.create_bill"]}><button onClick={()=>handleCreate()} disabled={creating} className="btn-primary min-w-[80px]">{creating ? "保存中" : "保存"}</button></ActionGate>
             </div>
           </div></div>
       )}
@@ -613,7 +615,7 @@ function PayablePageContent() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowEditModal(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={()=>handleEdit()} className="btn-primary min-w-[80px]">保存修改</button>
+              <ActionGate anyOf={["payable.update_bill#operate"]}><button onClick={()=>handleEdit()} className="btn-primary min-w-[80px]">保存修改</button></ActionGate>
             </div>
           </div>
         </div>
@@ -642,7 +644,7 @@ function PayablePageContent() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowVoidModal(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleVoid} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 min-w-[100px]">确认作废</button>
+              <ActionGate anyOf={["payable.void_bill#operate"]}><button onClick={handleVoid} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 min-w-[100px]">确认作废</button></ActionGate>
             </div>
           </div>
         </div>
@@ -702,7 +704,7 @@ function PayablePageContent() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowPayModal(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handlePay} disabled={paymentSaving || !payAccountId} className="btn-primary min-w-[80px]">确认付款</button>
+              <ActionGate anyOf={["payable.pay_bill"]}><button onClick={handlePay} disabled={paymentSaving || !payAccountId} className="btn-primary min-w-[80px]">确认付款</button></ActionGate>
             </div>
           </div></div>
       )}

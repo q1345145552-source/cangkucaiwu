@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import InternalTransferSummary from "@/components/InternalTransferSummary";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -111,7 +112,7 @@ export default function IncomeExpensePage() {
             <span className={totals.net >= 0 ? "text-blue-600" : "text-red-600"}>净额: {(() => { const all = new Set([...Object.keys(totals.income_by_currency || {}), ...Object.keys(totals.expense_by_currency || {})]); const m: any = {}; all.forEach((c: string) => m[c] = (totals.income_by_currency?.[c] || 0) - (totals.expense_by_currency?.[c] || 0)); return fmtMoneyByCurrency(m); })()}</span>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0"><button onClick={handleExport} className="btn-secondary whitespace-nowrap">导出</button><button onClick={openCreate} className="btn-primary whitespace-nowrap">新建记录</button></div>
+        <div className="flex gap-2 shrink-0"><button onClick={handleExport} className="btn-secondary whitespace-nowrap">导出</button><ActionGate anyOf={["income_expense.create_expense"]}><button onClick={openCreate} className="btn-primary whitespace-nowrap">新建记录</button></ActionGate></div>
       </div>
       <InternalTransferSummary data={totals.internal_transfers} />
       <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -136,7 +137,7 @@ export default function IncomeExpensePage() {
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="btn-secondary">取消</button>
-              <button onClick={() => handleCreate()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
+              <ActionGate anyOf={["income_expense.create_expense"]}><button onClick={() => handleCreate()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button></ActionGate>
             </div>
           </div>
         </div>

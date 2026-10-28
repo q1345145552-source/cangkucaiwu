@@ -1,4 +1,6 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
+import { useTierPermission } from "@/hooks/useActionPermission";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useAuth } from "@/hooks/useAuth";
 import { pendingWalletOperation, submitWalletOperation } from "@/lib/manualWallet";
@@ -11,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { Edit, Trash2, Power, PowerOff } from "lucide-react";
 
 export default function AccountsPage() {
-  const hasWalletPermission = useMenuPermission("accounts");
+  const hasWalletPermission = useTierPermission("accounts", "operate");
   const { user } = useAuth() as { user: { role: string } | null };
   const canWriteWallet = hasWalletPermission && ["warehouse_admin", "staff"].includes(user?.role || "");
   const canCreateAccount = hasWalletPermission && user?.role === "warehouse_admin";
@@ -142,11 +144,11 @@ export default function AccountsPage() {
     )},
     { key: "id", label: "操作", render: (_: any, row: any) => (
       canCreateAccount && <div className="flex items-center gap-1">
-        <button onClick={() => handleToggleStatus(row)} className={`btn-xs flex items-center gap-0.5 ${row.status === "active" ? "text-orange-600 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"} px-2 py-1 rounded`} title={row.status === "active" ? "停用" : "启用"}>
+        <ActionGate anyOf={["payment_accounts.toggle_account_status#operate"]}><button onClick={() => handleToggleStatus(row)} className={`btn-xs flex items-center gap-0.5 ${row.status === "active" ? "text-orange-600 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"} px-2 py-1 rounded`} title={row.status === "active" ? "停用" : "启用"}>
           {row.status === "active" ? <PowerOff size={12} /> : <Power size={12} />}
-        </button>
-        <button onClick={() => openEdit(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button>
-        <button onClick={() => handleDelete(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />删除</button>
+        </button></ActionGate>
+        <ActionGate anyOf={["payment_accounts.update_account"]}><button onClick={() => openEdit(row)} className="btn-secondary btn-xs flex items-center gap-0.5"><Edit size={12} />编辑</button></ActionGate>
+        <ActionGate anyOf={["payment_accounts.delete_account#operate"]}><button onClick={() => handleDelete(row)} className="btn-xs flex items-center gap-0.5 text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 size={12} />删除</button></ActionGate>
       </div>
     )},
   ];
@@ -155,7 +157,7 @@ export default function AccountsPage() {
     <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="page-title">收款账户</h1>
-        <div className="flex gap-2">{canWriteWallet && <button className="btn-secondary" onClick={openTransfer}>内部转账</button>}{canCreateAccount && <button onClick={openCreate} className="btn-primary">新建账户</button>}</div>
+        <div className="flex gap-2">{canWriteWallet && <button className="btn-secondary" onClick={openTransfer}>内部转账</button>}{canCreateAccount && <ActionGate anyOf={["payment_accounts.create_account"]}><button onClick={openCreate} className="btn-primary">新建账户</button></ActionGate>}</div>
       </div>
 
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : loadError ? <div role="alert" className="card p-4 text-red-600">{loadError}<button className="btn-secondary ml-2" onClick={load}>重试</button></div> : <>
@@ -270,7 +272,7 @@ export default function AccountsPage() {
 
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleSave} className="btn-primary min-w-[80px]">{editingId ? "保存修改" : "新建账户"}</button>
+              <ActionGate anyOf={["payment_accounts.update_account#operate","payment_accounts.create_account#operate"]}><button onClick={handleSave} className="btn-primary min-w-[80px]">{editingId ? "保存修改" : "新建账户"}</button></ActionGate>
             </div>
           </div>
         </div>
@@ -284,7 +286,7 @@ export default function AccountsPage() {
         <div className="form-group"><label className="form-label">日期</label><input type="date" className="form-input" value={transfer.transfer_date} onChange={e => setTransfer({ ...transfer, transfer_date: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={transfer.amount} onChange={e => setTransfer({ ...transfer, amount: e.target.value })} /></div>
         <div className="form-group"><label className="form-label">备注</label><input className="form-input" value={transfer.remark} onChange={e => setTransfer({ ...transfer, remark: e.target.value })} /></div>
-        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={transferring} onClick={() => setShowTransfer(false)}>取消</button><button className="btn-primary" disabled={transferring || !transfer.amount || !transfer.from_account_id || !transfer.to_account_id} onClick={saveTransfer}>确认转账</button></div>
+        <div className="flex justify-end gap-2"><button className="btn-secondary" disabled={transferring} onClick={() => setShowTransfer(false)}>取消</button><ActionGate anyOf={["payment_accounts.create_transfer"]}><button className="btn-primary" disabled={transferring || !transfer.amount || !transfer.from_account_id || !transfer.to_account_id} onClick={saveTransfer}>确认转账</button></ActionGate></div>
       </div></div>}
     </>
   );

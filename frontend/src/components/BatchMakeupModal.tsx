@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -88,7 +89,7 @@ export default function BatchMakeupModal({ employees, scheduleTimes, onClose, on
       </div>
       <div className="px-5 py-4 border-t flex justify-end gap-3 shrink-0">
         <button type="button" disabled={saving || historyBusy} onClick={onClose} className="btn-secondary">取消</button>
-        <button type="button" disabled={saving || historyBusy || !employees.length} onClick={submit} className="btn-primary">{saving ? "补卡中..." : "确认补卡"}</button>
+        <ActionGate anyOf={["clock_in.batch_makeup_clock_in#operate"]}><button type="button" disabled={saving || historyBusy || !employees.length} onClick={submit} className="btn-primary">{saving ? "补卡中..." : "确认补卡"}</button></ActionGate>
       </div>
     </div>
   </div>;

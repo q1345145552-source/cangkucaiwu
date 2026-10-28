@@ -41,3 +41,20 @@ async def private_response_cache(request, call_next):
         response.headers["Cache-Control"] = response.headers.get("Cache-Control", "") if "no-store" in response.headers.get("Cache-Control", "") else "private, no-store"
         response.headers["Vary"] = "Authorization, Cookie, X-Warehouse-ID"
     return response
+
+
+@app.middleware("http")
+async def registered_action_boundary(request, call_next):
+    from starlette.routing import Match
+    from starlette.responses import JSONResponse
+    from app.core.action_access import ROUTES
+    public_schema = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
+    if request.url.path not in public_schema and request.method != "OPTIONS":
+        for route in app.routes:
+            match, _ = route.matches(request.scope)
+            if match == Match.FULL:
+                if (request.method, getattr(route, "path", "")) not in ROUTES:
+                    return JSONResponse({"detail": "该业务动作尚未登记，拒绝访问"}, status_code=403,
+                                        headers={"Cache-Control": "private, no-store"})
+                break
+    return await call_next(request)

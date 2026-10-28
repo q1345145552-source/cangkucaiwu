@@ -1,4 +1,6 @@
 'use client';
+import ActionGate from '@/components/permissions/ActionGate';
+import {useTierPermission} from '@/hooks/useActionPermission';
 import {useEffect,useRef,useState} from 'react';
 import {api} from '@/lib/api';
 import {inventoryScope,submitInventory} from '@/lib/inventoryRequest';
@@ -48,8 +50,8 @@ export default function InventoryControls({account,owner,onSaved}:{account:any;o
     <p className="text-sm">实盘先登记，老板填审核原因后才生成调整流水。登记后有任何库存变动，须驳回旧盘点并重新盘，不直接覆盖余额。</p>
     {error&&<p role="alert" className="text-red-600 break-words">{error}</p>}
     {visible?<><p className="text-sm">安全下限：{visible.controls.minimum_quantity??'未配置'} · 收货/净领用比阈值：{visible.controls.receipt_usage_ratio??'未配置'}。备货说明：{visible.controls.stockpiling_note||'未填写'}</p>
-      <div className="flex flex-wrap gap-2"><button className="btn-secondary" disabled={!account.opening_confirmed} onClick={()=>open('count')}>登记本次实盘</button>{owner&&<button className="btn-secondary" onClick={()=>open('controls')}>设置安全库存与用量阈值</button>}</div>
-      {visible.counts.data.map((c:any)=><article className="border rounded p-3 space-y-2 text-sm break-words" key={c.id}><p>盘点 #{c.id} · {c.status==='pending'?'待审核':c.status==='approved'?'已审核并调整':'已驳回'} · 账面{c.book_quantity} · 实盘{c.counted_quantity} · 差异{c.difference} {account.unit_label}</p><p>登记人 {c.creator_name} · {thai(c.counted_at)}（泰国时间） · 原因：{c.reason}</p>{c.reviewed_at&&<p>审核人 {c.reviewer_name} · {thai(c.reviewed_at)} · 审核原因：{c.review_reason} · 调整流水 #{c.adjustment_id??'无'}</p>}{owner&&c.status==='pending'&&<div className="flex flex-wrap gap-3"><button className="btn-primary" onClick={()=>open('review',c,'approve')}>审核调整 #{c.id}</button><button className="btn-secondary" onClick={()=>open('review',c,'reject')}>驳回盘点 #{c.id}</button></div>}</article>)}
+      <div className="flex flex-wrap gap-2"><ActionGate action={"inventory.submit_count"}><button className="btn-secondary" disabled={!account.opening_confirmed} onClick={()=>open('count')}>登记本次实盘</button></ActionGate>{owner&&<ActionGate action={"inventory.set_controls"}><button className="btn-secondary" onClick={()=>open('controls')}>设置安全库存与用量阈值</button></ActionGate>}</div>
+      {visible.counts.data.map((c:any)=><article className="border rounded p-3 space-y-2 text-sm break-words" key={c.id}><p>盘点 #{c.id} · {c.status==='pending'?'待审核':c.status==='approved'?'已审核并调整':'已驳回'} · 账面{c.book_quantity} · 实盘{c.counted_quantity} · 差异{c.difference} {account.unit_label}</p><p>登记人 {c.creator_name} · {thai(c.counted_at)}（泰国时间） · 原因：{c.reason}</p>{c.reviewed_at&&<p>审核人 {c.reviewer_name} · {thai(c.reviewed_at)} · 审核原因：{c.review_reason} · 调整流水 #{c.adjustment_id??'无'}</p>}{owner&&c.status==='pending'&&<div className="flex flex-wrap gap-3"><ActionGate action={"inventory.review_count"}><button className="btn-primary" onClick={()=>open('review',c,'approve')}>审核调整 #{c.id}</button></ActionGate><ActionGate action={"inventory.review_count"}><button className="btn-secondary" onClick={()=>open('review',c,'reject')}>驳回盘点 #{c.id}</button></ActionGate></div>}</article>)}
       {!visible.counts.data.length&&<p>暂无盘点记录；未从历史数据补造。</p>}<div className="flex gap-3"><button className="btn-secondary" disabled={page<=1} onClick={()=>setPage(v=>v-1)}>盘点上一页</button><span>共{visible.counts.total}条</span><button className="btn-secondary" disabled={page*20>=visible.counts.total} onClick={()=>setPage(v=>v+1)}>盘点下一页</button></div>
     </>:!error&&<p>盘点读取中</p>}
     {form&&form.scope===scope&&<div className="modal-overlay z-[80]" onClick={()=>!busy&&setForm(null)}><div role="dialog" aria-label="盘点与提醒登记" className="bg-white rounded-xl p-5 w-[560px] max-w-[95vw] max-h-[85vh] overflow-auto space-y-3" onClick={e=>e.stopPropagation()}>
@@ -60,7 +62,7 @@ export default function InventoryControls({account,owner,onSaved}:{account:any;o
         {form.kind==='review'&&<p>盘点 #{form.count.id}：原账面{form.count.book_quantity}，实盘{form.count.counted_quantity}，差异{form.count.difference}。{form.decision==='approve'?'将新增调整流水，库存变过须重新盘。':'只留驳回记录，库存不变。'}</p>}
         <label className="block">原因（必填）<textarea aria-label="盘点或审核原因" className="form-input" value={form.reason} maxLength={1000} onChange={e=>update({reason:e.target.value})}/></label>
       </>}
-      <div className="flex flex-wrap gap-3 justify-end sticky bottom-0 bg-white pt-3"><button className="btn-secondary" disabled={busy} onClick={()=>setForm(null)}>取消盘点操作</button><button className="btn-primary" disabled={busy} onClick={save}>{busy?'保存中...':form.locked?'沿用原盘点请求重试':'确认盘点操作'}</button></div>
+      <div className="flex flex-wrap gap-3 justify-end sticky bottom-0 bg-white pt-3"><button className="btn-secondary" disabled={busy} onClick={()=>setForm(null)}>取消盘点操作</button><ActionGate action={form.kind==='review'?'inventory.review_count':form.kind==='controls'?'inventory.set_controls':'inventory.submit_count'}><button className="btn-primary" disabled={busy} onClick={save}>{busy?'保存中...':form.locked?'沿用原盘点请求重试':'确认盘点操作'}</button></ActionGate></div>
     </div></div>}
   </section>;
 }

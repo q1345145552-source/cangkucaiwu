@@ -1,3 +1,4 @@
+from app.core.action_access import capability_tiers
 """Round-three financial duties and immutable approval evidence; existing history storage."""
 import hashlib,json
 from fastapi import HTTPException
@@ -142,12 +143,14 @@ async def permitted(operation):
     except HTTPException:
         return False
 
+@capability_tiers("payroll")
 async def payroll_capabilities(db,user,r):
     independent_user=await permitted(independent(db,user,*await employee_users(db,r.employee_id)))
     return {'can_confirm':user.role==Role.WAREHOUSE_ADMIN and independent_user and r.status=='pending' and not r.disbursed and not r.voided,
         'can_pay':await permitted(execute_payroll(db,user,r)),
         'can_rework':await permitted(draft_payroll(db,user,r))}
 
+@capability_tiers("reimbursement")
 async def reimbursement_capabilities(db,user,r):
     own=not await permitted(independent(db,user,r.employee_id))
     verified=await permitted(proof(db,r,'reimb_verify',await reimb_payload(db,r))) if r.is_fund_linked!='1' and r.status=='pending' else False
@@ -168,6 +171,7 @@ async def reimbursement_capabilities(db,user,r):
         'can_pay':can_pay,'can_return':user.role==Role.WAREHOUSE_ADMIN and r.is_fund_linked!='1' and r.status in ('approved','partially_approved','rejected'),
         'workflow_stage':'待批准' if verified else {'pending':'待核验','fund_linked':'待核验','approved':'待执行','partially_approved':'部分批准，待执行','paid':'已付款','rejected':'已驳回'}.get(r.status,r.status)}
 
+@capability_tiers("employee_advances")
 async def advance_capabilities(db,user,r):
     independent_user=await permitted(independent(db,user,*await advance_people(db,r)))
     verified=await permitted(proof(db,r,'advance_verify',await advance_payload(db,r))) if r.approval_status=='verified' else False
@@ -178,6 +182,7 @@ async def advance_capabilities(db,user,r):
         'can_execute':not r.is_voided and approved and executor_allowed,
         'workflow_stage':{'pending':'待核验','verified':'待批准','approved_ready':'待出款','approved':'已出款','rejected':'已驳回'}.get(r.approval_status,r.approval_status)}
 
+@capability_tiers("cash_advances")
 async def cash_capabilities(db,user,r):
     independent_user=r.payer_id is not None and await permitted(independent(db,user,r.payer_id,r.created_by_id))
     verified=await permitted(proof(db,r,'cash_verify',await cash_payload(db,r))) if r.status=='pending' else False
@@ -187,6 +192,7 @@ async def cash_capabilities(db,user,r):
         'can_repay':approved and await permitted(executor(db,user,r.payer_id,r.created_by_id)),
         'workflow_stage':'待批准' if verified else {'pending':'待核验','confirmed':'待执行','repaid':'已还清','rejected':'已驳回'}.get(r.status,r.status)}
 
+@capability_tiers("payable")
 async def bill_capabilities(db,user,r):
     independent_user=await permitted(independent(db,user,r.created_by))
     active=r.status not in ('paid','voided')
@@ -199,6 +205,7 @@ async def bill_capabilities(db,user,r):
         'workflow_stage':{'paid':'已付清','voided':'已作废'}.get(r.status,'待执行' if approved else ('待批准' if verified else '待核验'))}
 
 
+@capability_tiers("payment_plans")
 async def plan_capabilities(db,user,p):
     from app.models.payable import PayableBill
     from app.services.wallet import money

@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
@@ -177,7 +178,7 @@ export default function ReconciliationPage() {
     { key: "amount_diff", label: "差额", align: "right" as const, render: (v: number) => v ? <span className="text-orange-600 font-medium">{v}</span> : <span className="text-green-600">0</span> },
     { key: "handling_note", label: "备注", render: (v: string) => v || "-" },
     { key: "id", label: "操作", render: (_: any, row: any) => (
-      <button disabled={!(canWrite)} onClick={() => handleUnmatch(row)} className="btn-secondary btn-xs">解除匹配</button>
+      <ActionGate anyOf={["reconciliation.unmatch_record#operate"]}><button disabled={!(canWrite)} onClick={() => handleUnmatch(row)} className="btn-secondary btn-xs">解除匹配</button></ActionGate>
     )},
   ];
 
@@ -257,7 +258,7 @@ export default function ReconciliationPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowMatchConfirm(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button disabled={!(canWrite)} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button>
+              <ActionGate anyOf={["reconciliation.manual_match#operate"]}><button disabled={!(canWrite)} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button></ActionGate>
             </div>
           </div>
         </div>

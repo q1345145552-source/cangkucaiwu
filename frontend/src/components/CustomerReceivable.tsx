@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
@@ -51,6 +52,6 @@ export default function CustomerReceivable({ customerId, onChanged }: { customer
       </div>)}
       {source&&<div className="bg-blue-50 rounded-lg p-3 text-sm space-y-2" aria-label="客户对账来源详情"><p>来源：{source.source==="shipment"?"原账期发货记录":"原实际到账流水"} #{source.source_id}</p><p>客户 #{data.customer_id} · 仓库 #{source.warehouse_id} · {source.date} · {money(source.amount,source.currency)}</p>{source.credit_id&&<p>账期账户 #{source.credit_id} · 订单数 {source.order_count??"未知"} · 参考 {source.order_no||"—"}</p>}<p>备注：{source.remark||"—"}</p><button className="btn-secondary text-xs" onClick={()=>setSource(null)}>收起来源</button></div>}
     </>}
-    {linking&&<div className="border rounded-xl p-3 bg-gray-50 space-y-3" aria-label="关联客户实际到账"><h4 className="font-semibold">明确客户实际到账</h4><p className="text-xs">只选择本仓未归属或已归属本客户的实际到账。按编号确认，不按付款方名称推断；已归属其他客户不能改绑。关联不会再次入账。</p><select aria-label="待关联实际到账" className="form-input" value={selected} disabled={saving} onChange={e=>setSelected(e.target.value)}><option value="">请选择实际到账</option>{receipts.map(r=><option key={r.id} value={r.id}>#{r.id} · {r.received_date.slice(0,10)} · {r.payer_name||"未填付款方"} · {money(r.amount,r.currency)}</option>)}</select>{!receipts.length&&<p className="text-xs text-gray-500">暂无可关联到账；新收款请到到账流水登记，勿把申报当成到账。</p>}<div className="flex justify-end gap-2"><button className="btn-secondary" disabled={saving} onClick={()=>setLinking(false)}>取消关联</button><button className="btn-primary" disabled={saving} onClick={saveLink}>{saving?"关联中…":"确认关联到账"}</button></div></div>}
+    {linking&&<div className="border rounded-xl p-3 bg-gray-50 space-y-3" aria-label="关联客户实际到账"><h4 className="font-semibold">明确客户实际到账</h4><p className="text-xs">只选择本仓未归属或已归属本客户的实际到账。按编号确认，不按付款方名称推断；已归属其他客户不能改绑。关联不会再次入账。</p><select aria-label="待关联实际到账" className="form-input" value={selected} disabled={saving} onChange={e=>setSelected(e.target.value)}><option value="">请选择实际到账</option>{receipts.map(r=><option key={r.id} value={r.id}>#{r.id} · {r.received_date.slice(0,10)} · {r.payer_name||"未填付款方"} · {money(r.amount,r.currency)}</option>)}</select>{!receipts.length&&<p className="text-xs text-gray-500">暂无可关联到账；新收款请到到账流水登记，勿把申报当成到账。</p>}<div className="flex justify-end gap-2"><button className="btn-secondary" disabled={saving} onClick={()=>setLinking(false)}>取消关联</button><ActionGate anyOf={["customers.link_customer_receipt#operate"]}><button className="btn-primary" disabled={saving} onClick={saveLink}>{saving?"关联中…":"确认关联到账"}</button></ActionGate></div></div>}
   </section>;
 }

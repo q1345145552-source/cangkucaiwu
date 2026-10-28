@@ -10,10 +10,16 @@ class UserBase(BaseModel):
     warehouse_ids: list[int] | None = None  # 多仓分配（主管）
 
 class UserCreate(UserBase):
+    model_config = {"extra": "forbid"}
+    action_permissions: list[str] | None = None
+    permission_reason: str | None = Field(None, max_length=200)
     password: str = Field(..., min_length=6)
     extra_permissions: list[str] | None = None  # 扩展权限（主管/财务）
 
 class UserUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+    action_permissions: list[str] | None = None
+    permission_reason: str | None = Field(None, max_length=200)
     display_name: str | None = None
     username: str | None = None
     password: str | None = None

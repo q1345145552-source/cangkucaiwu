@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState, useRef } from "react";
 import { warehouseRequestHeaders } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
@@ -45,14 +46,14 @@ export function ReceiptHistory({order}:{order:any}) {
     <h3 className="font-semibold">收货批次历史</h3>
     {order.receipt_baseline && <div className="bg-amber-50 p-2 rounded"><p>{order.receipt_baseline.note}</p>
       {order.receipt_baseline.source==="legacy_recorded_fields" && <p>历史基数：{order.items?.map((it:any)=>`${it.product_name} ${it.historical_received_quantity ?? "未知"}${it.unit || "（单位未记录）"}`).join("；")}</p>}
-      {order.receipt_baseline.photo_path && <button className="text-blue-600 underline" onClick={()=>photo(0)}>查看历史基数照片</button>}
+      {order.receipt_baseline.photo_path && <ActionGate anyOf={["suppliers.upload_purchase_receipt"]}><button className="text-blue-600 underline" onClick={()=>photo(0)}>查看历史基数照片</button></ActionGate>}
     </div>}
     {(order.receipt_issues || []).map((s:string)=><p className="text-red-600" key={s}>{s}</p>)}
     {!order.receipt_batches?.length ? <p>暂无新收货批次，没有补造历史事件。</p> : order.receipt_batches.map((batch:any)=><div className="border rounded p-3 space-y-1 target:bg-blue-50" key={batch.id} id={`receipt-event-${batch.id}`}>
       <p className="font-medium">批次 #{batch.id} · {batch.operator_name} · {thaiTime(batch.received_at)}</p>
       {batch.items.map((it:any)=><p key={it.line_id}>{it.product_name} {it.spec || ""} · 本次 {it.quantity}{it.unit || "（单位未记录）"}<span className="block text-xs text-gray-500 break-all">行编号：{it.line_id}</span></p>)}
       <p>备注：{batch.remark || "未填写"}</p><p className="text-xs break-all">请求编号：{batch.request_key}</p>
-      <button className="text-blue-600 underline" onClick={()=>photo(batch.id)}>查看批次{batch.id}照片</button>
+      <ActionGate anyOf={["suppliers.upload_purchase_receipt"]}><button className="text-blue-600 underline" onClick={()=>photo(batch.id)}>查看批次{batch.id}照片</button></ActionGate>
     </div>)}
     {error && <p role="alert" className="text-red-600">{error}</p>}
     {preview && <div className="modal-overlay z-[95]" onClick={()=>setPreview(null)}><div role="dialog" aria-label="到货照片" className="bg-white rounded p-3 max-w-[95vw] max-h-[90vh] overflow-auto" onClick={e=>e.stopPropagation()}><button className="btn-secondary mb-2" onClick={()=>setPreview(null)}>关闭照片</button>{preview.type.includes("pdf") ? <a href={preview.url} target="_blank" rel="noreferrer">打开PDF凭证</a> : <img className="max-w-full" src={preview.url} alt="本批到货照片"/>}</div></div>}

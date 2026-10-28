@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
 import { useEffect, useState, useCallback } from "react";
 import { api, getToken } from "@/lib/api";
@@ -509,13 +510,13 @@ export default function LaborEfficiencyPage() {
               className="flex-1 border rounded-lg px-3 py-2 text-sm"
               placeholder="默认 450"
             />
-            <button
+            <ActionGate anyOf={["efficiency.set_standard#operate"]}><button
               onClick={saveStandard}
               disabled={stdSaving}
               className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm flex items-center gap-1 disabled:opacity-50"
             >
               <Save size={16} /> {stdSaving ? "保存中" : "保存"}
-            </button>
+            </button></ActionGate>
           </div>
           )}
         </div>
@@ -711,10 +712,10 @@ export default function LaborEfficiencyPage() {
               </div>
               <div className="flex gap-3 pt-1">
                 <button onClick={() => setOrderModal(null)} className="flex-1 py-2 border rounded-lg text-sm active:bg-gray-100">取消</button>
-                <button onClick={saveDailyOrder} disabled={orderModalSaving}
+                <ActionGate anyOf={["efficiency.set_order_count#operate"]}><button onClick={saveDailyOrder} disabled={orderModalSaving}
                   className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold active:bg-blue-700 disabled:opacity-50">
                   {orderModalSaving ? "保存中..." : "保存"}
-                </button>
+                </button></ActionGate>
               </div>
             </div>
           </div>
@@ -749,16 +750,16 @@ export default function LaborEfficiencyPage() {
               </div>
               <div className="flex gap-3 pt-1">
                 {suppModal.current != null && (
-                  <button onClick={clearSupplement} disabled={suppSaving}
+                  <ActionGate anyOf={["efficiency.delete_manual_hour#operate"]}><button onClick={clearSupplement} disabled={suppSaving}
                     className="px-3 py-2 border border-red-200 text-red-500 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
                     清除
-                  </button>
+                  </button></ActionGate>
                 )}
                 <button onClick={() => setSuppModal(null)} className="flex-1 py-2 border rounded-lg text-sm active:bg-gray-100">取消</button>
-                <button onClick={saveSupplement} disabled={suppSaving}
+                <ActionGate anyOf={["efficiency.set_manual_hour#operate"]}><button onClick={saveSupplement} disabled={suppSaving}
                   className="flex-1 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold active:bg-amber-600 disabled:opacity-50">
                   {suppSaving ? "保存中..." : "保存"}
-                </button>
+                </button></ActionGate>
               </div>
             </div>
           </div>

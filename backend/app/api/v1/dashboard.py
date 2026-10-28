@@ -1,3 +1,4 @@
+from app.core.action_access import has_module
 from app.core.round5_access import financial_reader, has_menu
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -161,7 +162,7 @@ async def warehouse_summary(request: Request, warehouse_id: int | None = None,
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权访问")
     from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
-    if current_user.role in (Role.SUPERVISOR, Role.STAFF) and MENU_PERMISSIONS_BY_KEY['reports'].label not in (current_user.extra_permissions or []):
+    if current_user.role in (Role.SUPERVISOR, Role.STAFF) and not has_module(current_user,'reports','view'):
         raise HTTPException(403, "无此操作权限，需要: 报表中心")
     from app.services.warehouse_summary import warehouse_scope, summarize
     warehouses = await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'), warehouse_id, warehouse_ids)

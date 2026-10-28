@@ -1,0 +1,81 @@
+[
+  {
+    "page": "credit",
+    "handler": "openPayment",
+    "id": "credit.create_repayment",
+    "candidates": [
+      "credit.create_credit",
+      "credit.update_credit",
+      "credit.create_shipment",
+      "credit.update_shipment",
+      "credit.void_shipment",
+      "credit.record_repayment"
+    ]
+  },
+  {
+    "page": "deduction-templates",
+    "handler": "openCreate",
+    "id": "deduction_template.create_template",
+    "candidates": [
+      "deduction_template.create_deduction_template",
+      "deduction_template.update_deduction_template",
+      "deduction_template.delete_deduction_template"
+    ]
+  },
+  {
+    "page": "deduction-templates",
+    "handler": "openEdit",
+    "id": "deduction_template.update_template",
+    "candidates": [
+      "deduction_template.create_deduction_template",
+      "deduction_template.update_deduction_template",
+      "deduction_template.delete_deduction_template"
+    ]
+  },
+  {
+    "page": "salary-templates",
+    "handler": "openCreate",
+    "id": "salary_template.create_template",
+    "candidates": [
+      "salary_template.create_salary_template",
+      "salary_template.update_salary_template",
+      "salary_template.delete_salary_template"
+    ]
+  },
+  {
+    "page": "salary-templates",
+    "handler": "openEdit",
+    "id": "salary_template.update_template",
+    "candidates": [
+      "salary_template.create_salary_template",
+      "salary_template.update_salary_template",
+      "salary_template.delete_salary_template"
+    ]
+  },
+  {
+    "page": "supplier-skus",
+    "handler": "setShowForm",
+    "id": "sku_catalog.create_sku",
+    "candidates": [
+      "sku_catalog.create",
+      "sku_catalog.update",
+      "sku_catalog.mapping",
+      "sku_catalog.create_tag",
+      "sku_catalog.update_tag",
+      "sku_catalog.assign_tags"
+    ]
+  },
+  {
+    "page": "supplier-skus",
+    "handler": "edit",
+    "id": "sku_catalog.update_sku",
+    "candidates": [
+      "sku_catalog.create",
+      "sku_catalog.update",
+      "sku_catalog.mapping",
+      "sku_catalog.create_tag",
+      "sku_catalog.update_tag",
+      "sku_catalog.assign_tags"
+    ]
+  }
+]

@@ -117,7 +117,7 @@ def test_only_warehouse_admin_can_void_regardless_of_permission(tmp_path, monkey
                 await set_perms(factory, uid, ["员工预支"] if grant else [])
             before = await all_money(factory)
             response = await void(client, created["id"], uid=uid)
-            expected = "超级管理员请使用各仓库管理员账号操作" if uid==2 else "无权访问" if uid==5 else "无此操作权限，需要: 员工预支" if not grant else "只有仓库管理员可以作废预支"
+            expected = "超级管理员请使用各仓库管理员账号操作" if uid==2 else "无权访问" if uid==5 else "该动作超出当前角色职责上限"
             assert response.status_code == 403 and response.json() == {"detail": expected}
             assert await all_money(factory) == before
     asyncio.run(run())

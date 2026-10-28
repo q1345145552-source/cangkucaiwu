@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -28,7 +29,7 @@ export default function PayableDetail({ billId, revision, onClose, onPay, onConf
         <p>供应商：{bill.supplier_name} · 状态：{billStatus[bill.status] || bill.status}</p>
         <p>应付总额 {fmtMoney(bill.amount,bill.currency)} · 累计已付 {bill.paid_amount == null ? "未记录" : fmtMoney(bill.paid_amount,bill.currency)} · 剩余应付 {bill.remaining_amount == null ? "待核对" : fmtMoney(bill.remaining_amount,bill.currency)}</p>
         {bill.need_boss_confirm === "true" && <p className="text-red-600">待老板确认收货差异，暂不能付款</p>}
-        {canWrite && user?.role === "warehouse_admin" && bill.need_boss_confirm === "true" && bill.status !== "voided" && onConfirm && <button className="btn-primary" onClick={()=>onConfirm(bill.id)}>确认收货差异</button>}
+        {canWrite && user?.role === "warehouse_admin" && bill.need_boss_confirm === "true" && bill.status !== "voided" && onConfirm && <ActionGate anyOf={["payable.confirm_bill"]}><button className="btn-primary" onClick={()=>onConfirm(bill.id)}>确认收货差异</button></ActionGate>}
         {bill.purchase_order_id ? <Link className="text-blue-600 underline" href={`/suppliers/purchase-orders/${bill.purchase_order_id}`}>查看关联采购单 {bill.purchase_order_number}</Link> : <p>未关联采购单（手动账单）</p>}
         {(bill.warnings || []).map((w:string)=><p role="alert" className="text-red-600" key={w}>{w}</p>)}
         {bill.invoice_identity && <p>已核实发票：{bill.invoice_identity.issuer_identifier} · {bill.invoice_identity.series} · {bill.invoice_identity.number}</p>}
@@ -44,10 +45,10 @@ export default function PayableDetail({ billId, revision, onClose, onPay, onConf
         {bill.legacy_paid_amount == null ? <p className="text-red-600">历史累计无法确定，请核对</p> : bill.legacy_paid_amount > 0 && <p className="text-amber-700">历史累计 {fmtMoney(bill.legacy_paid_amount,bill.currency)}，缺逐笔明细；已包含在累计已付中，不再相加</p>}
         <section className="border-t pt-3 space-y-2"><p>{bill.voucher_scope}</p>
           {bill.payment_voucher ? <a className="text-blue-600 underline" href={bill.payment_voucher} target="_blank" rel="noreferrer">查看账单级付款凭证</a> : <p>尚无账单级付款凭证</p>}
-          {canWrite && <><input key={billId} aria-label="重传账单级凭证" type="file" accept="image/*" onChange={e=>{try{const file=e.target.files?.[0];setFileTask(file ? {billId,file,scope:payableScope()} : null);}catch(e:any){setNotice(e.message);}}}/><button className="btn-secondary" disabled={fileTask?.billId!==billId || saving} onClick={upload}>仅上传／重传凭证</button></>}
+          {canWrite && <><input key={billId} aria-label="重传账单级凭证" type="file" accept="image/*" onChange={e=>{try{const file=e.target.files?.[0];setFileTask(file ? {billId,file,scope:payableScope()} : null);}catch(e:any){setNotice(e.message);}}}/><ActionGate anyOf={["payable.upload_bill_attachment"]}><button className="btn-secondary" disabled={fileTask?.billId!==billId || saving} onClick={upload}>仅上传／重传凭证</button></ActionGate></>}
           {notice && <p role="status">{notice}</p>}
         </section>
-        {canWrite && bill.paid_amount != null && !["paid","voided"].includes(bill.status) && bill.need_boss_confirm !== "true" && <button className="btn-primary" onClick={()=>onPay(bill)}>付款</button>}
+        {canWrite && bill.paid_amount != null && !["paid","voided"].includes(bill.status) && bill.need_boss_confirm !== "true" && <ActionGate anyOf={["payable.pay_bill"]}><button className="btn-primary" onClick={()=>onPay(bill)}>付款</button></ActionGate>}
       </>}
     </div>
   </div></div>;

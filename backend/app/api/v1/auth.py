@@ -1,3 +1,4 @@
+from app.core.action_access import access_description, legacy_labels
 from app.core.employee_access import own_employee
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from pydantic import BaseModel
@@ -79,7 +80,8 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
         "warehouse_id": user.warehouse_id,
         "warehouse_name": warehouse_name,
         "warehouses": warehouses,
-        "extra_permissions": user.extra_permissions or [],
+        "extra_permissions": legacy_labels(user),
+        "action_access": access_description(user),
         "attendance_enabled": bool(user.attendance_enabled),
         "attendance_employee_id": user.attendance_employee_id,
     }
@@ -108,7 +110,8 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
         "warehouse_name": wh_name,
         "warehouses": warehouses,
         "is_active": current_user.is_active,
-        "extra_permissions": current_user.extra_permissions or [],
+        "extra_permissions": legacy_labels(current_user),
+        "action_access": access_description(current_user),
         "attendance_enabled": bool(current_user.attendance_enabled),
         "attendance_employee_id": current_user.attendance_employee_id,
     }

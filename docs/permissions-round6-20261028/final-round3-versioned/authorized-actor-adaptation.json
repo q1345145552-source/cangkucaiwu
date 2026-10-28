@@ -1,0 +1,6 @@
+{
+  "original_source": "/private/tmp/permissions-round6-20261028/backend/tests/permission_round3/scenarios.py",
+  "original_sha256": "e6ae6d25c5ae5fe451a3b563a60e43742f361d87e1b4274070eb857d51be3d13",
+  "change": "cash helper default creator 2 (supervisor) -> 125 (independent authorized finance C); payer, amounts, approval actors, DB and all assertions unchanged",
+  "reason": "round6 role ceiling rejects supervisor creating another person cash debt; retain real downstream financial assertions with a lawful independent creator"
+}

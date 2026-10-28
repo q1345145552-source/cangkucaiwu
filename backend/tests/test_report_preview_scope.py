@@ -172,7 +172,9 @@ def test_record_original_preview_before_and_after_without_reopening_routes(tmp_p
    for uid in (3,1):
     for wh in (1,2):
      async with f() as db:
-      request=Request({'type':'http','method':'GET','path':'/api/v1/reports/previews','headers':[(b'x-warehouse-id',str(wh).encode())]})
+      from app.main import app
+      registered=next(r for r in app.routes if getattr(r,'path',None)=='/api/v1/reports/previews')
+      request=Request({'type':'http','route':registered,'method':'GET','path':'/api/v1/reports/previews','headers':[(b'x-warehouse-id',str(wh).encode())]})
       credentials=HTTPAuthorizationCredentials(scheme='Bearer',credentials=auth(uid)['Authorization'].split()[1])
       user=await get_current_user(request,credentials,db)
       before=await old(start_date='2026-10-01',end_date='2026-10-31',current_user=user,db=db)

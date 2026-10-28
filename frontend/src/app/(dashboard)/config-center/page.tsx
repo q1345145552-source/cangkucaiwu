@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -132,9 +133,9 @@ export default function ConfigCenterPage() {
         <div className="text-xs text-gray-400 mt-3">顺序：上班 &lt; 迟到半小时 &lt; 迟到1小时 &lt; 午休开始 &lt; 午休结束 &lt; 早退1小时 &lt; 早退半小时 &lt; 下班</div>
         {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，只有仓库管理员可修改</div>}
         {editable && (
-          <button onClick={save} disabled={saving} className="btn-primary mt-4">
+          <ActionGate anyOf={["config_api.set_work_schedule_settings#operate"]}><button onClick={save} disabled={saving} className="btn-primary mt-4">
             {saving ? "保存中..." : "保存作息"}
-          </button>
+          </button></ActionGate>
         )}
       </div>
 
@@ -166,9 +167,9 @@ export default function ConfigCenterPage() {
         </div>
         {!editable && <div className="text-xs text-gray-400 mt-2">当前账号只读，只有仓库管理员可修改</div>}
         {editable && (
-          <button onClick={saveThresholds} disabled={savingThresholds} className="btn-primary mt-4">
+          <ActionGate anyOf={["expense_approval.set_threshold#operate","expense_approval.update_approval#operate","suppliers.set_approval_threshold#operate","suppliers.update_supplier#operate","suppliers.set_concentration_threshold#operate"]}><button onClick={saveThresholds} disabled={savingThresholds} className="btn-primary mt-4">
             {savingThresholds ? "保存中..." : "保存审批门槛"}
-          </button>
+          </button></ActionGate>
         )}
       </div>
     </div>

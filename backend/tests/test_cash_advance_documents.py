@@ -16,9 +16,10 @@ from app.models.payroll import PayrollRecord
 from app.models.data_change_history import DataChangeHistory
 import app.api.v1.cash_advance as api
 from tests.test_round2_permissions import auth, set_perms
-from tests.test_round3_permissions import hr_environment
+from tests.permission_round6.legal_cash_fixture import hr_environment
 from tests.round3_flow_support import verify_approve_cash
-from tests.test_cash_advances import create, finance_snapshot, URL
+from tests.test_cash_advances import finance_snapshot, URL
+from tests.permission_round6.legal_cash_fixture import create
 
 
 REFS = [{"document_type": "payroll", "document_id": rid} for rid in (2, 4)]
@@ -128,13 +129,13 @@ def test_edit_pending_confirmed_permissions_and_warehouse(tmp_path, monkeypatch)
             await prepare(f)
             pending=(await create(c,4,amount="7000",linked_documents=REFS)).json()
             body={"advance_date":"2026-10-18","amount":"6000","purpose":"salary","linked_documents":REFS,"amount_difference_note":"差额1000"}
-            r=await c.put(f'{URL}/{pending["id"]}',headers=auth(4),json=body)
+            r=await c.put(f'{URL}/{pending["id"]}',headers=auth(94),json=body)
             assert r.status_code==200 and r.json()["status"]=="pending" and r.json()["amount"]==6000, r.text
             assert len(r.json()["linked_documents"])==2
             assert (await c.put(f'{URL}/{pending["id"]}',headers=auth(1),json={**body,"amount_difference_note":None})).status_code==400
             confirmed=(await create(c,4)).json()
             await verify_approve_cash(f,c,confirmed["id"])
-            assert (await c.put(f'{URL}/{confirmed["id"]}',headers=auth(4),json=body)).status_code==400
+            assert (await c.put(f'{URL}/{confirmed["id"]}',headers=auth(94),json=body)).status_code==400
             r=await c.put(f'{URL}/{confirmed["id"]}',headers=auth(1),json=body)
             assert r.status_code==200 and r.json()["status"]=="pending" and r.json()["reviewed_by_id"] is None
             for uid in (2,5):
@@ -186,7 +187,7 @@ def test_snapshot_survives_payment_change_and_log_failure_rolls_back_edit(tmp_pa
             async def fail(*args,**kwargs): raise HTTPException(500,"模拟日志失败")
             monkeypatch.setattr(api,"record_history",fail)
             body={"advance_date":"2026-10-18","amount":"3000","purpose":"salary","linked_documents":REFS[:1]}
-            assert (await c.put(f"{URL}/{aid}",headers=auth(4),json=body)).status_code==500
+            assert (await c.put(f"{URL}/{aid}",headers=auth(94),json=body)).status_code==500
             assert (await create(c,linked_documents=REFS,amount="7000")).status_code==500
             row=(await c.get(URL,headers=auth(1))).json()["data"][0]
             assert row["amount"]==7000 and len(row["linked_documents"])==2

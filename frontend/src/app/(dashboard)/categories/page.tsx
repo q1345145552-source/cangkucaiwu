@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
@@ -37,7 +38,7 @@ export default function CategoriesPage() {
       </div>
       <div className="flex gap-2 mb-4">
         <input className="border rounded px-3 py-2 text-sm w-64" placeholder="新类别名称" value={name} onChange={e=>setName(e.target.value)} />
-        <button onClick={add} className="btn-primary">添加</button>
+        <ActionGate anyOf={["income_expense.create_category#operate"]}><button onClick={add} className="btn-primary">添加</button></ActionGate>
       </div>
       {loading ? <div className="text-center py-8 text-gray-400">加载中...</div> : <div className="bg-white rounded-xl shadow-sm p-4">
         {cats.map((c:any) => <div key={c.id} className="flex justify-between py-2 border-b text-sm"><span>{c.name}</span><span className={`px-2 py-0.5 rounded text-xs ${c.status==="active"?"bg-green-100 text-green-700":"bg-gray-100"}`}>{c.status}</span></div>)}

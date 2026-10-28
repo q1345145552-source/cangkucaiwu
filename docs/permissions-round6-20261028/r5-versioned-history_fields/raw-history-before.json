@@ -1,0 +1,412 @@
+[
+  {
+    "id": 110,
+    "module": "reimbursement",
+    "record_id": 1,
+    "operator_id": 1,
+    "operator_name": null,
+    "operation_type": "edit",
+    "before_data": {
+      "amount": 888888,
+      "bank_name": "BANK-NAME-HISTORY"
+    },
+    "after_data": {
+      "amount": 888889
+    },
+    "warehouse_id": 1,
+    "created_at": "2026-10-27 23:54:03.718536+00:00"
+  },
+  {
+    "id": 103,
+    "module": "salary_templates",
+    "record_id": 1,
+    "operator_id": 1,
+    "operator_name": null,
+    "operation_type": "r04_change",
+    "before_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 919191,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY",
+        "amount": 373737,
+        "overtime_half_hour_fee": 565656
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "after_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 929292,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY",
+        "amount": 373737,
+        "overtime_half_hour_fee": 565656
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "warehouse_id": 1,
+    "created_at": "2026-10-27 23:54:03.718536+00:00"
+  },
+  {
+    "id": 104,
+    "module": "deduction_templates",
+    "record_id": 1,
+    "operator_id": 1,
+    "operator_name": null,
+    "operation_type": "r04_change",
+    "before_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 919191,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY",
+        "amount": 373737,
+        "overtime_half_hour_fee": 565656
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "after_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 929292,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY",
+        "amount": 373737,
+        "overtime_half_hour_fee": 565656
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "warehouse_id": 1,
+    "created_at": "2026-10-27 23:54:03.718536+00:00"
+  },
+  {
+    "id": 101,
+    "module": "employee",
+    "record_id": 1,
+    "operator_id": 1,
+    "operator_name": null,
+    "operation_type": "r04_change",
+    "before_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 919191,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY"
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "after_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 929292,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY"
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "warehouse_id": 1,
+    "created_at": "2026-10-27 23:54:03.718536+00:00"
+  },
+  {
+    "id": 102,
+    "module": "employees",
+    "record_id": 1,
+    "operator_id": 1,
+    "operator_name": null,
+    "operation_type": "r04_change",
+    "before_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 919191,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY"
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "after_data": {
+      "name": "ONSITE-HISTORY-FACT",
+      "base_salary": 929292,
+      "daily_wage": 929292,
+      "bank_account_number": "BANK-HISTORY-SENTINEL",
+      "bank_name": "BANK-NAME-HISTORY",
+      "bank_account_holder": "BANK-HOLDER-HISTORY",
+      "thai_id_number": "1234567890123",
+      "sso_number": "SSO-HISTORY-SENTINEL",
+      "passport_number": "PASSPORT-HISTORY-SENTINEL",
+      "voucher_path": "VOUCHER-HISTORY-SENTINEL",
+      "nested": [
+        {
+          "base_salary": 919191,
+          "bank_name": "BANK-NAME-HISTORY"
+        }
+      ],
+      "salary_template": {
+        "amount": 454545,
+        "overtime_half_hour_fee": 565656
+      },
+      "rule_values": {
+        "base_salary": 919191,
+        "salary_template_amount": 373737,
+        "bank_account_holder": "BANK-HOLDER-HISTORY"
+      },
+      "encoded": "{\"base_salary\": 676767, \"bank_name\": \"BANK-NAME-HISTORY\"}",
+      "changes": [
+        {
+          "field": "base_salary",
+          "old": 919191,
+          "new": 929292
+        },
+        {
+          "key": "bank_account_number",
+          "value": "BANK-HISTORY-SENTINEL"
+        }
+      ]
+    },
+    "warehouse_id": 1,
+    "created_at": "2026-10-27 23:54:03.718536+00:00"
+  },
+  {
+    "id": 109,
+    "module": "makeup_request",
+    "record_id": 1,
+    "operator_id": 5,
+    "operator_name": null,
+    "operation_type": "request",
+    "before_data": null,
+    "after_data": {
+      "status": "pending",
+      "date": "2026-10-20",
+      "note": "MAKEUP-BUSINESS-SENTINEL"
+    },
+    "warehouse_id": 1,
+    "created_at": "2026-10-27 23:54:03.718536+00:00"
+  },
+  {
+    "id": 108,
+    "module": "employee",
+    "record_id": 8,
+    "operator_id": 8,
+    "operator_name": null,
+    "operation_type": "update",
+    "before_data": {
+      "name": "FOREIGN-HISTORY-SENTINEL",
+      "base_salary": 919191
+    },
+    "after_data": {
+      "name": "FOREIGN-HISTORY-SENTINEL"
+    },
+    "warehouse_id": 2,
+    "created_at": "2026-10-27 23:54:03.718536+00:00"
+  }
+]

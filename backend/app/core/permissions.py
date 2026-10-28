@@ -28,8 +28,8 @@ ROLE_HIERARCHY = {
 def check_staff_permission(perm_key: str):
     async def dependency(current_user = Depends(get_current_user)):
         if current_user.role in (Role.STAFF, Role.SUPERVISOR):
-            perms = current_user.extra_permissions or []
-            if perm_key not in perms:
+            from app.core.action_access import legacy_permission
+            if not legacy_permission(current_user, perm_key):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"无此操作权限，需要: {STAFF_PERMISSIONS.get(perm_key, perm_key)}"
@@ -42,8 +42,8 @@ def check_staff_permission_any(*perm_keys: str):
     """财务/主管拥有任意一个权限即放行；超管/管理员直接放行；劳工不受此约束。用于多个页面共用的接口。"""
     async def dependency(current_user = Depends(get_current_user)):
         if current_user.role in (Role.STAFF, Role.SUPERVISOR):
-            perms = current_user.extra_permissions or []
-            if not any(k in perms for k in perm_keys):
+            from app.core.action_access import legacy_permission
+            if not any(legacy_permission(current_user, k) for k in perm_keys):
                 names = " / ".join(STAFF_PERMISSIONS.get(k, k) for k in perm_keys)
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -105,6 +105,8 @@ async def get_current_user(
     else:
         user._active_wh_id = user.warehouse_id
 
+    from app.core.action_access import enforce_action
+    await enforce_action(request, user)
     return user
 
 

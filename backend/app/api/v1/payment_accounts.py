@@ -112,7 +112,9 @@ async def list_accounts(request: Request, current_user: User = Depends(check_sta
     query = select(PaymentAccount).where(PaymentAccount.warehouse_id.in_(scope))
     result = await db.execute(query.order_by(PaymentAccount.id))
     accs = result.scalars().all()
-    if current_user.role == Role.SUPERVISOR:
+    from app.core.action_access import permission_state, has_module
+    if current_user.role == Role.SUPERVISOR or (permission_state(current_user)['version'] == 1
+            and not has_module(current_user, 'accounts', 'view')):
         return {"data": [{"id":a.id,"warehouse_id":a.warehouse_id,"account_name":a.account_name,
                           "currency":a.currency or "THB","status":a.status or "active"} for a in accs],
                 "warehouse_ids":scope,"scope":"account_selection_only"}

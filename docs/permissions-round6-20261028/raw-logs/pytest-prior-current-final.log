@@ -1,0 +1,1259 @@
+.....................F............F....F.....FFFFFFFFFFFFFFFFFFFFFFFFFFF [ 25%]
+.F.F.................................................................... [ 50%]
+.....FF..FF..............F.FFFFFFFFFFFFFFFFFF.F......................... [ 76%]
+...................FF.......FFFFFF..F.....F.FF...FF..FF............      [100%]
+=================================== FAILURES ===================================
+___ test_two_wages_difference_manual_status_detail_and_other_books_unchanged ___
+tests/test_cash_advance_documents.py:80: in test_two_wages_difference_manual_status_detail_and_other_books_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_documents.py:53: in run
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_edit_pending_confirmed_permissions_and_warehouse _____________
+tests/test_cash_advance_documents.py:152: in test_edit_pending_confirmed_permissions_and_warehouse
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_documents.py:131: in run
+    r=await c.put(f'{URL}/{pending["id"]}',headers=auth(4),json=body)
+E   KeyError: 'id'
+____ test_snapshot_survives_payment_change_and_log_failure_rolls_back_edit _____
+tests/test_cash_advance_documents.py:200: in test_snapshot_survives_payment_change_and_log_failure_rolls_back_edit
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_documents.py:184: in run
+    made=(await create(c,4,amount="7000",linked_documents=REFS)).json(); aid=made["id"]
+E   KeyError: 'id'
+_________ test_full_repayment_money_ledger_and_costs_exactly_unchanged _________
+tests/test_cash_advance_repayments.py:128: in test_full_repayment_money_ledger_and_costs_exactly_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:90: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____ test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance ____
+tests/test_cash_advance_repayments.py:159: in test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:134: in run
+    aid = await approved(c); path = await voucher(c); costs = await cost_totals(c); original = await finance_snapshot(f)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_admin_only_repayment_upload_accounts_and_revoke[2] ____________
+tests/test_cash_advance_repayments.py:185: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:167: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_admin_only_repayment_upload_accounts_and_revoke[3] ____________
+tests/test_cash_advance_repayments.py:185: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:167: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_admin_only_repayment_upload_accounts_and_revoke[4] ____________
+tests/test_cash_advance_repayments.py:185: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:167: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_admin_only_repayment_upload_accounts_and_revoke[5] ____________
+tests/test_cash_advance_repayments.py:185: in test_admin_only_repayment_upload_accounts_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:167: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_repayment_validation_no_partial_financial_writes[fields0-\u4e0d\u80fd\u8d85\u8fc7\u5269\u4f59\u672a\u8fd8] _
+tests/test_cash_advance_repayments.py:198: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:192: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_repayment_validation_no_partial_financial_writes[fields1-\u8bf7\u9009\u62e9\u5f52\u8fd8\u8d26\u6237] _
+tests/test_cash_advance_repayments.py:198: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:192: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_repayment_validation_no_partial_financial_writes[fields2-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247] _
+tests/test_cash_advance_repayments.py:198: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:192: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_repayment_validation_no_partial_financial_writes[fields3-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247] _
+tests/test_cash_advance_repayments.py:198: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:192: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_repayment_validation_no_partial_financial_writes[fields4-\u51ed\u8bc1\u7167\u7247\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93\u7684\u57ab\u6b3e\u5355] _
+tests/test_cash_advance_repayments.py:198: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:192: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_repayment_validation_no_partial_financial_writes[fields5-\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247\u4e0d\u5b58\u5728\uff0c\u8bf7\u91cd\u65b0\u4e0a\u4f20] _
+tests/test_cash_advance_repayments.py:198: in test_repayment_validation_no_partial_financial_writes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:192: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___ test_pending_rejected_inactive_cross_warehouse_and_currency_are_blocked ____
+tests/test_cash_advance_repayments.py:223: in test_pending_rejected_inactive_cross_warehouse_and_currency_are_blocked
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:206: in run
+    pending = (await create(c, 4)).json()["id"]
+E   KeyError: 'id'
+__________ test_full_reversal_inactive_account_and_multiple_payments ___________
+tests/test_cash_advance_repayments.py:239: in test_full_reversal_inactive_account_and_multiple_payments
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:229: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_history_failure_rolls_back_repayment_and_revoke _____________
+tests/test_cash_advance_repayments.py:255: in test_history_failure_rolls_back_repayment_and_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:245: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____ test_repayment_never_recalculates_and_manual_payroll_amount_stays_same ____
+tests/test_cash_advance_repayments.py:273: in test_repayment_never_recalculates_and_manual_payroll_amount_stays_same
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:267: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies _
+tests/test_cash_advance_repayments.py:306: in test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:280: in run
+    thb = await approved(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+________ test_invalid_money_does_not_change_balance_or_create_flows[0] _________
+tests/test_cash_advance_repayments.py:316: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:313: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+________ test_invalid_money_does_not_change_balance_or_create_flows[-1] ________
+tests/test_cash_advance_repayments.py:316: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:313: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_______ test_invalid_money_does_not_change_balance_or_create_flows[NaN] ________
+tests/test_cash_advance_repayments.py:316: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:313: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____ test_invalid_money_does_not_change_balance_or_create_flows[Infinity] _____
+tests/test_cash_advance_repayments.py:316: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:313: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______ test_invalid_money_does_not_change_balance_or_create_flows[1.001] _______
+tests/test_cash_advance_repayments.py:316: in test_invalid_money_does_not_change_balance_or_create_flows
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_cash_advance_repayments.py:313: in run
+    aid = await approved(c); path = await voucher(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[1] _
+tests/test_disabled_financial_reversals.py:66: in test_three_endpoints_disabled_for_every_authenticated_role_without_any_write
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_disabled_financial_reversals.py:47: in run
+    rid, aid, repayment_id = await executed_records(c)
+tests/test_disabled_financial_reversals.py:36: in executed_records
+    aid = await loan(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[2] _
+tests/test_disabled_financial_reversals.py:66: in test_three_endpoints_disabled_for_every_authenticated_role_without_any_write
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_disabled_financial_reversals.py:47: in run
+    rid, aid, repayment_id = await executed_records(c)
+tests/test_disabled_financial_reversals.py:36: in executed_records
+    aid = await loan(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[3] _
+tests/test_disabled_financial_reversals.py:66: in test_three_endpoints_disabled_for_every_authenticated_role_without_any_write
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_disabled_financial_reversals.py:47: in run
+    rid, aid, repayment_id = await executed_records(c)
+tests/test_disabled_financial_reversals.py:36: in executed_records
+    aid = await loan(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[4] _
+tests/test_disabled_financial_reversals.py:66: in test_three_endpoints_disabled_for_every_authenticated_role_without_any_write
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_disabled_financial_reversals.py:47: in run
+    rid, aid, repayment_id = await executed_records(c)
+tests/test_disabled_financial_reversals.py:36: in executed_records
+    aid = await loan(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[5] _
+tests/test_disabled_financial_reversals.py:66: in test_three_endpoints_disabled_for_every_authenticated_role_without_any_write
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_disabled_financial_reversals.py:47: in run
+    rid, aid, repayment_id = await executed_records(c)
+tests/test_disabled_financial_reversals.py:36: in executed_records
+    aid = await loan(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_revoked_history_amounts_and_ledger_readback_unchanged __________
+tests/test_disabled_financial_reversals.py:106: in test_revoked_history_amounts_and_ledger_readback_unchanged
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_disabled_financial_reversals.py:87: in run
+    rid, aid, repayment_id = await executed_records(c)
+tests/test_disabled_financial_reversals.py:36: in executed_records
+    aid = await loan(c)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_source_money_cost_ledger_and_void[company_account] ____________
+tests/test_employee_advance_funding.py:131: in test_source_money_cost_ledger_and_void
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_employee_advance_funding.py:130: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_source_money_cost_ledger_and_void:108', 'actual_failure': "assert (2 == 1)\n +  where 2 = len([{'account_id': 1, 'account_name': '账户1', 'amount': 1000.0, 'cash_advance_id': None, ...}, {'account_id': None, 'account_name': '未指定账户', 'amount': 10000.0, 'cash_advance_id': None, ...}])"}]
+----------------------------- Captured stdout call -----------------------------
+ADVANCE_FUNDING {"source": "company_account", "before": {"balance": 20000.0, "expenses": 0, "expense_amount": 0, "fund_available": 10000.0}, "after": {"balance": 19000.0, "expenses": 1, "expense_amount": 1000.0, "fund_available": 10000.0}, "flows_before": 1, "flows_after": 2, "response": {"message": "预支记录已创建", "id": 1, "approval_status": "pending", "approval_status_label": "待核验", "reviewer_id": null, "reviewed_at": null, "reject_reason": null, "expense_record_id": null, "funding_source": "company_account", "funding_source_label": "公司账户", "cash_advance_id": null, "payment_account_id": 1, "fund_account_id": null, "limit_check": {"checked": true, "currency": "THB", "monthly_salary": 10400.0, "occupied_amount": 0.0, "requested_amount": 1000.0, "available_amount": 10400.0, "remaining_amount": 9400.0}}}
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[False-3] _____
+tests/test_employee_advance_void.py:123: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_employee_advance_void.py:121: in run
+    assert response.status_code == 403 and response.json() == {"detail": expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '无此操作权限，需要: 员工预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '无此操作权限，需要: 员工预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[False-4] _____
+tests/test_employee_advance_void.py:123: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_employee_advance_void.py:121: in run
+    assert response.status_code == 403 and response.json() == {"detail": expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '无此操作权限，需要: 员工预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '无此操作权限，需要: 员工预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[True-3] ______
+tests/test_employee_advance_void.py:123: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_employee_advance_void.py:121: in run
+    assert response.status_code == 403 and response.json() == {"detail": expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_____ test_only_warehouse_admin_can_void_regardless_of_permission[True-4] ______
+tests/test_employee_advance_void.py:123: in test_only_warehouse_admin_can_void_regardless_of_permission
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_employee_advance_void.py:121: in run
+    assert response.status_code == 403 and response.json() == {"detail": expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '只有仓库管理员可以作废预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '只有仓库管理员可以作废预支'}
+E     Use -v to get more diff)
+_______ test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke _______
+tests/test_payroll_cash_advance.py:131: in test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:71: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_invalid_funding_never_changes_any_money[insufficient] __________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_invalid_funding_never_changes_any_money[pending] _____________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_invalid_funding_never_changes_any_money[rejected] ____________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_invalid_funding_never_changes_any_money[repaid] _____________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_invalid_funding_never_changes_any_money[currency] ____________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_invalid_funding_never_changes_any_money[foreign] _____________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_invalid_funding_never_changes_any_money[missing] _____________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_invalid_funding_never_changes_any_money[mixed] ______________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_________ test_invalid_funding_never_changes_any_money[company_mixed] __________
+tests/test_payroll_cash_advance.py:181: in test_invalid_funding_never_changes_any_money
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:164: in run
+    aid = await approved(c, amount=1000 if kind == "insufficient" else 10000, currency="CNY" if kind == "currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____ test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity _____
+tests/test_payroll_cash_advance.py:212: in test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:187: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_batch_aggregate_budget_and_atomic_rollback[False] ____________
+tests/test_payroll_cash_advance.py:243: in test_batch_aggregate_budget_and_atomic_rollback
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:219: in run
+    aid = await approved(c, amount=10000 if fail else 7500)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_batch_aggregate_budget_and_atomic_rollback[True] _____________
+tests/test_payroll_cash_advance.py:243: in test_batch_aggregate_budget_and_atomic_rollback
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:219: in run
+    aid = await approved(c, amount=10000 if fail else 7500)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_failed_revoke_restores_cost_usage_and_loan_link _____________
+tests/test_payroll_cash_advance.py:259: in test_failed_revoke_restores_cost_usage_and_loan_link
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:249: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____ test_supervisor_with_only_payroll_grant_and_cross_warehouse_rejected _____
+tests/test_payroll_cash_advance.py:276: in test_supervisor_with_only_payroll_grant_and_cross_warehouse_rejected
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:265: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_old_disbursement_role_restrictions_preserved[2] _____________
+tests/test_payroll_cash_advance.py:288: in test_old_disbursement_role_restrictions_preserved
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:283: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_old_disbursement_role_restrictions_preserved[4] _____________
+tests/test_payroll_cash_advance.py:288: in test_old_disbursement_role_restrictions_preserved
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:283: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_old_disbursement_role_restrictions_preserved[5] _____________
+tests/test_payroll_cash_advance.py:288: in test_old_disbursement_role_restrictions_preserved
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:283: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____ test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost _____
+tests/test_payroll_cash_advance.py:305: in test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_cash_advance.py:294: in run
+    aid = await approved(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_________________ test_disburse_reverse_reissue_and_reports[3] _________________
+tests/test_payroll_expense.py:101: in test_disburse_reverse_reissue_and_reports
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_payroll_expense.py:99: in run
+    assert legacy_ledger_label,ledger.json()
+E   AssertionError: {'card_expense': 1234.56, 'card_income': 0, 'card_net': -1234.56, 'data': [{'account_id': 3, 'account_name': '现金', 'amount': 1234.56, 'cash_advance_id': None, ...}], ...}
+E   assert False
+_ test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow _
+tests/test_reimbursement_payments.py:165: in test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:164: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:124', 'actual_failure': 'assert (4, 7750.0) == (3, 2750)\n  \n  At index 0 diff: 4 != 3\n  Use -v to get more diff'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:133', 'actual_failure': 'assert (400 == 400 and 4 == 3)\n +  where 400 = <Response [400 Bad Request]>.status_code'}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:137', 'actual_failure': "assert (200 == 200 and {'THB': 7750.0} == {'THB': 2750}\n +  where 200 = <Response [200 OK]>.status_code\n  \n  Differing items:\n  {'THB': 7750.0} != {'THB': 2750}\n  Use -v to get more diff)"}, {'assertion': 'test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow:142', 'actual_failure': 'assert (5750.0 == 750)'}]
+----------------------------- Captured stdout call -----------------------------
+REIMB_COMPANY {"response": {"message": "付款成功", "id": 1, "status": "paid", "expense_record_id": 3, "cash_advance_id": null, "payment": {"id": 1, "reimbursement_id": 1, "warehouse_id": 1, "amount": 2000.0, "currency": "THB", "funding_source": "company_account", "funding_source_label": "公司账户", "payment_account_id": 1, "account_name": "测试现金", "payment_method": "cash", "payment_method_label": "现金", "payment_voucher_path": "uploads/1/2026-10-28/reimbursement-payments/75e15042f3da4ab5a159e97b30df088b.png", "cash_advance_id": null, "expense_record_id": 3, "paid_by_id": 3, "paid_by_name": "staff", "paid_at": "2026-10-28T07:10:25.515424+07:00", "status": "active", "status_label": "有效", "revoked_by_id": null, "revoked_by_name": null, "revoked_at": null, "revoke_reason": null, "ledger_ref_no": "RB-P-1"}, "account_balance": 8000.0}, "cost_before": 5750.0, "cost_after": 7750.0, "balances_before": {"1": 10000.0, "3": 20000.0, "4": 30000.0}, "balances_after": {"1": 8000, "3": 20000.0, "4": 30000.0}, "flows_before": 3, "flows_after": 4, "historical_fixture": {"id": 1, "status": "approved", "expense_record_id": null, "cash_advance_id": null, "payment": {"id": 1, "reimbursement_id": 1, "warehouse_id": 1, "amount": 2000.0, "currency": "THB", "funding_source": "company_account", "funding_source_label": "公司账户", "payment_account_id": 1, "account_name": "测试现金", "payment_method": "cash", "payment_method_label": "现金", "payment_voucher_path": "uploads/1/2026-10-28/reimbursement-payments/75e15042f3da4ab5a159e97b30df088b.png", "cash_advance_id": null, "expense_record_id": 3, "paid_by_id": 3, "paid_by_name": "staff", "paid_at": "2026-10-28T07:10:25.515424", "status": "revoked", "status_label": "已撤销", "revoked_by_id": 1, "revoked_by_name": "synthetic historical admin", "revoked_at": "2026-10-28T07:10:25.640433+07:00", "revoke_reason": "付款账户选错，合成历史", "ledger_ref_no": "RB-P-1"}, "account_balance": 10000.0}, "cost_after_historical_fixture": 5750.0, "flows_expense_after_revoke": 5750.0}
+___ test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost ___
+tests/test_reimbursement_payments.py:214: in test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:172: in run
+    aid = await loan(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____________ test_validation_no_partial_money_changes[no_advance] _____________
+tests/test_reimbursement_payments.py:270: in test_validation_no_partial_money_changes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:246: in run
+    aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+___________ test_validation_no_partial_money_changes[small_advance] ____________
+tests/test_reimbursement_payments.py:270: in test_validation_no_partial_money_changes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:246: in run
+    aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_validation_no_partial_money_changes[foreign_advance] ___________
+tests/test_reimbursement_payments.py:270: in test_validation_no_partial_money_changes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:246: in run
+    aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_validation_no_partial_money_changes[advance_currency] __________
+tests/test_reimbursement_payments.py:270: in test_validation_no_partial_money_changes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:246: in run
+    aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+__________ test_validation_no_partial_money_changes[pending_advance] ___________
+tests/test_reimbursement_payments.py:270: in test_validation_no_partial_money_changes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:246: in run
+    aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_______________ test_validation_no_partial_money_changes[mixed] ________________
+tests/test_reimbursement_payments.py:270: in test_validation_no_partial_money_changes
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:246: in run
+    aid = await loan(c, amount=1000 if kind == "small_advance" else 10000, currency="CNY" if kind == "advance_currency" else "THB")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+______ test_payment_and_revoke_failures_rollback_everything[cash_advance] ______
+tests/test_reimbursement_payments.py:297: in test_payment_and_revoke_failures_rollback_everything
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:281: in run
+    if source == "cash_advance": fields["cash_advance_id"] = await loan(c, amount=10000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+____________ test_cny_account_and_advance_are_independent_from_thb _____________
+tests/test_reimbursement_payments.py:332: in test_cny_account_and_advance_are_independent_from_thb
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:326: in run
+    aid = await loan(c, amount=10000, currency="CNY")
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_ test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_backfill_idempotent _
+tests/test_reimbursement_payments.py:384: in test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_backfill_idempotent
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:374: in run
+    aid = await loan(c, amount=3000)
+tests/test_cash_advance_repayments.py:46: in approved
+    r = await create(c, 4, payer_id=4, **fields); assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"该动作超出当前角色职责上限"}
+E   assert 403 == 200
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+_____ test_decimal_item_sums_and_partially_approved_total_used_for_payment _____
+tests/test_reimbursement_payments.py:409: in test_decimal_item_sums_and_partially_approved_total_used_for_payment
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_reimbursement_payments.py:408: in run
+    deferred.finish()
+tests/round3_flow_support.py:147: in finish
+    assert not self.failures,self.failures
+E   AssertionError: [{'assertion': 'test_decimal_item_sums_and_partially_approved_total_used_for_payment:388', 'actual_failure': 'assert 5750.3 == 750.3'}]
+________________ test_only_warehouse_admin_can_review[False-3] _________________
+tests/test_round18_advance_review.py:70: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_round18_advance_review.py:68: in run
+    assert r.status_code==403 and r.json()=={'detail':expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '无此操作权限，需要: 员工预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '无此操作权限，需要: 员工预支'}
+E     Use -v to get more diff)
+________________ test_only_warehouse_admin_can_review[False-4] _________________
+tests/test_round18_advance_review.py:70: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_round18_advance_review.py:68: in run
+    assert r.status_code==403 and r.json()=={'detail':expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '无此操作权限，需要: 员工预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '无此操作权限，需要: 员工预支'}
+E     Use -v to get more diff)
+_________________ test_only_warehouse_admin_can_review[True-3] _________________
+tests/test_round18_advance_review.py:70: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_round18_advance_review.py:68: in run
+    assert r.status_code==403 and r.json()=={'detail':expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+_________________ test_only_warehouse_admin_can_review[True-4] _________________
+tests/test_round18_advance_review.py:70: in test_only_warehouse_admin_can_review
+    asyncio.run(run())
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+/Users/xiongliu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+tests/test_round18_advance_review.py:68: in run
+    assert r.status_code==403 and r.json()=={'detail':expected}
+E   AssertionError: assert (403 == 403 and {'detail': '该动作超出当前角色职责上限'} == {'detail': '只有仓库管理员可以审批预支'}
+E    +  where 403 = <Response [403 Forbidden]>.status_code
+E     
+E     Differing items:
+E     {'detail': '该动作超出当前角色职责上限'} != {'detail': '只有仓库管理员可以审批预支'}
+E     Use -v to get more diff)
+=============================== warnings summary ===============================
+../../../../tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: 12 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_advance_manager_recipients.py: 57 warnings
+tests/test_advance_payroll_approval_audit.py: 20 warnings
+tests/test_cash_advance_documents.py: 62 warnings
+tests/test_cash_advance_repayments.py: 26 warnings
+tests/test_disabled_financial_reversals.py: 99 warnings
+tests/test_employee_advance_funding.py: 689 warnings
+tests/test_employee_advance_limit.py: 91 warnings
+tests/test_employee_advance_void.py: 241 warnings
+tests/test_payroll_cash_advance.py: 72 warnings
+tests/test_payroll_expense.py: 72 warnings
+tests/test_payroll_labor_boundary.py: 198 warnings
+tests/test_procurement_controls_round9.py: 335 warnings
+tests/test_reimbursement_payments.py: 350 warnings
+tests/test_round18_advance_review.py: 68 warnings
+  /tmp/supplier01-py312/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_disabled_financial_reversals.py::test_no_permission_or_unknown_record_cannot_bypass_gate_and_auth_still_required
+  /private/tmp/permissions-round6-regression-final/backend/tests/test_disabled_financial_reversals.py:26: SAWarning: Cannot correctly sort tables; there are unresolvable cycles between tables "deduction_templates, employees, payable_bills, purchase_orders, salary_templates, users, warehouses", which is usually caused by mutually dependent foreign key constraints.  Foreign key constraints involving these tables will not be considered; this warning may raise an error in a future release.
+    for table in Base.metadata.sorted_tables}
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /private/tmp/permissions-round6-20261028/docs/permissions-round6-20261028/raw-logs/pytest-prior-current-final.xml -
+=========================== short test summary info ============================
+FAILED tests/test_cash_advance_documents.py::test_two_wages_difference_manual_status_detail_and_other_books_unchanged
+FAILED tests/test_cash_advance_documents.py::test_edit_pending_confirmed_permissions_and_warehouse
+FAILED tests/test_cash_advance_documents.py::test_snapshot_survives_payment_change_and_log_failure_rolls_back_edit
+FAILED tests/test_cash_advance_repayments.py::test_full_repayment_money_ledger_and_costs_exactly_unchanged
+FAILED tests/test_cash_advance_repayments.py::test_partial_repayment_reversal_keeps_voided_flow_and_restores_balance
+FAILED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[2]
+FAILED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[3]
+FAILED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[4]
+FAILED tests/test_cash_advance_repayments.py::test_admin_only_repayment_upload_accounts_and_revoke[5]
+FAILED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields0-\u4e0d\u80fd\u8d85\u8fc7\u5269\u4f59\u672a\u8fd8]
+FAILED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields1-\u8bf7\u9009\u62e9\u5f52\u8fd8\u8d26\u6237]
+FAILED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields2-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247]
+FAILED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields3-\u8bf7\u4e0a\u4f20\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247]
+FAILED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields4-\u51ed\u8bc1\u7167\u7247\u4e0d\u5c5e\u4e8e\u5f53\u524d\u4ed3\u5e93\u7684\u57ab\u6b3e\u5355]
+FAILED tests/test_cash_advance_repayments.py::test_repayment_validation_no_partial_financial_writes[fields5-\u5f52\u8fd8\u51ed\u8bc1\u7167\u7247\u4e0d\u5b58\u5728\uff0c\u8bf7\u91cd\u65b0\u4e0a\u4f20]
+FAILED tests/test_cash_advance_repayments.py::test_pending_rejected_inactive_cross_warehouse_and_currency_are_blocked
+FAILED tests/test_cash_advance_repayments.py::test_full_reversal_inactive_account_and_multiple_payments
+FAILED tests/test_cash_advance_repayments.py::test_history_failure_rolls_back_repayment_and_revoke
+FAILED tests/test_cash_advance_repayments.py::test_repayment_never_recalculates_and_manual_payroll_amount_stays_same
+FAILED tests/test_cash_advance_repayments.py::test_currency_is_explicit_account_must_match_and_summary_never_adds_currencies
+FAILED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[0]
+FAILED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[-1]
+FAILED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[NaN]
+FAILED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[Infinity]
+FAILED tests/test_cash_advance_repayments.py::test_invalid_money_does_not_change_balance_or_create_flows[1.001]
+FAILED tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[1]
+FAILED tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[2]
+FAILED tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[3]
+FAILED tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[4]
+FAILED tests/test_disabled_financial_reversals.py::test_three_endpoints_disabled_for_every_authenticated_role_without_any_write[5]
+FAILED tests/test_disabled_financial_reversals.py::test_revoked_history_amounts_and_ledger_readback_unchanged
+FAILED tests/test_employee_advance_funding.py::test_source_money_cost_ledger_and_void[company_account]
+FAILED tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[False-3]
+FAILED tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[False-4]
+FAILED tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[True-3]
+FAILED tests/test_employee_advance_void.py::test_only_warehouse_admin_can_void_regardless_of_permission[True-4]
+FAILED tests/test_payroll_cash_advance.py::test_cost_7000_company_accounts_and_ledger_unchanged_then_revoke
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[insufficient]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[pending]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[rejected]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[repaid]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[currency]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[foreign]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[missing]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[mixed]
+FAILED tests/test_payroll_cash_advance.py::test_invalid_funding_never_changes_any_money[company_mixed]
+FAILED tests/test_payroll_cash_advance.py::test_reuse_limit_batch_total_idempotence_and_revoke_releases_capacity
+FAILED tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[False]
+FAILED tests/test_payroll_cash_advance.py::test_batch_aggregate_budget_and_atomic_rollback[True]
+FAILED tests/test_payroll_cash_advance.py::test_failed_revoke_restores_cost_usage_and_loan_link
+FAILED tests/test_payroll_cash_advance.py::test_supervisor_with_only_payroll_grant_and_cross_warehouse_rejected
+FAILED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[2]
+FAILED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[4]
+FAILED tests/test_payroll_cash_advance.py::test_old_disbursement_role_restrictions_preserved[5]
+FAILED tests/test_payroll_cash_advance.py::test_repay_after_salary_changes_debt_and_funds_but_never_salary_cost
+FAILED tests/test_payroll_expense.py::test_disburse_reverse_reissue_and_reports[3]
+FAILED tests/test_reimbursement_payments.py::test_company_payment_2000_exactly_one_cost_and_one_flow_revoke_keeps_voided_flow
+FAILED tests/test_reimbursement_payments.py::test_cash_advance_cost_only_usage_revoke_and_repay_do_not_duplicate_cost
+FAILED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[no_advance]
+FAILED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[small_advance]
+FAILED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[foreign_advance]
+FAILED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[advance_currency]
+FAILED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[pending_advance]
+FAILED tests/test_reimbursement_payments.py::test_validation_no_partial_money_changes[mixed]
+FAILED tests/test_reimbursement_payments.py::test_payment_and_revoke_failures_rollback_everything[cash_advance]
+FAILED tests/test_reimbursement_payments.py::test_cny_account_and_advance_are_independent_from_thb
+FAILED tests/test_reimbursement_payments.py::test_loan_quota_already_used_by_payroll_blocks_reimbursement_and_category_backfill_idempotent
+FAILED tests/test_reimbursement_payments.py::test_decimal_item_sums_and_partially_approved_total_used_for_payment
+FAILED tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[False-3]
+FAILED tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[False-4]
+FAILED tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[True-3]
+FAILED tests/test_round18_advance_review.py::test_only_warehouse_admin_can_review[True-4]

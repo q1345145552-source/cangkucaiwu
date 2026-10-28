@@ -1,3 +1,4 @@
+from app.core.action_access import has_module
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
@@ -104,7 +105,7 @@ async def list_customers(
         return {"data":[{"id":c.id,"warehouse_id":c.warehouse_id,"customer_code":c.customer_code,
                          "company_name":c.company_name,"cargo_type":c.cargo_type,"logistics_channel":c.logistics_channel} for c in customers],
                 "total":len(customers),"page":page,"page_size":page_size,"scope":"onsite_lookup"}
-    can_read_finance = current_user.role == Role.WAREHOUSE_ADMIN or any(p in (current_user.extra_permissions or []) for p in (_PERMISSION,MENU_PERMISSIONS_BY_KEY['credit'].label))
+    can_read_finance = current_user.role == Role.WAREHOUSE_ADMIN or any(has_module(current_user,k,'view') for k in ('customers','credit'))
     balances = await positions(db,scope,[c.id for c in customers]) if can_read_finance else {}
     reviews = await legacy_review(db,scope,[c.id for c in customers]) if can_read_finance else {}
     return {

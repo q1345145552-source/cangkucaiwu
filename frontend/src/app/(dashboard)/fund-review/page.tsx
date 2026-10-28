@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { fmtMoney } from "@/lib/currency";
@@ -168,12 +169,12 @@ export default function FundReviewPage() {
           </button>
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2 ml-auto">
-              <button onClick={() => doReview("approve")} className="btn-primary text-sm bg-green-600 hover:bg-green-700 flex items-center gap-1">
+              <ActionGate anyOf={["expense_fund.batch_review"]}><button onClick={() => doReview("approve")} className="btn-primary text-sm bg-green-600 hover:bg-green-700 flex items-center gap-1">
                 <CheckCircle size={15} />通过所选 ({selectedIds.size})
-              </button>
-              <button onClick={() => doReview("reject")} className="btn-secondary text-sm text-red-600 border-red-300 hover:bg-red-50 flex items-center gap-1">
+              </button></ActionGate>
+              <ActionGate anyOf={["expense_fund.batch_review"]}><button onClick={() => doReview("reject")} className="btn-secondary text-sm text-red-600 border-red-300 hover:bg-red-50 flex items-center gap-1">
                 <XCircle size={15} />驳回所选
-              </button>
+              </button></ActionGate>
               <input className="form-input text-sm py-1 w-36" placeholder="驳回原因" value={rejectRemark} onChange={e => setRejectRemark(e.target.value)} />
             </div>
           )}
@@ -248,14 +249,14 @@ export default function FundReviewPage() {
                     </td>
                     <td className="px-3 py-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => approveOne(row.id)}
+                        <ActionGate anyOf={["expense_fund.batch_review#approve"]}><button onClick={() => approveOne(row.id)}
                           className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过">
                           <CheckCircle size={16} />
-                        </button>
-                        <button onClick={() => rejectOne(row.id)}
+                        </button></ActionGate>
+                        <ActionGate anyOf={["expense_fund.batch_review#approve"]}><button onClick={() => rejectOne(row.id)}
                           className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回">
                           <XCircle size={16} />
-                        </button>
+                        </button></ActionGate>
                       </div>
                     </td>
                   </tr>
@@ -317,12 +318,12 @@ export default function FundReviewPage() {
                         <td className="px-3 py-3 text-center">
                           {r.status === "pending" && (
                             <div className="flex items-center justify-center gap-1.5">
-                              <button onClick={() => approveRecharge(r.id)} className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过">
+                              <ActionGate anyOf={["expense_fund.review_recharge_request#approve"]}><button onClick={() => approveRecharge(r.id)} className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors" title="通过">
                                 <CheckCircle size={16} />
-                              </button>
-                              <button onClick={() => rejectRecharge(r.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回">
+                              </button></ActionGate>
+                              <ActionGate anyOf={["expense_fund.review_recharge_request#approve"]}><button onClick={() => rejectRecharge(r.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors" title="驳回">
                                 <XCircle size={16} />
-                              </button>
+                              </button></ActionGate>
                             </div>
                           )}
                         </td>

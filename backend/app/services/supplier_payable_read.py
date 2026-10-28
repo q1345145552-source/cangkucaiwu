@@ -1,4 +1,5 @@
 """Read-only purchase/bill linkage and supplier totals over existing records."""
+from app.core.action_access import has_module
 from datetime import date
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select, or_
@@ -23,7 +24,7 @@ async def current_supplier_warehouse(request: Request, user=Depends(get_current_
 
 def can_read_bills(user):
     labels = {MENU_PERMISSIONS_BY_KEY[k].label for k in ('payable', 'payment_plans')}
-    return user.role == Role.WAREHOUSE_ADMIN or bool(labels.intersection(user.extra_permissions or []))
+    return user.role == Role.WAREHOUSE_ADMIN or any(has_module(user,k,'view') for k in ('payable','payment_plans'))
 
 
 async def owned(db, model, ident, warehouse_id, label):

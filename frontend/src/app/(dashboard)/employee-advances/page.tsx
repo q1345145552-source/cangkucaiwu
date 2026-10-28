@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import FinancialIdentityBoundary from "@/components/FinancialIdentityBoundary";
 import CashAdvanceLink from "@/components/CashAdvanceLink";
 import { useMenuPermission } from "@/hooks/useMenuPermission";
@@ -165,9 +166,9 @@ function EmployeeAdvancePageContent() {
     <div>
       <div className="flex justify-between mb-4 flex-wrap gap-2 items-center">
         <h1 className="page-title flex items-center gap-2"><DollarSign size={24}/>员工预支</h1>
-        {canWrite && (<button onClick={() => { setShowForm(true); void loadFundingOptions(); }} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
+        {canWrite && (<ActionGate anyOf={["employee_advance.create_advance"]}><button onClick={() => { setShowForm(true); void loadFundingOptions(); }} className="btn-primary flex items-center gap-1 text-sm px-4 py-2">
           <Plus size={16}/> 记预支
-        </button>)}
+        </button></ActionGate>)}
       </div>
 
       {/* 欠款汇总 */}
@@ -255,10 +256,10 @@ function EmployeeAdvancePageContent() {
                   <td className="px-3 py-3">{r.operator_name || "-"}</td>
                   <td className="px-3 py-3 text-gray-500 max-w-32 truncate" title={r.remark}>{r.remark || "-"}</td>
                   <td className="px-3 py-3 text-center">
-                    {r.capabilities?.can_verify && ["staff", "warehouse_admin"].includes(user?.role || "") && <button className="btn-secondary btn-xs" onClick={() => executeStage(r.id, "verify")}>核验</button>}
-                    {r.capabilities?.can_execute && ["staff", "warehouse_admin"].includes(user?.role || "") && <button className="btn-primary btn-xs" onClick={() => executeStage(r.id, "execute")}>出款</button>}
+                    {r.capabilities?.can_verify && ["staff", "warehouse_admin"].includes(user?.role || "") && <ActionGate anyOf={["employee_advance.verify_advance"]}><button className="btn-secondary btn-xs" onClick={() => executeStage(r.id, "verify")}>核验</button></ActionGate>}
+                    {r.capabilities?.can_execute && ["staff", "warehouse_admin"].includes(user?.role || "") && <ActionGate anyOf={["employee_advance.verify_advance"]}><button className="btn-primary btn-xs" onClick={() => executeStage(r.id, "execute")}>出款</button></ActionGate>}
                     {user?.role === "warehouse_admin" && r.capabilities?.can_approve && <div className="flex gap-2 mb-2 whitespace-nowrap">
-                      <button disabled={reviewing !== null} onClick={() => review(r.id)} className="text-green-700 disabled:opacity-50">通过</button>
+                      <ActionGate anyOf={["employee_advance.approve_advance"]}><button disabled={reviewing !== null} onClick={() => review(r.id)} className="text-green-700 disabled:opacity-50">通过</button></ActionGate>
                       <button disabled={reviewing !== null} onClick={() => { setRejectId(r.id); setRejectReason(""); }} className="text-red-600">驳回</button>
                     </div>}
                     {user?.role === "warehouse_admin" && !r.is_voided && r.status !== "voided" && (<button
@@ -283,14 +284,14 @@ function EmployeeAdvancePageContent() {
           <label className="block text-sm">作废原因 <span className="text-red-500">*</span>
             <textarea aria-label="作废原因" required maxLength={500} value={voidReason} onChange={e => setVoidReason(e.target.value)} className="form-input w-full mt-2" placeholder="请填写作废原因"/>
           </label>
-          <div className="flex justify-end gap-3"><button disabled={voiding} onClick={() => setVoidId(null)}>取消</button><button disabled={voiding} className="btn-primary" onClick={handleVoid}>{voiding ? "作废中…" : "确认作废"}</button></div>
+          <div className="flex justify-end gap-3"><button disabled={voiding} onClick={() => setVoidId(null)}>取消</button><ActionGate anyOf={["employee_advance.delete_advance#operate"]}><button disabled={voiding} className="btn-primary" onClick={handleVoid}>{voiding ? "作废中…" : "确认作废"}</button></ActionGate></div>
         </div>
       </div>}
       {rejectId !== null && <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
         <div role="dialog" aria-label="驳回预支" className="bg-white rounded-xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto space-y-4">
           <h2 className="font-semibold">驳回预支</h2>
           <textarea aria-label="驳回原因" placeholder="请填写驳回原因" maxLength={500} value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="form-input w-full"/>
-          <div className="flex justify-end gap-3"><button disabled={reviewing !== null} onClick={() => setRejectId(null)}>取消</button><button disabled={reviewing !== null} className="btn-primary" onClick={() => review(rejectId, true)}>确认驳回</button></div>
+          <div className="flex justify-end gap-3"><button disabled={reviewing !== null} onClick={() => setRejectId(null)}>取消</button><ActionGate anyOf={["employee_advance.approve_advance"]}><button disabled={reviewing !== null} className="btn-primary" onClick={() => review(rejectId, true)}>确认驳回</button></ActionGate></div>
         </div>
       </div>}
       {/* 记预支弹窗 */}
@@ -363,7 +364,7 @@ function EmployeeAdvancePageContent() {
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button disabled={saving} onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2">取消</button>
-              <button disabled={saving || fundingLoading || !!fundingError} onClick={handleCreate} className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{saving ? "提交中..." : "提交"}</button>
+              <ActionGate anyOf={["employee_advance.create_advance#operate"]}><button disabled={saving || fundingLoading || !!fundingError} onClick={handleCreate} className="btn-primary text-sm px-6 py-2 disabled:opacity-50">{saving ? "提交中..." : "提交"}</button></ActionGate>
             </div>
           </div>
         </div>

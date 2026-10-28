@@ -1,0 +1,660 @@
+[
+  {
+    "file": "frontend/src/app/(dashboard)/accounts/page.tsx",
+    "handler": "{() => openEdit(row)}",
+    "actions": [
+      "payment_accounts.update_account"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/accounts/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "payment_accounts.create_account"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/accounts/page.tsx",
+    "handler": "{saveTransfer}",
+    "actions": [
+      "payment_accounts.create_transfer"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/attendance/page.tsx",
+    "handler": "{() => setShowRestForm(true)}",
+    "actions": [
+      "attendance.set_rest_days"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/attendance/page.tsx",
+    "handler": "{() => setShowAbsenceForm(true)}",
+    "actions": [
+      "attendance.mark_absence"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/attendance/page.tsx",
+    "handler": "{() => setShowBatchMakeup(true)}",
+    "actions": [
+      "clock_in.batch_makeup_clock_in"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/cash-advances/page.tsx",
+    "handler": "{() => setRepayAdvance(row)}",
+    "actions": [
+      "cash_advance.repay_advance"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/credit/page.tsx",
+    "handler": "{() => setShowForm(true)}",
+    "actions": [
+      "credit.create_credit"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/credit/page.tsx",
+    "handler": "{e => { e.stopPropagation(); openPayment(row); }}",
+    "actions": [
+      "credit.record_repayment"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/customers/page.tsx",
+    "handler": "{() => openEdit(row)}",
+    "actions": [
+      "customers.update_customer"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/customers/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "customers.create_customer"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/deduction-templates/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "deduction_template.create_deduction_template"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/deduction-templates/page.tsx",
+    "handler": "{() => openEdit(r)}",
+    "actions": [
+      "deduction_template.update_deduction_template"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employee-advances/page.tsx",
+    "handler": "{() => { setShowForm(true); void loadFundingOptions(); }}",
+    "actions": [
+      "employee_advance.create_advance"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employee-advances/page.tsx",
+    "handler": "{() => executeStage(r.id, \"verify\")}",
+    "actions": [
+      "employee_advance.verify_advance"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employee-advances/page.tsx",
+    "handler": "{() => executeStage(r.id, \"execute\")}",
+    "actions": [
+      "employee_advance.verify_advance"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employee-advances/page.tsx",
+    "handler": "{() => review(r.id)}",
+    "actions": [
+      "employee_advance.approve_advance"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employee-advances/page.tsx",
+    "handler": "{() => review(rejectId, true)}",
+    "actions": [
+      "employee_advance.approve_advance"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employee-deductions/page.tsx",
+    "handler": "{() => setShowForm(true)}",
+    "actions": [
+      "employee_deduction.create_deduction"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => { setEditingId(null); setForm({ ...defaultForm }); setPhotoFile(null); setPassportPhotoFile(null); setWorkPermitPhotoFile(null); setShowForm(true); }}",
+    "actions": [
+      "employees.create_employee"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{openBatchModal}",
+    "actions": [
+      "employees.batch_set_templates"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => editEmployee(e)}",
+    "actions": [
+      "employees.update_employee"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => setDeleteTarget(e)}",
+    "actions": [
+      "employees.delete_employee"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => openFixedEdit(f)}",
+    "actions": [
+      "employee_deduction.update_fixed_deduction"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => { editEmployee(detailEmp); setDetailEmp(null); }}",
+    "actions": [
+      "employees.update_employee"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => uploadPhoto(detailEmp.id)}",
+    "actions": [
+      "employees.upload_employee_photo"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => uploadPassportPhoto(detailEmp.id)}",
+    "actions": [
+      "employees.upload_passport_photo"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/employees/page.tsx",
+    "handler": "{() => uploadWorkPermitPhoto(detailEmp.id)}",
+    "actions": [
+      "employees.upload_work_permit_photo"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/expense-approvals/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "expense_approval.create_approval"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/expense-approvals/page.tsx",
+    "handler": "{() => openEdit(r)}",
+    "actions": [
+      "expense_approval.update_approval"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/expense-approvals/page.tsx",
+    "handler": "{() => openPay(r.id)}",
+    "actions": [
+      "expense_approval.pay_approval"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/expense-fund/page.tsx",
+    "handler": "{() => setShowCreate(true)}",
+    "actions": [
+      "expense_fund.create_account"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/expense-fund/page.tsx",
+    "handler": "{() => setShowCreate(true)}",
+    "actions": [
+      "expense_fund.create_account"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/expense-fund/page.tsx",
+    "handler": "{() => openEditExpense(acc, it)}",
+    "actions": [
+      "expense_fund.edit_item"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/expense-fund/page.tsx",
+    "handler": "{() => executeRecharge(r.id)}",
+    "actions": [
+      "expense_fund.execute_recharge"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/group-order/page.tsx",
+    "handler": "{() => setShowCreate(true)}",
+    "actions": [
+      "group_order.create_group_order"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/income-expense/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "income_expense.create_expense"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/income-expense/page.tsx",
+    "handler": "{() => handleCreate()}",
+    "actions": [
+      "income_expense.create_expense"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/incoming/page.tsx",
+    "handler": "{handleCreate}",
+    "actions": [
+      "incoming.create_incoming"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/market/page.tsx",
+    "handler": "{() => setShowForm(true)}",
+    "actions": [
+      "market.create_item"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/operating/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "income_expense.create_expense"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/operating/page.tsx",
+    "handler": "{(e) => { e.stopPropagation(); openEdit(row); }}",
+    "actions": [
+      "income_expense.update_expense"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/operating/page.tsx",
+    "handler": "{()=>handleCreate()}",
+    "actions": [
+      "income_expense.create_expense"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/operating/page.tsx",
+    "handler": "{()=>handleEditSave()}",
+    "actions": [
+      "income_expense.update_expense"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/operating/page.tsx",
+    "handler": "{doConfirmDeleteVoucher}",
+    "actions": [
+      "income_expense.update_expense"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/other-income-expense/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "income_expense.create_income"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/other-income-expense/page.tsx",
+    "handler": "{() => openEdit(row)}",
+    "actions": [
+      "income_expense.update_income"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/overtime/page.tsx",
+    "handler": "{() => { setForm(f => ({ ...f, start_time: scheduleEnd || f.start_time })); setShowForm(true); }}",
+    "actions": [
+      "overtime.create_overtime"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/overtime/page.tsx",
+    "handler": "{() => openVerify(task)}",
+    "actions": [
+      "overtime.verify_overtime"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "handler": "{openBillForm}",
+    "actions": [
+      "payable.create_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "handler": "{()=>openPayModal(row)}",
+    "actions": [
+      "payable.pay_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "handler": "{() => confirmBoss(row.id)}",
+    "actions": [
+      "payable.confirm_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "handler": "{() => openPayModal(row)}",
+    "actions": [
+      "payable.pay_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "handler": "{() => openEditModal(row)}",
+    "actions": [
+      "payable.update_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "handler": "{()=>handleCreate()}",
+    "actions": [
+      "payable.create_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payable/page.tsx",
+    "handler": "{handlePay}",
+    "actions": [
+      "payable.pay_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payment-plans/page.tsx",
+    "handler": "{() => setShowForm(true)}",
+    "actions": [
+      "payable.create_plan"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payroll/page.tsx",
+    "handler": "{handleBatchDisburse}",
+    "actions": [
+      "payroll.batch_disburse_payroll"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payroll/page.tsx",
+    "handler": "{openBatchRecalc}",
+    "actions": [
+      "payroll.batch_recalc_payroll"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/payroll/page.tsx",
+    "handler": "{() => openRecalcOne(r.id, !!r.is_last_record)}",
+    "actions": [
+      "payroll.recalc_payroll"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/recharge/page.tsx",
+    "handler": "{() => openEdit(row)}",
+    "actions": [
+      "recharge.edit_recharge"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/reimbursement/page.tsx",
+    "handler": "{() => openEdit(row)}",
+    "actions": [
+      "reimbursement.edit_reimb"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/reimbursement/page.tsx",
+    "handler": "{() => workflowAction(row.id, \"verify\")}",
+    "actions": [
+      "reimbursement.verify_reimb"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/reimbursement/page.tsx",
+    "handler": "{() => workflowAction(row.id, \"return-to-draft\")}",
+    "actions": [
+      "reimbursement.verify_reimb"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/reimbursement/page.tsx",
+    "handler": "{() => setItemDecision(it.id, \"approved\")}",
+    "actions": [
+      "reimbursement.review_reimb"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/reimbursement/page.tsx",
+    "handler": "{() => setItemDecision(it.id, \"rejected\")}",
+    "actions": [
+      "reimbursement.review_reimb"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/salary-templates/page.tsx",
+    "handler": "{openCreate}",
+    "actions": [
+      "salary_template.create_salary_template"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/salary-templates/page.tsx",
+    "handler": "{() => openEdit(r)}",
+    "actions": [
+      "salary_template.update_salary_template"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/supplier-skus/page.tsx",
+    "handler": "{() => { setEditing(null); setForm(blank()); setActionError(''); setShowForm(true); }}",
+    "actions": [
+      "sku_catalog.create"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/supplier-skus/page.tsx",
+    "handler": "{() => edit(row)}",
+    "actions": [
+      "sku_catalog.update"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{() => { setForm({...form, category_id: filterCat}); setShowForm(true); }}",
+    "actions": [
+      "suppliers.create_supplier"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{()=>{setImportSupplierId(row.id);setImportMode(\"products\");setTimeout(()=>fileInputRef.current?.click(),100);}}",
+    "actions": [
+      "suppliers.import_products"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{()=>{setImportSupplierId(row.id);setImportMode(\"logistics\");setTimeout(()=>fileInputRef.current?.click(),100);}}",
+    "actions": [
+      "suppliers.import_products"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{() => approveOrder(po.id)}",
+    "actions": [
+      "suppliers.approve_purchase"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{() => startDuty(po,\"reject\")}",
+    "actions": [
+      "suppliers.reject_purchase"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{confirmApprove}",
+    "actions": [
+      "suppliers.approve_purchase"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{confirmReject}",
+    "actions": [
+      "suppliers.reject_purchase"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{() => openReceiveForm(po)}",
+    "actions": [
+      "suppliers.receive_purchase"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{submitReceive}",
+    "actions": [
+      "suppliers.receive_purchase"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/suppliers/page.tsx",
+    "handler": "{() => triggerReceiptUpload(poDetail.id)}",
+    "actions": [
+      "suppliers.upload_purchase_receipt"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/warehouses/page.tsx",
+    "handler": "{() => { setEditId(null); setForm({ name: \"\", name_th: \"\", code: \"\", address: \"\", is_active: true }); setShowForm(true); }}",
+    "actions": [
+      "warehouses.create_warehouse"
+    ]
+  },
+  {
+    "file": "frontend/src/app/(dashboard)/warehouses/page.tsx",
+    "handler": "{() => openEdit(wh)}",
+    "actions": [
+      "warehouses.update_warehouse"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ClockRecordsGrid.tsx",
+    "handler": "{openMakeupForm}",
+    "actions": [
+      "clock_in.makeup_clock_in"
+    ]
+  },
+  {
+    "file": "frontend/src/components/CreditShipments.tsx",
+    "handler": "{() => openForm()}",
+    "actions": [
+      "credit.create_shipment"
+    ]
+  },
+  {
+    "file": "frontend/src/components/CreditShipments.tsx",
+    "handler": "{() => openForm(row)}",
+    "actions": [
+      "credit.create_shipment"
+    ]
+  },
+  {
+    "file": "frontend/src/components/MakeupBatchHistory.tsx",
+    "handler": "{() => setConfirmBatch(batch)}",
+    "actions": [
+      "clock_in.revoke_makeup_batch"
+    ]
+  },
+  {
+    "file": "frontend/src/components/PayableDetail.tsx",
+    "handler": "{()=>onConfirm(bill.id)}",
+    "actions": [
+      "payable.confirm_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/components/PayableDetail.tsx",
+    "handler": "{upload}",
+    "actions": [
+      "payable.upload_bill_attachment"
+    ]
+  },
+  {
+    "file": "frontend/src/components/PayableDetail.tsx",
+    "handler": "{()=>onPay(bill)}",
+    "actions": [
+      "payable.pay_bill"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ProcurementControls.tsx",
+    "handler": "{savePolicy}",
+    "actions": [
+      "procurement_controls.set_policy"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ProcurementControls.tsx",
+    "handler": "{saveGrant}",
+    "actions": [
+      "procurement_controls.grant"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ProcurementRiskReview.tsx",
+    "handler": "{submit}",
+    "actions": [
+      "procurement_risk.save_review"
+    ]
+  },
+  {
+    "file": "frontend/src/components/PurchaseReceiptInfo.tsx",
+    "handler": "{()=>photo(0)}",
+    "actions": [
+      "suppliers.upload_purchase_receipt"
+    ]
+  },
+  {
+    "file": "frontend/src/components/PurchaseReceiptInfo.tsx",
+    "handler": "{()=>photo(batch.id)}",
+    "actions": [
+      "suppliers.upload_purchase_receipt"
+    ]
+  }
+]

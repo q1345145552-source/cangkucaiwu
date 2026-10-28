@@ -9,6 +9,7 @@ import {
   Globe, LogOut, ChevronDown, Key, UserCog, Building2, ClipboardCheck, CalendarDays, DollarSign, Camera, ClipboardList, History, Gauge, Scale, MinusCircle, SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
+import MinimalActionWorkspace from "@/components/permissions/MinimalActionWorkspace";
 import BackToTop from "@/components/ui/BackToTop";
 import { api, getToken, setActiveWarehouseId, getActiveWarehouseId } from "@/lib/api";
 
@@ -118,6 +119,7 @@ function hasAccess(item: NavItem, user: any, permissions: MenuPermission[]): boo
   // 劳工自助入口仍只属于劳工，不混入管理端。
   if (item.roles.every(role => role === "warehouse_labor")) return false;
   if (user.role === "supervisor" && ["payroll", "salary_templates", "deduction_templates", "employee_deductions", "reports", "ledger", "incoming", "reconciliation", "payable", "payment_plans", "operating", "other_income_expense", "cash_advances", "credit"].includes(item.key)) return false;
+  if (item.key === "sku_catalog" && user.action_access?.grants.includes("sku_catalog_manage:operate")) return true;
   const permission = permissions.find(p => p.menu_key === item.key);
   if (!permission) return false;
   if (!permission.selectable) return item.roles.includes(user.role);
@@ -160,6 +162,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [menuPermissions, setMenuPermissions] = useState<MenuPermission[]>([]);
+  useEffect(() => {
+    let active = true;
+    setMenuPermissions([]);
+    if (user?.role === "staff" || user?.role === "supervisor") {
+      api.get<MenuPermission[]>("/users/permissions").then(items => { if (active) setMenuPermissions(items); }).catch(() => {});
+    }
+    return () => { active = false; };
+  }, [user?.id, user?.role]);
   useEffect(() => {
     if (user?.role === "warehouse_labor") document.title = t("app_name");
   }, [user?.role, locale, t, pathname]);
@@ -252,6 +262,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     router.push("/login");
   };
 
+  const currentModules = menuPermissions.filter(p => p.path === pathname).map(p => p.menu_key);
+  if (pathname === "/supplier-skus") currentModules.push("sku_catalog_manage");
+  if (pathname === "/fund-review") currentModules.push("expense_fund");
+  if (pathname === "/income-expense") currentModules.push("operating");
+  const minimumWorkspace = user?.action_access?.version === 1 && ["staff", "supervisor"].includes(user.role)
+    && currentModules.length > 0 && !["/settings", "/dashboard"].includes(pathname)
+    && !currentModules.some(m => user.action_access.grants.includes(`${m}:view`));
   const filteredNav = filterNavItems(navItems, user, menuPermissions);
   if ((user?.role === "supervisor" || user?.role === "staff") && user.attendance_enabled) {
     filteredNav.push({ key: "employee_self", label: "employee_self", icon: <Users size={20} />, roles: ["supervisor", "staff"], children: [
@@ -462,8 +479,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
-          <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}-${isAllWarehouses}-${JSON.stringify(user?.extra_permissions || [])}`} className="animate-fade-in">
-            {user && laborPageAllowed ? children : null}
+          <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}-${isAllWarehouses}-${JSON.stringify([user?.extra_permissions || [], user?.action_access?.grants || []])}`} className="animate-fade-in">
+            {user && laborPageAllowed && (!["staff", "supervisor"].includes(user.role) || menuPermissions.length > 0) ? (minimumWorkspace ? <MinimalActionWorkspace modules={currentModules} /> : children) : null}
           </div>
           <BackToTop />
         </main>

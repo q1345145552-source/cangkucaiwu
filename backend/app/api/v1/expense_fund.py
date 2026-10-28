@@ -1,3 +1,4 @@
+from app.core.action_access import has_module
 from app.core.personal_finance import personal_finance_access
 from app.core.round2_access import require_account_manager, mutation_scope, own_scope, mutation_ids
 from app.services import fund_authorization as duties
@@ -521,7 +522,7 @@ async def list_pending_reviews(
             wh_map = {w.id: w.name for w in whs}
 
     return {"data": [{
-        "can_verify": i.review_status == 'pending' and current_user.role in (Role.STAFF, Role.WAREHOUSE_ADMIN) and funds_map[i.fund_id].employee_id not in await duties.identities(db, current_user),
+        "can_verify": has_module(current_user, "expense_fund", "operate") and i.review_status == 'pending' and current_user.role in (Role.STAFF, Role.WAREHOUSE_ADMIN) and funds_map[i.fund_id].employee_id not in await duties.identities(db, current_user),
         "can_approve": i.review_status == 'verified' and current_user.role == Role.WAREHOUSE_ADMIN and funds_map[i.fund_id].employee_id not in await duties.identities(db, current_user),
         "can_reject": current_user.role == Role.WAREHOUSE_ADMIN and funds_map[i.fund_id].employee_id not in await duties.identities(db, current_user),
         "id": i.id, "fund_id": i.fund_id,

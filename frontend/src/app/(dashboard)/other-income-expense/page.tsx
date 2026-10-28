@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useBusinessAction } from "@/hooks/useMenuPermission";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
@@ -162,9 +163,9 @@ export default function OtherIncomePage() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="page-title">其他收入</h1>
         <div className="flex items-center gap-2">
-          <button aria-disabled={!canWrite} disabled={!canWrite} onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
+          <ActionGate anyOf={["income_expense.create_income"]}><button aria-disabled={!canWrite} disabled={!canWrite} onClick={openCreate} className="btn-primary flex items-center gap-1.5 text-sm">
             <Plus size={16} />新建收入
-          </button>
+          </button></ActionGate>
         </div>
       </div>
 
@@ -262,8 +263,8 @@ export default function OtherIncomePage() {
                       <td className="px-4 py-3 text-gray-500 max-w-[120px] truncate">{row.remark || "-"}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <button disabled={!(canWrite)} onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title="编辑"><Pencil size={15} /></button>
-                          <button disabled={!(canWrite)} onClick={() => handleDelete(row.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="删除"><Trash2 size={15} /></button>
+                          <ActionGate anyOf={["income_expense.update_income"]}><button disabled={!(canWrite)} onClick={() => openEdit(row)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title="编辑"><Pencil size={15} /></button></ActionGate>
+                          <ActionGate anyOf={["income_expense.delete_income#operate"]}><button disabled={!(canWrite)} onClick={() => handleDelete(row.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="删除"><Trash2 size={15} /></button></ActionGate>
                         </div>
                       </td>
                     </tr>
@@ -305,7 +306,7 @@ export default function OtherIncomePage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => resetForm()} className="btn-secondary">取消</button>
-              <button aria-disabled={!canWrite} disabled={!canWrite} onClick={editing ? handleEdit : handleCreate} className="btn-primary">{editing ? "保存修改" : "保存"}</button>
+              <ActionGate anyOf={["income_expense.update_income#operate"]}><button aria-disabled={!canWrite} disabled={!canWrite} onClick={editing ? handleEdit : handleCreate} className="btn-primary">{editing ? "保存修改" : "保存"}</button></ActionGate>
             </div>
           </div>
         </div>

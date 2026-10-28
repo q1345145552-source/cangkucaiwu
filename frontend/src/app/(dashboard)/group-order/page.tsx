@@ -1,4 +1,5 @@
 "use client";
+import ActionGate from "@/components/permissions/ActionGate";
 import { useEffect, useState } from "react";
 import { api, getToken } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -186,9 +187,9 @@ export default function GroupOrderPage() {
             <button onClick={() => setTab("history")} className={`px-3.5 py-1.5 rounded text-sm font-medium transition-colors ${tab === "history" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>历史记录</button>
           </div>
           {isAdmin && (
-            <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5 text-sm">
+            <ActionGate anyOf={["group_order.create_group_order"]}><button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5 text-sm">
               <Plus size={16} />发起拼单
-            </button>
+            </button></ActionGate>
           )}
         </div>
       </div>
@@ -268,9 +269,9 @@ export default function GroupOrderPage() {
                           </button>
                         )}
                         {isSuperAdmin && o.status === "open" && (
-                          <button onClick={(e) => { e.stopPropagation(); handleClose(o.id); }} className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-xs py-1.5 font-medium transition-colors">
+                          <ActionGate anyOf={["group_order.close_order#operate"]}><button onClick={(e) => { e.stopPropagation(); handleClose(o.id); }} className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-xs py-1.5 font-medium transition-colors">
                             截止
-                          </button>
+                          </button></ActionGate>
                         )}
                         {isSuperAdmin && o.status === "closed" && (
                           <>
@@ -437,7 +438,7 @@ export default function GroupOrderPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowCreate(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleCreate} className="btn-primary min-w-[80px]">发起拼单</button>
+              <ActionGate anyOf={["group_order.create_group_order#operate"]}><button onClick={handleCreate} className="btn-primary min-w-[80px]">发起拼单</button></ActionGate>
             </div>
           </div>
         </div>
@@ -500,7 +501,7 @@ export default function GroupOrderPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowJoin(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleJoin} className="btn-primary min-w-[80px] bg-green-600 hover:bg-green-700">确认参与</button>
+              <ActionGate anyOf={["group_order.join_group_order#operate"]}><button onClick={handleJoin} className="btn-primary min-w-[80px] bg-green-600 hover:bg-green-700">确认参与</button></ActionGate>
             </div>
           </div>
         </div>
@@ -597,7 +598,7 @@ export default function GroupOrderPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowComplete(false)} className="btn-secondary min-w-[80px]">取消</button>
-              <button onClick={handleComplete} className="btn-primary min-w-[80px]">确认完成</button>
+              <ActionGate anyOf={["group_order.complete_order#operate"]}><button onClick={handleComplete} className="btn-primary min-w-[80px]">确认完成</button></ActionGate>
             </div>
           </div>
         </div>
@@ -622,7 +623,7 @@ export default function GroupOrderPage() {
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowCancel(false)} className="btn-secondary min-w-[80px]">返回</button>
-              <button onClick={handleCancel} className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-medium min-w-[80px] transition-colors">确认取消</button>
+              <ActionGate anyOf={["group_order.cancel_order#operate"]}><button onClick={handleCancel} className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-medium min-w-[80px] transition-colors">确认取消</button></ActionGate>
             </div>
           </div>
         </div>
