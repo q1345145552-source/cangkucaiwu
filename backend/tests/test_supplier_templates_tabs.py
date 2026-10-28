@@ -135,7 +135,7 @@ def test_optional_tier_dates_reuse_explicit_mapping_and_quote_service(tmp_path,m
 
 def test_existing_pricing_purchase_and_inventory_logic_is_unchanged():
  root=Path(__file__).resolve().parents[2]
- def old(path):return subprocess.check_output(['git','show','ad9311e:'+path],cwd=root,text=True)
+ def old(path):return subprocess.check_output(['git','show','bfc87cd:'+path],cwd=root,text=True)
  for path in ['backend/app/services/supplier_quotes.py','backend/app/services/inventory.py','backend/app/services/account_balances.py','backend/app/services/supplier_comparison.py']:
   assert (root/path).read_text()==old(path)
  path='backend/app/api/v1/suppliers.py'

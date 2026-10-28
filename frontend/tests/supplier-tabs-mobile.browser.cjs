@@ -3,13 +3,14 @@ const {chromium}=require('/Users/xiongliu/.cache/codex-runtimes/codex-primary-ru
 const assert=require('assert/strict'),fs=require('fs'),path=require('path');
 const base=process.env.TEST_WEB_URL||'http://127.0.0.1:19312',out=path.resolve(__dirname,'../../docs/supplier-templates-tabs-20261028');
 assert.equal(new URL(base).hostname,'127.0.0.1');
+let lastPage;const collectedErrors=[];
 const auth=JSON.parse(fs.readFileSync('/tmp/supplier-templates-auth.json')).admin;
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
  const user=await(await fetch(base+'/api/v1/auth/me',{headers:auth})).json();const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  await ctx.addInitScript(({user,token})=>{localStorage.setItem('user',JSON.stringify(user));localStorage.setItem('token',token);localStorage.setItem('activeWarehouseId','1');},{user,token:auth.Authorization.replace('Bearer ','')});
  await ctx.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
- const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await ctx.newPage(),errors=[];lastPage=page;page.on('pageerror',e=>{errors.push(e.message);collectedErrors.push(e.message);});
  const nav=()=>page.getByRole('navigation',{name:'供应商功能分组'});
  async function home(){await page.goto(base+'/suppliers');await nav().waitFor();await page.locator('.app-splash-title').waitFor({state:'hidden'});await page.getByRole('cell',{name:'本仓供应商',exact:true}).waitFor();}
  await home();const groups=await nav().locator('section').evaluateAll(nodes=>nodes.map(n=>({name:n.getAttribute('aria-label'),items:[...n.querySelectorAll('button')].map(b=>b.textContent.trim())})));
@@ -26,4 +27,4 @@ const auth=JSON.parse(fs.readFileSync('/tmp/supplier-templates-auth.json')).admi
  }
  await home();const metrics=await nav().evaluate(n=>({width:n.clientWidth,scrollWidth:n.scrollWidth}));assert(metrics.scrollWidth>metrics.width);await page.screenshot({path:out+'/mobile-all-tabs-start.png',fullPage:true});await nav().evaluate(n=>{n.style.scrollBehavior='auto';n.scrollLeft=n.scrollWidth;n.scrollTop=0;});await page.screenshot({path:out+'/mobile-all-tabs-end.png',fullPage:true});assert.equal(errors.length,0,errors.join('\n'));
  fs.writeFileSync(out+'/mobile-all-tabs.json',JSON.stringify({groups,visited,mobile:metrics,errors},null,2));await browser.close();console.log(JSON.stringify({passed:true,mobile_buttons_opened:visited.length,errors},null,2));
-})().catch(e=>{console.error(e);process.exit(1);});
+})().catch(async e=>{console.error(e);console.error('page errors',collectedErrors);if(lastPage)await lastPage.screenshot({path:out+'/failure-'+path.basename(__filename)+'.png',fullPage:true}).catch(()=>{});process.exit(1);});
