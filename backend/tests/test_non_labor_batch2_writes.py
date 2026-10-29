@@ -121,7 +121,8 @@ def test_labor_all_ten_denied_before_validation_or_writes(tmp_path, monkeypatch,
                     path=re.sub(r'\{[^}]+\}','not-an-id',case[1])
                     response=await client.request(case[0],'/api/v1'+path,
                         headers={**auth(uid),'X-Warehouse-ID':'all'},params={'view':'self'},json={})
-                    assert response.status_code==403 and response.json()=={'detail':'无权访问'},response.text
+                    detail='全部仓汇总只读 请先进入具体仓库再操作' if case[0] in ('POST','PUT','PATCH','DELETE') else '无权访问'
+                    assert response.status_code==403 and response.json()=={'detail':detail},response.text
                 assert not writes,writes
             finally:
                 event.remove(engine.sync_engine,'before_cursor_execute',track)

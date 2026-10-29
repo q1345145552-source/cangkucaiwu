@@ -156,7 +156,8 @@ def test_warehouse_isolation_for_every_read_write_and_payer(tmp_path, monkeypatc
             all_headers = {**auth(1), "X-Warehouse-ID": "all"}
             all_read=await c.get(URL,headers=all_headers)
             assert all_read.status_code==200 and {r["warehouse_id"] for r in all_read.json()["data"]}=={1}
-            assert (await c.post(URL, headers=all_headers, json=BODY)).status_code == 400
+            blocked=await c.post(URL, headers=all_headers, json=BODY)
+            assert blocked.status_code==403 and blocked.json()=={'detail':'全部仓汇总只读 请先进入具体仓库再操作'}
             # Sending an inaccessible header never changes the authenticated account's scope.
             r = await c.get(URL, headers={**auth(7), "X-Warehouse-ID": "1"})
             assert r.status_code == 403 and set(r.json())=={"detail"}

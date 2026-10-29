@@ -97,7 +97,8 @@ def test_each_write_rejects_labor_without_changes_even_with_permissions(tmp_path
                 invalid_path = re.sub(r'\{[^}]+\}', 'not-an-id', case[1])
                 response = await client.request(case[0], '/api/v1'+invalid_path,
                     headers={**auth(uid),'X-Warehouse-ID':'all'},params={'view':'self'},json={})
-                assert response.status_code == 403 and response.json() == {'detail':'无权访问'}, response.text
+                detail='全部仓汇总只读 请先进入具体仓库再操作' if case[0] in ('POST','PUT','PATCH','DELETE') else '无权访问'
+                assert response.status_code == 403 and response.json() == {'detail':detail}, response.text
             assert await snapshot(factory) == before
     asyncio.run(run())
 

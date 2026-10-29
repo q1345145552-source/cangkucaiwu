@@ -360,7 +360,11 @@ def test_all_warehouse_admin_review_uses_request_warehouse_not_primary(tmp_path,
             rid=req.json()['id']
             verified=await c.post(BASE+'/recharge/review',headers=auth(9),json={'request_id':rid,'action':'verify'})
             assert verified.status_code==200,verified.text
-            approved=await c.post(BASE+'/recharge/review',headers={**auth(1),'X-Warehouse-ID':'all'},json={'request_id':rid,'action':'approve'})
+            before=await snapshot(f)
+            blocked=await c.post(BASE+'/recharge/review',headers={**auth(1),'X-Warehouse-ID':'all'},json={'request_id':rid,'action':'approve'})
+            assert blocked.status_code==403 and blocked.json()=={'detail':'全部仓汇总只读 请先进入具体仓库再操作'}
+            assert await snapshot(f)==before
+            approved=await c.post(BASE+'/recharge/review',headers=headers,json={'request_id':rid,'action':'approve'})
             assert approved.status_code==200,approved.text
             result=await c.post(BASE+'/recharge/execute',headers=auth(9),json={'request_id':rid,'action':'execute','payment_account_id':2})
             assert result.status_code==200 and result.json()['warehouse_id']==2,result.text

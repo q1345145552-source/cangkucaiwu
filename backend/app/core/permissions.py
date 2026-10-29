@@ -74,6 +74,15 @@ async def get_current_user(
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 
+    # Aggregate warehouse context must never fall back to a primary warehouse for writes.
+    if (request.headers.get('X-Warehouse-ID') == 'all'
+            and request.method in ('POST', 'PUT', 'PATCH', 'DELETE')
+            and (request.method, getattr(request.scope.get('route'), 'path', '')) not in (
+                ('POST', '/api/v1/auth/login'),
+                ('POST', '/api/v1/auth/change-password'),
+                ('POST', '/api/v1/auth/attachment-session'))):
+        raise HTTPException(status_code=403, detail='全部仓汇总只读 请先进入具体仓库再操作')
+
     # Load user's accessible warehouse IDs
     uw_result = await db.execute(
         select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == uid)
