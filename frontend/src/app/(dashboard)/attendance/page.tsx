@@ -58,6 +58,33 @@ function fmtHours(h: number): string {
   return String(r);
 }
 
+// Presentation only: work/leave hours come from the existing calendar response.
+function exemptCellDisplay(event: any, approvedLeaves: any[]) {
+  const known = (value: any) => typeof value === "number" && Number.isFinite(value);
+  const workHours = known(event?.work_hours) ? fmtHours(event.work_hours) : "—";
+  const leaveHours = known(event?.leave_hours) ? fmtHours(event.leave_hours) : "—";
+  const kinds = new Set(approvedLeaves.map(leave => leave.duration_type));
+  const hasLeave = (known(event?.leave_hours) && event.leave_hours > 0) || approvedLeaves.length > 0;
+  const fullLeave = kinds.has("full") || (kinds.has("morning") && kinds.has("afternoon"))
+    || (event?.work_hours === 0 && event?.leave_hours >= 8);
+  let leaveLabel = "";
+  if (hasLeave) {
+    if (fullLeave) leaveLabel = "全天假";
+    else if (kinds.has("morning") || kinds.has("afternoon")) {
+      leaveLabel = kinds.has("morning") ? "上午假" : "下午假";
+      if (kinds.has("hours")) leaveLabel += "＋小时假";
+    } else if (kinds.has("half") || kinds.has("half_day") || kinds.has("half-day")) leaveLabel = "半天假";
+    else if (kinds.has("hours")) leaveLabel = `请假${leaveHours}小时`;
+    else leaveLabel = "半天假";
+  }
+  return {
+    hasLeave, workHours, leaveHours, leaveLabel,
+    color: !hasLeave ? "bg-green-100 text-green-700 border-green-300"
+      : fullLeave ? "bg-red-100 text-red-700 border-red-300" : "bg-orange-100 text-orange-700 border-orange-300",
+    note: hasLeave ? `请假扣 ${leaveHours} 小时，剩 ${workHours} 小时` : "按8小时计",
+  };
+}
+
 export default function AttendancePage() {
   const { employeeView, initialLeave } = useEmployeeView();
   const { toast } = useToast(); const { user } = useAuth() as { user: any }; const { t, locale } = useI18n(employeeView || user?.role === "warehouse_labor"); const router = useRouter();
@@ -271,6 +298,22 @@ export default function AttendancePage() {
     } catch (err: any) { toast("error", err.message || t("operation_failed")); }
   }
 
+  // This page is also reused by personal routes; keep their original display unchanged.
+  const showExemptLeaveDetails = !employeeView;
+  const approvedLeaveDays = new Map<string, any[]>();
+  if (showExemptLeaveDetails) leaves.filter(leave => leave.status === "approved").forEach(leave => {
+    const key = `${leave.leave_date}_${leave.employee_id}`;
+    approvedLeaveDays.set(key, [...(approvedLeaveDays.get(key) || []), leave]);
+  });
+  const exemptSummaries = showExemptLeaveDetails ? dateList.flatMap(day => {
+    const dayEmployees = employees.filter(emp => events[`${day.date}_${emp.id}`]?.status === "exempt");
+    if (!dayEmployees.length) return [];
+    const onLeave = dayEmployees.filter(emp => exemptCellDisplay(events[`${day.date}_${emp.id}`], approvedLeaveDays.get(`${day.date}_${emp.id}`) || []).hasLeave).length;
+    // Display grouping confirmed by the user: leave does not count as attendance.
+    return [{ date: day.date, expected: dayEmployees.length, attending: dayEmployees.length - onLeave, onLeave }];
+  }) : [];
+  const exemptDates = new Set(exemptSummaries.map(day => day.date));
+
   const statusLabels: Record<string, string> = {
     present: t("att_status_present"), late: t("att_status_late"), partial: t("att_status_partial"),
     exempt: "已豁免",
@@ -338,6 +381,15 @@ export default function AttendancePage() {
       ) : (
         <>
 
+          {exemptSummaries.length > 0 && <section role="region" aria-label="豁免日人数汇总" className="rounded-xl border bg-white p-3 text-sm">
+            <h3 className="mb-2 font-semibold text-gray-800">豁免日人数汇总</h3>
+            <p className="mb-2 text-xs text-gray-500">请假不计出勤，未请假计出勤；人数分类不改变工时。</p>
+            {exemptSummaries.map(day => <div key={day.date} className="flex flex-wrap gap-x-4 gap-y-1 py-1" data-exempt-summary={day.date}>
+              <span className="font-medium">{day.date}</span><span>应出勤 {day.expected} 人</span>
+              <span className="text-green-700">实出勤 {day.attending} 人</span><span className="text-orange-700">请假 {day.onLeave} 人</span>
+            </div>)}
+          </section>}
+
           {/* Calendar Grid */}
       <div className="bg-white rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
@@ -346,7 +398,7 @@ export default function AttendancePage() {
               <tr className="bg-gray-50">
                 <th className="px-3 py-2 text-left text-gray-500 font-medium w-[100px]">{t("att_employee")}</th>
                 {dateList.map((d) => (
-                  <th key={d.date} className="px-1 py-2 text-center text-gray-500 font-medium w-[36px]">
+                  <th key={d.date} className={`px-1 py-2 text-center text-gray-500 font-medium ${exemptDates.has(d.date) ? "min-w-[128px]" : "w-[36px]"}`}>
                     <div className="text-xs">{d.weekday}</div>
                     <div>{d.day}</div>
                   </th>
@@ -367,6 +419,7 @@ export default function AttendancePage() {
                     const key = `${dt}_${emp.id}`;
                     const evt = events[key];
                     const status = evt?.status || "future";
+                    const exemptDisplay = showExemptLeaveDetails && status === "exempt" ? exemptCellDisplay(evt, approvedLeaveDays.get(key) || []) : null;
                     const sessionCount = evt?.session_count ?? 0;
                     const today = new Date().toISOString().slice(0, 10);
                     const isToday = dt === today;
@@ -387,21 +440,28 @@ export default function AttendancePage() {
                     } else {
                       cellText = statusText;
                     }
-                    const tooltip = status === "future"
-                      ? t("att_click_view_photos")
+                    const tooltip = exemptDisplay
+                      ? `已豁免 · ${exemptDisplay.leaveLabel || "未请假"} · 工时 ${exemptDisplay.workHours} 小时；${exemptDisplay.note} - ${t("att_click_view_photos")}`
+                      : status === "future" ? t("att_click_view_photos")
                       : (status === "hours_leave"
                           ? `${cellText} · ${t("hours")}${fmtHours(evt?.work_hours ?? 0)}h`
                           : statusText) + " - " + t("att_click_view_photos");
                     return (
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
-                          className={`${makeupDays[key]?.length ? "relative " : ""}rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${STATUS_COLORS[status] || "bg-white text-gray-300"} ${status === "half_absence" ? "font-bold" : ""}`}
+                          className={`${makeupDays[key]?.length ? "relative " : ""}rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${exemptDisplay?.color || STATUS_COLORS[status] || "bg-white text-gray-300"} ${exemptDisplay ? "min-w-[128px] px-2 space-y-0.5" : ""} ${status === "half_absence" ? "font-bold" : ""}`}
                           title={tooltip}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
-                          <div>{cellText}</div>
+                          {exemptDisplay ? <>
+                            <div className="whitespace-nowrap">已豁免</div>
+                            {exemptDisplay.leaveLabel && <div className="whitespace-nowrap font-semibold">{exemptDisplay.leaveLabel}</div>}
+                            <div className="whitespace-nowrap">工时 {exemptDisplay.workHours} 小时</div>
+                          </> : <div>{cellText}</div>}
                           {!!makeupDays[key]?.length && <span className="absolute top-0 right-0 text-[9px] leading-none text-purple-700" title={t("makeup")} aria-label={t("makeup")} data-makeup-badge>{t("makeup_short")}</span>}
-                          {subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
+                          {exemptDisplay ? <div className="text-[10px] leading-tight opacity-80">
+                            {exemptDisplay.hasLeave ? <><div className="whitespace-nowrap">请假扣 {exemptDisplay.leaveHours} 小时</div><div className="whitespace-nowrap">剩 {exemptDisplay.workHours} 小时</div></> : "按8小时计"}
+                          </div> : subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
                         </div>
                       </td>
                     );
@@ -419,7 +479,7 @@ export default function AttendancePage() {
       {/* Legend */}
       <div className="flex gap-4 flex-wrap text-xs text-gray-500">
         {Object.entries(statusLabels).map(([k, v]) => (
-          <div key={k} className="flex items-center gap-1"><div className={`w-3 h-3 rounded ${STATUS_COLORS[k]}`} />{v}</div>
+          <div key={k} className="flex items-center gap-1"><div className={`w-3 h-3 rounded ${showExemptLeaveDetails && k === "exempt" ? "bg-green-100 text-green-700 border-green-300" : STATUS_COLORS[k]}`} />{v}</div>
         ))}
       </div>
 
