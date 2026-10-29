@@ -205,8 +205,50 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     
     // Wait for this token's live identity; cached administrator menus are not capabilities.
 
-    // Fetch /me for warehouse list
+    // Only a freshly authenticated identity may validate this tab's warehouse.
+    const applyWarehouse = (me: any) => {
+      const warehouses: WarehouseInfo[] = me.warehouses || [];
+      setWhList(warehouses);
+      localStorage.setItem("user", JSON.stringify(me));
+      const activeId = getActiveWarehouseId();
+      if (activeId === "all") {
+        setIsAllWarehouses(true);
+        if (warehouses.length > 0) setSelectedWhId(warehouses[0].id);
+        return true;
+      }
+      setIsAllWarehouses(false);
+      if (activeId && warehouses.some(wh => String(wh.id) === activeId)) {
+        setSelectedWhId(+activeId);
+        return true;
+      }
+      setActiveWarehouseId(null);
+      setSelectedWhId(null);
+      if ((me.role === "supervisor" || me.role === "warehouse_labor") && warehouses.length === 1) {
+        setActiveWarehouseId(warehouses[0].id);
+        // Remount auth after filling an empty scope, so in-flight /me reads cannot restore stale state.
+        window.location.replace(window.location.href);
+        return false;
+      }
+      if (["warehouse_admin", "staff", "supervisor"].includes(me.role)) {
+        setUser(null);
+        window.location.replace("/select-warehouse");
+        return false;
+      }
+      // Preserve the platform administrator's existing primary-warehouse fallback.
+      if (me.role === "super_admin" && warehouses.length > 0) {
+        setSelectedWhId(warehouses[0].id);
+        setActiveWarehouseId(warehouses[0].id);
+        window.location.replace(window.location.href);
+        return false;
+      }
+      return true;
+    };
+    const refreshed = (event: Event) => {
+      if (event instanceof CustomEvent && event.detail) applyWarehouse(event.detail);
+    };
+    window.addEventListener("auth-user-refreshed", refreshed);
     api.get<any>("/auth/me").then(async me => {
+      if (getToken() !== token || !applyWarehouse(me)) return;
       if (me.role === "staff" || me.role === "supervisor") {
         const permissions = await api.get<MenuPermission[]>("/users/permissions");
         setMenuPermissions(permissions);
@@ -215,20 +257,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       setUser(me);
       localStorage.setItem("user", JSON.stringify(me));
       window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: me }));
-      if (me.warehouses && me.warehouses.length > 0) {
-        setWhList(me.warehouses);
-        const activeId = getActiveWarehouseId();
-        if (activeId === "all") {
-          setIsAllWarehouses(true);
-          if (me.warehouses.length > 0) setSelectedWhId(me.warehouses[0].id);
-        } else if (activeId && me.warehouses.find((w: any) => w.id === +activeId)) {
-          setSelectedWhId(+activeId);
-        } else if (me.warehouses.length > 0) {
-          setSelectedWhId(me.warehouses[0].id);
-          setActiveWarehouseId(me.warehouses[0].id);
-        }
+    }).catch(error => {
+      if (getToken() === token && error?.status === 403) {
+        setActiveWarehouseId(null);
+        setUser(null);
+        window.location.replace("/");
       }
-    }).catch(() => {});
+    });
+    return () => window.removeEventListener("auth-user-refreshed", refreshed);
   }, []);
 
   const switchWarehouse = (wh: WarehouseInfo) => {
@@ -259,6 +295,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await api.post("/auth/attachment-session", { clear: true }).catch(() => {});
+    setActiveWarehouseId(null);
     localStorage.clear();
     router.push("/login");
   };

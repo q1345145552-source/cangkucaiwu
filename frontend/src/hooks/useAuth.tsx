@@ -57,11 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function doLogin(username: string, password: string) {
     const res = await api.post<LoginResponse>("/auth/login", { username, password });
     setToken(res.access_token);
-    
-    if (res.warehouses && res.warehouses.length > 0) {
-      localStorage.setItem("warehouses", JSON.stringify(res.warehouses));
-      setActiveWarehouseId(res.warehouses[0].id);
-    }
+    setActiveWarehouseId(null);
+    localStorage.setItem("warehouses", JSON.stringify(res.warehouses || []));
     
     const u: AuthUser = {
       id: res.user_id,
@@ -81,11 +78,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
     localStorage.setItem("user", JSON.stringify(u));
     
-    // 仓库劳工默认进打卡页，其他人进仪表盘
+    const warehouses = res.warehouses || [];
     if (res.role === "warehouse_labor") {
+      if (warehouses.length > 0) setActiveWarehouseId(warehouses[0].id);
       router.push("/clock-in");
-    } else {
+    } else if (res.role === "super_admin") {
+      if (warehouses.length > 0) setActiveWarehouseId(warehouses[0].id);
       router.push("/dashboard");
+    } else if (res.role === "supervisor" && warehouses.length === 1) {
+      setActiveWarehouseId(warehouses[0].id);
+      router.push("/dashboard");
+    } else {
+      router.push("/select-warehouse");
     }
   }
 

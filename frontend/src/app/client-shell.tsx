@@ -52,7 +52,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     <AuthProvider>
       <ToastProvider>
         <ModalCloseGuard />
-        {isLogin ? (
+        {isLogin || pathname === "/select-warehouse" || pathname === "/warehouse-overview" ? (
           children
         ) : (
           <DashboardLayout>{children}</DashboardLayout>

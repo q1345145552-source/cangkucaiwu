@@ -34,16 +34,36 @@ export function clearToken() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("activeWarehouseId");
+    sessionStorage.removeItem("activeWarehouseId");
+    sessionStorage.removeItem("activeWarehouseToken");
   }
 }
 
 // Active warehouse management
-export function getActiveWarehouseId(): string | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("activeWarehouseId");
-  }
-  return null;
-}
+export const getActiveWarehouseId: () => string | null = (() => {
+  if (typeof window !== "undefined") localStorage.removeItem("activeWarehouseId");
+  return () => {
+    if (typeof window !== "undefined") {
+      const warehouse = sessionStorage.getItem("activeWarehouseId");
+      if (warehouse === null) return null;
+      let belongsToCachedUser = true;
+      try {
+        const cached = JSON.parse(localStorage.getItem("user") || "null");
+        // Cached membership may only discard a selection; the server still authorizes every request.
+        if (warehouse !== "all" && Array.isArray(cached?.warehouses)) {
+          belongsToCachedUser = cached.warehouses.some((item: { id: number }) => String(item.id) === warehouse);
+        }
+      } catch { belongsToCachedUser = false; }
+      if (sessionStorage.getItem("activeWarehouseToken") !== getToken() || !belongsToCachedUser) {
+        sessionStorage.removeItem("activeWarehouseId");
+        sessionStorage.removeItem("activeWarehouseToken");
+        return null;
+      }
+      return warehouse;
+    }
+    return null;
+  };
+})();
 
 // Native downloads and FormData requests need the same selected warehouse as JSON requests.
 export function warehouseRequestHeaders(): Record<string, string> {
@@ -55,10 +75,13 @@ export function warehouseRequestHeaders(): Record<string, string> {
 
 export function setActiveWarehouseId(id: string | number | null) {
   if (typeof window !== "undefined") {
+    getActiveWarehouseId();
     if (id !== null && id !== undefined) {
-      localStorage.setItem("activeWarehouseId", String(id));
+      sessionStorage.setItem("activeWarehouseId", String(id));
+      sessionStorage.setItem("activeWarehouseToken", getToken() || "");
     } else {
-      localStorage.removeItem("activeWarehouseId");
+      sessionStorage.removeItem("activeWarehouseId");
+      sessionStorage.removeItem("activeWarehouseToken");
     }
   }
 }
