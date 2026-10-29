@@ -142,6 +142,8 @@ export default function SuppliersPage() {
   const [logisticsFile,setLogisticsFile] = useState<File|null>(null);
   const [importMode, setImportMode] = useState<"products"|"logistics">("products");
   const [importSupplierId, setImportSupplierId] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [selectedImportName, setSelectedImportName] = useState("");
   // Order
   const [showOrder, setShowOrder] = useState(false);
   const [orderItems, setOrderItems] = useState<Record<number, number>>({});
@@ -203,9 +205,26 @@ export default function SuppliersPage() {
     }
   }
 
+  function openSupplierUpload(mode: "products" | "logistics", supplierId: number) {
+    setImportSupplierId(supplierId);
+    setImportMode(mode);
+    setUploadError("");
+    setSelectedImportName("");
+    const input = mode === "products" ? fileInputRef.current : logisticsInputRef.current;
+    try {
+      if (!input) throw new Error("文件选择框不可用");
+      if (typeof input.showPicker === "function") input.showPicker();
+      else input.click();
+    } catch {
+      setUploadError("浏览器拦截了请重试");
+    }
+  }
+
   async function handleSupplierImport(mode:"products"|"logistics"="products") {
     const input=mode==='products'?fileInputRef.current:logisticsInputRef.current;
     const file=input?.files?.[0];if(!file)return;if(input)input.value='';
+    setUploadError("");
+    setSelectedImportName(file.name);
     try {checkExcel(file);if(mode==='products')setProductImportFile(file);else setLogisticsFile(file);}
     catch(e:any){toast('error',e.message);}
   }
@@ -711,6 +730,8 @@ export default function SuppliersPage() {
         </div>
       </nav>
       {isAdmin&&<p className="text-xs text-gray-500 mb-3">顶栏模板为批量版（增加供应商名称）；单供应商模板在对应供应商行下载。仅.xlsx；.xls请另存为.xlsx，不能只改扩展名。</p>}
+      {uploadError&&<p role="alert" className="text-sm text-red-600 mb-3">{uploadError}</p>}
+      {selectedImportName&&<p role="status" className="text-sm text-gray-600 mb-3 break-all">已选择 {selectedImportName}</p>}
       <input ref={fileInputRef} aria-label="耗材产品导入文件" type="file" accept=".xlsx" onChange={()=>handleSupplierImport('products')} className="hidden" />
       {SUPPLIER_LOGISTICS_ENABLED&&<input ref={logisticsInputRef} aria-label="物流报价导入文件" type="file" accept=".xlsx" onChange={()=>handleSupplierImport('logistics')} className="hidden" />}
       <input aria-label="上传采购回执" ref={receiptInputRef} type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(f)handleReceiptUpload(f);}} className="hidden" />
@@ -733,13 +754,13 @@ export default function SuppliersPage() {
           <div className="flex gap-1 flex-wrap items-center">
             {row.category_id === 1 && (
               <>
-                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("products");setTimeout(()=>fileInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入产品"><Upload size={12}/></button></ActionGate>
+                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>openSupplierUpload("products",row.id)} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs min-h-[44px] min-w-[44px] px-2 py-2 rounded" title="导入产品"><Upload size={16}/>上传</button></ActionGate>
                 <button onClick={()=>openProducts(row.id)} className="text-green-600 hover:bg-green-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><Plus size={12}/>产品</button>
               </>
             )}
             {SUPPLIER_LOGISTICS_ENABLED && row.category_id === 2 && (
               <>
-                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>{setImportSupplierId(row.id);setImportMode("logistics");setTimeout(()=>logisticsInputRef.current?.click(),100);}} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded" title="导入物流"><Upload size={12}/></button></ActionGate>
+                <ActionGate anyOf={["suppliers.import_products"]}><button onClick={()=>openSupplierUpload("logistics",row.id)} className="text-purple-500 hover:bg-purple-50 flex items-center gap-1 text-xs min-h-[44px] min-w-[44px] px-2 py-2 rounded" title="导入物流"><Upload size={16}/>上传</button></ActionGate>
                 <button onClick={()=>openLogistics(row.id)} className="text-orange-600 hover:bg-orange-50 flex items-center gap-1 text-xs px-1.5 py-1 rounded"><TrendingUp size={12}/>物流</button>
               </>
             )}
