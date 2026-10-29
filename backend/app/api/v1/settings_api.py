@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text as sa_text
 from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
-from datetime import datetime
+from datetime import datetime, date as Date
 from app.database import get_db
 from app.models.audit_log import AuditLog
 from app.models.expense_fund import SystemSetting
@@ -68,7 +68,7 @@ def _audit_user_name(log, user_names):
 @router.get("/logs")
 async def operation_logs(
     page: int = 1, page_size: int = 20,
-    user_id: int = None, action_type: str = None, date: str = None,
+    user_id: int = None, action_type: str = None, date: Date = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _perm=Depends(check_staff_permission("操作日志")),

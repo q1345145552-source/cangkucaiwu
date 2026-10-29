@@ -1,6 +1,7 @@
 "use client";
 import ActionGate from "@/components/permissions/ActionGate";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { loadClockRecordPages } from "@/lib/clock-record-pages";
 import { api, getToken } from "@/lib/api";
 import { useI18n } from "@/hooks/useI18n";
 import { useToast } from "@/components/ui/Toast";
@@ -35,6 +36,10 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   const canMakeup = !employeeView && (user?.role === "warehouse_admin" || user?.role === "supervisor");
   const [employees, setEmployees] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
+  const [employeePage, setEmployeePage] = useState(1);
+  const [employeeTotal, setEmployeeTotal] = useState(0);
+  const [loadError, setLoadError] = useState("");
+  const loadVersion = useRef(0);
   const [loading, setLoading] = useState(false);
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [detailPopup, setDetailPopup] = useState<{ empId: number; empName: string; date: string; sessions: Record<number, any> } | null>(null);
@@ -48,7 +53,8 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   const dateList = buildDateList(startDate, endDate, dayNames);
   const totalDays = dateList.length;
 
-  useEffect(() => { load(); }, [startDate, endDate, employeeView]);
+  useEffect(() => { setEmployeePage(1); }, [startDate, endDate, employeeView]);
+  useEffect(() => { load(); return () => { loadVersion.current++; }; }, [startDate, endDate, employeeView, employeePage]);
 
   useEffect(() => {
     if (user?.role === "warehouse_admin" || user?.role === "supervisor") {
@@ -64,13 +70,15 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
   }, [user?.role]);
 
   async function load() {
-    setLoading(true);
+    const version = ++loadVersion.current;
+    setLoading(true); setLoadError(""); setRecords([]); setEmployees([]);
     try {
-      const r = await api.get<any>(`/clock-in/records?start_date=${startDate}&end_date=${endDate}${employeeView ? "&view=self" : ""}`);
-      setEmployees(r.employees || []);
-      setRecords(r.records || []);
-    } catch {}
-    setLoading(false);
+      const r = await loadClockRecordPages(`start_date=${startDate}&end_date=${endDate}&employee_page=${employeePage}${employeeView ? "&view=self" : ""}`, () => version === loadVersion.current);
+      if (version !== loadVersion.current) return;
+      setEmployees(r.employees || []); setRecords(r.records || []); setEmployeeTotal(r.employees_total);
+    } catch (error) {
+      if (version === loadVersion.current) setLoadError(error instanceof Error ? error.message : "打卡记录加载失败");
+    } finally { if (version === loadVersion.current) setLoading(false); }
   }
 
   function openMakeupForm() {
@@ -183,6 +191,12 @@ export default function ClockRecordsGrid(props: { startDate: string; endDate: st
           <Download size={14}/>{t("export_excel")}
         </button>
       </div>}
+      <div className="flex flex-wrap items-center gap-3 my-3" aria-label="打卡员工分页">
+        <button className="btn-secondary" disabled={loading || employeePage <= 1} onClick={() => setEmployeePage(p => p - 1)}>上一页员工</button>
+        <span>第 {employeePage} 页 · 共 {employeeTotal} 人 · 每页 5 人</span>
+        <button className="btn-secondary" disabled={loading || employeePage * 5 >= employeeTotal} onClick={() => setEmployeePage(p => p + 1)}>下一页员工</button>
+      </div>
+      {loadError && <p role="alert" className="text-red-600">{loadError}<button className="btn-secondary ml-2" onClick={load}>重试</button></p>}
       {loading ? (
         <div className="text-center py-12 text-gray-400">{t("loading")}</div>
       ) : (

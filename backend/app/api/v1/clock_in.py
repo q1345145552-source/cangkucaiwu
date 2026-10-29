@@ -239,45 +239,93 @@ async def get_today(
 
 @router.get("/records")
 async def list_records(
-    start_date: str = None,
-    end_date: str = None,
+    request: Request,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    record_date: Optional[date] = Query(None, alias="date"),
+    month: Optional[str] = None,
+    warehouse_id: Optional[int] = Query(None, gt=0),
+    employee_id: Optional[int] = Query(None, gt=0),
+    user_id: Optional[int] = Query(None, gt=0),
+    employee: Optional[int] = Query(None, gt=0),
+    user: Optional[int] = Query(None, gt=0),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    employee_page: Optional[int] = Query(None, ge=1),
+    employee_page_size: int = Query(5, ge=1, le=20),
+    is_makeup: Optional[bool] = None,
     current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, _LEAVE_PERMISSION)),
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.employee import Employee
+    from app.services.employee_match import resolve_employee_user_map
+    from calendar import monthrange
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_LABOR, Role.SUPERVISOR, Role.STAFF):
         raise HTTPException(403, "无权限")
-
-    # Determine warehouse scope
+    if (record_date and (start_date or end_date or month)) or (month and (start_date or end_date)):
+        raise HTTPException(400, "单日、月份和日期范围不能同时使用")
+    if month:
+        try:
+            first = datetime.strptime(month, "%Y-%m").date()
+            start_date, end_date = first, first.replace(day=monthrange(first.year, first.month)[1])
+        except ValueError:
+            raise HTTPException(400, "月份格式应为YYYY-MM")
+    if record_date:
+        start_date = end_date = record_date
+    if not start_date and not end_date:
+        start_date = end_date = thai_today()
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, "开始日期不能晚于结束日期")
+    if (employee_id and employee and employee_id != employee) or (user_id and user and user_id != user):
+        raise HTTPException(400, "员工或账号筛选参数冲突")
+    employee_id, user_id = employee_id or employee, user_id or user
+    if employee_view(current_user) and ((employee_id is not None and employee_id != current_user._attendance_employee.id)
+                                         or (user_id is not None and user_id != current_user.id)):
+        raise HTTPException(403, "本人功能不能查询其他员工或仓库")
     active_wh = get_wh_id(current_user)
+    if not employee_view(current_user):
+        from app.services.warehouse_summary import warehouse_scope
+        scope = await warehouse_scope(db, current_user, request.headers.get("X-Warehouse-ID"), warehouse_id=warehouse_id)
+        if active_wh not in {w.id for w in scope} and warehouse_id is None:
+            raise HTTPException(403, "请先选择有权限的仓库")
+    if warehouse_id is not None:
+        if warehouse_id not in get_wh_ids(current_user) or (employee_view(current_user) and warehouse_id != active_wh):
+            raise HTTPException(403, "无权查看其他仓库的打卡记录")
+        active_wh = warehouse_id
+    if active_wh is None:
+        raise HTTPException(403, "请先选择有权限的仓库")
 
-    # Get employees in scope（只在职：is_deleted=False 且 status != resigned）
-    emp_q = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False)
+    emp_q = select(Employee).where(Employee.status != "resigned", Employee.is_deleted == False,
+                                   Employee.warehouse_id == active_wh)
     if employee_view(current_user):
-        wh_id = get_wh_id(current_user)
-        # 劳工：优先绑定账号，兜底按显示名+仓库匹配（只能看到自己）
-        cond = Employee.user_id == current_user.id
-        cond = or_(cond, and_(Employee.name == current_user.display_name, Employee.warehouse_id == wh_id) if wh_id else Employee.name == current_user.display_name)
-        emp_q = emp_q.where(Employee.id == current_user._attendance_employee.id, Employee.warehouse_id == wh_id)
-    elif active_wh:
-        emp_q = emp_q.where(Employee.warehouse_id == active_wh)
-    emps = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
-
-    # Get clock-in records
-    query = select(ClockInRecord).where(valid_clock())
+        emp_q = emp_q.where(Employee.id == current_user._attendance_employee.id)
+    if employee_id is not None:
+        emp_q = emp_q.where(Employee.id == employee_id)
+    emps = (await db.execute(emp_q.order_by(Employee.name, Employee.id))).scalars().all()
+    emp_to_user, user_to_emp = await resolve_employee_user_map(db, emps)
+    if user_id is not None:
+        emps = [e for e in emps if emp_to_user.get(e.id) == user_id]
+    employees_total = len(emps)
+    if employee_page is not None:
+        emps = emps[(employee_page-1)*employee_page_size:employee_page*employee_page_size]
+    query = select(ClockInRecord).where(valid_clock(), ClockInRecord.warehouse_id == active_wh)
     if employee_view(current_user):
         query = query.where(ClockInRecord.user_id == current_user.id)
-    elif active_wh:
-        query = query.where(ClockInRecord.warehouse_id == active_wh)
-    if employee_view(current_user):
-        query = query.where(ClockInRecord.warehouse_id == active_wh)
+    if user_id is not None:
+        query = query.where(ClockInRecord.user_id == user_id)
+    if employee_id is not None or employee_page is not None:
+        query = query.where(ClockInRecord.user_id.in_([emp_to_user[e.id] for e in emps if e.id in emp_to_user]))
     if start_date:
-        query = query.where(ClockInRecord.clock_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+        query = query.where(ClockInRecord.clock_date >= start_date)
     if end_date:
-        query = query.where(ClockInRecord.clock_date <= datetime.strptime(end_date, "%Y-%m-%d").date())
-    result = await db.execute(query.order_by(ClockInRecord.clock_date.asc(), ClockInRecord.session))
+        query = query.where(ClockInRecord.clock_date <= end_date)
+    if is_makeup is not None:
+        query = query.where(ClockInRecord.is_makeup == is_makeup)
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
+    result = await db.execute(query.order_by(ClockInRecord.clock_date.asc(), ClockInRecord.session, ClockInRecord.id)
+                              .offset((page-1)*page_size).limit(page_size))
     records = result.scalars().all()
 
     # Maps（含未绑定账号的兜底匹配：手机号=用户名 / 姓名=显示名）
@@ -297,13 +345,18 @@ async def list_records(
         makeup_by_names = {u.id: u.display_name for u in us2}
 
     return {
+        "total": total, "page": page, "page_size": page_size,
+        "employees_total": employees_total, "employee_page": employee_page,
+        "employee_page_size": employee_page_size, "warehouse_id": active_wh,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
         "employees": [{
             "id": e.id, "name": e.name, "position": e.position,
             "user_id": e.user_id, "status": e.status, "photo_path": e.photo_path,
             "photo_thumb_path": thumb_path_of(e.photo_path),
         } for e in emps],
         "records": [{
-            "id": r.id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
+            "id": r.id, "warehouse_id": r.warehouse_id, "user_id": r.user_id, "user_name": users_map.get(r.user_id, ""),
             "employee_id": user_to_emp.get(r.user_id),
             "clock_date": r.clock_date.isoformat(), "session": r.session,
             "label": SESSIONS.get(r.session, {}).get("label", ""),

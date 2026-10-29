@@ -16,6 +16,7 @@ import SafeImage from "@/components/SafeImage";
 import AttendanceExemptions from "@/components/AttendanceExemptions";
 import BatchMakeupModal from "@/components/BatchMakeupModal";
 import { MakeupBadge, MakeupRecordDetails } from "@/components/MakeupDisplay";
+import { loadClockRecordPages } from "@/lib/clock-record-pages";
 import { makeupRecordsByDay, attachMakeupDetails, MakeupDisplayRecord } from "@/lib/makeup-display";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -131,7 +132,7 @@ export default function AttendancePage() {
     try {
       const [r, records] = await Promise.all([
         api.get<any>(`/clock-in/photos?employee_id=${empId}&date=${dateStr}${selfQuery}`),
-        api.get<{ records: MakeupDisplayRecord[] }>(`/clock-in/records?start_date=${dateStr}&end_date=${dateStr}${selfQuery}`).catch(() => ({ records: [] })),
+        api.get<{ records: MakeupDisplayRecord[] }>(`/clock-in/records?date=${dateStr}&employee_id=${empId}${selfQuery}`).catch(() => ({ records: [] })),
       ]);
       setPhotoPopup({ employee_name: empName, date: dateStr });
       setPhotoSessions(attachMakeupDetails(r.sessions || [], records.records || [], empId, dateStr));
@@ -171,7 +172,7 @@ export default function AttendancePage() {
   async function loadMakeupMarkers(version: number) {
     if (!canViewRecords || version !== makeupLoadVersion.current) return;
     try {
-      const result = await api.get<{ records: MakeupDisplayRecord[] }>(`/clock-in/records?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
+      const result = await loadClockRecordPages(`start_date=${dateRange.start_date}&end_date=${dateRange.end_date}&is_makeup=true${selfQuery}`, () => version === makeupLoadVersion.current);
       if (version === makeupLoadVersion.current) setMakeupDays(makeupRecordsByDay(result.records || []));
     } catch { /* Marker metadata failure must not break the existing calendar. */ }
   }

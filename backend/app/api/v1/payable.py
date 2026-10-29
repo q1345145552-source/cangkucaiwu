@@ -683,7 +683,7 @@ async def batch_export(supplier_id: int = None, start_date: str = None, end_date
     if start_date:
         query = query.where(PayableBill.due_date >= datetime.fromisoformat(start_date))
     if end_date:
-        query = query.where(PayableBill.due_date <= datetime.fromisoformat(end_date))
+        query = query.where(PayableBill.due_date < datetime.fromisoformat(end_date) + timedelta(days=1))
     bills = (await db.execute(query.order_by(PayableBill.due_date))).scalars().all()
     sids = {b.supplier_id for b in bills}
     smap = {}

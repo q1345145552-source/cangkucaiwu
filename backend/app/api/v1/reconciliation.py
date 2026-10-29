@@ -31,12 +31,12 @@ async def get_unmatched(
     if warehouse_id:scope=[warehouse_id]
     today = thai_today()
     sd = datetime.fromisoformat(start_date) if start_date else datetime(today.year, today.month, 1)
-    ed = datetime.fromisoformat(end_date) if end_date else datetime(today.year, today.month, today.day) + timedelta(days=1) - timedelta(microseconds=1)
+    ed = (datetime.fromisoformat(end_date) if end_date else datetime(today.year, today.month, today.day)) + timedelta(days=1)
 
     decl_q = select(RechargeDeclaration).where(and_(
         RechargeDeclaration.warehouse_id.in_(scope),
         RechargeDeclaration.declare_date >= sd,
-        RechargeDeclaration.declare_date <= ed,
+        RechargeDeclaration.declare_date < ed,
         RechargeDeclaration.match_status == MatchStatus.UNMATCHED,
         RechargeDeclaration.screenshot.isnot(None),
     )).order_by(RechargeDeclaration.declare_date.desc())
@@ -59,7 +59,7 @@ async def get_unmatched(
     flow_q = select(IncomingFlow).where(and_(
         IncomingFlow.warehouse_id.in_(scope),
         IncomingFlow.received_date >= sd,
-        IncomingFlow.received_date <= ed,
+        IncomingFlow.received_date < ed,
         IncomingFlow.match_status == MatchStatus.UNMATCHED,
     )).order_by(IncomingFlow.received_date.desc())
     flows = (await db.execute(flow_q)).scalars().all()

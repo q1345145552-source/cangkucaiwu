@@ -6,7 +6,7 @@ from app.services import fund_authorization as duties
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 import os, uuid
 from pathlib import Path
@@ -494,7 +494,7 @@ async def list_pending_reviews(
     if start_date:
         filters.append(ExpenseFundItem.expense_date >= datetime.strptime(start_date, "%Y-%m-%d"))
     if end_date:
-        filters.append(ExpenseFundItem.expense_date <= datetime.strptime(end_date, "%Y-%m-%d"))
+        filters.append(ExpenseFundItem.expense_date < datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1))
     if currency:
         filters.append(ExpenseFundItem.currency == currency)
 
