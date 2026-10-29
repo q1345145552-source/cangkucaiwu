@@ -559,6 +559,8 @@ async def _migrate_monthly_salary_template(conn):
 
 
 async def seed():
+    from sqlalchemy import text
+
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -614,7 +616,6 @@ async def seed():
         from app.services.inventory_migration import migrate_inventory
         await migrate_inventory(conn)
         # Migration: add half column to payroll_records if not exists
-        from sqlalchemy import text
         try:
             async with conn.begin_nested():
                 await conn.execute(text(
@@ -881,6 +882,7 @@ async def seed():
                     await conn.execute(text("""
                         INSERT INTO system_settings (warehouse_id, key, value)
                         SELECT MIN(id), 'supervisor_perms_backfilled_v1', 'true' FROM warehouses
+                        HAVING MIN(id) IS NOT NULL
                     """))
         except Exception as _e:
             print(f"迁移 主管扩展权限补全 失败：{_e}")
