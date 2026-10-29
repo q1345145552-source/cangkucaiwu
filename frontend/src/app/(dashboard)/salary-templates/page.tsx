@@ -7,6 +7,9 @@ import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
 import { DollarSign, Plus, Edit2, Trash2 } from "lucide-react";
 
+const emptyMonthly = () => ({ monthly_deduction_mode: "", monthly_fixed_days: "", monthly_rest_days: "", monthly_rest_pattern: "", monthly_rest_weekdays: [] as number[], monthly_rest_monthdays: [] as number[], monthly_overtime_hour_fee: "" });
+const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
 const TYPE_LABELS: Record<string, string> = { hourly: "按小时", daily: "按天", monthly: "按月" };
 
 export default function SalaryTemplatesPage() {
@@ -16,7 +19,7 @@ export default function SalaryTemplatesPage() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", type: "daily", amount: "", overtime_half_hour_fee: "" });
+  const [form, setForm] = useState({ name: "", type: "daily", amount: "", overtime_half_hour_fee: "", ...emptyMonthly() });
 
   useEffect(() => { if (!getToken()) { router.push("/login"); return; } load(); }, []);
 
@@ -31,13 +34,17 @@ export default function SalaryTemplatesPage() {
 
   function openCreate() {
     setEditingId(null);
-    setForm({ name: "", type: "daily", amount: "", overtime_half_hour_fee: "" });
+    setForm({ name: "", type: "daily", amount: "", overtime_half_hour_fee: "", ...emptyMonthly() });
     setShowForm(true);
   }
 
   function openEdit(r: any) {
     setEditingId(r.id);
-    setForm({ name: r.name, type: r.type, amount: String(r.amount ?? ""), overtime_half_hour_fee: String(r.overtime_half_hour_fee ?? 0) });
+    setForm({ name: r.name, type: r.type, amount: String(r.amount ?? ""), overtime_half_hour_fee: String(r.overtime_half_hour_fee ?? 0),
+      monthly_deduction_mode: r.monthly_deduction_mode ?? "", monthly_fixed_days: String(r.monthly_fixed_days ?? ""),
+      monthly_rest_days: String(r.monthly_rest_days ?? ""), monthly_rest_pattern: r.monthly_rest_pattern ?? "",
+      monthly_rest_weekdays: r.monthly_rest_weekdays ?? [], monthly_rest_monthdays: r.monthly_rest_monthdays ?? [],
+      monthly_overtime_hour_fee: String(r.monthly_overtime_hour_fee ?? "") });
     setShowForm(true);
   }
 
@@ -46,12 +53,31 @@ export default function SalaryTemplatesPage() {
     const amount = parseFloat(form.amount);
     if (!amount || amount <= 0) { toast("error", "金额必须大于0"); return; }
     const ot = parseFloat(form.overtime_half_hour_fee || "0");
+    const monthly = form.type === "monthly";
+    const restDays = form.monthly_rest_days === "" ? null : Number(form.monthly_rest_days);
+    const fixedDays = form.monthly_fixed_days === "" ? null : Number(form.monthly_fixed_days);
+    const selectedDays = form.monthly_rest_pattern === "weekly" ? form.monthly_rest_weekdays : form.monthly_rest_pattern === "monthly" ? form.monthly_rest_monthdays : [];
+    if (monthly) {
+      if (restDays !== null && (!Number.isInteger(restDays) || restDays < 0 || restDays > 4)) { toast("error", "每月固定休息天数必须为0到4的整数"); return; }
+      if (restDays !== null && restDays > 0 && !selectedDays.length) { toast("error", "填写每月休息天数后，请选择休息规律及具体休息日期"); return; }
+      if (form.monthly_deduction_mode === "fixed" && (fixedDays === null || !Number.isInteger(fixedDays) || fixedDays <= 0)) { toast("error", "固定天数模式请填写大于0的整数天数"); return; }
+    }
+    const payload = { name: form.name, type: form.type, amount,
+      ...(monthly ? {
+        monthly_deduction_mode: form.monthly_deduction_mode || null,
+        monthly_fixed_days: form.monthly_deduction_mode === "fixed" ? fixedDays : null,
+        monthly_rest_days: restDays, monthly_rest_pattern: form.monthly_rest_pattern || null,
+        monthly_rest_weekdays: form.monthly_rest_pattern === "weekly" ? form.monthly_rest_weekdays : null,
+        monthly_rest_monthdays: form.monthly_rest_pattern === "monthly" ? form.monthly_rest_monthdays : null,
+        monthly_overtime_hour_fee: form.monthly_overtime_hour_fee === "" ? null : Number(form.monthly_overtime_hour_fee),
+      } : { overtime_half_hour_fee: ot }),
+    };
     try {
       if (editingId) {
-        await api.put(`/salary-templates/${editingId}`, { ...form, amount, overtime_half_hour_fee: ot });
+        await api.put(`/salary-templates/${editingId}`, payload);
         toast("success", "薪资模板已更新");
       } else {
-        await api.post("/salary-templates", { ...form, amount, overtime_half_hour_fee: ot });
+        await api.post("/salary-templates", payload);
         toast("success", "薪资模板创建成功");
       }
       setShowForm(false);
@@ -143,10 +169,40 @@ export default function SalaryTemplatesPage() {
                 <input type="number" step="0.01" className="form-input py-2.5 w-full" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
                 <p className="text-xs text-gray-400 mt-1">按小时和按天填日薪，按月填月薪</p>
               </div>
+              {form.type === "monthly" ? <>
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">扣款天数模式</label>
+                  <select aria-label="扣款天数模式" className="form-input py-2.5 w-full" value={form.monthly_deduction_mode} onChange={e => setForm({ ...form, monthly_deduction_mode: e.target.value })}>
+                    <option value="">未填写</option><option value="fixed">固定天数</option><option value="actual">实际天数</option>
+                  </select>
+                </div>
+                {form.monthly_deduction_mode === "fixed" && <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">固定天数</label>
+                  <input aria-label="固定天数" type="number" min="1" step="1" className="form-input py-2.5 w-full" value={form.monthly_fixed_days} onChange={e => setForm({ ...form, monthly_fixed_days: e.target.value })} />
+                </div>}
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">每月固定休息几天</label>
+                  <input aria-label="每月固定休息几天" type="number" min="0" max="4" step="1" className="form-input py-2.5 w-full" value={form.monthly_rest_days} onChange={e => setForm({ ...form, monthly_rest_days: e.target.value })} />
+                </div>
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">休息规律</label>
+                  <select aria-label="休息规律" className="form-input py-2.5 w-full" value={form.monthly_rest_pattern} onChange={e => setForm({ ...form, monthly_rest_pattern: e.target.value })}>
+                    <option value="">未填写</option><option value="weekly">每周几休</option><option value="monthly">每月几号休</option>
+                  </select>
+                  {form.monthly_rest_pattern === "weekly" && <div className="flex flex-wrap gap-3 mt-3">{weekdays.map((label, day) => <label key={day} className="flex items-center gap-1 p-1 text-sm"><input type="checkbox" checked={form.monthly_rest_weekdays.includes(day)} onChange={e => setForm({ ...form, monthly_rest_weekdays: e.target.checked ? [...form.monthly_rest_weekdays, day].sort((a,b) => a-b) : form.monthly_rest_weekdays.filter(d => d !== day) })} />{label}</label>)}</div>}
+                  {form.monthly_rest_pattern === "monthly" && <div className="grid grid-cols-4 gap-2 mt-3">{Array.from({ length: 31 }, (_, i) => i + 1).map(day => <label key={day} className="flex items-center gap-1 p-1 text-sm"><input type="checkbox" checked={form.monthly_rest_monthdays.includes(day)} onChange={e => setForm({ ...form, monthly_rest_monthdays: e.target.checked ? [...form.monthly_rest_monthdays, day].sort((a,b) => a-b) : form.monthly_rest_monthdays.filter(d => d !== day) })} />{day}号</label>)}</div>}
+                </div>
+                <div>
+                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">每小时加班费</label>
+                  <input aria-label="每小时加班费" type="number" min="0" step="0.01" className="form-input py-2.5 w-full" value={form.monthly_overtime_hour_fee} onChange={e => setForm({ ...form, monthly_overtime_hour_fee: e.target.value })} />
+                  <p className="text-xs text-gray-400 mt-1">不填就是没有加班费</p>
+                </div>
+              </> : (
               <div>
                 <label className="form-label text-sm font-medium text-gray-600 mb-1 block">加班半小时费</label>
                 <input type="number" step="0.01" className="form-input py-2.5 w-full" value={form.overtime_half_hour_fee} onChange={e => setForm({ ...form, overtime_half_hour_fee: e.target.value })} />
               </div>
+              )}
             </div>
             <div className="border-t px-5 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm px-6 py-2" data-modal-close="true">取消</button>

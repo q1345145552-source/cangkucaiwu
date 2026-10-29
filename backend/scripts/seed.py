@@ -531,10 +531,28 @@ async def _migrate_reimbursement_payments(conn):
             raise
 
 
+async def _migrate_monthly_salary_template(conn):
+    """Nullable storage only. Never backfill templates or recalculate payroll."""
+    from sqlalchemy import text
+    columns = {
+        "monthly_deduction_mode": "VARCHAR(20)",
+        "monthly_fixed_days": "INTEGER",
+        "monthly_rest_days": "INTEGER",
+        "monthly_rest_pattern": "VARCHAR(20)",
+        "monthly_rest_weekdays": "JSON",
+        "monthly_rest_monthdays": "JSON",
+        "monthly_overtime_hour_fee": "DOUBLE PRECISION",
+    }
+    async with conn.begin_nested():
+        for name, column_type in columns.items():
+            await conn.execute(text(f"ALTER TABLE salary_templates ADD COLUMN IF NOT EXISTS {name} {column_type}"))
+
+
 async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_monthly_salary_template(conn)
         from app.services.employee_identity_migration import migrate_employee_identity
         await migrate_employee_identity(conn)
         await _migrate_credit_shipments(conn)
