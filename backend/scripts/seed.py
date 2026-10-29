@@ -256,6 +256,16 @@ async def _migrate_advance_approval_columns(conn):
             print(f"迁移 预支审批字段 {name} 失败：{exc}")
 
 
+async def _migrate_employee_rest_settings(conn):
+    """Add nullable settings only; do not generate or rewrite rest records."""
+    from sqlalchemy import text
+    columns = {"rest_rule_mode": "VARCHAR(20)", "rest_days_per_month": "INTEGER",
+               "rest_pattern": "VARCHAR(20)", "rest_weekdays": "JSON",
+               "rest_monthdays": "JSON", "workday_overrides": "JSON"}
+    for name, sql_type in columns.items():
+        await conn.execute(text(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {name} {sql_type}"))
+
+
 async def _migrate_employee_advance_expenses(conn):
     """仅加新旧标记和关联列；老预支不补任何支出。"""
     from sqlalchemy import text
@@ -562,6 +572,7 @@ async def seed():
         await _migrate_monthly_salary_template(conn)
         from app.services.employee_identity_migration import migrate_employee_identity
         await migrate_employee_identity(conn)
+        await _migrate_employee_rest_settings(conn)
         await _migrate_credit_shipments(conn)
         await _migrate_customer_receipt_identity(conn)
         await _migrate_incoming_operations(conn)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Date, Text
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Date, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -47,6 +47,14 @@ class Employee(Base):
 
     # Link to login user account (formal relationship, not name matching)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, unique=True, comment="关联登录账号")
+
+    # Nullable calendar-only rest settings; payroll is deliberately unchanged.
+    rest_rule_mode = Column(String(20), nullable=True)
+    rest_days_per_month = Column(Integer, nullable=True)
+    rest_pattern = Column(String(20), nullable=True)
+    rest_weekdays = Column(JSON, nullable=True)
+    rest_monthdays = Column(JSON, nullable=True)
+    workday_overrides = Column(JSON, nullable=True)
 
     # 薪资模板
     salary_template_id = Column(Integer, ForeignKey("salary_templates.id"), nullable=True, comment="薪资模板")

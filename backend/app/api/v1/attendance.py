@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from app.core.timezone import thai_now, thai_today
 from app.services.schedule import get_work_schedule
 from datetime import datetime, date, timedelta
-from typing import Optional, List
+from typing import Optional, List, Literal
 import os, uuid
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
@@ -366,6 +366,7 @@ async def reject_leave(leave_id: int, reason: str = Form(None), current_user: Us
 class RestDayCreate(BaseModel):
     employee_id: int
     rest_dates: List[str]  # YYYY-MM-DD list
+    kind: Literal["rest", "work", "clear_work"] = "rest"
 
 @router.post("/rest-days")
 async def set_rest_days(
@@ -383,6 +384,25 @@ async def set_rest_days(
     if not emp: raise HTTPException(404, "员工不存在")
     if emp.status == "resigned":
         raise HTTPException(400, "该员工已离职，不能设置休息日")
+
+    if req.kind != "rest":
+        if not req.rest_dates or len(req.rest_dates) > 31:
+            raise HTTPException(400, "请选择1到31个日期")
+        try:
+            dates = {date.fromisoformat(value).isoformat() for value in req.rest_dates}
+        except ValueError:
+            raise HTTPException(400, "日期格式错误")
+        # Lock the owner row to prevent concurrent changes losing another date.
+        await db.refresh(emp, with_for_update=True)
+        entries = {entry["date"]: entry for entry in (emp.workday_overrides or [])}
+        for value in dates:
+            if req.kind == "work":
+                entries.setdefault(value, {"date": value, "created_by": current_user.id, "created_at": thai_now().isoformat()})
+            else:
+                entries.pop(value, None)
+        emp.workday_overrides = sorted(entries.values(), key=lambda item: item["date"])
+        await db.flush()
+        return {"message": "已标记上班调班" if req.kind == "work" else "已恢复休息规律判断", "dates": sorted(dates), "kind": req.kind}
 
     # Check current month rest day count
     if req.rest_dates:
@@ -515,6 +535,64 @@ async def remove_absence(absence_id: int, current_user: User = Depends(check_sta
     await db.flush()
     return {"message": "已删除"}
 
+async def effective_rest_calendar(db, emps, range_start, range_end):
+    """Calendar-only resolver shared with the employee profile's saved preview."""
+    emp_ids = [e.id for e in emps]
+    wh_ids = {e.warehouse_id for e in emps}
+    rests = (await db.execute(select(RestDay).where(
+        RestDay.employee_id.in_(emp_ids), RestDay.warehouse_id.in_(wh_ids),
+        RestDay.rest_date >= range_start, RestDay.rest_date <= range_end,
+    ))).scalars().all()
+    employee_warehouses = {e.id: e.warehouse_id for e in emps}
+    rest_set = {(r.employee_id, r.rest_date) for r in rests if employee_warehouses.get(r.employee_id) == r.warehouse_id}
+    sources = {key: "manual_rest" for key in rest_set}
+    # Derive calendar-only rest dates; never materialize generated RestDay rows.
+    templates = (await db.execute(select(SalaryTemplate).where(
+        SalaryTemplate.id.in_({e.salary_template_id for e in emps if e.salary_template_id}),
+        SalaryTemplate.warehouse_id.in_(wh_ids),
+    ))).scalars().all()
+    template_map = {t.id: t for t in templates}
+    rest_warnings = []
+    for employee in emps:
+        template = template_map.get(employee.salary_template_id)
+        if employee.rest_rule_mode == "custom":
+            pattern, weekdays, monthdays, rest_days = employee.rest_pattern, employee.rest_weekdays, employee.rest_monthdays, employee.rest_days_per_month
+        elif template and template.warehouse_id == employee.warehouse_id:
+            pattern, weekdays, monthdays, rest_days = template.monthly_rest_pattern, template.monthly_rest_weekdays, template.monthly_rest_monthdays, template.monthly_rest_days
+        else:
+            pattern, weekdays, monthdays, rest_days = None, None, None, None
+        cursor = range_start.replace(day=1)
+        while cursor <= range_end:
+            next_month = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+            generated = []
+            day = cursor
+            while day < next_month:
+                if (pattern == "weekly" and
+                    (day.weekday() + 1) % 7 in (weekdays or [])) or (
+                    pattern == "monthly" and
+                    day.day in (monthdays or [])):
+                    generated.append(day)
+                day += timedelta(days=1)
+            for day in generated:
+                if range_start <= day <= range_end:
+                    sources.setdefault((employee.id, day), "automatic")
+                    rest_set.add((employee.id, day))
+            if rest_days is not None and len(generated) > rest_days:
+                rest_warnings.append(f"{employee.name} {cursor:%Y-%m}：规律休息{len(generated)}天，超过设置的{rest_days}天，按规律执行")
+            cursor = next_month
+
+    for employee in emps:
+        for entry in employee.workday_overrides or []:
+            try:
+                day = date.fromisoformat(entry["date"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if range_start <= day <= range_end:
+                rest_set.discard((employee.id, day))
+                sources[(employee.id, day)] = "manual_work"
+    return rest_set, sources, rest_warnings
+
+
 # ═══ Calendar View ════════════════════════════
 @router.get("/calendar")
 async def get_calendar(
@@ -630,44 +708,7 @@ async def get_calendar(
                 info["hours"] += float(l.hours)
                 info["hours_has"] = True
 
-    # Get rest days (filtered by warehouse)
-    rests = (await db.execute(
-        select(RestDay).where(
-            RestDay.warehouse_id.in_(wh_ids),
-            RestDay.employee_id.in_(emp_ids),
-            RestDay.rest_date >= range_start,
-            RestDay.rest_date <= range_end,
-        )
-    )).scalars().all()
-    rest_set = {(r.employee_id, r.rest_date) for r in rests}
-
-    # Derive calendar-only rest dates; never materialize generated RestDay rows.
-    templates = (await db.execute(select(SalaryTemplate).where(
-        SalaryTemplate.id.in_({e.salary_template_id for e in emps if e.salary_template_id}),
-        SalaryTemplate.warehouse_id.in_(wh_ids),
-    ))).scalars().all()
-    template_map = {t.id: t for t in templates}
-    rest_warnings = []
-    for employee in emps:
-        template = template_map.get(employee.salary_template_id)
-        if not template or template.warehouse_id != employee.warehouse_id:
-            continue
-        cursor = range_start.replace(day=1)
-        while cursor <= range_end:
-            next_month = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
-            generated = []
-            day = cursor
-            while day < next_month:
-                if (template.monthly_rest_pattern == "weekly" and
-                    (day.weekday() + 1) % 7 in (template.monthly_rest_weekdays or [])) or (
-                    template.monthly_rest_pattern == "monthly" and
-                    day.day in (template.monthly_rest_monthdays or [])):
-                    generated.append(day)
-                day += timedelta(days=1)
-            rest_set.update((employee.id, day) for day in generated if range_start <= day <= range_end)
-            if template.monthly_rest_days is not None and len(generated) > template.monthly_rest_days:
-                rest_warnings.append(f"{employee.name} {cursor:%Y-%m}：规律休息{len(generated)}天，超过设置的{template.monthly_rest_days}天，按规律执行")
-            cursor = next_month
+    rest_set, rest_sources, rest_warnings = await effective_rest_calendar(db, emps, range_start, range_end)
 
     # Get absences (filtered by warehouse)
     absences = (await db.execute(
@@ -714,6 +755,7 @@ async def get_calendar(
                 events[f"{dt.isoformat()}_{e.id}"] = {
                     "date": dt.isoformat(), "employee_id": e.id, "employee_name": e.name,
                     "status": "exempt", "status_label": "已豁免", "is_exempt": True,
+                    "rest_source": rest_sources.get((e.id, dt)),
                     "session_count": len({r.session for r in clock_map.get((e.id, dt), [])}),
                     "has_late": False, "leave_hours": leave_hours, "clock_hours": 0.0,
                     "work_hours": hours, "detail": f"豁免按8小时计，请假扣{leave_hours:g}小时；打卡保留但不参与计算",
@@ -805,6 +847,8 @@ async def get_calendar(
                 "employee_id": e.id,
                 "employee_name": e.name,
                 "status": status_name_db,
+                "rest_source": rest_sources.get((e.id, dt)),
+                "schedule_label": {"manual_work": "上班 调班", "manual_rest": "休息 调休", "automatic": "休息"}.get(rest_sources.get((e.id, dt))),
                 "status_label": status_label,
                 "session_count": session_count,
                 "has_late": has_late,

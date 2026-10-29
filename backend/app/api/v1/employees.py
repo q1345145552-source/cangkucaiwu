@@ -15,7 +15,7 @@ from app.core.permissions import check_staff_permission, check_staff_permission_
 from app.core.security import hash_password
 from app.services.image_utils import thumb_path_of
 from app.core.timezone import thai_now
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, StrictInt
 import re
 from datetime import datetime, date, timedelta
 from typing import Optional, List
@@ -29,7 +29,36 @@ router = APIRouter()
 NATIONALITIES = ("泰国", "缅甸", "中国", "其他")
 IDENTITY_FIELDS = ("nationality", "thai_id_number", "sso_number", "bank_account_number", "bank_name", "bank_account_holder")
 
+REST_FIELDS = ("rest_rule_mode", "rest_days_per_month", "rest_pattern", "rest_weekdays", "rest_monthdays")
+
+
+def validate_rest_settings(values):
+    mode = values.get("rest_rule_mode")
+    if mode not in (None, "follow", "custom"):
+        raise HTTPException(400, "休息设置请选择跟随薪资模板或单独设置")
+    if mode != "custom":
+        return
+    count = values.get("rest_days_per_month")
+    if count is not None and not 0 <= count <= 4:
+        raise HTTPException(400, "每月休息天数必须为0到4")
+    pattern = values.get("rest_pattern")
+    if pattern not in (None, "weekly", "monthly"):
+        raise HTTPException(400, "请选择每周几休或每月几号休")
+    for field, lo, hi in (("rest_weekdays", 0, 6), ("rest_monthdays", 1, 31)):
+        days = values.get(field) or []
+        if len(days) != len(set(days)) or any(day < lo or day > hi for day in days):
+            raise HTTPException(400, "休息日期无效或重复")
+    selected = values.get("rest_weekdays" if pattern == "weekly" else "rest_monthdays") if pattern else None
+    if count != 0 and not selected:
+        raise HTTPException(400, "单独设置请填写休息规律和具体日期")
+
+
 class EmployeeIdentityFields(BaseModel):
+    rest_rule_mode: Optional[str] = None
+    rest_days_per_month: Optional[StrictInt] = None
+    rest_pattern: Optional[str] = None
+    rest_weekdays: Optional[List[StrictInt]] = None
+    rest_monthdays: Optional[List[StrictInt]] = None
     model_config = {"extra": "forbid"}
     nationality: Optional[str] = None
     thai_id_number: Optional[str] = None
@@ -239,11 +268,18 @@ async def list_employees(
         dts = (await db.execute(select(DeductionTemplate).where(DeductionTemplate.id.in_(dt_ids)))).scalars().all()
         dt_map = {d.id: d for d in dts}
     
+    from app.api.v1.attendance import effective_rest_calendar
+    month_start = thai_now().date().replace(day=1)
+    month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    effective_rests, rest_sources, rest_warnings = await effective_rest_calendar(db, emps, month_start, month_end)
     return {
         "data": [{
             "id": e.id, "warehouse_id": e.warehouse_id, "warehouse_name": wh_map.get(e.warehouse_id, ""),
             "name": e.name, "position": e.position,
             **{field: getattr(e, field) for field in IDENTITY_FIELDS},
+            **{field: getattr(e, field) for field in REST_FIELDS},
+            "rest_preview_month": month_start.strftime("%Y-%m"),
+            "rest_preview_dates": sorted(day.isoformat() for eid, day in effective_rests if eid == e.id),
             "employee_no": username_map.get(e.user_id, "") if e.user_id else "",
             "user_id": e.user_id, "myanmar_id": e.myanmar_id,
             "address": e.address, "phone": e.phone, "emergency_contact": e.emergency_contact,
@@ -398,7 +434,9 @@ async def create_employee(
         except ValueError:
             document_dates[field] = None
 
+    validate_rest_settings({field: getattr(req, field) for field in REST_FIELDS})
     e = Employee(
+        **{field: getattr(req, field) for field in REST_FIELDS},
         **{field: getattr(req, field) for field in IDENTITY_FIELDS},
         passport_number=req.passport_number, work_permit_number=req.work_permit_number,
         **document_dates,
@@ -437,6 +475,10 @@ async def update_employee(
     
     own_scope(current_user, e.warehouse_id)
     updates = req.model_dump(exclude_unset=True)
+    if set(updates) & set(REST_FIELDS):
+        if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+            raise HTTPException(403, "只有仓库管理员和主管可以设置休息规律")
+        validate_rest_settings({**{field: getattr(e, field) for field in REST_FIELDS}, **updates})
     protected = {'daily_wage', 'base_salary', 'salary_template_id', 'deduction_template_id',
                  'bank_account_number', 'bank_name', 'bank_account_holder', 'user_id', 'employee_no', 'password'}
     if set(updates) & protected and current_user.role != Role.WAREHOUSE_ADMIN:
