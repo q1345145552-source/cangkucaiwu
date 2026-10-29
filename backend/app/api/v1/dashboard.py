@@ -21,6 +21,14 @@ from datetime import datetime, date, timedelta
 
 router = APIRouter()
 
+
+@router.get('/warehouse-cards')
+async def warehouse_cards(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF, Role.SUPERVISOR):
+        raise HTTPException(403, '无权访问仓库卡片')
+    from app.services.warehouse_cards import cards
+    return await cards(db, current_user)
+
 def _wh_filter(query, model, current_user):
     if current_user.role != Role.SUPER_ADMIN:
         return query.where(model.warehouse_id.in_(get_wh_ids(current_user)))

@@ -44,6 +44,9 @@ def personal_read(module, name, user, request):
 async def read_scope(request: Request, user=Depends(get_current_user), db=Depends(get_db)):
     endpoint=request.scope['route'].endpoint
     module,name=endpoint.__module__.rsplit('.',1)[-1],endpoint.__name__
+    if (request.method == 'GET' and module == 'dashboard' and name == 'warehouse_cards'
+            and request.scope['route'].path == '/api/v1/dashboard/warehouse-cards'):
+        return user  # This read-only selector checks explicit membership, never active warehouse scope.
     if module in ('market','group_order'):
         return user  # Existing explicitly shared platform guards remain authoritative.
     if personal_read(module,name,user,request):

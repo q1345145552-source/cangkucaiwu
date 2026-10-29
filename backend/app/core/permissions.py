@@ -109,7 +109,9 @@ async def get_current_user(
     await enforce_action(request, user)
     # Deny forbidden actions before querying business scope. For allowed actions,
     # an explicit context must never silently write a different default warehouse.
-    if user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_LABOR) and request.headers.get("X-Warehouse-ID") is not None:
+    warehouse_cards = (request.method == 'GET' and
+                       getattr(request.scope.get('route'), 'path', '') == '/api/v1/dashboard/warehouse-cards')
+    if not warehouse_cards and user.role not in (Role.SUPER_ADMIN, Role.WAREHOUSE_LABOR) and request.headers.get("X-Warehouse-ID") is not None:
         from app.services.warehouse_summary import warehouse_scope
         await warehouse_scope(db, user, request.headers.get("X-Warehouse-ID"))
     return user
