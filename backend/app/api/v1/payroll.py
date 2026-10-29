@@ -587,6 +587,10 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
     grace_days = []
     for emp in employees:
         rest_set = rest_by_emp.get(emp.id, set())
+        template = template_map.get(emp.salary_template_id)
+        if template is not None and template.type == "monthly":
+            from app.services.monthly_payroll import monthly_rest_dates
+            rest_set = rest_set | monthly_rest_dates(template, emp_start[emp.id], period_end)
         absence_set = absence_by_emp.get(emp.id, set())
         leave_map = leave_by_emp.get(emp.id, {})
         current = emp_start[emp.id]
@@ -684,8 +688,9 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
         emp_status = emp.status or "trial"
         # 时薪：按小时/按天 = 日薪/8；按月 = 月薪/当月天数/8
         if tt == "monthly":
-            hourly_rate = template_amount / total_days / 8.0
-            daily_rate = template_amount / total_days  # 日薪 = 月薪 ÷ 当月天数
+            from app.services.monthly_payroll import compute_monthly_record
+            records.append(await compute_monthly_record(db, wh_id, req, prep, emp))
+            continue
         else:
             hourly_rate = template_amount / 8.0
             daily_rate = template_amount  # 日薪 = 模板金额
