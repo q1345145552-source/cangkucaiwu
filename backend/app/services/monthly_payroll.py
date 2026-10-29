@@ -98,7 +98,7 @@ async def compute_monthly_record(db, wh_id, req, prep, emp):
 
     current = emp_start_date
     while current <= period_end:
-        if current in exempt_dates and current not in rest_set:
+        if current in exempt_dates:
             hours, leave_hours = exemption_hours(leave_map.get(current), current, prep["work_sched"])
             att, lv = hours / 8.0, leave_hours / 8.0
             work_hours_total += hours
@@ -110,7 +110,7 @@ async def compute_monthly_record(db, wh_id, req, prep, emp):
                                "times": [], "note": "已豁免，打卡保留但不参与计算"})
             current += timedelta(days=1)
             continue
-        if current in rest_set:
+        if current in rest_set and _leave_summary(leave_map.get(current)) is None:
             rest_days_count += 1
             daily_list.append({"day": current.day, "date": current.isoformat(), "status": "rest", "attendance": 0.0, "hours": 0.0, "times": []})
             current += timedelta(days=1)
@@ -175,10 +175,12 @@ async def compute_monthly_record(db, wh_id, req, prep, emp):
                 current, prep["work_sched"], standard_hours,
             )
             if h is None or h >= 8.0:
-                lv, att = 1.0, 0.0
+                lv, att, ab = 1.0, 0.0, 0.0
             else:
                 lv = min(max(float(h), 0.0), 8.0) / 8.0
                 att = hours / standard_hours
+                # Approved leave and missing attendance cannot cover the same hours.
+                ab = min(ab, max(1.0 - lv - att, 0.0))
 
 
         if is_half_day_leave(lt_info):
