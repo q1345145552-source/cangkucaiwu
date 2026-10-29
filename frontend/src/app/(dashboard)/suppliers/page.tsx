@@ -205,7 +205,7 @@ export default function SuppliersPage() {
     }
   }
 
-  function openSupplierUpload(mode: "products" | "logistics", supplierId: number) {
+  function openSupplierUpload(mode: "products" | "logistics", supplierId: number | null) {
     setImportSupplierId(supplierId);
     setImportMode(mode);
     setUploadError("");
@@ -557,7 +557,16 @@ export default function SuppliersPage() {
   }
   function triggerReceiptUpload(poId: number) {
     setReceiptPoId(poId);
-    setTimeout(() => receiptInputRef.current?.click(), 50);
+    try {
+      const input = receiptInputRef.current;
+      if (!input) throw new Error("文件选择框不可用");
+      input.value = "";
+      if (typeof input.showPicker === "function") input.showPicker();
+      else input.click();
+    } catch {
+      setReceiptPoId(null);
+      toast("error", "浏览器拦截了请重试");
+    }
   }
   async function handleReceiptUpload(file: File) {
     if (!receiptPoId) return;
@@ -701,8 +710,8 @@ export default function SuppliersPage() {
             {isAdmin&&<>
               <button onClick={()=>downloadTemplate('products')} className="btn-secondary">耗材模板</button>
               {SUPPLIER_LOGISTICS_ENABLED&&<button onClick={()=>downloadTemplate('logistics')} className="btn-secondary">物流模板</button>}
-              <button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('products');setTimeout(()=>fileInputRef.current?.click(),0);}}>多供应商耗材导入</button>
-              {SUPPLIER_LOGISTICS_ENABLED&&<button className="btn-secondary" onClick={()=>{setImportSupplierId(null);setImportMode('logistics');setTimeout(()=>logisticsInputRef.current?.click(),0);}}>多供应商物流导入</button>}
+              <button className="btn-secondary" onClick={()=>openSupplierUpload('products',null)}>多供应商耗材导入</button>
+              {SUPPLIER_LOGISTICS_ENABLED&&<button className="btn-secondary" onClick={()=>openSupplierUpload('logistics',null)}>多供应商物流导入</button>}
             </>}
           </div></section>
           <section aria-label="采购" className="px-4 shrink-0"><p className="text-xs text-gray-500 mb-2 sticky left-4 w-fit">采购</p><div className="flex flex-nowrap gap-2">{isAdmin&&<>
