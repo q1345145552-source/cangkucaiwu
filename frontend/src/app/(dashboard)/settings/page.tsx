@@ -236,7 +236,11 @@ export default function SettingsPage() {
       };
       if (editPassword) payload.password = editPassword;
       if (editUser.role === "supervisor" || editUser.role === "warehouse_admin") {
-        payload.warehouse_ids = editWarehouseIds;
+        if (editUser.role !== "supervisor" ||
+            editWarehouseIds.length !== (editUser.warehouse_ids || []).length ||
+            editWarehouseIds.some(id => !(editUser.warehouse_ids || []).includes(id))) {
+          payload.warehouse_ids = editWarehouseIds;
+        }
       } else if (editWarehouseId) {
         payload.warehouse_id = +editWarehouseId;
       }
@@ -333,7 +337,7 @@ export default function SettingsPage() {
               <div><label className="form-label">用户名</label><input className="form-input text-sm" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">显示名称</label><input className="form-input text-sm" value={newUser.display_name} onChange={e=>setNewUser({...newUser,display_name:e.target.value})} autoComplete="off" /></div>
               <div><label className="form-label">密码</label><input type="password" className="form-input text-sm" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} autoComplete="new-password" /></div>
-              <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>{setNewUser({...newUser,role:e.target.value}); setNewPerms([]); setNewAttendanceEnabled(false);}}>
+              <div><label className="form-label">角色</label><select className="form-input text-sm" value={newUser.role} onChange={e=>{setNewUser({...newUser,role:e.target.value,...(e.target.value === "supervisor" && newUser.role !== "supervisor" && newUser.warehouse_ids.length > 1 ? {warehouse_ids: [], warehouse_id: ""} : {})}); setNewPerms([]); setNewAttendanceEnabled(false);}}>
                 {user?.role === "super_admin" && <option value="warehouse_admin">仓库管理员</option>}
                 {user?.role === "warehouse_admin" && (<>
                   <option value="supervisor">仓库主管</option>
@@ -350,7 +354,16 @@ export default function SettingsPage() {
                     <span className="text-red-400">*</span>
                   )}
                 </label>
-                {newUser.role === "supervisor" || newUser.role === "warehouse_admin" ? (
+                {newUser.role === "supervisor" ? (
+                  <>
+                    <select aria-label="主管所属仓库" className="form-input text-sm" value={newUser.warehouse_ids.length === 1 ? newUser.warehouse_ids[0] : ""}
+                      onChange={e => setNewUser({...newUser, warehouse_ids: e.target.value ? [+e.target.value] : []})}>
+                      <option value="">请选择仓库</option>
+                      {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">主管只能管一个仓</p>
+                  </>
+                ) : newUser.role === "warehouse_admin" ? (
                   <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">
                     {warehouses.map((w:any) => (
                       <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">
@@ -442,7 +455,22 @@ export default function SettingsPage() {
                   <div><label className="form-label text-xs">重置密码（留空表示不改）</label><input type="password" className="form-input text-sm" value={editPassword} onChange={e => setEditPassword(e.target.value)} autoComplete="new-password" placeholder="留空不修改密码" /></div>
                   {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
                     <div><label className="form-label text-xs">所属仓库</label>
-                      {(editUser.role === "supervisor" || editUser.role === "warehouse_admin") ? (
+                      {editUser.role === "supervisor" ? (
+                        <>
+                          <select aria-label="主管所属仓库" className="form-input text-sm" value={editWarehouseIds.length === 1 ? editWarehouseIds[0] : ""}
+                            onChange={e => setEditWarehouseIds(e.target.value ? [+e.target.value] : [])}>
+                            <option value="">请选择仓库</option>
+                            {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
+                          </select>
+                          {(editUser.warehouse_ids || []).length > 1 && (
+                            <p className="text-xs text-red-600 mt-1">当前分配：{editUser.warehouse_ids.map((id:number) => {
+                              const warehouse = warehouses.find((w:any) => w.id === id);
+                              return warehouse ? `${warehouse.name}（${warehouse.code}）` : `仓库 #${id}`;
+                            }).join("、")}。请只保留一个</p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">主管只能管一个仓</p>
+                        </>
+                      ) : editUser.role === "warehouse_admin" ? (
                         <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">
                           {warehouses.map((w: any) => (
                             <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">

@@ -178,6 +178,9 @@ async def create_user(
     if req.role in (Role.STAFF, Role.SUPERVISOR) and not warehouse_ids:
         raise HTTPException(status_code=400, detail="创建该角色用户时必须指定所属仓库")
 
+    if req.role == Role.SUPERVISOR and len(set(warehouse_ids)) > 1:
+        raise HTTPException(status_code=400, detail="主管只能分配一个仓库")
+
     for wid in warehouse_ids:
         own_scope(current_user, wid)
     primary_wh = warehouse_ids[0] if warehouse_ids else None
@@ -250,6 +253,23 @@ async def update_user(
             raise HTTPException(status_code=403, detail="无权修改用户角色")
 
     await login_target_scope(db, current_user, user)
+    # Grandfather an existing multi-warehouse supervisor only when warehouse
+    # assignment is omitted. A role conversion must validate the retained scope.
+    if (req.role or user.role) == Role.SUPERVISOR:
+        warehouses_changed = req.warehouse_ids is not None or req.warehouse_id is not None
+        becoming_supervisor = req.role is not None and user.role != Role.SUPERVISOR
+        if warehouses_changed or becoming_supervisor:
+            if req.warehouse_ids is not None:
+                supervisor_wh_ids = req.warehouse_ids
+            elif req.warehouse_id is not None:
+                supervisor_wh_ids = [req.warehouse_id]
+            else:
+                supervisor_wh_ids = list((await db.execute(select(UserWarehouse.warehouse_id).where(
+                    UserWarehouse.user_id == user.id))).scalars())
+                if not supervisor_wh_ids and user.warehouse_id is not None:
+                    supervisor_wh_ids = [user.warehouse_id]
+            if len(set(supervisor_wh_ids)) != 1:
+                raise HTTPException(status_code=400, detail="主管只能分配一个仓库")
     if req.role is not None and req.role != user.role and permission_state(user)['version'] != 'legacy' and req.action_permissions is None:
         raise HTTPException(409, '变更角色时请一并核对三档动作权限')
     new_permissions = prepared_permissions(req, req.role or user.role, user)
