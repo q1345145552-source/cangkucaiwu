@@ -79,8 +79,10 @@ function exemptCellDisplay(event: any, approvedLeaves: any[]) {
   }
   return {
     hasLeave, workHours, leaveHours, leaveLabel,
-    color: !hasLeave ? "bg-green-100 text-green-700 border-green-300"
-      : fullLeave ? "bg-red-100 text-red-700 border-red-300" : "bg-orange-100 text-orange-700 border-orange-300",
+    // Cell keeps the standard day-cell size; only the colour differs.
+    // Normal exemption is green, an exemption day with approved leave is purple.
+    color: hasLeave ? "bg-purple-100 text-purple-700 border-purple-300"
+      : "bg-green-100 text-green-700 border-green-300",
     note: hasLeave ? `请假扣 ${leaveHours} 小时，剩 ${workHours} 小时` : "按8小时计",
   };
 }
@@ -312,7 +314,6 @@ export default function AttendancePage() {
     // Display grouping confirmed by the user: leave does not count as attendance.
     return [{ date: day.date, expected: dayEmployees.length, attending: dayEmployees.length - onLeave, onLeave }];
   }) : [];
-  const exemptDates = new Set(exemptSummaries.map(day => day.date));
 
   const statusLabels: Record<string, string> = {
     present: t("att_status_present"), late: t("att_status_late"), partial: t("att_status_partial"),
@@ -398,7 +399,7 @@ export default function AttendancePage() {
               <tr className="bg-gray-50">
                 <th className="px-3 py-2 text-left text-gray-500 font-medium w-[100px]">{t("att_employee")}</th>
                 {dateList.map((d) => (
-                  <th key={d.date} className={`px-1 py-2 text-center text-gray-500 font-medium ${exemptDates.has(d.date) ? "min-w-[128px]" : "w-[36px]"}`}>
+                  <th key={d.date} className="px-1 py-2 text-center text-gray-500 font-medium w-[36px]">
                     <div className="text-xs">{d.weekday}</div>
                     <div>{d.day}</div>
                   </th>
@@ -449,19 +450,13 @@ export default function AttendancePage() {
                     return (
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
-                          className={`${makeupDays[key]?.length ? "relative " : ""}rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${exemptDisplay?.color || STATUS_COLORS[status] || "bg-white text-gray-300"} ${exemptDisplay ? "min-w-[128px] px-2 space-y-0.5" : ""} ${status === "half_absence" ? "font-bold" : ""}`}
+                          className={`${makeupDays[key]?.length ? "relative " : ""}rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${exemptDisplay?.color || STATUS_COLORS[status] || "bg-white text-gray-300"} ${status === "half_absence" ? "font-bold" : ""}`}
                           title={tooltip}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
-                          {exemptDisplay ? <>
-                            <div className="whitespace-nowrap">已豁免</div>
-                            {exemptDisplay.leaveLabel && <div className="whitespace-nowrap font-semibold">{exemptDisplay.leaveLabel}</div>}
-                            <div className="whitespace-nowrap">工时 {exemptDisplay.workHours} 小时</div>
-                          </> : <div>{cellText}</div>}
+                          <div>{cellText}</div>
                           {!!makeupDays[key]?.length && <span className="absolute top-0 right-0 text-[9px] leading-none text-purple-700" title={t("makeup")} aria-label={t("makeup")} data-makeup-badge>{t("makeup_short")}</span>}
-                          {exemptDisplay ? <div className="text-[10px] leading-tight opacity-80">
-                            {exemptDisplay.hasLeave ? <><div className="whitespace-nowrap">请假扣 {exemptDisplay.leaveHours} 小时</div><div className="whitespace-nowrap">剩 {exemptDisplay.workHours} 小时</div></> : "按8小时计"}
-                          </div> : subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
+                          {subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
                         </div>
                       </td>
                     );
