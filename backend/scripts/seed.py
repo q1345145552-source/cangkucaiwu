@@ -552,6 +552,13 @@ async def seed():
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Required for clock-in uploads; fail startup if schema setup fails.
+        await conn.execute(text("ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS photo_fingerprint VARCHAR(64)"))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_clock_photo_warehouse_fingerprint "
+            "ON clock_in_records (COALESCE(warehouse_id, 0), photo_fingerprint) "
+            "WHERE photo_fingerprint IS NOT NULL"
+        ))
         await _migrate_monthly_salary_template(conn)
         from app.services.employee_identity_migration import migrate_employee_identity
         await migrate_employee_identity(conn)

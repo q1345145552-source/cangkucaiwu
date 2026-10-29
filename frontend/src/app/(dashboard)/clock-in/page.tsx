@@ -286,6 +286,8 @@ export default function ClockInPage() {
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment"
         onChange={handlePhotoSelected} aria-label="上传打卡照片" className="hidden" />
 
+      <p className="text-xs text-gray-500">请现场拍摄 使用相册照片会被识别</p>
+
       {/* 4 Clock-in Cards - vertical, mobile-first */}
       <div className="space-y-3">
         {[1, 2, 3, 4].map(session => {

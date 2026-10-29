@@ -99,3 +99,77 @@ def thumb_path_of(path: str) -> str:
         return ""
     base, _ = os.path.splitext(path)
     return f"{base}_thumb.jpg"
+
+
+def save_clock_in_image(content: bytes, abs_subdir: str, rel_subdir: str, fname: str, lines: list[str]) -> dict:
+    """Clock-in only: strict image save; watermark both sizes without changing other uploads.
+
+    CLOCK_IN_FONT_PATH must point to a font covering employee/warehouse languages on Linux.
+    No default bitmap fallback: missing fonts must fail visibly rather than save unreadable names.
+    """
+    from PIL import ImageDraw, ImageFont, ImageOps
+
+    candidates = [os.environ.get("CLOCK_IN_FONT_PATH", ""),
+                  "/usr/share/fonts/opentype/unifont/unifont.otf",
+                  "/usr/share/fonts/truetype/unifont/unifont.ttf",
+                  "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+                  "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                  "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+                  "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"]
+    font_path = None
+    for candidate in candidates:
+        if not candidate or not os.path.isfile(candidate):
+            continue
+        probe = ImageFont.truetype(candidate, 24)
+        missing = bytes(probe.getmask("\U0010ffff"))
+        if all(bytes(probe.getmask(char)) != missing for line in lines for char in line if not char.isspace()):
+            font_path = candidate
+            break
+    if not font_path:
+        raise RuntimeError("Clock-in watermark requires CLOCK_IN_FONT_PATH with multilingual font")
+    with Image.open(io.BytesIO(content)) as source:
+        source.load()
+        image = ImageOps.exif_transpose(source).convert("RGB")
+    os.makedirs(abs_subdir, exist_ok=True)
+    base = os.path.splitext(fname)[0]
+    files = []
+    try:
+        for suffix, max_side, quality in [("", 1600, 85), ("_thumb", 300, 80)]:
+            img = _resize_to_max(image.copy(), max_side).convert("RGBA")
+            width, height = img.size
+            size = max(1, min(24, round(width * 0.025)))
+            pad = max(2, round(width * 0.012))
+            # Fit complete names, never silently truncate identity text.
+            while True:
+                font = ImageFont.truetype(font_path, size)
+                boxes = [font.getbbox(line) for line in lines]
+                row_height = max(box[3] - box[1] for box in boxes) + max(1, size // 4)
+                band_height = row_height * len(lines) + pad * 2
+                if size <= 1 or (max(box[2] - box[0] for box in boxes) <= width - pad * 2
+                                 and band_height <= height * 0.18):
+                    break
+                size -= 1
+            # Place the band below the photo to avoid covering any face.
+            canvas = Image.new("RGBA", (width, height + band_height), (0, 0, 0, 255))
+            canvas.paste(img, (0, 0))
+            backdrop = img.crop((0, max(0, height - band_height), width, height)).resize((width, band_height))
+            canvas.paste(backdrop, (0, height))
+            overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay)
+            draw.rectangle((0, height, width, height + band_height), fill=(0, 0, 0, 170))
+            for index, (line, box) in enumerate(zip(lines, boxes)):
+                draw.text((pad - box[0], height + pad + index * row_height - box[1]), line,
+                          font=font, fill=(255, 255, 255, 255))
+            result = Image.alpha_composite(canvas, overlay).convert("RGB")
+            path = os.path.join(abs_subdir, f"{base}{suffix}.jpg")
+            files.append(path)
+            with open(path, "wb") as output:
+                output.write(_to_jpeg_bytes(result, quality))
+    except Exception:
+        for path in files:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        raise
+    return {"path": f"{rel_subdir}/{base}.jpg", "thumb_path": f"{rel_subdir}/{base}_thumb.jpg", "files": files}
