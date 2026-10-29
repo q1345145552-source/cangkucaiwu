@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.database import get_db
 from app.models.attendance import LeaveRequest, RestDay, Absence
+from app.models.salary_template import SalaryTemplate
 from app.models.employee import Employee
 from app.models.clock_in_records import ClockInRecord
 from app.models.user import User
@@ -640,6 +641,34 @@ async def get_calendar(
     )).scalars().all()
     rest_set = {(r.employee_id, r.rest_date) for r in rests}
 
+    # Derive calendar-only rest dates; never materialize generated RestDay rows.
+    templates = (await db.execute(select(SalaryTemplate).where(
+        SalaryTemplate.id.in_({e.salary_template_id for e in emps if e.salary_template_id}),
+        SalaryTemplate.warehouse_id.in_(wh_ids),
+    ))).scalars().all()
+    template_map = {t.id: t for t in templates}
+    rest_warnings = []
+    for employee in emps:
+        template = template_map.get(employee.salary_template_id)
+        if not template or template.warehouse_id != employee.warehouse_id:
+            continue
+        cursor = range_start.replace(day=1)
+        while cursor <= range_end:
+            next_month = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+            generated = []
+            day = cursor
+            while day < next_month:
+                if (template.monthly_rest_pattern == "weekly" and
+                    (day.weekday() + 1) % 7 in (template.monthly_rest_weekdays or [])) or (
+                    template.monthly_rest_pattern == "monthly" and
+                    day.day in (template.monthly_rest_monthdays or [])):
+                    generated.append(day)
+                day += timedelta(days=1)
+            rest_set.update((employee.id, day) for day in generated if range_start <= day <= range_end)
+            if template.monthly_rest_days is not None and len(generated) > template.monthly_rest_days:
+                rest_warnings.append(f"{employee.name} {cursor:%Y-%m}：规律休息{len(generated)}天，超过设置的{template.monthly_rest_days}天，按规律执行")
+            cursor = next_month
+
     # Get absences (filtered by warehouse)
     absences = (await db.execute(
         select(Absence).where(
@@ -761,7 +790,7 @@ async def get_calendar(
             # Map DB names to Chinese
             status_cn = {
                 "present": "正常出勤", "late": "迟到", "leave": "请假",
-                "rest": "休息日", "absent": "未到", "missing": "未打卡",
+                "rest": "休息", "absent": "未到", "missing": "未打卡",
                 "partial": "部分打卡", "half": "半天", "half_absence": "半天旷工",
                 "hours_leave": "按小时请假",
                 "future": "未到"
@@ -784,7 +813,7 @@ async def get_calendar(
                 "work_hours": full_day_net_hours(leave_map.get((e.id, dt)), net_hourly_hours if net_hourly_hours is not None else round(max(clock_hours - leave_hours_val, 0.0), 2)),
                 "detail": "",
             }
-            if (e.id, dt) in absence_map:
+            if status_name_db == "absent" and (e.id, dt) in absence_map:
                 events[key_str]["detail"] = absence_map[(e.id, dt)].reason or ""
 
     return {
@@ -792,10 +821,11 @@ async def get_calendar(
         "end_date": range_end.isoformat(),
         "employees": [{"id": e.id, "name": e.name, "position": e.position} for e in emps],
         "events": list(events.values()),
+        "rest_warnings": rest_warnings,
         "summary": {
             "leave_count": len(leave_set),
             "rest_count": len(rest_set),
-            "absence_count": len(absences),
+            "absence_count": sum(1 for a in absences if (a.employee_id, a.absence_date) not in rest_set and a.absence_date not in exempt_dates),
         }
     }
 

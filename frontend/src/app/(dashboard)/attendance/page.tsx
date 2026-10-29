@@ -28,7 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
   "half_absence": "bg-red-500 text-white border-red-600",
   "leave": "bg-purple-100 text-purple-700 border-purple-300",
   "hours_leave": "bg-purple-100 text-purple-700 border-purple-300",
-  "rest": "bg-blue-100 text-blue-700 border-blue-300",
+  "rest": "bg-gray-100 text-gray-600 border-gray-300",
   "absent": "bg-red-100 text-red-700 border-red-300",
   "missing": "bg-gray-100 text-gray-600 border-gray-300",
   "future": "bg-white text-gray-300 border-gray-100",
@@ -112,6 +112,7 @@ export default function AttendancePage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [events, setEvents] = useState<Record<string, any>>({});
   const [leaves, setLeaves] = useState<any[]>([]);
+  const [restWarnings, setRestWarnings] = useState<string[]>([]);
   const [restDays, setRestDays] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -186,12 +187,14 @@ export default function AttendancePage() {
   async function loadCalendar() {
     const version = ++makeupLoadVersion.current;
     setMakeupDays({});
+    setRestWarnings([]);
     setLoading(true);
     try {
       const r = await api.get<any>(`/attendance/calendar?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
       const evtMap: Record<string, any> = {};
       (r.events || []).forEach((e: any) => { evtMap[`${e.date}_${e.employee_id}`] = e; });
       setEvents(evtMap);
+      setRestWarnings(r.rest_warnings || []);
       setEmployees(r.employees || []);
       void loadMakeupMarkers(version);
     } catch {}
@@ -319,7 +322,7 @@ export default function AttendancePage() {
     present: t("att_status_present"), late: t("att_status_late"), partial: t("att_status_partial"),
     exempt: "已豁免",
     half: t("att_status_half"), half_absence: t("att_status_half_absence"),
-    leave: t("att_status_leave"), rest: t("att_status_rest"), absent: t("att_status_absent"), missing: t("att_status_missing"),
+    leave: t("att_status_leave"), rest: t("att_status_rest").replace("休息日", "休息"), absent: t("att_status_absent"), missing: t("att_status_missing"),
   };
 
   if (isSuperAdmin) {
@@ -382,6 +385,7 @@ export default function AttendancePage() {
       ) : (
         <>
 
+          {restWarnings.length > 0 && <div role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{restWarnings.map((warning, i) => <p key={i}>{warning}</p>)}</div>}
           {exemptSummaries.length > 0 && <section role="region" aria-label="豁免日人数汇总" className="rounded-xl border bg-white p-3 text-sm">
             <h3 className="mb-2 font-semibold text-gray-800">豁免日人数汇总</h3>
             <p className="mb-2 text-xs text-gray-500">请假不计出勤，未请假计出勤；人数分类不改变工时。</p>

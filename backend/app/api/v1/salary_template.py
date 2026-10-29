@@ -31,6 +31,7 @@ class MonthlyTemplateFields(BaseModel):
 
 
 MONTHLY_FIELDS = tuple(MonthlyTemplateFields.model_fields)
+REST_FIELDS = tuple(field for field in MONTHLY_FIELDS if field.startswith("monthly_rest_"))
 
 
 def _monthly_values(template):
@@ -147,9 +148,10 @@ async def create_salary_template(
     if req.amount is None or req.amount <= 0:
         raise HTTPException(400, "金额必须大于0")
 
-    monthly_values = {field: getattr(req, field) for field in MONTHLY_FIELDS} if req.type == "monthly" else {}
+    fields = MONTHLY_FIELDS if req.type == "monthly" else REST_FIELDS
+    monthly_values = {field: getattr(req, field) for field in fields}
     if monthly_values:
-        _validate_monthly(monthly_values)
+        _validate_monthly({**dict.fromkeys(MONTHLY_FIELDS), **monthly_values})
     t = SalaryTemplate(
         warehouse_id=wh_id,
         name=name,
@@ -186,9 +188,9 @@ async def update_salary_template(
         raise HTTPException(404, "薪资模板不存在")
 
     monthly_values = _monthly_values(t)
-    if (req.type or t.type) == "monthly":
-        monthly_values.update({field: getattr(req, field) for field in MONTHLY_FIELDS if field in req.model_fields_set})
-        _validate_monthly(monthly_values)
+    fields = MONTHLY_FIELDS if (req.type or t.type) == "monthly" else REST_FIELDS
+    monthly_values.update({field: getattr(req, field) for field in fields if field in req.model_fields_set})
+    _validate_monthly({**dict.fromkeys(MONTHLY_FIELDS), **{field: monthly_values[field] for field in fields}})
 
     if req.name is not None:
         name = (req.name or "").strip()
@@ -208,9 +210,8 @@ async def update_salary_template(
     if req.is_active is not None:
         t.is_active = req.is_active
 
-    if t.type == "monthly":
-        for field, value in monthly_values.items():
-            setattr(t, field, value)
+    for field in fields:
+        setattr(t, field, monthly_values[field])
 
     await db.flush()
     result = {"message": "薪资模板已更新"}
