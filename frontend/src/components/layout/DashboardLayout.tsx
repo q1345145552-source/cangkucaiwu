@@ -350,7 +350,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-[45] shrink-0 lg:static lg:z-auto bg-white border-b h-14 lg:h-16 flex items-center justify-between px-3 lg:px-6 shadow-sm">
+        <header className="sticky top-0 z-20 shrink-0 lg:static lg:z-auto bg-white border-b h-14 lg:h-16 flex items-center justify-between px-3 lg:px-6 shadow-sm">
           <div className="flex items-center gap-2">
             {isMobile && (
               <button onClick={() => setMobileMenuOpen(true)} className="p-2 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
@@ -479,7 +479,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        {user && laborPageAllowed && <PageNavigation />}
+        {user && laborPageAllowed && pathname !== "/clock-in" && <PageNavigation />}
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
           <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}-${isAllWarehouses}-${JSON.stringify([user?.extra_permissions || [], user?.action_access?.grants || []])}`} className="animate-fade-in">
             {user && laborPageAllowed && (!["staff", "supervisor"].includes(user.role) || menuPermissions.length > 0) ? (minimumWorkspace ? <MinimalActionWorkspace modules={currentModules} /> : children) : null}
