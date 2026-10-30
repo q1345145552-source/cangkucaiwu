@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowDownRight, ArrowUpRight, Bell, Users, Warehouse } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError, setActiveWarehouseId } from "@/lib/api";
 
@@ -30,7 +31,7 @@ type CardsState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string };
 
-const gridClass = "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3";
+const gridClass = "grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3";
 const moneyFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function isAmounts(value: unknown): value is CurrencyAmount[] {
@@ -63,7 +64,9 @@ function Amounts({ amounts }: { amounts: CurrencyAmount[] }) {
   ))}</>;
 }
 
-export default function WarehouseCards() {
+export default function WarehouseCards({ renderOverview }: {
+  renderOverview?: (summary: { warehouseCount: number; pendingCount: number }) => ReactNode;
+}) {
   const { user, loading } = useAuth();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -134,17 +137,57 @@ export default function WarehouseCards() {
 
   return (
     <div className={gridClass}>
+      {renderOverview?.({ warehouseCount: state.cards.length, pendingCount: state.cards.reduce((total, card) => total + card.todos.total, 0) })}
       {state.cards.map(card => (
         <button key={card.warehouse_id} type="button" aria-label={`进入${card.warehouse_name}`}
           onClick={() => enterWarehouse(card.warehouse_id)}
-          className="min-w-0 rounded-xl border border-gray-200 bg-white p-5 text-left text-gray-900 shadow-sm hover:border-blue-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
-          <h2 className="mb-5 break-words text-xl font-bold">{card.warehouse_name}</h2>
+          className="flex min-h-[372px] min-w-0 flex-col items-stretch rounded-2xl border border-slate-200 bg-white p-6 text-left text-slate-900 shadow-sm transition-[transform,box-shadow,border-color] duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:border-blue-300 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transform-none motion-reduce:transition-none sm:min-h-[352px]">
+          <div className="mb-6 flex items-start gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+              <Warehouse aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h2 className="break-words text-xl font-bold leading-7 tracking-tight">{card.warehouse_name}</h2>
+              {card.warehouse_code && <p className="mt-1 break-all text-sm text-slate-500">{card.warehouse_code}</p>}
+            </div>
+            {card.todos.total > 0 && <span aria-label={`未处理待办 ${card.todos.total} 条`} className="mt-1 inline-flex min-h-6 min-w-7 shrink-0 items-center justify-center rounded-full bg-red-100 px-2 text-xs font-bold tabular-nums text-red-700">{card.todos.total}</span>}
+          </div>
           {card.has_data ? (
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-5">
-              <div><dt className="mb-1 text-sm text-gray-500">今日收入</dt><dd className="text-base font-semibold"><Amounts amounts={card.income_by_currency} /></dd></div>
-              <div><dt className="mb-1 text-sm text-gray-500">今日支出</dt><dd className="text-base font-semibold"><Amounts amounts={card.expense_by_currency} /></dd></div>
-              <div><dt className="mb-1 text-sm text-gray-500">待办</dt><dd className={`text-lg font-semibold tabular-nums ${card.todos.total > 0 ? "text-orange-700" : "text-gray-900"}`}>{card.todos.total}</dd></div>
-              <div><dt className="mb-1 text-sm text-gray-500">出勤</dt><dd className="text-lg font-semibold tabular-nums">{card.attendance.actual} / {card.attendance.expected}</dd></div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-6 border-t border-slate-100 pt-5">
+              <div className="flex min-w-0 flex-col">
+                <dt className="order-2 mt-1.5 pl-6 text-sm text-slate-500">今日收入</dt>
+                <dd className="order-1 flex items-start gap-2 font-mono text-lg font-semibold tabular-nums text-emerald-700">
+                  <ArrowUpRight aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-emerald-500" />
+                  <span className="min-w-0"><Amounts amounts={card.income_by_currency} /></span>
+                </dd>
+              </div>
+              <div className="flex min-w-0 flex-col">
+                <dt className="order-2 mt-1.5 pl-6 text-sm text-slate-500">今日支出</dt>
+                <dd className="order-1 flex items-start gap-2 font-mono text-lg font-semibold tabular-nums text-red-600">
+                  <ArrowDownRight aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-red-500" />
+                  <span className="min-w-0"><Amounts amounts={card.expense_by_currency} /></span>
+                </dd>
+              </div>
+              <div className="flex min-w-0 flex-col">
+                <dt className="order-2 mt-1.5 pl-6 text-sm text-slate-500">待办</dt>
+                <dd className="order-1 flex items-start gap-2 font-mono text-xl font-semibold tabular-nums text-amber-700">
+                  <Bell aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-amber-500" />
+                  {card.todos.total}
+                </dd>
+              </div>
+              <div className="flex min-w-0 flex-col">
+                <dt className="order-2 mt-1.5 pl-6 text-sm text-slate-500">出勤</dt>
+                <dd className="order-1 flex items-start gap-2 font-mono text-xl font-semibold tabular-nums text-blue-700">
+                  <Users aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-blue-500" />
+                  {card.attendance.actual} / {card.attendance.expected}
+                </dd>
+                <dd className="order-3 mt-3">
+                  <div role="progressbar" aria-label="出勤进度" aria-valuemin={0} aria-valuemax={card.attendance.expected || 1} aria-valuenow={Math.min(card.attendance.actual, card.attendance.expected)} aria-valuetext={`实到 ${card.attendance.actual} / 应到 ${card.attendance.expected}`} className="h-1.5 overflow-hidden rounded-full bg-blue-50">
+                    <div className="h-full rounded-full bg-blue-500" style={{ width: `${card.attendance.expected > 0 ? Math.min(100, card.attendance.actual / card.attendance.expected * 100) : 0}%` }} />
+                  </div>
+                  <p className="mt-1.5 text-xs leading-5 text-slate-500">实到 {card.attendance.actual} / 应到 {card.attendance.expected}</p>
+                </dd>
+              </div>
             </dl>
           ) : <p className="text-gray-500">暂无数据</p>}
         </button>
