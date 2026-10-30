@@ -687,10 +687,13 @@ async def _compute_employee_records(db: AsyncSession, wh_id: int, req: Calculate
 
         emp_status = emp.status or "trial"
         # 时薪：按小时/按天 = 日薪/8；按月 = 月薪/当月天数/8
-        if tt == "monthly":
-            from app.services.monthly_payroll import compute_monthly_record
+        from app.services.monthly_payroll import compute_monthly_record, use_new_monthly
+        if tt == "monthly" and use_new_monthly(template, emp_start_date, period_end, req.is_resignation):
             records.append(await compute_monthly_record(db, wh_id, req, prep, emp))
             continue
+        if tt == "monthly":
+            hourly_rate = template_amount / total_days / 8.0
+            daily_rate = template_amount / total_days  # 日薪 = 月薪 ÷ 当月天数
         else:
             hourly_rate = template_amount / 8.0
             daily_rate = template_amount  # 日薪 = 模板金额
