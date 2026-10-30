@@ -10,6 +10,7 @@ import { api, getActiveWarehouseId, getToken } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormScope } from "@/hooks/useFormScope";
 import { useRouter } from "next/navigation";
 import {
   PiggyBank, Wallet, Plus, ArrowUp, FileText, Camera, Image,
@@ -24,6 +25,7 @@ export default function ExpenseFundPage() {
   const receiptCache=useRef<{file:File;path:string}|null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const formScope = useFormScope(user);
   const router = useRouter();
   const isAdmin = user?.role === "warehouse_admin";
   const fundOperate = useTierPermission("expense_fund", "operate");
@@ -84,6 +86,7 @@ export default function ExpenseFundPage() {
     const reset = () => {
       requestEpoch.current++;
       setShowCreate(false); setShowTopUp(false); setShowExpense(false); setVoidTarget(null);
+      setReceiptFile(null); receiptCache.current = null;
       setAccounts([]); setItems({}); setReviewData([]); setRechargeData([]); setSelectedIds(new Set());
       setRechargeHistory({}); setDisbursements({}); setTab("manage");
       if (!getToken()) router.push("/login");
@@ -92,7 +95,7 @@ export default function ExpenseFundPage() {
     reset();
     window.addEventListener("warehouse-changed", reset);
     return () => { requestEpoch.current++; window.removeEventListener("warehouse-changed", reset); };
-  }, [user]);
+  }, [formScope]);
 
   async function loadAll() {
     await loadAccounts();

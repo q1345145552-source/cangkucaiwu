@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from app.database import get_db
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeRestDate
+from app.models.data_change_history import DataChangeHistory
 from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
@@ -15,7 +16,7 @@ from app.core.permissions import check_staff_permission, check_staff_permission_
 from app.core.security import hash_password
 from app.services.image_utils import thumb_path_of
 from app.core.timezone import thai_now
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, StrictInt
 import re
 from datetime import datetime, date, timedelta
 from typing import Optional, List
@@ -29,7 +30,63 @@ router = APIRouter()
 NATIONALITIES = ("泰国", "缅甸", "中国", "其他")
 IDENTITY_FIELDS = ("nationality", "thai_id_number", "sso_number", "bank_account_number", "bank_name", "bank_account_holder")
 
+REST_FIELDS = ("rest_rule_mode", "rest_days_per_month", "rest_pattern", "rest_weekdays", "rest_monthdays")
+
+
+async def rest_dates_for(db, employee):
+    return sorted((await db.execute(select(EmployeeRestDate.rest_date).where(EmployeeRestDate.employee_id==employee.id, EmployeeRestDate.warehouse_id==employee.warehouse_id, EmployeeRestDate.is_rest==True))).scalars())
+
+async def log_rest_change(db, employee, before, after, user):
+    if before == after:
+        return
+    db.add(DataChangeHistory(module="员工休息", record_id=employee.id, warehouse_id=employee.warehouse_id,
+        operator_id=user.id, operator_name=user.display_name or user.username, operation_type="edit",
+        before_data={"员工":employee.name,"休息日期":[d.isoformat() for d in before]},
+        after_data={"员工":employee.name,"休息日期":[d.isoformat() for d in after]}))
+
+async def recent_rest_changes(db, employee, user):
+    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        return []
+    rows = (await db.execute(select(DataChangeHistory).where(DataChangeHistory.module=="员工休息", DataChangeHistory.record_id==employee.id,
+        DataChangeHistory.warehouse_id==employee.warehouse_id).order_by(DataChangeHistory.id.desc()).limit(5))).scalars().all()
+    return [{"id":row.id,"operator":row.operator_name,"time":row.created_at.isoformat(),"before":row.before_data,"after":row.after_data} for row in rows]
+
+async def save_rest_dates(db, employee, dates, original, user, template_id=None):
+    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) or employee.warehouse_id != get_wh_id(user):
+        raise HTTPException(403, "只能由本仓库管理员或主管安排休息")
+    await db.refresh(employee, with_for_update=True)
+    before = await rest_dates_for(db, employee)
+    if original is not None and sorted(set(original)) != before:
+        raise HTTPException(409, "休息安排已被修改，请刷新后重新操作")
+    selected = sorted(set(dates))
+    template = await db.get(SalaryTemplate, template_id or employee.salary_template_id) if (template_id or employee.salary_template_id) else None
+    if template and template.type == "monthly":
+        current = thai_now().date().replace(day=1)
+        following = (current.replace(day=28)+timedelta(days=4)).replace(day=1)
+        missing = [d.strftime("%Y-%m") for d in (current,following) if not any(day.year==d.year and day.month==d.month for day in selected)]
+        if missing:
+            raise HTTPException(400, "月薪员工必须安排当月和下月休息，尚未安排："+"、".join(missing))
+    for day in set(before) ^ set(selected):
+        row = (await db.execute(select(EmployeeRestDate).where(EmployeeRestDate.employee_id==employee.id, EmployeeRestDate.rest_date==day))).scalar_one_or_none()
+        if row is None:
+            row = EmployeeRestDate(employee_id=employee.id,warehouse_id=employee.warehouse_id,rest_date=day,source="profile")
+            db.add(row)
+        row.is_rest = day in selected
+        row.prior_is_rest = None
+        row.updated_by = user.id
+    await db.flush()
+    await log_rest_change(db, employee, before, selected, user)
+
+
+
 class EmployeeIdentityFields(BaseModel):
+    rest_dates: Optional[List[date]] = None
+    rest_original_dates: Optional[List[date]] = None
+    rest_rule_mode: Optional[str] = None
+    rest_days_per_month: Optional[StrictInt] = None
+    rest_pattern: Optional[str] = None
+    rest_weekdays: Optional[List[StrictInt]] = None
+    rest_monthdays: Optional[List[StrictInt]] = None
     model_config = {"extra": "forbid"}
     nationality: Optional[str] = None
     thai_id_number: Optional[str] = None
@@ -177,6 +234,7 @@ async def list_employees(
     nationality: str | None = None,
     include_deleted: bool = False,
     active_only: bool = False,
+    rest_employee_id: Optional[int] = None,
     current_user: User = Depends(check_staff_permission_any(
         MENU_PERMISSIONS_BY_KEY["employees"].label,
         MENU_PERMISSIONS_BY_KEY["payroll"].label,
@@ -194,6 +252,9 @@ async def list_employees(
     count_q = select(func.count(Employee.id))
     query = query.where(Employee.warehouse_id.in_(wh_ids))
     count_q = count_q.where(Employee.warehouse_id.in_(wh_ids))
+    if rest_employee_id is not None:
+        query = query.where(Employee.id == rest_employee_id)
+        count_q = count_q.where(Employee.id == rest_employee_id)
     if active_only:
         # 只返回在职：is_deleted=False 且 status != resigned
         query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
@@ -239,11 +300,22 @@ async def list_employees(
         dts = (await db.execute(select(DeductionTemplate).where(DeductionTemplate.id.in_(dt_ids)))).scalars().all()
         dt_map = {d.id: d for d in dts}
     
+    from app.api.v1.attendance import effective_rest_calendar
+    month_start = thai_now().date().replace(day=1)
+    month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    effective_rests, rest_sources, rest_warnings = await effective_rest_calendar(db, emps, month_start, month_end)
+    histories = {e.id: await recent_rest_changes(db, e, current_user) for e in emps}
+    schedules = {e.id: [d.isoformat() for d in await rest_dates_for(db, e)] for e in emps}
     return {
         "data": [{
+            "rest_dates": schedules[e.id],
+            "rest_history": histories[e.id],
             "id": e.id, "warehouse_id": e.warehouse_id, "warehouse_name": wh_map.get(e.warehouse_id, ""),
             "name": e.name, "position": e.position,
             **{field: getattr(e, field) for field in IDENTITY_FIELDS},
+            **{field: getattr(e, field) for field in REST_FIELDS},
+            "rest_preview_month": month_start.strftime("%Y-%m"),
+            "rest_preview_dates": sorted(day.isoformat() for eid, day in effective_rests if eid == e.id),
             "employee_no": username_map.get(e.user_id, "") if e.user_id else "",
             "user_id": e.user_id, "myanmar_id": e.myanmar_id,
             "address": e.address, "phone": e.phone, "emergency_contact": e.emergency_contact,
@@ -398,7 +470,9 @@ async def create_employee(
         except ValueError:
             document_dates[field] = None
 
+
     e = Employee(
+        **{field: getattr(req, field) for field in REST_FIELDS},
         **{field: getattr(req, field) for field in IDENTITY_FIELDS},
         passport_number=req.passport_number, work_permit_number=req.work_permit_number,
         **document_dates,
@@ -414,6 +488,7 @@ async def create_employee(
     )
     db.add(e)
     await db.flush()
+    await save_rest_dates(db, e, req.rest_dates or [], None, current_user)
     return {"id": e.id, "employee_no": employee_no, "message": "员工创建成功", **identity_result(e)}
 
 @router.put("/{employee_id}", dependencies=[Depends(mutation_scope)])
@@ -437,6 +512,20 @@ async def update_employee(
     
     own_scope(current_user, e.warehouse_id)
     updates = req.model_dump(exclude_unset=True)
+    if set(updates) & set(REST_FIELDS):
+        raise HTTPException(400, "休息规律已停用，请在档案日历选择具体日期")
+    if "rest_dates" in updates:
+        await save_rest_dates(db, e, updates.pop("rest_dates") or [], updates.pop("rest_original_dates", None), current_user, updates.get("salary_template_id"))
+    else:
+        updates.pop("rest_original_dates", None)
+        template_id = updates.get("salary_template_id") or e.salary_template_id
+        template = await db.get(SalaryTemplate, template_id) if template_id else None
+        if template and template.type == "monthly":
+            scheduled = await rest_dates_for(db, e)
+            month = thai_now().date().replace(day=1)
+            next_month = (month.replace(day=28)+timedelta(days=4)).replace(day=1)
+            if any(not any(d.year==m.year and d.month==m.month for d in scheduled) for m in (month,next_month)):
+                raise HTTPException(400, "月薪员工必须安排当月和下月休息，请先完成档案休息日历")
     protected = {'daily_wage', 'base_salary', 'salary_template_id', 'deduction_template_id',
                  'bank_account_number', 'bank_name', 'bank_account_holder', 'user_id', 'employee_no', 'password'}
     if set(updates) & protected and current_user.role != Role.WAREHOUSE_ADMIN:

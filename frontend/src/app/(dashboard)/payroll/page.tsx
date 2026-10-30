@@ -453,7 +453,7 @@ function PayrollPageContent() {
     setLateDetailOpen(false);
   }
 
-  // 工资单展示用的计算值 + 公式（空值保护）
+  // 工资单已保存的金额与明细（只读展示）
   const psDetail = showPayslip?.detail || {};
   const psWorkHours = psDetail.work_hours ?? (showPayslip?.attendance_days ?? 0);
   const psHourlyRate = psDetail.hourly_rate ?? 0;
@@ -485,17 +485,36 @@ function PayrollPageContent() {
   const psEarlyHalfCount = psDetail.early_half_count ?? 0;
   const psEarlyOneCount = psDetail.early_one_count ?? 0;
   const psPeriodBase = psDetail.period_base ?? null;
-  const psPeriodDays = psDetail.period_days ?? null;
-  const psHourlyFormula = psTemplateType === "monthly"
-    ? `月薪 ${psBaseSalary} ÷ ${(showPayslip?.total_days_in_month ?? 30)} ÷ 8`
-    : `日薪 ${psDailyWage} ÷ 8`;
-  const psLateFormula = psLateHalfCount > 0 && psLateOneCount > 0
-    ? `迟到半小时${psLateHalfCount}次 + 迟到1小时${psLateOneCount}次`
-    : psLateHalfCount > 0
-      ? `迟到半小时${psLateHalfCount}次`
-      : psLateOneCount > 0
-        ? `迟到1小时${psLateOneCount}次`
-        : "";
+  const psMissing = "该工资单未记录";
+  // Formatting only: every amount comes from the saved payroll response.
+  function payslipNumber(value: unknown, money = false): string {
+    return typeof value === "number" && Number.isFinite(value)
+      ? value.toLocaleString("zh-CN", money ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : {})
+      : psMissing;
+  }
+  function payslipQuantity(value: unknown, unit: string): string {
+    return typeof value === "number" && Number.isFinite(value) ? `${payslipNumber(value)} ${unit}` : psMissing;
+  }
+  type PayslipLine = { label: string; quantity: string; amount: unknown; direction: "deduction" | "addition" | "neutral"; note?: string };
+  const psLines: PayslipLine[] = [
+    { label: "缺勤", quantity: payslipQuantity(showPayslip?.absence_days, "天"), amount: showPayslip?.absence_deduction, direction: "deduction", note: psTemplateType === "monthly" ? "已计入上班工资，不重复扣减" : "出勤工资已按实际出勤计发；此处为另列扣款" },
+    { label: "请假", quantity: payslipQuantity(showPayslip?.leave_days, "天"), amount: showPayslip?.leave_deduction, direction: "deduction", note: psTemplateType === "monthly" ? "按工资单已记录天数展示；已计入上班工资" : "出勤工资已按实际出勤计发；此处为另列扣款" },
+    { label: "旷工罚款", quantity: payslipQuantity(psDetail.absence_fine_days, "天"), amount: showPayslip?.absence_fine, direction: "deduction" },
+    { label: "迟到", quantity: `半小时档 ${payslipQuantity(psDetail.late_half_count, "次")}；1小时档 ${payslipQuantity(psDetail.late_one_count, "次")}`, amount: showPayslip?.late_penalty, direction: "deduction" },
+    { label: "早退", quantity: `半小时档 ${payslipQuantity(psDetail.early_half_count, "次")}；1小时档 ${payslipQuantity(psDetail.early_one_count, "次")}`, amount: showPayslip?.early_penalty, direction: "deduction" },
+    { label: "加班", quantity: payslipQuantity(showPayslip?.overtime_hours, "小时"), amount: showPayslip?.overtime_pay, direction: "addition" },
+    { label: "预支抵扣", quantity: Array.isArray(psDetail.advance_deductions) ? `${psDetail.advance_deductions.length} 笔` : psMissing, amount: showPayslip?.advance_deduction, direction: "deduction" },
+    { label: "休息", quantity: payslipQuantity(showPayslip?.rest_days, "天"), amount: null, direction: "neutral", note: psTemplateType === "monthly" ? "包含在月薪中，不另扣款" : "不计出勤、不发当日工资，不另扣款" },
+    { label: "固定扣款", quantity: Array.isArray(psDetail.fixed_deductions) ? `${psDetail.fixed_deductions.length} 笔` : psMissing, amount: showPayslip?.fixed_deduction, direction: "deduction" },
+    { label: "临时扣款", quantity: Array.isArray(psDetail.temp_deductions) ? `${psDetail.temp_deductions.length} 笔` : psMissing, amount: showPayslip?.temp_deduction, direction: "deduction" },
+  ];
+  const psEntries: PayslipLine[] = [
+    ...psLateDetails.map((item: { date?: string; type?: string; amount?: number }) => ({ label: `迟到 · ${item.date || "日期未记录"}`, quantity: `1 次 · ${item.type === "late_half" ? "半小时档" : "1小时档"}`, amount: item.amount, direction: "deduction" as const })),
+    ...psEarlyDetails.map((item: { date?: string; type?: string; amount?: number }) => ({ label: `早退 · ${item.date || "日期未记录"}`, quantity: `1 次 · ${item.type === "early_half" ? "半小时档" : "1小时档"}`, amount: item.amount, direction: "deduction" as const })),
+    ...psFixedItems.map((item: { name?: string; deducted?: number }) => ({ label: `固定扣款 · ${item.name || "未命名"}`, quantity: "1 笔", amount: item.deducted, direction: "deduction" as const })),
+    ...psTempItems.map((item: { reason?: string; date?: string; amount?: number }) => ({ label: `临时扣款 · ${item.reason || "未记录原因"}${item.date ? ` · ${item.date}` : ""}`, quantity: "1 笔", amount: item.amount, direction: "deduction" as const })),
+    ...(Array.isArray(psDetail.advance_deductions) ? psDetail.advance_deductions : []).map((item: { advance_id?: number; amount?: number }) => ({ label: `预支 #${item.advance_id ?? "未记录"}`, quantity: "1 笔", amount: item.amount, direction: "deduction" as const })),
+  ];
 
   function fmtClockTime(t: string) {
     if (!t) return "";
@@ -1086,7 +1105,7 @@ function PayrollPageContent() {
       {/* Payslip Detail Modal */}
       {showPayslip && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <FileText size={20} />
               <span className="font-semibold">工资单</span>
@@ -1116,113 +1135,61 @@ function PayrollPageContent() {
                 </div>
               </div>
 
-              {/* Salary breakdown（按薪资模板） */}
-              <div className="space-y-2">
-                {psTemplateName && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">薪资模板</span>
-                    <span>{psTemplateName}</span>
-                  </div>
-                )}
-                {psTemplateType === "hourly" ? (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">上班工时</button>
-                      <span>{psWorkHours} 小时</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">时薪</span>
-                      <span>{psHourlyRate} <span className="text-gray-400 text-xs">({psHourlyFormula})</span></span>
-                    </div>
-                  </>
-                ) : psTemplateType === "monthly" ? (
-                  <div className="flex justify-between text-sm">
-                    <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">周期基础</button>
-                    <span>{psPeriodBase != null ? psPeriodBase.toLocaleString() : psBaseSalary.toLocaleString()} <span className="text-gray-400 text-xs">(月薪 {psBaseSalary} × {psPeriodDays ?? 0}/{showPayslip?.total_days_in_month ?? 30} 天)</span></span>
-                  </div>
-                ) : (
-                  <div className="flex justify-between text-sm">
-                    <button onClick={() => setDailyDetailOpen(true)} className="text-blue-600 hover:underline cursor-pointer">出勤天数</button>
-                    <span>{psAttendanceDays} 天 <span className="text-gray-400 text-xs">(日薪 {psDailyWage})</span></span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">上班工资</span>
-                  <span><b>{psWorkPay.toLocaleString()}</b></span>
+              <section className="rounded-xl border border-blue-100 bg-blue-50/50 p-4" aria-label="工资单单价口径">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h4 className="font-semibold text-gray-800">{psTemplateType === "monthly" ? "月薪" : psTemplateType === "hourly" ? "按小时计薪" : "日薪"} <span className="font-mono tabular-nums">{payslipNumber(psTemplateType === "monthly" ? (psDetail.base_salary ?? showPayslip.base_salary) : (psDetail.daily_wage ?? showPayslip.daily_wage), true)}</span> 元</h4>
+                  {psTemplateName && <span className="text-xs text-gray-500">{psTemplateName}</span>}
                 </div>
-                {psTemplateType === "monthly" && psLeaveDeduction > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <span>请假扣款</span><span>-{psLeaveDeduction.toLocaleString()}</span>
-                  </div>
-                )}
-                {psTemplateType === "monthly" && psAbsenceDeduction > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <span>缺勤扣款</span><span>-{psAbsenceDeduction.toLocaleString()}</span>
-                  </div>
-                )}
-                {psOvertimePay > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>加班费 ({psOvertimeHours}h)</span>
-                    <span>+{psOvertimePay}</span>
-                  </div>
-                )}
-                {psLatePenalty > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <button onClick={() => setLateDetailOpen(true)} className="text-red-500 hover:underline cursor-pointer">迟到扣款</button>
-                    <span>-{psLatePenalty}{psLateFormula ? <span className="text-red-300 text-xs"> ({psLateFormula})</span> : null}</span>
-                  </div>
-                )}
-                {psEarlyPenalty > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <span>早退扣款</span>
-                    <span>-{psEarlyPenalty}{psEarlyHalfCount > 0 || psEarlyOneCount > 0 ? <span className="text-red-300 text-xs"> ({psEarlyHalfCount > 0 ? `早退半小时${psEarlyHalfCount}次` : ""}{psEarlyHalfCount > 0 && psEarlyOneCount > 0 ? " + " : ""}{psEarlyOneCount > 0 ? `早退1小时${psEarlyOneCount}次` : ""})</span> : null}</span>
-                  </div>
-                )}
-                {psAbsenceFine > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <span>旷工扣款</span>
-                    <span>-{psAbsenceFine.toLocaleString()}</span>
-                  </div>
-                )}
-                {psFixedItems.map((f: any) => (
-                  <div key={f.id || f.name} className="flex justify-between text-sm text-red-500">
-                    <span>固定扣款 · {f.name}</span>
-                    <span>-{Number(f.deducted ?? f.amount ?? 0).toLocaleString()}</span>
-                  </div>
-                ))}
-                {psTempItems.map((t: any) => (
-                  <div key={t.id || (t.reason + t.date)} className="flex justify-between text-sm text-red-500">
-                    <span>临时扣款 · {t.reason}</span>
-                    <span>-{Number(t.amount ?? 0).toLocaleString()}</span>
-                  </div>
-                ))}
-                {psAdvanceDeduction > 0 && (
-                  <div className="flex justify-between text-sm text-red-500">
-                    <span>其中已预发</span>
-                    <span>-{psAdvanceDeduction.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>已预支</span>
-                  <span>{psRemainingDebt.toLocaleString()}</span>
-                </div>
-              </div>
+                <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div><dt className="text-gray-500">折算方式</dt><dd className="mt-1">{psTemplateType === "monthly" ? psMissing : psTemplateType === "hourly" ? "按已记录工时计薪" : "按出勤天数计薪"}</dd></div>
+                  <div><dt className="text-gray-500">日单价</dt><dd className="mt-1 font-mono tabular-nums">{psTemplateType === "monthly" ? psMissing : `${payslipNumber(psDetail.daily_wage ?? showPayslip.daily_wage, true)} 元/天`}</dd></div>
+                  <div><dt className="text-gray-500">时薪</dt><dd className="mt-1 font-mono tabular-nums">{payslipNumber(psDetail.hourly_rate, true)}{typeof psDetail.hourly_rate === "number" ? " 元/小时" : ""}</dd></div>
+                  <div><dt className="text-gray-500">{psTemplateType === "monthly" ? "基础全薪 / 周期基础" : "出勤"}</dt><dd className="mt-1 font-mono tabular-nums">{psTemplateType === "monthly" ? `${payslipNumber(psDetail.period_base, true)} 元` : payslipQuantity(showPayslip.attendance_days, "天")}</dd></div>
+                </dl>
+                {psTemplateType === "monthly" && <p className="mt-3 text-xs text-gray-500">本单未保存折算方式及日单价，不以当前模板或当月天数推断。</p>}
+                <button onClick={() => setDailyDetailOpen(true)} className="mt-3 text-sm text-blue-600 hover:underline">查看逐日出勤明细</button>
+              </section>
 
-              {/* Total */}
-              <div className="border-t pt-3 space-y-1">
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>应发合计</span><span>{showPayslip.gross_pay ?? 0}</span>
+              <section className="space-y-2" aria-label="工资单金额明细">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-semibold text-gray-800">工资增减明细</h4>
+                  <span className="text-xs text-gray-400">金额单位：泰铢</span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>扣款合计</span><span className="text-red-500">-{showPayslip.total_deductions ?? 0}</span>
+                <p className="text-xs text-gray-500">请假、缺勤已反映在上班工资中，明细不重复扣减。左右滑动查看完整内容。</p>
+                <div role="region" aria-label="工资增减明细" tabIndex={0} className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead className="bg-gray-50 text-gray-600"><tr><th className="px-3 py-2 text-left whitespace-nowrap">项目</th><th className="px-3 py-2 text-left whitespace-nowrap">数量</th><th className="px-3 py-2 text-right whitespace-nowrap">金额</th><th className="px-3 py-2 text-left whitespace-nowrap">说明</th></tr></thead>
+                    <tbody>
+                      {psLines.map(line => <tr key={line.label} className="border-t border-gray-100">
+                        <td className="px-3 py-2.5 whitespace-nowrap font-medium">{line.label}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap tabular-nums">{line.quantity}</td>
+                        <td className={`px-3 py-2.5 whitespace-nowrap text-right font-mono tabular-nums ${(typeof line.amount === "number" && line.amount < 0) || line.direction === "deduction" ? "text-red-600" : line.direction === "addition" ? "text-green-600" : "text-gray-500"}`}>
+                          {line.label === "休息" ? "不另扣款" : <>{typeof line.amount === "number" && line.amount > 0 ? (line.direction === "deduction" ? "−" : line.direction === "addition" ? "+" : "") : ""}{payslipNumber(line.amount, true)}</>}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-gray-500 min-w-[180px]">{line.note || "—"}</td>
+                      </tr>)}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="flex justify-between text-base font-bold pt-1 border-t">
-                  <span>实发工资</span>
-                  <span className="text-blue-600 text-lg">{(showPayslip.net_pay ?? 0).toLocaleString()} 泰铢
-                    <span className="text-gray-400 text-xs font-normal ml-1">({psWorkPay} + {psOvertimePay} - {psTotalDeductions} - {psAdvanceDeduction})</span>
-                  </span>
-                </div>
-              </div>
+                {psEntries.length > 0 && <details className="rounded-lg border border-gray-200 p-3">
+                  <summary className="cursor-pointer text-sm text-blue-600">查看已记录的逐笔扣款（仅展开明细，不重复扣减）</summary>
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full min-w-[520px] text-sm"><thead><tr className="bg-gray-50"><th className="p-2 text-left">项目 / 日期</th><th className="p-2 text-left">数量</th><th className="p-2 text-right">金额</th></tr></thead><tbody>
+                      {psEntries.map((line, index) => <tr key={index} className="border-t border-gray-100"><td className="p-2">{line.label}</td><td className="p-2 whitespace-nowrap">{line.quantity}</td><td className="p-2 text-right whitespace-nowrap font-mono tabular-nums text-red-600">{typeof line.amount === "number" && line.amount > 0 ? "−" : ""}{payslipNumber(line.amount, true)}</td></tr>)}
+                    </tbody></table>
+                  </div>
+                </details>}
+                <p className="text-xs text-gray-400">请假、缺勤、旷工和加班按本单已记录的汇总展示；未保存逐日金额的，不拆分估算。</p>
+              </section>
+
+              <section className="rounded-xl bg-gray-50 p-4 space-y-2" aria-label="工资单合计">
+                <div className="flex justify-between gap-3 text-sm"><span className="text-gray-500">上班工资（已计请假、缺勤）</span><span className="font-mono tabular-nums text-right">{payslipNumber(showPayslip.base_pay, true)}</span></div>
+                <div className="flex justify-between gap-3 text-sm"><span className="text-gray-500">应发合计</span><span data-payroll-amount="gross_pay" className="font-mono tabular-nums text-right">{payslipNumber(showPayslip.gross_pay, true)}</span></div>
+                <div className="flex justify-between gap-3 text-sm"><span className="text-gray-500">扣款合计（预支抵扣另列）</span><span className="font-mono tabular-nums text-right text-red-600">{payslipNumber(showPayslip.total_deductions, true)}</span></div>
+                <div className="flex justify-between gap-3 text-sm"><span className="text-gray-500">预支抵扣</span><span className="font-mono tabular-nums text-right text-red-600">{payslipNumber(showPayslip.advance_deduction, true)}</span></div>
+                <div className="flex justify-between gap-3 border-t pt-3 font-bold"><span>实发工资</span><span data-payroll-amount="net_pay" className={`font-mono tabular-nums text-right text-lg ${showPayslip.net_pay < 0 ? "text-red-600" : "text-blue-600"}`}>{payslipNumber(showPayslip.net_pay, true)} 泰铢</span></div>
+                <div className="flex justify-between gap-3 text-xs text-gray-500"><span>剩余未抵扣预支</span><span className="font-mono tabular-nums text-right">{payslipNumber(showPayslip.remaining_debt, true)}</span></div>
+              </section>
 
               {/* Status & Disbursement */}
               <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">

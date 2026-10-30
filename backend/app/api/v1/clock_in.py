@@ -3,7 +3,7 @@ from app.core.round4_access import independent_employee
 from app.core.employee_access import employee_access, employee_view, attendance_supervisor
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_, delete
+from sqlalchemy import select, func, or_, and_, delete, text
 from app.database import get_db
 from app.models.user import User
 from app.models.clock_in_records import ClockInRecord, ClockInMakeupBatch
@@ -16,7 +16,7 @@ from app.services.full_day_leave import approved_full_day_today
 from datetime import datetime, date, time, timedelta
 from pydantic import BaseModel, Field, StrictInt
 from typing import Optional, List
-import os, uuid, base64
+import os, uuid, base64, hashlib
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
@@ -72,6 +72,7 @@ async def clock_in(
     current_user: User = Depends(employee_access(_ATTENDANCE_PERMISSION, self_only=True)),
     db: AsyncSession = Depends(get_db),
 ):
+    now = thai_now()
     lang = get_request_lang(request)
     if not employee_view(current_user):
         raise HTTPException(403, t("only_labor_can_clock", lang))
@@ -81,8 +82,7 @@ async def clock_in(
     if set(await request.form()) - {'session', 'photo_base64'}:
         raise HTTPException(400, '打卡包含不允许的字段')
     await db.execute(select(User).where(User.id == current_user.id).with_for_update())
-    today = thai_today()
-    now = thai_now()
+    today = now.date()
 
     if await approved_full_day_today(db, current_user, today):
         raise HTTPException(400, t("full_day_leave_cannot_clock", lang))
@@ -90,11 +90,35 @@ async def clock_in(
     si = SESSIONS[session]
     label = session_label(session, lang)
 
-    # Check duplicate
+    wh_id = get_wh_id(current_user)
+    photo_fingerprint = None
+    img_bytes = None
+    if photo_base64:
+        try:
+            data = photo_base64.split(",", 1)[-1]
+            img_bytes = base64.b64decode(data, validate=True)
+            from app.services.image_utils import is_image
+            if not is_image(img_bytes):
+                raise ValueError("not an image")
+        except Exception:
+            raise HTTPException(400, t("invalid_photo", lang))
+        photo_fingerprint = hashlib.sha256(img_bytes).hexdigest()
+        # Serialize warehouse uploads until transaction commit, including concurrent users.
+        if db.get_bind().dialect.name == "postgresql":
+            await db.execute(text("SELECT pg_advisory_xact_lock(:namespace, :warehouse)"),
+                             {"namespace": 1129074507, "warehouse": wh_id or 0})
+        used = (await db.execute(text(
+            "SELECT id FROM clock_in_records WHERE warehouse_id IS NOT DISTINCT FROM :warehouse "
+            "AND photo_fingerprint = :fingerprint LIMIT 1"
+        ), {"warehouse": wh_id, "fingerprint": photo_fingerprint})).first()
+        if used:
+            raise HTTPException(400, "这张照片已经用过了，请现场重新拍摄")
+
+    # Preserve repeated-session behavior, but reject reused photos first.
     existing = (await db.execute(
         select(ClockInRecord).where(valid_clock(),
             ClockInRecord.user_id == current_user.id,
-            ClockInRecord.warehouse_id == get_wh_id(current_user),
+            ClockInRecord.warehouse_id == wh_id,
             ClockInRecord.clock_date == today,
             ClockInRecord.session == session,
         )
@@ -102,26 +126,28 @@ async def clock_in(
     if existing:
         return {"message": t("already_clocked", lang, label=label), "clocked_in_at": existing.clocked_in_at.isoformat(), "duplicate": True}
 
-    # Save photo
     photo_path = None
-    if photo_base64:
-        # 解码校验（在 try 之外，确保格式错误能正确报错而不是被吞掉）
+    saved_photo = None
+    if img_bytes is not None:
+        from app.models.warehouse import Warehouse
+        warehouse = (await db.execute(select(Warehouse).where(Warehouse.id == wh_id))).scalar_one_or_none()
+        employee = current_user._attendance_employee
         try:
-            _, data = photo_base64.split(",", 1) if "," in photo_base64 else ("", photo_base64)
-            img_bytes = base64.b64decode(data)
-        except Exception:
-            raise HTTPException(400, t("invalid_photo", lang))
-        try:
-            from app.services.image_utils import save_image
-            wh_id = str(get_wh_id(current_user) or 0)
+            from app.services.image_utils import save_clock_in_image
+            wh_dir = str(wh_id or 0)
             today_str = today.isoformat()
-            abs_subdir = os.path.join(UPLOAD_DIR, wh_id, today_str, "clockin")
-            rel_subdir = f"uploads/{wh_id}/{today_str}/clockin"
-            fname = f"{uuid.uuid4().hex}.jpg"
-            result = save_image(img_bytes, abs_subdir, rel_subdir, fname)
-            photo_path = result["path"]
+            abs_subdir = os.path.join(UPLOAD_DIR, wh_dir, today_str, "clockin")
+            rel_subdir = f"uploads/{wh_dir}/{today_str}/clockin"
+            saved_photo = save_clock_in_image(
+                img_bytes, abs_subdir, rel_subdir, f"{uuid.uuid4().hex}.jpg",
+                [now.astimezone(THAI_TZ).strftime("%Y-%m-%d %H:%M"),
+                 f"{employee.name}  {current_user.username}", warehouse.name if warehouse else str(wh_id)],
+            )
+            photo_path = saved_photo["path"]
         except Exception:
-            pass
+            import logging
+            logging.getLogger(__name__).exception("Clock-in photo watermark/save failed")
+            raise HTTPException(500, "照片上传失败，请重新拍摄后重试")
 
     wh_id = get_wh_id(current_user)
     late_half_time, late_one_time = await _get_late_thresholds(db, current_user)
@@ -137,7 +163,19 @@ async def clock_in(
         penalty_amount=0,  # computed at payroll time
     )
     db.add(record)
-    await db.flush()
+    try:
+        await db.flush()
+        if photo_fingerprint:
+            await db.execute(text("UPDATE clock_in_records SET photo_fingerprint = :fingerprint WHERE id = :id"),
+                             {"fingerprint": photo_fingerprint, "id": record.id})
+    except Exception:
+        if saved_photo:
+            for path in saved_photo["files"]:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        raise
 
     if penalty["status"] == "late_one":
         msg = t("clock_in_success_late", lang, label=label) + t("clock_in_forgot_hint", lang)

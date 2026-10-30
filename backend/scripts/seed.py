@@ -256,6 +256,37 @@ async def _migrate_advance_approval_columns(conn):
             print(f"迁移 预支审批字段 {name} 失败：{exc}")
 
 
+async def _migrate_employee_rest_settings(conn):
+    """Add nullable settings only; do not generate or rewrite rest records."""
+    from sqlalchemy import text
+    columns = {"rest_rule_mode": "VARCHAR(20)", "rest_days_per_month": "INTEGER",
+               "rest_pattern": "VARCHAR(20)", "rest_weekdays": "JSON",
+               "rest_monthdays": "JSON", "workday_overrides": "JSON"}
+    for name, sql_type in columns.items():
+        await conn.execute(text(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {name} {sql_type}"))
+
+
+async def _migrate_employee_rest_dates(conn):
+    from sqlalchemy import text
+    from app.models.employee import EmployeeRestDate
+    from datetime import date
+    await conn.run_sync(lambda sync: EmployeeRestDate.__table__.create(sync, checkfirst=True))
+    # Preserve existing work overrides first; never overwrite a later user edit on restart.
+    rows = (await conn.execute(text("SELECT id, warehouse_id, workday_overrides FROM employees"))).all()
+    for eid, wid, entries in rows:
+        for entry in entries or []:
+            try:
+                day = date.fromisoformat(entry["date"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            await conn.execute(text("INSERT INTO employee_rest_dates (employee_id,warehouse_id,rest_date,is_rest,source,updated_by,prior_is_rest) VALUES (:eid,:wid,:day,false,'manual',:uid,EXISTS(SELECT 1 FROM rest_days WHERE employee_id=:eid AND warehouse_id=:wid AND rest_date=:day)) ON CONFLICT (employee_id,rest_date) DO NOTHING"), {"eid":eid,"wid":wid,"day":day,"uid":entry.get("created_by")})
+    await conn.execute(text("""INSERT INTO employee_rest_dates (employee_id,warehouse_id,rest_date,is_rest,source,updated_by)
+        SELECT DISTINCT ON (r.employee_id,r.rest_date) r.employee_id,r.warehouse_id,r.rest_date,true,'manual',r.created_by
+        FROM rest_days r JOIN employees e ON e.id=r.employee_id AND e.warehouse_id=r.warehouse_id
+        ORDER BY r.employee_id,r.rest_date,r.id
+        ON CONFLICT (employee_id,rest_date) DO NOTHING"""))
+
+
 async def _migrate_employee_advance_expenses(conn):
     """仅加新旧标记和关联列；老预支不补任何支出。"""
     from sqlalchemy import text
@@ -531,12 +562,41 @@ async def _migrate_reimbursement_payments(conn):
             raise
 
 
+async def _migrate_monthly_salary_template(conn):
+    """Nullable storage only. Never backfill templates or recalculate payroll."""
+    from sqlalchemy import text
+    columns = {
+        "monthly_deduction_mode": "VARCHAR(20)",
+        "monthly_fixed_days": "INTEGER",
+        "monthly_rest_days": "INTEGER",
+        "monthly_rest_pattern": "VARCHAR(20)",
+        "monthly_rest_weekdays": "JSON",
+        "monthly_rest_monthdays": "JSON",
+        "monthly_overtime_hour_fee": "DOUBLE PRECISION",
+    }
+    async with conn.begin_nested():
+        for name, column_type in columns.items():
+            await conn.execute(text(f"ALTER TABLE salary_templates ADD COLUMN IF NOT EXISTS {name} {column_type}"))
+
+
 async def seed():
+    from sqlalchemy import text
+
     engine = _get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Required for clock-in uploads; fail startup if schema setup fails.
+        await conn.execute(text("ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS photo_fingerprint VARCHAR(64)"))
+        await conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_clock_photo_warehouse_fingerprint "
+            "ON clock_in_records (COALESCE(warehouse_id, 0), photo_fingerprint) "
+            "WHERE photo_fingerprint IS NOT NULL"
+        ))
+        await _migrate_monthly_salary_template(conn)
         from app.services.employee_identity_migration import migrate_employee_identity
         await migrate_employee_identity(conn)
+        await _migrate_employee_rest_settings(conn)
+        await _migrate_employee_rest_dates(conn)
         await _migrate_credit_shipments(conn)
         await _migrate_customer_receipt_identity(conn)
         await _migrate_incoming_operations(conn)
@@ -578,7 +638,6 @@ async def seed():
         from app.services.inventory_migration import migrate_inventory
         await migrate_inventory(conn)
         # Migration: add half column to payroll_records if not exists
-        from sqlalchemy import text
         try:
             async with conn.begin_nested():
                 await conn.execute(text(
@@ -845,6 +904,7 @@ async def seed():
                     await conn.execute(text("""
                         INSERT INTO system_settings (warehouse_id, key, value)
                         SELECT MIN(id), 'supervisor_perms_backfilled_v1', 'true' FROM warehouses
+                        HAVING MIN(id) IS NOT NULL
                     """))
         except Exception as _e:
             print(f"迁移 主管扩展权限补全 失败：{_e}")

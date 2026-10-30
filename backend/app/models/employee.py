@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Date, Text
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, Date, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -48,6 +48,14 @@ class Employee(Base):
     # Link to login user account (formal relationship, not name matching)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, unique=True, comment="关联登录账号")
 
+    # Nullable calendar-only rest settings; payroll is deliberately unchanged.
+    rest_rule_mode = Column(String(20), nullable=True)
+    rest_days_per_month = Column(Integer, nullable=True)
+    rest_pattern = Column(String(20), nullable=True)
+    rest_weekdays = Column(JSON, nullable=True)
+    rest_monthdays = Column(JSON, nullable=True)
+    workday_overrides = Column(JSON, nullable=True)
+
     # 薪资模板
     salary_template_id = Column(Integer, ForeignKey("salary_templates.id"), nullable=True, comment="薪资模板")
 
@@ -73,3 +81,17 @@ class Employee(Base):
     user = relationship("User", foreign_keys=[user_id], backref="employee_profile")
     salary_template = relationship("SalaryTemplate", foreign_keys=[salary_template_id], back_populates="employees")
     deduction_template = relationship("DeductionTemplate", foreign_keys=[deduction_template_id], back_populates="employees")
+
+
+class EmployeeRestDate(Base):
+    __tablename__ = "employee_rest_dates"
+    __table_args__ = (UniqueConstraint("employee_id", "rest_date", name="uq_employee_rest_date"),)
+    id = Column(Integer, primary_key=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
+    rest_date = Column(Date, nullable=False, index=True)
+    is_rest = Column(Boolean, nullable=False, default=True)
+    source = Column(String(20), nullable=False, default="profile")
+    prior_is_rest = Column(Boolean, nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

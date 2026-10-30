@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react";
 import { isAuthUser, type AuthUser, type LoginResponse } from "@/types/auth";
 import { useRouter } from "next/navigation";
 import { api, setToken, clearToken, getToken, setActiveWarehouseId } from "@/lib/api";
@@ -17,45 +17,78 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const verifiedToken = useRef<string | null>(null);
+  const sessionEpoch = useRef(0);
   const router = useRouter();
+
+  function updateIdentity(next: AuthUser | null, token: string | null) {
+    verifiedToken.current = next ? token : null;
+    setUser(next);
+    if (next) localStorage.setItem("user", JSON.stringify(next));
+  }
 
   useEffect(() => {
     // Cached role/menu grants are not authorization. Wait for a live /me response.
     let active = true;
-    const requestedToken = getToken();
-    if (requestedToken) api.get<AuthUser>("/auth/me").then(fresh => {
-      if (active && requestedToken === getToken() && isAuthUser(fresh)) { setUser(fresh); localStorage.setItem("user", JSON.stringify(fresh)); }
-    }).catch(() => { if (active && requestedToken === getToken()) setUser(null); }).finally(() => { if (active) setLoading(false); });
-    else setLoading(false);
+    let requestVersion = 0;
+    let publishing = false;
+    const publishIdentity = (next: AuthUser | null, token: string | null) => {
+      updateIdentity(next, token);
+      publishing = true;
+      try {
+        window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: next }));
+      } finally {
+        publishing = false;
+      }
+    };
     const refresh = (event: Event) => {
-      if (!("detail" in event)) return;
+      if (publishing || !("detail" in event)) return;
       const refreshed: unknown = event.detail;
-      if (refreshed === null || isAuthUser(refreshed)) setUser(refreshed);
+      if (refreshed === null || isAuthUser(refreshed)) {
+        ++requestVersion;
+        const token = getToken();
+        updateIdentity(refreshed?.is_active && token ? refreshed : null, token);
+        setLoading(false);
+      }
     };
-    const refreshFromServer = () => {
+    const refreshFromServer = async (invalidate: boolean, refreshAttachment = true) => {
       const token = getToken();
-      setUser(null);
-      window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: null }));
-      if (!token) return;
-      api.get<AuthUser>("/auth/me").then(async fresh => {
-        await api.post("/auth/attachment-session", {});
-        if (active && token === getToken() && isAuthUser(fresh)) {
-          setUser(fresh); localStorage.setItem("user", JSON.stringify(fresh));
-          window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: fresh }));
-        }
-      }).catch(() => { if (active && token === getToken()) setUser(null); });
+      const epoch = sessionEpoch.current;
+      const version = ++requestVersion;
+      const isCurrent = () => active && version === requestVersion
+        && epoch === sessionEpoch.current && token === getToken();
+      // A normal focus check keeps the verified page mounted, including file inputs
+      // and previews. Explicit permission/account changes still invalidate at once.
+      if (invalidate || !token || verifiedToken.current !== token) publishIdentity(null, null);
+      if (!token) { setLoading(false); return; }
+      try {
+        const fresh = await api.get<AuthUser>("/auth/me");
+        if (!isCurrent()) return;
+        if (!isAuthUser(fresh) || !fresh.is_active) { publishIdentity(null, null); return; }
+        if (refreshAttachment) await api.post("/auth/attachment-session", {});
+        if (isCurrent()) publishIdentity(fresh, token);
+      } catch {
+        if (isCurrent()) publishIdentity(null, null);
+      } finally {
+        if (isCurrent()) setLoading(false);
+      }
     };
-    const onStorage = (event: StorageEvent) => { if (event.key === "token" || event.key === "permissions-revision" || event.key === null) refreshFromServer(); };
+    const onFocus = () => { void refreshFromServer(false); };
+    const onPermissionsChanged = () => { void refreshFromServer(true); };
+    const onStorage = (event: StorageEvent) => { if (event.key === "token" || event.key === "permissions-revision" || event.key === null) void refreshFromServer(true); };
     window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", refreshFromServer);
-    window.addEventListener("permissions-changed", refreshFromServer);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("permissions-changed", onPermissionsChanged);
     window.addEventListener("auth-user-refreshed", refresh);
-    return () => { active = false; window.removeEventListener("auth-user-refreshed", refresh); window.removeEventListener("storage", onStorage); window.removeEventListener("focus", refreshFromServer);
-      window.removeEventListener("permissions-changed", refreshFromServer); };
+    void refreshFromServer(true, false);
+    return () => { active = false; ++requestVersion; window.removeEventListener("auth-user-refreshed", refresh); window.removeEventListener("storage", onStorage); window.removeEventListener("focus", onFocus);
+      window.removeEventListener("permissions-changed", onPermissionsChanged); };
   }, []);
 
   async function doLogin(username: string, password: string) {
+    const epoch = ++sessionEpoch.current;
     const res = await api.post<LoginResponse>("/auth/login", { username, password });
+    if (epoch !== sessionEpoch.current) return;
     setToken(res.access_token);
     setActiveWarehouseId(null);
     localStorage.setItem("warehouses", JSON.stringify(res.warehouses || []));
@@ -75,8 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       attendance_employee_id: res.attendance_employee_id,
       self_employee_id: res.self_employee_id,
     };
-    setUser(u);
-    localStorage.setItem("user", JSON.stringify(u));
+    updateIdentity(u, res.access_token);
+    window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: u }));
     
     const warehouses = res.warehouses || [];
     if (res.role === "warehouse_labor") {
@@ -94,9 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function doLogout() {
+    const epoch = ++sessionEpoch.current;
     await api.post("/auth/attachment-session", { clear: true }).catch(() => {});
+    if (epoch !== sessionEpoch.current) return;
     clearToken();
-    setUser(null);
+    updateIdentity(null, null);
+    window.dispatchEvent(new CustomEvent("auth-user-refreshed", { detail: null }));
     router.push("/login");
   }
 

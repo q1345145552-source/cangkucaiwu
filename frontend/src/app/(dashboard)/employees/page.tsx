@@ -74,7 +74,9 @@ export default function EmployeesPage() {
   };
 
 
+  const canSetRest = user?.role === "warehouse_admin" || user?.role === "supervisor";
   const defaultForm: any = {
+    rest_dates: [] as string[], rest_original_dates: [] as string[],
     nationality: "", thai_id_number: "", sso_number: "", bank_account_number: "", bank_name: "", bank_account_holder: "",
     name: "", employee_no: "", password: "", position: "仓库劳工", myanmar_id: "", address: "",
     phone: "", emergency_contact: "", hire_date: "",
@@ -84,18 +86,36 @@ export default function EmployeesPage() {
     passport_expiry: "", work_permit_expiry: "",
     promotion_date: "", tags: "",
   };
+  const restLinkOpened = useRef(false);
+  const restTouch = useRef<{x:number;y:number}|null>(null);
+  const [restMonth, setRestMonth] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).format(new Date()).slice(0,7));
+  function moveRestMonth(offset: number) {
+    const [year, month] = restMonth.split("-").map(Number);
+    const target = new Date(year, month - 1 + offset, 1);
+    setRestMonth(`${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,"0")}`);
+  }
   const [form, setForm] = useState({ ...defaultForm });
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadLimit(); if (canReadPay) { loadTemplates(); loadDeductionTemplates(); } }, [canReadPay]);
 
-  useEffect(() => { setSelectedIds([]); setData([]); load(); }, [nationalityFilter]);
+  useEffect(() => { restLinkOpened.current = false; setSelectedIds([]); setData([]); load(); }, [nationalityFilter, user?.id]);
 
   async function load() {
     const request = ++listRequest.current;
     setLoading(true);
     try {
-      const r = await api.get<any>(`/employees?page_size=200${nationalityFilter ? `&nationality=${encodeURIComponent(nationalityFilter)}` : ""}`);
-      if (request === listRequest.current) setData(r.data || []);
+      const targetId = new URLSearchParams(window.location.search).get("rest_employee_id");
+      const r = await api.get<any>(`/employees?page_size=200${targetId ? `&rest_employee_id=${encodeURIComponent(targetId)}` : ""}${nationalityFilter ? `&nationality=${encodeURIComponent(nationalityFilter)}` : ""}`);
+      if (request === listRequest.current) {
+        setData(r.data || []);
+        if (targetId && canSetRest && !restLinkOpened.current) {
+          const target = (r.data || []).find((e:any) => String(e.id) === targetId);
+          if (target) { restLinkOpened.current = true; editEmployee(target);
+            const month = new URLSearchParams(window.location.search).get("rest_month");
+            if (month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) setRestMonth(month);
+          }
+        }
+      }
     } catch {}
     if (request === listRequest.current) setLoading(false);
   }
@@ -170,6 +190,7 @@ export default function EmployeesPage() {
     }
     try {
       const payload: any = { ...form };
+      if (!canSetRest) for (const key of ["rest_dates", "rest_original_dates"]) delete payload[key];
       if (user?.role !== "warehouse_admin") { delete payload.employee_no; delete payload.password; delete payload.user_id;
         for (const field of ["daily_wage", "base_salary", "salary_template_id", "deduction_template_id", "bank_account_number", "bank_name", "bank_account_holder"]) delete payload[field]; }
       if (!canReadDocuments) for (const field of ["nationality", "thai_id_number", "sso_number", "myanmar_id", "passport_number", "work_permit_number"]) delete payload[field];
@@ -307,6 +328,7 @@ export default function EmployeesPage() {
     setPassportPhotoFile(null);
     setWorkPermitPhotoFile(null);
     setForm({
+      rest_dates: e.rest_dates || [], rest_original_dates: e.rest_dates || [],
       nationality: e.nationality || "", thai_id_number: e.thai_id_number || "", sso_number: e.sso_number || "",
       bank_account_number: e.bank_account_number || "", bank_name: e.bank_name || "", bank_account_holder: e.bank_account_holder || "",
       name: e.name || "", employee_no: e.employee_no || "", password: "",
@@ -704,7 +726,7 @@ export default function EmployeesPage() {
               <span className="font-semibold">{editingId ? "编辑员工" : "新建员工"}</span>
               <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="ml-auto text-2xl" data-modal-close="true">&times;</button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-2 sm:p-5 space-y-4">
               <label className="block text-sm">国籍
                 <select disabled={!canReadDocuments} aria-label="国籍" className="form-input w-full min-h-11 mt-1" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value})}>
                   <option value="">未填</option>
@@ -906,6 +928,37 @@ export default function EmployeesPage() {
                     : <p className="text-xs text-gray-400 mt-1">选填，填了会自动按正式存</p>}
                 </div>
               </div>
+
+              <fieldset disabled={!canSetRest} className="rounded-xl border border-gray-200 p-3 space-y-3" aria-label="休息安排">
+                <legend className="px-1 font-semibold">休息安排</legend>
+                <div className="flex items-center justify-between">
+                  <button type="button" aria-label="上个月" className="min-h-11 min-w-11 border rounded" onClick={() => moveRestMonth(-1)}>‹</button>
+                  <strong>{restMonth}</strong>
+                  <button type="button" aria-label="下个月" className="min-h-11 min-w-11 border rounded" onClick={() => moveRestMonth(1)}>›</button>
+                </div>
+                <div className="overflow-x-auto"><div className="grid grid-cols-7 gap-0 min-w-[308px]" aria-label="排休日历"
+                  style={{touchAction:"pan-y"}}
+                  onTouchStart={e => { restTouch.current = {x:e.touches[0].clientX,y:e.touches[0].clientY}; }}
+                  onTouchEnd={e => { const start=restTouch.current; restTouch.current=null; if (!start) return; const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y; if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5) moveRestMonth(dx<0?1:-1); }}>
+                  {["日","一","二","三","四","五","六"].map(day => <span key={day} className="text-center text-xs text-gray-500">{day}</span>)}
+                  {Array.from({length:new Date(Number(restMonth.slice(0,4)), Number(restMonth.slice(5))-1,1).getDay()},(_,i)=><span key={`blank-${i}`} />)}
+                  {Array.from({length:new Date(Number(restMonth.slice(0,4)), Number(restMonth.slice(5)),0).getDate()},(_,i)=> {
+                    const day = `${restMonth}-${String(i+1).padStart(2,"0")}`;
+                    const selected = (form.rest_dates || []).includes(day);
+                    return <button type="button" key={day} aria-label={day} aria-pressed={selected} className={`min-h-11 min-w-11 rounded border text-sm ${selected ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`} onClick={() => setForm({...form,rest_dates:selected ? form.rest_dates.filter((d:string)=>d!==day) : [...form.rest_dates,day].sort()})}>{i+1}{selected && <span className="block text-[10px]">休息</span>}</button>;
+                  })}
+                </div></div>
+                <p className="text-xs text-gray-500">点日期选休息，再点取消；可翻月排多个月。月薪必须安排当月和下月，日薪不强制。本轮只用于考勤，工资接入另轮。</p>
+                <p className="text-xs break-words" aria-label="已选休息日期">{form.rest_dates?.join("、") || "尚未安排休息"}</p>
+                <div className="border-t pt-3 space-y-2" aria-label="最近排休修改">
+                  <h5 className="text-sm font-medium">最近修改</h5>
+                  {(data.find(e => e.id === editingId)?.rest_history || []).map((h:any) => <div key={h.id} className="text-xs text-gray-600 break-words">
+                    <p>{h.operator} · {new Date(h.time).toLocaleString("zh-CN",{timeZone:"Asia/Bangkok"})}</p>
+                    <p>原来：{h.before?.["休息日期"]?.join("、") || "无"}</p><p>改后：{h.after?.["休息日期"]?.join("、") || "无"}</p>
+                  </div>)}
+                  {!data.find(e => e.id === editingId)?.rest_history?.length && <p className="text-xs text-gray-400">暂无修改记录</p>}
+                </div>
+              </fieldset>
 
               {/* Tags */}
               <div>
@@ -1193,6 +1246,10 @@ export default function EmployeesPage() {
               </div>
 
               {/* Remark */}
+              <section className="rounded-xl border bg-gray-50 p-3 text-sm" aria-label="员工休息安排">
+                <h4 className="font-semibold">休息安排</h4>
+                <p className="break-words">{(detailEmp.rest_dates || []).join("、") || "尚未安排"}</p>
+              </section>
               {detailEmp.remark && (
                 <div className="border-t pt-4">
                   <label className="text-xs text-gray-400">备注</label>

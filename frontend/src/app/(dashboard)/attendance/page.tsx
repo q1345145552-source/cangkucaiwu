@@ -28,7 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
   "half_absence": "bg-red-500 text-white border-red-600",
   "leave": "bg-purple-100 text-purple-700 border-purple-300",
   "hours_leave": "bg-purple-100 text-purple-700 border-purple-300",
-  "rest": "bg-blue-100 text-blue-700 border-blue-300",
+  "rest": "bg-gray-100 text-gray-600 border-gray-300",
   "absent": "bg-red-100 text-red-700 border-red-300",
   "missing": "bg-gray-100 text-gray-600 border-gray-300",
   "future": "bg-white text-gray-300 border-gray-100",
@@ -110,8 +110,11 @@ export default function AttendancePage() {
 
   // Data
   const [employees, setEmployees] = useState<any[]>([]);
+  const [restReminder, setRestReminder] = useState<any>(null);
+  const [showRestReminder, setShowRestReminder] = useState(false);
   const [events, setEvents] = useState<Record<string, any>>({});
   const [leaves, setLeaves] = useState<any[]>([]);
+  const [restWarnings, setRestWarnings] = useState<string[]>([]);
   const [restDays, setRestDays] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -140,6 +143,7 @@ export default function AttendancePage() {
   const [proxyNotifiedAt, setProxyNotifiedAt] = useState(todayStr);
 
   // Rest day form
+  const [restKind, setRestKind] = useState<"rest" | "work" | "clear_work">("rest");
   const [restEmployeeId, setRestEmployeeId] = useState<number>(0);
   const [restDate1, setRestDate1] = useState("");
   const [restDate2, setRestDate2] = useState("");
@@ -186,12 +190,17 @@ export default function AttendancePage() {
   async function loadCalendar() {
     const version = ++makeupLoadVersion.current;
     setMakeupDays({});
+    setRestReminder(null);
+    setRestWarnings([]);
     setLoading(true);
     try {
       const r = await api.get<any>(`/attendance/calendar?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
+      if (version !== makeupLoadVersion.current) return;
       const evtMap: Record<string, any> = {};
       (r.events || []).forEach((e: any) => { evtMap[`${e.date}_${e.employee_id}`] = e; });
       setEvents(evtMap);
+      setRestWarnings(r.rest_warnings || []);
+      setRestReminder(r.rest_reminder || null);
       setEmployees(r.employees || []);
       void loadMakeupMarkers(version);
     } catch {}
@@ -279,7 +288,7 @@ export default function AttendancePage() {
     const dates = [restDate1, restDate2].filter(Boolean);
     if (dates.length === 0) { toast("error", t("att_at_least_one_rest")); return; }
     try {
-      await api.post<any>("/attendance/rest-days", { employee_id: restEmployeeId, rest_dates: dates });
+      await api.post<any>("/attendance/rest-days", { employee_id: restEmployeeId, rest_dates: dates, kind: restKind });
       toast("success", t("success"));
       setShowRestForm(false); setRestDate1(""); setRestDate2("");
       loadRestDays(); loadCalendar();
@@ -319,7 +328,7 @@ export default function AttendancePage() {
     present: t("att_status_present"), late: t("att_status_late"), partial: t("att_status_partial"),
     exempt: "已豁免",
     half: t("att_status_half"), half_absence: t("att_status_half_absence"),
-    leave: t("att_status_leave"), rest: t("att_status_rest"), absent: t("att_status_absent"), missing: t("att_status_missing"),
+    leave: t("att_status_leave"), rest: t("att_status_rest").replace("休息日", "休息"), absent: t("att_status_absent"), missing: t("att_status_missing"),
   };
 
   if (isSuperAdmin) {
@@ -333,6 +342,14 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
+      {!employeeView && ["warehouse_admin", "supervisor"].includes(role) && restReminder?.employees?.length > 0 && <section className="rounded-xl border border-amber-200 bg-amber-50 p-3" aria-label="未排休息提醒">
+        <button type="button" className="min-h-11 w-full text-left font-medium text-amber-900" onClick={() => setShowRestReminder(!showRestReminder)}>还有 {restReminder.employees.length} 人{restReminder.label}休息未排 点击查看</button>
+        {showRestReminder && <ul className="space-y-2">{restReminder.employees.map((e:any) => <li key={e.id} className="flex items-center justify-between gap-3 border-t border-amber-200 pt-2 text-sm">
+          <span>{e.name}<small className="block text-gray-600">{e.warehouse} · {e.position || "未填岗位"}</small></span>
+          <button type="button" className="min-h-11 min-w-16 rounded bg-white px-3 text-blue-700" onClick={() => router.push(`/employees?rest_employee_id=${e.id}&rest_month=${restReminder.month}`)}>去排</button>
+        </li>)}</ul>}
+      </section>}
+
       {(employeeView || role === "warehouse_labor" || attendanceApprove) && <MakeupRequests personal={employeeView || role === "warehouse_labor"} />}
       {(employeeView || role === "warehouse_labor") && <EmployeeLanguage />}
       {/* Header: Month Navigation + Tab Bar + Action Buttons */}
@@ -382,6 +399,7 @@ export default function AttendancePage() {
       ) : (
         <>
 
+          {restWarnings.length > 0 && <div role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{restWarnings.map((warning, i) => <p key={i}>{warning}</p>)}</div>}
           {exemptSummaries.length > 0 && <section role="region" aria-label="豁免日人数汇总" className="rounded-xl border bg-white p-3 text-sm">
             <h3 className="mb-2 font-semibold text-gray-800">豁免日人数汇总</h3>
             <p className="mb-2 text-xs text-gray-500">请假不计出勤，未请假计出勤；人数分类不改变工时。</p>
@@ -441,6 +459,11 @@ export default function AttendancePage() {
                     } else {
                       cellText = statusText;
                     }
+                    if (status === "rest" && evt?.rest_source === "manual_rest") {
+                      cellText = "休息"; subText = "调休";
+                    } else if (evt?.rest_source === "manual_work" && !["exempt", "leave", "hours_leave", "half"].includes(status)) {
+                      cellText = "上班"; subText = `调班 · ${statusText || "待打卡"}`;
+                    }
                     const tooltip = exemptDisplay
                       ? `已豁免 · ${exemptDisplay.leaveLabel || "未请假"} · 工时 ${exemptDisplay.workHours} 小时；${exemptDisplay.note} - ${t("att_click_view_photos")}`
                       : status === "future" ? t("att_click_view_photos")
@@ -451,10 +474,13 @@ export default function AttendancePage() {
                       <td key={dt} className={`px-0.5 py-1 text-center ${isToday ? "ring-2 ring-blue-400 ring-inset" : ""}`}>
                         <div
                           className={`${makeupDays[key]?.length ? "relative " : ""}rounded text-xs py-1 cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-blue-300 ${exemptDisplay?.color || STATUS_COLORS[status] || "bg-white text-gray-300"} ${status === "half_absence" ? "font-bold" : ""}`}
-                          title={tooltip}
+                          data-rest-source={evt?.rest_source || undefined}
+                          data-calendar-day={dt}
+                          data-calendar-employee={emp.id}
+                          title={`${evt?.schedule_label ? evt.schedule_label + " · " : ""}${tooltip}`}
                           onClick={() => openPhotoPopup(emp.id, emp.name, dt)}
                         >
-                          <div>{cellText}</div>
+                          <div className={evt?.rest_source === "manual_work" || evt?.rest_source === "manual_rest" ? "min-w-[52px] font-medium" : ""}>{cellText}</div>
                           {!!makeupDays[key]?.length && <span className="absolute top-0 right-0 text-[9px] leading-none text-purple-700" title={t("makeup")} aria-label={t("makeup")} data-makeup-badge>{t("makeup_short")}</span>}
                           {subText != null && <div className="text-[10px] leading-tight opacity-80">{subText}</div>}
                         </div>
@@ -517,7 +543,7 @@ export default function AttendancePage() {
           <div className="flex flex-wrap gap-2">
             {restDays.map((r: any) => (
               <div key={r.id} className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
-                {r.employee_name}: {r.rest_date}
+                {r.employee_name}: {r.rest_date} · {events[`${r.rest_date}_${r.employee_id}`]?.rest_source === "manual_work" ? "原休息记录（已被调班覆盖）" : "休息 调休"}
                 <ActionGate anyOf={["attendance.delete_rest_day#operate"]}><button onClick={() => deleteRestDay(r.id)} className="ml-1 text-blue-400 hover:text-red-500">&times;</button></ActionGate>
               </div>
             ))}
@@ -673,6 +699,11 @@ export default function AttendancePage() {
               <button onClick={() => setShowRestForm(false)} className="ml-auto text-blue-200 hover:text-white" data-modal-close="true">&times;</button>
             </div>
             <div className="p-5 space-y-4">
+              <label className="block text-sm">操作
+                <select aria-label="休息日操作" className="form-input w-full min-h-11 mt-1" value={restKind} onChange={e => setRestKind(e.target.value as "rest" | "work" | "clear_work")}>
+                  <option value="rest">增加休息（调休）</option><option value="work">取消自动休息（标记上班）</option><option value="clear_work">清除上班标记（恢复规律）</option>
+                </select>
+              </label>
               <div>
                 <label className="form-label text-sm mb-1 block">{t("att_select_employee")} <span className="text-red-400">*</span></label>
                 <select className="form-input py-2.5" value={restEmployeeId || ""} onChange={e => setRestEmployeeId(+e.target.value)}>
@@ -682,15 +713,15 @@ export default function AttendancePage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label text-sm mb-1 block">{t("att_rest_date_1")}</label>
+                  <label className="form-label text-sm mb-1 block">{restKind === "rest" ? t("att_rest_date_1") : "调整日期1"}</label>
                   <input type="date" className="form-input py-2.5" value={restDate1} onChange={e => setRestDate1(e.target.value)} />
                 </div>
                 <div>
-                  <label className="form-label text-sm mb-1 block">{t("att_rest_date_2")}</label>
+                  <label className="form-label text-sm mb-1 block">{restKind === "rest" ? t("att_rest_date_2") : "调整日期2"}</label>
                   <input type="date" className="form-input py-2.5" value={restDate2} onChange={e => setRestDate2(e.target.value)} />
                 </div>
               </div>
-              <p className="text-xs text-gray-400">{t("att_rest_limit_hint")}</p>
+              <p className="text-xs text-gray-400">{restKind === "rest" ? t("att_rest_limit_hint") : "上班标记优先于休息安排，但不自动计出勤；仍按打卡、请假、豁免判断。已有手工休息记录保留。"}</p>
             </div>
             <div className="border-t px-5 py-3 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
               <button onClick={() => setShowRestForm(false)} className="btn-secondary px-4 py-2 text-sm" data-modal-close="true">{t("cancel")}</button>
