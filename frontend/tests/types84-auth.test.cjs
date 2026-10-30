@@ -26,6 +26,7 @@ for (const bad of [null, [], {}, 'null', { ...user(), role: 'owner' }, { ...user
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function harness({ cached, token: initialToken = null, serverUser = user() } = {}) {
   const local = new Map();
+  const session = new Map();
   if (cached !== undefined) local.set('user', typeof cached === 'string' ? cached : JSON.stringify(cached));
   let token = initialToken;
   if (token) local.set('token', token);
@@ -52,12 +53,12 @@ function harness({ cached, token: initialToken = null, serverUser = user() } = {
   };
   const module = compile('hooks/useAuth.tsx', { react, 'next/navigation': { useRouter: () => ({ push: route => routes.push(route) }) },
     '@/types/auth': authTypes, '@/lib/api': { api, getToken: () => token, setToken: t => { token = t; storage.setItem('token', t); },
-      clearToken: () => { token = null; for (const k of ['token', 'user', 'activeWarehouseId']) storage.removeItem(k); },
-      setActiveWarehouseId: id => storage.setItem('activeWarehouseId', id) } }, { localStorage: storage, window: events });
+      clearToken: () => { token = null; for (const k of ['token', 'user', 'activeWarehouseId']) storage.removeItem(k); session.delete('activeWarehouseId'); },
+      setActiveWarehouseId: id => { if (id == null) session.delete('activeWarehouseId'); else session.set('activeWarehouseId', String(id)); } } }, { localStorage: storage, window: events });
   function render() { index = 0; const tree = module.AuthProvider({ children: 'child' }); value = tree.props.value; initialized = true; return value; }
   render(); effects.splice(0).forEach(fn => { const cleanup = fn(); if (cleanup) cleanups.push(cleanup); });
   return { render, get auth() { return module.useAuth(); }, outside() { value = null; return module.useAuth(); }, get token() { return token; },
-    local, calls, routes, published, reads, logouts, setToken(t) { token = t; }, holdReads(v = true) { holdReads = v; }, holdLogout(v = true) { holdLogout = v; },
+    local, session, calls, routes, published, reads, logouts, setToken(t) { token = t; }, holdReads(v = true) { holdReads = v; }, holdLogout(v = true) { holdLogout = v; },
     event(detail) { events.dispatchEvent(new CustomEvent('auth-user-refreshed', { detail })); }, focus() { events.dispatchEvent(new Event('focus')); },
     permissionsChanged() { events.dispatchEvent(new Event('permissions-changed')); }, storage(key) { const e = new Event('storage'); e.key = key; events.dispatchEvent(e); },
     response(v) { response = v; }, server(v) { serverUser = v; }, failLogin() { failLogin = true; }, failLogout() { failCookie = true; },
@@ -97,11 +98,13 @@ async function check(name, run) { await run(); results.push(name); console.log('
       const h = harness(); h.response({ ...user(role), user_id: 4, access_token: 'synthetic-login-token', token_type: 'bearer' });
       await h.auth.login('synthetic-user', 'synthetic-password'); const context = h.render();
       assert.equal(context.user.role, role); assert.equal(context.user.attendance_enabled, role === 'supervisor');
-      assert.equal(h.local.get('activeWarehouseId'), '1'); assert.equal(JSON.parse(h.local.get('user')).role, role);
-      assert.equal(h.routes.at(-1), role === 'warehouse_labor' ? '/clock-in' : '/dashboard');
+      assert.equal(h.local.has('activeWarehouseId'), false);
+      assert.equal(h.session.get('activeWarehouseId'), ['warehouse_admin', 'staff'].includes(role) ? undefined : '1');
+      assert.equal(JSON.parse(h.local.get('user')).role, role);
+      assert.equal(h.routes.at(-1), role === 'warehouse_labor' ? '/clock-in' : ['warehouse_admin', 'staff'].includes(role) ? '/select-warehouse' : '/dashboard');
       assert.equal(h.calls[0].route, '/auth/login'); h.failLogout(); await h.auth.logout();
       assert.equal(h.render().user, null); assert.equal(h.token, null); assert.equal(h.local.get('user'), undefined);
-      assert.equal(h.local.get('activeWarehouseId'), undefined); assert.equal(h.routes.at(-1), '/login'); h.cleanup();
+      assert.equal(h.local.get('activeWarehouseId'), undefined); assert.equal(h.session.get('activeWarehouseId'), undefined); assert.equal(h.routes.at(-1), '/login'); h.cleanup();
     }
     const h = harness(); h.failLogin(); await assert.rejects(() => h.auth.login('synthetic-user', 'wrong'), /账号已被禁用/);
     assert.equal(h.render().user, null); assert.equal(h.token, null); assert.equal(h.routes.length, 0); h.cleanup();
@@ -148,7 +151,7 @@ async function check(name, run) { await run(); results.push(name); console.log('
     const h = harness({ token: 'valid-token' }); await h.flush(); h.holdLogout(); const oldLogout = h.auth.logout();
     h.response({ ...user('staff', 8), user_id: 8, access_token: 'new-login-token', token_type: 'bearer' }); await h.auth.login('new', 'synthetic');
     h.logouts[0]({ ok: true }); await oldLogout;
-    assert.equal(h.render().user.id, 8); assert.equal(h.token, 'new-login-token'); assert.equal(h.routes.at(-1), '/dashboard'); h.cleanup();
+    assert.equal(h.render().user.id, 8); assert.equal(h.token, 'new-login-token'); assert.equal(h.routes.at(-1), '/select-warehouse'); h.cleanup();
   });
   await check('External revocation and provider unmount reject requests already in flight', async () => {
     for (const action of ['revoke', 'unmount']) {
