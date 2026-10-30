@@ -15,6 +15,8 @@ from app.core.messages import t
 from tests.test_round2_permissions import auth
 from tests.test_round3_permissions import hr_environment, snapshot
 
+from tests.monthly_leave_support import complete_month
+
 DAY = date(2026, 10, 16)
 
 
@@ -91,6 +93,7 @@ def test_full_day_with_punches_zero_calendar_and_payroll_preserves_old(tmp_path,
             async with f() as db:
                 template = await db.get(SalaryTemplate, 1)
                 template.type = template_type; template.amount = 12400 if template_type == 'monthly' else 400
+                if template_type == 'monthly':await complete_month(db,monkeypatch,DAY)
                 await db.commit()
                 old_leaves = [tuple(r) for r in (await db.execute(select(LeaveRequest.__table__))).all()]
             old = await snapshot(f); old_clocks = await clock_snapshot(f)
@@ -100,18 +103,21 @@ def test_full_day_with_punches_zero_calendar_and_payroll_preserves_old(tmp_path,
             assert event['status'] == 'leave' and event['work_hours'] == 0
             assert event['clock_hours'] == (8 if len(sessions) == 4 else 3)  # raw punches retained
             assert await snapshot(f) == old
-            r = await c.post('/api/v1/payroll/calculate', headers=auth(1), json={'end_date': str(DAY), 'employee_ids':[1]})
+            r = await c.post('/api/v1/payroll/calculate', headers=auth(1), json={'end_date': '2026-10-31' if template_type=='monthly' else str(DAY), 'employee_ids':[1]})
             assert r.status_code == 200, r.text
             async with f() as db:
-                record = (await db.execute(select(PayrollRecord).where(PayrollRecord.employee_id == 1, PayrollRecord.settle_start_date == DAY))).scalar_one()
+                record = (await db.execute(select(PayrollRecord).where(PayrollRecord.employee_id == 1, PayrollRecord.settle_start_date == (date(2026,10,1) if template_type=='monthly' else DAY)))).scalar_one()
                 detail = json.loads(record.detail)
-                assert detail['daily_hours'][0]['hours'] == detail['work_hours'] == 0
-                assert detail['daily_hours'][0]['attendance'] == record.attendance_days == 0
-                assert record.base_pay == record.net_pay == 0, detail
+                target = next(d for d in detail['daily_hours'] if d['date']==str(DAY))
+                assert target['hours'] == target['attendance'] == 0
+                assert detail['work_hours'] == (240 if template_type=='monthly' else 0)
+                assert record.attendance_days == (30 if template_type=='monthly' else 0)
+                assert record.base_pay == record.net_pay == (12000 if template_type=='monthly' else 0), detail
+                if template_type=='monthly':assert record.leave_deduction==400
                 assert old_leaves == [tuple(row) for row in (await db.execute(select(LeaveRequest.__table__))).all()]
             assert (await snapshot(f))[:len(old)] == old
             assert await clock_snapshot(f) == old_clocks
-            print('FULL_DAY_ZERO', json.dumps({'template':template_type,'punches':len(sessions),'calendar':event,'daily':detail['daily_hours'][0],'base_pay':record.base_pay,'net_pay':record.net_pay}, ensure_ascii=False))
+            print('FULL_DAY_ZERO', json.dumps({'template':template_type,'punches':len(sessions),'calendar':event,'daily':target,'base_pay':record.base_pay,'net_pay':record.net_pay}, ensure_ascii=False))
     asyncio.run(run())
 
 

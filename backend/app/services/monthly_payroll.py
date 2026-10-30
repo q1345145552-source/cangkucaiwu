@@ -192,10 +192,10 @@ async def compute_monthly_record(db, wh_id, req, prep, emp):
                 hourly_clock_hours(sessions_sorted), h, sessions_sorted[-1].clocked_in_at if sessions_sorted else None,
                 current, prep["work_sched"], standard_hours,
             )
-            if h is None or h >= 8.0:
+            if h is None or h >= standard_hours:
                 lv, att, ab = 1.0, 0.0, 0.0
             else:
-                lv = min(max(float(h), 0.0), 8.0) / 8.0
+                lv = min(max(float(h), 0.0), standard_hours) / standard_hours
                 att = hours / standard_hours
                 # Approved leave and missing attendance cannot cover the same hours.
                 ab = min(ab, max(1.0 - lv - att, 0.0))
@@ -204,7 +204,7 @@ async def compute_monthly_record(db, wh_id, req, prep, emp):
         if is_half_day_leave(lt_info):
             half_leave_hours, hours = half_day_leave_hours(sessions_sorted, lt_info, current, prep["work_sched"])
             att = hours / standard_hours
-            lv = min(max(half_leave_hours, 0.0), 8.0) / 8.0
+            lv = min(max(half_leave_hours, 0.0), standard_hours) / standard_hours
             ab = 0.0
 
 

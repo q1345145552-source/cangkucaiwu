@@ -11,6 +11,8 @@ from tests.test_round2_permissions import auth
 from app.services.hourly_leave import hourly_leave_net_hours
 from app.services.schedule import default_work_schedule
 
+from tests.monthly_leave_support import complete_month
+
 SAMPLE=['08:41:54','12:02:00','12:48:04','15:25:47']
 
 @pytest.mark.parametrize('punches,leaves,end,expected',[
@@ -37,10 +39,15 @@ def test_calendar_payroll_same_net_hours(tmp_path,monkeypatch,punches,leaves,end
     e=await db.get(Employee,1);e.name='Khin Than Dar Tway';e.status='regular';e.hire_date=datetime(2026,10,4)
     tpl=await db.get(SalaryTemplate,1);tpl.type=template_type;tpl.amount=12400 if template_type=='monthly' else 400
     if end!='18:00':db.add(SystemSetting(warehouse_id=1,key='schedule_afternoon_end',value=end))
+    if template_type=='monthly' and end=='16:00':
+     # A full six-hour month also needs early-departure thresholds before 16:00.
+     db.add(SystemSetting(warehouse_id=1,key='schedule_early_one',value='15:00'))
+     db.add(SystemSetting(warehouse_id=1,key='schedule_early_half',value='15:30'))
     # get_work_schedule uses scoped settings keys; exact key verified below.
     for session,t in enumerate(punches,1):
      db.add(ClockInRecord(user_id=5,warehouse_id=1,clock_date=date(2026,10,4),session=session,clocked_in_at=datetime.fromisoformat('2026-10-04T'+t),status='normal'))
     for h in leaves:db.add(LeaveRequest(employee_id=1,warehouse_id=1,leave_date=date(2026,10,4),leave_type='personal',duration_type='hours',hours=h,status='approved',notified_at=datetime(2026,10,3)))
+    if template_type=='monthly':await complete_month(db,monkeypatch,date(2026,10,4),end)
     await db.commit()
     before_leave=[tuple(r) for r in (await db.execute(select(LeaveRequest.__table__))).all()]
    old=await snapshot(factory)
@@ -49,14 +56,24 @@ def test_calendar_payroll_same_net_hours(tmp_path,monkeypatch,punches,leaves,end
    assert event['work_hours']==expected,event
    if leaves==[2.3]:assert event['status_label']=='请假2.3小时'
    assert await snapshot(factory)==old  # Reading never recalculates a saved payroll record.
-   r=await c.post('/api/v1/payroll/calculate',headers=auth(1),json={'end_date':'2026-10-04','employee_ids':[1]});assert r.status_code==200,r.text
+   r=await c.post('/api/v1/payroll/calculate',headers=auth(1),json={'end_date':'2026-10-31' if template_type=='monthly' else '2026-10-04','employee_ids':[1]});assert r.status_code==200,r.text
    async with factory() as db:
     rec=(await db.execute(select(PayrollRecord).where(PayrollRecord.employee_id==1))).scalar_one()
-    detail=json.loads(rec.detail);day=detail['daily_hours'][0]
-    assert day['hours']==event['work_hours']==detail['work_hours']==expected,(event,detail)
+    detail=json.loads(rec.detail);day=next(d for d in detail['daily_hours'] if d['date']=='2026-10-04')
+    assert day['hours']==event['work_hours']==expected,(event,detail)
+    assert detail['work_hours']==pytest.approx(expected+(30*(6 if end=='16:00' else 8) if template_type=='monthly' else 0))
     standard=6 if end=='16:00' else 8
     assert day['attendance']==pytest.approx(expected/standard)
-    if template_type in ('daily','hourly','monthly') and leaves==[2.3] and end=='18:00':assert rec.base_pay==298,detail
+    if template_type in ('daily','hourly') and leaves==[2.3] and end=='18:00':assert rec.base_pay==298,detail
+    if template_type=='monthly':
+     leave_fraction=1 if None in leaves else min(sum(leaves)/standard,1)
+     absence_fraction=max(1-leave_fraction,0) if not punches else 0
+     assert rec.leave_deduction==round(400*leave_fraction,2)
+     assert rec.absence_deduction==round(400*absence_fraction,2)
+     assert rec.base_pay==12400-rec.leave_deduction-rec.absence_deduction
+     assert rec.early_penalty==(50 if punches==['09:00:00','12:00:00','13:00:00','15:00:00'] else 0)
+     assert rec.net_pay==rec.base_pay-rec.early_penalty
+     print('MONTH_HOURS',leaves,end,rec.leave_deduction,rec.absence_deduction,rec.early_penalty,rec.net_pay)
     assert [tuple(row) for row in (await db.execute(select(LeaveRequest.__table__))).all()]==before_leave
     if punches==SAMPLE and leaves==[2.3] and end=='18:00' and template_type=='daily':print('EXACT_CASE',event['status_label'],event['work_hours'],day,rec.base_pay)
  asyncio.run(run())

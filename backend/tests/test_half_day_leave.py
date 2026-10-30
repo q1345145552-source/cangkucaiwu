@@ -14,6 +14,8 @@ from tests.test_round2_permissions import auth
 from tests.test_round3_permissions import hr_environment, snapshot
 
 
+from tests.monthly_leave_support import complete_month
+
 @pytest.mark.parametrize('kind,punches,net,leave,attendance',[
  ('morning',[(3,'13:00'),(4,'18:00')],5,3,.625),
  ('afternoon',[(1,'09:00'),(2,'12:00')],3,5,.375),
@@ -33,6 +35,7 @@ def test_calendar_and_payroll(tmp_path,monkeypatch,kind,punches,net,leave,attend
     for session,t in punches:
      db.add(ClockInRecord(user_id=5,warehouse_id=1,clock_date=date(2026,10,4),session=session,clocked_in_at=datetime.fromisoformat('2026-10-04T'+t),status='normal'))
     db.add(LeaveRequest(employee_id=1,warehouse_id=1,leave_date=date(2026,10,4),duration_type=kind,leave_type='personal',status='approved',notified_at=datetime(2026,10,3)))
+    if template_type=='monthly':await complete_month(db,monkeypatch,date(2026,10,4))
     await db.commit()
     original=[tuple(r) for r in (await db.execute(select(LeaveRequest.__table__))).all()]
    before=await snapshot(factory)
@@ -40,12 +43,17 @@ def test_calendar_and_payroll(tmp_path,monkeypatch,kind,punches,net,leave,attend
    event=next(e for e in r.json()['events'] if e['employee_id']==1)
    assert (event['leave_hours'],event['work_hours'])==(leave,net)
    assert await snapshot(factory)==before
-   r=await c.post('/api/v1/payroll/calculate',headers=auth(1),json={'end_date':'2026-10-04','employee_ids':[1]});assert r.status_code==200,r.text
+   r=await c.post('/api/v1/payroll/calculate',headers=auth(1),json={'end_date':'2026-10-31' if template_type=='monthly' else '2026-10-04','employee_ids':[1]});assert r.status_code==200,r.text
    async with factory() as db:
     rec=(await db.execute(select(PayrollRecord).where(PayrollRecord.employee_id==1))).scalar_one();detail=json.loads(rec.detail)
-    assert detail['work_hours']==net
-    assert detail['daily_hours'][0]['attendance']==attendance
-    assert rec.base_pay==net*50,(rec.base_pay,detail)
+    assert detail['work_hours']==net+(240 if template_type=='monthly' else 0)
+    assert next(d for d in detail['daily_hours'] if d['date']=='2026-10-04')['attendance']==attendance
+    if template_type=='monthly':
+     assert rec.leave_deduction==leave*50
+     assert rec.base_pay==12400-leave*50
+     assert rec.early_penalty==(25 if net==4 else 0)
+     assert rec.net_pay==rec.base_pay-rec.early_penalty
+    else:assert rec.base_pay==net*50,(rec.base_pay,detail)
     assert [tuple(r) for r in (await db.execute(select(LeaveRequest.__table__))).all()]==original
     print('HALF_DAY',template_type,kind,{'leave_hours':leave,'net_hours':net,'attendance':attendance,'base_pay':rec.base_pay})
    # Change the same configuration source used by the configuration-center API.
@@ -60,8 +68,9 @@ def test_calendar_and_payroll(tmp_path,monkeypatch,kind,punches,net,leave,attend
     r=await c.post(f'/api/v1/payroll/{rec.id}/recalc',headers=auth(1),json={'mode':'recalc','void_reason':'隔离测试作息折算'});assert r.status_code==200,r.text
     async with factory() as db:
      new=(await db.execute(select(PayrollRecord).where(PayrollRecord.recalc_from_id==rec.id))).scalar_one()
-     assert json.loads(new.detail)['daily_hours'][0]['attendance']==round(5/7,4)
-     assert new.base_pay==pytest.approx(250 if template_type=='hourly' else 285.71,abs=.01)
+     assert next(d for d in json.loads(new.detail)['daily_hours'] if d['date']=='2026-10-04')['attendance']==round(5/7,4)
+     assert new.base_pay==pytest.approx(12285.71 if template_type=='monthly' else 250 if template_type=='hourly' else 285.71,abs=.01)
+     if template_type=='monthly':assert new.leave_deduction==114.29
      await db.execute(delete(SystemSetting).where(SystemSetting.warehouse_id==1,SystemSetting.key=='schedule_noon_break_start'));await db.commit()
     r=await c.get('/api/v1/attendance/calendar?start_date=2026-10-04&end_date=2026-10-04',headers=auth(1))
     assert next(e for e in r.json()['events'] if e['employee_id']==1)['leave_hours']==3
