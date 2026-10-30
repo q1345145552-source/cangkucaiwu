@@ -2162,7 +2162,7 @@ async def disburse_payroll(
     r.signature_path = sig_path
     await db.flush()
 
-    from app.models.employee import Employee, EmployeeRestDate
+    from app.models.employee import Employee
     emp = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
     emp_name = emp.name if emp else ""
     from app.services.balance_warning import record_balance_warning
@@ -2269,7 +2269,7 @@ async def my_payslip(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
-    from app.models.employee import Employee, EmployeeRestDate
+    from app.models.employee import Employee
 
     emp = current_user._attendance_employee
     if not emp:
