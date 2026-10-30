@@ -13,6 +13,38 @@ from app.services.data_history import record_history
 HEADERS={'供应商名称':'supplier_name','品名':'product_name','产品名':'product_name','产品名称':'product_name','产品规格':'spec','规格':'spec','规格报价':'spec_price',
  '单价':'unit_price','单位':'unit','币种':'currency','标准SKU编码':'sku_code','SKU编码':'sku_code','结构化规格JSON':'catalog_attributes','基本单位换算数':'factor','阶梯起量':'tier_from','阶梯止量':'tier_to','阶梯单价':'tier_price','生效日期':'valid_from','失效日期':'valid_to'}
 
+def _import_error_message(detail,raw):
+ """Only reword an error already raised by the unchanged product validators."""
+ message=str(detail)
+ if message=='无效单位，请从基本单位清单选择；不自动推断包装换算':
+  units='、'.join(catalog.UNITS.values())
+  supplied=raw.get('unit')
+  if catalog.UNIT_ALIASES.get(str(supplied or '个').strip()) is not None:
+   supplied=str(raw.get('catalog_attributes') or '').replace('\u3000','　（全角空格）')
+   return f'规格里的单位填错了，可用单位有：{units}。你填的规格内容「{supplied}」里有不支持的单位，请检查“结构化规格JSON”那一列。'
+  supplied=str(supplied).replace('\u3000','　（全角空格）')
+  return f'单位填错了，只能填 {units} 这几种。你填的「{supplied}」不支持。按箱进货的话，单位填“个”，“基本单位换算数”那一列填每箱多少个。'
+ wording={
+  '结构化规格JSON格式无效或属性重复':'规格填写格式不对，或者同一个规格项目填了两次。请检查“结构化规格JSON”那一列；不清楚可以先留空。',
+  '结构化规格必须是非空JSON对象':'“结构化规格JSON”这一列请按模板填写，不要只填一段文字或一个数字；暂时不填规格可以留空。',
+  '结构化规格层级不能超过4层':'规格内容套得太多，最多4层。请简化“结构化规格JSON”那一列后再上传。',
+  '结构化规格属性过多':'规格项目太多，每组最多30项，请删减后再上传。',
+  '结构化规格含重复属性名':'同一个规格项目填了两次，请删除重复项后再上传。',
+  '结构化规格列表过长':'同一组规格最多填30项，请删减后再上传。',
+  '结构化规格内容过长':'规格内容太长，请精简“结构化规格JSON”那一列后再上传。',
+  '规格数值无效':'规格里的数字填错了，请检查后再上传。',
+  '规格数值超出有效范围':'规格里的数字不能超过正负10亿，小数最多8位，请检查后再上传。',
+  '规格属性只支持对象、列表、文字、有限数字或布尔值；未知请不填该属性':'规格内容的填写格式不对，请按模板填写；不清楚的项目先不要填。',
+  '单位换算数必须是数字':'“基本单位换算数”这一列请填数字，例如每箱100个就填100；不清楚可以先留空。',
+  '单位换算数无效':'“基本单位换算数”填错了，请填数字，例如每箱100个就填100；不清楚可以先留空。',
+  '单位换算数必须为正数，最多8位小数':'“基本单位换算数”请填大于0、不超过1亿的数字，小数最多8位。按箱进货时，填每箱多少个。',
+  '本仓不存在该标准SKU编码或已停用':'在这个仓库找不到填写的标准SKU编号，或者它已停用。请检查“标准SKU编码”那一列。',
+  '同SKU编码对应的结构规格不一致，未导入或覆盖':'填写的标准SKU编号与这一行的规格对不上，请核对后再导入；旧产品没有被改动。',
+  '核对SKU编码需标准SKU目录权限；也可清空编码并明确以未映射导入':'你没有查看标准SKU目录的权限，不能核对填写的编号。请找有权限的人处理；也可以清空“标准SKU编码”，先导入产品，之后再关联。',
+  '产品结构规格未核实或与SKU不一致':'这行产品的规格还没核对清楚，或与选择的标准SKU对不上。请检查规格后再确认。',
+ }
+ return wording.get(message,message)
+
 def validate_filename(filename):
  name=(filename or '').strip().lower()
  if name.endswith('.xls'):raise HTTPException(400,'请另存为 xlsx 格式')
@@ -132,8 +164,8 @@ async def preview(db,wid,user,content,supplier_id=None):
       if not any(c['id']==sku.id for c in entry['candidates']):entry['candidates'].append({**catalog.sku_data(sku),'matched_fields':['明确SKU编码'],'differences':['结构规格仍需人工逐项核对'] if not attrs else [],'can_map':True,'auto_mapped':False})
     elif sku_code:raise HTTPException(403,'核对SKU编码需标准SKU目录权限；也可清空编码并明确以未映射导入')
    except HTTPException as e:
-    entry['skipped']=True;entry['errors'].append(str(e.detail));errors.append({'row_number':number,'message':str(e.detail)})
-    skipped_rows.append({'row_number':number,'message':str(e.detail),'blocking':True})
+    entry['skipped']=True;entry['errors'].append(_import_error_message(e.detail,raw));errors.append({'row_number':number,'message':_import_error_message(e.detail,raw)})
+    skipped_rows.append({'row_number':number,'message':_import_error_message(e.detail,raw),'blocking':True})
    rows.append(entry)
   valid_count=sum(not r['skipped'] and not r['errors'] for r in rows)
   message=('全部是示例行，没有可导入数据' if total_rows and total_rows==example_count else '没有可导入数据') if not valid_count else '仅预览，尚未写入产品；核对有效行后整批导入，跳过行不会写入'
@@ -185,7 +217,7 @@ async def confirm(db,wid,user,content,supplier_id,request_key,preview_version,ch
     if row.get('sku_code') and row['sku_code']!=sku.code:raise HTTPException(400,'所选SKU与文件编码不一致')
     catalog.label(choice.get('reason'),'映射核对依据',1000);catalog.scalar_factor(choice.get('base_unit_factor',row.get('factor')))
    elif choice.get('decision')!='unmapped':raise HTTPException(400,'请选择人工映射或明确保持未映射')
-  except HTTPException as e:raise HTTPException(e.status_code,{'row_number':row['row_number'],'message':str(e.detail),'imported':0})
+  except HTTPException as e:raise HTTPException(e.status_code,{'row_number':row['row_number'],'message':_import_error_message(e.detail,{**row,'catalog_attributes':row.get('catalog_attributes') or choice.get('confirmed_attributes')}),'imported':0})
  created=[]
  for row in importable:
   choice=by_row[row['row_number']]
@@ -196,7 +228,7 @@ async def confirm(db,wid,user,content,supplier_id,request_key,preview_version,ch
     mapped=await catalog.map_product(db,wid,user,p.id,{**choice,'request_key':'import:'+fingerprint({'request':key,'row':row['row_number']}),
      'expected_product_version':catalog.product_version(p),'base_unit_factor':choice.get('base_unit_factor',row.get('factor'))})
     event_id=mapped['event_id']
-   except HTTPException as e:raise HTTPException(e.status_code,{'row_number':row['row_number'],'message':str(e.detail),'imported':0})
+   except HTTPException as e:raise HTTPException(e.status_code,{'row_number':row['row_number'],'message':_import_error_message(e.detail,{**row,'catalog_attributes':row.get('catalog_attributes') or choice.get('confirmed_attributes')}),'imported':0})
   quote_id=None
   if row.get('quote_terms'):
    from app.services import supplier_quotes as quotes
