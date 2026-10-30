@@ -25,6 +25,14 @@ interface CardsResponse {
   data: WarehouseCard[];
 }
 
+interface WarehouseCardsProps {
+  refreshKey?: number;
+  onWarehousesLoaded?: (warehouses: { warehouse_id: number; warehouse_name: string; warehouse_code: string }[]) => void;
+  onCreate?: () => void;
+  onManage?: (id: number) => void;
+  renderOverview?: (summary: { warehouseCount: number; pendingCount: number }) => ReactNode;
+}
+
 type CardsState =
   | { kind: "loading" }
   | { kind: "ready"; cards: WarehouseCard[] }
@@ -64,9 +72,7 @@ function Amounts({ amounts }: { amounts: CurrencyAmount[] }) {
   ))}</>;
 }
 
-export default function WarehouseCards({ renderOverview }: {
-  renderOverview?: (summary: { warehouseCount: number; pendingCount: number }) => ReactNode;
-}) {
+export default function WarehouseCards({ refreshKey = 0, onWarehousesLoaded, onCreate, onManage, renderOverview }: WarehouseCardsProps) {
   const { user, loading } = useAuth();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -87,6 +93,9 @@ export default function WarehouseCards({ renderOverview }: {
         throw new Error("仓库数据格式不正确，请重试");
       }
       setState({ kind: "ready", cards: response.data });
+      onWarehousesLoaded?.(response.data.map(({ warehouse_id, warehouse_name, warehouse_code }) => ({
+        warehouse_id, warehouse_name, warehouse_code,
+      })));
     }).catch((error: unknown) => {
       if (!active) return;
       if (error instanceof ApiError && error.status === 403) {
@@ -99,7 +108,7 @@ export default function WarehouseCards({ renderOverview }: {
       }
     });
     return () => { active = false; };
-  }, [user?.id, user?.role, loading, attempt]);
+  }, [user?.id, user?.role, loading, attempt, refreshKey, onWarehousesLoaded]);
 
   function enterWarehouse(id: number) {
     if (entering.current) return;
@@ -133,15 +142,21 @@ export default function WarehouseCards({ renderOverview }: {
         className="mt-4 min-h-[44px] rounded-lg bg-blue-600 px-5 text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">重试</button>
     </div>
   );
-  if (state.cards.length === 0) return <p role="status" className="text-gray-700">你名下还没有仓库 请联系平台管理员分配</p>;
+  if (state.cards.length === 0) return user.role === "warehouse_admin" ? (
+    <div role="status" className="text-gray-700">
+      <p>你名下还没有仓库 请联系平台管理员分配</p>
+      <p className="mt-2 text-sm text-gray-600">或者自己新建一个仓库</p>
+      <button type="button" onClick={onCreate} className="mt-3 min-h-[44px] rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-blue-700 hover:bg-blue-50">新建仓库</button>
+    </div>
+  ) : <p role="status" className="text-gray-700">你名下还没有仓库 请联系平台管理员分配</p>;
 
   return (
     <div className={gridClass}>
       {renderOverview?.({ warehouseCount: state.cards.length, pendingCount: state.cards.reduce((total, card) => total + card.todos.total, 0) })}
-      {state.cards.map(card => (
-        <button key={card.warehouse_id} type="button" aria-label={`进入${card.warehouse_name}`}
+      {state.cards.map(card => {
+        const enterCard = <button type="button" aria-label={`进入${card.warehouse_name}`}
           onClick={() => enterWarehouse(card.warehouse_id)}
-          className="flex min-h-[372px] min-w-0 flex-col items-stretch rounded-2xl border border-slate-200 bg-white p-6 text-left text-slate-900 shadow-sm transition-[transform,box-shadow,border-color] duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:border-blue-300 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transform-none motion-reduce:transition-none sm:min-h-[352px]">
+          className="flex min-h-[372px] w-full min-w-0 flex-col items-stretch rounded-2xl border border-slate-200 bg-white p-6 text-left text-slate-900 shadow-sm transition-[transform,box-shadow,border-color] duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:border-blue-300 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transform-none motion-reduce:transition-none sm:min-h-[352px]">
           <div className="mb-6 flex items-start gap-3">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
               <Warehouse aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} />
@@ -190,8 +205,14 @@ export default function WarehouseCards({ renderOverview }: {
               </div>
             </dl>
           ) : <p className="text-gray-500">暂无数据</p>}
-        </button>
-      ))}
+        </button>;
+        if (user.role === "warehouse_admin") return <div key={card.warehouse_id} className="relative min-w-0">
+          {enterCard}
+          <button type="button" aria-label={`管理${card.warehouse_name}`} onClick={event => { event.stopPropagation(); onManage?.(card.warehouse_id); }}
+            className="absolute right-5 top-5 z-10 min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-blue-700 hover:bg-blue-50">管理</button>
+        </div>;
+        return <div key={card.warehouse_id} className="min-w-0">{enterCard}</div>;
+      })}
     </div>
   );
 }

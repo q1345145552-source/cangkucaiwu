@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, LayoutGrid } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -8,10 +8,27 @@ import { useAuth } from "@/hooks/useAuth";
 import { getActiveWarehouseId, getToken, setActiveWarehouseId } from "@/lib/api";
 import WarehouseCards from "@/components/WarehouseCards";
 import { WarehouseOverviewEntry } from "@/components/WarehouseOverview";
+import CreateWarehouseDialog from "@/components/CreateWarehouseDialog";
+
+interface WarehouseItem { id: number; name: string; code: string }
 
 export default function SelectWarehousePage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const [warehouses, setWarehouses] = useState<WarehouseItem[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [refreshCards, setRefreshCards] = useState(0);
+  const isAdmin = user?.role === "warehouse_admin";
+  const onWarehousesLoaded = useCallback((items: { warehouse_id: number; warehouse_name: string; warehouse_code: string }[]) =>
+    setWarehouses(items.map(item => ({ id: item.warehouse_id, name: item.warehouse_name, code: item.warehouse_code }))), []);
+  const onCreated = useCallback(() => {
+    setCreateOpen(false);
+    setRefreshCards(value => value + 1);
+  }, []);
+  const goManage = useCallback((id: number) => {
+    setActiveWarehouseId(id);
+    window.location.assign("/warehouses");
+  }, []);
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -30,11 +47,23 @@ export default function SelectWarehousePage() {
       <button type="button" onClick={() => { void logout(); }} className="min-h-[44px] shrink-0 rounded-lg border border-gray-300 px-4 text-blue-700">退出登录</button>
     </header>
     <section>
-      <div className="relative">
+      {isAdmin ? <div className="mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">请选择要进入的仓库</h1>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+            <button type="button" onClick={() => setCreateOpen(true)} className="min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-blue-700 hover:bg-blue-50">新建仓库</button>
+            {warehouses.length > 0 && <button type="button" onClick={() => goManage(warehouses[0].id)} className="min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-blue-700 hover:bg-blue-50">仓库管理</button>}
+          </div>
+        </div>
+        <div className="relative h-11"><WarehouseOverviewEntry /></div>
+      </div> : <div className="relative">
         <h1 className="mb-6 text-2xl font-bold text-gray-900">请选择要进入的仓库</h1>
         <WarehouseOverviewEntry />
-      </div>
-      <WarehouseCards renderOverview={({ warehouseCount, pendingCount }) => user.role === "warehouse_admin" ? (
+      </div>}
+      <WarehouseCards refreshKey={refreshCards} onWarehousesLoaded={onWarehousesLoaded}
+        onCreate={isAdmin ? () => setCreateOpen(true) : undefined}
+        onManage={isAdmin ? goManage : undefined}
+        renderOverview={({ warehouseCount, pendingCount }) => user.role === "warehouse_admin" ? (
         <Link href="/warehouse-overview" prefetch={false}
           className="flex min-h-[372px] min-w-0 flex-col justify-between rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6 text-slate-900 shadow-sm transition-[transform,box-shadow,border-color] duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:border-blue-300 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transform-none motion-reduce:transition-none sm:min-h-[352px]">
           <div>
@@ -51,6 +80,7 @@ export default function SelectWarehousePage() {
         </Link>
       ) : null} />
     </section>
+    {isAdmin && createOpen && <CreateWarehouseDialog onClose={() => setCreateOpen(false)} onCreated={onCreated} />}
     </>
   );
 }
