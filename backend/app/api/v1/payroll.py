@@ -17,13 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from app.database import get_db
 from app.models.payroll import PayrollRecord
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeRestDate
 from app.models.employee_advance import EmployeeAdvance, AdvanceApprovalStatus
 from app.models.salary_template import SalaryTemplate
 from app.models.deduction_template import DeductionTemplate
 from app.models.employee_deduction import EmployeeDeduction, EmployeeFixedDeduction
 from app.models.clock_in_records import ClockInRecord
-from app.models.attendance import LeaveRequest, RestDay, Absence
+from app.models.attendance import LeaveRequest, Absence
 from app.models.overtime import OvertimeAssignment, OvertimeTask
 from app.models.user import User
 from app.core.permissions import check_staff_permission, get_current_user, get_wh_id, get_wh_ids, Role
@@ -491,10 +491,11 @@ async def _prepare_payroll(db: AsyncSession, current_user: User, wh_id: int, req
             info["notified_at"] = lv.notified_at
 
     rests = (await db.execute(
-        select(RestDay).where(
-            RestDay.employee_id.in_(emp_id_set),
-            RestDay.rest_date >= period_start,
-            RestDay.rest_date <= period_end,
+        select(EmployeeRestDate).where(
+            EmployeeRestDate.employee_id.in_(emp_id_set),
+            EmployeeRestDate.rest_date >= period_start,
+            EmployeeRestDate.rest_date <= period_end,
+            EmployeeRestDate.is_rest == True,
         )
     )).scalars().all()
     rest_by_emp = {}
@@ -2161,7 +2162,7 @@ async def disburse_payroll(
     r.signature_path = sig_path
     await db.flush()
 
-    from app.models.employee import Employee
+    from app.models.employee import Employee, EmployeeRestDate
     emp = (await db.execute(select(Employee).where(Employee.id == r.employee_id))).scalar_one_or_none()
     emp_name = emp.name if emp else ""
     from app.services.balance_warning import record_balance_warning
@@ -2268,7 +2269,7 @@ async def my_payslip(
     if not wh_id:
         raise HTTPException(400, "请先选择仓库")
 
-    from app.models.employee import Employee
+    from app.models.employee import Employee, EmployeeRestDate
 
     emp = current_user._attendance_employee
     if not emp:
