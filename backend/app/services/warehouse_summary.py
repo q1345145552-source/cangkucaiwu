@@ -1,5 +1,7 @@
 """Read-only warehouse overview over the existing wallet; never lazy-load a User relationship."""
-from datetime import date
+from collections import defaultdict
+from datetime import date, timedelta
+from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import select, func
@@ -9,6 +11,7 @@ from app.models.recharge import RechargeDeclaration
 from app.core.permissions import Role
 from app.services.wallet import flow_query, grouped_totals, day, money
 from app.services.money_period import money_period
+from app.core.timezone import thai_now, thai_today
 
 
 async def warehouse_scope(db, user, header, warehouse_id=None, warehouse_ids=None):
@@ -36,7 +39,67 @@ async def warehouse_scope(db, user, header, warehouse_id=None, warehouse_ids=Non
     return [w for w in active if not requested or w.id in requested]
 
 
-async def summarize(db, warehouses, start_date=None, end_date=None, month=None):
+async def _overview_charts(db, warehouses):
+    """Six Thai calendar months plus yesterday, using the wallet flow projection and filters."""
+    today = thai_today()
+    month_index = today.year * 12 + today.month - 1 - 5
+    start = date(month_index // 12, month_index % 12 + 1, 1)
+    yesterday = today - timedelta(days=1)
+    ids = [w.id for w in warehouses]
+    names = {w.id: w.name for w in warehouses}
+    monthly = {}
+    cursor = start
+    while cursor <= today:
+        key = cursor.strftime('%Y-%m')
+        monthly[key] = {'income': defaultdict(Decimal), 'expense': defaultdict(Decimal),
+                        'warehouse_expense': defaultdict(Decimal)}
+        next_month = date(cursor.year + (cursor.month == 12), cursor.month % 12 + 1, 1)
+        cursor = next_month
+
+    yesterday_expense = defaultdict(Decimal)
+    if ids:
+        wallet = flow_query(db, ids)
+        rows = (await db.execute(select(wallet.c.date, wallet.c.warehouse_id, wallet.c.currency,
+            wallet.c.type, func.sum(wallet.c.amount)).where(wallet.c.date >= start,
+            wallet.c.date <= today, wallet.c.status == 'active',
+            wallet.c.is_internal_transfer.is_(False)).group_by(wallet.c.date,
+            wallet.c.warehouse_id, wallet.c.currency, wallet.c.type))).all()
+        for day_value, warehouse_id, currency, kind, value in rows:
+            currency = currency or 'THB'
+            amount = money(value)
+            bucket = monthly.get(day_value.strftime('%Y-%m'))
+            if bucket is not None and kind in ('income', 'expense'):
+                bucket[kind][currency] += amount
+                if kind == 'expense':
+                    bucket['warehouse_expense'][(warehouse_id, currency)] += amount
+            if day_value == yesterday and kind == 'expense':
+                yesterday_expense[(warehouse_id, currency)] += amount
+
+    serialize = lambda values: {currency: format(money(amount), '.2f')
+                                for currency, amount in sorted(values.items())}
+    return {
+        'as_of': thai_now().isoformat(),
+        'months': [{
+            'month': key,
+            'income_by_currency': serialize(bucket['income']),
+            'expense_by_currency': serialize(bucket['expense']),
+            'expense_by_warehouse': [
+                {'warehouse_id': warehouse_id, 'warehouse_name': names[warehouse_id],
+                 'currency': currency, 'amount': format(money(amount), '.2f')}
+                for (warehouse_id, currency), amount in sorted(bucket['warehouse_expense'].items())
+            ],
+        } for key, bucket in monthly.items()],
+        'yesterday_expense_by_warehouse': [
+            {'warehouse_id': warehouse_id, 'expense_by_currency': serialize({
+                currency: amount for (wid, currency), amount in yesterday_expense.items()
+                if wid == warehouse_id
+            })} for warehouse_id in ids
+        ],
+        'basis': '钱包实际收付；泰国时间；内部转账不计收支；按币种分别汇总',
+    }
+
+
+async def summarize(db, warehouses, start_date=None, end_date=None, month=None, include_charts=False):
     start, end = money_period(month, start_date, end_date, default_start=date.min, default_end=date.max)
     ids = [w.id for w in warehouses]
     wallet = flow_query(db, ids)
@@ -70,7 +133,10 @@ async def summarize(db, warehouses, start_date=None, end_date=None, month=None):
             'unmatched_count':unmatched.get(wh.id,0)})
     all_totals = {}
     for wid,cur,kind,value,count in rows:all_totals[(cur,kind)] = all_totals.get((cur,kind),0) + money(value)
-    return {'data':result,'warehouse_count':len(result),'start_date':str(start),'end_date':str(end),
+    response = {'data':result,'warehouse_count':len(result),'start_date':str(start),'end_date':str(end),
         'totals':{'internal_transfers':await transfer_summary(db,ids,start,end),**grouped_totals([(cur,kind,value) for (cur,kind),value in all_totals.items()]),
             'income_count':sum(r['income_count'] for r in result),'expense_count':sum(r['expense_count'] for r in result)},
         'basis':'公司钱包实际收付，内部转账不计收支；充值申报另列，不计实收'}
+    if include_charts:
+        response['overview_charts'] = await _overview_charts(db, warehouses)
+    return response

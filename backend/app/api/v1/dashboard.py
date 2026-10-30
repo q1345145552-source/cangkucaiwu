@@ -164,7 +164,7 @@ async def pending_tasks(current_user: User = Depends(get_current_user), db: Asyn
 async def warehouse_summary(request: Request, warehouse_id: int | None = None,
                             warehouse_ids: list[int] | None = Query(None),
                             start_date: str | None = None, end_date: str | None = None,
-                            month: str | None = None,
+                            month: str | None = None, include_charts: bool = False,
                             current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
@@ -175,7 +175,7 @@ async def warehouse_summary(request: Request, warehouse_id: int | None = None,
         raise HTTPException(403, "无此操作权限，需要: 报表中心")
     from app.services.warehouse_summary import warehouse_scope, summarize
     warehouses = await warehouse_scope(db, current_user, request.headers.get('X-Warehouse-ID'), warehouse_id, warehouse_ids)
-    return await summarize(db, warehouses, start_date, end_date, month)
+    return await summarize(db, warehouses, start_date, end_date, month, include_charts)
 
 
 def _merge_currency(*lists):
