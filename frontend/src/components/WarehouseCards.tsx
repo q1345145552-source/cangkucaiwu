@@ -24,6 +24,13 @@ interface CardsResponse {
   data: WarehouseCard[];
 }
 
+interface WarehouseCardsProps {
+  refreshKey?: number;
+  onWarehousesLoaded?: (warehouses: { warehouse_id: number; warehouse_name: string; warehouse_code: string }[]) => void;
+  onCreate?: () => void;
+  onManage?: (id: number) => void;
+}
+
 type CardsState =
   | { kind: "loading" }
   | { kind: "ready"; cards: WarehouseCard[] }
@@ -63,7 +70,7 @@ function Amounts({ amounts }: { amounts: CurrencyAmount[] }) {
   ))}</>;
 }
 
-export default function WarehouseCards() {
+export default function WarehouseCards({ refreshKey = 0, onWarehousesLoaded, onCreate, onManage }: WarehouseCardsProps) {
   const { user, loading } = useAuth();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -84,6 +91,9 @@ export default function WarehouseCards() {
         throw new Error("仓库数据格式不正确，请重试");
       }
       setState({ kind: "ready", cards: response.data });
+      onWarehousesLoaded?.(response.data.map(({ warehouse_id, warehouse_name, warehouse_code }) => ({
+        warehouse_id, warehouse_name, warehouse_code,
+      })));
     }).catch((error: unknown) => {
       if (!active) return;
       if (error instanceof ApiError && error.status === 403) {
@@ -96,7 +106,7 @@ export default function WarehouseCards() {
       }
     });
     return () => { active = false; };
-  }, [user?.id, user?.role, loading, attempt]);
+  }, [user?.id, user?.role, loading, attempt, refreshKey, onWarehousesLoaded]);
 
   function enterWarehouse(id: number) {
     if (entering.current) return;
@@ -130,15 +140,19 @@ export default function WarehouseCards() {
         className="mt-4 min-h-[44px] rounded-lg bg-blue-600 px-5 text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">重试</button>
     </div>
   );
-  if (state.cards.length === 0) return <p role="status" className="text-gray-700">你名下还没有仓库 请联系平台管理员分配</p>;
+  if (state.cards.length === 0) return user?.role === "warehouse_admin" ? (
+    <div role="status" className="text-gray-700">
+      <p>你名下还没有仓库 请联系平台管理员分配</p>
+      <p className="mt-2 text-sm text-gray-600">或者自己新建一个仓库</p>
+      <button type="button" onClick={onCreate} className="mt-3 min-h-[44px] rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-blue-700 hover:bg-blue-50">新建仓库</button>
+    </div>
+  ) : <p role="status" className="text-gray-700">你名下还没有仓库 请联系平台管理员分配</p>;
 
   return (
     <div className={gridClass}>
-      {state.cards.map(card => (
-        <button key={card.warehouse_id} type="button" aria-label={`进入${card.warehouse_name}`}
-          onClick={() => enterWarehouse(card.warehouse_id)}
-          className="min-w-0 rounded-xl border border-gray-200 bg-white p-5 text-left text-gray-900 shadow-sm hover:border-blue-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
-          <h2 className="mb-5 break-words text-xl font-bold">{card.warehouse_name}</h2>
+      {state.cards.map(card => {
+        const details = <>
+          <h2 className={`mb-5 break-words text-xl font-bold ${user?.role === "warehouse_admin" ? "pr-16" : ""}`}>{card.warehouse_name}</h2>
           {card.has_data ? (
             <dl className="grid grid-cols-2 gap-x-3 gap-y-5">
               <div><dt className="mb-1 text-sm text-gray-500">今日收入</dt><dd className="text-base font-semibold"><Amounts amounts={card.income_by_currency} /></dd></div>
@@ -147,8 +161,21 @@ export default function WarehouseCards() {
               <div><dt className="mb-1 text-sm text-gray-500">出勤</dt><dd className="text-lg font-semibold tabular-nums">{card.attendance.actual} / {card.attendance.expected}</dd></div>
             </dl>
           ) : <p className="text-gray-500">暂无数据</p>}
-        </button>
-      ))}
+        </>;
+        const cardClass = "min-w-0 rounded-xl border border-gray-200 bg-white p-5 text-left text-gray-900 shadow-sm hover:border-blue-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600";
+        if (user?.role === "warehouse_admin") return (
+          <div key={card.warehouse_id} className="relative min-w-0">
+            <button type="button" aria-label={`进入${card.warehouse_name}`} onClick={() => enterWarehouse(card.warehouse_id)} className={`${cardClass} w-full`}>
+              {details}
+            </button>
+            <button type="button" aria-label={`管理${card.warehouse_name}`} onClick={event => { event.stopPropagation(); onManage?.(card.warehouse_id); }}
+              className="absolute right-4 top-4 z-10 min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-blue-700 hover:bg-blue-50">管理</button>
+          </div>
+        );
+        return <button key={card.warehouse_id} type="button" aria-label={`进入${card.warehouse_name}`} onClick={() => enterWarehouse(card.warehouse_id)} className={`${cardClass} w-full`}>
+          {details}
+        </button>;
+      })}
     </div>
   );
 }
