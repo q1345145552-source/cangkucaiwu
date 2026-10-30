@@ -10,7 +10,7 @@ from sqlalchemy import select, func, and_
 from app.database import get_db
 from app.models.attendance import LeaveRequest, RestDay, Absence
 from app.models.salary_template import SalaryTemplate
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeRestDate
 from app.models.clock_in_records import ClockInRecord
 from app.models.user import User
 from app.models.warehouse import Warehouse
@@ -385,52 +385,37 @@ async def set_rest_days(
     if emp.status == "resigned":
         raise HTTPException(400, "该员工已离职，不能设置休息日")
 
-    if req.kind != "rest":
-        if not req.rest_dates or len(req.rest_dates) > 31:
-            raise HTTPException(400, "请选择1到31个日期")
-        try:
-            dates = {date.fromisoformat(value).isoformat() for value in req.rest_dates}
-        except ValueError:
-            raise HTTPException(400, "日期格式错误")
-        # Lock the owner row to prevent concurrent changes losing another date.
-        await db.refresh(emp, with_for_update=True)
-        entries = {entry["date"]: entry for entry in (emp.workday_overrides or [])}
-        for value in dates:
-            if req.kind == "work":
-                entries.setdefault(value, {"date": value, "created_by": current_user.id, "created_at": thai_now().isoformat()})
-            else:
-                entries.pop(value, None)
-        emp.workday_overrides = sorted(entries.values(), key=lambda item: item["date"])
-        await db.flush()
-        return {"message": "已标记上班调班" if req.kind == "work" else "已恢复休息规律判断", "dates": sorted(dates), "kind": req.kind}
-
-    # Check current month rest day count
-    if req.rest_dates:
-        first_date = datetime.strptime(req.rest_dates[0], "%Y-%m-%d").date().replace(day=1)
-        existing = (await db.execute(
-            select(func.count(RestDay.id)).where(
-                RestDay.employee_id == req.employee_id,
-                RestDay.rest_date >= first_date,
-                RestDay.rest_date < (first_date.replace(month=first_date.month % 12 + 1, day=1) if first_date.month < 12 else first_date.replace(year=first_date.year + 1, month=1, day=1)),
-            )
-        )).scalar() or 0
-        if existing + len(req.rest_dates) > 2:
-            raise HTTPException(400, f"每月最多2天休息日，当前已设置{existing}天，不能再增加{len(req.rest_dates)}天")
-
-    added = 0
-    for ds in req.rest_dates:
-        try:
-            dt = datetime.strptime(ds, "%Y-%m-%d").date()
-        except:
-            continue
-        dup = (await db.execute(
-            select(RestDay).where(RestDay.employee_id == req.employee_id, RestDay.rest_date == dt)
-        )).scalar_one_or_none()
-        if not dup:
-            db.add(RestDay(warehouse_id=wh_id, employee_id=req.employee_id, rest_date=dt, created_by=current_user.id))
-            added += 1
+    if not req.rest_dates or len(req.rest_dates) > 31:
+        raise HTTPException(400, "请选择1到31个日期")
+    try:
+        days = {date.fromisoformat(value) for value in req.rest_dates}
+    except ValueError:
+        raise HTTPException(400, "日期格式错误")
+    await db.refresh(emp, with_for_update=True)
+    for day in days:
+        row = (await db.execute(select(EmployeeRestDate).where(EmployeeRestDate.employee_id==emp.id, EmployeeRestDate.rest_date==day))).scalar_one_or_none()
+        if row is None:
+            row = EmployeeRestDate(employee_id=emp.id,warehouse_id=emp.warehouse_id,rest_date=day)
+            db.add(row)
+        if req.kind == "work":
+            if row.prior_is_rest is None:
+                row.prior_is_rest = bool(row.is_rest)
+            row.is_rest = False
+            row.source = "manual"
+        elif req.kind == "clear_work":
+            if row.prior_is_rest is not None:
+                row.is_rest = row.prior_is_rest
+                row.prior_is_rest = None
+                row.source = "profile"
+            elif row.is_rest is None:
+                row.is_rest = False
+        else:
+            row.is_rest = True
+            row.source = "manual"
+            row.prior_is_rest = None
+        row.updated_by = current_user.id
     await db.flush()
-    return {"message": f"已设置 {added} 天休息日", "added": added}
+    return {"message":"休息安排已更新", "added":len(days)}
 
 @router.get("/rest-days")
 async def list_rest_days(
@@ -444,30 +429,31 @@ async def list_rest_days(
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF, Role.WAREHOUSE_LABOR):
         raise HTTPException(403, "无权限")
 
-    query = select(RestDay, Employee.name).join(Employee, RestDay.employee_id == Employee.id)
+    query = select(EmployeeRestDate, Employee.name).join(Employee, EmployeeRestDate.employee_id == Employee.id)
+    query = query.where(EmployeeRestDate.is_rest == True)
     query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
     if employee_view(current_user):
-        query = query.where(RestDay.employee_id == current_user._attendance_employee.id, RestDay.warehouse_id == current_user.warehouse_id)
+        query = query.where(EmployeeRestDate.employee_id == current_user._attendance_employee.id, EmployeeRestDate.warehouse_id == current_user.warehouse_id)
     elif current_user.role in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR, Role.STAFF):
         active_wh = get_wh_id(current_user)
         if active_wh:
-            query = query.where(RestDay.warehouse_id == active_wh)
+            query = query.where(EmployeeRestDate.warehouse_id == active_wh)
     else:
         wh_id = get_wh_id(current_user)
         emp = (await db.execute(
             select(Employee.id).where(Employee.warehouse_id == wh_id, Employee.name == current_user.display_name, Employee.is_deleted == False)
         )).scalar_one_or_none()
         if emp:
-            query = query.where(RestDay.employee_id == emp)
+            query = query.where(EmployeeRestDate.employee_id == emp)
         else:
             return {"data": []}
 
     if start_date:
-        query = query.where(RestDay.rest_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+        query = query.where(EmployeeRestDate.rest_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
     if end_date:
-        query = query.where(RestDay.rest_date <= datetime.strptime(end_date, "%Y-%m-%d").date())
+        query = query.where(EmployeeRestDate.rest_date <= datetime.strptime(end_date, "%Y-%m-%d").date())
 
-    result = await db.execute(query.order_by(RestDay.rest_date))
+    result = await db.execute(query.order_by(EmployeeRestDate.rest_date))
     rows = result.all()
     return {"data": [{
         "id": r.id, "employee_id": r.employee_id, "employee_name": name,
@@ -478,13 +464,15 @@ async def list_rest_days(
 async def delete_rest_day(rest_day_id: int, current_user: User = Depends(check_staff_permission(_ATTENDANCE_PERMISSION)), db: AsyncSession = Depends(get_db)):
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
         raise HTTPException(403, "只有管理员可以操作")
-    rd = (await db.execute(select(RestDay).where(RestDay.id == rest_day_id))).scalar_one_or_none()
+    rd = (await db.execute(select(EmployeeRestDate).where(EmployeeRestDate.id == rest_day_id))).scalar_one_or_none()
     if not rd: raise HTTPException(404, "休息日不存在")
     wh_ids = get_wh_ids(current_user)
     if rd.warehouse_id not in wh_ids: raise HTTPException(403, "无权操作")
-    await db.delete(rd)
+    rd.is_rest = False
+    rd.source = "manual"
+    rd.updated_by = current_user.id
     await db.flush()
-    return {"message": "已删除"}
+    return {"message": "已取消休息，原记录保留"}
 
 # ═══ Absence ════════════════════════════════
 class AbsenceCreate(BaseModel):
@@ -536,61 +524,15 @@ async def remove_absence(absence_id: int, current_user: User = Depends(check_sta
     return {"message": "已删除"}
 
 async def effective_rest_calendar(db, emps, range_start, range_end):
-    """Calendar-only resolver shared with the employee profile's saved preview."""
-    emp_ids = [e.id for e in emps]
-    wh_ids = {e.warehouse_id for e in emps}
-    rests = (await db.execute(select(RestDay).where(
-        RestDay.employee_id.in_(emp_ids), RestDay.warehouse_id.in_(wh_ids),
-        RestDay.rest_date >= range_start, RestDay.rest_date <= range_end,
+    owners = {e.id:e.warehouse_id for e in emps}
+    rows = (await db.execute(select(EmployeeRestDate).where(
+        EmployeeRestDate.employee_id.in_(owners), EmployeeRestDate.rest_date >= range_start,
+        EmployeeRestDate.rest_date <= range_end,
     ))).scalars().all()
-    employee_warehouses = {e.id: e.warehouse_id for e in emps}
-    rest_set = {(r.employee_id, r.rest_date) for r in rests if employee_warehouses.get(r.employee_id) == r.warehouse_id}
-    sources = {key: "manual_rest" for key in rest_set}
-    # Derive calendar-only rest dates; never materialize generated RestDay rows.
-    templates = (await db.execute(select(SalaryTemplate).where(
-        SalaryTemplate.id.in_({e.salary_template_id for e in emps if e.salary_template_id}),
-        SalaryTemplate.warehouse_id.in_(wh_ids),
-    ))).scalars().all()
-    template_map = {t.id: t for t in templates}
-    rest_warnings = []
-    for employee in emps:
-        template = template_map.get(employee.salary_template_id)
-        if employee.rest_rule_mode == "custom":
-            pattern, weekdays, monthdays, rest_days = employee.rest_pattern, employee.rest_weekdays, employee.rest_monthdays, employee.rest_days_per_month
-        elif template and template.warehouse_id == employee.warehouse_id:
-            pattern, weekdays, monthdays, rest_days = template.monthly_rest_pattern, template.monthly_rest_weekdays, template.monthly_rest_monthdays, template.monthly_rest_days
-        else:
-            pattern, weekdays, monthdays, rest_days = None, None, None, None
-        cursor = range_start.replace(day=1)
-        while cursor <= range_end:
-            next_month = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
-            generated = []
-            day = cursor
-            while day < next_month:
-                if (pattern == "weekly" and
-                    (day.weekday() + 1) % 7 in (weekdays or [])) or (
-                    pattern == "monthly" and
-                    day.day in (monthdays or [])):
-                    generated.append(day)
-                day += timedelta(days=1)
-            for day in generated:
-                if range_start <= day <= range_end:
-                    sources.setdefault((employee.id, day), "automatic")
-                    rest_set.add((employee.id, day))
-            if rest_days is not None and len(generated) > rest_days:
-                rest_warnings.append(f"{employee.name} {cursor:%Y-%m}：规律休息{len(generated)}天，超过设置的{rest_days}天，按规律执行")
-            cursor = next_month
-
-    for employee in emps:
-        for entry in employee.workday_overrides or []:
-            try:
-                day = date.fromisoformat(entry["date"])
-            except (KeyError, TypeError, ValueError):
-                continue
-            if range_start <= day <= range_end:
-                rest_set.discard((employee.id, day))
-                sources[(employee.id, day)] = "manual_work"
-    return rest_set, sources, rest_warnings
+    rows = [row for row in rows if owners.get(row.employee_id) == row.warehouse_id]
+    rests = {(row.employee_id,row.rest_date) for row in rows if row.is_rest}
+    sources = {(row.employee_id,row.rest_date): ("manual_work" if not row.is_rest else "manual_rest" if row.source == "manual" else "profile") for row in rows}
+    return rests, sources, []
 
 
 # ═══ Calendar View ════════════════════════════
@@ -848,7 +790,7 @@ async def get_calendar(
                 "employee_name": e.name,
                 "status": status_name_db,
                 "rest_source": rest_sources.get((e.id, dt)),
-                "schedule_label": {"manual_work": "上班 调班", "manual_rest": "休息 调休", "automatic": "休息"}.get(rest_sources.get((e.id, dt))),
+                "schedule_label": {"manual_work": "上班 调班", "manual_rest": "休息 调休", "automatic": "休息", "profile": "休息"}.get(rest_sources.get((e.id, dt))),
                 "status_label": status_label,
                 "session_count": session_count,
                 "has_late": has_late,

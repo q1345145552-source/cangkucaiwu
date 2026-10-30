@@ -76,7 +76,7 @@ export default function EmployeesPage() {
 
   const canSetRest = user?.role === "warehouse_admin" || user?.role === "supervisor";
   const defaultForm: any = {
-    rest_rule_mode: "follow", rest_days_per_month: null, rest_pattern: "weekly", rest_weekdays: [], rest_monthdays: [],
+    rest_dates: [] as string[], rest_original_dates: [] as string[],
     nationality: "", thai_id_number: "", sso_number: "", bank_account_number: "", bank_name: "", bank_account_holder: "",
     name: "", employee_no: "", password: "", position: "仓库劳工", myanmar_id: "", address: "",
     phone: "", emergency_contact: "", hire_date: "",
@@ -86,6 +86,12 @@ export default function EmployeesPage() {
     passport_expiry: "", work_permit_expiry: "",
     promotion_date: "", tags: "",
   };
+  const [restMonth, setRestMonth] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).format(new Date()).slice(0,7));
+  function moveRestMonth(offset: number) {
+    const [year, month] = restMonth.split("-").map(Number);
+    const target = new Date(year, month - 1 + offset, 1);
+    setRestMonth(`${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,"0")}`);
+  }
   const [form, setForm] = useState({ ...defaultForm });
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadLimit(); if (canReadPay) { loadTemplates(); loadDeductionTemplates(); } }, [canReadPay]);
@@ -172,7 +178,7 @@ export default function EmployeesPage() {
     }
     try {
       const payload: any = { ...form };
-      if (!canSetRest) for (const key of ["rest_rule_mode", "rest_days_per_month", "rest_pattern", "rest_weekdays", "rest_monthdays"]) delete payload[key];
+      if (!canSetRest) for (const key of ["rest_dates", "rest_original_dates"]) delete payload[key];
       if (user?.role !== "warehouse_admin") { delete payload.employee_no; delete payload.password; delete payload.user_id;
         for (const field of ["daily_wage", "base_salary", "salary_template_id", "deduction_template_id", "bank_account_number", "bank_name", "bank_account_holder"]) delete payload[field]; }
       if (!canReadDocuments) for (const field of ["nationality", "thai_id_number", "sso_number", "myanmar_id", "passport_number", "work_permit_number"]) delete payload[field];
@@ -310,8 +316,7 @@ export default function EmployeesPage() {
     setPassportPhotoFile(null);
     setWorkPermitPhotoFile(null);
     setForm({
-      rest_rule_mode: e.rest_rule_mode || "follow", rest_days_per_month: e.rest_days_per_month ?? null,
-      rest_pattern: e.rest_pattern || "weekly", rest_weekdays: e.rest_weekdays || [], rest_monthdays: e.rest_monthdays || [],
+      rest_dates: e.rest_dates || [], rest_original_dates: e.rest_dates || [],
       nationality: e.nationality || "", thai_id_number: e.thai_id_number || "", sso_number: e.sso_number || "",
       bank_account_number: e.bank_account_number || "", bank_name: e.bank_name || "", bank_account_holder: e.bank_account_holder || "",
       name: e.name || "", employee_no: e.employee_no || "", password: "",
@@ -912,39 +917,24 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
-              <fieldset disabled={!canSetRest} className="rounded-xl border border-gray-200 p-4 space-y-3" aria-label="休息设置">
-                <legend className="px-1 font-semibold">休息设置</legend>
-                <label className="block text-sm">休息规律来源
-                  <select aria-label="休息规律来源" className="form-input w-full min-h-11 mt-1" value={form.rest_rule_mode} onChange={e => setForm({ ...form, rest_rule_mode: e.target.value })}>
-                    <option value="follow">跟随薪资模板</option><option value="custom">单独设置</option>
-                  </select>
-                </label>
-                {form.rest_rule_mode === "custom" && <>
-                  <label className="block text-sm">每月休息天数
-                    <input aria-label="每月休息天数" type="number" min={0} max={4} step={1} className="form-input w-full min-h-11 mt-1" value={form.rest_days_per_month ?? ""} onChange={e => setForm({ ...form, rest_days_per_month: e.target.value === "" ? null : Number(e.target.value) })} />
-                  </label>
-                  <label className="block text-sm">休息规律
-                    <select aria-label="个人休息规律" className="form-input w-full min-h-11 mt-1" value={form.rest_pattern} onChange={e => setForm({ ...form, rest_pattern: e.target.value })}>
-                      <option value="weekly">每周几休</option><option value="monthly">每月几号休</option>
-                    </select>
-                  </label>
-                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                    {Array.from({ length: form.rest_pattern === "weekly" ? 7 : 31 }, (_, i) => {
-                      const day = form.rest_pattern === "weekly" ? i : i + 1;
-                      const key = form.rest_pattern === "weekly" ? "rest_weekdays" : "rest_monthdays";
-                      return <label key={day} className="flex items-center justify-center gap-1 min-h-11 rounded-lg border text-xs cursor-pointer">
-                        <input type="checkbox" checked={(form[key] || []).includes(day)} onChange={e => setForm({ ...form, [key]: e.target.checked ? [...(form[key] || []), day] : (form[key] || []).filter((n: number) => n !== day) })} />
-                        {form.rest_pattern === "weekly" ? ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][day] : `${day}号`}
-                      </label>;
-                    })}
-                  </div>
-                </>}
-                <p className="text-xs text-gray-500">单独设置只影响当前员工。规律多于填写天数时按规律执行。此设置仅用于考勤，工资暂未接入。</p>
-                {editingId && <div className="rounded-lg bg-gray-50 p-3 text-sm" aria-label="已保存本月休息日期">
-                  <p className="font-medium">{data.find(e => e.id === editingId)?.rest_preview_month || "本月"} 实际休息日期（已保存）</p>
-                  <p className="mt-1 break-words text-gray-600">{(data.find(e => e.id === editingId)?.rest_preview_dates || []).join("、") || "本月无休息日"}</p>
-                  <p className="mt-1 text-xs text-gray-400">保存后按个人设置、手工休息与调班例外重新显示。</p>
-                </div>}
+              <fieldset disabled={!canSetRest} className="rounded-xl border border-gray-200 p-3 space-y-3" aria-label="休息安排">
+                <legend className="px-1 font-semibold">休息安排</legend>
+                <div className="flex items-center justify-between">
+                  <button type="button" aria-label="上个月" className="min-h-11 min-w-11 border rounded" onClick={() => moveRestMonth(-1)}>‹</button>
+                  <strong>{restMonth}</strong>
+                  <button type="button" aria-label="下个月" className="min-h-11 min-w-11 border rounded" onClick={() => moveRestMonth(1)}>›</button>
+                </div>
+                <div className="overflow-x-auto"><div className="grid grid-cols-7 gap-1 min-w-[332px]" aria-label="排休日历">
+                  {["日","一","二","三","四","五","六"].map(day => <span key={day} className="text-center text-xs text-gray-500">{day}</span>)}
+                  {Array.from({length:new Date(Number(restMonth.slice(0,4)), Number(restMonth.slice(5))-1,1).getDay()},(_,i)=><span key={`blank-${i}`} />)}
+                  {Array.from({length:new Date(Number(restMonth.slice(0,4)), Number(restMonth.slice(5)),0).getDate()},(_,i)=> {
+                    const day = `${restMonth}-${String(i+1).padStart(2,"0")}`;
+                    const selected = (form.rest_dates || []).includes(day);
+                    return <button type="button" key={day} aria-label={day} aria-pressed={selected} className={`min-h-11 min-w-11 rounded border text-sm ${selected ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`} onClick={() => setForm({...form,rest_dates:selected ? form.rest_dates.filter((d:string)=>d!==day) : [...form.rest_dates,day].sort()})}>{i+1}{selected && <span className="block text-[10px]">休息</span>}</button>;
+                  })}
+                </div></div>
+                <p className="text-xs text-gray-500">点日期选休息，再点取消；可翻月排多个月。月薪必须安排当月和下月，日薪不强制。本轮只用于考勤，工资接入另轮。</p>
+                <p className="text-xs break-words" aria-label="已选休息日期">{form.rest_dates?.join("、") || "尚未安排休息"}</p>
               </fieldset>
 
               {/* Tags */}
@@ -1233,11 +1223,9 @@ export default function EmployeesPage() {
               </div>
 
               {/* Remark */}
-              <section className="rounded-xl border bg-gray-50 p-3 text-sm" aria-label="员工休息设置">
-                <h4 className="font-semibold">休息设置 · {detailEmp.rest_rule_mode === "custom" ? "单独设置" : "跟随薪资模板"}</h4>
-                <p className="mt-2 text-gray-500">{detailEmp.rest_preview_month} 实际休息日期</p>
-                <p className="mt-1 break-words">{(detailEmp.rest_preview_dates || []).join("、") || "本月无休息日"}</p>
-                <p className="mt-2 text-xs text-gray-400">已合并手工休息并排除手工上班日期；工资暂未接入。</p>
+              <section className="rounded-xl border bg-gray-50 p-3 text-sm" aria-label="员工休息安排">
+                <h4 className="font-semibold">休息安排</h4>
+                <p className="break-words">{(detailEmp.rest_dates || []).join("、") || "尚未安排"}</p>
               </section>
               {detailEmp.remark && (
                 <div className="border-t pt-4">

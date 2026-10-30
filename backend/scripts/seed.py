@@ -266,6 +266,27 @@ async def _migrate_employee_rest_settings(conn):
         await conn.execute(text(f"ALTER TABLE employees ADD COLUMN IF NOT EXISTS {name} {sql_type}"))
 
 
+async def _migrate_employee_rest_dates(conn):
+    from sqlalchemy import text
+    from app.models.employee import EmployeeRestDate
+    from datetime import date
+    await conn.run_sync(lambda sync: EmployeeRestDate.__table__.create(sync, checkfirst=True))
+    # Preserve existing work overrides first; never overwrite a later user edit on restart.
+    rows = (await conn.execute(text("SELECT id, warehouse_id, workday_overrides FROM employees"))).all()
+    for eid, wid, entries in rows:
+        for entry in entries or []:
+            try:
+                day = date.fromisoformat(entry["date"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            await conn.execute(text("INSERT INTO employee_rest_dates (employee_id,warehouse_id,rest_date,is_rest,source,updated_by,prior_is_rest) VALUES (:eid,:wid,:day,false,'manual',:uid,EXISTS(SELECT 1 FROM rest_days WHERE employee_id=:eid AND warehouse_id=:wid AND rest_date=:day)) ON CONFLICT (employee_id,rest_date) DO NOTHING"), {"eid":eid,"wid":wid,"day":day,"uid":entry.get("created_by")})
+    await conn.execute(text("""INSERT INTO employee_rest_dates (employee_id,warehouse_id,rest_date,is_rest,source,updated_by)
+        SELECT DISTINCT ON (r.employee_id,r.rest_date) r.employee_id,r.warehouse_id,r.rest_date,true,'manual',r.created_by
+        FROM rest_days r JOIN employees e ON e.id=r.employee_id AND e.warehouse_id=r.warehouse_id
+        ORDER BY r.employee_id,r.rest_date,r.id
+        ON CONFLICT (employee_id,rest_date) DO NOTHING"""))
+
+
 async def _migrate_employee_advance_expenses(conn):
     """仅加新旧标记和关联列；老预支不补任何支出。"""
     from sqlalchemy import text
@@ -575,6 +596,7 @@ async def seed():
         from app.services.employee_identity_migration import migrate_employee_identity
         await migrate_employee_identity(conn)
         await _migrate_employee_rest_settings(conn)
+        await _migrate_employee_rest_dates(conn)
         await _migrate_credit_shipments(conn)
         await _migrate_customer_receipt_identity(conn)
         await _migrate_incoming_operations(conn)

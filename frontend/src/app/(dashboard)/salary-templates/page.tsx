@@ -54,21 +54,14 @@ export default function SalaryTemplatesPage() {
     if (!amount || amount <= 0) { toast("error", "金额必须大于0"); return; }
     const ot = parseFloat(form.overtime_half_hour_fee || "0");
     const monthly = form.type === "monthly";
-    const restDays = form.monthly_rest_days === "" ? null : Number(form.monthly_rest_days);
     const fixedDays = form.monthly_fixed_days === "" ? null : Number(form.monthly_fixed_days);
-    const selectedDays = form.monthly_rest_pattern === "weekly" ? form.monthly_rest_weekdays : form.monthly_rest_pattern === "monthly" ? form.monthly_rest_monthdays : [];
     if (monthly) {
-      if (restDays !== null && (!Number.isInteger(restDays) || restDays < 0 || restDays > 4)) { toast("error", "每月固定休息天数必须为0到4的整数"); return; }
-      if (restDays !== null && restDays > 0 && !selectedDays.length) { toast("error", "填写每月休息天数后，请选择休息规律及具体休息日期"); return; }
       if (form.monthly_deduction_mode === "fixed" && (fixedDays === null || !Number.isInteger(fixedDays) || fixedDays <= 0)) { toast("error", "固定天数模式请填写大于0的整数天数"); return; }
     }
     const payload = { name: form.name, type: form.type, amount,
       ...(monthly ? {
         monthly_deduction_mode: form.monthly_deduction_mode || null,
         monthly_fixed_days: form.monthly_deduction_mode === "fixed" ? fixedDays : null,
-        monthly_rest_days: restDays, monthly_rest_pattern: form.monthly_rest_pattern || null,
-        monthly_rest_weekdays: form.monthly_rest_pattern === "weekly" ? form.monthly_rest_weekdays : null,
-        monthly_rest_monthdays: form.monthly_rest_pattern === "monthly" ? form.monthly_rest_monthdays : null,
         monthly_overtime_hour_fee: form.monthly_overtime_hour_fee === "" ? null : Number(form.monthly_overtime_hour_fee),
       } : { overtime_half_hour_fee: ot }),
     };
@@ -180,18 +173,6 @@ export default function SalaryTemplatesPage() {
                   <label className="form-label text-sm font-medium text-gray-600 mb-1 block">固定天数</label>
                   <input aria-label="固定天数" type="number" min="1" step="1" className="form-input py-2.5 w-full" value={form.monthly_fixed_days} onChange={e => setForm({ ...form, monthly_fixed_days: e.target.value })} />
                 </div>}
-                <div>
-                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">每月固定休息几天</label>
-                  <input aria-label="每月固定休息几天" type="number" min="0" max="4" step="1" className="form-input py-2.5 w-full" value={form.monthly_rest_days} onChange={e => setForm({ ...form, monthly_rest_days: e.target.value })} />
-                </div>
-                <div>
-                  <label className="form-label text-sm font-medium text-gray-600 mb-1 block">休息规律</label>
-                  <select aria-label="休息规律" className="form-input py-2.5 w-full" value={form.monthly_rest_pattern} onChange={e => setForm({ ...form, monthly_rest_pattern: e.target.value })}>
-                    <option value="">未填写</option><option value="weekly">每周几休</option><option value="monthly">每月几号休</option>
-                  </select>
-                  {form.monthly_rest_pattern === "weekly" && <div className="flex flex-wrap gap-3 mt-3">{weekdays.map((label, day) => <label key={day} className="flex items-center gap-1 p-1 text-sm"><input type="checkbox" checked={form.monthly_rest_weekdays.includes(day)} onChange={e => setForm({ ...form, monthly_rest_weekdays: e.target.checked ? [...form.monthly_rest_weekdays, day].sort((a,b) => a-b) : form.monthly_rest_weekdays.filter(d => d !== day) })} />{label}</label>)}</div>}
-                  {form.monthly_rest_pattern === "monthly" && <div className="grid grid-cols-4 gap-2 mt-3">{Array.from({ length: 31 }, (_, i) => i + 1).map(day => <label key={day} className="flex items-center gap-1 p-1 text-sm"><input type="checkbox" checked={form.monthly_rest_monthdays.includes(day)} onChange={e => setForm({ ...form, monthly_rest_monthdays: e.target.checked ? [...form.monthly_rest_monthdays, day].sort((a,b) => a-b) : form.monthly_rest_monthdays.filter(d => d !== day) })} />{day}号</label>)}</div>}
-                </div>
                 <div>
                   <label className="form-label text-sm font-medium text-gray-600 mb-1 block">每小时加班费</label>
                   <input aria-label="每小时加班费" type="number" min="0" step="0.01" className="form-input py-2.5 w-full" value={form.monthly_overtime_hour_fee} onChange={e => setForm({ ...form, monthly_overtime_hour_fee: e.target.value })} />
