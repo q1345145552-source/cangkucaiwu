@@ -370,5 +370,9 @@
   "leave": "ลางาน",
   "cash_advances": "รายการสำรองจ่าย",
   "page_back_to": "กลับไป{page}",
-  "page_back_employee_home": "หน้าหลักพนักงาน"
+  "page_back_employee_home": "หน้าหลักพนักงาน",
+  "warehouse_switch_action": "เปลี่ยนคลังสินค้า",
+  "warehouse_current_mark": "คลังสินค้าปัจจุบัน",
+  "warehouse_return_selection": "กลับไปหน้าเลือกคลังสินค้า",
+  "warehouse_name_full": "ดูชื่อคลังสินค้าเต็ม"
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useI18n, type Locale } from "@/hooks/useI18n";
 import {
@@ -159,7 +159,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showWhSwitcher, setShowWhSwitcher] = useState(false);
   const [whList, setWhList] = useState<WarehouseInfo[]>([]);
   const [selectedWhId, setSelectedWhId] = useState<number | null>(null);
-  const [isAllWarehouses, setIsAllWarehouses] = useState(false);
+  const [showFullWarehouseName, setShowFullWarehouseName] = useState(false);
+  const warehouseNameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (warehouseNameTimer.current) clearTimeout(warehouseNameTimer.current); }, []);
   const [user, setUser] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [menuPermissions, setMenuPermissions] = useState<MenuPermission[]>([]);
@@ -201,6 +203,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = getToken();
     if (!token) { router.push("/login"); return; }
+    if (getActiveWarehouseId() === "all") setActiveWarehouseId(null);
     api.post("/auth/attachment-session", {}).catch(() => {});
     
     // Wait for this token's live identity; cached administrator menus are not capabilities.
@@ -211,12 +214,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       setWhList(warehouses);
       localStorage.setItem("user", JSON.stringify(me));
       const activeId = getActiveWarehouseId();
-      if (activeId === "all") {
-        setIsAllWarehouses(true);
-        if (warehouses.length > 0) setSelectedWhId(warehouses[0].id);
-        return true;
-      }
-      setIsAllWarehouses(false);
       if (activeId && warehouses.some(wh => String(wh.id) === activeId)) {
         setSelectedWhId(+activeId);
         return true;
@@ -268,30 +265,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, []);
 
   const switchWarehouse = (wh: WarehouseInfo) => {
-    setIsAllWarehouses(false);
-    setSelectedWhId(wh.id);
+    if (wh.id === selectedWhId) { setShowWhSwitcher(false); return; }
     setActiveWarehouseId(wh.id);
-    setShowWhSwitcher(false);
-    window.dispatchEvent(new CustomEvent("warehouse-changed", { detail: { warehouseId: wh.id } }));
-  };
-
-  const switchAllWarehouses = () => {
-    setIsAllWarehouses(true);
-    setActiveWarehouseId("all");
-    setShowWhSwitcher(false);
-    window.dispatchEvent(new CustomEvent("warehouse-changed", { detail: { warehouseId: "all" } }));
-  };
-
-  // Only reports and the dashboard support authorized all-warehouses reads.
-  useEffect(() => {
-    if (!["/reports", "/dashboard"].includes(pathname) && isAllWarehouses) {
-      setIsAllWarehouses(false);
-      if (whList.length > 0) {
-        setSelectedWhId(whList[0].id);
-        setActiveWarehouseId(whList[0].id);
-      }
+    // A new document discards every page's old requests, forms and component state.
+    let destination = pathname;
+    if (/^\/cash-advances\/[^/]+\/?$/.test(pathname)) destination = "/cash-advances";
+    else if (/^\/suppliers\/purchase-orders\/[^/]+\/?$/.test(pathname)) destination = "/suppliers";
+    else {
+      const origin = pathname.match(/^\/expense-identities\/(payable|approval|fund_item|expense)\/[^/]+\/?$/)?.[1];
+      if (origin) destination = ({ payable: "/payable", approval: "/expense-approvals", fund_item: "/expense-fund", expense: "/operating" } as Record<string, string>)[origin];
     }
-  }, [pathname]);
+    // Query/hash may identify an old warehouse's document even on a list page.
+    window.location.assign(destination);
+  };
 
   const logout = async () => {
     await api.post("/auth/attachment-session", { clear: true }).catch(() => {});
@@ -402,43 +388,60 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             
             {/* Warehouse Switcher（超管不显示，其余角色照旧） */}
             {whList.length > 0 && user?.role !== "super_admin" && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowWhSwitcher(!showWhSwitcher)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium min-h-[36px]"
-                >
-                  <Building2 size={16} />
-                  <span className="max-w-[120px] truncate">
-                    {isAllWarehouses ? t("all_warehouses") : (whList.find(w => w.id === selectedWhId)?.name || t("select_warehouse"))}
+              <div className="relative min-w-0 max-w-[calc(100vw-184px)] md:max-w-none">
+                <div className="flex min-w-0 items-center gap-1">
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t("warehouse_name_full")}
+                    title={whList.find(w => w.id === selectedWhId)?.name || t("select_warehouse")}
+                    onMouseEnter={() => setShowFullWarehouseName(true)}
+                    onMouseLeave={() => setShowFullWarehouseName(false)}
+                    onFocus={() => setShowFullWarehouseName(true)}
+                    onBlur={() => setShowFullWarehouseName(false)}
+                    onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setShowFullWarehouseName(value => !value); } }}
+                    onContextMenu={event => { event.preventDefault(); setShowFullWarehouseName(true); }}
+                    onTouchStart={() => { warehouseNameTimer.current = setTimeout(() => setShowFullWarehouseName(true), 500); }}
+                    onTouchEnd={() => { if (warehouseNameTimer.current) clearTimeout(warehouseNameTimer.current); }}
+                    onTouchCancel={() => { if (warehouseNameTimer.current) clearTimeout(warehouseNameTimer.current); }}
+                    className="min-w-0 rounded-lg bg-blue-50 px-2 py-1 text-base font-bold leading-5 text-blue-800 md:px-3 md:py-1.5 md:text-lg md:leading-6"
+                  >
+                    <span className="line-clamp-2 break-all md:line-clamp-none md:break-normal">
+                      {whList.find(w => w.id === selectedWhId)?.name || t("select_warehouse")}
+                    </span>
                   </span>
-                  <svg className="w-3 h-3" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>
-                </button>
-                {showWhSwitcher && (
-                  <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border w-56 py-1 z-50">
-                    {user?.role === "warehouse_admin" && ["/reports", "/dashboard"].includes(pathname) && (
-                      <button
-                        onClick={switchAllWarehouses}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] ${
-                          isAllWarehouses ? "text-blue-600 font-medium bg-blue-50" : ""
-                        }`}
-                      >
-                        <Building2 size={14} className="text-amber-500" />
-                        <span>{t("all_warehouses")}</span>
-                        <span className="text-xs text-amber-400 ml-auto">{t("all")}</span>
-                      </button>
-                    )}
-                    {user?.role === "warehouse_admin" && ["/reports", "/dashboard"].includes(pathname) && <div className="border-t border-gray-100" />}
+                  {whList.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label={t("warehouse_switch_action")}
+                      aria-expanded={showWhSwitcher}
+                      onClick={() => { setShowFullWarehouseName(false); setShowWhSwitcher(value => !value); }}
+                      className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    >
+                      <ChevronDown size={18} />
+                    </button>
+                  )}
+                </div>
+                {showFullWarehouseName && (
+                  <div role="tooltip" className="absolute left-0 top-full z-50 mt-1 w-max max-w-[calc(100vw-80px)] rounded-lg border border-blue-200 bg-white p-3 text-sm font-medium text-gray-900 shadow-lg">
+                    <span className="break-all">{whList.find(w => w.id === selectedWhId)?.name}</span>
+                    <button type="button" aria-label={t("close")} onClick={() => setShowFullWarehouseName(false)} className="ml-2 inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded hover:bg-gray-100"><X size={16} /></button>
+                  </div>
+                )}
+                {showWhSwitcher && whList.length > 1 && (
+                  <div className="absolute left-0 top-full z-50 mt-1 max-h-[70vh] w-72 max-w-[calc(100vw-80px)] overflow-y-auto rounded-lg border bg-white py-1 shadow-lg">
                     {whList.map(wh => (
                       <button
+                        type="button"
                         key={wh.id}
                         onClick={() => switchWarehouse(wh)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 min-h-[40px] ${
-                          wh.id === selectedWhId ? "text-blue-600 font-medium bg-blue-50" : ""
-                        }`}
+                        aria-current={wh.id === selectedWhId ? "true" : undefined}
+                        className={`flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${wh.id === selectedWhId ? "bg-blue-50 font-medium text-blue-600" : ""}`}
                       >
-                        <Building2 size={14} />
-                        <span>{wh.name}</span>
-                        <span className="text-xs text-gray-400 ml-auto">{wh.code}</span>
+                        <Building2 size={14} className="shrink-0" />
+                        <span className="min-w-0 break-all">{wh.name}</span>
+                        <span className="ml-auto shrink-0 text-xs text-gray-400">{wh.code}</span>
+                        {wh.id === selectedWhId && <span aria-label={t("warehouse_current_mark")} className="shrink-0 text-blue-600">✓</span>}
                       </button>
                     ))}
                     {user?.role === "warehouse_admin" && (
@@ -450,6 +453,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         + {t("new_warehouse")}
                       </Link>
                     )}
+                    <Link href="/select-warehouse" onClick={() => setShowWhSwitcher(false)} className="flex min-h-[44px] items-center border-t px-3 py-2 text-sm text-blue-700 hover:bg-blue-50">
+                      {t("warehouse_return_selection")}
+                    </Link>
                   </div>
                 )}
               </div>
@@ -518,7 +524,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
         {user && laborPageAllowed && pathname !== "/clock-in" && <PageNavigation />}
         <main className="flex-1 p-3 lg:p-6 bg-gray-50 overflow-auto">
-          <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}-${isAllWarehouses}-${JSON.stringify([user?.extra_permissions || [], user?.action_access?.grants || []])}`} className="animate-fade-in">
+          <div key={`${user?.id}-${user?.role}-${pathname}-${selectedWhId}-${JSON.stringify([user?.extra_permissions || [], user?.action_access?.grants || []])}`} className="animate-fade-in">
             {user && laborPageAllowed && (!["staff", "supervisor"].includes(user.role) || menuPermissions.length > 0) ? (minimumWorkspace ? <MinimalActionWorkspace modules={currentModules} /> : children) : null}
           </div>
           <BackToTop />

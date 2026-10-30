@@ -447,5 +447,9 @@
   "leave": "ခွင့်တောင်းရန်",
   "cash_advances": "ကုမ္ပဏီအတွက် ကြိုတင်စိုက်ထုတ်ငွေ",
   "page_back_to": "{page} သို့ ပြန်သွားရန်",
-  "page_back_employee_home": "ဝန်ထမ်းပင်မစာမျက်နှာ"
+  "page_back_employee_home": "ဝန်ထမ်းပင်မစာမျက်နှာ",
+  "warehouse_switch_action": "ဂိုဒေါင်ပြောင်းရန်",
+  "warehouse_current_mark": "လက်ရှိဂိုဒေါင်",
+  "warehouse_return_selection": "ဂိုဒေါင်ရွေးချယ်သည့်စာမျက်နှာသို့ ပြန်ရန်",
+  "warehouse_name_full": "ဂိုဒေါင်အမည်အပြည့်အစုံကြည့်ရန်"
 }

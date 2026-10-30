@@ -370,5 +370,9 @@
   "leave": "请假",
   "cash_advances": "垫款单",
   "page_back_to": "返回{page}",
-  "page_back_employee_home": "员工首页"
+  "page_back_employee_home": "员工首页",
+  "warehouse_switch_action": "切换仓库",
+  "warehouse_current_mark": "当前仓库",
+  "warehouse_return_selection": "返回仓选择页",
+  "warehouse_name_full": "查看仓库全名"
 }
