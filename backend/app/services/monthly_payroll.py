@@ -14,6 +14,24 @@ from app.services.early_departure_leave import leave_covers_early_departure
 from app.services.hourly_leave import hourly_leave_net_hours, is_hourly_leave, hourly_clock_hours
 
 
+def use_new_monthly(template, emp_start_date, period_end, is_resignation):
+    """Use the new calculation only for configured, complete natural months."""
+    mode = template.monthly_deduction_mode
+    configured = mode == "actual" or (
+        mode == "fixed" and template.monthly_fixed_days is not None
+        and template.monthly_fixed_days > 0
+    )
+    return bool(
+        configured
+        and not is_resignation
+        and emp_start_date.day == 1
+        and period_end == date(
+            emp_start_date.year, emp_start_date.month,
+            calendar.monthrange(emp_start_date.year, emp_start_date.month)[1],
+        )
+    )
+
+
 def monthly_rest_dates(template, start, end):
     """Derive all configured dates, including a fifth weekday; never write RestDay."""
     result = set()
