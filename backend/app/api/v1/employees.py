@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from app.database import get_db
 from app.models.employee import Employee, EmployeeRestDate
+from app.models.data_change_history import DataChangeHistory
 from app.models.warehouse import Warehouse
 from app.models.user import User
 from app.models.user_warehouse import UserWarehouse
@@ -35,6 +36,21 @@ REST_FIELDS = ("rest_rule_mode", "rest_days_per_month", "rest_pattern", "rest_we
 async def rest_dates_for(db, employee):
     return sorted((await db.execute(select(EmployeeRestDate.rest_date).where(EmployeeRestDate.employee_id==employee.id, EmployeeRestDate.warehouse_id==employee.warehouse_id, EmployeeRestDate.is_rest==True))).scalars())
 
+async def log_rest_change(db, employee, before, after, user):
+    if before == after:
+        return
+    db.add(DataChangeHistory(module="员工休息", record_id=employee.id, warehouse_id=employee.warehouse_id,
+        operator_id=user.id, operator_name=user.display_name or user.username, operation_type="edit",
+        before_data={"员工":employee.name,"休息日期":[d.isoformat() for d in before]},
+        after_data={"员工":employee.name,"休息日期":[d.isoformat() for d in after]}))
+
+async def recent_rest_changes(db, employee, user):
+    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        return []
+    rows = (await db.execute(select(DataChangeHistory).where(DataChangeHistory.module=="员工休息", DataChangeHistory.record_id==employee.id,
+        DataChangeHistory.warehouse_id==employee.warehouse_id).order_by(DataChangeHistory.id.desc()).limit(5))).scalars().all()
+    return [{"id":row.id,"operator":row.operator_name,"time":row.created_at.isoformat(),"before":row.before_data,"after":row.after_data} for row in rows]
+
 async def save_rest_dates(db, employee, dates, original, user, template_id=None):
     if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR) or employee.warehouse_id != get_wh_id(user):
         raise HTTPException(403, "只能由本仓库管理员或主管安排休息")
@@ -59,6 +75,7 @@ async def save_rest_dates(db, employee, dates, original, user, template_id=None)
         row.prior_is_rest = None
         row.updated_by = user.id
     await db.flush()
+    await log_rest_change(db, employee, before, selected, user)
 
 
 
@@ -217,6 +234,7 @@ async def list_employees(
     nationality: str | None = None,
     include_deleted: bool = False,
     active_only: bool = False,
+    rest_employee_id: Optional[int] = None,
     current_user: User = Depends(check_staff_permission_any(
         MENU_PERMISSIONS_BY_KEY["employees"].label,
         MENU_PERMISSIONS_BY_KEY["payroll"].label,
@@ -234,6 +252,9 @@ async def list_employees(
     count_q = select(func.count(Employee.id))
     query = query.where(Employee.warehouse_id.in_(wh_ids))
     count_q = count_q.where(Employee.warehouse_id.in_(wh_ids))
+    if rest_employee_id is not None:
+        query = query.where(Employee.id == rest_employee_id)
+        count_q = count_q.where(Employee.id == rest_employee_id)
     if active_only:
         # 只返回在职：is_deleted=False 且 status != resigned
         query = query.where(Employee.is_deleted == False, Employee.status != "resigned")
@@ -283,10 +304,12 @@ async def list_employees(
     month_start = thai_now().date().replace(day=1)
     month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
     effective_rests, rest_sources, rest_warnings = await effective_rest_calendar(db, emps, month_start, month_end)
+    histories = {e.id: await recent_rest_changes(db, e, current_user) for e in emps}
     schedules = {e.id: [d.isoformat() for d in await rest_dates_for(db, e)] for e in emps}
     return {
         "data": [{
             "rest_dates": schedules[e.id],
+            "rest_history": histories[e.id],
             "id": e.id, "warehouse_id": e.warehouse_id, "warehouse_name": wh_map.get(e.warehouse_id, ""),
             "name": e.name, "position": e.position,
             **{field: getattr(e, field) for field in IDENTITY_FIELDS},

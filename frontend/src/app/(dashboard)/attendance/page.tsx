@@ -110,6 +110,8 @@ export default function AttendancePage() {
 
   // Data
   const [employees, setEmployees] = useState<any[]>([]);
+  const [restReminder, setRestReminder] = useState<any>(null);
+  const [showRestReminder, setShowRestReminder] = useState(false);
   const [events, setEvents] = useState<Record<string, any>>({});
   const [leaves, setLeaves] = useState<any[]>([]);
   const [restWarnings, setRestWarnings] = useState<string[]>([]);
@@ -188,14 +190,17 @@ export default function AttendancePage() {
   async function loadCalendar() {
     const version = ++makeupLoadVersion.current;
     setMakeupDays({});
+    setRestReminder(null);
     setRestWarnings([]);
     setLoading(true);
     try {
       const r = await api.get<any>(`/attendance/calendar?start_date=${dateRange.start_date}&end_date=${dateRange.end_date}${selfQuery}`);
+      if (version !== makeupLoadVersion.current) return;
       const evtMap: Record<string, any> = {};
       (r.events || []).forEach((e: any) => { evtMap[`${e.date}_${e.employee_id}`] = e; });
       setEvents(evtMap);
       setRestWarnings(r.rest_warnings || []);
+      setRestReminder(r.rest_reminder || null);
       setEmployees(r.employees || []);
       void loadMakeupMarkers(version);
     } catch {}
@@ -337,6 +342,14 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
+      {!employeeView && ["warehouse_admin", "supervisor"].includes(role) && restReminder?.employees?.length > 0 && <section className="rounded-xl border border-amber-200 bg-amber-50 p-3" aria-label="未排休息提醒">
+        <button type="button" className="min-h-11 w-full text-left font-medium text-amber-900" onClick={() => setShowRestReminder(!showRestReminder)}>还有 {restReminder.employees.length} 人{restReminder.label}休息未排 点击查看</button>
+        {showRestReminder && <ul className="space-y-2">{restReminder.employees.map((e:any) => <li key={e.id} className="flex items-center justify-between gap-3 border-t border-amber-200 pt-2 text-sm">
+          <span>{e.name}<small className="block text-gray-600">{e.warehouse} · {e.position || "未填岗位"}</small></span>
+          <button type="button" className="min-h-11 min-w-16 rounded bg-white px-3 text-blue-700" onClick={() => router.push(`/employees?rest_employee_id=${e.id}&rest_month=${restReminder.month}`)}>去排</button>
+        </li>)}</ul>}
+      </section>}
+
       {(employeeView || role === "warehouse_labor" || attendanceApprove) && <MakeupRequests personal={employeeView || role === "warehouse_labor"} />}
       {(employeeView || role === "warehouse_labor") && <EmployeeLanguage />}
       {/* Header: Month Navigation + Tab Bar + Action Buttons */}

@@ -86,6 +86,8 @@ export default function EmployeesPage() {
     passport_expiry: "", work_permit_expiry: "",
     promotion_date: "", tags: "",
   };
+  const restLinkOpened = useRef(false);
+  const restTouch = useRef<{x:number;y:number}|null>(null);
   const [restMonth, setRestMonth] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).format(new Date()).slice(0,7));
   function moveRestMonth(offset: number) {
     const [year, month] = restMonth.split("-").map(Number);
@@ -96,14 +98,24 @@ export default function EmployeesPage() {
 
   useEffect(() => { if (!getToken()) router.push("/login"); loadLimit(); if (canReadPay) { loadTemplates(); loadDeductionTemplates(); } }, [canReadPay]);
 
-  useEffect(() => { setSelectedIds([]); setData([]); load(); }, [nationalityFilter]);
+  useEffect(() => { restLinkOpened.current = false; setSelectedIds([]); setData([]); load(); }, [nationalityFilter, user?.id]);
 
   async function load() {
     const request = ++listRequest.current;
     setLoading(true);
     try {
-      const r = await api.get<any>(`/employees?page_size=200${nationalityFilter ? `&nationality=${encodeURIComponent(nationalityFilter)}` : ""}`);
-      if (request === listRequest.current) setData(r.data || []);
+      const targetId = new URLSearchParams(window.location.search).get("rest_employee_id");
+      const r = await api.get<any>(`/employees?page_size=200${targetId ? `&rest_employee_id=${encodeURIComponent(targetId)}` : ""}${nationalityFilter ? `&nationality=${encodeURIComponent(nationalityFilter)}` : ""}`);
+      if (request === listRequest.current) {
+        setData(r.data || []);
+        if (targetId && canSetRest && !restLinkOpened.current) {
+          const target = (r.data || []).find((e:any) => String(e.id) === targetId);
+          if (target) { restLinkOpened.current = true; editEmployee(target);
+            const month = new URLSearchParams(window.location.search).get("rest_month");
+            if (month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) setRestMonth(month);
+          }
+        }
+      }
     } catch {}
     if (request === listRequest.current) setLoading(false);
   }
@@ -714,7 +726,7 @@ export default function EmployeesPage() {
               <span className="font-semibold">{editingId ? "编辑员工" : "新建员工"}</span>
               <button onClick={() => { setShowForm(false); setPhotoFile(null); }} className="ml-auto text-2xl" data-modal-close="true">&times;</button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-2 sm:p-5 space-y-4">
               <label className="block text-sm">国籍
                 <select disabled={!canReadDocuments} aria-label="国籍" className="form-input w-full min-h-11 mt-1" value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value})}>
                   <option value="">未填</option>
@@ -924,7 +936,10 @@ export default function EmployeesPage() {
                   <strong>{restMonth}</strong>
                   <button type="button" aria-label="下个月" className="min-h-11 min-w-11 border rounded" onClick={() => moveRestMonth(1)}>›</button>
                 </div>
-                <div className="overflow-x-auto"><div className="grid grid-cols-7 gap-1 min-w-[332px]" aria-label="排休日历">
+                <div className="overflow-x-auto"><div className="grid grid-cols-7 gap-0 min-w-[308px]" aria-label="排休日历"
+                  style={{touchAction:"pan-y"}}
+                  onTouchStart={e => { restTouch.current = {x:e.touches[0].clientX,y:e.touches[0].clientY}; }}
+                  onTouchEnd={e => { const start=restTouch.current; restTouch.current=null; if (!start) return; const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y; if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5) moveRestMonth(dx<0?1:-1); }}>
                   {["日","一","二","三","四","五","六"].map(day => <span key={day} className="text-center text-xs text-gray-500">{day}</span>)}
                   {Array.from({length:new Date(Number(restMonth.slice(0,4)), Number(restMonth.slice(5))-1,1).getDay()},(_,i)=><span key={`blank-${i}`} />)}
                   {Array.from({length:new Date(Number(restMonth.slice(0,4)), Number(restMonth.slice(5)),0).getDate()},(_,i)=> {
@@ -935,6 +950,14 @@ export default function EmployeesPage() {
                 </div></div>
                 <p className="text-xs text-gray-500">点日期选休息，再点取消；可翻月排多个月。月薪必须安排当月和下月，日薪不强制。本轮只用于考勤，工资接入另轮。</p>
                 <p className="text-xs break-words" aria-label="已选休息日期">{form.rest_dates?.join("、") || "尚未安排休息"}</p>
+                <div className="border-t pt-3 space-y-2" aria-label="最近排休修改">
+                  <h5 className="text-sm font-medium">最近修改</h5>
+                  {(data.find(e => e.id === editingId)?.rest_history || []).map((h:any) => <div key={h.id} className="text-xs text-gray-600 break-words">
+                    <p>{h.operator} · {new Date(h.time).toLocaleString("zh-CN",{timeZone:"Asia/Bangkok"})}</p>
+                    <p>原来：{h.before?.["休息日期"]?.join("、") || "无"}</p><p>改后：{h.after?.["休息日期"]?.join("、") || "无"}</p>
+                  </div>)}
+                  {!data.find(e => e.id === editingId)?.rest_history?.length && <p className="text-xs text-gray-400">暂无修改记录</p>}
+                </div>
               </fieldset>
 
               {/* Tags */}

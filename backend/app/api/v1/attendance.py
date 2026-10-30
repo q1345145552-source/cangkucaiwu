@@ -392,6 +392,8 @@ async def set_rest_days(
     except ValueError:
         raise HTTPException(400, "日期格式错误")
     await db.refresh(emp, with_for_update=True)
+    from app.api.v1.employees import rest_dates_for, log_rest_change
+    before = await rest_dates_for(db, emp)
     for day in days:
         row = (await db.execute(select(EmployeeRestDate).where(EmployeeRestDate.employee_id==emp.id, EmployeeRestDate.rest_date==day))).scalar_one_or_none()
         if row is None:
@@ -415,6 +417,7 @@ async def set_rest_days(
             row.prior_is_rest = None
         row.updated_by = current_user.id
     await db.flush()
+    await log_rest_change(db, emp, before, await rest_dates_for(db, emp), current_user)
     return {"message":"休息安排已更新", "added":len(days)}
 
 @router.get("/rest-days")
@@ -468,10 +471,14 @@ async def delete_rest_day(rest_day_id: int, current_user: User = Depends(check_s
     if not rd: raise HTTPException(404, "休息日不存在")
     wh_ids = get_wh_ids(current_user)
     if rd.warehouse_id not in wh_ids: raise HTTPException(403, "无权操作")
+    emp = await db.get(Employee, rd.employee_id, with_for_update=True)
+    from app.api.v1.employees import rest_dates_for, log_rest_change
+    before = await rest_dates_for(db, emp)
     rd.is_rest = False
     rd.source = "manual"
     rd.updated_by = current_user.id
     await db.flush()
+    await log_rest_change(db, emp, before, await rest_dates_for(db, emp), current_user)
     return {"message": "已取消休息，原记录保留"}
 
 # ═══ Absence ════════════════════════════════
@@ -533,6 +540,28 @@ async def effective_rest_calendar(db, emps, range_start, range_end):
     rests = {(row.employee_id,row.rest_date) for row in rows if row.is_rest}
     sources = {(row.employee_id,row.rest_date): ("manual_work" if not row.is_rest else "manual_rest" if row.source == "manual" else "profile") for row in rows}
     return rests, sources, []
+
+
+async def rest_schedule_reminder(db, user):
+    if user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        return None
+    warehouse_id = get_wh_id(user)
+    if not warehouse_id:
+        return None
+    today = thai_today()
+    start = today.replace(day=1)
+    following = today.day >= 20
+    if following:
+        start = (start.replace(day=28)+timedelta(days=4)).replace(day=1)
+    end = (start.replace(day=28)+timedelta(days=4)).replace(day=1)
+    scheduled = select(EmployeeRestDate.employee_id).where(EmployeeRestDate.warehouse_id==warehouse_id,
+        EmployeeRestDate.is_rest==True, EmployeeRestDate.rest_date>=start, EmployeeRestDate.rest_date<end)
+    rows = (await db.execute(select(Employee, Warehouse.name).join(SalaryTemplate, Employee.salary_template_id==SalaryTemplate.id)
+        .join(Warehouse, Employee.warehouse_id==Warehouse.id).where(Employee.warehouse_id==warehouse_id,
+        SalaryTemplate.warehouse_id==warehouse_id, SalaryTemplate.type=="monthly", Employee.is_deleted==False,
+        Employee.status!="resigned", Employee.id.not_in(scheduled)).order_by(Employee.id))).all()
+    return {"month":start.strftime("%Y-%m"),"label":"下月" if following else "当月",
+        "employees":[{"id":e.id,"name":e.name,"warehouse":name,"position":e.position} for e,name in rows]}
 
 
 # ═══ Calendar View ════════════════════════════
@@ -808,6 +837,7 @@ async def get_calendar(
         "employees": [{"id": e.id, "name": e.name, "position": e.position} for e in emps],
         "events": list(events.values()),
         "rest_warnings": rest_warnings,
+        "rest_reminder": await rest_schedule_reminder(db, current_user),
         "summary": {
             "leave_count": len(leave_set),
             "rest_count": len(rest_set),
