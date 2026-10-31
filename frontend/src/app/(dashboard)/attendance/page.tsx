@@ -255,6 +255,9 @@ export default function AttendancePage() {
   const [restReminder, setRestReminder] = useState<any>(null);
   const [showRestReminder, setShowRestReminder] = useState(false);
   const [events, setEvents] = useState<Record<string, any>>({});
+  const [cancelLeaveId, setCancelLeaveId] = useState<number | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
   const [leaves, setLeaves] = useState<any[]>([]);
   const [restWarnings, setRestWarnings] = useState<string[]>([]);
   const [restDays, setRestDays] = useState<any[]>([]);
@@ -415,6 +418,23 @@ export default function AttendancePage() {
       loadLeaves(); loadCalendar();
     } catch (err: any) { toast("error", err.message || t("operation_failed")); }
   }
+
+  async function cancelLeave() {
+    if (cancelLeaveId === null || cancelling) return;
+    if (!cancelReason.trim()) { toast("error", "请填写撤销原因"); return; }
+    setCancelling(true);
+    try {
+      await api.put(`/attendance/leaves/${cancelLeaveId}/cancel`, { reason: cancelReason.trim() });
+      toast("success", "已撤销请假"); setCancelLeaveId(null); setCancelReason("");
+      loadLeaves(); loadCalendar();
+    } catch (error: any) { toast("error", error.message || "撤销失败"); }
+    finally { setCancelling(false); }
+  }
+  const cancelButton = (leave: any) => ["pending", "approved"].includes(leave.status) && (
+    <button type="button" disabled={leave.employee_id === user?.self_employee_id || leave.employee_id === user?.attendance_employee_id}
+      onClick={() => { setCancelLeaveId(leave.id); setCancelReason(""); }}
+      className="text-red-600 border border-red-200 rounded px-3 min-h-[44px] shrink-0">撤销请假</button>
+  );
 
   async function approveLeave(id: number) {
     try { const r = await api.put<any>(`/attendance/leaves/${id}/approve`, {}); toast("success", t("att_approved_success")); if (r.warning) window.alert(r.warning); loadLeaves(); loadCalendar(); }
@@ -661,7 +681,8 @@ export default function AttendancePage() {
                   {l.reason && <span className="text-gray-400 ml-2">- {l.reason}</span>}
                   {l.photo_path && <a href={`/${l.photo_path}`} target="_blank" className="text-blue-500 ml-2 text-xs">{t("att_view_proof")}</a>}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  {cancelButton(l)}
                   <ActionGate anyOf={["attendance.approve_leave#approve"]}><button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => approveLeave(l.id)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs">{t("att_approve")}</button></ActionGate>
                   <ActionGate anyOf={["attendance.reject_leave#approve"]}><button disabled={l.employee_id === user?.self_employee_id || l.employee_id === user?.attendance_employee_id} onClick={() => rejectLeave(l.id)} className="text-red-500 hover:bg-red-50 px-2 py-1 rounded text-xs">{t("att_reject")}</button></ActionGate>
                 </div>
@@ -671,7 +692,11 @@ export default function AttendancePage() {
               <details className="text-xs text-gray-400">
                 <summary>{t("att_history")}</summary>
                 {leaves.filter((l: any) => l.status !== "pending").map((l: any) => (
-                  <div key={l.id} className="py-1">{l.employee_name} {l.leave_date} - {l.status === "approved" ? t("att_approved") : t("att_rejected")}</div>
+                  <div key={l.id} className="py-2 flex flex-wrap gap-2 items-center">
+                    <span>{l.employee_name} {l.leave_date} - {l.status === "cancelled" ? "已撤销" : l.status === "approved" ? t("att_approved") : t("att_rejected")}</span>
+                    {cancelButton(l)}
+                    {l.status === "cancelled" && <span>撤销人：{l.cancelled_by || "—"} · 时间：{l.cancelled_at || "—"} · 原因：{l.cancel_reason || "—"}</span>}
+                  </div>
                 ))}
               </details>
             )}
@@ -697,6 +722,17 @@ export default function AttendancePage() {
         </>
       )}
 
+      {cancelLeaveId !== null && <div className="modal-overlay z-50" role="dialog" aria-modal="true" aria-label="撤销请假">
+        <div className="bg-white rounded-2xl w-full max-w-md p-5 m-3 space-y-4">
+          <h3 className="font-semibold text-lg">撤销请假</h3>
+          <label className="block text-sm">撤销原因（必填）<textarea aria-label="撤销原因" className="form-input mt-2" rows={3} maxLength={500} value={cancelReason} onChange={e => setCancelReason(e.target.value)} /></label>
+          <p className="text-sm text-gray-500">撤销后保留请假记录，出勤按当天实际打卡判断。</p>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary min-h-[44px]" data-modal-close="true" disabled={cancelling} onClick={() => setCancelLeaveId(null)}>关闭</button>
+            <button type="button" className="btn-primary min-h-[44px]" disabled={cancelling} onClick={cancelLeave}>{cancelling ? "撤销中…" : "确认撤销"}</button>
+          </div>
+        </div>
+      </div>}
       {/* Leave Form Modal */}
       {showLeaveForm && (
         <div className="modal-overlay z-50" >

@@ -411,6 +411,28 @@ async def list_records(
         } for r in records],
     }
 
+def _validate_makeup_reason(reason):
+    value = (reason or "").strip()
+    if len("".join(value.split())) < 5 or not any(c.isalpha() for c in value):
+        raise HTTPException(400, "补卡原因请写清楚具体原因 至少五个字，不能只写数字或符号")
+    return value
+
+
+async def _ensure_no_full_leave(db, employees, warehouse_id, target):
+    from app.models.attendance import LeaveRequest
+    from app.models.employee import Employee
+    ids = sorted(e.id for e in employees)
+    await db.execute(select(Employee.id).where(Employee.id.in_(ids)).order_by(Employee.id).with_for_update())
+    leaves = (await db.execute(select(LeaveRequest).where(
+        LeaveRequest.employee_id.in_(ids), LeaveRequest.warehouse_id == warehouse_id,
+        LeaveRequest.leave_date == target, LeaveRequest.status.in_(("pending", "approved")),
+    ))).scalars().all()
+    blocked = {r.employee_id for r in leaves if (r.duration_type or "full") == "full"}
+    if blocked:
+        names = "、".join(e.name for e in employees if e.id in blocked)
+        raise HTTPException(400, f"此人当天有全天假 请先撤销请假再补卡：{names}")
+
+
 class MakeupCreate(BaseModel):
     model_config = {"extra": "forbid"}
     employee_id: int
@@ -466,9 +488,7 @@ async def makeup_clock_in(
     if (today - target).days > 60:
         raise HTTPException(400, "不能补超过60天以前的记录，请联系管理员")
 
-    reason = (req.reason or "").strip()
-    if not reason:
-        raise HTTPException(400, "请填写补卡原因")
+    reason = _validate_makeup_reason(req.reason)
 
     sessions: list[int] = []
     for s in req.sessions:
@@ -485,6 +505,7 @@ async def makeup_clock_in(
     if emp.status == "resigned":
         raise HTTPException(400, "该员工已离职，不能补卡")
 
+    await _ensure_no_full_leave(db, [emp], wh_id, target)
     await independent_employee(db, current_user, emp.id)
     emp_to_user, _ = await resolve_employee_user_map(db, [emp])
     uid = emp_to_user.get(emp.id)
@@ -583,9 +604,7 @@ async def batch_makeup_clock_in(
         raise HTTPException(400, "请先选择仓库")
     if req.date > thai_today():
         raise HTTPException(400, "不能补未来的日期")
-    reason = req.reason.strip()
-    if not reason:
-        raise HTTPException(400, "请填写补卡原因")
+    reason = _validate_makeup_reason(req.reason)
     if any(s not in SESSIONS for s in req.sessions):
         raise HTTPException(400, "打卡时点只能为1到4")
     from app.services.attendance_exemptions import ensure_makeup_allowed
@@ -600,6 +619,7 @@ async def batch_makeup_clock_in(
         raise HTTPException(404, "员工不存在或不属于当前仓库")
     if any(e.status == "resigned" for e in employees):
         raise HTTPException(400, "所选员工中有已离职员工，不能补卡")
+    await _ensure_no_full_leave(db, employees, wh_id, req.date)
     for employee in employees:
         await independent_employee(db, current_user, employee.id)
     emp_to_user, _ = await resolve_employee_user_map(db, employees)
@@ -1049,6 +1069,8 @@ async def request_personal_makeup(req: PersonalMakeupCreate,
     if len(set(req.sessions)) != len(req.sessions) or any(s not in SESSIONS for s in req.sessions) or not req.reason.strip():
         raise HTTPException(400, '请填写有效时段和原因')
     emp = current_user._attendance_employee
+    _validate_makeup_reason(req.reason)
+    await _ensure_no_full_leave(db, [emp], emp.warehouse_id, req.date)
     from app.services.attendance_exemptions import ensure_makeup_allowed
     await ensure_makeup_allowed(db, emp.warehouse_id, req.date)
     await db.execute(select(User).where(User.id == current_user.id).with_for_update())

@@ -83,6 +83,17 @@ def _fmt_hours(h: float) -> str:
         return str(int(h2))
     return f"{h2:.2f}".rstrip("0").rstrip(".")
 
+async def _ensure_no_absence(db, employee_id, warehouse_id, start, end):
+    # Share the employee lock with absence/leave/makeup writes before checking.
+    await db.execute(select(Employee.id).where(Employee.id == employee_id).with_for_update())
+    found = (await db.execute(select(Absence.id).where(
+        Absence.employee_id == employee_id, Absence.warehouse_id == warehouse_id,
+        Absence.absence_date >= start, Absence.absence_date <= end,
+    ).limit(1))).scalar_one_or_none()
+    if found is not None:
+        raise HTTPException(400, "此人当天已标缺勤，不能同时录请假，请先撤销缺勤")
+
+
 # ═══ Leave Request ════════════════════════════
 class LeaveCreate(BaseModel):
     leave_date: str  # YYYY-MM-DD
@@ -134,14 +145,16 @@ async def create_leave(
     except:
         raise HTTPException(400, t("invalid_date_format", lang))
 
+    await _ensure_no_absence(db, emp.id, wh_id, leave_dt, leave_dt)
+
     # Check duplicate date（同一天不可重复申请）
     dup = (await db.execute(
         select(LeaveRequest).where(
             LeaveRequest.employee_id == emp.id,
             LeaveRequest.leave_date == leave_dt,
-            LeaveRequest.status != "rejected",
+            LeaveRequest.status.in_(("pending", "approved")),
         )
-    )).scalar_one_or_none()
+    )).scalars().first()
     if dup:
         raise HTTPException(400, t("leave_already_submitted", lang))
 
@@ -235,6 +248,8 @@ async def admin_record_leave(
             except (ValueError, TypeError):
                 notified_at = thai_now()
 
+    await _ensure_no_absence(db, emp.id, wh_id, start, end)
+
     # Preflight the whole range: reject duplicates before creating any records.
     dup = (await db.execute(
         select(LeaveRequest.id).where(
@@ -313,14 +328,59 @@ async def list_leaves(
 
     result = await db.execute(query.order_by(LeaveRequest.created_at.desc()))
     rows = result.all()
+    from app.models.data_change_history import DataChangeHistory
+    cancellations = (await db.execute(select(DataChangeHistory).where(
+        DataChangeHistory.module == "leave", DataChangeHistory.operation_type == "cancel",
+        DataChangeHistory.record_id.in_([r.id for r, _ in rows]),
+    ).order_by(DataChangeHistory.id))).scalars().all() if rows else []
+    cancel_by_id = {h.record_id: {"cancelled_by": h.operator_name,
+        "cancelled_at": h.after_data.get("cancelled_at"),
+        "cancel_reason": h.after_data.get("reason")} for h in cancellations}
     return {"data": [{
         "id": r.id, "employee_id": r.employee_id, "employee_name": name,
         "leave_date": r.leave_date.isoformat(), "leave_type": r.leave_type,
         "duration_type": r.duration_type or "full", "hours": r.hours,
         "photo_path": r.photo_path, "status": r.status, "reason": r.reason,
+        **cancel_by_id.get(r.id, {}),
         "notified_at": r.notified_at.isoformat() if r.notified_at else None,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     } for r, name in rows]}
+
+class LeaveCancel(BaseModel):
+    model_config = {"extra": "forbid"}
+    reason: str
+
+
+@router.put("/leaves/{leave_id}/cancel")
+async def cancel_leave(leave_id: int, req: LeaveCancel,
+    current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)),
+    db: AsyncSession = Depends(get_db)):
+    if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.SUPERVISOR):
+        raise HTTPException(403, "只有仓库管理员和主管可以撤销请假")
+    reason = req.reason.strip()
+    if not reason or len(reason) > 500:
+        raise HTTPException(400, "请填写撤销原因（最多500字）")
+    lr = (await db.execute(select(LeaveRequest).where(
+        LeaveRequest.id == leave_id, LeaveRequest.warehouse_id.in_(get_wh_ids(current_user)),
+    ).with_for_update())).scalar_one_or_none()
+    if lr is None:
+        raise HTTPException(404, "请假申请不存在或无权操作")
+    await independent_employee(db, current_user, lr.employee_id)
+    if lr.status not in ("pending", "approved"):
+        raise HTTPException(409, "只能撤销待处理或已批准的请假，不能重复撤销")
+    from app.services.data_history import record_history
+    cancelled_at = thai_now().isoformat()
+    await record_history(db, module="leave", record_id=lr.id, operator=current_user,
+        operation_type="cancel", warehouse_id=lr.warehouse_id,
+        before={"status": lr.status}, after={"status": "cancelled", "reason": reason,
+            "cancelled_at": cancelled_at, "employee_id": lr.employee_id,
+            "leave_date": lr.leave_date.isoformat()})
+    lr.status = "cancelled"
+    await db.flush()
+    return {"id": lr.id, "status": "cancelled", "message": "已撤销请假",
+        "cancelled_by": current_user.display_name or current_user.username,
+        "cancelled_at": cancelled_at, "cancel_reason": reason}
+
 
 @router.put("/leaves/{leave_id}/approve")
 async def approve_leave(leave_id: int, current_user: User = Depends(check_staff_permission(_LEAVE_PERMISSION)), db: AsyncSession = Depends(get_db)):
@@ -333,6 +393,7 @@ async def approve_leave(leave_id: int, current_user: User = Depends(check_staff_
     await independent_employee(db, current_user, lr.employee_id)
     if lr.status != 'pending':
         raise HTTPException(409, '只能审批待处理的请假申请')
+    await _ensure_no_absence(db, lr.employee_id, lr.warehouse_id, lr.leave_date, lr.leave_date)
     lr.status = "approved"
     lr.reviewed_by = current_user.id
     lr.reviewed_at = thai_now()
@@ -508,6 +569,13 @@ async def mark_absence(
     except:
         raise HTTPException(400, "日期格式错误")
 
+    await db.execute(select(Employee.id).where(Employee.id == emp.id).with_for_update())
+    leave = (await db.execute(select(LeaveRequest.id).where(
+        LeaveRequest.employee_id == emp.id, LeaveRequest.warehouse_id == wh_id,
+        LeaveRequest.leave_date == dt, LeaveRequest.status.in_(("pending", "approved")),
+    ).limit(1))).scalar_one_or_none()
+    if leave is not None:
+        raise HTTPException(400, "此人当天有请假 不能同时标缺勤")
     dup = (await db.execute(
         select(Absence).where(Absence.employee_id == req.employee_id, Absence.absence_date == dt)
     )).scalar_one_or_none()
