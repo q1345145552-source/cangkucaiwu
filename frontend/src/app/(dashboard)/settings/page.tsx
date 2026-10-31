@@ -50,9 +50,11 @@ export default function SettingsPage() {
   const [editUsername, setEditUsername] = useState("");
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editPassword, setEditPassword] = useState("");
+  const [editRole, setEditRole] = useState("");
   const [editWarehouseId, setEditWarehouseId] = useState<number | string>("");
   const [editWarehouseIds, setEditWarehouseIds] = useState<number[]>([]);
   const [editActive, setEditActive] = useState(true);
+  const viewingOwnAdmin = !!(editUser && user?.role === "warehouse_admin" && editUser.id === user.id);
   const [editAttendanceEnabled, setEditAttendanceEnabled] = useState(false);
   const [editAttendanceEmployee, setEditAttendanceEmployee] = useState<AttendanceEmployee | null>(null);
   const [attendanceProfileLoading, setAttendanceProfileLoading] = useState(false);
@@ -206,6 +208,7 @@ export default function SettingsPage() {
     setEditUsername(u.username || "");
     setEditDisplayName(u.display_name || "");
     setEditPassword("");
+    setEditRole(u.role || "");
     setEditWarehouseId(u.warehouse_id || "");
     setEditWarehouseIds(u.warehouse_ids || []);
     setEditActive(u.is_active !== false);
@@ -227,24 +230,28 @@ export default function SettingsPage() {
 
   async function saveEdit() {
     if (!editUser) return;
+    const roleChanged = editRole !== editUser.role;
     try {
       const payload: any = {
         username: editUsername,
         display_name: editDisplayName,
-        ...(["supervisor", "staff"].includes(editUser.role) ? { action_permissions: editPerms, permission_reason: editPermissionReason } : {}),
+        ...(roleChanged
+          ? { role: editRole, action_permissions: [], permission_reason: "角色变更后清空权限" }
+          : (["supervisor", "staff"].includes(editRole) ? { action_permissions: editPerms, permission_reason: editPermissionReason } : {})),
         is_active: editActive,
       };
       if (editPassword) payload.password = editPassword;
-      if (editUser.role === "supervisor" || editUser.role === "warehouse_admin") {
-        if (editUser.role !== "supervisor" ||
+      if (editRole === "supervisor" || editRole === "warehouse_admin") {
+        if (roleChanged || editRole !== editUser.role || editRole !== "supervisor" ||
             editWarehouseIds.length !== (editUser.warehouse_ids || []).length ||
             editWarehouseIds.some(id => !(editUser.warehouse_ids || []).includes(id))) {
           payload.warehouse_ids = editWarehouseIds;
         }
-      } else if (editWarehouseId) {
-        payload.warehouse_id = +editWarehouseId;
+      } else if (roleChanged || editWarehouseId) {
+        const warehouseId = editWarehouseId || editWarehouseIds[0];
+        if (warehouseId) payload.warehouse_id = +warehouseId;
       }
-      if (["supervisor", "staff"].includes(editUser.role) &&
+      if (["supervisor", "staff"].includes(editRole) &&
           (editAttendanceEnabled !== !!editUser.attendance_enabled || (editAttendanceEnabled && !editUser.attendance_employee_id))) {
         payload.attendance_enabled = editAttendanceEnabled;
       }
@@ -256,7 +263,7 @@ export default function SettingsPage() {
       setEditUser(null);
       loadUsers();
     } catch (err: any) {
-      if (["supervisor", "staff"].includes(editUser.role) &&
+      if (["supervisor", "staff"].includes(editRole) &&
           (editAttendanceEnabled !== !!editUser.attendance_enabled || (editAttendanceEnabled && !editUser.attendance_employee_id))) {
         setEditAttendanceError(err.message || "更新失败");
       }
@@ -425,6 +432,9 @@ export default function SettingsPage() {
                           <Pencil size={12} /> 编辑
                         </button>
                       )}
+                      {user?.role === "warehouse_admin" && u.id === user.id && (
+                        <button onClick={() => openEdit(u)} className="text-primary text-xs hover:underline flex items-center gap-1">查看</button>
+                      )}
                       {(user?.role === "warehouse_admin") && (u.role === "staff" || u.role === "warehouse_labor") && (
                         <button onClick={() => setDeleteTarget(u)} className="text-red-500 text-xs hover:underline flex items-center gap-1">
                           <Trash2 size={12} /> 删除
@@ -450,14 +460,42 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold mb-1">编辑用户</h2>
                 <p className="text-sm text-gray-500 mb-4">{editUser.display_name} ({editUser.username})</p>
                 <div className="space-y-3 mb-4">
-                  <div><label className="form-label text-xs">用户名</label><input className="form-input text-sm" value={editUsername} onChange={e => setEditUsername(e.target.value)} /></div>
-                  <div><label className="form-label text-xs">显示名</label><input className="form-input text-sm" value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} /></div>
-                  <div><label className="form-label text-xs">重置密码（留空表示不改）</label><input type="password" className="form-input text-sm" value={editPassword} onChange={e => setEditPassword(e.target.value)} autoComplete="new-password" placeholder="留空不修改密码" /></div>
+                  <div><label className="form-label text-xs">用户名</label><input className="form-input text-sm" value={editUsername} onChange={e => setEditUsername(e.target.value)} disabled={viewingOwnAdmin} /></div>
+                  <div><label className="form-label text-xs">显示名</label><input className="form-input text-sm" value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} disabled={viewingOwnAdmin} /></div>
+                  <div><label className="form-label text-xs">重置密码（留空表示不改）</label><input type="password" className="form-input text-sm" value={editPassword} onChange={e => setEditPassword(e.target.value)} autoComplete="new-password" placeholder="留空不修改密码" disabled={viewingOwnAdmin} /></div>
+                  {(user?.role === "warehouse_admin" || user?.role === "super_admin") && (
+                    <div>
+                      <label className="form-label text-xs" htmlFor="edit-user-role">角色</label>
+                      {user?.role === "warehouse_admin" && editUser.id === user.id ? <>
+                        <input id="edit-user-role" className="form-input text-sm bg-gray-100 text-gray-500" value="仓库管理员" disabled readOnly />
+                        <p className="mt-1 text-xs text-gray-500">不能修改自己的角色</p>
+                      </> : <select id="edit-user-role" className="form-input text-sm" value={editRole}
+                        onChange={e => {
+                          const nextRole = e.target.value;
+                          setEditRole(nextRole);
+                          setEditPerms([]);
+                          setEditPermissionReason("");
+                          if (nextRole === "supervisor" && editWarehouseIds.length > 1) setEditWarehouseIds([]);
+                        }}>
+                        {user?.role === "warehouse_admin" ? <>
+                          <option value="warehouse_labor">仓库劳工</option>
+                          <option value="supervisor">仓库主管</option>
+                          <option value="staff">财务</option>
+                        </> : <>
+                          {editUser.role === "super_admin" && <option value="super_admin">超级管理员</option>}
+                          <option value="warehouse_admin">仓库管理员</option>
+                          <option value="warehouse_labor">仓库劳工</option>
+                          <option value="supervisor">仓库主管</option>
+                          <option value="staff">财务</option>
+                        </>}
+                      </select>}
+                    </div>
+                  )}
                   {(user?.role === "super_admin" || user?.role === "warehouse_admin") && (
                     <div><label className="form-label text-xs">所属仓库</label>
-                      {editUser.role === "supervisor" ? (
+                      {editRole === "supervisor" ? (
                         <>
-                          <select aria-label="主管所属仓库" className="form-input text-sm" value={editWarehouseIds.length === 1 ? editWarehouseIds[0] : ""}
+                          <select aria-label="主管所属仓库" className="form-input text-sm" disabled={viewingOwnAdmin} value={editWarehouseIds.length === 1 ? editWarehouseIds[0] : ""}
                             onChange={e => setEditWarehouseIds(e.target.value ? [+e.target.value] : [])}>
                             <option value="">请选择仓库</option>
                             {warehouses.map((w:any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
@@ -470,18 +508,18 @@ export default function SettingsPage() {
                           )}
                           <p className="text-xs text-gray-500 mt-1">主管只能管一个仓</p>
                         </>
-                      ) : editUser.role === "warehouse_admin" ? (
+                      ) : editRole === "warehouse_admin" ? (
                         <div className="border rounded p-2 space-y-1 max-h-48 overflow-y-auto">
                           {warehouses.map((w: any) => (
                             <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">
-                              <input type="checkbox" checked={editWarehouseIds.includes(w.id)}
+                              <input type="checkbox" checked={editWarehouseIds.includes(w.id)} disabled={viewingOwnAdmin}
                                 onChange={() => toggleWarehouseId(w.id)} />
                               <span className="text-sm">{w.name}（{w.code}）</span>
                             </label>
                           ))}
                         </div>
                       ) : (
-                        <select className="form-input text-sm" value={editWarehouseId} onChange={e => setEditWarehouseId(e.target.value)}>
+                        <select className="form-input text-sm" value={editWarehouseId} disabled={viewingOwnAdmin} onChange={e => setEditWarehouseId(e.target.value)}>
                           <option value="">请选择仓库</option>
                           {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}（{w.code}）</option>)}
                         </select>
@@ -490,19 +528,19 @@ export default function SettingsPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2 pt-1">
-                    <input type="checkbox" id="edit-active" checked={editActive} onChange={e => setEditActive(e.target.checked)} className="rounded" />
+                    <input type="checkbox" id="edit-active" checked={editActive} onChange={e => setEditActive(e.target.checked)} disabled={viewingOwnAdmin} className="rounded" />
                     <label htmlFor="edit-active" className="text-sm">启用账号（停用后此人无法登录）</label>
                   </div>
                 </div>
-                {(editUser.role === "staff" || editUser.role === "supervisor") && (
+                {(editRole === "staff" || editRole === "supervisor") && (
                   <div className="mb-4">
                     <div className="text-sm font-medium mb-2">扩展权限</div>
-                    <ActionPermissionsEditor role={editUser.role} selected={editPerms} onChange={setEditPerms}
+                    <ActionPermissionsEditor role={editRole} selected={editPerms} onChange={setEditPerms}
                       reason={editPermissionReason} onReasonChange={setEditPermissionReason} previous={editUser.action_access}
                       onLoadingChange={setPermissionsLoading} onErrorChange={setPermissionsError} />
                   </div>
                 )}
-                {(editUser.role === "supervisor" || editUser.role === "staff") && (
+                {(editRole === "supervisor" || editRole === "staff") && (
                   <div className="mb-4">
                     <AttendanceToggle id="edit-attendance-enabled" enabled={editAttendanceEnabled}
                       onChange={value => { setEditAttendanceEnabled(value); setEditAttendanceError(""); }}
@@ -514,7 +552,7 @@ export default function SettingsPage() {
                 )}
                 <div className="flex justify-end gap-3 sticky bottom-0 bg-white py-2">
                   <button onClick={() => setEditUser(null)} className="btn-secondary" data-modal-close="true">取消</button>
-                  <button onClick={saveEdit} disabled={attendanceSaving || (editUser.role === "supervisor" || editUser.role === "staff") && (permissionsLoading || !!permissionsError)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>
+                  {!viewingOwnAdmin && <button onClick={saveEdit} disabled={attendanceSaving || (editRole === "supervisor" || editRole === "staff") && (permissionsLoading || !!permissionsError)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">保存</button>}
                 </div>
               </div>
             </div>

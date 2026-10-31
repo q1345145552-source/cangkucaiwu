@@ -226,10 +226,13 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
-    own_scope(current_user, user.warehouse_id)
+    manager_role_change = (current_user.role == Role.WAREHOUSE_ADMIN
+                           and req.role is not None and req.role != user.role)
+    if not manager_role_change:
+        own_scope(current_user, user.warehouse_id)
     # 权限：只能编辑比自己级别低的角色
     # - 超管：可编辑除超管外的所有角色
-    # - 管理员：可编辑主管/财务/劳工（限自己仓库），不能改角色
+    # - 管理员：可编辑自己仓库的主管/财务/劳工；角色变更另按白名单和仓库范围校验
     # - 主管/财务/劳工：无编辑权限
     if current_user.role in (Role.STAFF, Role.WAREHOUSE_LABOR, Role.SUPERVISOR):
         raise HTTPException(status_code=403, detail="无权限编辑用户")
@@ -238,19 +241,40 @@ async def update_user(
     if (current_user.id == user_id
             and req.model_fields_set == {"attendance_enabled"}):
         return {"message": "用户更新成功", **_attendance_fields(user)}
-    if ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY.get(current_user.role, 0):
-        raise HTTPException(status_code=403, detail="只能编辑比自己级别低的角色")
     if current_user.role == Role.WAREHOUSE_ADMIN:
         # 只能编辑自己仓库的用户
         managed_wh_ids = (await db.execute(
             select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == current_user.id)
         )).scalars().all()
         managed_wh_ids = [w for w in managed_wh_ids] if managed_wh_ids else []
-        if not managed_wh_ids or user.warehouse_id not in managed_wh_ids:
+        role_changed = req.role is not None and req.role != user.role
+        if role_changed:
+            if current_user.id == user_id:
+                raise HTTPException(status_code=403, detail="不能修改自己的角色")
+            allowed_roles = {Role.WAREHOUSE_LABOR, Role.SUPERVISOR, Role.STAFF}
+            if user.role not in allowed_roles or req.role not in allowed_roles:
+                raise HTTPException(status_code=403, detail="只能修改仓库劳工、仓库主管、财务这三种角色")
+            target_wh_ids = set((await db.execute(
+                select(UserWarehouse.warehouse_id).where(UserWarehouse.user_id == user_id)
+            )).scalars().all())
+            if user.warehouse_id is not None:
+                target_wh_ids.add(user.warehouse_id)
+            mutation_wh_ids = set(getattr(current_user, "_mutation_warehouse_ids", managed_wh_ids))
+            if (not managed_wh_ids or not target_wh_ids
+                    or not target_wh_ids.issubset(set(managed_wh_ids))
+                    or not target_wh_ids.issubset(mutation_wh_ids)):
+                raise HTTPException(status_code=403, detail="不在我名下仓库")
+            if req.role == Role.WAREHOUSE_LABOR:
+                employee_id = (await db.execute(select(Employee.id).where(
+                    Employee.user_id == user_id, Employee.is_deleted.is_(False)
+                ))).scalar_one_or_none()
+                if employee_id is None:
+                    raise HTTPException(status_code=400, detail="改为仓库劳工前需要先关联员工档案")
+        elif not managed_wh_ids or user.warehouse_id not in managed_wh_ids:
             raise HTTPException(status_code=403, detail="只能编辑自己仓库的用户")
-        # 角色不能改
-        if req.role is not None and req.role != user.role:
-            raise HTTPException(status_code=403, detail="无权修改用户角色")
+
+    if ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY.get(current_user.role, 0):
+        raise HTTPException(status_code=403, detail="只能编辑比自己级别低的角色")
 
     await login_target_scope(db, current_user, user)
     # Grandfather an existing multi-warehouse supervisor only when warehouse
@@ -389,7 +413,7 @@ async def update_user(
     if req.password:
         after_data["password"] = "已重置密码"
 
-    await record_history(db, module="user", record_id=user_id, operator=current_user,
+    await record_history(db, module="账号管理" if req.role is not None and req.role != before_data["role"] else "user", record_id=user_id, operator=current_user,
                           operation_type="edit", before=before_data, after=after_data,
                           warehouse_id=user.warehouse_id)
 
