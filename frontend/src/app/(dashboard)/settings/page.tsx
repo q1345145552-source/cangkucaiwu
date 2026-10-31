@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const [rateForm, setRateForm] = useState({ from_currency: "CNY", to_currency: "THB", rate: "" });
   const [rateLoading, setRateLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: "warehouse_admin", warehouse_id: "", warehouse_ids: [] as number[] });
+  const [newUser, setNewUser] = useState({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "warehouse_labor", warehouse_id: "", warehouse_ids: [] as number[] });
   const [newPerms, setNewPerms] = useState<string[]>([]);
   const [newPermissionReason, setNewPermissionReason] = useState("");
   const [editPermissionReason, setEditPermissionReason] = useState("");
@@ -92,7 +92,7 @@ export default function SettingsPage() {
   }
   useEffect(() => {
     if (user?.role === "warehouse_admin") {
-      setNewUser(prev => ({ ...prev, role: "staff" }));
+      setNewUser(prev => ({ ...prev, role: "warehouse_labor" }));
     } else if (user?.role === "super_admin") {
       setNewUser(prev => ({ ...prev, role: "warehouse_admin" }));
     }
@@ -192,7 +192,7 @@ export default function SettingsPage() {
       }
       if (!attendanceFailed) toast("success", notice || "创建成功");
       setNewAttendanceEnabled(false);
-      setNewUser({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "staff", warehouse_id: "", warehouse_ids: [] });
+      setNewUser({ username: "", display_name: "", password: "", role: user?.role === "super_admin" ? "warehouse_admin" : "warehouse_labor", warehouse_id: "", warehouse_ids: [] });
       setNewPerms([]);
       loadUsers();
     } catch (err: any) { toast("error", err.message || "创建失败"); }
@@ -344,7 +344,7 @@ export default function SettingsPage() {
                   <option value="staff">仓库财务</option>
                   <option value="warehouse_labor">仓库劳工</option>
                 </>)}
-              </select></div>
+              </select><p className="mt-1 text-xs leading-5 text-gray-500">角色决定这个账号能看到哪些页面和能做什么 请务必选对</p></div>
               <div>
                 <label className="form-label">
                   所属仓库

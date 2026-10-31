@@ -23,6 +23,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(false);
   const [nationalityFilter, setNationalityFilter] = useState("");
   const listRequest = useRef(0);
+  const savedEmployeeForAccountNotice = useRef<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [maxLimit, setMaxLimit] = useState(50);
@@ -108,6 +109,11 @@ export default function EmployeesPage() {
       const r = await api.get<any>(`/employees?page_size=200${targetId ? `&rest_employee_id=${encodeURIComponent(targetId)}` : ""}${nationalityFilter ? `&nationality=${encodeURIComponent(nationalityFilter)}` : ""}`);
       if (request === listRequest.current) {
         setData(r.data || []);
+        const savedEmployee = (r.data || []).find((employee: any) => employee.id === savedEmployeeForAccountNotice.current);
+        if (savedEmployee) {
+          savedEmployeeForAccountNotice.current = null;
+          if (savedEmployee.user_id === null) toast("success", "人事档案已建好 这个人还没有登录账号 请到账号管理里给他建账号并选择角色");
+        }
         if (targetId && canSetRest && !restLinkOpened.current) {
           const target = (r.data || []).find((e:any) => String(e.id) === targetId);
           if (target) { restLinkOpened.current = true; editEmployee(target);
@@ -189,6 +195,7 @@ export default function EmployeesPage() {
       toast("error", "密码至少6位"); return;
     }
     try {
+      let savedEmployeeId = editingId;
       const payload: any = { ...form };
       if (!canSetRest) for (const key of ["rest_dates", "rest_original_dates"]) delete payload[key];
       if (user?.role !== "warehouse_admin") { delete payload.employee_no; delete payload.password; delete payload.user_id;
@@ -219,6 +226,7 @@ export default function EmployeesPage() {
         }
       } else {
         const r = await api.post<{id: number; warnings?: string[]}>("/employees", payload);
+        savedEmployeeId = r.id;
         // Upload photo if selected
         if (photoFile && r && (r as any).id !== undefined) {
           await uploadPhoto((r as any).id);
@@ -239,6 +247,7 @@ export default function EmployeesPage() {
       setPhotoFile(null);
       setPassportPhotoFile(null);
       setWorkPermitPhotoFile(null);
+      savedEmployeeForAccountNotice.current = savedEmployeeId;
       load();
       loadLimit();
     } catch (err: any) { toast("error", err.message || "操作失败"); }
@@ -774,6 +783,7 @@ export default function EmployeesPage() {
                     <option value="叉车司机">叉车司机</option>
                     <option value="财务">财务</option>
                   </select>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">岗位仅用于记录 不影响任何权限 权限请在账号管理里给他的账号选择角色</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
