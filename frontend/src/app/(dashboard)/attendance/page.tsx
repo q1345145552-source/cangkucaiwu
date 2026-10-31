@@ -2,7 +2,7 @@
 import { useTierPermission } from "@/hooks/useActionPermission";
 import ActionGate from "@/components/permissions/ActionGate";
 import MakeupRequests from "@/components/MakeupRequests";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,12 +10,12 @@ import EmployeeLanguage from "@/components/EmployeeLanguage";
 import { useEmployeeView } from "@/hooks/useEmployeeView";
 import { useI18n } from "@/hooks/useI18n";
 import { useRouter } from "next/navigation";
-import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3 } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, UserX, Bed, AlertCircle, CheckCircle, XCircle, Camera, Upload, UserPlus, Settings, Grid3X3, X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import ClockRecordsGrid from "@/components/ClockRecordsGrid";
 import SafeImage from "@/components/SafeImage";
 import AttendanceExemptions from "@/components/AttendanceExemptions";
 import BatchMakeupModal from "@/components/BatchMakeupModal";
-import { MakeupBadge, MakeupRecordDetails } from "@/components/MakeupDisplay";
+import { MakeupBadge, MakeupRecordDetails, type MakeupRecord } from "@/components/MakeupDisplay";
 import { loadClockRecordPages } from "@/lib/clock-record-pages";
 import { makeupRecordsByDay, attachMakeupDetails, MakeupDisplayRecord } from "@/lib/makeup-display";
 
@@ -87,6 +87,148 @@ function exemptCellDisplay(event: any, approvedLeaves: any[]) {
   };
 }
 
+type ViewedClockPhoto = {
+  employee_name: string;
+  date: string;
+  record: MakeupRecord & { session: number; photo_path: string; clocked_in_at?: string | null };
+};
+
+// Kept local to attendance: other photo viewers and upload flows are unchanged.
+function AttendancePhotoViewer({ photo, onClose, t, locale }: {
+  photo: ViewedClockPhoto; onClose: () => void; t: (key: string) => string; locale: string;
+}) {
+  const words = ({
+    zh: { title: "打卡原图", zoomIn: "放大", zoomOut: "缩小", reset: "还原", hint: "单指或鼠标拖动图片，双指缩放；也可使用加减按钮", normal: "正常打卡（非补卡）", failed: "原图加载失败，请重试", retry: "重试" },
+    th: { title: "รูปลงเวลาต้นฉบับ", zoomIn: "ขยาย", zoomOut: "ย่อ", reset: "คืนขนาด", hint: "ลากรูปด้วยนิ้วเดียวหรือเมาส์ ใช้สองนิ้วหรือปุ่มเพื่อซูม", normal: "ลงเวลาปกติ (ไม่ใช่การลงเวลาย้อนหลัง)", failed: "โหลดรูปต้นฉบับไม่สำเร็จ กรุณาลองอีกครั้ง", retry: "ลองอีกครั้ง" },
+    my: { title: "မူရင်းအချိန်မှတ်ဓာတ်ပုံ", zoomIn: "ချဲ့ရန်", zoomOut: "ချုံ့ရန်", reset: "မူလအရွယ်", hint: "လက်တစ်ချောင်း သို့မဟုတ် မောက်စ်ဖြင့် ဆွဲရွှေ့ပါ။ လက်နှစ်ချောင်း သို့မဟုတ် ခလုတ်ဖြင့် ချဲ့နိုင်သည်။", normal: "ပုံမှန်အချိန်မှတ်ခြင်း (ဖြည့်သွင်းခြင်းမဟုတ်)", failed: "မူရင်းဓာတ်ပုံ မဖွင့်နိုင်ပါ။ ထပ်စမ်းပါ။", retry: "ထပ်စမ်းရန်" },
+  } as const)[locale === "th" ? "th" : locale === "my" ? "my" : "zh"];
+  const dialog = useRef<HTMLDivElement>(null);
+  const viewport = useRef<HTMLDivElement>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
+  const current = useRef(view);
+  const gesture = useRef<{ view: typeof view; points: { x: number; y: number }[] } | null>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.current?.focus();
+    const observer = new ResizeObserver(entries => {
+      const rect = entries[0]?.contentRect;
+      if (rect) setSize({ width: rect.width, height: rect.height });
+    });
+    if (viewport.current) observer.observe(viewport.current);
+    return () => {
+      observer.disconnect();
+      document.body.style.overflow = overflow;
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
+  }, []);
+
+  function applyView(next: typeof view) {
+    const scale = Math.max(1, Math.min(8, next.scale));
+    const fit = imageSize.width && imageSize.height ? Math.min(size.width / imageSize.width, size.height / imageSize.height) : 0;
+    const maxX = Math.max(0, (imageSize.width * fit * scale - size.width) / 2);
+    const maxY = Math.max(0, (imageSize.height * fit * scale - size.height) / 2);
+    current.current = { scale, x: Math.max(-maxX, Math.min(maxX, next.x)), y: Math.max(-maxY, Math.min(maxY, next.y)) };
+    setView(current.current);
+  }
+
+  useEffect(() => {
+    applyView(current.current);
+  }, [size.width, size.height, imageSize.width, imageSize.height]);
+
+  function beginGesture() {
+    gesture.current = { view: { ...current.current }, points: [...pointers.current.values()].slice(0, 2) };
+  }
+
+  function pointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (loading || failed || (event.pointerType === "mouse" && event.button !== 0)) return;
+    event.preventDefault();
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    beginGesture();
+  }
+
+  function pointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!pointers.current.has(event.pointerId) || !gesture.current) return;
+    event.preventDefault();
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const points = [...pointers.current.values()].slice(0, 2), start = gesture.current;
+    if (points.length === 2 && start.points.length === 2) {
+      const distance = (pair: typeof points) => Math.hypot(pair[1].x - pair[0].x, pair[1].y - pair[0].y);
+      const initialDistance = distance(start.points);
+      if (initialDistance < 1) return;
+      const scale = Math.max(1, Math.min(8, start.view.scale * distance(points) / initialDistance));
+      const rect = event.currentTarget.getBoundingClientRect();
+      const middle = (pair: typeof points) => ({ x: (pair[0].x + pair[1].x) / 2 - rect.left - rect.width / 2, y: (pair[0].y + pair[1].y) / 2 - rect.top - rect.height / 2 });
+      const before = middle(start.points), after = middle(points), ratio = scale / start.view.scale;
+      applyView({ scale, x: after.x - (before.x - start.view.x) * ratio, y: after.y - (before.y - start.view.y) * ratio });
+    } else if (points.length === 1 && start.points.length === 1) {
+      applyView({ scale: start.view.scale, x: start.view.x + points[0].x - start.points[0].x, y: start.view.y + points[0].y - start.points[0].y });
+    }
+  }
+
+  function pointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!pointers.current.delete(event.pointerId)) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (pointers.current.size) beginGesture();
+    else gesture.current = null;
+  }
+
+  function zoom(scale: number) {
+    const next = Math.max(1, Math.min(8, scale)), ratio = next / current.current.scale;
+    applyView({ scale: next, x: current.current.x * ratio, y: current.current.y * ratio });
+    beginGesture();
+  }
+
+  return <div data-modal-overlay="true" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-2 sm:p-5">
+    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="attendance-photo-title" tabIndex={-1}
+      className="flex h-[94dvh] max-h-[1100px] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white text-gray-900 shadow-2xl outline-none"
+      onKeyDown={event => {
+        if (event.key !== "Tab") return;
+        const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+        const first = buttons[0], last = buttons[buttons.length - 1];
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || document.activeElement === event.currentTarget)) { event.preventDefault(); first?.focus(); }
+      }}>
+      <header className="flex shrink-0 items-start gap-3 border-b px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <h2 id="attendance-photo-title" className="break-words font-semibold">{words.title} · {photo.employee_name}</h2>
+          <p className="mt-1 break-words text-sm text-gray-600">{t("date")}：{photo.date} · {t("sessions")}：{t(SESSION_KEYS[photo.record.session] || "morning_shift")}</p>
+          <p className="mt-1 text-sm text-gray-600">{t("time")}：{photo.record.clocked_in_at ? new Date(photo.record.clocked_in_at).toLocaleTimeString(locale === "th" ? "th-TH" : locale === "my" ? "my-MM" : "zh-CN", { timeZone: "Asia/Bangkok", hour12: false }) : "—"}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">{photo.record.is_makeup ? <><MakeupBadge t={t} /><span>{t("makeup_by")}：{photo.record.makeup_by_name || (photo.record.makeup_by ? `#${photo.record.makeup_by}` : "—")}</span></> : words.normal}</p>
+        </div>
+        <button type="button" onClick={onClose} aria-label={t("close")} data-modal-close="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"><X aria-hidden="true" size={22} /></button>
+      </header>
+      <div ref={viewport} role="region" aria-label={words.title} className="relative min-h-0 flex-1 overflow-hidden bg-slate-950" style={{ touchAction: "none", cursor: view.scale > 1 ? "grab" : "default", userSelect: "none" }}
+        onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onLostPointerCapture={pointerUp}>
+        <img key={attempt} src={`/${photo.record.photo_path}`} alt={`${photo.employee_name} · ${photo.date} · ${t(SESSION_KEYS[photo.record.session] || "morning_shift")}`} draggable={false}
+          className={`h-full w-full object-contain${failed ? " invisible" : ""}`} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: "center" }}
+          onLoad={event => { setImageSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }); setLoading(false); setFailed(false); }}
+          onError={() => { setLoading(false); setFailed(true); }} />
+        {loading && <p role="status" className="pointer-events-none absolute inset-0 flex items-center justify-center text-white">{t("loading")}</p>}
+        {failed && <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-4 text-center text-white"><p>{words.failed}</p><button type="button" onClick={() => { setLoading(true); setFailed(false); setAttempt(value => value + 1); }} className="min-h-11 rounded-lg border border-white px-5">{words.retry}</button></div>}
+      </div>
+      <footer className="shrink-0 border-t px-3 py-3 sm:px-4">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button type="button" aria-label={words.zoomOut} onClick={() => zoom(current.current.scale - 0.25)} disabled={loading || failed || view.scale <= 1} className="flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 disabled:opacity-40"><ZoomOut aria-hidden="true" size={20} /></button>
+          <output aria-live="polite" className="min-w-16 text-center font-mono text-sm">{Math.round(view.scale * 100)}%</output>
+          <button type="button" aria-label={words.zoomIn} onClick={() => zoom(current.current.scale + 0.25)} disabled={loading || failed || view.scale >= 8} className="flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 disabled:opacity-40"><ZoomIn aria-hidden="true" size={20} /></button>
+          <button type="button" onClick={() => applyView({ scale: 1, x: 0, y: 0 })} disabled={loading || failed} className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-gray-300 px-3 text-sm disabled:opacity-40"><RotateCcw aria-hidden="true" size={16} />{words.reset}</button>
+        </div>
+        <p className="mt-2 text-center text-xs leading-5 text-gray-500">{words.hint}</p>
+      </footer>
+    </div>
+  </div>;
+}
+
 export default function AttendancePage() {
   const { employeeView, initialLeave } = useEmployeeView();
   const { toast } = useToast(); const { user } = useAuth() as { user: any }; const { t, locale } = useI18n(employeeView || user?.role === "warehouse_labor"); const router = useRouter();
@@ -154,6 +296,7 @@ export default function AttendancePage() {
   const [absenceReason, setAbsenceReason] = useState("");
   const [photoPopup, setPhotoPopup] = useState<any>(null);
   const [photoSessions, setPhotoSessions] = useState<any[]>([]);
+  const [viewedPhoto, setViewedPhoto] = useState<ViewedClockPhoto | null>(null);
   const [scheduleTimes, setScheduleTimes] = useState<Record<number, string>>({});
   const [makeupDays, setMakeupDays] = useState<Record<string, MakeupDisplayRecord[]>>({});
   const makeupLoadVersion = useRef(0);
@@ -766,7 +909,7 @@ export default function AttendancePage() {
 
       {/* Photo Popup */}
       {photoPopup && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"  data-modal-overlay="true">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" data-modal-overlay="true" aria-hidden={viewedPhoto ? true : undefined}>
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="bg-blue-500 text-white px-5 py-3 rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
               <Camera size={20} />
@@ -797,6 +940,9 @@ export default function AttendancePage() {
                   </div>
                   <MakeupRecordDetails record={s} t={t} locale={locale} />
                   {s.photo_path ? (
+                    <button type="button" aria-label={`${t("ot_view_photo")} · ${t(SESSION_KEYS[s.session] || "morning_shift")}`}
+                      onClick={() => setViewedPhoto({ employee_name: photoPopup.employee_name, date: photoPopup.date, record: s })}
+                      className="block min-h-11 min-w-11 w-full cursor-zoom-in rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
                     <SafeImage
                       src={`/${s.photo_thumb_path || s.photo_path}`}
                       fallbackSrc={`/${s.photo_path}`}
@@ -804,6 +950,7 @@ export default function AttendancePage() {
                       className="w-full rounded-lg max-h-64 object-cover border"
                       fallback={<div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">📷 {t("att_no_photo")}</div>}
                     />
+                    </button>
                   ) : (
                     <div className="w-full h-32 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
                       📷 {t("att_no_photo")}
@@ -818,6 +965,7 @@ export default function AttendancePage() {
           </div>
         </div>
       )}
+      {viewedPhoto && <AttendancePhotoViewer key={`${viewedPhoto.date}:${viewedPhoto.record.session}:${viewedPhoto.record.photo_path}`} photo={viewedPhoto} onClose={() => setViewedPhoto(null)} t={t} locale={locale} />}
     </div>
   );
 }
