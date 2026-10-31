@@ -19,7 +19,7 @@ async def monthly_view(db, warehouses, month):
         q.c.status == 'active', q.c.is_internal_transfer.is_(False)))).mappings().all()
     r = RechargeDeclaration
     declared = (await db.execute(select(r.currency, day(db,r.declare_date), r.amount, r.match_status).where(
-        r.warehouse_id.in_(ids),day(db,r.declare_date) >= start,day(db,r.declare_date) <= end))).all()
+        r.warehouse_id.in_(ids),r.is_voided.is_(False),day(db,r.declare_date) >= start,day(db,r.declare_date) <= end))).all()
     o = PurchaseOrder
     orders = (await db.execute(select(o.currency,day(db,o.created_at)).where(o.warehouse_id.in_(ids),
         day(db,o.created_at) >= start,day(db,o.created_at) <= end))).all()

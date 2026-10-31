@@ -28,6 +28,24 @@ from app.models.cash_advance_repayment import CashAdvanceRepayment
 from app.models.expense_fund import ExpenseFund, ExpenseFundItem, SystemSetting
 from app.core.security import hash_password
 
+async def _migrate_recharge_void_columns(conn):
+    """Add void metadata only; preserve all existing declaration values and rows."""
+    from sqlalchemy import text
+    for name, definition in (
+        ("is_voided", "BOOLEAN NOT NULL DEFAULT false"),
+        ("voided_at", "TIMESTAMPTZ"),
+        ("voided_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+        ("void_reason", "VARCHAR(500)"),
+    ):
+        try:
+            async with conn.begin_nested():
+                await conn.execute(text(f"ALTER TABLE recharge_declarations ADD COLUMN IF NOT EXISTS {name} {definition}"))
+        except Exception as exc:
+            print(f"充值申报作废字段 {name} 迁移失败：{exc}")
+            raise
+    print("充值申报作废字段迁移完成；历史申报默认未作废，不修改原金额或匹配状态")
+
+
 async def _migrate_account_nature(conn):
     """只加可空账户性质；不猜测旧性质，不改余额和历史流水。"""
     from sqlalchemy import text
@@ -638,6 +656,7 @@ async def seed():
         links = await _migrate_reconciliation_links(conn)
         print(f"匹配关联迁移: {links}")
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_recharge_void_columns(conn)
         # Required for clock-in uploads; fail startup if schema setup fails.
         await conn.execute(text("ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS photo_fingerprint VARCHAR(64)"))
         await conn.execute(text(

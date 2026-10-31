@@ -28,6 +28,7 @@ export default function RechargePage() {
   const { toast } = useToast(); const router = useRouter();
   const [data, setData] = useState<any[]>([]); const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("");
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -37,6 +38,8 @@ export default function RechargePage() {
   const [editForm, setEditForm] = useState({ customer_id: 0, declare_date: "", amount: "" as string | number, currency: "THB", payment_method: "", remark: "" });
   const [editScreenshotFile, setEditScreenshotFile] = useState<File | null>(null);
   const [deletingRow, setDeletingRow] = useState<any>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voiding, setVoiding] = useState(false);
   const [historyRow, setHistoryRow] = useState<any>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -46,10 +49,10 @@ export default function RechargePage() {
     amount: "" as string | number, currency: "THB", payment_method: "",
   });
 
-  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCustomers(); }, [page]);
+  useEffect(() => { if (!getToken()) router.push("/login"); load(); loadCustomers(); }, [page, statusFilter]);
 
   async function load() {
-    try { const res = await api.get<any>(`/recharge?page=${page}&page_size=20`); setData(res.data); setTotal(res.total); } catch {}
+    try { const res = await api.get<any>(`/recharge?page=${page}&page_size=20${statusFilter ? `&status=${statusFilter}` : ""}`); setData(res.data); setTotal(res.total); } catch {}
   }
 
   async function loadCustomers() {
@@ -164,12 +167,17 @@ export default function RechargePage() {
   }
 
   async function handleDelete() {
+    if (!voidReason.trim()) { toast("error", "请填写作废原因"); return; }
+    if (voiding) return;
+    setVoiding(true);
     try {
-      await api.delete(`/recharge/${deletingRow.id}`);
-      toast("success", "删除成功");
+      await api.delete(`/recharge/${deletingRow.id}`, { reason: voidReason.trim() });
+      toast("success", "申报已作废，记录保留，可在“已作废”筛选中查看");
       setDeletingRow(null);
+      setVoidReason("");
       load();
-    } catch (err: any) { toast("error", err.message || "删除失败"); }
+    } catch (err: any) { toast("error", err.message || "作废失败"); }
+    finally { setVoiding(false); }
   }
 
   async function openHistory(row: any) {
@@ -183,13 +191,14 @@ export default function RechargePage() {
     setHistoryLoading(false);
   }
 
-  const opTypeLabel = (op: string) => op === "create" ? "新建" : op === "edit" ? "编辑" : op === "delete" ? "删除" : op;
+  const opTypeLabel = (op: string) => op === "create" ? "新建" : op === "edit" ? "编辑" : op === "delete" ? "删除" : op === "void" ? "作废" : op;
   const opTypeColor = (op: string) => op === "create" ? "bg-green-100 text-green-700" : op === "edit" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700";
 
   function renderData(obj: any): string {
     if (!obj) return "-";
     if (typeof obj === "object") {
-      return Object.entries(obj).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join("，");
+      const labels: Record<string, string> = { is_voided: "作废状态", voided_at: "作废时间", voided_by: "作废人编号", voided_by_name: "作废人", void_reason: "作废原因" };
+      return Object.entries(obj).map(([k, v]) => `${labels[k] || k}: ${k === "is_voided" ? (v ? "已作废" : "正常") : k === "voided_at" && typeof v === "string" ? new Date(v).toLocaleString("zh-CN", { timeZone: "Asia/Bangkok" }) : typeof v === "object" ? JSON.stringify(v) : v}`).join("，");
     }
     return String(obj);
   }
@@ -198,7 +207,7 @@ export default function RechargePage() {
     { key: "customer_name", label: "客户", cellClassName: "max-w-[110px] md:max-w-[180px]",
       render: (v: string) => <div className="line-clamp-2 break-all leading-snug">{v}</div> },
     { key: "declare_date", label: "申报日期", render: (v: string) => v?.slice(0, 10) },
-    { key: "amount", label: "金额", align: "right" as const, render: (v: number) => v?.toLocaleString() },
+    { key: "amount", label: "金额", align: "right" as const, render: (v: number, row: any) => <span className={row.is_voided ? "text-gray-400 line-through" : ""}>{v?.toLocaleString()}</span> },
     { key: "currency", label: "币种", hideOnMobile: true },
     { key: "payment_method", label: "付款方式", hideOnMobile: true, render: (v: string) => {
       const map: Record<string, string> = { alipay: "支付宝", wechat: "微信", bank_transfer: "银行转账", company_account: "公户" };
@@ -212,7 +221,7 @@ export default function RechargePage() {
     ) : (
       <div className="flex items-center gap-1.5">
         <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs">未上传</span>
-        <button onClick={() => {
+        {!row.is_voided && <button onClick={() => {
           const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/jpg,image/webp';
           inp.onchange = async (e: any) => {
             const file = e.target.files?.[0]; if (!file) return;
@@ -224,19 +233,20 @@ export default function RechargePage() {
               toast("success", "截图补传成功"); load();
             } catch { toast("error", "补传失败"); }
           }; inp.click();
-        }} className="text-blue-600 text-xs hover:underline">补传</button>
+        }} className="text-blue-600 text-xs hover:underline">补传</button>}
       </div>
     ) },
     { key: "match_status", label: "匹配状态", hideOnMobile: true, render: (v: string) => {
-      const colors: any = { matched: "bg-green-100 text-green-700", unmatched: "bg-orange-100 text-orange-600" };
-      const labels: any = { matched: "已匹配", unmatched: "未匹配" };
+      const colors: any = { matched: "bg-green-100 text-green-700", unmatched: "bg-orange-100 text-orange-600", voided: "bg-gray-200 text-gray-500" };
+      const labels: any = { matched: "已匹配", unmatched: "未匹配", voided: "已作废" };
       return <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[v]||""}`}>{labels[v]||v}</span>;
     }},
     { key: "declarer_name", label: "申报人", hideOnMobile: true },
     { key: "id", label: "操作", render: (_: any, row: any) => (
       <div className="flex items-center gap-2">
-        <ActionGate anyOf={["recharge.edit_recharge"]}><button onClick={() => openEdit(row)} className="text-blue-600 hover:underline text-xs">编辑</button></ActionGate>
-        <button onClick={() => setDeletingRow(row)} className="text-red-500 hover:underline text-xs">删除</button>
+        {!row.is_voided && <><ActionGate anyOf={["recharge.edit_recharge"]}><button onClick={() => openEdit(row)} className="text-blue-600 hover:underline text-xs">编辑</button></ActionGate>
+        <button onClick={() => { setVoidReason(""); setDeletingRow(row); }} className="text-red-500 hover:underline text-xs">作废</button></>}
+        {row.is_voided && <span title={row.void_reason || ""} className="text-xs text-gray-500">已作废</span>}
         <button onClick={() => openHistory(row)} className="text-gray-500 hover:underline text-xs">历史</button>
       </div>
     ) },
@@ -299,7 +309,12 @@ export default function RechargePage() {
       </div>
 
       {/* 申报列表 */}
-      <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} />
+      <label className="mb-3 flex flex-wrap items-center gap-2 text-sm text-gray-600">申报状态
+        <select aria-label="申报状态" className="form-input w-auto min-h-11" value={statusFilter} onChange={event => { setPage(1); setStatusFilter(event.target.value); }}>
+          <option value="">正常申报（默认）</option><option value="unmatched">未匹配</option><option value="matched">已匹配</option><option value="voided">已作废</option>
+        </select>
+      </label>
+      <DataTable columns={columns} data={data} total={total} page={page} pageSize={20} onPageChange={setPage} rowClassName={row => row.is_voided ? "bg-gray-50 text-gray-400" : ""} />
 
       {/* 编辑弹窗 */}
       {editingRow && (
@@ -335,12 +350,15 @@ export default function RechargePage() {
       {/* 删除确认 */}
       {deletingRow && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4"  data-modal-overlay="true">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg mb-2">删除申报</h3>
-            <p className="text-sm text-gray-500 mb-5">确定要彻底删除这条申报吗？删除后变更历史仍会保留。</p>
+          <div role="dialog" aria-modal="true" aria-label="作废申报" className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2">作废申报</h3>
+            <p className="text-sm text-gray-500 mb-4">这条记录不会删除，只是不再参与对账和申报汇总。作废后可在“已作废”筛选中查看，操作会留下修改日志。</p>
+            <label className="mb-4 block text-sm text-gray-600">作废原因 <span className="text-red-500">*</span>
+              <textarea aria-label="作废原因" required maxLength={500} rows={3} className="form-input mt-1" value={voidReason} onChange={event => setVoidReason(event.target.value)} />
+            </label>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeletingRow(null)} className="btn-secondary" data-modal-close="true">取消</button>
-              <ActionGate anyOf={["recharge.delete_recharge#operate"]}><button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">删除</button></ActionGate>
+              <button onClick={() => setDeletingRow(null)} disabled={voiding} className="btn-secondary min-h-11" data-modal-close="true">取消</button>
+              <ActionGate anyOf={["recharge.delete_recharge#operate"]}><button onClick={handleDelete} disabled={voiding} className="min-h-11 bg-red-500 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50">{voiding ? "作废中…" : "确认作废"}</button></ActionGate>
             </div>
           </div>
         </div>

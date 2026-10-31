@@ -113,10 +113,10 @@ async def summarize(db, warehouses, start_date=None, end_date=None, month=None, 
     r = RechargeDeclaration
     declaration_currency = func.coalesce(r.currency,'THB')
     declarations = (await db.execute(select(r.warehouse_id, declaration_currency, func.sum(r.amount)).where(
-        r.warehouse_id.in_(ids), day(db,r.declare_date) >= start, day(db,r.declare_date) <= end
+        r.warehouse_id.in_(ids), r.is_voided.is_(False), day(db,r.declare_date) >= start, day(db,r.declare_date) <= end
         ).group_by(r.warehouse_id,declaration_currency))).all()
     unmatched = dict((await db.execute(select(r.warehouse_id,func.count()).where(r.warehouse_id.in_(ids),
-        day(db,r.declare_date) >= start,day(db,r.declare_date) <= end,r.match_status == 'unmatched').group_by(r.warehouse_id))).all())
+        r.is_voided.is_(False),day(db,r.declare_date) >= start,day(db,r.declare_date) <= end,r.match_status == 'unmatched').group_by(r.warehouse_id))).all())
     def amounts(source,wid):return {cur:float(money(value)) for warehouse,cur,value in source if warehouse == wid}
     def legacy_single(values):return next(iter(values.values())) if len(values)==1 else None if values else 0
     from app.services.internal_transfers import transfer_summary

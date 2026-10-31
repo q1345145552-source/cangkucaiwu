@@ -20,6 +20,7 @@ async def suggestions_for(db, flows):
     active=select(ReconciliationResult.declaration_id).where(ReconciliationResult.match_status.in_(ACTIVE_MATCHES),ReconciliationResult.declaration_id.is_not(None))
     rows=(await db.execute(select(RechargeDeclaration,Customer).join(Customer,Customer.id==RechargeDeclaration.customer_id).where(
         RechargeDeclaration.warehouse_id.in_({f.warehouse_id for f in flows}),
+        RechargeDeclaration.is_voided.is_(False),
         Customer.warehouse_id==RechargeDeclaration.warehouse_id,
         RechargeDeclaration.match_status=='unmatched',RechargeDeclaration.amount>0,
         RechargeDeclaration.id.not_in(active)))).all()

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index, Boolean, UniqueConstraint, text
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index, Boolean, UniqueConstraint, text, false
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -35,6 +35,10 @@ class RechargeDeclaration(Base):
     remark = Column(String(500), nullable=True)
     declarer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     match_status = Column(String(20), nullable=False, default=MatchStatus.UNMATCHED.value)
+    is_voided = Column(Boolean, nullable=False, default=False, server_default=false())
+    voided_at = Column(DateTime(timezone=True), nullable=True)
+    voided_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    void_reason = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     warehouse = relationship("Warehouse", back_populates="recharge_declarations")

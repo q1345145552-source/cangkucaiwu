@@ -47,6 +47,7 @@ async def dashboard_stats(current_user: User = Depends(get_current_user), db: As
         return {"scope":"onsite","employee_count":count}
     # Total recharge this month
     rq = select(func.coalesce(func.sum(RechargeDeclaration.amount), 0)).where(
+        RechargeDeclaration.is_voided.is_(False),
         func.to_char(RechargeDeclaration.declare_date, 'YYYY-MM') == func.to_char(func.now(), 'YYYY-MM')
     )
     rq = _wh_filter(rq, RechargeDeclaration, current_user)
@@ -60,7 +61,7 @@ async def dashboard_stats(current_user: User = Depends(get_current_user), db: As
     total_incoming = (await db.execute(iq)).scalar() or 0
 
     # Unmatched recharges
-    uq = select(func.count(RechargeDeclaration.id)).where(RechargeDeclaration.match_status == 'unmatched')
+    uq = select(func.count(RechargeDeclaration.id)).where(RechargeDeclaration.is_voided.is_(False), RechargeDeclaration.match_status == 'unmatched')
     uq = _wh_filter(uq, RechargeDeclaration, current_user)
     unmatched = (await db.execute(uq)).scalar() or 0
 

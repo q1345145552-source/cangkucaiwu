@@ -238,6 +238,7 @@ async def _recharge_total(db: AsyncSession, wh_id: int, start: date, end: date) 
     """一段时间内该仓库的充值金额合计。"""
     result = (await db.execute(
         select(func.sum(RechargeDeclaration.amount)).where(
+            RechargeDeclaration.is_voided.is_(False),
             RechargeDeclaration.warehouse_id == wh_id,
             func.date(RechargeDeclaration.declare_date) >= start,
             func.date(RechargeDeclaration.declare_date) <= end,

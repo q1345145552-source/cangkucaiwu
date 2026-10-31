@@ -1,5 +1,6 @@
 from app.core.round5_access import own_read_ids
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from datetime import datetime
@@ -11,12 +12,23 @@ from app.models.user import User
 from app.core.permissions import check_staff_permission, get_wh_id, get_wh_ids, Role, require_non_labor
 from app.schemas.business import RechargeCreate
 from app.services.data_history import record_history
+from app.core.timezone import thai_now
 
 from app.core.menu_registry import MENU_PERMISSIONS_BY_KEY
 
 _PERMISSION = MENU_PERMISSIONS_BY_KEY["recharge"].label
 
 router = APIRouter()
+
+
+class RechargeVoid(BaseModel):
+    reason: str = Field(..., max_length=500)
+
+
+def _void_info(record):
+    return {"is_voided": record.is_voided,
+            "voided_at": record.voided_at.isoformat() if record.voided_at else None,
+            "voided_by": record.voided_by, "void_reason": record.void_reason}
 
 def _manual_time(value: str) -> datetime:
     from app.core.timezone import thai_now, THAI_TZ
@@ -75,7 +87,10 @@ async def list_recharges(
     if customer_id:
         query = query.where(RechargeDeclaration.customer_id == customer_id)
         count_q = count_q.where(RechargeDeclaration.customer_id == customer_id)
-    if status:
+    void_filter = RechargeDeclaration.is_voided.is_(True) if status == "voided" else RechargeDeclaration.is_voided.is_(False)
+    query = query.where(void_filter)
+    count_q = count_q.where(void_filter)
+    if status and status != "voided":
         query = query.where(RechargeDeclaration.match_status == status)
         count_q = count_q.where(RechargeDeclaration.match_status == status)
     if search and search.strip():
@@ -112,6 +127,7 @@ async def list_recharges(
         "transaction_no": r.transaction_no, "account_tail": r.account_tail,
         "screenshot": r.screenshot, "remark": r.remark,
         "match_status": r.match_status or "unmatched",
+        **_void_info(r),
         "declarer_name": user_map.get(r.declarer_id, ""),
         "created_at": r.created_at.isoformat() if r.created_at else None,
     } for r in records], "total": total, "page": page, "page_size": page_size}
@@ -158,7 +174,7 @@ async def get_recharge(recharge_id: int, current_user: User = Depends(check_staf
         raise HTTPException(403, "无权查看其他仓库的充值申报")
     if current_user.role == Role.SUPERVISOR and r.declarer_id not in await own_read_ids(db,current_user):
         raise HTTPException(403, '只能查看本人充值申报')
-    return {"id": r.id, "amount": r.amount, "currency": r.currency, "declare_date": str(r.declare_date), **_time_info(r.declare_date), "match_status": r.match_status, "remark": r.remark}
+    return {"id": r.id, "amount": r.amount, "currency": r.currency, "declare_date": str(r.declare_date), **_time_info(r.declare_date), "match_status": r.match_status, "remark": r.remark, **_void_info(r)}
 
 @router.put("/{recharge_id}")
 async def edit_recharge(recharge_id: int, req: RechargeCreate,
@@ -173,6 +189,8 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
     if not r: raise HTTPException(404, "不存在")
     if r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作自己仓库的数据")
+    if r.is_voided:
+        raise HTTPException(400, "该申报已作废，不能修改")
     if req.customer_id:
         await _check_customer_warehouse(db, req.customer_id, r.warehouse_id)
     linked = (await db.execute(select(ReconciliationDeclaration.id).where(ReconciliationDeclaration.declaration_id==r.id, ReconciliationDeclaration.is_active.is_(True)).limit(1))).first()
@@ -200,6 +218,7 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
 
 @router.delete("/{recharge_id}")
 async def delete_recharge(recharge_id: int,
+                          req: RechargeVoid | None = Body(None),
                           current_user: User = Depends(check_staff_permission(_PERMISSION)),
                           db: AsyncSession = Depends(get_db)):
     if current_user.role == Role.SUPER_ADMIN:
@@ -211,15 +230,30 @@ async def delete_recharge(recharge_id: int,
     if not r: raise HTTPException(404, "不存在")
     if r.warehouse_id not in get_wh_ids(current_user):
         raise HTTPException(403, "只能操作自己仓库的数据")
-    if (await db.execute(select(ReconciliationDeclaration.id).where(ReconciliationDeclaration.declaration_id==r.id, ReconciliationDeclaration.is_active.is_(True)).limit(1))).first():
-        raise HTTPException(400,'已关联到账的申报不能删除，请先核对')
+    if r.is_voided:
+        raise HTTPException(400, "该申报已作废，不能重复作废")
+    if not req or not req.reason.strip():
+        raise HTTPException(400, "只允许作废，不许硬删，请填写作废原因")
+    if r.match_status not in (None, MatchStatus.UNMATCHED) or (await db.execute(select(ReconciliationDeclaration.id).where(ReconciliationDeclaration.declaration_id==r.id, ReconciliationDeclaration.is_active.is_(True)).limit(1))).first():
+        raise HTTPException(400, "请先撤销匹配再作废")
     wh_id = r.warehouse_id
     before = {
         "amount": r.amount, "currency": r.currency,
         "declare_date": r.declare_date.isoformat() if r.declare_date else None,
         "remark": r.remark, "payment_method": r.payment_method, "customer_id": r.customer_id,
+        "is_voided": False, "match_status": r.match_status, "void_reason": r.void_reason,
     }
-    await db.delete(r); await db.flush()
+    r.is_voided = True
+    r.voided_at = thai_now()
+    r.voided_by = current_user.id
+    r.void_reason = req.reason.strip()
+    # Existing reconciliation reads and write guards only accept "unmatched".
+    # Mark this declaration terminal without changing the matching code or any flow.
+    r.match_status = "voided"
+    await db.flush()
     await record_history(db, module="recharge", record_id=recharge_id, operator=current_user,
-                          operation_type="delete", before=before, warehouse_id=wh_id)
-    return {"message": "删除成功"}
+                          operation_type="void", before=before, after={
+                              **before, **_void_info(r), "match_status": r.match_status,
+                              "voided_by_name": current_user.display_name or current_user.username,
+                          }, warehouse_id=wh_id)
+    return {"id": r.id, "message": "申报已作废，记录保留，不再计入申报汇总和对账", "match_status": r.match_status, **_void_info(r)}
