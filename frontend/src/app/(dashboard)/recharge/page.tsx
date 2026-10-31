@@ -9,6 +9,18 @@ import DataTable from "@/components/common/DataTable";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import { Upload, Plus } from "lucide-react";
 
+function nowThaiMinute() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+  const part = (type: string) => parts.find(p => p.type === type)?.value || "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+}
+function manualTimeError(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return "请填写完整日期和时间，不能只填时分";
+  if (value < "2020-01-01T00:00") return "时间不能早于2020年";
+  if (value > nowThaiMinute()) return "不能选择未来时间，最多到当前这一分钟";
+  return "";
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function RechargePage() {
@@ -29,9 +41,8 @@ export default function RechargePage() {
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
-    customer_id: 0, declare_date: today,
+    customer_id: 0, declare_date: nowThaiMinute(),
     amount: "" as string | number, currency: "THB", payment_method: "",
   });
 
@@ -66,6 +77,8 @@ export default function RechargePage() {
   }
 
   async function handleCreate() {
+    const timeError = manualTimeError(form.declare_date);
+    if (timeError) { toast("error", timeError); return; }
     if (!form.customer_id) { toast("error", "请选择客户"); return; }
     if (!form.amount) { toast("error", "请填写金额"); return; }
     setSaving(true);
@@ -98,7 +111,7 @@ export default function RechargePage() {
 
       toast("success", "申报成功");
       setSelectedFile(null);
-      setForm({ customer_id: 0, declare_date: today, amount: "", currency: "THB", payment_method: "" });
+      setForm({ customer_id: 0, declare_date: nowThaiMinute(), amount: "", currency: "THB", payment_method: "" });
       load();
     } catch (err: any) { toast("error", err.message || "申报失败"); }
     setSaving(false);
@@ -109,7 +122,7 @@ export default function RechargePage() {
     setEditingRow(row);
     setEditForm({
       customer_id: row.customer_id || 0,
-      declare_date: row.declare_date?.slice(0, 10) || "",
+      declare_date: row.declare_date?.replace(" ", "T").slice(0, 16) || "",
       amount: String(row.amount || ""),
       currency: row.currency || "THB",
       payment_method: row.payment_method || "",
@@ -119,6 +132,8 @@ export default function RechargePage() {
   }
 
   async function handleEditSave() {
+    const timeError = manualTimeError(editForm.declare_date);
+    if (timeError) { toast("error", timeError); return; }
     if (!editForm.customer_id) { toast("error", "请选择客户"); return; }
     if (!editForm.amount) { toast("error", "请填写金额"); return; }
     try {
@@ -242,8 +257,8 @@ export default function RechargePage() {
             <SearchableSelect value={form.customer_id} options={customerOptions} onChange={(v) => handleCustomerChange(Number(v))} placeholder="选择客户（可搜索）" />
           </div>
           <div>
-            <label className="form-label">申报日期</label>
-            <input type="date" className="form-input" value={form.declare_date} onChange={e => setForm({ ...form, declare_date: e.target.value })} />
+            <label className="form-label">申报时间</label>
+            <input type="datetime-local" step="60" min="2020-01-01T00:00" max={nowThaiMinute()} aria-label="申报时间" className="form-input min-h-[44px]" value={form.declare_date} onChange={e => setForm({ ...form, declare_date: e.target.value })} />
           </div>
           <div>
             <label className="form-label">金额</label>
@@ -296,7 +311,7 @@ export default function RechargePage() {
             </div>
             <div className="p-6 space-y-4">
               <div><label className="form-label">客户</label><SearchableSelect value={editForm.customer_id} options={customerOptions} onChange={(v) => setEditForm({ ...editForm, customer_id: Number(v) })} placeholder="选择客户（可搜索）" /></div>
-              <div><label className="form-label">申报日期</label><input type="date" className="form-input" value={editForm.declare_date} onChange={e => setEditForm({ ...editForm, declare_date: e.target.value })} /></div>
+              <div><label className="form-label">申报时间</label><input type="datetime-local" step="60" min="2020-01-01T00:00" max={nowThaiMinute()} aria-label="编辑申报时间" className="form-input min-h-[44px]" value={editForm.declare_date} onChange={e => setEditForm({ ...editForm, declare_date: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="form-label">金额</label><input type="number" step="0.01" className="form-input" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value === "" ? "" : +e.target.value })} /></div>
                 <div><label className="form-label">币种</label><select className="form-input" value={editForm.currency} onChange={e => setEditForm({ ...editForm, currency: e.target.value })}><option value="THB">泰铢 (THB)</option><option value="CNY">人民币 (CNY)</option></select></div>

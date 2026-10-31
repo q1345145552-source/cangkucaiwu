@@ -18,6 +18,29 @@ _PERMISSION = MENU_PERMISSIONS_BY_KEY["recharge"].label
 
 router = APIRouter()
 
+def _manual_time(value: str) -> datetime:
+    from app.core.timezone import thai_now, THAI_TZ
+    import re
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?)?", value or ""):
+        raise HTTPException(400, "请填写完整日期和时间，不能只填时分")
+    try:
+        when = datetime.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(400, "日期或时间格式不正确")
+    if when.tzinfo is not None:
+        when = when.astimezone(THAI_TZ).replace(tzinfo=None)
+    if when < datetime(2020, 1, 1):
+        raise HTTPException(400, "时间不能早于2020年")
+    if when.replace(second=0, microsecond=0) > thai_now().replace(tzinfo=None, second=0, microsecond=0):
+        raise HTTPException(400, "不能选择未来时间，最多到当前这一分钟")
+    return when
+
+
+def _time_info(value):
+    has_time = bool(value and (value.hour or value.minute or value.second or value.microsecond))
+    return {"has_time": has_time, "time_note": "" if has_time else "未记录时间"}
+
+
 
 async def _check_customer_warehouse(db: AsyncSession, customer_id: int, warehouse_id: int):
     customer_wh = (await db.execute(
@@ -83,6 +106,7 @@ async def list_recharges(
         "id": r.id, "warehouse_id": r.warehouse_id, "customer_id": r.customer_id,
         "customer_name": cust_map.get(r.customer_id, ""),
         "declare_date": r.declare_date.isoformat() if r.declare_date else None,
+        **_time_info(r.declare_date),
         "amount": r.amount, "currency": r.currency or "THB",
         "payment_method": r.payment_method, "payment_time": r.payment_time.isoformat() if r.payment_time else None,
         "transaction_no": r.transaction_no, "account_tail": r.account_tail,
@@ -107,7 +131,7 @@ async def create_recharge(req: RechargeCreate, current_user: User = Depends(chec
 
     r = RechargeDeclaration(
         warehouse_id=wh_id, customer_id=req.customer_id,
-        declare_date=datetime.fromisoformat(req.declare_date),
+        declare_date=_manual_time(req.declare_date),
         amount=req.amount, currency=req.currency,
         payment_method=req.payment_method,
         payment_time=datetime.fromisoformat(req.payment_time) if req.payment_time else None,
@@ -122,7 +146,7 @@ async def create_recharge(req: RechargeCreate, current_user: User = Depends(chec
                               "declare_date": req.declare_date, "customer_id": req.customer_id,
                               "payment_method": req.payment_method, "remark": req.remark,
                           }, warehouse_id=wh_id)
-    return {"id": r.id, "message": "申报成功"}
+    return {"id": r.id, "message": "申报成功", "declare_date": r.declare_date.isoformat(), **_time_info(r.declare_date)}
 
 
 @router.get("/{recharge_id}")
@@ -134,7 +158,7 @@ async def get_recharge(recharge_id: int, current_user: User = Depends(check_staf
         raise HTTPException(403, "无权查看其他仓库的充值申报")
     if current_user.role == Role.SUPERVISOR and r.declarer_id not in await own_read_ids(db,current_user):
         raise HTTPException(403, '只能查看本人充值申报')
-    return {"id": r.id, "amount": r.amount, "currency": r.currency, "declare_date": str(r.declare_date), "match_status": r.match_status, "remark": r.remark}
+    return {"id": r.id, "amount": r.amount, "currency": r.currency, "declare_date": str(r.declare_date), **_time_info(r.declare_date), "match_status": r.match_status, "remark": r.remark}
 
 @router.put("/{recharge_id}")
 async def edit_recharge(recharge_id: int, req: RechargeCreate,
@@ -159,8 +183,9 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
         "declare_date": r.declare_date.isoformat() if r.declare_date else None,
         "remark": r.remark, "payment_method": r.payment_method, "customer_id": r.customer_id,
     }
+    declare_date = _manual_time(req.declare_date)
     r.amount = req.amount; r.currency = req.currency
-    r.declare_date = datetime.fromisoformat(req.declare_date)
+    r.declare_date = declare_date
     r.remark = req.remark; r.payment_method = req.payment_method
     if req.customer_id:
         r.customer_id = req.customer_id
@@ -171,7 +196,7 @@ async def edit_recharge(recharge_id: int, req: RechargeCreate,
                               "declare_date": req.declare_date, "remark": req.remark,
                               "payment_method": req.payment_method, "customer_id": r.customer_id,
                           }, warehouse_id=r.warehouse_id)
-    return {"message": "更新成功"}
+    return {"message": "更新成功", "declare_date": r.declare_date.isoformat(), **_time_info(r.declare_date)}
 
 @router.delete("/{recharge_id}")
 async def delete_recharge(recharge_id: int,

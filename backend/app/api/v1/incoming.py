@@ -19,6 +19,29 @@ from app.models.customer import Customer
 
 router = APIRouter()
 
+def _manual_time(value: str) -> datetime:
+    from app.core.timezone import thai_now, THAI_TZ
+    import re
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?)?", value or ""):
+        raise HTTPException(400, "请填写完整日期和时间，不能只填时分")
+    try:
+        when = datetime.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(400, "日期或时间格式不正确")
+    if when.tzinfo is not None:
+        when = when.astimezone(THAI_TZ).replace(tzinfo=None)
+    if when < datetime(2020, 1, 1):
+        raise HTTPException(400, "时间不能早于2020年")
+    if when.replace(second=0, microsecond=0) > thai_now().replace(tzinfo=None, second=0, microsecond=0):
+        raise HTTPException(400, "不能选择未来时间，最多到当前这一分钟")
+    return when
+
+
+def _time_info(value):
+    has_time = bool(value and (value.hour or value.minute or value.second or value.microsecond))
+    return {"has_time": has_time, "time_note": "" if has_time else "未记录时间"}
+
+
 @router.get("", dependencies=[Depends(require_non_labor)])
 async def list_incoming(
     request: Request,
@@ -52,7 +75,7 @@ async def list_incoming(
     if user_ids:
         users = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
         user_map = {u.id: u.display_name for u in users}
-    return {"data": [{**incoming_dict(r,user_map.get(r.entrant_id,"")),"resolved_customer_id":cid,
+    return {"data": [{**incoming_dict(r,user_map.get(r.entrant_id,"")), **_time_info(r.received_date),"resolved_customer_id":cid,
         "customer_identity_conflict":bool(count and cid is None)} for r,cid,count in joined],
         "total": total, "page": page, "page_size": page_size}
 
@@ -65,10 +88,12 @@ async def create_incoming(req: IncomingCreate, request: Request, current_user: U
     scope = await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))
     if len(scope) != 1: raise HTTPException(400,'请先选择一个仓库')
     wh_id = scope[0].id
+    when = _manual_time(req.received_date)
+    req = req.model_copy(update={"received_date": when.isoformat()})
     r, created = await create_once(db, req, wh_id, current_user)
     from app.services.incoming_suggestions import suggestions_for
     suggestions=(await suggestions_for(db,[r]))[r.id]
-    return {**incoming_dict(r), "suggestions":suggestions,"created": created, "message": "录入成功" if created else "到账已保存，未重复录入"}
+    return {**incoming_dict(r), **_time_info(r.received_date), "suggestions":suggestions,"created": created, "message": "录入成功" if created else "到账已保存，未重复录入"}
 
 
 @router.get("/by-request/{request_key}", dependencies=[Depends(require_non_labor)])
@@ -79,7 +104,7 @@ async def lookup_incoming(request_key: str, current_user=Depends(check_staff_per
         IncomingFlow.request_key == request_key))).scalar_one_or_none()
     if row is None: raise HTTPException(404, "尚未找到本次到账")
     from app.services.incoming_suggestions import suggestions_for
-    return {**incoming_dict(row),"suggestions":(await suggestions_for(db,[row]))[row.id]}
+    return {**incoming_dict(row), **_time_info(row.received_date), "suggestions":(await suggestions_for(db,[row]))[row.id]}
 
 
 async def _own_incoming(db, incoming_id, user, *, lock=False):

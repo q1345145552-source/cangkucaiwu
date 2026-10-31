@@ -12,6 +12,18 @@ import { useRouter } from "next/navigation";
 import { Download, Upload, Plus } from "lucide-react";
 import DataTable from "@/components/common/DataTable";
 
+function nowThaiMinute() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+  const part = (type: string) => parts.find(p => p.type === type)?.value || "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+}
+function manualTimeError(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return "请填写完整日期和时间，不能只填时分";
+  if (value < "2020-01-01T00:00") return "时间不能早于2020年";
+  if (value > nowThaiMinute()) return "不能选择未来时间，最多到当前这一分钟";
+  return "";
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 function todayThai() { return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }); }
 async function incomingRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -51,9 +63,8 @@ export default function IncomingPage() {
   const initialScreenshotFile = useRef<HTMLInputElement>(null);
   const [screenshotTarget, setScreenshotTarget] = useState<number | null>(null);
 
-  const today = todayThai();
   const [form, setForm] = useState({
-    received_date: today, amount: "", currency: "THB",
+    received_date: nowThaiMinute(), amount: "", currency: "THB",
     payer_name: "", customer_id: 0, payment_method: "银行转账", remark: ""
   });
 
@@ -97,7 +108,7 @@ export default function IncomingPage() {
   function startNext() {
     localStorage.removeItem(storageKey.current);
     operationRef.current = null; setOperation(null); setSelectedFile(null);
-    setForm({ received_date: todayThai(), amount: "", currency: "THB", payer_name: "", customer_id: 0, payment_method: "银行转账", remark: "" });
+    setForm({ received_date: nowThaiMinute(), amount: "", currency: "THB", payer_name: "", customer_id: 0, payment_method: "银行转账", remark: "" });
     if (screenshotFile.current) screenshotFile.current.value = "";
     if (initialScreenshotFile.current) initialScreenshotFile.current.value = "";
   }
@@ -134,6 +145,8 @@ export default function IncomingPage() {
   async function handleCreate() {
     if (busy.current || !storageReady) return;
     if (!operationRef.current) {
+      const timeError = manualTimeError(form.received_date);
+      if (timeError) { toast("error", timeError); return; }
       if (!form.amount || Number(form.amount) <= 0) { toast("error", "请填写大于零的金额"); return; }
       if (!accountId) { toast("error", "请选择收款账户"); return; }
     }
@@ -200,9 +213,9 @@ export default function IncomingPage() {
           <Plus size={18} className="text-green-600" /> 录入到账流水
         </div>
         <fieldset className="min-w-0" disabled={!canWrite || !storageReady || saving || !!operation}><div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
-          <div>
-            <label className="form-label">到账日期</label>
-            <input type="date" className="form-input" value={form.received_date} onChange={e => setForm({ ...form, received_date: e.target.value })} />
+          <div className="col-span-2 md:col-span-1">
+            <label className="form-label">到账时间</label>
+            <input type="datetime-local" step="60" min="2020-01-01T00:00" max={nowThaiMinute()} aria-label="到账时间" className="form-input min-h-[44px]" value={form.received_date} onChange={e => setForm({ ...form, received_date: e.target.value })} />
           </div>
           <div>
             <label className="form-label">金额</label>
