@@ -1,5 +1,7 @@
 from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
+from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.core.timezone import thai_now, thai_today
@@ -74,10 +76,17 @@ async def get_unmatched(
     } for f in flows]
     return {"declarations": declarations, "incoming": incoming}
 
+class ManualMatchInput(BaseModel):
+    flow_id: int | None = Field(default=None, gt=0)
+    declaration_ids: list[int] = Field(default_factory=list)
+    handling_note: str = ""
+
+
 @router.post("/manual-match")
 async def manual_match(
     request: Request,
-    declaration_id: int = Query(...), flow_id: int = Query(...),
+    declaration_id: int | None = Query(None), flow_id: int | None = Query(None),
+    payload: ManualMatchInput | None = Body(None),
     handling_note: str = Query(""),
     current_user: User = Depends(check_staff_permission(MENU_PERMISSIONS_BY_KEY["reconciliation"].label)),
     db: AsyncSession = Depends(get_db),
@@ -86,23 +95,45 @@ async def manual_match(
         raise HTTPException(403, "超级管理员请使用各仓库管理员账号操作")
     if current_user.role not in (Role.WAREHOUSE_ADMIN, Role.STAFF):
         raise HTTPException(403, "无权限")
+    if payload is not None and payload.model_fields_set:
+        if declaration_id is not None or flow_id is not None:
+            raise HTTPException(400, "请勿同时提交单笔参数和多笔参数")
+        flow_id = payload.flow_id
+        declaration_ids = payload.declaration_ids
+        handling_note = payload.handling_note
+    else:
+        declaration_ids = [declaration_id] if declaration_id is not None else []
+    if not flow_id or not declaration_ids or any(i <= 0 for i in declaration_ids):
+        raise HTTPException(400, "请选择一条流水和至少一条申报")
+    if len(set(declaration_ids)) != len(declaration_ids):
+        raise HTTPException(400, "申报编号不能重复")
     scope = [w.id for w in await warehouse_scope(db,current_user,request.headers.get('X-Warehouse-ID'))]
+    # 与撤销保持同一锁顺序；申报按编号加锁，避免交叉选择死锁。
     flow = (await db.execute(select(IncomingFlow).where(IncomingFlow.id == flow_id).with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
-    decl = (await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id == declaration_id).with_for_update().execution_options(populate_existing=True))).scalar_one_or_none()
-    if not decl or not flow: raise HTTPException(404, "记录不存在")
-    if decl.warehouse_id != flow.warehouse_id or decl.warehouse_id not in scope:
-        raise HTTPException(403,'只能匹配当前同一仓库的记录')
+    declarations = (await db.execute(select(RechargeDeclaration).where(RechargeDeclaration.id.in_(declaration_ids))
+        .order_by(RechargeDeclaration.id).with_for_update().execution_options(populate_existing=True))).scalars().all()
+    if not flow or len(declarations) != len(declaration_ids):
+        raise HTTPException(404, "记录不存在")
+    if flow.warehouse_id not in scope or any(d.warehouse_id != flow.warehouse_id for d in declarations):
+        raise HTTPException(403, "只能匹配当前同一仓库的记录")
+    if flow.warehouse_id not in get_wh_ids(current_user):
+        raise HTTPException(403, "只能匹配自己仓库的记录")
     linked = (await db.execute(select(ReconciliationDeclaration.id).where(
-        ReconciliationDeclaration.declaration_id == decl.id, ReconciliationDeclaration.is_active.is_(True)).limit(1))).first()
-    if linked or decl.match_status != MatchStatus.UNMATCHED or flow.match_status != MatchStatus.UNMATCHED:
+        ReconciliationDeclaration.declaration_id.in_(declaration_ids), ReconciliationDeclaration.is_active.is_(True)).limit(1))).first()
+    if linked or any(d.match_status != MatchStatus.UNMATCHED for d in declarations) or flow.match_status != MatchStatus.UNMATCHED:
         raise HTTPException(400, "所选记录已被匹配")
-    if current_user.role != Role.SUPER_ADMIN:
-        if decl.warehouse_id not in get_wh_ids(current_user) or flow.warehouse_id not in get_wh_ids(current_user):
-            raise HTTPException(403, "只能匹配自己仓库的记录")
-    # 币种一致性校验：不同币种的申报与流水不能直接匹配（金额差无意义）
+    decl = next(d for d in declarations if d.id == declaration_ids[0])
+    if any(d.customer_id != decl.customer_id for d in declarations):
+        raise HTTPException(400, "只能合并同一个客户的申报")
     from app.services.flow_rules import currencies_match
-    if not currencies_match(decl.currency, flow.currency):
-        raise HTTPException(400, f"币种不一致（申报 {decl.currency or 'THB'} / 流水 {flow.currency or 'THB'}），不能匹配")
+    if any(not currencies_match(d.currency, flow.currency) for d in declarations):
+        raise HTTPException(400, "币种不一致，不能合并匹配")
+    declared_total = sum((Decimal(str(d.amount)) for d in declarations), Decimal("0"))
+    flow_amount = Decimal(str(flow.amount))
+    difference = abs(flow_amount - declared_total)
+    tolerance = min(Decimal("50"), max(Decimal("20"), flow_amount * Decimal("0.005")))
+    if difference > tolerance:
+        raise HTTPException(400, f"差额 {difference:.2f} 超出容差 {tolerance:.2f}（超出 {difference - tolerance:.2f}）")
     customer = await db.get(Customer,decl.customer_id)
     if not customer or customer.warehouse_id != decl.warehouse_id: raise HTTPException(409,'申报客户归属异常，请先核对')
     original_customer_id=flow.customer_id
@@ -112,17 +143,22 @@ async def manual_match(
         reconciliation_month=decl.declare_date.strftime("%Y-%m") if decl.declare_date else thai_now().strftime("%Y-%m"),
         declaration_id=decl.id, flow_id=flow.id,
         match_status=ReconMatchStatus.MANUAL_MATCHED,
-        amount_diff=abs(decl.amount - flow.amount),
+        amount_diff=float(difference),
         handling_note=handling_note, confirmed_by=current_user.id, confirmed_at=thai_now(),
     )
-    db.add(rr); decl.match_status = MatchStatus.MATCHED; flow.match_status = MatchStatus.MATCHED
+    db.add(rr)
+    for declaration in declarations:
+        declaration.match_status = MatchStatus.MATCHED
+    flow.match_status = MatchStatus.MATCHED
     await db.flush()
-    db.add(ReconciliationDeclaration(reconciliation_id=rr.id, declaration_id=decl.id, amount=decl.amount, is_active=True))
+    for declaration in declarations:
+        db.add(ReconciliationDeclaration(reconciliation_id=rr.id, declaration_id=declaration.id, amount=declaration.amount, is_active=True))
     await db.flush()
     from app.services.data_history import record_history
     await record_history(db,module='reconciliation',record_id=rr.id,operator=current_user,operation_type='match',
-        before={'customer_id':original_customer_id},after={'flow_id':flow.id,'declaration_id':decl.id,'customer_id':customer.id,'action':'人工确认匹配'},warehouse_id=flow.warehouse_id)
-    return {'id':rr.id,'flow_id':flow.id,'declaration_id':decl.id,'customer_id':customer.id,'customer_code':customer.customer_code,
+        before={'customer_id':original_customer_id},after={'flow_id':flow.id,'declaration_id':decl.id,'declaration_ids':declaration_ids,'customer_id':customer.id,'action':'人工确认匹配'},warehouse_id=flow.warehouse_id)
+    return {'id':rr.id,'flow_id':flow.id,'declaration_id':decl.id,'declaration_ids':declaration_ids,
+        'declaration_count':len(declarations),'decl_amount':float(declared_total),'amount_diff':float(difference),'tolerance':float(tolerance),'customer_id':customer.id,'customer_code':customer.customer_code,
         'amount':flow.amount,'currency':flow.currency,'message':f'已匹配到 {customer.customer_code} 的 {flow.amount:,.2f} {flow.currency or "THB"}'}
 
 @router.post("/unmatch", dependencies=[Depends(require_non_labor)])
@@ -215,6 +251,22 @@ def _matched_time_order(record, declarations, flows):
     return (received or declared or datetime.min, record.id)
 
 
+async def _matched_groups(db, records):
+    groups = {}
+    if records:
+        links = (await db.execute(select(ReconciliationDeclaration).where(
+            ReconciliationDeclaration.reconciliation_id.in_([r.id for r in records]),
+            ReconciliationDeclaration.is_active.is_(True)
+        ).order_by(ReconciliationDeclaration.id))).scalars().all()
+        for link in links:
+            groups.setdefault(link.reconciliation_id, []).append(link)
+    return groups
+
+
+def _group_amount(links, declaration):
+    return float(sum((Decimal(str(link.amount)) for link in links), Decimal("0"))) if links else (declaration.amount if declaration else None)
+
+
 @router.get("/results")
 async def list_results(
     start_date: str = None, end_date: str = None,
@@ -247,7 +299,8 @@ async def list_results(
     all_records = (await db.execute(query.order_by(ReconciliationResult.created_at.desc()))).scalars().all()
 
     # Fetch related data
-    decl_ids = [r.declaration_id for r in all_records if r.declaration_id]
+    groups = await _matched_groups(db, all_records)
+    decl_ids = {link.declaration_id for links in groups.values() for link in links} | {r.declaration_id for r in all_records if r.declaration_id}
     flow_ids = [r.flow_id for r in all_records if r.flow_id]
     decl_map = {}; flow_map = {}; cust_map = {}
     if decl_ids:
@@ -277,16 +330,19 @@ async def list_results(
         if search_code and search_code not in customer_code:
             continue
         f = flow_map.get(r.flow_id)
+        links = groups.get(r.id, [])
+        ids = [link.declaration_id for link in links] or ([r.declaration_id] if r.declaration_id else [])
         items.append({
             "id": r.id, "warehouse_id": r.warehouse_id,
             "reconciliation_month": r.reconciliation_month,
             "declaration_id": r.declaration_id, "flow_id": r.flow_id,
+            "declaration_ids": ids, "declaration_count": len(ids),
             "match_status": r.match_status or "",
             "amount_diff": r.amount_diff, "handling_note": r.handling_note,
             "customer_code": customer_code, "customer_name": customer_name,
             "declare_time": _matched_time_text(d.declare_date if d else None),
             "received_time": _matched_time_text(f.received_date if f else None),
-            "decl_amount": d.amount if d else None,
+            "decl_amount": _group_amount(links, d),
             "decl_currency": d.currency if d else None,
             "flow_payer": f.payer_name if f else "",
             "flow_amount": f.amount if f else None,
@@ -334,7 +390,8 @@ async def export_reconciliation(
         query = query.where(ReconciliationResult.created_at <= edt)
 
     records = (await db.execute(query.order_by(ReconciliationResult.created_at.desc()))).scalars().all()
-    decl_ids = [r.declaration_id for r in records if r.declaration_id]
+    groups = await _matched_groups(db, records)
+    decl_ids = {link.declaration_id for links in groups.values() for link in links} | {r.declaration_id for r in records if r.declaration_id}
     flow_ids = [r.flow_id for r in records if r.flow_id]
     decl_map = {}; flow_map = {}; cust_map = {}
     if decl_ids:
@@ -356,7 +413,7 @@ async def export_reconciliation(
     hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
     headers = ["匹配时间", "客户编号", "客户名称", "申报金额", "申报币种", "流水付款方", "流水金额", "流水币种", "差额", "备注"]
-    headers[3:3] = ["申报时间", "流水到账时间"]
+    headers[3:3] = ["申报时间", "流水到账时间", "申报编号", "申报笔数"]
     ws.column_dimensions["D"].width = 26
     ws.column_dimensions["E"].width = 26
     for idx, h in enumerate(headers, 1):
@@ -377,7 +434,7 @@ async def export_reconciliation(
             str(r.created_at)[:19] if r.created_at else "",
             c_info.customer_code if c_info else "",
             c_info.company_name if c_info else "",
-            d_info.amount if d_info else "",
+            _group_amount(groups.get(r.id, []), d_info),
             d_info.currency if d_info else "",
             f_info.payer_name if f_info else "",
             f_info.amount if f_info else "",
@@ -388,6 +445,8 @@ async def export_reconciliation(
         vals[3:3] = [
             _matched_time_text(d_info.declare_date if d_info else None),
             _matched_time_text(f_info.received_date if f_info else None),
+            ";".join(str(link.declaration_id) for link in groups[r.id]) if groups.get(r.id) else str(r.declaration_id or ""),
+            len(groups[r.id]) if groups.get(r.id) else (1 if r.declaration_id else 0),
         ]
         for c, v in enumerate(vals, 1):
             ws.cell(row=row_idx, column=c, value=str(v) if v is not None else "")

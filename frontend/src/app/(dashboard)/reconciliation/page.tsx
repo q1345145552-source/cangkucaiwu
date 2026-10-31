@@ -8,7 +8,7 @@ import { api, getToken, getActiveWarehouseId } from "@/lib/api";
 import { fmtMoney, fmtMoneyByCurrency } from "@/lib/currency";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/DataTable";
-import { Download, Link2, CheckCircle, Search, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { Download, Link2, CheckCircle, Search, Image as ImageIcon } from "lucide-react";
 
 export default function ReconciliationPage() {
   const canWrite = useBusinessAction("reconciliation", "bookkeeping");
@@ -27,11 +27,31 @@ export default function ReconciliationPage() {
 
   const [decls, setDecls] = useState<any[]>([]);
   const [flows, setFlows] = useState<any[]>([]);
-  const [selectedDeclId, setSelectedDeclId] = useState<number | null>(null);
+  const [selectedDeclIds, setSelectedDeclIds] = useState<number[]>([]);
   const [selectedFlowId, setSelectedFlowId] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [showMatchConfirm, setShowMatchConfirm] = useState(false);
   const [previewScreenshot, setPreviewScreenshot] = useState("");
+  const summaryAnchor = useRef<HTMLDivElement>(null);
+  const summaryBar = useRef<HTMLDivElement>(null);
+  const [summaryPosition, setSummaryPosition] = useState<{left:number; width:number; top:number; height:number} | null>(null);
+  useEffect(() => {
+    // 公共外壳的 main 自身不滚动；仅在本页定位汇总栏，不改外壳。
+    const update = () => {
+      const anchor = summaryAnchor.current; const bar = summaryBar.current;
+      if (!anchor || !bar) return;
+      const rect = anchor.getBoundingClientRect();
+      const top = window.innerWidth < 1024 ? 56 : 0;
+      setSummaryPosition(rect.top < top ? {left:rect.left, width:rect.width, top, height:bar.offsetHeight} : null);
+    };
+    const observer = new ResizeObserver(update);
+    if (summaryBar.current) observer.observe(summaryBar.current);
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    update();
+    return () => { observer.disconnect(); window.removeEventListener("scroll", update, true); window.removeEventListener("resize", update); };
+  }, []);
+
 
   const [results, setResults] = useState<any[]>([]);
   const [resultsTotal, setResultsTotal] = useState(0);
@@ -76,7 +96,7 @@ export default function ReconciliationPage() {
       if(scope!==importScope())return;
       dataScope.current=scope;setDecls(res.declarations || []);
       setFlows(res.incoming || []);
-      setSelectedDeclId(null); setSelectedFlowId(null);
+      setSelectedDeclIds([]); setSelectedFlowId(null);
     } catch (err: any) { toast("error", err.message || "查询失败"); }
     setLoading(false);
   }
@@ -108,26 +128,25 @@ export default function ReconciliationPage() {
   }, [resultsPage, resultsStartDate, resultsEndDate, resultsSearch, resultsSearchCode]);
 
   function triggerMatch() {
-    if (!selectedDeclId || !selectedFlowId) { toast("error", "请分别选择一条申报和一条流水"); return; }
+    if (!canMatch) { toast("error", selectionError || "请选择申报和一条流水"); return; }
     setNote(""); setShowMatchConfirm(true);
   }
 
-  function declarationFor(id:number|null){return decls.find(d=>d.id===id)||flows.flatMap(f=>f.suggestions||[]).find(d=>d.declaration_id===id);}
   function chooseSuggestion(flow:any){
     if(dataScope.current!==importScope()){toast('error','账号或仓库已变化，请重新查询');return;}
     const id=Number(rowSelections[flow.id]);if(!id)return;
-    return performMatch(id,flow.id,'');
+    return performMatch([id],flow.id,'');
   }
-  async function confirmMatch() {return performMatch(selectedDeclId,selectedFlowId,note);}
-  async function performMatch(declarationId:number|null,flowId:number|null,handlingNote:string) {
+  async function confirmMatch() {return performMatch(selectedDeclIds,selectedFlowId,note);}
+  async function performMatch(declarationIds:number[],flowId:number|null,handlingNote:string) {
     if(matchBusy.current)return;
     if(dataScope.current!==importScope()){toast('error','账号或仓库已变化，请重新查询');setShowMatchConfirm(false);return;}
     matchBusy.current=true;setMatching(true);
     try {
-      const result=await api.post<any>(`/reconciliation/manual-match?declaration_id=${declarationId}&flow_id=${flowId}&handling_note=${encodeURIComponent(handlingNote)}`, {});
+      const result=await api.post<any>("/reconciliation/manual-match", {declaration_ids:declarationIds,flow_id:flowId,handling_note:handlingNote});
       toast("success", result.message || "匹配成功");
       setShowMatchConfirm(false);
-      setSelectedDeclId(null); setSelectedFlowId(null);
+      setSelectedDeclIds([]); setSelectedFlowId(null);
       queryUnmatched();
       setResultsPage(1); loadResults();
     } catch (err: any) { toast("error", err.message || "匹配失败"); }
@@ -137,7 +156,7 @@ export default function ReconciliationPage() {
   async function handleUnmatch(row: any) {
     if(matchBusy.current)return;
     if(dataScope.current!==importScope()){toast('error','账号或仓库已变化，请重新查询');return;}
-    if (!confirm("确认解除匹配？本次匹配新增的客户归属将撤回，银行到账保留。")) return;
+    if (!confirm(`这条匹配挂着 ${row.declaration_count || 1} 条申报，撤销后全部申报和流水恢复未匹配。本次匹配新增的客户归属将撤回，银行到账保留。确认撤销？`)) return;
     matchBusy.current=true;setMatching(true);
     try {
       const result=await api.post<any>(`/reconciliation/unmatch?record_id=${row.id}`, {});
@@ -160,12 +179,39 @@ export default function ReconciliationPage() {
     } catch { toast("error", "导出失败"); }
   }
 
-  function toggleDecl(id: number) { setSelectedDeclId(prev => prev === id ? null : id); }
-  function toggleFlow(id: number) { setSelectedFlowId(prev => prev === id ? null : id); }
+  const selectedDeclarations = decls.filter(d => selectedDeclIds.includes(d.id));
+  const selectedFlow = flows.find(f => f.id === selectedFlowId);
+  const currencyOf = (value: string | null | undefined) => (value || "THB").trim().toUpperCase();
+  const selectedCurrency = currencyOf(selectedDeclarations[0]?.currency);
+  const selectedTotal = selectedDeclarations.reduce((sum, d) => sum + Math.round(Number(d.amount) * 100), 0) / 100;
+  const difference = selectedFlow ? Math.abs(Math.round(Number(selectedFlow.amount) * 100) - Math.round(selectedTotal * 100)) / 100 : 0;
+  const tolerance = selectedFlow ? Math.min(50, Math.max(20, Number(selectedFlow.amount) * 0.005)) : 0;
+  const selectionError = selectedDeclarations.length && selectedFlow
+    ? currencyOf(selectedFlow.currency) !== selectedCurrency ? "币种不一致，不能合并匹配"
+      : difference > tolerance ? `差额 ${difference.toFixed(2)} 超出容差 ${tolerance.toFixed(2)}` : ""
+    : "";
+  const canMatch = selectedDeclarations.length > 0 && !!selectedFlow && !selectionError;
+
+  function toggleDecl(id: number) {
+    if (selectedDeclIds.includes(id)) { setSelectedDeclIds(prev => prev.filter(value => value !== id)); return; }
+    const next = decls.find(d => d.id === id);
+    const first = selectedDeclarations[0];
+    if (!next) return;
+    if (first && currencyOf(first.currency) !== currencyOf(next.currency)) { toast("error", "币种不一致，不能混选申报"); return; }
+    if (first && first.customer_id !== next.customer_id) { toast("error", "只能合并同一个客户的申报"); return; }
+    if (selectedFlow && currencyOf(selectedFlow.currency) !== currencyOf(next.currency)) { toast("error", "申报与流水币种不一致"); return; }
+    setSelectedDeclIds(prev => [...prev, id]);
+  }
+  function toggleFlow(id: number) {
+    if (selectedFlowId === id) { setSelectedFlowId(null); return; }
+    const next = flows.find(f => f.id === id);
+    if (selectedDeclarations.length && currencyOf(next?.currency) !== selectedCurrency) { toast("error", "申报与流水币种不一致"); return; }
+    setSelectedFlowId(id);
+  }
 
   const declColumns = [
     { key: "_sel", label: "", headerRender: () => <span className="text-xs text-gray-400">选</span>, render: (_: any, row: any) => (
-      <button onClick={() => toggleDecl(row.id)} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedDeclId === row.id ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 hover:border-blue-400"}`}>{selectedDeclId === row.id ? <CheckCircle size={14} /> : null}</button>
+      <input type="checkbox" aria-label={`选择申报${row.id}`} checked={selectedDeclIds.includes(row.id)} onChange={() => toggleDecl(row.id)} disabled={matching} className="w-5 h-5 accent-blue-600 cursor-pointer" />
     )},
     { key: "customer_code", label: "编号" }, { key: "customer_name", label: "客户" },
     { key: "declare_date", label: "申报日期", render: (v: string) => v?.slice(0,10) },
@@ -200,6 +246,8 @@ export default function ReconciliationPage() {
     { key: "created_at", label: "匹配时间", render: (v: string) => v?.slice(0,16)?.replace("T"," ") },
     { key: "customer_code", label: "客户编号" },
     { key: "customer_name", label: "客户名称" },
+    { key: "declaration_ids", label: "申报编号", render: (v: number[], row: any) => (v || [row.declaration_id]).join("、") },
+    { key: "declaration_count", label: "申报笔数", render: (v: number) => v || 1 },
     { key: "declare_time", label: "申报时间", cellClassName: "min-w-[190px] whitespace-nowrap tabular-nums", render: (v: string) => v || "-" },
     { key: "received_time", label: "流水到账时间", cellClassName: "min-w-[190px] whitespace-nowrap tabular-nums", render: (v: string) => v || "-" },
     { key: "decl_amount", label: "申报金额", align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.decl_currency) : "-" },
@@ -232,17 +280,30 @@ export default function ReconciliationPage() {
         </div>
       </div>
 
+      <div ref={summaryAnchor} className="mb-4" style={{minHeight:summaryPosition?.height}}>
+      <div ref={summaryBar} style={summaryPosition ? {position:"fixed", left:summaryPosition.left, width:summaryPosition.width, top:summaryPosition.top} : undefined} className="z-20 bg-white border border-blue-200 rounded-xl shadow-sm p-3 flex items-center gap-3 flex-wrap" aria-label="匹配汇总">
+        <span>已选 <strong>{selectedDeclarations.length}</strong> 条</span>
+        <span className="tabular-nums">合计 {selectedTotal.toFixed(2)} {selectedDeclarations.length ? selectedCurrency : ""}</span>
+        <span className="tabular-nums">流水 {selectedFlow ? `${Number(selectedFlow.amount).toFixed(2)} ${currencyOf(selectedFlow.currency)}` : "未选"}</span>
+        <span className="tabular-nums">差额 {selectedFlow ? difference.toFixed(2) : "—"}</span>
+        {selectedFlow && <span className="text-sm text-gray-500">容差 {tolerance.toFixed(2)}</span>}
+        <ActionGate anyOf={["reconciliation.manual_match#operate"]}><button disabled={!canWrite || !canMatch || matching} onClick={triggerMatch} className="btn-primary min-h-[44px]">匹配所选申报</button></ActionGate>
+        {selectionError && <p role="alert" className="w-full text-red-600 text-sm">{selectionError}</p>}
+      </div>
+
+      </div>
+
       {/* 左右双栏 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 relative">
         <div className="card border-blue-200">
           <div className="bg-blue-50 px-4 py-3 rounded-t-xl border-b flex items-center gap-2">
             <span className="font-semibold text-sm text-blue-700">未匹配充值申报</span>
             <span className="text-xs text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">{decls.length} 条</span>
-            {selectedDeclId && <span className="text-xs text-blue-400 ml-auto">已选 1 条 · <button onClick={() => setSelectedDeclId(null)} className="underline hover:text-blue-600">取消</button></span>}
+            {selectedDeclIds.length > 0 && <span className="text-xs text-blue-400 ml-auto">已选 {selectedDeclIds.length} 条 · <button onClick={() => setSelectedDeclIds([])} className="underline hover:text-blue-600">取消</button></span>}
           </div>
           <div className="overflow-auto max-h-[420px]">
             {loading ? <div className="text-center py-12 text-gray-400">加载中...</div> : decls.length === 0 ? <div className="text-center py-12 text-gray-400">暂无未匹配申报</div> : (
-              <DataTable columns={declColumns} data={decls} total={decls.length} page={1} pageSize={100} onPageChange={() => {}} />
+              <DataTable columns={declColumns} data={decls} total={decls.length} page={1} pageSize={Math.max(1, decls.length)} onPageChange={() => {}} />
             )}
           </div>
         </div>
@@ -258,13 +319,7 @@ export default function ReconciliationPage() {
             )}
           </div>
         </div>
-        {selectedDeclId && selectedFlowId && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-            <button disabled={!canWrite} onClick={triggerMatch} className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 rounded-full shadow-2xl flex items-center gap-2 font-semibold">
-              <Link2 size={20} /> 匹配 <ArrowRight size={16} />
-            </button>
-          </div>
-        )}
+
       </div>
 
       {/* 匹配确认弹窗 */}
@@ -276,19 +331,14 @@ export default function ReconciliationPage() {
               <div className="flex-1" /><button onClick={() => setShowMatchConfirm(false)} className="text-blue-200 hover:text-white text-xl leading-none" data-modal-close="true">&times;</button>
             </div>
             <div className="p-6 space-y-4">
-              <div><div className="text-xs text-gray-400 mb-1">申报记录</div><div className="bg-blue-50 rounded-lg p-3 text-sm">{declarationFor(selectedDeclId)?.customer_name} · {fmtMoney(declarationFor(selectedDeclId)?.amount, declarationFor(selectedDeclId)?.currency)}</div></div>
-              <div><div className="text-xs text-gray-400 mb-1">到账流水</div><div className="bg-green-50 rounded-lg p-3 text-sm">{flows.find(f => f.id === selectedFlowId)?.payer_name} · {fmtMoney(flows.find(f => f.id === selectedFlowId)?.amount, flows.find(f => f.id === selectedFlowId)?.currency)}</div></div>
-              {(() => {
-                const d = declarationFor(selectedDeclId); const f = flows.find(f => f.id === selectedFlowId);
-                const diff = (d?.amount || 0) - (f?.amount || 0);
-                return diff !== 0 ? <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700">差异金额：{fmtMoney(Math.abs(diff), d?.currency || f?.currency)}</div>
-                  : <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2"><CheckCircle size={16} />金额一致</div>;
-              })()}
+              <div><div className="text-xs text-gray-400 mb-1">申报记录（{selectedDeclarations.length} 笔）</div><div className="bg-blue-50 rounded-lg p-3 text-sm space-y-1">{selectedDeclarations.map(d => <div key={d.id}>#{d.id} · {d.customer_name} · {fmtMoney(d.amount, d.currency)}</div>)}<div className="font-semibold border-t pt-2">合计 {fmtMoney(selectedTotal, selectedCurrency)}</div></div></div>
+              <div><div className="text-xs text-gray-400 mb-1">到账流水</div><div className="bg-green-50 rounded-lg p-3 text-sm">{selectedFlow?.payer_name} · {fmtMoney(selectedFlow?.amount, selectedFlow?.currency)}</div></div>
+              <div className={`rounded-lg p-3 text-sm ${selectionError ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>{selectionError || `差额 ${difference.toFixed(2)}，容差 ${tolerance.toFixed(2)}，允许匹配`}</div>
               <div className="form-group"><label className="form-label">备注说明</label><input className="form-input" value={note} onChange={e => setNote(e.target.value)} placeholder="匹配备注（可选）" /></div>
             </div>
             <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
               <button onClick={() => setShowMatchConfirm(false)} className="btn-secondary min-w-[80px]" data-modal-close="true">取消</button>
-              <ActionGate anyOf={["reconciliation.manual_match#operate"]}><button disabled={matching || !(canWrite)} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button></ActionGate>
+              <ActionGate anyOf={["reconciliation.manual_match#operate"]}><button disabled={matching || !canWrite || !canMatch} onClick={confirmMatch} className="btn-primary min-w-[80px]">确认匹配</button></ActionGate>
             </div>
           </div>
         </div>
