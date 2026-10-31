@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index, Boolean, UniqueConstraint, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -16,6 +16,7 @@ class ReconMatchStatus(str, enum.Enum):
     MATCHED = "matched"
     UNMATCHED = "unmatched"
     MANUAL_MATCHED = "manual_matched"
+    REVOKED = "revoked"
 
 class RechargeDeclaration(Base):
     __tablename__ = "recharge_declarations"
@@ -70,7 +71,7 @@ class ReconciliationResult(Base):
     id = Column(Integer, primary_key=True, index=True)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False, index=True)
     reconciliation_month = Column(String(7), nullable=False, comment="YYYY-MM")
-    declaration_id = Column(Integer, ForeignKey("recharge_declarations.id"), nullable=True)
+    declaration_id = Column(Integer, ForeignKey("recharge_declarations.id", ondelete="SET NULL"), nullable=True)
     flow_id = Column(Integer, ForeignKey("incoming_flows.id"), nullable=True)
     match_status = Column(String(20), nullable=False, default=ReconMatchStatus.UNMATCHED.value)
     amount_diff = Column(Float, default=0)
@@ -94,3 +95,19 @@ class ExchangeRate(Base):
     rate = Column(Float, nullable=False)
     set_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReconciliationDeclaration(Base):
+    """申报编号是历史快照；撤销后允许删除原申报，关联明细仍保留。"""
+    __tablename__ = "reconciliation_declarations"
+    __table_args__ = (
+        UniqueConstraint("reconciliation_id", "declaration_id", name="uq_reconciliation_declaration"),
+        Index("uq_active_reconciliation_declaration", "declaration_id", unique=True,
+              postgresql_where=text("is_active"), sqlite_where=text("is_active = 1")),
+    )
+    id = Column(Integer, primary_key=True)
+    reconciliation_id = Column(Integer, ForeignKey("reconciliation_results.id"), nullable=False, index=True)
+    declaration_id = Column(Integer, nullable=False)
+    amount = Column(Float, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

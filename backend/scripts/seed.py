@@ -579,11 +579,64 @@ async def _migrate_monthly_salary_template(conn):
             await conn.execute(text(f"ALTER TABLE salary_templates ADD COLUMN IF NOT EXISTS {name} {column_type}"))
 
 
+async def _migrate_reconciliation_links(conn):
+    """原记录不更新；扫描、约束及回填在启动事务中一起成功或一起回滚。"""
+    from sqlalchemy import inspect, text
+    from app.models.recharge import ReconciliationDeclaration
+    exists = await conn.run_sync(lambda c: inspect(c).has_table("reconciliation_results"))
+    if not exists:
+        return {"inserted": 0, "links": 0, "matches": 0}
+    if conn.dialect.name == "postgresql":
+        await conn.execute(text("LOCK TABLE reconciliation_results, recharge_declarations IN SHARE ROW EXCLUSIVE MODE"))
+    active = (await conn.execute(text("""
+        SELECT declaration_id,id FROM reconciliation_results
+        WHERE match_status IN ('matched','manual_matched') AND declaration_id IS NOT NULL
+        ORDER BY declaration_id,id
+    """))).all()
+    grouped = {}
+    for declaration_id, match_id in active:
+        grouped.setdefault(declaration_id, []).append(match_id)
+    conflicts = {key: ids for key, ids in grouped.items() if len(ids) > 1}
+    if conflicts:
+        raise RuntimeError(f"匹配关联迁移停止：申报存在多条有效匹配 {conflicts}")
+    invalid = (await conn.execute(text("""
+        SELECT r.id FROM reconciliation_results r LEFT JOIN recharge_declarations d ON d.id=r.declaration_id
+        WHERE r.match_status IN ('matched','manual_matched') AND (d.id IS NULL OR d.warehouse_id<>r.warehouse_id)
+    """))).scalars().all()
+    if invalid:
+        raise RuntimeError(f"匹配关联迁移停止：有效匹配缺少合法同仓申报 {invalid}")
+    await conn.run_sync(lambda c: ReconciliationDeclaration.__table__.create(c, checkfirst=True))
+    # 已有明细可能是新版本的多笔匹配，绝不重建或重新激活已撤销的关联。
+    before = (await conn.execute(text("SELECT COUNT(*) FROM reconciliation_declarations"))).scalar_one()
+    await conn.execute(text("""
+        INSERT INTO reconciliation_declarations (reconciliation_id,declaration_id,amount,is_active,created_at)
+        SELECT r.id,d.id,d.amount,r.match_status IN ('matched','manual_matched'),COALESCE(r.created_at,CURRENT_TIMESTAMP)
+        FROM reconciliation_results r JOIN recharge_declarations d ON d.id=r.declaration_id
+        WHERE NOT EXISTS (SELECT 1 FROM reconciliation_declarations l WHERE l.reconciliation_id=r.id)
+    """))
+    if conn.dialect.name == "postgresql":
+        constraints = (await conn.execute(text("""
+            SELECT c.conname,c.confdeltype FROM pg_constraint c
+            JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+            WHERE c.conrelid='reconciliation_results'::regclass AND c.contype='f' AND a.attname='declaration_id'
+        """))).all()
+        for name, delete_type in constraints:
+            if delete_type != 'n':
+                quoted = conn.dialect.identifier_preparer.quote(name)
+                await conn.execute(text(f'ALTER TABLE reconciliation_results DROP CONSTRAINT {quoted}'))
+                await conn.execute(text(f'ALTER TABLE reconciliation_results ADD CONSTRAINT {quoted} FOREIGN KEY (declaration_id) REFERENCES recharge_declarations(id) ON DELETE SET NULL'))
+    after = (await conn.execute(text("SELECT COUNT(*) FROM reconciliation_declarations"))).scalar_one()
+    matches = (await conn.execute(text("SELECT COUNT(*) FROM reconciliation_results"))).scalar_one()
+    return {"inserted": after-before, "links": after, "matches": matches}
+
+
 async def seed():
     from sqlalchemy import text
 
     engine = _get_engine()
     async with engine.begin() as conn:
+        links = await _migrate_reconciliation_links(conn)
+        print(f"匹配关联迁移: {links}")
         await conn.run_sync(Base.metadata.create_all)
         # Required for clock-in uploads; fail startup if schema setup fails.
         await conn.execute(text("ALTER TABLE clock_in_records ADD COLUMN IF NOT EXISTS photo_fingerprint VARCHAR(64)"))
