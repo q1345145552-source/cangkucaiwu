@@ -169,6 +169,22 @@ async def unmatch_record(
         if f: f.match_status = MatchStatus.UNMATCHED
     await db.delete(rr); await db.flush(); return {'customer_binding_reverted':restored_customer,"message": "已撤销匹配，客户归属和余额已恢复，银行到账保留" if restored_customer else "已解除申报匹配，独立客户归属保留，未退款"}
 
+def _matched_time_text(value):
+    if value is None:
+        return "-"
+    if not (value.hour or value.minute or value.second or value.microsecond):
+        return value.strftime("%Y-%m-%d") + " 未记录时间"
+    return value.strftime("%Y-%m-%d %H:%M")
+
+
+def _matched_time_order(record, declarations, flows):
+    declaration = declarations.get(record.declaration_id)
+    flow = flows.get(record.flow_id)
+    received = flow.received_date if flow else None
+    declared = declaration.declare_date if declaration else None
+    return (received or declared or datetime.min, record.id)
+
+
 @router.get("/results")
 async def list_results(
     start_date: str = None, end_date: str = None,
@@ -215,6 +231,8 @@ async def list_results(
         flows = (await db.execute(select(IncomingFlow).where(IncomingFlow.id.in_(flow_ids)))).scalars().all()
         flow_map = {f.id: f for f in flows}
 
+    all_records.sort(key=lambda r: _matched_time_order(r, decl_map, flow_map), reverse=True)
+
     # Build result items
     items = []
     for r in all_records:
@@ -236,6 +254,8 @@ async def list_results(
             "match_status": r.match_status or "",
             "amount_diff": r.amount_diff, "handling_note": r.handling_note,
             "customer_code": customer_code, "customer_name": customer_name,
+            "declare_time": _matched_time_text(d.declare_date if d else None),
+            "received_time": _matched_time_text(f.received_date if f else None),
             "decl_amount": d.amount if d else None,
             "decl_currency": d.currency if d else None,
             "flow_payer": f.payer_name if f else "",
@@ -298,12 +318,17 @@ async def export_reconciliation(
         flows = (await db.execute(select(IncomingFlow).where(IncomingFlow.id.in_(flow_ids)))).scalars().all()
         flow_map = {f.id: f for f in flows}
 
+    records.sort(key=lambda r: _matched_time_order(r, decl_map, flow_map), reverse=True)
+
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
     wb = Workbook(); ws = wb.active; ws.title = "对账记录"
     hf = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     hfont = Font(bold=True, color="FFFFFF")
     headers = ["匹配时间", "客户编号", "客户名称", "申报金额", "申报币种", "流水付款方", "流水金额", "流水币种", "差额", "备注"]
+    headers[3:3] = ["申报时间", "流水到账时间"]
+    ws.column_dimensions["D"].width = 26
+    ws.column_dimensions["E"].width = 26
     for idx, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=idx, value=h); cell.font = hfont; cell.fill = hf
 
@@ -329,6 +354,10 @@ async def export_reconciliation(
             f_info.currency if f_info else "",
             r.amount_diff or 0,
             r.handling_note or "",
+        ]
+        vals[3:3] = [
+            _matched_time_text(d_info.declare_date if d_info else None),
+            _matched_time_text(f_info.received_date if f_info else None),
         ]
         for c, v in enumerate(vals, 1):
             ws.cell(row=row_idx, column=c, value=str(v) if v is not None else "")

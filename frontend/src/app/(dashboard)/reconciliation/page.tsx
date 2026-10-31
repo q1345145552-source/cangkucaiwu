@@ -200,6 +200,8 @@ export default function ReconciliationPage() {
     { key: "created_at", label: "匹配时间", render: (v: string) => v?.slice(0,16)?.replace("T"," ") },
     { key: "customer_code", label: "客户编号" },
     { key: "customer_name", label: "客户名称" },
+    { key: "declare_time", label: "申报时间", cellClassName: "min-w-[190px] whitespace-nowrap tabular-nums", render: (v: string) => v || "-" },
+    { key: "received_time", label: "流水到账时间", cellClassName: "min-w-[190px] whitespace-nowrap tabular-nums", render: (v: string) => v || "-" },
     { key: "decl_amount", label: "申报金额", align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.decl_currency) : "-" },
     { key: "flow_payer", label: "流水付款方" },
     { key: "flow_amount", label: "流水金额", align: "right" as const, render: (v: number, row: any) => v ? fmtMoney(v, row.flow_currency) : "-" },
